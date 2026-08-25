@@ -42,13 +42,33 @@ internal sealed partial class BoundedTelemetryShutdownService(
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <inheritdoc/>
-    public Task StopAsync(CancellationToken cancellationToken) {
+    /// <remarks>
+    /// Each provider shutdown is a blocking call, so three of them ran inline for up to six seconds while ignoring
+    /// the token the host supplies — a host configured with a shorter shutdown timeout could not honour it. They
+    /// now run off the calling thread and the wait observes the token.
+    /// <para>
+    /// Abandoning the wait is safe and still achieves the point of this service: <c>BaseProcessor.Shutdown</c>
+    /// takes its one-shot interlock on entry, so the shutdown is already claimed by the time the token fires and
+    /// the later disposal returns immediately instead of joining the exporter thread without a timeout.
+    /// </para>
+    /// </remarks>
+    public async Task StopAsync(CancellationToken cancellationToken) {
         int budgetMilliseconds = (int)ShutdownBudget.TotalMilliseconds;
-        ShutdownProvider("tracer", () => tracerProvider?.Shutdown(budgetMilliseconds));
-        ShutdownProvider("meter", () => meterProvider?.Shutdown(budgetMilliseconds));
-        ShutdownProvider("logger", () => loggerProvider?.Shutdown(budgetMilliseconds));
+        Task shutdown = Task.Run(
+            () => {
+                ShutdownProvider("tracer", () => tracerProvider?.Shutdown(budgetMilliseconds));
+                ShutdownProvider("meter", () => meterProvider?.Shutdown(budgetMilliseconds));
+                ShutdownProvider("logger", () => loggerProvider?.Shutdown(budgetMilliseconds));
+            },
+            CancellationToken.None);
 
-        return Task.CompletedTask;
+        try {
+            await shutdown.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            // The host wants to stop now. The interlock is already taken, so disposal stays bounded.
+            Log.TelemetryShutdownAbandoned(logger, (int)ShutdownBudget.TotalMilliseconds);
+        }
     }
 
     private void ShutdownProvider(string provider, Func<bool?> shutdown) {
@@ -69,6 +89,12 @@ internal sealed partial class BoundedTelemetryShutdownService(
             Level = LogLevel.Warning,
             Message = "Telemetry provider did not drain inside its shutdown budget; the process exits anyway: Provider={Provider}, BudgetMs={BudgetMs}, Stage=BoundedTelemetryShutdownIncomplete")]
         public static partial void TelemetryShutdownIncomplete(ILogger logger, string provider, int budgetMs);
+
+        [LoggerMessage(
+            EventId = 6202,
+            Level = LogLevel.Warning,
+            Message = "Host stop was cancelled before telemetry providers finished draining; disposal stays bounded because the shutdown interlock is already taken: BudgetMs={BudgetMs}, Stage=BoundedTelemetryShutdownAbandoned")]
+        public static partial void TelemetryShutdownAbandoned(ILogger logger, int budgetMs);
 
         [LoggerMessage(
             EventId = 6201,

@@ -923,8 +923,11 @@ public sealed partial class ProjectionCheckpointTracker(
     }
 
     private static partial class Log {
+        // 1145 was already taken by ProjectionUpdateOrchestrator.Log.PollerRebuildConflict — same subsystem,
+        // different severity and meaning — so anything filtering or alerting on event id conflated the two,
+        // defeating the point of naming the refusal. 1152 is unused repository-wide.
         [LoggerMessage(
-            EventId = 1145,
+            EventId = 1152,
             Level = LogLevel.Warning,
             Message = "Projection checkpoint advance refused for a structural reason: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ProjectionName={ProjectionName}, ReasonCode={ReasonCode}, Stage=ProjectionCheckpointAdvanceRefused")]
         public static partial void CheckpointAdvanceRefused(

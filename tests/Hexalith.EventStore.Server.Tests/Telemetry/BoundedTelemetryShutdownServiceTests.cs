@@ -68,6 +68,31 @@ public sealed class BoundedTelemetryShutdownServiceTests {
     }
 
     [Fact]
+    public async Task StopAsync_ReturnsPromptlyWhenTheHostCancelsTheStop() {
+        using BlockingExporter exporter = new(ExporterBlock);
+        using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+            .AddSource(nameof(BoundedTelemetryShutdownServiceTests))
+            .AddProcessor(new BatchActivityExportProcessor(exporter))
+            .Build()!;
+        EmitActivity(provider);
+        exporter.WaitUntilBlocked();
+
+        BoundedTelemetryShutdownService service = new(NullLogger<BoundedTelemetryShutdownService>.Instance, provider);
+        using CancellationTokenSource hostStop = new();
+        await hostStop.CancelAsync();
+
+        // A host with a shorter shutdown timeout must be able to stop; the blocking provider calls previously ran
+        // inline and ignored this token entirely.
+        Stopwatch timer = Stopwatch.StartNew();
+        await service.StopAsync(hostStop.Token);
+        timer.Stop();
+
+        // Deliberately tighter than the budget: an inline shutdown would join the parked exporter for the whole
+        // 2s tracer budget before returning, so "under the budget" would not be falsifiable.
+        timer.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
     public async Task StopAsync_IsANoOpWhenNoProviderIsRegistered() {
         BoundedTelemetryShutdownService service = new(NullLogger<BoundedTelemetryShutdownService>.Instance);
 
@@ -103,7 +128,11 @@ public sealed class BoundedTelemetryShutdownServiceTests {
     private sealed class BlockingExporter(TimeSpan block) : BaseExporter<Activity> {
         private readonly ManualResetEventSlim _entered = new(false);
 
-        public void WaitUntilBlocked() => _entered.Wait(TimeSpan.FromSeconds(10));
+        /// <summary>Blocks until the exporter has actually parked, so the timing assertions are not vacuous.</summary>
+        public void WaitUntilBlocked()
+            => _entered
+                .Wait(TimeSpan.FromSeconds(10))
+                .ShouldBeTrue("the exporter never parked, so the timing assertions would pass trivially.");
 
         public override ExportResult Export(in Batch<Activity> batch) {
             _entered.Set();
@@ -112,10 +141,8 @@ public sealed class BoundedTelemetryShutdownServiceTests {
         }
 
         protected override void Dispose(bool disposing) {
-            if (disposing) {
-                _entered.Dispose();
-            }
-
+            // Deliberately does NOT dispose the entered-signal: the exporter thread is still parked in its sleep
+            // and will Set() it afterwards, which would throw ObjectDisposedException on a pool thread.
             base.Dispose(disposing);
         }
     }
