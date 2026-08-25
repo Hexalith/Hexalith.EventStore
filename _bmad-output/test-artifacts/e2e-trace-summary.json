@@ -3,7 +3,7 @@
   "snapshot_at": "2026-08-22T15:17:03Z",
   "repo": "eventstore",
   "collection_mode": "contract_static",
-  "collection_status": "COLLECTED",
+  "collection_status": "SUPERSEDED",
   "inventory_basis": "acceptance_criteria",
   "gate_basis": "priority_thresholds",
   "source_sha": "516f2489f6586d35eee58f1158a840c404632637",
@@ -144,5 +144,6 @@
     "overall_coverage_minimum": "80%",
     "overall_coverage_actual": "100%",
     "overall_status": "MET"
-  }
+  },
+  "superseded_note": "SUPERSEDED 2026-08-25: scored against subject bb58d691 at source_sha 516f2489; the current subject is 5acb8176 and the packet fails closed at 0 of 3. Counts below mix test methods and expanded cases and omit TamperedImportPathBytesNeverExecute."
 }

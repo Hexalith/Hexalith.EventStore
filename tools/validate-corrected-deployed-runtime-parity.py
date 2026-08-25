@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 SCHEMA = "hexalith.eventstore.corrected-deployed-runtime-parity.v1"
-V1_HANDLER_SHA256 = "c493cb5870774bef4281566b0b0425e21f9799ce7b6ed21bac4cb18c2c0a3272"
+V1_HANDLER_SHA256 = "4f1b62ef5b3f350b4a92da5cd3e7992d52474f7caa705d7993e4cebfedabc12d"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -30,8 +30,26 @@ IMPORT_PATH_FILE_SHA256 = {
 }
 
 
+# Verifying the .py bytes does not by itself guarantee those bytes execute: CPython will load a
+# cached __pycache__/*.pyc whenever the recorded source mtime and size still match, so bytecode
+# compiled from different text can run while the pinned hash still passes. Disable bytecode use for
+# this process before any handler import.
+sys.dont_write_bytecode = True
+
+
 class DispatchError(ValueError):
     """The retained packet does not select a trusted live handler."""
+
+
+def _verify_dispatch_table():
+    """Fail closed when a registered handler module is absent from the pin table.
+
+    Without this, adding an entry to HANDLERS and forgetting IMPORT_PATH_FILE_SHA256 imports that
+    module unpinned -- the sibling dispatcher gained the equivalent guard for the same reason.
+    """
+    registered = {module.replace(".", "/") + ".py" for module in HANDLERS.values()}
+    if not registered.issubset(IMPORT_PATH_FILE_SHA256):
+        raise DispatchError("trusted live handler configuration is inconsistent")
 
 
 def _unique_object(pairs):
@@ -67,7 +85,21 @@ def _verify_import_path():
         except OSError as error:
             raise DispatchError("trusted live handler source is unavailable") from error
         if hashlib.sha256(source).hexdigest() != expected:
-            raise DispatchError("trusted live handler source does not match its pinned SHA-256")
+            raise DispatchError(
+                f"trusted live handler source does not match its pinned SHA-256: {relative}"
+            )
+
+
+def _verify_imported_file(module, relative):
+    """Fail closed when the imported module is not the file whose bytes were verified.
+
+    _verify_import_path hashes tools/<relative>, but importlib resolves through sys.path
+    independently, so without this the verified file and the executed file can differ.
+    """
+    expected = (Path(__file__).resolve().parent / relative).resolve()
+    actual = Path(getattr(module, "__file__", "") or "").resolve()
+    if actual != expected:
+        raise DispatchError("trusted live handler was not imported from its verified path")
 
 
 def validate(evidence_path, packet_root=None):
@@ -76,10 +108,13 @@ def validate(evidence_path, packet_root=None):
     manifest_path = repository_root / "tools/release-packages.json"
     evidence_bytes = evidence_path.read_bytes()
     document, module_name = _load_dispatch_metadata(evidence_bytes)
+    _verify_dispatch_table()
     _verify_import_path()
     handler = importlib.import_module(module_name)
-    expected_package_ids = handler.validate_release_manifest(handler.load_json_bytes(manifest_path.read_bytes()))
-    manifest_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    _verify_imported_file(handler, module_name.replace(".", "/") + ".py")
+    manifest_bytes = manifest_path.read_bytes()
+    expected_package_ids = handler.validate_release_manifest(handler.load_json_bytes(manifest_bytes))
+    manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
     canonical = handler.validate_identity(
         document,
         expected_package_ids,

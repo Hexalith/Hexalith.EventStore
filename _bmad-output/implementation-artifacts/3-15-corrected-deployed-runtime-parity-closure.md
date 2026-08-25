@@ -2,15 +2,61 @@
 
 ## Current verdict
 
-**Deployed-runtime parity is available.** The complete technical lineage and all three authenticated,
-content-bound acceptances pass for the unchanged canonical subject. The production verifier selects
-exactly `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
+**Deployed-runtime parity is NOT available.** The packet **fails closed at zero of three
+receipts**. The technical lineage is complete and reproduces, but no acceptance binds the current
+canonical subject, so no deployment-grade identity is selected.
 
-The accepted subject is
-`sha256:bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`.
-All three valid receipts are retained beneath
-`acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/`
-without changing any subject input.
+The current canonical subject is
+`sha256:5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5`.
+`acceptances/5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5/` is empty and
+awaits the rostered EventStore owner, Release owner, and Test Architect.
+
+Running the retained verifier reproduces exactly this state:
+
+```text
+$ python3 tools/validate-corrected-deployed-runtime-parity.py \
+    _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
+    --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
+[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required
+$ echo $?
+1
+```
+
+The identity the closure would select once parity becomes available is
+`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. It is not selected today.
+
+### Why the subject changed twice
+
+Two 2026-08-25 review loops each re-minted the subject, and by the packet's own rerun trigger each
+re-mint rejected every receipt collected against the prior subject.
+
+- Loop 2 bound the transitively imported `tools/release_evidence_handlers/v3.py`, which was
+  previously bound nowhere. Subject `bb58d691…` → `1dee194f…`. The three real receipts collected
+  for `bb58d691…` were rejected and moved, unbound, to
+  `evidence/story-3-15/superseded-acceptances/bb58d691…/`.
+- Loop 3 hardened the acceptance-source, registry, and timestamp checks (below). Subject
+  `1dee194f…` → `5acb8176…`.
+
+The superseded receipts are additionally rejected on lineage: both owner comments were anchored on
+issue [#346](https://github.com/Hexalith/Hexalith.EventStore/issues/346), which is Story 3.14's
+acceptance thread. Reusing it is the cross-lineage splice this story family exists to prevent, and
+the verifier now rejects issues `#324` and `#346` by number.
+
+### Blocking owner action
+
+Parity cannot become available without an **Ask First** owner action that this record does not
+perform and does not authorize:
+
+1. Open a **dedicated Story 3.15 acceptance issue** — not `#324` (Story 1.20) and not `#346`
+   (Story 3.14); both are rejected by number.
+2. Collect three receipts against the exact bytes of subject
+   `sha256:5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5`, one per rostered role.
+3. Re-run the assembler and verifier; both must report three receipts.
+
+**Self-attestation caveat:** the owner-role registry maps both `eventstore-owner` and
+`release-owner` to `github:jpiquot`, and the `test-architect` receipt is a tooling-attested
+`bmad-test-architect-record`. A 3-of-3 result is therefore one human account plus tooling, not
+independent three-party review. This limitation is not removed by collecting the receipts.
 
 This record supplies evidence only. It never authorizes deployment, publication, registry mutation,
 consumer removal, or predecessor changes.

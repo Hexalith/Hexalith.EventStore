@@ -21,6 +21,15 @@ sourceSha: '516f2489f6586d35eee58f1158a840c404632637'
 tempCoverageMatrixPath: '/tmp/tea-trace-coverage-matrix-2026-08-22T15-14-48Z.json'
 ---
 
+> **SUPERSEDED 2026-08-25.** This matrix was produced at `sourceSha: 516f2489` against Story 3.15
+> canonical subject `bb58d691…`. Two review loops have since re-minted the subject to
+> `5acb8176…`, so every receipt it assumed is rejected and the packet fails closed at 0 of 3. The
+> test inventory below is also stale: `TamperedImportPathBytesNeverExecute` is missing entirely,
+> `S315-UNIT-001` has been renamed to
+> `CheckedInPacketFailsClosedUntilThreeReceiptsBindTheCurrentSubject`, and every line anchor has
+> drifted. Its `PASS` gate is withdrawn — see `_bmad-output/test-artifacts/gate-decision.json`.
+> Regenerate before relying on any figure here.
+
 # Traceability Matrix & Gate Decision - Story 3.15
 
 **Target:** Story 3.15 Corrected Deployed Runtime Parity Closure  

@@ -1561,3 +1561,40 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: The Hexalith.Builds gitlink was rotated to the tip of origin/main while the release workflow pin was left behind.
   evidence: The gitlink moved to `22a578b5` (== `origin/main`), which changes `Github/publish-containers/publication_preflight.py` and `publish-containers.sh` -- the executed release helpers -- but `.github/workflows/release.yml` still pins `a07078ad`. The Builds-side counterpart of this diff's preflight tightening is therefore not in the executed release path, and rotation is supposed to happen from the pin rather than from main.
+
+### bmad-build code review of spec-3-15-corrected-deployed-runtime-parity-closure.md (2026-08-25, loop 3)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: high
+  summary: BLOCKING, OWNER DECISION -- the next Release run fails at container publish, after NuGet packages are already pushed, because the mandatory `ContainerProvenanceCreated` input is not supplied by the pinned Builds publisher.
+  evidence: This change removed the `ContainerProvenanceCreated` fallback from `Directory.Build.targets` and added a hard `<Error>` at `Directory.Build.targets:67` requiring an exact UTC RFC 3339 second. `.github/workflows/release.yml:91` pins `Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`, and at that SHA `Github/publish-containers/publish-containers.sh:181-182` passes only `ContainerProvenanceSourceSha` and `ContainerProvenanceReleaseVersion`. The flag is passed only from Builds `22a578b5`, which is the submodule gitlink -- and a reusable workflow resolves from its `uses:` ref, not from the gitlink, so bumping the gitlink does not change what CI executes. Reproduced directly: `dotnet msbuild src/Hexalith.EventStore/Hexalith.EventStore.csproj -t:ValidateContainerProvenanceInputs -p:ContainerProvenanceSourceSha=... -p:ContainerProvenanceReleaseVersion=3.96.2` emits `Directory.Build.targets(67,5): error : ContainerProvenanceCreated must be an exact UTC RFC 3339 second.` Both SHAs are reachable on Builds `origin/main` (the reachability concern is separate, below). Resolution requires an owner decision between rotating the release pin (which also forces the gitlink further ahead, because `ContainerPublishingGovernanceTests` asserts gitlink != `ApprovedBuildsReleaseSha`) and restoring the fallback until the pin rotates. Deliberately not actioned in this loop: rotating a CI pin is outward-facing and belongs to the Story 3.14 lane.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: high
+  summary: OWNER ACTION -- Story 3.15 has no dedicated acceptance issue, and the three superseded receipts were spliced onto Story 3.14's thread.
+  evidence: Both superseded owner sources under `evidence/story-3-15/superseded-acceptances/bb58d691.../sources/` are anchored on `https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-...`, i.e. Story 3.14's acceptance thread -- the cross-lineage reuse Story 3.13 was reopened to prevent. The verifier now rejects issues 324 and 346 by number, so re-collection requires a dedicated Story 3.15 issue. Opening it and requesting acceptances is an Ask First action and was not performed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: No guard asserts the pinned Builds release SHA is reachable on the Builds remote; the only availability check reads the local clone.
+  evidence: `ContainerPublishingGovernanceTests` asserts the pin only as a string, and `CorrectiveOciProvenanceReleaseTests` runs `git cat-file -e <sha>^{commit}` inside `references/Hexalith.Builds`, which a commit on an unpushed local branch also satisfies. A pin that exists only locally makes the reusable-workflow `uses:` ref unresolvable at dispatch -- the defect that already shipped once with `63409393`. Verified today that `a07078ad` and `22a578b5` are both contained in `origin/main`, so this is a missing guard rather than a live break.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The `.gitattributes` normalization guard enumerates only `*.raw`, leaving 56 `.nupkg` and every digest-bound `.json`/`.txt`/`.log` file unguarded.
+  evidence: `DigestBearingRawOciEvidenceIsBinary` enumerates `git ls-files "*.raw"` only. Deleting the `story-3-15/**/*.nupkg binary` line while keeping `story-3-15/** text eol=lf` turns all 14 story-3-15 packages into text, breaking every `packages.items[*].sha256` binding on a `core.autocrlf=true` checkout, with the suite still green on Linux CI. This loop added `*.py text eol=lf` for the SHA-pinned verifiers, but the enumerating guard was not generalized.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The multi-RID `org.opencontainers.image.created` assertion compares the artifact to itself.
+  evidence: `CorrectiveOciProvenanceReleaseTests` sets `expected ??= ExpectedLabels(observedCreated)` where `observedCreated` is read out of the first child config, so the emitted label is compared against itself rather than against the `-p:ContainerProvenanceCreated` input. Replacing the label value with a build-time `UtcNow` keeps the suite green. The indirection was necessary while the MSBuild fallback made the value unpredictable; now that the input is mandatory it is a stale weakening.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The Story 3.13 closure acceptance contract still requires the commit anchor that GitHub cannot mint, while the disposition lane was migrated to `#issuecomment-<id>`.
+  evidence: `DeployedRuntimeParityClosureTests.ValidateAcceptances` still builds `<commit-url>#story-3-13-<subject>-<role>` and requires source schema `.../v1`, so only the fixture can satisfy it; the disposition path was moved to the GitHub-minted anchor and `/v2`. The two acceptance surfaces now use different, mutually unsatisfiable anchor contracts. Out of lane for Story 3.15 and left to the 3.13 lane.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The `_bmad-output/test-artifacts/` gate PASS was withdrawn this loop but not regenerated.
+  evidence: `gate-decision.json`, `e2e-trace-summary.json`, and `traceability-matrix.md` were scored at `source_sha` 516f2489 against subject `bb58d691` and reported `PASS` with a vacuous `p1_status: MET` over an empty P1 set. They are now explicitly marked SUPERSEDED with a banner rather than regenerated, because the trace workflow owns their production.

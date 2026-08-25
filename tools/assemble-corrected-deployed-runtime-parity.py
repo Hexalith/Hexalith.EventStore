@@ -4,6 +4,8 @@
 import argparse
 import hashlib
 import json
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -111,6 +113,16 @@ def build_document(packet_root):
     for child in children:
         technical_files.update((child["manifest"]["file"], child["config"]["file"]))
     smoke_results = v1.load_json_bytes((packet_root / results_relative).read_bytes())
+    # "deployed_runtime_parity": "available" was written unconditionally, so a packet assembled over
+    # a failed smoke run still declared parity and only a separate verifier run could contradict it.
+    # Refuse to assemble unless the retained smokes actually passed on both immutable children.
+    if smoke_results.get("result") != "pass" or smoke_results.get("exit_code") != 0:
+        raise ValueError("retained Production smokes did not pass")
+    smoke_children = {item.get("child_digest") for item in smoke_results["platforms"]}
+    if smoke_children != {child["manifest"]["digest"] for child in children}:
+        raise ValueError("retained Production smokes do not cover the selected children")
+    if any(item.get("outcome") != "pass" for item in smoke_results["platforms"]):
+        raise ValueError("a retained Production smoke platform did not pass")
     technical_files.update(item["log"]["file"] for item in smoke_results["platforms"])
     inventory_text = "".join(
         f"{hashlib.sha256((packet_root / relative).read_bytes()).hexdigest()}  {relative}\n"
@@ -155,7 +167,7 @@ def build_document(packet_root):
             "index": index,
         },
         "owner_role_registry": binding(packet_root / registry_relative, registry_relative),
-        "packages": {"count": 14, "items": package_items, "manifest_sha256": manifest_sha256},
+        "packages": {"count": len(package_items), "items": package_items, "manifest_sha256": manifest_sha256},
         "predecessor": {
             "identity_file": v1.PREDECESSOR_IDENTITY_FILE,
             "packet_root": v1.PREDECESSOR_PACKET_ROOT,
@@ -174,6 +186,12 @@ def build_document(packet_root):
     }
     subject = v1._expected_subject(document)  # noqa: SLF001
     subject_bytes = v1.canonical_bytes(subject)
+    if existing_subject.exists() and existing_subject.read_bytes() != subject_bytes:
+        # Content changed, so the carried-forward timestamp is wrong: re-stamp and recompute.
+        created_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        document["subject"] = {"created_at": created_at, "file": "subject.json", "sha256": "0" * 64, "size": 1}
+        subject = v1._expected_subject(document)  # noqa: SLF001
+        subject_bytes = v1.canonical_bytes(subject)
     (packet_root / "subject.json").write_bytes(subject_bytes)
     subject_sha256 = hashlib.sha256(subject_bytes).hexdigest()
     document["subject"] = {
@@ -201,11 +219,30 @@ def main():
     arguments = parser.parse_args()
     document, subject_sha256 = build_document(arguments.packet_root)
     canonical_write(arguments.packet_root / "closure.json", document)
+    receipts = len(document["acceptances"]["receipts"])
+    # Assemble and verify are one operation: emitting a packet without running the pinned verifier
+    # over it is how a rejected packet acquired a success-shaped assembly line and exit 0.
+    verdict = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).resolve().parent / "validate-corrected-deployed-runtime-parity.py"),
+            str(arguments.packet_root / "closure.json"),
+            "--packet-root",
+            str(arguments.packet_root),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    sys.stderr.write(verdict.stderr)
     print(
         "[corrected-deployed-runtime-parity-assembly] "
-        f"subject=sha256:{subject_sha256} receipts={len(document['acceptances']['receipts'])}"
+        f"subject=sha256:{subject_sha256} receipts={receipts} verifier_exit={verdict.returncode}"
     )
+    if verdict.returncode != 0:
+        return verdict.returncode
+    return 0 if receipts == len(v1.REQUIRED_ROLES) else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -9,10 +9,10 @@
   },
   "collection_status": "COLLECTED",
   "gate_basis": "priority_thresholds",
-  "gate_status": "PASS",
-  "rationale": "P0 coverage is 100% and overall coverage is 100% (minimum: 80%). No P1 requirements detected.",
+  "gate_status": "SUPERSEDED",
+  "rationale": "SUPERSEDED 2026-08-25. This decision was computed at source_sha 516f2489 against Story 3.15 subject bb58d691, which two review loops have since re-minted to 5acb8176; every receipt bound to the earlier subjects is rejected and the packet fails closed at 0 of 3. The inventory it scored is also stale: TamperedImportPathBytesNeverExecute is absent and S315-UNIT-001 has been renamed. Regenerate the trace before relying on any gate verdict. The previous P1 status of MET was vacuous - no P1 requirements exist.",
   "p0_status": "MET",
-  "p1_status": "MET",
+  "p1_status": "NOT_APPLICABLE",
   "overall_status": "MET",
   "critical_open": 0,
   "links": {
@@ -20,5 +20,7 @@
     "trace_report_url": "",
     "artifact_url": "",
     "journey_evidence_url": ""
-  }
+  },
+  "source_sha": "516f2489f6586d35eee58f1158a840c404632637",
+  "superseded_by": "regeneration pending; see _bmad-output/implementation-artifacts/deferred-work.md"
 }

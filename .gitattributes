@@ -5,6 +5,10 @@
 *.cs text eol=lf
 *.md text eol=lf
 *.sh text eol=lf
+# The release-evidence verifiers are pinned by SHA-256 inside subject.json and closure.json, so the
+# same CRLF drift silently invalidates the canonical subject on a clean worktree. Python sources
+# carried only `text=auto`, which leaves the working-tree ending to the editor.
+*.py text eol=lf
 commitlint.config.mjs text eol=lf
 # Husky hooks execute through /bin/sh and must not acquire CRLF line endings.
 .husky/* text eol=lf

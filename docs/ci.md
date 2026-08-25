@@ -414,7 +414,10 @@ unreviewed edit never executes. The handler never executes packet-supplied code:
 rehashes retained bytes, checks the closed technical inventory, recomputes the canonical subject,
 and validates exactly three subject-addressed receipts.
 
-The closure's `dispatch` block binds all four of those files. This closes a gap found in the
+The closure's `dispatch` block binds the v1 handler, the v3 predecessor handler, and the v3
+package initializer directly; the v1 package initializer is pinned in the dispatcher's
+`IMPORT_PATH_FILE_SHA256`, whose own bytes are bound by `dispatch.verifier`, so the trust chain
+closes transitively over all four. This closes a gap found in the
 2026-08-25 review: previously only `v1.py` and its dispatcher were bound, so a tampered `v3.py` —
 which performs predecessor validation, nuspec identity parsing, and the release-manifest check —
 produced the identical subject and selected identity with all three receipts still valid, contrary
@@ -423,8 +426,21 @@ subject, which by that same rerun trigger **rejected every receipt collected for
 subject**. Those three receipts are retained, unbound, under
 `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/`.
 
+A second 2026-08-25 review loop hardened the verifier further, and by the same rerun trigger
+re-minted the subject again. That loop made the acceptance-source checks bind what they claimed to:
+the retained comment's `id`, `url`, `html_url` anchor, and `issue_url` must now all resolve to one
+comment on one issue (previously each was prefix-matched independently, so a receipt could splice a
+comment id from one thread onto an anchor from another), the two Story-1.20 and Story-3.14 threads
+`#324` and `#346` are rejected by number, and each rostered role is bound to exactly one source
+kind. It also closed a disclaimer bypass — `authorizes nothing beyond deployment role identity`
+satisfied the previous substring markers while asserting the opposite — normalized CRLF comment
+bodies, made a date-only timestamp fail closed instead of crashing the verifier, and made the
+assembler run the pinned verifier over its own output rather than always exiting zero. The
+superseded `bb58d691` receipts were themselves anchored on issue `#346`, so they are now rejected
+on lineage as well as on subject.
+
 The packet's current subject is
-`1dee194f93612c0861b536023bdb20cb329ad0adfd12f5eafe87913b90c81f26`, and the packet **fails closed**
+`5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5`, and the packet **fails closed**
 at zero of three receipts until the rostered EventStore owner, Release owner, and Test Architect
 each accept those exact new bytes. Because the roster maps both owner roles to `github:jpiquot`,
 two of those three acceptances are a self-attestation rather than independent three-party review.

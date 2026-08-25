@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '08-24-2026 18:05'
+last_updated: '08-25-2026 08:40'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -228,7 +228,7 @@ development_status:
   # proposal section 4.9's atomic-rename condition cannot be met. Only the display title changed.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: in-progress
-  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  3-15-corrected-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
   epic-4: in-progress

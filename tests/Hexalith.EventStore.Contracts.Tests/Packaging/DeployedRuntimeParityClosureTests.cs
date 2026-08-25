@@ -3697,6 +3697,9 @@ public sealed class DeployedRuntimeParityClosureTests
     [InlineData("malformed-receipt-json", 2, "acceptance.receipt.json")]
     [InlineData("malformed-source-json", 2, "acceptance.source.record")]
     [InlineData("synthetic-comment-anchor", 2, "acceptance.source.comment_anchor")]
+    [InlineData("mismatched-comment-anchor", 2, "acceptance.source.comment_anchor")]
+    [InlineData("unbound-source-bytes", 2, "acceptance.receipt.durable_source")]
+    [InlineData("edited-comment", 2, "acceptance.source.comment_edited")]
     [InlineData("foreign-comment-author", 2, "acceptance.source.comment_author")]
     [InlineData("comment-body-decision", 2, "acceptance.source.comment_body")]
     [InlineData("comment-shape-drift", 2, "acceptance.source.comment")]
@@ -3814,6 +3817,43 @@ public sealed class DeployedRuntimeParityClosureTests
                         source["comment"]!["html_url"] =
                             "https://github.com/" + ExpectedRepository + "/commit/" +
                             SelectedSourceSha + "#story-3-13-disposition-anchor-eventstore-owner");
+                    break;
+
+                case "mismatched-comment-anchor":
+                    // A well-formed GitHub anchor that resolves to a different comment than the one
+                    // the record retains. The URL parses, so only the agreement between the anchored
+                    // id and comment.id can reject it.
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["comment"]!["html_url"] =
+                            "https://github.com/" + ExpectedRepository + "/issues/324#issuecomment-" +
+                            (source["comment"]!["id"]!.GetValue<long>() + 1)
+                                .ToString(CultureInfo.InvariantCulture));
+                    break;
+
+                case "unbound-source-bytes":
+                    {
+                        // Re-emitting the retained source record with indentation leaves every value
+                        // the gate compares identical while changing the bytes, so only the receipt's
+                        // durable_source.sha256 binding can see that it no longer covers its source.
+                        string sourcePath = Path.Combine(
+                            receiptDirectory,
+                            "sources",
+                            "eventstore-owner.json");
+                        File.WriteAllBytes(
+                            sourcePath,
+                            JsonSerializer.SerializeToUtf8Bytes(
+                                JsonNode.Parse(File.ReadAllBytes(sourcePath))!.AsObject(),
+                                IndentedDispositionJsonOptions));
+                    }
+
+                    break;
+
+                case "edited-comment":
+                    // GitHub stamps updated_at forward when a comment is edited after posting, so a
+                    // retained comment whose two timestamps disagree is no longer the text the
+                    // reviewer published at the acceptance instant.
+                    MutateDispositionSourceRecord(receiptDirectory, "eventstore-owner", source =>
+                        source["comment"]!["updated_at"] = "2026-08-24T13:00:00Z");
                     break;
 
                 case "foreign-comment-author":
@@ -3990,6 +4030,7 @@ public sealed class DeployedRuntimeParityClosureTests
     [Theory]
     [InlineData("resealed-stray-file", "disposition.manifest")]
     [InlineData("resealed-stray-acceptance-file", "disposition.manifest")]
+    [InlineData("resealed-empty-acceptance-directory", "disposition.manifest")]
     [InlineData("role-filename-mismatch", "disposition.manifest")]
     [InlineData("undeclared-sidecar", "disposition.manifest")]
     [InlineData("stale-envelope-directory", "disposition.manifest")]
@@ -4026,6 +4067,24 @@ public sealed class DeployedRuntimeParityClosureTests
                                 "sources",
                                 "notes.txt"),
                             "unlisted\n");
+                        RebindDispositionManifest(disposition);
+                    }
+
+                    break;
+                case "resealed-empty-acceptance-directory":
+                    {
+                        // A planted directory holding no file leaves both the file inventory and the
+                        // resealed manifest intact, so only the closed-directory clause can see it.
+                        CreateDispositionReceipts(disposition);
+                        string envelopeHash = ComputeSha256(ReadEvidenceFile(
+                            disposition,
+                            DispositionEnvelopeFile));
+                        Directory.CreateDirectory(Path.Combine(
+                            disposition,
+                            "acceptances",
+                            envelopeHash,
+                            "sources",
+                            "pending"));
                         RebindDispositionManifest(disposition);
                     }
 
@@ -4236,6 +4295,12 @@ public sealed class DeployedRuntimeParityClosureTests
         // reached the catch as internal.exception -- fail the case instead of passing it.
         DispositionReasonCode(actualReason).ShouldBe(expectedCode, actualReason);
         ValueIsSupportSafe(actualReason).ShouldBeTrue(actualReason);
+
+        // Every rejection has to hand the operator a next action, so a reason that names a defect
+        // without a remediation or a revalidation trigger is itself a defect.
+        (actualReason.Contains("; remediation: ", StringComparison.Ordinal)
+            || actualReason.Contains("; revalidation: ", StringComparison.Ordinal))
+            .ShouldBeTrue(actualReason);
     }
 
     // The disposition envelope lives outside both content-addressed evidence trees because the frozen
@@ -5417,6 +5482,17 @@ public sealed class DeployedRuntimeParityClosureTests
         }
 
         byte[] sourceBytes = ReadEvidenceFile(receiptDirectory, durableSource["path"]!.GetValue<string>());
+
+        // The receipt binds the exact bytes of the record it cites. Without this the retained source
+        // could be re-emitted or replaced after the fact and the receipt would still read as valid.
+        if (durableSource["sha256"]!.GetValue<string>() != ComputeSha256(sourceBytes))
+        {
+            return DispositionReason(
+                "acceptance.receipt.durable_source",
+                "a receipt does not bind the retained bytes of the durable source record it cites",
+                "re-declare durable_source.sha256 over the retained source record bytes");
+        }
+
         JsonObject? sourceRecord;
         try
         {
@@ -5461,8 +5537,7 @@ public sealed class DeployedRuntimeParityClosureTests
                 "schema",
                 "subject_sha256",
             ];
-        if (durableSource["sha256"]!.GetValue<string>() != ComputeSha256(sourceBytes)
-            || !HasExactProperties(sourceRecord, expectedSourceProperties)
+        if (!HasExactProperties(sourceRecord, expectedSourceProperties)
             || !DocumentIsSupportSafe(sourceRecord)
             || sourceRecord["schema"]!.GetValue<string>() != DispositionSourceSchema
             || sourceRecord["repository"]!.GetValue<string>() != ExpectedRepository
@@ -5544,6 +5619,18 @@ public sealed class DeployedRuntimeParityClosureTests
                     "acceptance.source.comment_author",
                     "a retained acceptance comment was not authored by the rostered reviewer",
                     "collect the acceptance comment from the rostered reviewer's own account");
+            }
+
+            // GitHub stamps updated_at forward on every edit, so requiring the field to be present
+            // proves nothing on its own: an acceptance rewritten after posting is only visible as a
+            // disagreement between the two timestamps.
+            if (comment["updated_at"]!.GetValue<string>()
+                != comment["created_at"]!.GetValue<string>())
+            {
+                return DispositionReason(
+                    "acceptance.source.comment_edited",
+                    "a retained acceptance comment was edited after it was posted",
+                    "retain an unedited acceptance comment; re-post the acceptance instead of editing it");
             }
 
             JsonObject? commentAcceptance;
@@ -5984,12 +6071,14 @@ public sealed class DeployedRuntimeParityClosureTests
         {
             source["captured_at"] = timestamp;
 
-            // The retained comment carries the same acceptance instant, so a timestamp mutation must
-            // move it too. Leaving it behind would make these cases fail on the comment-body
-            // cross-check instead of the accepted_at range they exist to prove.
+            // The retained comment carries the same acceptance instant in both of its timestamps, so
+            // a timestamp mutation must move them together. Leaving either behind would make these
+            // cases fail on the comment-body cross-check or the edited-comment clause instead of the
+            // accepted_at range they exist to prove.
             if (source["comment"] is JsonObject comment)
             {
                 comment["created_at"] = timestamp;
+                comment["updated_at"] = timestamp;
             }
         });
         MutateDispositionReceipt(receiptDirectory, role, receipt =>

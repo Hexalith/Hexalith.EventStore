@@ -2,13 +2,14 @@
 
 ## Decision
 
-The technical evidence and all three real content-bound receipts pass. Deployed-runtime parity is
-available, and the retained production verifier selects exactly the corrected OCI index identity.
+The technical evidence passes and reproduces. **No acceptance binds the current subject**, so the
+packet **fails closed at zero of three receipts** and selects no identity. Deployed-runtime parity
+is **not** available.
 
 Canonical subject:
-`sha256:bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`.
+`sha256:5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5`.
 
-Selected positive identity:
+Identity the closure would select once parity becomes available (not selected today):
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 
 ## Bound evidence
@@ -25,31 +26,53 @@ Selected positive identity:
   `2d066fb5a5c48c7dd9184f382c098bac36b9e531cd6d86dfc5aa231747ceea86`.
 - Owner registry: SHA-256
   `534268c2b5fbf39709e558f9806670d4ed8dd70574574f63babf903dc23e54fc`.
-- Trusted verifier handler: SHA-256
-  `d0eb781f4eeecaccdf4ca895a2fbc21ad80ad41f5f9192c007968954b1a79fa4`.
-- Trusted dispatcher: SHA-256
-  `aaa5d0676c4f7edc59aade4ae743b02fe6082633b3b53e8261555ac404e9930a`.
+
+The `dispatch` block binds the four files that decide the verdict. Recompute each with `sha256sum`:
+
+| Role | File | SHA-256 |
+| --- | --- | --- |
+| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `4f1b62ef5b3f350b4a92da5cd3e7992d52474f7caa705d7993e4cebfedabc12d` |
+| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `e7370f29fc5dd80378471d795492c64578ee32ad26cbe2a1417cb03991c3d161` |
+| Predecessor handler | `tools/release_evidence_handlers/v3.py` | `3f366eee1509f5350806b9277eb514d20987790fff5b248f81155dbb5857d490` |
+| Predecessor package | `tools/release_evidence_handlers/__init__.py` | `a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625` |
+
+The v1 package initializer is pinned in the verifier's `IMPORT_PATH_FILE_SHA256`, whose own bytes
+are bound by the verifier row above, so the trust chain closes transitively over all five files.
 
 The subject and receipt directories sit outside the technical inventory to avoid a checksum cycle.
-The subject binds the inventory and every decision input; `closure.json` binds the subject and the
-three subject-addressed receipt files.
+The subject binds the inventory and every decision input; `closure.json` binds the subject and,
+when present, the three subject-addressed receipt files.
 
-## Bound acceptances
+## Acceptances
 
-The retained receipt paths are:
+`acceptances/5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5/` is **empty**. Three
+receipts — one each for `eventstore-owner`, `release-owner`, and `test-architect` — must be
+collected against the exact subject bytes above, on a **dedicated Story 3.15 issue**. Issues `#324`
+(Story 1.20) and `#346` (Story 3.14) are rejected by number as cross-lineage splices.
+
+Three earlier receipts exist but bind the superseded subject
+`bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709` and were anchored on `#346`.
+They are retained, unbound and non-authorizing, under
+`evidence/story-3-15/superseded-acceptances/bb58d691…/`. They must not be moved back into the
+packet.
+
+Even a complete receipt set would be one human account plus tooling: the roster maps both owner
+roles to `github:jpiquot` and the Test Architect receipt is a `bmad-test-architect-record`.
+
+## Reproduce
 
 ```text
-acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/eventstore-owner.json
-acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/release-owner.json
-acceptances/bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709/test-architect.json
+$ python3 tools/validate-corrected-deployed-runtime-parity.py \
+    _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
+    --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
+[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required
+$ echo $?
+1
 ```
 
-Each receipt binds its authenticated retained source beneath the sibling `sources/` directory. The
-EventStore-owner and Release-owner sources retain GitHub issue comments
-[5381125968](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381125968)
-and [5381126900](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381126900),
-respectively. The Test Architect source retains the exact `bmad:murat` acceptance. The assembled
-closure binds all three receipt hashes, and the production verifier passes for the unchanged subject.
+To rebuild the packet after any bound input changes, run
+`tools/assemble-corrected-deployed-runtime-parity.py <packet-root>`; it re-mints the subject, runs
+the verifier over its own output, and exits non-zero unless three receipts bind the result.
 
 ## Authority boundary
 

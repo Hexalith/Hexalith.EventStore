@@ -64,7 +64,26 @@ CONFIG_MEDIA_TYPE = "application/vnd.oci.image.config.v1+json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$", re.ASCII)
 ROLE_MAPPING_LINE = re.compile(r"^- (eventstore-owner|release-owner|test-architect): (\S+)$", re.MULTILINE)
-REGISTRY_AUTHORITY_DISCLAIMER_MARKERS = ("authorizes no", "deployment")
+# The disclaimer must be an explicit negation, matched with word boundaries and confined to one
+# sentence. Substring markers such as "authorizes no" are satisfied by "authorizes nothing", so a
+# body reading "authorizes nothing beyond deployment role identity" -- which asserts the opposite
+# of what the guard exists to require -- passed the previous marker test.
+REGISTRY_AUTHORITY_DISCLAIMER = re.compile(r"\bauthorizes no\b[^.;\n]*\bdeployment\b")
+ISSUE_COMMENT_ANCHOR = re.compile(
+    r"\Ahttps://github\.com/Hexalith/Hexalith\.EventStore/issues/([1-9][0-9]*)#issuecomment-([1-9][0-9]*)\Z"
+)
+# Story 1.20 collected acceptances on issue 324 and Story 3.14 on issue 346. Reusing either thread
+# for a Story 3.15 receipt is the cross-lineage splice this story family exists to prevent, and the
+# superseded bb58d691 receipts did exactly that. A dedicated Story 3.15 acceptance issue is
+# required; these two threads are rejected by number so a spliced receipt cannot be re-collected.
+FOREIGN_LINEAGE_ISSUES = (324, 346)
+# Each rostered role is bound to exactly one source kind. Without this, an owner receipt could
+# present a self-attested bmad record and skip GitHub authentication entirely.
+EXPECTED_SOURCE_KINDS = {
+    "eventstore-owner": "github-issue-comment",
+    "release-owner": "github-issue-comment",
+    "test-architect": "bmad-test-architect-record",
+}
 
 
 class EvidenceError(ValueError):
@@ -160,13 +179,25 @@ def _binding(value, *, media_type=None):
     return binding
 
 
+# A date-only value such as "2026-08-25Z" parses through fromisoformat but drops the
+# offset, yielding a naive datetime that raises TypeError when compared against the
+# aware timestamps below. Require the full second-precision UTC shape up front so a
+# malformed timestamp fails closed with this message instead of crashing the verifier.
+TIMESTAMP_PATTERN = re.compile(
+    r"\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z\Z"
+)
+
+
 def _parse_time(value, message):
-    if not isinstance(value, str) or not value.endswith("Z"):
+    if not isinstance(value, str) or not TIMESTAMP_PATTERN.match(value):
         raise EvidenceError(message)
     try:
-        return datetime.fromisoformat(value[:-1] + "+00:00")
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError as error:
         raise EvidenceError(message) from error
+    if parsed.tzinfo is None:
+        raise EvidenceError(message)
+    return parsed
 
 
 def _repository_file(repository_root, relative):
@@ -435,7 +466,12 @@ def _validate_predecessor(document, expected_package_ids, expected_manifest_sha2
 def _validate_packages(document, predecessor, packet_root, repository_root):
     predecessor_packages = {item["id"]: item for item in predecessor["packages"]}
     for item in document["packages"]["items"]:
-        release_asset = predecessor_packages[item["id"]]
+        try:
+            release_asset = predecessor_packages[item["id"]]
+        except KeyError as error:
+            raise EvidenceError(
+                f"release-manifest package is missing from the predecessor packet: {item['id']}"
+            ) from error
         expected_release_binding = {
             "file": release_asset["file"],
             "sha256": release_asset["sha256"],
@@ -648,16 +684,19 @@ def _validate_registry(document, packet_root):
     user = source_document.get("user")
     # findall() fed straight into dict() is last-wins, so a prepended contradicting role line would
     # be silently discarded. Reject any repeated role key before comparing the mapping.
-    matches = ROLE_MAPPING_LINE.findall(body) if isinstance(body, str) else []
+    # GitHub returns comment bodies with CRLF line endings, which defeats the line-anchored
+    # role-mapping pattern and the sentence split below. Normalize before matching so a genuine
+    # roster comment is not rejected for a reason that has nothing to do with its content.
+    normalized_body = body.replace("\r\n", "\n").replace("\r", "\n") if isinstance(body, str) else None
+    matches = ROLE_MAPPING_LINE.findall(normalized_body) if isinstance(normalized_body, str) else []
     role_lines = dict(matches)
     duplicate_roles = len(matches) != len(role_lines)
-    # Both markers must land in one sentence, not merely somewhere in the body: searched
-    # independently, a body such as "authorizes nothing; this deployment is fully authorized"
-    # satisfies them while asserting the opposite.
-    disclaimed = isinstance(body, str) and any(
-        all(marker in sentence for marker in REGISTRY_AUTHORITY_DISCLAIMER_MARKERS)
-        for sentence in re.split(r"(?<=[.;])\s+|\n", body)
-    )
+    # The negation and the deployment term must land in one sentence, not merely somewhere in the
+    # body: searched independently, a body such as "authorizes nothing; this deployment is fully
+    # authorized" satisfies them while asserting the opposite.
+    disclaimed = isinstance(normalized_body, str) and REGISTRY_AUTHORITY_DISCLAIMER.search(
+        normalized_body
+    ) is not None
     if (
         source_document.get("id") != 5290564372
         or source_document.get("url")
@@ -783,6 +822,8 @@ def _validate_receipts(document, packet_root, subject_document):
             raise EvidenceError("acceptance predates the subject")
         if accepted_at > datetime.now().astimezone():
             raise EvidenceError("acceptance timestamp lies in the future")
+        if source["kind"] != EXPECTED_SOURCE_KINDS[role]:
+            raise EvidenceError("acceptance source kind does not match the rostered role")
         source_bytes = _verify_file(packet_root, source)
         source_document = load_json_bytes(source_bytes)
         if source["kind"] == "github-issue-comment":
@@ -798,16 +839,7 @@ def _validate_receipts(document, packet_root, subject_document):
                 or receipt_user.get("id") != 6775094
                 or source_document.get("author_association") not in ("MEMBER", "OWNER", "COLLABORATOR")
                 or source_body != expected_source_body
-                or not isinstance(source_document.get("id"), int)
-                or not str(source_document.get("url", "")).startswith(
-                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/"
-                )
-                or not str(source_document.get("html_url", "")).startswith(
-                    "https://github.com/Hexalith/Hexalith.EventStore/issues/"
-                )
-                or not str(source_document.get("issue_url", "")).startswith(
-                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/"
-                )
+                or not _github_comment_identity_agrees(source_document)
                 or source_document.get("created_at") != receipt["accepted_at"]
                 or source_document.get("updated_at") != receipt["accepted_at"]
                 or source_document.get("performed_via_github_app") is not None
@@ -824,6 +856,31 @@ def _validate_receipts(document, packet_root, subject_document):
                 raise EvidenceError("Test Architect acceptance source is invalid")
         else:
             raise EvidenceError("acceptance source kind is not allowlisted")
+
+
+def _github_comment_identity_agrees(source_document):
+    """Return whether a retained comment's id, URLs, and anchor all name the same comment.
+
+    The three URL fields were previously prefix-matched independently, so a receipt could cite a
+    comment id from one thread, an anchor from another, and an issue_url from a third -- the exact
+    splice shape Story 3.13 was reopened to close. Every field must now resolve to one comment on
+    one non-foreign issue.
+    """
+    comment_id = source_document.get("id")
+    if not isinstance(comment_id, int) or isinstance(comment_id, bool) or comment_id <= 0:
+        return False
+    anchor = ISSUE_COMMENT_ANCHOR.fullmatch(str(source_document.get("html_url", "")))
+    if anchor is None:
+        return False
+    issue_number = int(anchor.group(1))
+    if issue_number in FOREIGN_LINEAGE_ISSUES or int(anchor.group(2)) != comment_id:
+        return False
+    return (
+        source_document.get("url")
+        == f"https://api.github.com/repos/{REPOSITORY}/issues/comments/{comment_id}"
+        and source_document.get("issue_url")
+        == f"https://api.github.com/repos/{REPOSITORY}/issues/{issue_number}"
+    )
 
 
 def validate_packet_files(document, packet_root, expected_package_ids, expected_manifest_sha256, repository_root):

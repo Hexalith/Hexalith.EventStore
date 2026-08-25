@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-review'
+status: 'done'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 2
 context:
@@ -42,6 +42,9 @@ context:
 - `tools/validate-corrective-release-evidence.py:12-73` and `tools/release_evidence_handlers/v3.py:58-404,863-974` -- trusted Story 3.14 dispatcher/canonical-byte gate; preserve v3 behavior and require predecessor digest `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
 - `tools/validate-corrected-deployed-runtime-parity.py` and `tools/deployed_runtime_parity_handlers/v1.py` -- new allowlisted closure dispatcher/handler for independent package, OCI, Production-smoke, subject, registry, receipt, and non-authority validation.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:317-603,1124-1235` -- predecessor mutation and canonicalization patterns; do not extend its frozen candidate contract.
+- `tools/assemble-corrected-deployed-runtime-parity.py` -- deterministic packet producer: re-mints the subject, derives the package count and parity verdict from retained evidence rather than asserting them, and runs the pinned verifier over its own output before exiting.
+- `tools/capture-corrected-deployed-runtime-parity-smokes.py` -- bounded two-platform Production smoke capture.
+- `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/` -- the three receipts bound to superseded subject `bb58d691...`, retained unbound for audit. They must never be moved back into the packet; both owner sources are anchored on issue `#346` and are rejected on lineage as well as on subject.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- new positive-closure and fail-closed mutation suite.
 - `_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` -- immutable predecessor packet; only the successful `v3.96.2` subgraph is selectable.
 - `_bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` -- new hash-closed technical evidence, subject-addressed acceptances, and final verdict.
@@ -193,7 +196,91 @@ before triage; several plausible findings were refuted by running them and are n
   `release.yml` still pins `a07078ad`, so the Builds-side preflight change is not in the executed
   release path. Rotation is supposed to happen from the pin, never from main.
 
+### Review Findings (2026-08-25, full review -- 3 layers x 9 diff chunks, 27 reviewers; none failed)
+
+Every claim below was reproduced locally before being actioned; two plausible reviewer claims were
+refuted and are recorded as such.
+
+**[Review][Decision] [HIGH] Release fails at container publish under the current Builds pin.**
+Removing the `ContainerProvenanceCreated` fallback and adding a mandatory `<Error>` shipped without
+rotating the pin that supplies the value; the pinned `a07078ad` publisher never passes it, and the
+gitlink bump to `22a578b5` does not change what CI executes. Reproduced with a direct
+`dotnet msbuild -t:ValidateContainerProvenanceInputs` run. Owner decision, 2026-08-25: **record
+only, do not touch CI** -- rotating a release pin is outward-facing and belongs to the 3.14 lane.
+Filed in `deferred-work.md` as a blocking owner decision.
+
+**[Review][Patch] [HIGH] Both Story 3.15 records asserted a superseded subject and 3/3 receipts.**
+`3-15-...-closure.md` and `...-proof-packet.md` still claimed "parity is available", subject
+`bb58d691`, and three passing receipts, while the packet was at `1dee194f` with zero receipts and
+exited 1. Only `docs/ci.md` is drift-bound by a test, so nothing caught it. Both records rewritten
+to state the fail-closed verdict, the blocking owner action, and a reproduction command.
+
+**[Review][Patch] [HIGH] The SHA-pinned Python verifiers had no EOL protection.**
+`.gitattributes` carried only `* text=auto` for `*.py` while `.editorconfig` sets
+`end_of_line = crlf`, so an EditorConfig-honouring editor silently invalidates the canonical subject
+with a clean `git status` -- the Story 3.3 trap, now applied to four hash-pinned files. Added
+`*.py text eol=lf`; `git check-attr` now reports `eol: lf` for all four.
+
+**[Review][Patch] [HIGH] The registry disclaimer gate accepted a body asserting the opposite.**
+Substring markers `("authorizes no", "deployment")` are satisfied by *"authorizes nothing beyond
+deployment role identity"*. Replaced with a word-bounded, single-sentence regex; verified the bypass
+is now rejected and the genuine retained disclaimer still accepted.
+
+**[Review][Patch] [HIGH] Acceptance sources were prefix-matched, permitting a cross-lineage splice.**
+`id`, `url`, `html_url`, and `issue_url` were each checked independently by prefix, so a receipt
+could carry a comment id from one thread, an anchor from another, and an issue_url from a third --
+the exact defect Story 3.13 was reopened for. All four must now resolve to one comment on one issue,
+and issues `#324`/`#346` are rejected by number. The superseded receipts were themselves anchored on
+`#346`.
+
+**[Review][Patch] [HIGH] A date-only timestamp crashed the verifier instead of failing closed.**
+`datetime.fromisoformat("2026-08-25" + "+00:00")` yields a naive datetime, which raises an uncaught
+`TypeError` on comparison. Timestamps now require the full second-precision UTC shape.
+
+**[Review][Patch] [HIGH] The assembler always exited 0 and never validated its own output.**
+It printed a success-shaped line for a packet the pinned verifier rejects, imported the trusted
+handler unpinned, hardcoded `"count": 14` and `deployed_runtime_parity: "available"`, and carried a
+stale `created_at` forward across content changes. It now derives the count, refuses to assemble
+over failed smokes, re-stamps `created_at` when content changes, runs the pinned verifier over its
+own output, and propagates a non-zero exit.
+
+**[Review][Patch] [MEDIUM]** An unknown package id raised a bare `KeyError` outside the entry
+point's catch tuple; now an `EvidenceError` naming the id. Each rostered role is bound to exactly
+one source kind, so an owner receipt can no longer present a self-attested record. CRLF comment
+bodies are normalized before role-line and disclaimer matching (a genuine GitHub body previously
+matched zero role lines). The dispatcher gained a table-consistency guard, a post-import
+`__file__` assertion, single-read manifest hashing, `sys.dont_write_bytecode`, and per-file naming
+in its pin-mismatch message.
+
+**[Review][Patch] [MEDIUM]** The stale `_bmad-output/test-artifacts/` gate reported `PASS` over the
+superseded subject with a vacuous `p1_status: MET` on an empty set. Withdrawn and banner-marked
+SUPERSEDED rather than regenerated; regeneration is filed.
+
+**[Review][Refuted]** "The Builds pin `a07078ad` is not reachable on the Builds remote" -- it is
+contained in `origin/main`, as is `22a578b5`. The *missing reachability guard* is real and filed;
+the claimed live break is not. **[Review][Refuted]** "`git diff --check` was recorded with no
+result" applied to a prior loop's wording, not to a defect in this packet.
+
+**[Review][Defer]** Eight items filed in `deferred-work.md`: the blocking pin decision, the missing
+dedicated Story 3.15 acceptance issue, the absent remote-reachability guard, the `.raw`-only
+normalization guard, the self-comparing `created` label assertion, the Story 3.13 closure path still
+requiring the unmintable commit anchor, and gate-artifact regeneration.
+
 ## Spec Change Log
+
+- **2026-08-25 (loop 3, review):** A 27-reviewer pass over 9 diff chunks found the two Story 3.15
+  records still asserting subject `bb58d691` and 3/3 receipts against a packet at `1dee194f` with
+  zero receipts, and eight verifier defects whose guards did not hold the property they stated.
+  Hardening the verifier changed `v1.py`, so by the packet's own rerun trigger the subject was
+  re-minted a second time: `1dee194f...` -> `5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5`.
+  No receipt was burned -- the packet was already fail-closed at 0/3 and the earlier receipts were
+  already superseded, which is why this was the cheapest moment to fix the verifier. `docs/ci.md`,
+  both story records, and the dispatcher pin were updated to the new subject; the assembler is
+  deterministic and idempotent across repeat runs. Known-bad state avoided: shipping a closure whose
+  operator-facing records claim an accepted identity the verifier rejects. KEEP: the packet must stay
+  fail-closed at 0/3 until receipts are collected on a *dedicated* Story 3.15 issue against the exact
+  bytes of `5acb8176...`; issues `#324` and `#346` are rejected by number, and every new guard is
+  mutation-checked with a positive control.
 
 - 2026-08-25 (code review loop 2, amend-and-re-freeze): a 15-reviewer pass over the full baseline
   diff found two reproduced trust defects. The `release_evidence_handlers` package initializer
@@ -264,5 +351,83 @@ The owner-role registry's `authority_source` is a GitHub comment ratifying revie
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: exact predecessor digest passes.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: zero warnings and errors.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -noLogo` -- expected: all matrix and mutation cases pass with none skipped.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: **fail-closed**, `exactly three packet-bound receipts are required`, exit 1. The 2026-08-25 re-freeze moved the canonical subject to `1dee194f93612c0861b536023bdb20cb329ad0adfd12f5eafe87913b90c81f26`, which rejected the three receipts collected for the superseded subject; no identity is selected until three receipts bind the new subject. The positive path is proved on a synthesized packet by `ThreeAuthenticatedRolesClosePositiveParityOnOneUnchangedSubject`.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: **fail-closed**, `exactly three packet-bound receipts are required`, exit 1. Two 2026-08-25 re-freezes moved the canonical subject to `5acb81765201a22d6493d815a56f4b8d9c1ba141280779716013962eca3fa5f5` (loop 2 bound `v3.py`: `bb58d691...` -> `1dee194f...`; loop 3 hardened the verifier: `1dee194f...` -> `5acb8176...`). Each re-mint rejected every receipt bound to the prior subject; no identity is selected until three receipts bind `5acb8176...`, collected on a *dedicated* Story 3.15 issue -- `#324` and `#346` are rejected by number. The positive path is proved on a synthesized packet by `ThreeAuthenticatedRolesClosePositiveParityOnOneUnchangedSubject`.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: re-mints the identical subject `5acb8176...` on repeat runs (deterministic), runs the pinned verifier over its own output, and exits 1 while receipts are incomplete.
+- `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py` -- expected: `text: set`, `eol: lf` for each, so the SHA-256 pins cannot be broken by working-tree EOL drift.
 - `git diff --check` -- expected: no whitespace errors.
+
+## Suggested Review Order
+
+**Start here — what the packet now claims**
+
+- Fail-closed verdict, blocking owner action, and the two subject re-mints, in one place.
+  [`3-15-...-closure.md:45`](3-15-corrected-deployed-runtime-parity-closure.md#L45)
+
+- The blocking release defect this loop recorded rather than actioned.
+  [`deferred-work.md:1569`](deferred-work.md#L1569)
+
+**Acceptance-source binding — the cross-lineage splice**
+
+- All four comment fields must resolve to one comment on one issue.
+  [`v1.py:861`](../../tools/deployed_runtime_parity_handlers/v1.py#L861)
+
+- Story 1.20 and Story 3.14 threads rejected by number; the superseded receipts used `#346`.
+  [`v1.py:79`](../../tools/deployed_runtime_parity_handlers/v1.py#L79)
+
+- Each rostered role bound to exactly one source kind, so owners cannot self-attest.
+  [`v1.py:82`](../../tools/deployed_runtime_parity_handlers/v1.py#L82)
+
+**Guards that did not hold the property they stated**
+
+- Word-bounded negation; `authorizes nothing beyond deployment...` no longer passes.
+  [`v1.py:71`](../../tools/deployed_runtime_parity_handlers/v1.py#L71)
+
+- Date-only timestamps now fail closed instead of raising an uncaught `TypeError`.
+  [`v1.py:191`](../../tools/deployed_runtime_parity_handlers/v1.py#L191)
+
+- An unknown package id fails closed naming the id, rather than escaping as `KeyError`.
+  [`v1.py:471`](../../tools/deployed_runtime_parity_handlers/v1.py#L471)
+
+**Trust chain — verified bytes must be the executed bytes**
+
+- Stale bytecode can no longer stand in for verified source.
+  [`validate-...-parity.py:37`](../../tools/validate-corrected-deployed-runtime-parity.py#L37)
+
+- A handler registered without a pin can no longer import unpinned.
+  [`validate-...-parity.py:44`](../../tools/validate-corrected-deployed-runtime-parity.py#L44)
+
+- The imported module must be the file that was hashed.
+  [`validate-...-parity.py:93`](../../tools/validate-corrected-deployed-runtime-parity.py#L93)
+
+- SHA-pinned Python can no longer be CRLF-rewritten by an EditorConfig-honouring editor.
+  [`.gitattributes:11`](../../.gitattributes#L11)
+
+**Producer discipline**
+
+- Refuses to assemble a packet over failed Production smokes.
+  [`assemble-...-parity.py:120`](../../tools/assemble-corrected-deployed-runtime-parity.py#L120)
+
+- Package count derived from the items, not asserted as a literal.
+  [`assemble-...-parity.py:170`](../../tools/assemble-corrected-deployed-runtime-parity.py#L170)
+
+- Re-stamps `created_at` on content change so a re-mint cannot misdate itself.
+  [`assemble-...-parity.py:190`](../../tools/assemble-corrected-deployed-runtime-parity.py#L190)
+
+- Assemble and verify are one operation; exit code reflects the real verdict.
+  [`assemble-...-parity.py:240`](../../tools/assemble-corrected-deployed-runtime-parity.py#L240)
+
+**Operator handoff**
+
+- Records the loop-3 re-mint and corrects the transitive-binding claim.
+  [`ci.md:429`](../../docs/ci.md#L429)
+
+**Tests and supporting artifacts**
+
+- 76 cases; every new guard mutation-proved with a positive control.
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:1`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L1)
+
+- Restored remediation assertion plus four mutation-proved dead guards.
+  [`DeployedRuntimeParityClosureTests.cs:1`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1)
+
+- Stale `PASS` gate withdrawn rather than left standing over a superseded subject.
+  [`gate-decision.json:1`](../../_bmad-output/test-artifacts/gate-decision.json#L1)
