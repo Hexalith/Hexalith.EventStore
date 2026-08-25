@@ -34,6 +34,39 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string TrustedVerifierSupersededSubjectSha256 =
         "dab64f5fbbf55783630ad75451d35d517d829e194fb618dc8b0526d39761d38d";
 
+    /// <summary>
+    /// Subject whose three receipts were superseded by the loop-6 batch: the producers became
+    /// decision inputs, the acceptance-source envelopes became closed-schema, and a fourth
+    /// tooling-composed-receipt limitation was bound into the subject.
+    /// </summary>
+    private const string BatchSupersededSubjectSha256 =
+        "a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f";
+
+    /// <summary>
+    /// Subject the checked-in packet currently binds. It is drift-bound here and in docs/ci.md so a
+    /// record that keeps naming a superseded subject cannot stay green.
+    /// </summary>
+    private const string CurrentSubjectSha256 =
+        "663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31";
+
+    /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
+    private const int FrozenStory314PacketFileCount = 66;
+
+    /// <summary>
+    /// SHA-256 of the frozen Story 3.14 packet's own <c>&lt;digest&gt;  &lt;relative path&gt;</c>
+    /// manifest, in byte order. Pinning the manifest closes the whole tree rather than one file.
+    /// </summary>
+    private const string FrozenStory314PacketManifestSha256 =
+        "2d13d833ad0cc3df54c11ff1e53bbf322928f777375a0a36fdbef843bf128f18";
+
+    /// <summary>
+    /// Pinned QEMU user-mode emulator image the <c>linux/arm64</c> Production smoke depends on. It
+    /// is host state rather than a packet input, so it is documented as a prerequisite in both the
+    /// capture script and docs/ci.md instead of being bound into the subject.
+    /// </summary>
+    private const string BinfmtEmulatorSha256 =
+        "400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0";
+
     private const string SupersededRelativePath =
         "_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances";
 
@@ -49,6 +82,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         "This packet supplies immutable deployed-runtime parity evidence only.",
         "It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.",
         "The Test Architect acceptance is a self-attested BMAD record without independent external authentication.",
+        "Every acceptance receipt is composed by repository tooling and posted with the rostered " +
+            "role holder's credential, not typed by hand.",
     ];
 
     private const string RerunTrigger =
@@ -63,7 +98,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     private static readonly (string RelativePath, string Sha256)[] SupersededArtefacts =
     [
-        ("README.md", "b32cbd294801f320ed6d1e23c8f56cd4df79f5c7990114fbf1d26e5c388f8516"),
+        ("README.md", "ee4acf117309481a8f59ff21f1b862d69f5444bd0f91ca4ff146ce0922e1f488"),
         (SupersededSubjectSha256 + "/eventstore-owner.json",
             "ad8cc4fb62e5d1b843f42716235a8cce415ab612359b77fd0006c7dbea6ecfbf"),
         (SupersededSubjectSha256 + "/release-owner.json",
@@ -88,54 +123,75 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             "9d21bf3b4fec487e9effdd1ed6bd1f819d4919208744fabec7abef67fb7ca9bc"),
         (TrustedVerifierSupersededSubjectSha256 + "/sources/test-architect.json",
             "cadf2f5c21d1d91bf2a3c407098adc89bd71ab5d195a9f4da34a3220b7cee5d7"),
+        (BatchSupersededSubjectSha256 + "/eventstore-owner.json",
+            "846b249857789b97afe6e8204a6136b075055b85d56e9d815bede2d152420370"),
+        (BatchSupersededSubjectSha256 + "/release-owner.json",
+            "8f98e5b8b3541d9959c0a64ac741fd03ab59eb9a23caa4db0eca39333df6983e"),
+        (BatchSupersededSubjectSha256 + "/test-architect.json",
+            "203e5f2a0749d6bd6da534c1a48d507edc1f71dadde90f2c86b36b6a1a50ded2"),
+        (BatchSupersededSubjectSha256 + "/sources/eventstore-owner.json",
+            "6e97eb2c564ae78a3ab875d7458ee3b7d53dc5cc03b8bce8f2a446351dc3edf0"),
+        (BatchSupersededSubjectSha256 + "/sources/release-owner.json",
+            "181f2001d93ee982b19758335cb2ba37d7bfd5b0f9e99c77990a40f697d6bb25"),
+        (BatchSupersededSubjectSha256 + "/sources/test-architect.json",
+            "c20fee033cfcb055ed2387d0c40109a7da33a0b97e73db98aef71dd975b9e40a"),
     ];
 
     /// <summary>
-    /// Dedicated Story 3.15 issue used by both retained receipts and synthesized fixtures.
+    /// The real dedicated Story 3.15 acceptance issue. Fixtures use it deliberately: a receipt has
+    /// to resolve to this one thread, so a fixture anchored anywhere else would fail for the wrong
+    /// reason and prove nothing about the field under test.
     /// </summary>
-    private const int SyntheticAcceptanceIssue = 352;
-
-    /// <summary>Threads rejected because they are not the dedicated Story 3.15 issue.</summary>
-    private static readonly int[] ForeignLineageIssues = [324, 346, 351, 900001];
+    private const int AcceptanceIssue = 352;
 
     /// <summary>
-    /// Verifies the checked-in packet passes only after three roster-bound receipts bind the exact
-    /// current subject, while preserving the selected identity and all non-authority flags.
+    /// Verifies the checked-in packet fails closed at zero of three receipts, so nothing is
+    /// granted, while the technical evidence it retains still names the exact current subject and
+    /// keeps every non-authority flag false. <c>deployed_runtime_parity</c> and
+    /// <c>selected_deployed_identity</c> are asserted to be the packet's <em>claim</em> -- the
+    /// proposition the three roles are asked to accept -- which the verifier grants only at three
+    /// of three; at zero receipts it exits 1 and grants nothing. Collecting replacement receipts
+    /// for the re-minted subject is an owner action outside this repository, so the checked-in
+    /// state is the fail-closed one; the granted verdict is proved on a synthesized fully accepted
+    /// packet by <see cref="ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject"/>.
     /// </summary>
     [Fact]
-    public void CheckedInPacketSelectsIdentityAfterThreeFreshReceiptsBindTheCurrentSubject()
+    public void CheckedInPacketFailsClosedUntilThreeFreshReceiptsBindTheCurrentSubject()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
         (int exitCode, string output, string error) = RunValidator(root, packet);
-        exitCode.ShouldBe(0, error);
-        output.ShouldContain("subject=sha256:a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f");
-        output.ShouldContain("selected=" + IndexDigest);
+        exitCode.ShouldBe(1, error);
+        error.ShouldContain("exactly three packet-bound receipts are required");
+        error.ShouldContain("rerun: " + RerunTrigger);
+        output.ShouldNotContain("pass:");
 
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(3);
-        closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
+        closure["subject"]!["sha256"]!.GetValue<string>().ShouldBe(CurrentSubjectSha256);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
 
-        Directory.Exists(Path.Combine(packet, "acceptances", SupersededSubjectSha256))
-            .ShouldBeFalse();
-        Directory.Exists(Path.Combine(packet, "acceptances", TrustedVerifierSupersededSubjectSha256))
-            .ShouldBeFalse();
-        Directory.Exists(Path.Combine(
-            packet,
-            "acceptances",
-            "a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f"))
-            .ShouldBeTrue();
+        // The claim fields are present and unchanged; the exit code above is what says they are
+        // not granted. Asserting them without that pairing is how an auditor reads the JSON as
+        // meaning the opposite of every operator record.
+        closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
+        closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
+
+        // acceptances.directory is the address receipts must occupy, not a directory that exists:
+        // at zero receipts the packet carries no acceptances/ tree of any subject at all.
+        closure["acceptances"]!["directory"]!.GetValue<string>()
+            .ShouldBe("acceptances/" + CurrentSubjectSha256);
+        Directory.Exists(Path.Combine(packet, "acceptances")).ShouldBeFalse();
     }
 
     /// <summary>
-    /// Verifies the three superseded receipts and their sources are retained byte-for-byte outside
-    /// the packet. Directory presence alone cannot notice a rewritten, truncated, or re-signed
-    /// receipt, so each retained file's SHA-256 is pinned here.
+    /// Verifies every superseded receipt and source is retained byte-for-byte outside the packet.
+    /// Directory presence alone cannot notice a rewritten, truncated, or re-signed receipt, so each
+    /// retained file's SHA-256 is pinned here.
     /// </summary>
     [Fact]
     public void SupersededReceiptsAreRetainedByteForByteOutsideThePacket()
@@ -606,23 +662,31 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// Verifies every acceptance field is mandatory and receipt mutations fail closed.
     /// </summary>
     /// <param name="field">Receipt field to remove.</param>
+    /// <param name="role">Rostered role whose receipt loses the field.</param>
     [Theory]
-    [InlineData("accepted_at")]
-    [InlineData("accepted_limitations")]
-    [InlineData("accepted_scope")]
-    [InlineData("decision")]
-    [InlineData("durable_source")]
-    [InlineData("reviewer_identity")]
-    [InlineData("role")]
-    [InlineData("schema")]
-    [InlineData("subject_sha256")]
-    public void EveryReceiptFieldIsRequired(string field)
+    [InlineData("accepted_at", "eventstore-owner")]
+    [InlineData("accepted_limitations", "release-owner")]
+    [InlineData("accepted_scope", "test-architect")]
+    [InlineData("decision", "release-owner")]
+    [InlineData("durable_source", "test-architect")]
+    [InlineData("reviewer_identity", "release-owner")]
+    [InlineData("role", "eventstore-owner")]
+    [InlineData("schema", "test-architect")]
+    [InlineData("subject_sha256", "release-owner")]
+    public void EveryReceiptFieldIsRequired(string field, string role)
     {
         string root = FindRepositoryRoot();
         string temporary = CreateAcceptedPacket(root);
         try
         {
-            RewriteReceipt(temporary, 0, receipt => receipt.Remove(field));
+            // Positive control: without it every case could pass because the fixture never
+            // validated in the first place.
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            // Mutating index 0 every time left release-owner -- a structurally identical but
+            // separately validated receipt -- and the distinct test-architect branch never
+            // exercised by any negative case. Each case names the role whose receipt it removes.
+            RewriteReceipt(temporary, ReceiptIndex(temporary, role), receipt => receipt.Remove(field));
 
             ShouldFailClosed(RunValidator(root, temporary), "acceptance receipt schema is invalid");
         }
@@ -637,19 +701,25 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     /// <param name="mutation">Receipt mutation case.</param>
     /// <param name="expectedError">Expected fail-closed reason.</param>
+    /// <param name="role">Rostered role whose receipt is mutated, where the mutation targets one.</param>
     [Theory]
-    [InlineData("wrong-role", "acceptance receipt does not bind")]
-    [InlineData("subject-mismatch", "acceptance receipt does not bind")]
-    [InlineData("stale", "acceptance predates the subject")]
-    [InlineData("unverifiable", "retained file binding mismatch")]
-    [InlineData("duplicate", "acceptance roles are missing, duplicated, or out of order")]
-    [InlineData("missing", "exactly three packet-bound receipts are required")]
-    public void InvalidAcceptanceNeverAuthorizesParity(string mutation, string expectedError)
+    [InlineData("wrong-role", "acceptance receipt does not bind", "eventstore-owner")]
+    [InlineData("wrong-role", "acceptance receipt does not bind", "release-owner")]
+    [InlineData("wrong-role", "acceptance receipt does not bind", "test-architect")]
+    [InlineData("subject-mismatch", "acceptance receipt does not bind", "release-owner")]
+    [InlineData("stale", "acceptance predates the subject", "release-owner")]
+    [InlineData("unverifiable", "retained file binding mismatch", "test-architect")]
+    [InlineData("duplicate", "acceptance roles are missing, duplicated, or out of order", "eventstore-owner")]
+    [InlineData("missing", "exactly three packet-bound receipts are required", "eventstore-owner")]
+    public void InvalidAcceptanceNeverAuthorizesParity(string mutation, string expectedError, string role)
     {
         string root = FindRepositoryRoot();
         string temporary = CreateAcceptedPacket(root);
         try
         {
+            // Positive control, as above.
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
             string closurePath = Path.Combine(temporary, "closure.json");
             JsonObject closure = LoadJson(closurePath);
             JsonArray bindings = closure["acceptances"]!["receipts"]!.AsArray();
@@ -665,12 +735,13 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             }
             else
             {
-                RewriteReceipt(temporary, 0, receipt =>
+                RewriteReceipt(temporary, ReceiptIndex(temporary, role), receipt =>
                 {
                     switch (mutation)
                     {
                         case "wrong-role":
-                            receipt["reviewer_identity"] = "github:mallory";
+                            receipt["reviewer_identity"] =
+                                role == "test-architect" ? "bmad:mallory" : "github:mallory";
                             break;
                         case "subject-mismatch":
                             receipt["subject_sha256"] = new string('0', 64);
@@ -782,16 +853,32 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     public void FrozenStory314PacketRemainsByteForByteUnchanged()
     {
         string root = FindRepositoryRoot();
-        string predecessor = Path.Combine(
+        string packetRoot = Path.Combine(
             root,
             "_bmad-output",
             "implementation-artifacts",
             "evidence",
             "story-3-14",
-            SourceSha,
-            "release-identity.json");
+            SourceSha);
+        string predecessor = Path.Combine(packetRoot, "release-identity.json");
 
         ComputeSha256(predecessor).ShouldBe(PredecessorSha256);
+
+        // Hashing the identity file alone proves only that one of 66 retained files is unchanged,
+        // while several cases in this suite reach into the rest of that packet. Close the whole
+        // tree: the manifest lists every file's digest and relative path in byte order, so an added,
+        // removed, renamed or rewritten file all change the pinned value.
+        string[] files = Directory.EnumerateFiles(packetRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(packetRoot, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        files.Length.ShouldBe(FrozenStory314PacketFileCount);
+        string manifest = string.Concat(files.Select(relative => FormattableString.Invariant(
+            $"{ComputeSha256(Path.Combine(packetRoot, relative.Replace('/', Path.DirectorySeparatorChar)))}  {relative}\n")));
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(manifest)))
+            .ToLowerInvariant()
+            .ShouldBe(FrozenStory314PacketManifestSha256);
+
         (int exitCode, string output, string error) = RunProcess(
             root,
             "python3",
@@ -888,11 +975,16 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies provenance checks name every executing module on the source-only import path,
-    /// including both package initializers and the transitive predecessor handler.
+    /// Verifies every executing module on the trust path is loaded from already verified source
+    /// bytes rather than resolved by importlib. The previous form of this test pinned a
+    /// post-import <c>__file__</c> comparison that could not fail -- the loader sets
+    /// <c>__file__</c> from the same relative path such a check re-derives -- and matched its own
+    /// pin table rather than the call sites. What actually holds the property is that each of the
+    /// four pinned files is handed to <c>_load_verified_module</c> as pre-read bytes, and that no
+    /// ordinary import statement or <c>importlib</c> resolution of those modules survives.
     /// </summary>
     [Fact]
-    public void ImportedModuleProvenanceCoversTheCompleteVerifiedPath()
+    public void EveryTrustPathModuleExecutesOnlyPreVerifiedSourceBytes()
     {
         string root = FindRepositoryRoot();
         string dispatcher = File.ReadAllText(
@@ -905,13 +997,51 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             "release_evidence_handlers/__init__.py",
             "release_evidence_handlers/v3.py",
         ];
+
+        // Every trust-path file is pinned, and _verify_import_path reads and hashes exactly the
+        // pinned set before the first module executes.
         foreach (string relative in expected)
         {
-            dispatcher.ShouldContain($"_verify_imported_file(");
             dispatcher.ShouldContain($"\"{relative}\"");
         }
 
-        Regex.Matches(dispatcher, "_verify_imported_file\\(").Count.ShouldBe(5);
+        // The loader is the only execution route, and it compiles the bytes it was handed.
+        dispatcher.ShouldContain("exec(compile(source,");
+
+        // Read the call sites, not the pin table: `"<relative>"` also appears in
+        // IMPORT_PATH_FILE_SHA256, so asserting its presence proved nothing about what is loaded.
+        // Every call must hand the loader a source drawn from the verified `sources` mapping, and
+        // the v1 call site names no literal at all -- it builds its key from the module name.
+        MatchCollection calls = Regex.Matches(
+            dispatcher,
+            @"    \w+ = _load_verified_module\((?<args>.*?)\n    \)",
+            RegexOptions.Singleline);
+        calls.Count.ShouldBe(4);
+        foreach (Match call in calls)
+        {
+            call.Groups["args"].Value.ShouldContain("sources[");
+        }
+
+        // Exactly one definition plus those four calls.
+        Regex.Matches(dispatcher, @"_load_verified_module\(").Count.ShouldBe(5);
+        dispatcher.ShouldContain("sources[module_name.replace(\".\", \"/\") + \".py\"]");
+
+        // The dead post-import path comparison must not come back: it re-derived its expectation
+        // from the same value the loader assigned, so it was true by construction.
+        dispatcher.ShouldNotContain("_verify_imported_file");
+
+        // No ordinary import of a trust-path module may remain: that would bypass the pinned bytes.
+        foreach (string module in new[] { "deployed_runtime_parity_handlers", "release_evidence_handlers" })
+        {
+            Regex.IsMatch(dispatcher, $@"^\s*(?:import|from)\s+{Regex.Escape(module)}\b", RegexOptions.Multiline)
+                .ShouldBeFalse(module);
+        }
+
+        // Comments may still explain why find_spec is avoided; only executable lines are checked.
+        Regex.IsMatch(
+            dispatcher,
+            @"^(?!\s*#).*importlib\.(?:import_module|util\.find_spec)",
+            RegexOptions.Multiline).ShouldBeFalse();
     }
 
     /// <summary>
@@ -931,10 +1061,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
         // Presence alone cannot notice a superseded digest left behind beside the current one, so
         // require the set of 64-hex tokens in the Story 3.15 section to be exactly the expected
-        // three: the current subject, the selected index, and the frozen predecessor identity. The
-        // slice stops at the next top-level heading -- running to end-of-file would fold every
-        // later section's digests into the assertion -- and the token pattern is boundary-anchored
-        // so a longer hex run cannot satisfy it through a 64-character window.
+        // four: the current subject, the selected index, the frozen predecessor identity, and the
+        // pinned QEMU emulator image the arm64 Production smoke depends on. The slice stops at the
+        // next top-level heading -- running to end-of-file would fold every later section's digests
+        // into the assertion -- and the token pattern is boundary-anchored so a longer hex run
+        // cannot satisfy it through a 64-character window.
         int section = ci.IndexOf("### Story 3.15", StringComparison.Ordinal);
         section.ShouldBeGreaterThan(-1);
         int sectionEnd = ci.IndexOf("\n## ", section, StringComparison.Ordinal);
@@ -947,9 +1078,21 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             .Order(StringComparer.Ordinal)
             .ToArray();
         digests.ShouldBe(
-            new[] { subjectSha256, IndexDigest["sha256:".Length..], PredecessorSha256 }
+            new[]
+            {
+                subjectSha256,
+                IndexDigest["sha256:".Length..],
+                PredecessorSha256,
+                BinfmtEmulatorSha256,
+            }
                 .Order(StringComparer.Ordinal)
                 .ToArray());
+
+        // The emulator digest is an environmental prerequisite, not a packet input, so nothing else
+        // binds it. Keep the operator record and the capture script's documented precondition from
+        // drifting apart.
+        File.ReadAllText(Path.Combine(root, "tools", "capture-corrected-deployed-runtime-parity-smokes.py"))
+            .ShouldContain(BinfmtEmulatorSha256);
     }
 
     /// <summary>
@@ -1319,7 +1462,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// Verifies a receipt anchored anywhere except the dedicated Story 3.15 issue fails closed.
     /// A positive allowlist rejects past and future sibling threads without maintaining a denylist.
     /// </summary>
-    /// <param name="issue">Foreign-lineage issue number to anchor the receipt source on.</param>
+    /// <param name="issue">
+    /// Foreign issue number to anchor the receipt source on: the two cross-lineage threads the
+    /// superseded receipts were anchored on, the Story 3.13 thread, and an arbitrary fresh issue
+    /// standing for every future sibling.
+    /// </param>
     [Theory]
     [InlineData(324)]
     [InlineData(346)]
@@ -1328,7 +1475,10 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     public void ReceiptSourceAnchoredOnForeignLineageIssueFailsClosed(int issue)
     {
         string root = FindRepositoryRoot();
-        ForeignLineageIssues.ShouldContain(issue);
+
+        // Non-vacuity: the rejected thread must not be the one allowlisted thread, or the case
+        // would be asserting nothing about lineage.
+        issue.ShouldNotBe(AcceptanceIssue);
         string temporary = CreateAcceptedPacket(root);
         try
         {
@@ -1374,11 +1524,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 {
                     case "anchor-comment-id":
                         source["html_url"] = FormattableString.Invariant(
-                            $"https://github.com/Hexalith/Hexalith.EventStore/issues/{SyntheticAcceptanceIssue}#issuecomment-{commentId + 1}");
+                            $"https://github.com/Hexalith/Hexalith.EventStore/issues/{AcceptanceIssue}#issuecomment-{commentId + 1}");
                         break;
                     case "issue-url-thread":
                         source["issue_url"] = FormattableString.Invariant(
-                            $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/{SyntheticAcceptanceIssue + 1}");
+                            $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/{AcceptanceIssue + 1}");
                         break;
                     case "comment-url-id":
                         source["url"] = FormattableString.Invariant(
@@ -1475,7 +1625,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
             ShouldFailClosed(
                 RunValidator(root, temporary),
-                "owner-role registry authority source is invalid");
+                "owner-role registry authority source role mapping is invalid");
         }
         finally
         {
@@ -1502,7 +1652,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
             ShouldFailClosed(
                 RunValidator(root, temporary),
-                "owner-role registry authority source is invalid");
+                "owner-role registry authority source role mapping is invalid");
         }
         finally
         {
@@ -1531,7 +1681,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
             ShouldFailClosed(
                 RunValidator(root, temporary),
-                "owner-role registry authority source is invalid");
+                "owner-role registry authority source body is invalid");
         }
         finally
         {
@@ -1565,7 +1715,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
             ShouldFailClosed(
                 RunValidator(root, temporary),
-                "owner-role registry authority source is invalid");
+                "owner-role registry authority source body is invalid");
         }
         finally
         {
@@ -1804,6 +1954,29 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             File.WriteAllBytes(handlerPath, trusted);
             File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
 
+            // Control 1: a cache file really was produced. Without this the test passes when
+            // py_compile silently wrote nothing, which proves nothing about the loader.
+            string cacheDirectory = Path.Combine(
+                temporary,
+                "tools",
+                "deployed_runtime_parity_handlers",
+                "__pycache__");
+            Directory.Exists(cacheDirectory).ShouldBeTrue();
+            string[] caches = Directory.GetFiles(cacheDirectory, "v1.*.pyc");
+            caches.Length.ShouldBeGreaterThan(0);
+
+            // Control 2: the stale cache genuinely wins under an ordinary import, so the marker
+            // would execute if the verifier resolved this module through importlib. Only with this
+            // control does the negative assertion below mean the source-only loader is doing the
+            // work.
+            (int controlExit, string controlOutput, string controlError) = RunProcess(
+                Path.Combine(temporary, "tools"),
+                "python3",
+                "-c",
+                "import deployed_runtime_parity_handlers.v1");
+            controlExit.ShouldBe(0, controlError);
+            controlOutput.ShouldContain("untrusted-bytecode-executed");
+
             (int exitCode, string output, string error) = RunProcess(
                 temporary,
                 "python3",
@@ -1826,6 +1999,994 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             }
 
             Directory.Delete(packet, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies each authentication clause on the roster comment actually rejects. Deleting the
+    /// association clause, the account clause, or either thread equality previously left every
+    /// closure case green, because the retained comment satisfies them all and no case constructed
+    /// one that does not -- so the CONTRIBUTOR exception removed earlier could silently return.
+    /// </summary>
+    /// <param name="mutation">Authentication clause to violate.</param>
+    [Theory]
+    [InlineData("author-association")]
+    [InlineData("user-login")]
+    [InlineData("user-id")]
+    [InlineData("comment-id")]
+    [InlineData("html-url-thread")]
+    [InlineData("issue-url-thread")]
+    [InlineData("comment-url-id")]
+    [InlineData("updated-after-created")]
+    [InlineData("registry-created-at")]
+    [InlineData("other-comment-on-same-issue")]
+    [InlineData("github-app")]
+    public void RegistryAuthoritySourceAuthenticationClausesAllFailClosed(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            // Positive control: the untouched copy must validate, so a broken harness cannot be
+            // mistaken for the clause firing.
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            MutateRegistrySourceDocument(temporary, source =>
+            {
+                switch (mutation)
+                {
+                    case "author-association":
+                        source["author_association"] = "CONTRIBUTOR";
+                        break;
+                    case "user-login":
+                        source["user"]!["login"] = "mallory";
+                        break;
+                    case "user-id":
+                        source["user"]!["id"] = 1;
+                        break;
+                    case "comment-id":
+                        source["id"] = 5409999999L;
+                        break;
+                    case "html-url-thread":
+                        source["html_url"] =
+                            "https://github.com/Hexalith/Hexalith.EventStore/issues/351#issuecomment-5407975180";
+                        break;
+                    case "issue-url-thread":
+                        source["issue_url"] =
+                            "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/351";
+                        break;
+                    case "comment-url-id":
+                        source["url"] =
+                            "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975181";
+                        break;
+                    case "updated-after-created":
+                        source["updated_at"] = "2026-08-25T09:59:45Z";
+                        break;
+                    case "registry-created-at":
+                        // Isolates the clause binding the registry document to the timestamp of the
+                        // comment that authenticates it. Nothing else in this theory touches it.
+                        source["created_at"] = "2026-08-25T08:59:46Z";
+                        source["updated_at"] = "2026-08-25T08:59:46Z";
+                        break;
+                    case "other-comment-on-same-issue":
+                        // Every id-bearing field is rewritten consistently to a different comment
+                        // on the allowlisted issue, so only REGISTRY_AUTHORITY_COMMENT_ID can
+                        // reject it. The comment-id case alone also breaks the URL anchors, which
+                        // let that constant be deleted with the theory still green.
+                        source["id"] = 5407975181L;
+                        source["html_url"] =
+                            "https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5407975181";
+                        source["url"] =
+                            "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975181";
+                        source["reactions"]!["url"] =
+                            "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975181/reactions";
+                        break;
+                    case "github-app":
+                        source["performed_via_github_app"] = new JsonObject { ["id"] = 1 };
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null);
+                }
+            });
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "owner-role registry authority source is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a legitimate nuspec that quotes a literal <c>&lt;!DOCTYPE</c> inside CDATA is
+    /// accepted. The earlier fixture used the escaped entity form, which never matched the
+    /// whole-document regex this scanner replaced, so it passed identically against the old code
+    /// and pinned nothing. A CDATA-quoted literal is red under the old regex and green under the
+    /// prolog scanner, which is what makes it a real control.
+    /// </summary>
+    [Fact]
+    public void NuspecQuotingDoctypeInCdataIsAccepted()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]![0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            ReplaceNuspec(
+                packagePath,
+                "<package><metadata><id>Hexalith.EventStore.Contracts</id><version>3.96.2</version>"
+                + "<description><![CDATA[<!DOCTYPE evil>]]></description>"
+                + "<repository type=\"git\" url=\"https://github.com/Hexalith/Hexalith.EventStore\" "
+                + $"commit=\"{SourceSha}\" /></metadata></package>");
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+            RebindInventoryAndSubject(temporary);
+            AttachThreeAcceptedReceipts(temporary);
+
+            (int exitCode, _, string error) = RunValidator(root, temporary);
+            exitCode.ShouldBe(0, error);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a DTD hidden behind a prolog comment that quotes a tag still fails closed. A regex
+    /// looking for the document-element start would be truncated by that comment and never see the
+    /// declaration behind it, which is why the prolog is consumed construct by construct.
+    /// </summary>
+    [Fact]
+    public void NuspecDtdBehindAPrologCommentFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]![0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            ReplaceNuspec(
+                packagePath,
+                "<!-- <package> --><!DOCTYPE package [<!ENTITY x \"y\">]>"
+                + "<package><metadata><id>Hexalith.EventStore.Contracts</id><version>3.96.2</version>"
+                + "<repository type=\"git\" url=\"https://github.com/Hexalith/Hexalith.EventStore\" "
+                + $"commit=\"{SourceSha}\" /></metadata></package>");
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "package nuspec contains forbidden DTD or entity declarations");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a residual byte-order mark cannot skip the prolog scan. <c>utf-8-sig</c> strips
+    /// exactly one BOM, so a doubled BOM survived as U+FEFF, the scan returned without inspecting
+    /// anything, and expat then consumed the re-emitted BOM and parsed the DTD behind it --
+    /// reproduced end to end, with the smuggled entity resolving into the package id. The
+    /// single-BOM control proves the doubled case is not simply "any BOM is rejected".
+    /// </summary>
+    /// <param name="leadingBoms">Number of byte-order marks to prepend.</param>
+    /// <param name="expectedError">Expected fail-closed reason.</param>
+    [Theory]
+    [InlineData(1, "package nuspec contains forbidden DTD or entity declarations")]
+    [InlineData(2, "package nuspec is not strict UTF-8 XML")]
+    [InlineData(3, "package nuspec is not strict UTF-8 XML")]
+    public void ResidualByteOrderMarkCannotSkipThePrologScan(int leadingBoms, string expectedError)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]![0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            byte[] bom = [0xEF, 0xBB, 0xBF];
+            List<byte> document = [];
+            for (int index = 0; index < leadingBoms; index++)
+            {
+                document.AddRange(bom);
+            }
+
+            document.AddRange(Encoding.UTF8.GetBytes(
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+                + "<!DOCTYPE package [<!ENTITY smuggle \"Hexalith.Evil\">]>"
+                + "<package><metadata><id>&smuggle;</id><version>3.96.2</version>"
+                + "<repository type=\"git\" url=\"https://github.com/Hexalith/Hexalith.EventStore\" "
+                + $"commit=\"{SourceSha}\" /></metadata></package>"));
+            ReplaceNuspecBytes(packagePath, [.. document]);
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), expectedError);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies both malformed-prolog branches fail closed. Neither was asserted anywhere, so an
+    /// unterminated construct -- or a document with no element at all -- could have exited the scan
+    /// silently, which is precisely how the byte-order-mark bypass worked.
+    /// </summary>
+    /// <param name="nuspec">Malformed prolog to substitute.</param>
+    [Theory]
+    [InlineData("<!-- never closed <package><metadata><id>x</id></metadata></package>")]
+    [InlineData("<?xml version=\"1.0\" encoding=\"utf-8\"?>   ")]
+    public void MalformedNuspecPrologFailsClosed(string nuspec)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]![0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            ReplaceNuspec(packagePath, nuspec);
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), "package nuspec prolog is malformed");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an XML declaration containing a question mark inside a pseudo-attribute value no
+    /// longer causes the encoding check to be silently skipped. The previous pattern matched only a
+    /// declaration body free of <c>?</c>, so such a document bypassed the check entirely instead of
+    /// failing closed.
+    /// </summary>
+    [Fact]
+    public void NuspecDeclarationWithQuestionMarkFailsClosedInsteadOfSkippingTheEncodingCheck()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]![0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            ReplaceNuspec(
+                packagePath,
+                "<?xml version=\"1.0\" encoding=\"utf-16?\"?>" +
+                "<package><metadata><id>Hexalith.EventStore.Contracts</id><version>3.96.2</version>" +
+                "<repository type=\"git\" url=\"https://github.com/Hexalith/Hexalith.EventStore\" " +
+                $"commit=\"{SourceSha}\" /></metadata></package>");
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), "package nuspec is not strict UTF-8 XML");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+
+    /// <summary>
+    /// Verifies every surface that restates the current subject digest is drift-bound. Only the two
+    /// markdown records were covered, so the sprint tracker and this story's own spec could keep
+    /// naming a superseded subject with the whole suite green.
+    /// </summary>
+    /// <param name="relativePath">Surface that restates the subject digest.</param>
+    [Theory]
+    [InlineData("_bmad-output/implementation-artifacts/sprint-status.yaml")]
+    [InlineData("_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md")]
+    public void SubjectRestatingSurfacesNameTheCurrentSubject(string relativePath)
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string subjectSha256 = closure["subject"]!["sha256"]!.GetValue<string>();
+        string text = File.ReadAllText(
+            Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+        text.ShouldContain(subjectSha256);
+
+        // A surface may narrate superseded subjects, but the current one must be the first subject
+        // digest a reader meets on it.
+        string[] subjects =
+        [
+            subjectSha256,
+            BatchSupersededSubjectSha256,
+            TrustedVerifierSupersededSubjectSha256,
+            SupersededSubjectSha256,
+        ];
+        Regex.Matches(text, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
+            .Select(match => match.Value)
+            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal))
+            .ShouldBe(subjectSha256, relativePath);
+    }
+
+    /// <summary>
+    /// Verifies the proof packet's tool-digest table matches the digests the closure actually binds.
+    /// A producer edit re-mints the subject, but nothing stopped that table from silently drifting.
+    /// </summary>
+    [Fact]
+    public void ProofPacketToolDigestTableMatchesTheBoundDispatch()
+    {
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string proofPacket = File.ReadAllText(Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "3-15-corrected-deployed-runtime-parity-closure-proof-packet.md"));
+
+        string[] bindings =
+        [
+            "handler",
+            "verifier",
+            "predecessor_handler",
+            "predecessor_package",
+            "capture",
+            "assembler",
+        ];
+        foreach (string name in bindings)
+        {
+            JsonObject binding = closure["dispatch"]![name]!.AsObject();
+            string file = binding["file"]!.GetValue<string>();
+            string sha256 = binding["sha256"]!.GetValue<string>();
+            proofPacket.ShouldContain($"| `{file}` | `{sha256}` |");
+        }
+
+        // Non-vacuity: the table must not carry a stale row beside the current ones.
+        Regex.Matches(proofPacket, @"\| `tools/[^`]+` \| `(?<digest>[0-9a-f]{64})` \|")
+            .Select(match => match.Groups["digest"].Value)
+            .Order(StringComparer.Ordinal)
+            .ToArray()
+            .ShouldBe(bindings
+                .Select(name => closure["dispatch"]![name]!["sha256"]!.GetValue<string>())
+                .Order(StringComparer.Ordinal)
+                .ToArray());
+    }
+
+    /// <summary>
+    /// Verifies the verifier's per-platform cleanup allowance equals the capture tool's own cleanup
+    /// budget. The allowance is a verifier-side constant rather than a field in the frozen
+    /// <c>smoke-results.json</c> -- retained evidence must not be rewritten to satisfy a later
+    /// schema -- so nothing else keeps the two files in step.
+    /// </summary>
+    [Fact]
+    public void CleanupAllowanceAgreesBetweenVerifierAndCaptureTool()
+    {
+        string root = FindRepositoryRoot();
+        string handler = File.ReadAllText(
+            Path.Combine(root, "tools", "deployed_runtime_parity_handlers", "v1.py"));
+        string capture = File.ReadAllText(
+            Path.Combine(root, "tools", "capture-corrected-deployed-runtime-parity-smokes.py"));
+
+        Match allowance = Regex.Match(handler, @"^CLEANUP_ALLOWANCE_SECONDS = (\d+)$", RegexOptions.Multiline);
+        Match budget = Regex.Match(capture, @"^CLEANUP_TIMEOUT_SECONDS = (\d+)$", RegexOptions.Multiline);
+        allowance.Success.ShouldBeTrue();
+        budget.Success.ShouldBeTrue();
+        allowance.Groups[1].Value.ShouldBe(budget.Groups[1].Value);
+    }
+
+    /// <summary>
+    /// Verifies a retained smoke record whose own window exceeds the platform budget plus the
+    /// cleanup allowance fails closed, and likewise for the aggregate window. Both bounds were
+    /// unasserted, and the platform bound was simultaneously too tight for records the capture tool
+    /// legitimately produces.
+    /// </summary>
+    /// <param name="mutation">Which bound to breach.</param>
+    /// <param name="expectedError">Expected fail-closed reason.</param>
+    [Theory]
+    [InlineData("platform-window", "Production smoke platform outcome is invalid")]
+    [InlineData("aggregate-window", "Production smoke aggregate bound is invalid")]
+    public void SmokeWindowsExceedingTheirBoundsFailClosed(string mutation, string expectedError)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            MutateSmokeResults(temporary, results =>
+            {
+                DateTimeOffset start = DateTimeOffset.Parse(
+                    results["started_at"]!.GetValue<string>(),
+                    CultureInfo.InvariantCulture);
+                if (mutation == "platform-window")
+                {
+                    // 211s > 180 + 30, while the aggregate stays inside 2 x 210.
+                    JsonObject platform = results["platforms"]!.AsArray()[0]!.AsObject();
+                    DateTimeOffset platformStart = DateTimeOffset.Parse(
+                        platform["started_at"]!.GetValue<string>(),
+                        CultureInfo.InvariantCulture);
+                    platform["ended_at"] = Utc(platformStart.AddSeconds(211));
+                    results["ended_at"] = Utc(platformStart.AddSeconds(300));
+                }
+                else
+                {
+                    // 421s > 2 x (180 + 30), with both platform windows left untouched.
+                    results["ended_at"] = Utc(start.AddSeconds(421));
+                }
+            });
+
+            // The mutation re-mints the subject, so the receipts must be re-attached; otherwise the
+            // run stops at the acceptance-address check and never reaches the bound under test.
+            AttachThreeAcceptedReceipts(temporary);
+
+            ShouldFailClosed(RunValidator(root, temporary), expectedError);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a retained smoke record whose windows sit inside the platform budget plus the
+    /// cleanup allowance -- the shape the capture tool actually produces, because it stamps
+    /// <c>started_at</c> before the platform deadline and <c>ended_at</c> after cleanup -- is
+    /// accepted. Bounding by the platform budget alone made the producer able to emit records this
+    /// verifier rejected.
+    /// </summary>
+    [Fact]
+    public void SmokeWindowInsideThePlatformBudgetPlusCleanupAllowanceIsAccepted()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            MutateSmokeResults(temporary, results =>
+            {
+                JsonObject platform = results["platforms"]!.AsArray()[0]!.AsObject();
+                DateTimeOffset platformStart = DateTimeOffset.Parse(
+                    platform["started_at"]!.GetValue<string>(),
+                    CultureInfo.InvariantCulture);
+                platform["ended_at"] = Utc(platformStart.AddSeconds(205));
+                DateTimeOffset start = DateTimeOffset.Parse(
+                    results["started_at"]!.GetValue<string>(),
+                    CultureInfo.InvariantCulture);
+                results["ended_at"] = Utc(start.AddSeconds(300));
+            });
+            AttachThreeAcceptedReceipts(temporary);
+
+            (int exitCode, _, string error) = RunValidator(root, temporary);
+            exitCode.ShouldBe(0, error);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a bytes <c>sys.path</c> entry produces the support-safe fail-closed line and the
+    /// rerun trigger rather than a traceback, and -- crucially -- that such an entry is still
+    /// recognised as repository-local. Catching <c>TypeError</c> alone silenced the crash by making
+    /// the guard answer False, which let a bytes-origin repository module escape both displacement
+    /// and the post-execution shadow check.
+    /// </summary>
+    /// <param name="script">Dispatcher under test.</param>
+    [Theory]
+    [InlineData("tools/validate-corrected-deployed-runtime-parity.py")]
+    [InlineData("tools/validate-corrective-release-evidence.py")]
+    public void BytesRepositoryPathsAreRecognisedRatherThanSilentlyDropped(string script)
+    {
+        ArgumentNullException.ThrowIfNull(script);
+        string root = FindRepositoryRoot();
+
+        // The guard must answer True for a bytes repository path; answering False is the bypass.
+        (int probeExit, string probeOutput, string probeError) = RunProcess(
+            root,
+            "python3",
+            "-c",
+            "import importlib.util,sys;"
+            + "s=importlib.util.spec_from_file_location('probe',sys.argv[1]);"
+            + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+            + "r=str(m._repository_root());"
+            + "print('str', m._is_repository_path(r));"
+            + "print('bytes', m._is_repository_path(r.encode()));"
+            + "print('outside', m._is_repository_path(b'/usr/lib/python3'))",
+            Path.Combine(root, script.Replace('/', Path.DirectorySeparatorChar)));
+        probeExit.ShouldBe(0, probeError);
+        probeOutput.ShouldContain("str True");
+        probeOutput.ShouldContain("bytes True");
+        probeOutput.ShouldContain("outside False");
+
+        // And an actual bytes sys.path entry must not produce a traceback.
+        string packet = CreateIncompletePacket(root);
+        try
+        {
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "-c",
+                "import runpy,sys;sys.path.insert(0, b'/tmp/bytes-path-entry');"
+                + "sys.argv=[sys.argv[1],*sys.argv[2:]];"
+                + "runpy.run_path(sys.argv[0],run_name='__main__')",
+                Path.Combine(root, "tools", "validate-corrected-deployed-runtime-parity.py"),
+                Path.Combine(packet, "closure.json"),
+                "--packet-root",
+                packet);
+
+            exitCode.ShouldBe(1, error);
+            error.ShouldNotContain("Traceback");
+            error.ShouldContain("exactly three packet-bound receipts are required");
+            error.ShouldContain("rerun: " + RerunTrigger);
+            output.ShouldNotContain("pass:");
+        }
+        finally
+        {
+            Directory.Delete(packet, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the roster-configuration guard actually fails when the rostered account is changed.
+    /// Its previous form compared the identity table against strings interpolated from that same
+    /// table, so rewriting <c>OWNER_GITHUB_ACCOUNT</c> to any other account left it green -- the
+    /// exact defect its docstring claimed to fix. Reproduced here by mutating the handler in a
+    /// copied tool tree and rebinding both the dispatcher pin and the closure's dispatch digest, so
+    /// execution reaches the guard instead of stopping at the pin check.
+    /// </summary>
+    /// <param name="replacement">Replacement rostered account tuple.</param>
+    [Theory]
+    [InlineData("(\"mallory\", 999)")]
+    [InlineData("(\"jpiquot\", 999)")]
+    public void RosterConfigurationGuardRejectsAReRosteredAccount(string replacement)
+    {
+        ArgumentNullException.ThrowIfNull(replacement);
+        string root = FindRepositoryRoot();
+        string packet = CopyPacket(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-roster-{Guid.NewGuid():N}");
+        try
+        {
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+
+            // Control: the copied tree reaches real validation before anything is mutated.
+            ShouldFailClosed(
+                RunProcess(
+                    temporary,
+                    "python3",
+                    "tools/validate-corrected-deployed-runtime-parity.py",
+                    Path.Combine(packet, "closure.json"),
+                    "--packet-root",
+                    packet),
+                "exactly three packet-bound receipts are required");
+
+            string handlerPath = Path.Combine(
+                temporary, "tools", "deployed_runtime_parity_handlers", "v1.py");
+            string handler = File.ReadAllText(handlerPath);
+            // Anchored on the line start: RATIFIED_OWNER_GITHUB_ACCOUNT contains this text as a
+            // substring, and rewriting both halves would make the guard compare two equal mutated
+            // tuples -- exactly the green-by-construction shape this case exists to disprove.
+            const string Original = "\nOWNER_GITHUB_ACCOUNT = (\"jpiquot\", 6775094)";
+            handler.ShouldContain(Original);
+            File.WriteAllText(
+                handlerPath,
+                handler.Replace(Original, "\nOWNER_GITHUB_ACCOUNT = " + replacement, StringComparison.Ordinal));
+
+            // Rebind the dispatcher pin and the closure's dispatch digest so the run gets past the
+            // pinned-source and route-selection checks and actually reaches the roster guard.
+            string mutatedDigest = ComputeSha256(handlerPath);
+            string dispatcherPath = Path.Combine(
+                temporary, "tools", "validate-corrected-deployed-runtime-parity.py");
+            string dispatcher = File.ReadAllText(dispatcherPath);
+            string originalDigest = Regex.Match(
+                dispatcher, "^V1_HANDLER_SHA256 = \"([0-9a-f]{64})\"", RegexOptions.Multiline).Groups[1].Value;
+            originalDigest.ShouldNotBeNullOrEmpty();
+            File.WriteAllText(
+                dispatcherPath,
+                dispatcher.Replace(originalDigest, mutatedDigest, StringComparison.Ordinal));
+
+            string closurePath = Path.Combine(packet, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            closure["dispatch"]!["handler"]!["sha256"] = mutatedDigest;
+            closure["dispatch"]!["handler"]!["size"] = new FileInfo(handlerPath).Length;
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunProcess(
+                    temporary,
+                    "python3",
+                    "tools/validate-corrected-deployed-runtime-parity.py",
+                    closurePath,
+                    "--packet-root",
+                    packet),
+                "rostered owner identity configuration is inconsistent");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+
+            Directory.Delete(packet, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a stray unreviewed field cannot persist inside a retained GitHub acceptance source.
+    /// Rebinding the receipt and the closure around the enlarged source previously produced a full
+    /// pass with the subject unchanged, so the rerun trigger never fired on content added to the
+    /// packet's only external authentication artifact.
+    /// </summary>
+    /// <param name="scope">Envelope level the stray field is injected at.</param>
+    [Theory]
+    [InlineData("envelope")]
+    [InlineData("user")]
+    [InlineData("reactions")]
+    public void StrayFieldInsideRetainedAcceptanceSourceFailsClosed(string scope)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            int index = ReceiptIndex(temporary, "eventstore-owner");
+            RewriteReceiptSource(temporary, index, source =>
+            {
+                if (scope == "envelope")
+                {
+                    source["stray_unreviewed_field"] = "anything at all";
+                }
+                else
+                {
+                    source[scope]!.AsObject()["stray_unreviewed_field"] = "anything at all";
+                }
+            });
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "GitHub acceptance source schema is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a stray unreviewed field cannot persist inside the retained roster comment either.
+    /// </summary>
+    [Fact]
+    public void StrayFieldInsideRetainedRegistryAuthoritySourceFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+            MutateRegistrySourceDocument(
+                temporary,
+                source => source["stray_unreviewed_field"] = "anything at all");
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "owner-role registry authority source schema is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies fail-closed reasons the frozen block names by hand -- lineage, predecessor identity,
+    /// the dispatcher route key, closure identity, package lineage, OCI identity and unsafe binding
+    /// paths -- are each actually reachable and produce their own message. Every one of these was
+    /// previously unasserted anywhere, so the branch behind it could have been deleted with the
+    /// whole suite still green.
+    /// </summary>
+    /// <param name="mutation">Closure mutation to apply.</param>
+    /// <param name="expectedError">Exact fail-closed reason the mutation must produce.</param>
+    [Theory]
+    [InlineData("workflow-run", "lineage does not reproduce the corrective release")]
+    [InlineData("predecessor-digest", "predecessor identity is not the frozen Story 3.14 handoff")]
+    [InlineData("handler-digest", "closure does not select a trusted live handler")]
+    [InlineData("story-id", "closure identity is invalid")]
+    [InlineData("package-version", "package mapping lineage is invalid")]
+    [InlineData("oci-image", "OCI image identity is invalid")]
+    [InlineData("oci-media-type", "OCI file binding is invalid")]
+    [InlineData("unsafe-binding-path", "file binding path is unsafe")]
+    public void NamedFailClosedReasonsAreEachReachable(string mutation, string expectedError)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            switch (mutation)
+            {
+                case "workflow-run":
+                    closure["lineage"]!["workflow"]!["run_attempt"] = 2;
+                    break;
+                case "predecessor-digest":
+                    closure["predecessor"]!["sha256"] = new string('0', 64);
+                    break;
+                case "handler-digest":
+                    closure["dispatch"]!["handler"]!["sha256"] = new string('1', 64);
+                    break;
+                case "story-id":
+                    closure["story_id"] = "3.16";
+                    break;
+                case "package-version":
+                    closure["packages"]!["items"]!.AsArray()[0]!["version"] = "3.96.3";
+                    break;
+                case "oci-image":
+                    closure["oci"]!["image"] = "registry.hexalith.com/other@" + IndexDigest;
+                    break;
+                case "oci-media-type":
+                    closure["oci"]!["children"]!.AsArray()[0]!["config"]!["media_type"] =
+                        "application/vnd.oci.image.manifest.v1+json";
+                    break;
+                case "unsafe-binding-path":
+                    closure["technical_inventory"]!["file"] = "../technical-sha256.txt";
+                    break;
+                default:
+                    // A typo'd InlineData must fail loudly rather than silently duplicating
+                    // whichever case happened to sit behind default.
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null);
+            }
+
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), expectedError);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a retained NuGet.org package that is not a readable archive fails closed on the
+    /// archive check rather than anywhere earlier, by correcting its binding first.
+    /// </summary>
+    [Fact]
+    public void RetainedNuGetPackageThatIsNotAnArchiveFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]!.AsArray()[0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            File.WriteAllBytes(packagePath, "not a zip archive at all"u8.ToArray());
+            nuget["sha256"] = ComputeSha256(packagePath);
+            nuget["size"] = new FileInfo(packagePath).Length;
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "NuGet.org package is not a valid signed archive");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the raw OCI index bytes are pinned by the selected index digest itself, which is
+    /// what makes <c>raw OCI index shape is invalid</c> unreachable through packet mutation: any
+    /// edit to <c>oci/index.raw</c> changes its SHA-256, and the binding, the descriptor digest and
+    /// the selected identity all have to equal the one constant the handler pins. The shape guard
+    /// is retained as a structural precondition for the strict three-way zip that follows it.
+    /// </summary>
+    [Fact]
+    public void RawOciIndexBytesArePinnedByTheSelectedIndexDigest()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string indexPath = Path.Combine(temporary, "oci", "index.raw");
+            ComputeSha256(indexPath).ShouldBe(IndexDigest["sha256:".Length..]);
+
+            byte[] original = File.ReadAllBytes(indexPath);
+            File.WriteAllBytes(indexPath, [.. original, (byte)'\n']);
+
+            ShouldFailClosed(RunValidator(root, temporary), "retained file binding mismatch: oci/index.raw");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the packet assembler is executable and that its reported contract is real, not a
+    /// prose claim. It had no caller anywhere in the repository, so replacing its receipt-count exit
+    /// rule with an unconditional success left every test green -- the always-exit-zero shape of the
+    /// same defect that already shipped once in this story.
+    /// </summary>
+    [Fact]
+    public void AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict()
+    {
+        string root = FindRepositoryRoot();
+        string incomplete = CopyPacket(root);
+        string accepted = CreateAcceptedPacket(root);
+        try
+        {
+            // Zero receipts: the assembler must reproduce the checked-in subject byte-for-byte and
+            // report the verifier's own non-zero verdict rather than a success-shaped line.
+            (int ExitCode, string Output, string Error) result = RunProcess(
+                root,
+                "python3",
+                "tools/assemble-corrected-deployed-runtime-parity.py",
+                incomplete);
+
+            // ShouldNotBe(0) is satisfied by a traceback, which is the failure shape this lane
+            // keeps producing; require the same fail-closed contract as every other negative.
+            ShouldFailClosed(result, "exactly three packet-bound receipts are required");
+            string output = result.Output;
+            output.ShouldContain("subject=sha256:" + CurrentSubjectSha256);
+            output.ShouldContain("receipts=0");
+            output.ShouldContain("verifier_exit=1");
+            ComputeSha256(Path.Combine(incomplete, "subject.json")).ShouldBe(CurrentSubjectSha256);
+
+            // Three receipts: the same subject, a passing verifier, and a zero exit.
+            (int acceptedExit, string acceptedOutput, string acceptedError) = RunProcess(
+                root,
+                "python3",
+                "tools/assemble-corrected-deployed-runtime-parity.py",
+                accepted);
+            acceptedExit.ShouldBe(0, acceptedError);
+            acceptedOutput.ShouldContain("subject=sha256:" + CurrentSubjectSha256);
+            acceptedOutput.ShouldContain("receipts=3");
+            acceptedOutput.ShouldContain("verifier_exit=0");
+        }
+        finally
+        {
+            Directory.Delete(incomplete, recursive: true);
+            Directory.Delete(accepted, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the closure binds both packet producers. Neither the bounded smoke capture tool nor
+    /// the assembler was bound anywhere, which is exactly why the smoke acceptance semantics could
+    /// change -- from any 2xx to exactly 200 -- without invalidating a single receipt.
+    /// </summary>
+    [Theory]
+    [InlineData("capture", "tools/capture-corrected-deployed-runtime-parity-smokes.py")]
+    [InlineData("assembler", "tools/assemble-corrected-deployed-runtime-parity.py")]
+    public void ClosureBindsBothPacketProducers(string bindingName, string relativePath)
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        JsonObject binding = closure["dispatch"]![bindingName]!.AsObject();
+
+        binding["file"]!.GetValue<string>().ShouldBe(relativePath);
+        binding["sha256"]!.GetValue<string>().ShouldBe(
+            ComputeSha256(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar))));
+        binding["size"]!.GetValue<long>().ShouldBe(
+            new FileInfo(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar))).Length);
+
+        // The subject binds the whole dispatch block, so a producer edit re-mints.
+        JsonObject subject = LoadJson(Path.Combine(root, EvidenceRelativePath, "subject.json"));
+        subject["verifier"]![bindingName]!["sha256"]!.GetValue<string>()
+            .ShouldBe(binding["sha256"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// Verifies a drifted producer binding fails closed instead of validating against stale bytes.
+    /// </summary>
+    /// <param name="bindingName">Producer binding to drift.</param>
+    [Theory]
+    [InlineData("capture")]
+    [InlineData("assembler")]
+    public void DriftedProducerBindingFailsClosed(string bindingName)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            closure["dispatch"]![bindingName]!["sha256"] = new string('2', 64);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "dispatch identity does not select the trusted live verifier");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the two operator-facing Story 3.15 records state the current subject and the current
+    /// verdict. Only docs/ci.md was drift-bound, so both records could be -- and once were -- left
+    /// asserting a superseded subject and a passing verdict against a packet that fails closed.
+    /// </summary>
+    /// <param name="relativePath">Operator record to check.</param>
+    [Theory]
+    [InlineData("_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md")]
+    [InlineData("_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure-proof-packet.md")]
+    public void OperatorRecordsStateTheCurrentSubjectAndVerdict(string relativePath)
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string subjectSha256 = closure["subject"]!["sha256"]!.GetValue<string>();
+        int receipts = closure["acceptances"]!["receipts"]!.AsArray().Count;
+        string record = File.ReadAllText(
+            Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+        record.ShouldContain(subjectSha256);
+        record.ShouldContain(IndexDigest["sha256:".Length..]);
+
+        // Read the claim field itself rather than inferring the verdict only from the receipt
+        // count: a record must explain the value an auditor will actually find in the JSON.
+        closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
+        record.ShouldContain("claim");
+
+        // A record may narrate superseded subjects, but it must never present one as current: the
+        // current subject has to be the first subject digest the reader meets.
+        string[] subjects =
+        [
+            subjectSha256,
+            BatchSupersededSubjectSha256,
+            TrustedVerifierSupersededSubjectSha256,
+            SupersededSubjectSha256,
+        ];
+        string? firstSubject = Regex.Matches(record, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
+            .Select(match => match.Value)
+            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal));
+        firstSubject.ShouldBe(subjectSha256, relativePath);
+
+        // The verdict itself must agree with the packet, not with a previous acceptance round.
+        if (receipts == RequiredRoles.Length)
+        {
+            record.ShouldContain("parity is available");
+        }
+        else
+        {
+            record.ShouldContain("fails closed");
+            record.ShouldContain(FormattableString.Invariant($"{receipts} of {RequiredRoles.Length}"));
         }
     }
 
@@ -1959,6 +3120,71 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         return temporary;
     }
 
+    /// <summary>
+    /// Builds one retained GitHub issue-comment envelope in the exact closed shape the verifier
+    /// accepts. The verifier close-lists the envelope, its user object and its reaction summary, so
+    /// a fixture that emits only the fields the checks read would be rejected -- and, more
+    /// importantly, would stop proving that a stray unreviewed field fails closed.
+    /// </summary>
+    /// <param name="commentId">Comment identifier to bind the id, URLs and anchor to.</param>
+    /// <param name="body">Comment body.</param>
+    /// <param name="timestamp">Value used for both created_at and updated_at.</param>
+    /// <returns>The closed-shape comment document.</returns>
+    private static JsonObject GitHubComment(long commentId, string body, string timestamp) => new()
+    {
+        ["author_association"] = "MEMBER",
+        ["body"] = body,
+        ["created_at"] = timestamp,
+        ["html_url"] = FormattableString.Invariant(
+            $"https://github.com/Hexalith/Hexalith.EventStore/issues/{AcceptanceIssue}#issuecomment-{commentId}"),
+        ["id"] = commentId,
+        ["issue_url"] = FormattableString.Invariant(
+            $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/{AcceptanceIssue}"),
+        ["minimized"] = null,
+        ["node_id"] = FormattableString.Invariant($"IC_kwDO{commentId}"),
+        ["performed_via_github_app"] = null,
+        ["pin"] = null,
+        ["reactions"] = new JsonObject
+        {
+            ["+1"] = 0,
+            ["-1"] = 0,
+            ["confused"] = 0,
+            ["eyes"] = 0,
+            ["heart"] = 0,
+            ["hooray"] = 0,
+            ["laugh"] = 0,
+            ["rocket"] = 0,
+            ["total_count"] = 0,
+            ["url"] = FormattableString.Invariant(
+                $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/{commentId}/reactions"),
+        },
+        ["updated_at"] = timestamp,
+        ["url"] = FormattableString.Invariant(
+            $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/{commentId}"),
+        ["user"] = new JsonObject
+        {
+            ["avatar_url"] = "https://avatars.githubusercontent.com/u/6775094?v=4",
+            ["events_url"] = "https://api.github.com/users/jpiquot/events{/privacy}",
+            ["followers_url"] = "https://api.github.com/users/jpiquot/followers",
+            ["following_url"] = "https://api.github.com/users/jpiquot/following{/other_user}",
+            ["gists_url"] = "https://api.github.com/users/jpiquot/gists{/gist_id}",
+            ["gravatar_id"] = string.Empty,
+            ["html_url"] = "https://github.com/jpiquot",
+            ["id"] = 6775094,
+            ["login"] = "jpiquot",
+            ["node_id"] = "MDQ6VXNlcjY3NzUwOTQ=",
+            ["organizations_url"] = "https://api.github.com/users/jpiquot/orgs",
+            ["received_events_url"] = "https://api.github.com/users/jpiquot/received_events",
+            ["repos_url"] = "https://api.github.com/users/jpiquot/repos",
+            ["site_admin"] = false,
+            ["starred_url"] = "https://api.github.com/users/jpiquot/starred{/owner}{/repo}",
+            ["subscriptions_url"] = "https://api.github.com/users/jpiquot/subscriptions",
+            ["type"] = "User",
+            ["url"] = "https://api.github.com/users/jpiquot",
+            ["user_view_type"] = "public",
+        },
+    };
+
     private static void AttachThreeAcceptedReceipts(string temporary)
     {
         JsonObject closure = LoadJson(Path.Combine(temporary, "closure.json"));
@@ -2012,26 +3238,10 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 // Each rostered owner accepts in a distinct comment; sharing one id across roles
                 // would let a single comment stand in for two of the three required acceptances.
                 long commentId = role == "eventstore-owner" ? 9000001L : 9000002L;
-                sourceDocument = new()
-                {
-                    ["author_association"] = "MEMBER",
-                    ["body"] = Encoding.UTF8.GetString(CanonicalBytes(acceptance)).TrimEnd('\n'),
-                    ["created_at"] = acceptedAt.ToString(
-                        "yyyy-MM-dd'T'HH:mm:ss'Z'",
-                        CultureInfo.InvariantCulture),
-                    ["html_url"] = FormattableString.Invariant(
-                        $"https://github.com/Hexalith/Hexalith.EventStore/issues/{SyntheticAcceptanceIssue}#issuecomment-{commentId}"),
-                    ["id"] = commentId,
-                    ["issue_url"] = FormattableString.Invariant(
-                        $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/{SyntheticAcceptanceIssue}"),
-                    ["performed_via_github_app"] = null,
-                    ["updated_at"] = acceptedAt.ToString(
-                        "yyyy-MM-dd'T'HH:mm:ss'Z'",
-                        CultureInfo.InvariantCulture),
-                    ["url"] = FormattableString.Invariant(
-                        $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/{commentId}"),
-                    ["user"] = new JsonObject { ["id"] = 6775094, ["login"] = "jpiquot" },
-                };
+                sourceDocument = GitHubComment(
+                    commentId,
+                    Encoding.UTF8.GetString(CanonicalBytes(acceptance)).TrimEnd('\n'),
+                    acceptedAt.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
             }
 
             string sourcePath = Path.Combine(sourcesDirectory, role + ".json");
@@ -2067,7 +3277,80 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     /// <param name="packet">Packet root to mutate.</param>
     /// <param name="transform">Body rewrite to apply.</param>
-    private static void MutateRegistrySourceBody(string packet, Func<string, string> transform)
+    /// <summary>Formats one instant in the exact second-precision UTC shape the verifier requires.</summary>
+    /// <param name="value">Instant to format.</param>
+    /// <returns>The formatted timestamp.</returns>
+    private static string Utc(DateTimeOffset value) =>
+        value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Rewrites the retained Production smoke summary, regenerates each platform log from the
+    /// mutated summary so the log-versus-summary equality still holds, then rebinds the log
+    /// bindings, the results binding, the closed inventory and the canonical subject. Without the
+    /// log regeneration a timing mutation would fail on the log comparison rather than on the bound
+    /// under test.
+    /// </summary>
+    /// <param name="packet">Packet root to mutate.</param>
+    /// <param name="mutate">Mutation applied to the smoke summary.</param>
+    private static void MutateSmokeResults(string packet, Action<JsonObject> mutate)
+    {
+        string closurePath = Path.Combine(packet, "closure.json");
+        JsonObject closure = LoadJson(closurePath);
+        string resultsRelative = closure["production_smokes"]!["results"]!["file"]!.GetValue<string>();
+        string resultsPath = Path.Combine(packet, resultsRelative);
+        JsonObject results = LoadJson(resultsPath);
+
+        mutate(results);
+
+        foreach (JsonNode? platform in results["platforms"]!.AsArray())
+        {
+            JsonObject item = platform!.AsObject();
+            JsonObject log = new()
+            {
+                ["attempts"] = item["attempts"]!.DeepClone(),
+                ["child_digest"] = item["child_digest"]!.DeepClone(),
+                ["cleanup"] = item["cleanup"]!.DeepClone(),
+                ["ended_at"] = item["ended_at"]!.DeepClone(),
+                ["exit_code"] = item["exit_code"]!.DeepClone(),
+                ["health_path"] = "/alive",
+                ["hosting_environment"] = "Production",
+                ["http_status"] = item["http_status"]!.DeepClone(),
+                ["observed_runtime_platform"] = item["observed_runtime_platform"]!.DeepClone(),
+                ["outcome"] = item["outcome"]!.DeepClone(),
+                ["platform"] = item["platform"]!.DeepClone(),
+                ["readiness_result"] = item["readiness_result"]!.DeepClone(),
+                ["redirect_count"] = item["redirect_count"]!.DeepClone(),
+                ["schema"] = "hexalith.eventstore.production-smoke-log.v1",
+                ["started_at"] = item["started_at"]!.DeepClone(),
+            };
+            string logRelative = item["log"]!["file"]!.GetValue<string>();
+            string logPath = Path.Combine(packet, logRelative);
+            WriteCanonical(logPath, log);
+            item["log"]!["sha256"] = ComputeSha256(logPath);
+            item["log"]!["size"] = new FileInfo(logPath).Length;
+        }
+
+        WriteCanonical(resultsPath, results);
+        closure["production_smokes"]!["results"]!["sha256"] = ComputeSha256(resultsPath);
+        closure["production_smokes"]!["results"]!["size"] = new FileInfo(resultsPath).Length;
+        WriteCanonical(closurePath, closure);
+        RebindInventoryAndSubject(packet);
+    }
+
+    private static void MutateRegistrySourceBody(string packet, Func<string, string> transform) =>
+        MutateRegistrySourceDocument(
+            packet,
+            source => source["body"] = transform(source["body"]!.GetValue<string>()));
+
+    /// <summary>
+    /// Rewrites any field of the retained roster comment, then rebinds the registry document and
+    /// the closure's registry binding. As with the body variant, the technical inventory and the
+    /// canonical subject are deliberately left alone: registry validation runs before the inventory
+    /// sweep, so a negative case fails on the registry itself.
+    /// </summary>
+    /// <param name="packet">Packet root to mutate.</param>
+    /// <param name="mutate">Mutation applied to the retained comment document.</param>
+    private static void MutateRegistrySourceDocument(string packet, Action<JsonObject> mutate)
     {
         string closurePath = Path.Combine(packet, "closure.json");
         JsonObject closure = LoadJson(closurePath);
@@ -2079,7 +3362,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             packet,
             registry["authority_source"]!["file"]!.GetValue<string>());
         JsonObject source = LoadJson(sourcePath);
-        source["body"] = transform(source["body"]!.GetValue<string>());
+        mutate(source);
         WriteCanonical(sourcePath, source);
         registry["authority_source"]!["sha256"] = ComputeSha256(sourcePath);
         registry["authority_source"]!["size"] = new FileInfo(sourcePath).Length;
@@ -2146,6 +3429,18 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             closure["owner_role_registry"]!["sha256"]!.GetValue<string>();
         subject["evidence"]!["technical_inventory_sha256"] =
             closure["technical_inventory"]!["sha256"]!.GetValue<string>();
+
+        // The subject also hashes the canonical package-domain and OCI blocks, so a rebind that
+        // touched retained package or OCI bytes has to re-derive those too -- otherwise the
+        // positive control fails on the subject rather than on the property under test.
+        subject["evidence"]!["package_domains_sha256"] =
+            Convert.ToHexString(SHA256.HashData(CanonicalBytes(closure["packages"]!)))
+                .ToLowerInvariant();
+        subject["evidence"]!["oci_graph_sha256"] =
+            Convert.ToHexString(SHA256.HashData(CanonicalBytes(closure["oci"]!)))
+                .ToLowerInvariant();
+        subject["evidence"]!["production_smokes_sha256"] =
+            closure["production_smokes"]!["results"]!["sha256"]!.GetValue<string>();
         WriteCanonical(subjectPath, subject);
         closure["subject"]!["sha256"] = ComputeSha256(subjectPath);
         closure["subject"]!["size"] = new FileInfo(subjectPath).Length;
@@ -2293,17 +3588,37 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private static string ComputeSha256(string path) =>
         Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
 
+    /// <summary>
+    /// Copies a tree, skipping compiled Python bytecode. Copying developer-local
+    /// <c>__pycache__</c> into the very tree the stale-bytecode test controls would let a cache
+    /// this test did not create decide the outcome.
+    /// </summary>
+    /// <param name="source">Directory to copy.</param>
+    /// <param name="destination">Destination directory.</param>
     private static void CopyDirectory(string source, string destination)
     {
+        static bool IsBytecode(string path) =>
+            path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(segment => segment == "__pycache__")
+            || path.EndsWith(".pyc", StringComparison.Ordinal);
+
         Directory.CreateDirectory(destination);
         foreach (string directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
         {
-            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+            string relative = Path.GetRelativePath(source, directory);
+            if (!IsBytecode(relative))
+            {
+                Directory.CreateDirectory(Path.Combine(destination, relative));
+            }
         }
 
         foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)));
+            string relative = Path.GetRelativePath(source, file);
+            if (!IsBytecode(relative))
+            {
+                File.Copy(file, Path.Combine(destination, relative));
+            }
         }
     }
 

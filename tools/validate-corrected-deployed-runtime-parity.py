@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import importlib.machinery
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -16,7 +17,7 @@ RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
     "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "886fc7141063185f21f2658afc347cf9428b5c781b97fc81a07d612d9961ca41"
+V1_HANDLER_SHA256 = "8e29fc6a5122c64e87146ca191df1ead177af9f1981985dbc51f935b415b3f5f"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -32,7 +33,7 @@ IMPORT_PATH_FILE_SHA256 = {
     "release_evidence_handlers/__init__.py":
         "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
     "release_evidence_handlers/v3.py":
-        "410952dcb855e52278ef2575ce6d53bc2df36c0d7a936eca464cba0e4cdf41b4",
+        "f212c784bb0b4b006d683f25248c40a14edf19198cbfaee61f520e07b3bb03d2",
 }
 EXPECTED_IMPORT_PATH_FILES = {
     "deployed_runtime_parity_handlers/__init__.py",
@@ -120,8 +121,13 @@ def _is_repository_path(value):
     ):
         return False
     try:
-        path = Path(value).resolve()
-    except (OSError, RuntimeError, ValueError):
+        # A bytes sys.path entry or module origin is a real repository path, so it must be decoded
+        # rather than dropped. Returning False for it -- which is what catching TypeError alone did
+        # -- let such a module escape both displacement and the post-execution shadow check, turning
+        # a loud crash into a silent guard bypass. TypeError stays only as a backstop for a value
+        # os.fsdecode itself cannot handle.
+        path = Path(os.fsdecode(value)).resolve()
+    except (OSError, RuntimeError, TypeError, ValueError):
         return False
     root = _repository_root().resolve()
     return path == root or root in path.parents
@@ -231,18 +237,6 @@ def _load_handler(module_name, sources):
     return handler, predecessor_handler, handler_package, predecessor_package
 
 
-def _verify_imported_file(module, relative):
-    """Fail closed when the imported module is not the file whose bytes were verified.
-
-    _verify_import_path hashes tools/<relative>, but importlib resolves through sys.path
-    independently, so without this the verified file and the executed file can differ.
-    """
-    expected = (Path(__file__).resolve().parent / relative).resolve()
-    actual = Path(getattr(module, "__file__", "") or "").resolve()
-    if actual != expected:
-        raise DispatchError("trusted live handler was not imported from its verified path")
-
-
 def validate(evidence_path, manifest_path=None, packet_root=None):
     """Return the canonical subject digest after validating one closure packet."""
     repository_root = _repository_root()
@@ -252,12 +246,13 @@ def validate(evidence_path, manifest_path=None, packet_root=None):
     sources = _verify_import_path()
     original_path, displaced, trusted_names = _begin_trusted_import_environment()
     try:
-        handler, predecessor_handler, handler_package, predecessor_package = _load_handler(
+        # No post-import path assertion: _load_verified_module sets __file__ from the same
+        # relative path such a check would re-derive, so it could not fail. Provenance is
+        # established before execution instead -- _verify_import_path hashes every file on the
+        # trust path and _load_verified_module exec()s exactly those bytes, so importlib never
+        # resolves these modules and there is no independently resolved file to compare against.
+        handler, predecessor_handler, _handler_package, _predecessor_package = _load_handler(
             module_name, sources)
-        _verify_imported_file(handler, module_name.replace(".", "/") + ".py")
-        _verify_imported_file(predecessor_handler, "release_evidence_handlers/v3.py")
-        _verify_imported_file(handler_package, "deployed_runtime_parity_handlers/__init__.py")
-        _verify_imported_file(predecessor_package, "release_evidence_handlers/__init__.py")
         manifest_path = manifest_path or repository_root / handler.MANIFEST_FILE
         manifest_bytes = manifest_path.read_bytes()
         expected_package_ids = handler.validate_release_manifest(handler.load_json_bytes(manifest_bytes))
@@ -300,7 +295,7 @@ def main():
     try:
         subject_sha256, selected_identity = validate(
             arguments.evidence, arguments.manifest, arguments.packet_root)
-    except (OSError, DispatchError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, DispatchError, TypeError, ValueError, json.JSONDecodeError) as error:
         print(
             f"[corrected-deployed-runtime-parity] fail: {error}; rerun: {RERUN_TRIGGER}",
             file=sys.stderr,

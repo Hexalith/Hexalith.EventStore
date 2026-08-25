@@ -43,7 +43,21 @@ VERIFIER_FILE = "tools/validate-corrected-deployed-runtime-parity.py"
 # package initializer is bound as well because importing the leaf executes it.
 PREDECESSOR_HANDLER_FILE = "tools/release_evidence_handlers/v3.py"
 PREDECESSOR_PACKAGE_FILE = "tools/release_evidence_handlers/__init__.py"
+# The two producers are bound as decision inputs even though the verifier never executes them.
+# Without this the capture tool could change what "a passing Production smoke" means -- as it once
+# did, from any 2xx to exactly 200 -- and the assembler could change how the packet is derived,
+# while every receipt stayed valid. Binding their digests makes any producer edit re-mint the
+# subject, which is exactly what the rerun trigger promises.
+CAPTURE_FILE = "tools/capture-corrected-deployed-runtime-parity-smokes.py"
+ASSEMBLER_FILE = "tools/assemble-corrected-deployed-runtime-parity.py"
 PLATFORMS = ("linux/amd64", "linux/arm64")
+# The capture stamps started_at before its platform deadline opens and ended_at after cleanup, so a
+# legitimate per-platform window is the platform budget plus the independent cleanup budget. Bounding
+# by the platform budget alone let the producer emit records this verifier rejects. The allowance is
+# a verifier-side constant rather than a new field in smoke-results.json, because the retained smoke
+# bytes are frozen evidence and must not be rewritten to satisfy a later schema; a focused test pins
+# it against the capture tool's CLEANUP_TIMEOUT_SECONDS so the two cannot drift.
+CLEANUP_ALLOWANCE_SECONDS = 30
 REQUIRED_ROLES = ("eventstore-owner", "release-owner", "test-architect")
 OWNER_ROLES = ("eventstore-owner", "release-owner")
 OWNER_GITHUB_ACCOUNT = ("jpiquot", 6775094)
@@ -56,6 +70,13 @@ REQUIRED_LIMITATIONS = (
     "This packet supplies immutable deployed-runtime parity evidence only.",
     "It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.",
     "The Test Architect acceptance is a self-attested BMAD record without independent external authentication.",
+    # created_at, updated_at and accepted_at must agree to the exact second, which a human composing
+    # a comment by hand cannot achieve: the receipt body has to be composed against the timestamp
+    # GitHub will assign. Every receipt therefore is a tooling-composed artifact posted with the
+    # rostered owner's write credential. Disclose it in the subject-bound limitation set rather than
+    # leaving the operator to infer it.
+    "Every acceptance receipt is composed by repository tooling and posted with the rostered "
+    "role holder's credential, not typed by hand.",
 )
 RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
@@ -75,6 +96,18 @@ REGISTRY_AUTHORITY_DISCLAIMER = (
     "no package recovery, release, registry mutation, deployment, consumer migration, or Story 3.15 "
     "done status."
 )
+EXPECTED_REGISTRY_ROLE_LINES = "".join(
+    f"- {role}: {EXPECTED_IDENTITIES[role]}\n" for role in REQUIRED_ROLES
+)
+# Known wording mismatch, recorded rather than corrected: the retained comment names the artifact
+# "reviewer-roster.json" (copy-carried from Story 3.13) while this packet retains
+# registry/owner-role-registry.json. The reference is understood to mean that file. Correcting the
+# text would require a new owner comment on the dedicated issue -- an external write -- and a
+# re-mint, so the mismatch is documented here and in the operator records instead.
+# The authenticated roster body is kept verbatim, NOT derived from the identity table. Deriving it
+# made the configuration guard compare the table against a string interpolated from that same
+# table, so re-rostering to a different account kept every check green. Holding the authenticated
+# bytes as a literal gives _verify_roster_configuration two independent things to compare.
 EXPECTED_REGISTRY_AUTHORITY_BODY = (
     "Story 3.15 reviewer-roster ratification\n"
     "I ratify the exact reviewer-role mappings for Hexalith/Hexalith.EventStore Story 3.15:\n"
@@ -83,7 +116,9 @@ EXPECTED_REGISTRY_AUTHORITY_BODY = (
     "- test-architect: bmad:murat\n"
     "This dual EventStore-owner / Release-owner mapping to github:jpiquot is intentional. The Test "
     "Architect receipt from bmad:murat is accepted as rostered.\n"
-    f"{REGISTRY_AUTHORITY_DISCLAIMER}\n"
+    "This comment is the durable external authority_source for reviewer-roster.json. It authorizes "
+    "no package recovery, release, registry mutation, deployment, consumer migration, or Story 3.15 "
+    "done status.\n"
 )
 ISSUE_COMMENT_ANCHOR = re.compile(
     r"\Ahttps://github\.com/Hexalith/Hexalith\.EventStore/issues/([1-9][0-9]*)#issuecomment-([1-9][0-9]*)\Z"
@@ -92,6 +127,7 @@ ISSUE_COMMENT_ANCHOR = re.compile(
 # Story 3.15 thread. A positive allowlist rejects every past and future sibling issue automatically
 # and also guarantees both owner receipts share one issue.
 STORY_3_15_ISSUE = 352
+REGISTRY_AUTHORITY_COMMENT_ID = 5407975180
 # Each rostered role is bound to exactly one source kind. Without this, an owner receipt could
 # present a self-attested bmad record and skip GitHub authentication entirely.
 EXPECTED_SOURCE_KINDS = {
@@ -99,6 +135,60 @@ EXPECTED_SOURCE_KINDS = {
     "release-owner": "github-issue-comment",
     "test-architect": "bmad-test-architect-record",
 }
+EXPECTED_AUTHOR_ASSOCIATIONS = ("MEMBER", "OWNER", "COLLABORATOR")
+# The retained GitHub comment envelopes are the sole external authentication artifacts in this
+# packet, yet they were the only structures read entirely through .get(). A stray field could
+# therefore persist inside one of them without changing the subject, so the rerun trigger never
+# fired. Close all three levels of the envelope exactly as the GitHub issue-comment API returns it.
+GITHUB_COMMENT_FIELDS = (
+    "author_association",
+    "body",
+    "created_at",
+    "html_url",
+    "id",
+    "issue_url",
+    "minimized",
+    "node_id",
+    "performed_via_github_app",
+    "pin",
+    "reactions",
+    "updated_at",
+    "url",
+    "user",
+)
+GITHUB_USER_FIELDS = (
+    "avatar_url",
+    "events_url",
+    "followers_url",
+    "following_url",
+    "gists_url",
+    "gravatar_id",
+    "html_url",
+    "id",
+    "login",
+    "node_id",
+    "organizations_url",
+    "received_events_url",
+    "repos_url",
+    "site_admin",
+    "starred_url",
+    "subscriptions_url",
+    "type",
+    "url",
+    "user_view_type",
+)
+GITHUB_REACTION_FIELDS = (
+    "+1",
+    "-1",
+    "confused",
+    "eyes",
+    "heart",
+    "hooray",
+    "laugh",
+    "rocket",
+    "total_count",
+    "url",
+)
 
 
 class EvidenceError(ValueError):
@@ -215,6 +305,40 @@ def _parse_time(value, message):
     return parsed
 
 
+# The one authenticated account. It is asserted as a literal below rather than only being compared
+# against strings built from it, so re-rostering either half fails closed instead of silently
+# re-pointing every derived check at the new account.
+RATIFIED_OWNER_GITHUB_ACCOUNT = ("jpiquot", 6775094)
+RATIFIED_TEST_ARCHITECT_IDENTITY = "bmad:murat"
+
+
+def _verify_roster_configuration():
+    """Fail closed when the rostered account, the identities, and the roster body disagree.
+
+    An earlier form compared EXPECTED_IDENTITIES against the very expression it was built from and
+    checked that a derived role-line block appeared inside a body interpolated from that same
+    block, so rewriting OWNER_GITHUB_ACCOUNT to any other account left it green. Every comparison
+    here now has two independent sides: the module table on one, and the ratified literals plus the
+    verbatim authenticated comment body on the other.
+    """
+    login, account_id = OWNER_GITHUB_ACCOUNT
+    if (
+        OWNER_GITHUB_ACCOUNT != RATIFIED_OWNER_GITHUB_ACCOUNT
+        or not isinstance(login, str)
+        or not isinstance(account_id, int)
+        or isinstance(account_id, bool)
+        or set(EXPECTED_IDENTITIES) != set(REQUIRED_ROLES)
+        or any(EXPECTED_IDENTITIES[role] != f"github:{login}" for role in OWNER_ROLES)
+        or EXPECTED_IDENTITIES["test-architect"] != RATIFIED_TEST_ARCHITECT_IDENTITY
+        or set(EXPECTED_SOURCE_KINDS) != set(REQUIRED_ROLES)
+        # The derived role lines must reproduce what the authenticated comment actually says.
+        or EXPECTED_REGISTRY_ROLE_LINES not in EXPECTED_REGISTRY_AUTHORITY_BODY
+        or REGISTRY_AUTHORITY_DISCLAIMER not in EXPECTED_REGISTRY_AUTHORITY_BODY
+        or f"github:{login}" not in EXPECTED_REGISTRY_AUTHORITY_BODY
+    ):
+        raise EvidenceError("rostered owner identity configuration is inconsistent")
+
+
 def _repository_file(repository_root, relative):
     path = Path(relative)
     if path.is_absolute() or ".." in path.parts:
@@ -312,36 +436,36 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
     )
     if document["schema"] != SCHEMA or document["repository"] != REPOSITORY or document["story_id"] != "3.15":
         raise EvidenceError("closure identity is invalid")
-    if any(
-        EXPECTED_IDENTITIES[role] != f"github:{OWNER_GITHUB_ACCOUNT[0]}"
-        for role in OWNER_ROLES
-    ):
-        raise EvidenceError("rostered owner identity configuration is inconsistent")
+    _verify_roster_configuration()
 
     dispatch = _exact_object(
         document["dispatch"],
-        ("handler", "predecessor_handler", "predecessor_package", "schema", "verifier", "version"),
+        (
+            "assembler",
+            "capture",
+            "handler",
+            "predecessor_handler",
+            "predecessor_package",
+            "schema",
+            "verifier",
+            "version",
+        ),
         "dispatch schema is invalid",
     )
     if dispatch["schema"] != SCHEMA or dispatch["version"] != CODEC_VERSION:
         raise EvidenceError("dispatch identity is invalid")
-    handler_binding = _binding(dispatch["handler"])
-    verifier_binding = _binding(dispatch["verifier"])
-    predecessor_handler_binding = _binding(dispatch["predecessor_handler"])
-    predecessor_package_binding = _binding(dispatch["predecessor_package"])
-    if (
-        handler_binding["file"] != HANDLER_FILE
-        or verifier_binding["file"] != VERIFIER_FILE
-        or predecessor_handler_binding["file"] != PREDECESSOR_HANDLER_FILE
-        or predecessor_package_binding["file"] != PREDECESSOR_PACKAGE_FILE
-    ):
+    expected_dispatch_files = {
+        "assembler": ASSEMBLER_FILE,
+        "capture": CAPTURE_FILE,
+        "handler": HANDLER_FILE,
+        "predecessor_handler": PREDECESSOR_HANDLER_FILE,
+        "predecessor_package": PREDECESSOR_PACKAGE_FILE,
+        "verifier": VERIFIER_FILE,
+    }
+    bindings = {name: _binding(dispatch[name]) for name in expected_dispatch_files}
+    if any(bindings[name]["file"] != path for name, path in expected_dispatch_files.items()):
         raise EvidenceError("dispatch files are not trusted")
-    for binding in (
-        handler_binding,
-        verifier_binding,
-        predecessor_handler_binding,
-        predecessor_package_binding,
-    ):
+    for binding in bindings.values():
         live = _repository_file(repository_root, binding["file"]).read_bytes()
         if len(live) != binding["size"] or hashlib.sha256(live).hexdigest() != binding["sha256"]:
             raise EvidenceError("dispatch identity does not select the trusted live verifier")
@@ -602,7 +726,11 @@ def _validate_smokes(document, packet_root):
         raise EvidenceError("bounded Production smoke outcome is invalid")
     overall_start = _parse_time(results["started_at"], "Production smoke start is invalid")
     overall_end = _parse_time(results["ended_at"], "Production smoke end is invalid")
-    if overall_end < overall_start or (overall_end - overall_start).total_seconds() > 360:
+    platform_bound = results["timeout_seconds"] + CLEANUP_ALLOWANCE_SECONDS
+    if (
+        overall_end < overall_start
+        or (overall_end - overall_start).total_seconds() > len(PLATFORMS) * platform_bound
+    ):
         raise EvidenceError("Production smoke aggregate bound is invalid")
     expected_children = {child["platform"]: child["manifest"]["digest"] for child in document["oci"]["children"]}
     for item in platforms:
@@ -643,7 +771,7 @@ def _validate_smokes(document, packet_root):
             or item["cleanup"] != "pass"
             or item["outcome"] != "pass"
             or end < start
-            or (end - start).total_seconds() > results["timeout_seconds"]
+            or (end - start).total_seconds() > platform_bound
             or start < overall_start
             or end > overall_end
         ):
@@ -691,42 +819,41 @@ def _validate_registry(document, packet_root):
         raise EvidenceError("owner-role registry is invalid")
     _parse_time(registry["created_at"], "owner-role registry timestamp is invalid")
     source_bytes = _verify_file(packet_root, source)
-    source_document = load_json_bytes(source_bytes)
-    body = source_document.get("body")
-    user = source_document.get("user")
-    # findall() fed straight into dict() is last-wins, so a prepended contradicting role line would
-    # be silently discarded. Reject any repeated role key before comparing the mapping.
+    source_document = _github_comment_envelope(
+        source_bytes, "owner-role registry authority source schema is invalid"
+    )
+    body = source_document["body"]
     # GitHub returns comment bodies with CRLF line endings, which defeats the line-anchored
-    # role-mapping pattern and the sentence split below. Normalize before matching so a genuine
-    # roster comment is not rejected for a reason that has nothing to do with its content.
+    # role-mapping pattern below. Normalize before matching so a genuine roster comment is not
+    # rejected for a reason that has nothing to do with its content.
     normalized_body = body.replace("\r\n", "\n").replace("\r", "\n") if isinstance(body, str) else None
-    matches = ROLE_MAPPING_LINE.findall(normalized_body) if isinstance(normalized_body, str) else []
+    if not isinstance(normalized_body, str):
+        raise EvidenceError("owner-role registry authority source is invalid")
+    # findall() fed straight into dict() is last-wins, so a prepended contradicting role line would
+    # be silently discarded. Reject any repeated role key before comparing the mapping. This check
+    # is deliberately separate from -- and ordered before -- the whole-body equality below, so a
+    # contradicting role assignment names the role mapping rather than hiding behind the generic
+    # body message.
+    matches = ROLE_MAPPING_LINE.findall(normalized_body)
     role_lines = dict(matches)
-    duplicate_roles = len(matches) != len(role_lines)
+    if len(matches) != len(role_lines) or role_lines != EXPECTED_IDENTITIES:
+        raise EvidenceError("owner-role registry authority source role mapping is invalid")
     # The entire retained comment body is an authenticated fact. Requiring only the disclaimer as a
     # substring would allow a contradictory deployment-authority sentence to be appended unchanged.
-    authority_body_agrees = normalized_body == EXPECTED_REGISTRY_AUTHORITY_BODY
+    if normalized_body != EXPECTED_REGISTRY_AUTHORITY_BODY:
+        raise EvidenceError("owner-role registry authority source body is invalid")
+    user = source_document["user"]
     if (
-        source_document.get("id") != 5407975180
-        or source_document.get("url")
-        != "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975180"
-        or source_document.get("html_url")
-        != "https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5407975180"
-        or source_document.get("issue_url")
-        != "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/352"
-        or not isinstance(user, dict)
+        source_document["id"] != REGISTRY_AUTHORITY_COMMENT_ID
+        or not _github_comment_identity_agrees(source_document)
         # Authenticate the roster comment as strongly as an acceptance receipt's source. Both paths
-        # consume the same named account tuple so re-rostering cannot silently split their checks.
-        or (user.get("login"), user.get("id")) != OWNER_GITHUB_ACCOUNT
-        or source_document.get("updated_at") != source_document.get("created_at")
-        or source_document.get("performed_via_github_app") is not None
-        or source_document.get("author_association")
-        not in ("MEMBER", "OWNER", "COLLABORATOR")
-        or not isinstance(body, str)
-        or duplicate_roles
-        or role_lines != EXPECTED_IDENTITIES
-        or not authority_body_agrees
-        or registry["created_at"] != source_document.get("created_at")
+        # consume the same named account tuple so re-rostering cannot silently split their checks,
+        # and both resolve the thread through STORY_3_15_ISSUE rather than a second URL literal.
+        or (user["login"], user["id"]) != OWNER_GITHUB_ACCOUNT
+        or source_document["updated_at"] != source_document["created_at"]
+        or source_document["performed_via_github_app"] is not None
+        or source_document["author_association"] not in EXPECTED_AUTHOR_ASSOCIATIONS
+        or registry["created_at"] != source_document["created_at"]
     ):
         raise EvidenceError("owner-role registry authority source is invalid")
 
@@ -790,7 +917,9 @@ def _validate_receipts(document, packet_root, subject_document):
         or {path.name for path in sources_root.iterdir() if path.is_file()} != expected_receipts
         or any(path.is_dir() and path.name != "sources" for path in receipt_root.iterdir())
         or any(path.is_dir() for path in sources_root.iterdir())
-        or any(path.is_symlink() for path in receipt_root.rglob("*"))
+        # No symlink disjunct here: _validate_inventory runs first and raises on the first symlink
+        # anywhere under the packet root, including inside this bound acceptance directory, so a
+        # disjunct here could never be the deciding term.
     ):
         raise EvidenceError("acceptance directory is not closed over exactly three receipts and sources")
     for binding in document["acceptances"]["receipts"]:
@@ -834,34 +963,53 @@ def _validate_receipts(document, packet_root, subject_document):
         if source["kind"] != EXPECTED_SOURCE_KINDS[role]:
             raise EvidenceError("acceptance source kind does not match the rostered role")
         source_bytes = _verify_file(packet_root, source)
-        source_document = load_json_bytes(source_bytes)
         if source["kind"] == "github-issue-comment":
+            source_document = _github_comment_envelope(
+                source_bytes, "GitHub acceptance source schema is invalid"
+            )
             try:
                 source_body = load_json_bytes(source_document["body"].encode("utf-8"))
-            except (KeyError, AttributeError) as error:
+            except (AttributeError, EvidenceError) as error:
                 raise EvidenceError("GitHub acceptance source body is invalid") from error
             expected_source_body = {key: value for key, value in receipt.items() if key != "durable_source"}
-            receipt_user = source_document.get("user")
+            receipt_user = source_document["user"]
             if (
-                not isinstance(receipt_user, dict)
-                or (receipt_user.get("login"), receipt_user.get("id")) != OWNER_GITHUB_ACCOUNT
-                or source_document.get("author_association") not in ("MEMBER", "OWNER", "COLLABORATOR")
+                (receipt_user["login"], receipt_user["id"]) != OWNER_GITHUB_ACCOUNT
+                or source_document["author_association"] not in EXPECTED_AUTHOR_ASSOCIATIONS
                 or source_body != expected_source_body
                 or not _github_comment_identity_agrees(source_document)
-                or source_document.get("created_at") != receipt["accepted_at"]
-                or source_document.get("updated_at") != receipt["accepted_at"]
-                or source_document.get("performed_via_github_app") is not None
+                or source_document["created_at"] != receipt["accepted_at"]
+                or source_document["updated_at"] != receipt["accepted_at"]
+                or source_document["performed_via_github_app"] is not None
             ):
                 raise EvidenceError("GitHub acceptance source is not authenticated to the rostered owner")
         else:
+            source_document = load_json_bytes(source_bytes)
             expected_source = {
                 "acceptance": {key: value for key, value in receipt.items() if key != "durable_source"},
                 "repository": REPOSITORY,
                 "schema": TEST_ARCHITECT_SOURCE_SCHEMA,
-                "test_architect": "bmad:murat",
+                "test_architect": EXPECTED_IDENTITIES["test-architect"],
             }
             if source_document != expected_source or source_bytes != canonical_bytes(source_document):
                 raise EvidenceError("Test Architect acceptance source is invalid")
+
+
+def _github_comment_envelope(source_bytes, message):
+    """Load one retained GitHub issue-comment document under a closed schema.
+
+    Both the owner-role authority source and the two owner acceptance sources are the only external
+    authentication artifacts this packet carries, and they were the only structures read entirely
+    through ``.get()``. A stray field could therefore be added to one of them and persist through a
+    full pass without changing the subject, so the rerun trigger never fired on unreviewed content
+    inside the very documents the verdict authenticates. Close the envelope, its user object, and
+    its reaction summary exactly as the GitHub API returns them.
+    """
+    document = load_json_bytes(source_bytes)
+    _exact_object(document, GITHUB_COMMENT_FIELDS, message)
+    _exact_object(document["user"], GITHUB_USER_FIELDS, message)
+    _exact_object(document["reactions"], GITHUB_REACTION_FIELDS, message)
+    return document
 
 
 def _github_comment_identity_agrees(source_document):

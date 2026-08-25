@@ -426,6 +426,40 @@ def _verify_bound_file(root, binding):
     return content
 
 
+def _reject_prolog_declarations(nuspec_text):
+    """Fail closed when the XML prolog declares a DTD or an entity.
+
+    Every exit from the prolog scan must be either "reached the document element" or an
+    EvidenceError. An earlier form returned silently when the first non-space character was not
+    "<", which turned an unparseable prolog into a skipped scan: utf-8-sig strips exactly one BOM,
+    so a doubled BOM left a residual U+FEFF, the scan returned without looking at anything, and
+    expat then consumed the re-emitted BOM and parsed the DTD behind it.
+    """
+    position = 0
+    length = len(nuspec_text)
+    while True:
+        while position < length and nuspec_text[position].isspace():
+            position += 1
+        if position >= length or not nuspec_text.startswith("<", position):
+            raise EvidenceError("package nuspec prolog is malformed")
+        if nuspec_text.startswith("<?", position):
+            end = nuspec_text.find("?>", position + 2)
+            if end < 0:
+                raise EvidenceError("package nuspec prolog is malformed")
+            position = end + 2
+            continue
+        if nuspec_text.startswith("<!--", position):
+            end = nuspec_text.find("-->", position + 4)
+            if end < 0:
+                raise EvidenceError("package nuspec prolog is malformed")
+            position = end + 3
+            continue
+        if nuspec_text.startswith("<!", position):
+            raise EvidenceError("package nuspec contains forbidden DTD or entity declarations")
+        # The document element starts here: the prolog is over and carried no declaration.
+        return
+
+
 def nuspec_identity(package_path):
     """Return repository identity fields from one package without expanding XML entities."""
     try:
@@ -440,16 +474,34 @@ def nuspec_identity(package_path):
                 raise EvidenceError("package nuspec is not strict UTF-8 XML") from error
             if "\x00" in nuspec_text:
                 raise EvidenceError("package nuspec is not strict UTF-8 XML")
-            declaration = re.match(r"\A\s*<\?xml\s+([^?]*)\?>", nuspec_text, re.IGNORECASE)
-            encoding = None if declaration is None else re.search(
-                r"\bencoding\s*=\s*(['\"])([^'\"]+)\1",
-                declaration.group(1),
-                re.IGNORECASE,
-            )
-            if encoding is not None and encoding.group(2).casefold() not in {"utf-8", "utf8"}:
+            # utf-8-sig strips exactly one leading BOM. A second one survives as U+FEFF, which is
+            # not whitespace, so it would otherwise sit in front of the prolog and be re-emitted
+            # into the bytes handed to ElementTree. Reject any residual BOM anywhere.
+            if "\ufeff" in nuspec_text:
                 raise EvidenceError("package nuspec is not strict UTF-8 XML")
-            if re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", nuspec_text, re.IGNORECASE):
-                raise EvidenceError("package nuspec contains forbidden DTD or entity declarations")
+            # A pseudo-attribute value containing "?" defeated the previous [^?]* body, so the
+            # declaration did not match and the encoding check was skipped rather than failing
+            # closed. Match the declaration non-greedily up to its own "?>", and reject a document
+            # that opens one it never closes.
+            if re.match(r"\A\s*<\?xml[\s?]", nuspec_text, re.IGNORECASE):
+                declaration = re.match(
+                    r"\A\s*<\?xml\s+(.*?)\?>", nuspec_text, re.IGNORECASE | re.DOTALL)
+                if declaration is None:
+                    raise EvidenceError("package nuspec is not strict UTF-8 XML")
+                encoding = re.search(
+                    r"\bencoding\s*=\s*(['\"])([^'\"]+)\1",
+                    declaration.group(1),
+                    re.IGNORECASE,
+                )
+                if encoding is not None and encoding.group(2).casefold() not in {"utf-8", "utf8"}:
+                    raise EvidenceError("package nuspec is not strict UTF-8 XML")
+            # DTD and entity declarations are only legal in the prolog, so only the prolog is
+            # scanned. Scanning the whole document rejected a legitimate nuspec whose description
+            # or release notes merely quote "<!DOCTYPE". A regex for the document element start is
+            # not enough either -- a prolog comment quoting a tag would truncate the scan early --
+            # so the prolog is consumed construct by construct. An undefined entity reference in
+            # the body still fails: ElementTree raises ParseError, which is caught below.
+            _reject_prolog_declarations(nuspec_text)
             # Re-encoding the strictly decoded text prevents ElementTree from independently
             # honoring a second byte-level encoding while preserving the parser's normal XML
             # declaration behavior for the only accepted encoding.

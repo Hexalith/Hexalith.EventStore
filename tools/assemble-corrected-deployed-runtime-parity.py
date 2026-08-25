@@ -9,7 +9,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from deployed_runtime_parity_handlers import v1
+# Set before the handler import: this producer's own digest is a bound decision input, so it must
+# not leave a second executable representation of the trusted handler beside the reviewed source.
+# The pinned verifier this script runs over its own output remains the authority -- it loads the
+# whole trust path from verified source bytes -- but a producer that quietly wrote bytecode would
+# make the two runs disagree about what executed.
+sys.dont_write_bytecode = True
+
+from deployed_runtime_parity_handlers import v1  # noqa: E402
 
 
 def binding(path, relative):
@@ -33,8 +40,37 @@ def repository_root():
     return Path(__file__).resolve().parents[1]
 
 
+def executing_assembler_path(root):
+    """Return this script's own resolved path, refusing anything outside the repository.
+
+    Binding ``root / ASSEMBLER_FILE`` bound the pristine repository file rather than the bytes
+    actually running, so a copy executed from elsewhere would have written the repository file's
+    digest into the closure it produced.
+    """
+    path = Path(__file__).resolve()
+    expected = (root / v1.ASSEMBLER_FILE).resolve()
+    if path != expected:
+        raise ValueError(
+            f"assembler is executing from {path}, not the bound repository path {expected}")
+    return path
+
+
+def verify_handler_provenance(root):
+    """Refuse to assemble when the imported handler modules are not the repository files."""
+    for module, relative in (
+        (v1, v1.HANDLER_FILE),
+        (v1.predecessor_handler, v1.PREDECESSOR_HANDLER_FILE),
+    ):
+        actual = Path(getattr(module, "__file__", "") or "").resolve()
+        expected = (root / relative).resolve()
+        if actual != expected:
+            raise ValueError(f"{relative} was imported from {actual}, not {expected}")
+
+
 def build_document(packet_root):
     root = repository_root()
+    assembler_path = executing_assembler_path(root)
+    verify_handler_provenance(root)
     predecessor = v1.predecessor_handler.load_json_bytes(
         (root / v1.PREDECESSOR_IDENTITY_FILE).read_bytes()
     )
@@ -137,6 +173,11 @@ def build_document(packet_root):
         root / v1.PREDECESSOR_HANDLER_FILE, v1.PREDECESSOR_HANDLER_FILE)
     predecessor_package_binding = binding(
         root / v1.PREDECESSOR_PACKAGE_FILE, v1.PREDECESSOR_PACKAGE_FILE)
+    # Both producers are decision inputs even though the verifier never runs them: the capture tool
+    # decides what a passing Production smoke means and this assembler decides how the packet is
+    # derived. Binding their digests makes any producer edit re-mint the subject.
+    capture_binding = binding(root / v1.CAPTURE_FILE, v1.CAPTURE_FILE)
+    assembler_binding = binding(assembler_path, v1.ASSEMBLER_FILE)
     existing_subject = packet_root / "subject.json"
     created_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     if existing_subject.exists():
@@ -147,6 +188,8 @@ def build_document(packet_root):
         "deployed_runtime_parity": "available",
         "deployment_authorized": False,
         "dispatch": {
+            "assembler": assembler_binding,
+            "capture": capture_binding,
             "handler": handler_binding,
             "predecessor_handler": predecessor_handler_binding,
             "predecessor_package": predecessor_package_binding,
@@ -217,7 +260,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("packet_root", type=Path)
     arguments = parser.parse_args()
-    document, subject_sha256 = build_document(arguments.packet_root)
+    try:
+        document, subject_sha256 = build_document(arguments.packet_root)
+    except (OSError, ValueError) as error:
+        print(
+            f"[corrected-deployed-runtime-parity-assembly] fail: {error}; "
+            f"rerun: {v1.RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
+        return 1
     canonical_write(arguments.packet_root / "closure.json", document)
     receipts = len(document["acceptances"]["receipts"])
     # Assemble and verify are one operation: emitting a packet without running the pinned verifier

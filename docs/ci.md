@@ -411,7 +411,8 @@ hosting environment for `linux/amd64` and `linux/arm64`.
 handler. Every file on the import path — the v1 handler, its package initializer, the v3 predecessor
 handler, and *its* package initializer — is pinned before execution. The source-only loader compiles
 those verified bytes directly, so stale timestamp-valid bytecode cannot stand in for reviewed
-source, and the imported provenance of all four modules must match the verified paths. The handler
+source and importlib never resolves these modules at all -- provenance is established before
+execution rather than re-checked afterwards. The handler
 never executes packet-supplied code: it parses and rehashes retained bytes, rejects symlinks and
 nuspec DTD/entity declarations, checks the closed technical inventory, recomputes the canonical
 subject, and validates exactly three subject-addressed receipts.
@@ -457,17 +458,64 @@ bounded all smoke-capture work by one per-platform monotonic deadline, and corre
 trigger to bind receipt-source **policy** changes. Those trusted-byte changes re-minted the subject
 again and superseded every `dab64f5f...` receipt.
 
-The packet's current subject is
-`a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`, and the packet passes with
-**three of three roster-bound role receipts**. Fresh EventStore-owner comment `5409145568`, fresh
-Release-owner comment `5409148235`, and the `bmad:murat` Test Architect record all bind that exact
-subject. The `dab64f5f...` receipts and sources remain byte-for-byte in the superseded audit area.
-The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
-Architect record is explicitly self-attested without independent external authentication.
+A sixth review loop landed as one authorized batch and re-minted the subject. It made
+both packet producers -- the bounded smoke capture tool and the packet assembler -- bound decision
+inputs in the closure `dispatch` block, so a producer edit can no longer change what a passing
+Production smoke means while every receipt stays valid; it closed the schema of the retained GitHub
+comment envelopes, so a stray unreviewed field can no longer persist inside the packet's only
+external authentication artifacts with the subject unchanged; and it bound a fourth limitation
+disclosing that every acceptance receipt is composed by repository tooling and posted with the
+rostered role holder's credential rather than typed by hand. The same batch made cleanup bounded
+rather than skipped when a platform budget is exhausted, made the capture refuse to overwrite a
+populated `smokes/` directory without `--force`, restricted the nuspec DTD scan to the XML prolog,
+and removed a post-import path assertion that was true by construction.
 
-Owner comments `5409140199` and `5409147909` had timestamp mismatches, were immediately marked
-visibly superseded, and are not retained in the packet. Reassembly reports `receipts=3
-verifier_exit=0` without changing the current subject.
+A seventh review loop landed at zero receipts, where a re-mint costs nothing, and re-minted the
+subject once more. It closed a **fail-open regression the sixth loop introduced**: narrowing the
+nuspec DTD scan to the XML prolog also made that scan return silently when the prolog did not begin
+with `<`, and because `utf-8-sig` strips exactly one byte-order mark, a doubled BOM left a residual
+U+FEFF that skipped the scan entirely -- a nuspec carrying `<!DOCTYPE ... <!ENTITY smuggle ...>` was
+then accepted with the smuggled entity resolving into the package id. Every prolog exit is now
+either "reached the document element" or a fail-closed reason, and a residual BOM is rejected.
+The same loop closed a second regression in both dispatchers: adding `TypeError` to the
+path-resolution catch had silenced a crash by making a bytes repository path answer "not
+repository-local", so such a module escaped both displacement and the post-execution shadow check.
+Paths are now decoded with `os.fsdecode` first. It also made the roster-configuration guard able to
+fail (it had compared the identity table against strings interpolated from that same table), widened
+the per-platform smoke window bound to the platform budget plus the cleanup allowance so the capture
+tool can no longer emit records this verifier rejects, and bound the assembler to the bytes actually
+executing rather than the pristine repository file.
+
+The packet's current subject is
+`663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31`, and the packet **fails closed at
+zero of three receipts**: each re-mint rejected the receipts collected against the prior subject by
+the same rerun trigger, and collecting replacements on issue `#352` is an owner action outside this
+repository. Until that happens deployed-runtime parity is **unavailable** and **no identity is
+selected**. Reassembly reports `receipts=0 verifier_exit=1`. The `bb58d691...`, `dab64f5f...` and
+`a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit area, whose
+README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with its source.
+Three of the seven subjects never had receipts collected at all, so three retained sets against six
+re-mints is the expected shape, not a gap.
+
+`closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
+`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles are asked
+to accept, not a granted verdict: the verifier grants them only at three of three, and at zero
+receipts it exits 1 and grants nothing. `acceptances.directory` likewise names the address receipts
+must occupy, not a directory that exists today.
+
+The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
+Architect record is explicitly self-attested without independent external authentication. Owner
+comments `5409140199` and `5409147909` had timestamp mismatches, were immediately marked visibly
+superseded, and are not retained in the packet.
+
+Two facts are recorded rather than corrected. The retained roster comment names the ratified
+artifact `reviewer-roster.json` -- wording copy-carried from Story 3.13 -- while the packet retains
+`registry/owner-role-registry.json`; the reference is understood to mean that file, and correcting
+it would need a new owner comment plus another re-mint. And the `linux/arm64` Production smoke
+depends on QEMU user-mode emulation registered from
+`tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0`; that
+registration is host state, not an input byte the packet can hash, so it is documented as an
+environmental prerequisite in the capture script rather than bound into the subject.
 
 The subject cannot bind each post-subject receipt-source instance without a hash cycle. It binds
 the source policy instead: replacing one retained source invalidates that source's receipt and any

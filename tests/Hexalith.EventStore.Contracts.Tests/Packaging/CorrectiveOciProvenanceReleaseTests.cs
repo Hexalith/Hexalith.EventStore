@@ -948,29 +948,42 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies preloaded modules with the trusted package names are displaced before verified
-    /// initializer and handler bytes execute.
+    /// Verifies preloaded modules are displaced before verified initializer and handler bytes
+    /// execute. The trusted-name shape alone could not fail -- the source-only loader overwrites
+    /// <c>sys.modules[name]</c> unconditionally before the handler is used -- so the case that
+    /// actually exercises the displacement loop preloads a repository-local module the verified
+    /// handler imports for real. Without the loop that fake would answer the handler's import.
     /// </summary>
-    [Fact]
-    public void CorrectiveDispatcherCannotReusePreloadedHandlerModules()
+    /// <param name="shape">Preloaded module shape.</param>
+    [Theory]
+    [InlineData("trusted-name")]
+    [InlineData("repository-local-dependency")]
+    public void CorrectiveDispatcherCannotReusePreloadedModules(string shape)
     {
         string root = FindRepositoryRoot();
         string checkedInPacket = Path.Combine(
             root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
             "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
-        const string Wrapper =
-            "import runpy,sys,types;" +
-            "p=types.ModuleType('release_evidence_handlers');p.__file__='/tmp/preloaded/__init__.py';p.__path__=[];" +
-            "m=types.ModuleType('release_evidence_handlers.v3');m.__file__='/tmp/preloaded/v3.py';" +
-            "m.validate_identity=lambda *a,**k:(print('preloaded-handler-executed'),b'')[1];" +
-            "p.v3=m;sys.modules[p.__name__]=p;sys.modules[m.__name__]=m;" +
-            "sys.argv=[sys.argv[1],*sys.argv[2:]];runpy.run_path(sys.argv[0],run_name='__main__')";
+        string repositoryLocalOrigin = Path.Combine(root, "tools", "zipfile.py").Replace("\\", "/");
+        string wrapper = shape == "trusted-name"
+            ? "import runpy,sys,types;" +
+                "p=types.ModuleType('release_evidence_handlers');p.__file__='/tmp/preloaded/__init__.py';p.__path__=[];" +
+                "m=types.ModuleType('release_evidence_handlers.v3');m.__file__='/tmp/preloaded/v3.py';" +
+                "m.validate_identity=lambda *a,**k:(print('preloaded-handler-executed'),b'')[1];" +
+                "p.v3=m;sys.modules[p.__name__]=p;sys.modules[m.__name__]=m;" +
+                "sys.argv=[sys.argv[1],*sys.argv[2:]];runpy.run_path(sys.argv[0],run_name='__main__')"
+            : "import runpy,sys,types;" +
+                "z=types.ModuleType('zipfile');" +
+                $"z.__file__='{repositoryLocalOrigin}';" +
+                "z.ZipFile=lambda *a,**k:(print('preloaded-handler-executed'),(_ for _ in ()).throw(RuntimeError('preloaded zipfile used')))[1];" +
+                "z.BadZipFile=RuntimeError;sys.modules['zipfile']=z;" +
+                "sys.argv=[sys.argv[1],*sys.argv[2:]];runpy.run_path(sys.argv[0],run_name='__main__')";
 
         ProcessResult result = RunProcess(
             root,
             "python3",
             "-c",
-            Wrapper,
+            wrapper,
             Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
             Path.Combine(checkedInPacket, "release-identity.json"),
             "--manifest",
@@ -980,6 +993,66 @@ public sealed class CorrectiveOciProvenanceReleaseTests
 
         result.ExitCode.ShouldBe(0, result.Error);
         result.Output.ShouldNotContain("preloaded-handler-executed");
+        result.Output.ShouldContain("pass: sha256:");
+    }
+
+    /// <summary>
+    /// Verifies the corrective dispatcher requires an exact JSON integer for the codec version.
+    /// Without that check <c>3.0</c> passes: it hashes equal to <c>3</c>, so the handler tuple
+    /// lookup succeeds and every downstream <c>!= 3</c> comparison is false -- demonstrated by
+    /// deleting the guard in a scratch copy, which produced a full pass. The Story 3.15 sibling had
+    /// this coverage; this one did not.
+    /// </summary>
+    /// <param name="jsonValue">Non-integer JSON value written into the codec version.</param>
+    [Theory]
+    [InlineData("3.0")]
+    [InlineData("true")]
+    public void CorrectiveDispatcherCodecVersionRequiresAnExactJsonInteger(string jsonValue)
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string identity = Path.Combine(checkedInPacket, "release-identity.json");
+        string temporary = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-corrective-version-{Guid.NewGuid():N}.json");
+        try
+        {
+            // Control: the untouched identity file validates, so the mutation is the only variable.
+            RunProcess(
+                root,
+                "python3",
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                identity,
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket).ExitCode.ShouldBe(0);
+
+            string text = File.ReadAllText(identity);
+            string mutated = Regex.Replace(text, "\"version\":3(?![0-9])", $"\"version\":{jsonValue}");
+            mutated.ShouldNotBe(text);
+            File.WriteAllText(temporary, mutated);
+
+            ProcessResult result = RunProcess(
+                root,
+                "python3",
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                temporary,
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket);
+
+            result.ExitCode.ShouldBe(1, result.Error);
+            result.Error.ShouldContain("release identity dispatch metadata is invalid");
+            result.Output.ShouldNotContain("pass:");
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
     }
 
     /// <summary>
@@ -1028,6 +1101,24 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             compile.ExitCode.ShouldBe(0, compile.Error);
             File.WriteAllBytes(handlerPath, trusted);
             File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
+
+            // Control 1: py_compile really produced a cache. Without it this test passes when
+            // nothing was written, which proves nothing about the loader.
+            string cacheDirectory = Path.Combine(handlers, "__pycache__");
+            Directory.Exists(cacheDirectory).ShouldBeTrue();
+            Directory.GetFiles(cacheDirectory, "v3.*.pyc").Length.ShouldBeGreaterThan(0);
+
+            // Control 2: the stale cache genuinely wins under an ordinary import, so the marker
+            // would execute if the dispatcher resolved this module through importlib. Only with
+            // this control does the negative assertion below mean the source-only loader is what
+            // keeps the tampered bytecode out.
+            ProcessResult control = RunProcess(
+                tools,
+                "python3",
+                "-c",
+                "import release_evidence_handlers.v3");
+            control.ExitCode.ShouldBe(0, control.Error);
+            control.Output.ShouldContain("stale-corrective-bytecode-executed");
 
             ProcessResult result = RunProcess(
                 temporary,

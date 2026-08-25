@@ -7,13 +7,13 @@
     "id": "3.15",
     "label": "Story 3.15 Corrected Deployed Runtime Parity Closure"
   },
-  "collection_status": "COLLECTED",
+  "collection_status": "SUPERSEDED",
   "gate_basis": "priority_thresholds",
   "gate_status": "SUPERSEDED",
-  "rationale": "SUPERSEDED 2026-08-25. This decision was computed at source_sha 516f2489 against Story 3.15 subject bb58d691, which two review loops have since re-minted to 5acb8176; every receipt bound to the earlier subjects is rejected and the packet fails closed at 0 of 3. The inventory it scored is also stale: TamperedImportPathBytesNeverExecute is absent and S315-UNIT-001 has been renamed. Regenerate the trace before relying on any gate verdict. The previous P1 status of MET was vacuous - no P1 requirements exist.",
-  "p0_status": "MET",
-  "p1_status": "NOT_APPLICABLE",
-  "overall_status": "MET",
+  "rationale": "SUPERSEDED 2026-08-25 (loop-7 landing). This decision was computed at source_sha 516f2489 against Story 3.15 subject bb58d691, which has since been re-minted six more times: bb58d691 -> 1dee194f -> 5acb8176 -> 93559e61 -> dab64f5f -> a8cc777e -> 663747b1. Every receipt bound to any earlier subject is rejected, and the packet currently fails closed at 0 of 3 receipts. The inventory it scored is also stale: the focused closure suite has grown well past the set scored here, several named cases have been renamed or replaced, and the smoke-capture suite did not exist. Regenerate the trace before relying on any gate verdict. The previous P1 status of MET was vacuous - no P1 requirements exist.",
+  "p0_status": "SUPERSEDED",
+  "p1_status": "SUPERSEDED",
+  "overall_status": "SUPERSEDED",
   "critical_open": 0,
   "links": {
     "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix.md",
@@ -22,5 +22,8 @@
     "journey_evidence_url": ""
   },
   "source_sha": "516f2489f6586d35eee58f1158a840c404632637",
-  "superseded_by": "regeneration pending; see _bmad-output/implementation-artifacts/deferred-work.md"
+  "superseded_by": "regeneration pending; see _bmad-output/implementation-artifacts/deferred-work.md",
+  "subject_at_evaluation": "bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709",
+  "current_subject": "663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31",
+  "current_packet_verdict": "fail-closed at 0 of 3 receipts; no identity granted"
 }

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '08-25-2026 15:12'
+last_updated: '08-25-2026 18:30'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -228,7 +228,22 @@ development_status:
   # proposal section 4.9's atomic-rename condition cannot be met. Only the display title changed.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: in-progress
-  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  # 2026-08-25 (loop-7 landing): the packet fails closed at 0 of 3 receipts and grants nothing.
+  # Loop 7 landed at zero receipts, where a re-mint is free, and closed two regressions loop 6 had
+  # introduced -- a nuspec prolog scan skipped behind a residual byte-order mark, and a bytes-path
+  # guard bypass in both dispatchers -- each reproduced with a live control.
+  # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
+  # lineages. The current canonical subject is
+  # 663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31; binding both packet
+  # subject has now been re-minted six times across seven subjects; receipts existed for only three
+  # of them, and all three sets are retained byte-for-byte under
+  # evidence/story-3-15/superseded-acceptances/.
+  # closure.json's deployed_runtime_parity/selected_deployed_identity are the claim the three roles
+  # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
+  # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
+  # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
+  # The row stays in-progress until three receipts bind the current subject.
+  3-15-corrected-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
   epic-4: in-progress

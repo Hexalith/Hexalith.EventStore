@@ -1636,47 +1636,67 @@ status: open
   summary: The `summary_bindings` deletion reduces `validate_packet_files`' standalone behavior inside a line range the Code Map freezes, leaving a vestigial `summaries` dict.
   evidence: The diff removes the one-shared-two-platform-summary check from `v3.validate_packet_files`, a public entry point, inside the Code Map's frozen `v3.py:863-974` "preserve v3 behavior" range. It is redundant today only because every present caller invokes `validate_identity` first (`v1.py:445-452`, `validate-corrective-release-evidence.py:108/115`), where the identical constraint is enforced at `v3.py:397`. Confirmed independently by three review layers as not-lost-verification; carried here as a frozen-range and dead-code note. The now-purposeless `summaries` cache at `v3.py:944-952` invites the reader to assume a guard is still present.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+### Trusted-verifier hardening pass (2026-08-25) -- appended under the loop-4 heading
+
+The entries below come from the separate trusted-verifier hardening pass, not from loop 4; they
+were appended here without their own heading. Their `source_spec` values were machine-local
+absolute paths and their `severity:` fields were missing. Both were repaired in place during the
+loop-6 landing (2026-08-25) so the block matches its neighbours. No entry text was removed, and
+several entries duplicate still-open loop-3 items -- the ledger is append-only, so the duplicates
+are left standing and cross-referenced rather than deleted.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: high
   summary: The pinned release publisher cannot supply the newly mandatory container creation timestamp, while a governance test encodes release-pin/gitlink inequality as policy.
   evidence: `.github/workflows/release.yml` pins Builds `a07078ad...`, whose publisher omits `ContainerProvenanceCreated`; `Directory.Build.targets` rejects that omission, and NuGet publication precedes container publication. `ContainerPublishingGovernanceTests.cs` separately requires the release pin to differ from the development gitlink, obstructing the straightforward alignment fix. This belongs to the Story 3.14 release lane.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
   summary: The legacy release job retains unused `attestations: write` and `id-token: write` permissions.
   evidence: `.github/workflows/release.yml` grants both permissions to the production release job although the current legacy path does not consume them. Removing or splitting them changes release-workflow authority and is outside Story 3.15's evidence-only boundary.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
   summary: Container provenance URL validation accepts unrelated hosts and malformed percent escapes instead of enforcing the repository-derived canonical URLs.
   evidence: `Directory.Build.targets` checks only an HTTPS-shaped regex; values such as an unrelated repository URL or a path containing `%ZZ` pass and can enter OCI labels. Canonical URI derivation and validation belong to the corrective-publisher lane rather than this parity packet.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
   summary: The container provenance creation-time regex accepts calendar-impossible dates.
   evidence: `Directory.Build.targets` bounds month and day fields independently, so a value such as `2026-02-31T09:15:00Z` satisfies the claimed RFC 3339 validation. Correct calendar validation is a publisher/input-contract follow-up.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
   summary: The multi-RID provenance test compares the produced creation label to its first observed value rather than the supplied creation instant.
   evidence: `CorrectiveOciProvenanceReleaseTests.RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` feeds `observedCreated` into `ExpectedLabels`, so two children can share the same wrong valid timestamp and still pass. The test should compare both labels directly with its `Created` input.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
   summary: The container default-tag test never observes the tag value it claims was defaulted.
   evidence: `ContainerPublicationDefaultsTagToProvenanceVersion` runs only `ValidateContainerProvenanceInputs` and checks exit zero; deleting or breaking the default assignment can leave that test green. A future publisher test should inspect the evaluated tag or produced archive.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
   summary: The frozen Story 3.14 timestamp parser remains weaker than the strict Story 3.15 parser.
   evidence: `tools/release_evidence_handlers/v3.py` uses `value.replace("Z", "+00:00")` with `datetime.fromisoformat`, admitting spaces, arbitrary offsets, and other shapes that v1 rejects. Tightening the frozen predecessor contract is separate Story 3.14 evidence maintenance.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
   summary: The packet inventory does not require the validated closure path to be the packet root's `closure.json`.
   evidence: `_validate_inventory` permits literal `closure.json` but checks only unexpected actual files, while the CLI accepts independent evidence and packet-root paths. A copied packet root without its own closure can validate against an external closure, which is a CLI/inventory contract follow-up.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
   summary: The checked-in traceability gate artifacts remain superseded and do not cover the final Story 3.15 subject or current focused suite.
   evidence: `_bmad-output/test-artifacts/gate-decision.json`, `e2e-trace-summary.json`, and `traceability-matrix.md` explicitly describe a superseded collection while retaining PASS-shaped fields. Regeneration belongs to the trace workflow and is not evidence created by the parity verifier.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
   summary: A remaining Story 3.13 acceptance path still requires an unmintable synthetic commit-fragment source contract.
   evidence: `DeployedRuntimeParityClosureTests.ValidateAcceptances` retains the `#story-3-13-<hash>-<role>` commit anchor and v1 schema at live call sites, while genuine GitHub acceptances use issue-comment sources. This is Story 3.13 compatibility debt, not part of positive Story 3.15 closure.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
   summary: The changed v3 issue-number normalization has no direct regression test.
   evidence: `release_evidence_handlers.v3.repository_issue_html_url` rejects padded and non-ASCII digits, but the existing `AuthorityHtmlUrlFollowsTheAcceptedIssueUrl` test exercises the sibling codec implementation. A v3-focused mutation test is needed in the predecessor-maintenance lane.
 
@@ -1741,3 +1761,79 @@ status: open
   severity: medium
   summary: Nothing enforces deferred-work ledger format -- every governance test is skipped.
   evidence: All `Dw6*` cases in `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/` carry `[Fact(Skip = ...)]` (Dw6Bookkeeping 4, Dw6LedgerSweep 4, Dw6CheckerReport 5, Dw6GovernanceVocabulary 6) and both `Dw4DeferredWorkDispositionAtddTests` cases are skipped as well. This is why the loop-6 block could be appended with missing `severity:` fields, absolute machine-local `source_spec` paths, and duplicate entries without any gate objecting.
+
+## Deferred from: Story 3.15 loop-6 authorized batch landing (2026-08-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: SUPERSEDES the loop-3 entry stating that opening a dedicated Story 3.15 acceptance issue and requesting acceptances "is an Ask First action and was not performed" -- it was subsequently performed.
+  evidence: Dedicated issue [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352) was opened, its MEMBER-authenticated roster comment `5407975180` was retained as the registry `authority_source`, and two complete acceptance rounds were collected on that thread: `5408186984`/`5408189299` against subject `dab64f5f...`, then `5409145568`/`5409148235` against `a8cc777e...`, plus two timestamp-mismatched attempts `5409140199`/`5409147909` marked superseded. The earlier ledger and spec wording is stale at HEAD and is corrected by this entry rather than edited in place, because the ledger is append-only. What remains genuinely unperformed is collecting a *third* round against the current subject `663747b1...`, which this landing did not do.
+  status: open — recorded correction; the outstanding owner action is the new receipt round.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Ledger-format repair notice for the trusted-verifier hardening block filed under the loop-4 heading.
+  evidence: That block carried machine-local absolute `source_spec` paths, omitted `severity:`, sat under a heading naming a different pass, and duplicated several still-open loop-3 items (the v3-versus-v1 timestamp parser and the hardcoded `closure.json` inventory path are also duplicated within the block itself). The absolute paths, missing severities and heading were repaired in place; the duplicates are left standing because the ledger is append-only. Nothing enforces any of this: every `Dw6*` governance case and both `Dw4` ATDD cases are `[Fact(Skip = ...)]`, which is tracked separately above.
+  status: open — format repaired; the missing enforcement gate remains deferred.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The `raw OCI index shape is invalid` branch is unreachable through packet mutation while the index digest is pinned, and is retained as a structural precondition rather than removed.
+  evidence: `_binding(oci["index"], media_type=INDEX_MEDIA_TYPE)` forces `digest == "sha256:" + sha256`, `index_binding["digest"]` must equal the module constant `INDEX_DIGEST`, and `_verify_file` requires the retained bytes to hash to it, so `oci/index.raw` has exactly one admissible content. The shape check still guards the strict three-way `zip(..., strict=True)` that follows it. `RawOciIndexBytesArePinnedByTheSelectedIndexDigest` pins that reasoning instead of faking reachability.
+  status: open — accepted as documented dead-but-defensive; revisit only if the index stops being digest-pinned.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The retained roster comment names the ratified artifact `reviewer-roster.json` while the packet retains `registry/owner-role-registry.json`.
+  evidence: `EXPECTED_REGISTRY_AUTHORITY_BODY` requires the retained comment body verbatim, and that body's wording was copy-carried from Story 3.13. The reference is understood to mean the retained registry file. Correcting it requires a new owner comment on `#352` (an external write) plus another subject re-mint, so the mismatch is recorded in the verifier source, the story record and `docs/ci.md` instead.
+  status: open — recorded as a known mismatch by owner decision (loop 6).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The `linux/arm64` Production smoke depends on a QEMU emulation registration that the packet cannot hash.
+  evidence: The retained arm64 smoke is only valid given `tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0` having been registered on the host. That is host state, not an input byte, so it is documented as an environmental prerequisite in the capture script docstring and in `docs/ci.md`, and `CiDocDescribesTheCurrentSubjectAndSelectedIdentityDigests` keeps the two copies from drifting. Binding the digest into the subject would record intent rather than proof.
+  status: open — recorded as a documented prerequisite by owner decision (loop 6).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The retained Production smoke bytes were produced by the pre-loop-6 capture tool, so the bound tool of record can no longer reproduce the bytes it certifies.
+  evidence: The smokes are timestamped `2026-08-21T19:24-19:26`. The loop-6 batch bound both producers into the closure `dispatch` block and simultaneously changed the capture tool (bounded cleanup budget, populated-directory refusal, prerequisite docstring), so the currently bound capture digest is not the digest of the tool that produced the retained logs. Re-capturing was deliberately not done: it would replace evidence rather than bind it, and needs Docker plus arm64 binfmt emulation. Every *future* producer edit now re-mints the subject.
+  status: open — accepted for this packet; re-capture belongs to a separately authorized evidence pass.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-32876914109-fix-ci-cd.md`
+  severity: low
+  summary: No drift guard fails loudly when a bUnit upgrade adds or re-signs a render entry point that `AdminUITestContext` no longer intercepts.
+  evidence: The renderer-info contract holds only while every public render entry point declared on `Bunit.BunitContext` has a matching override on `AdminUITestContext`. bUnit 2.9.0 declares three virtual `Render` overloads (all now overridden) and two `[Obsolete]` `RenderComponent` overloads that unconditionally `throw new NotSupportedException`, so they are harmless today. A future bUnit release that adds a fourth entry point would silently stop being covered and resurface `MissingRendererInfoException` in unrelated tests, exactly as the FluentUI `5.0.0-rc.5` bump did. A reflection test comparing declared render members on both types would catch it — and per this repo's history must itself fail when the reflected set comes back empty.
+  status: open — the immediate CI break is fixed; the upgrade-time guard is a separate hardening pass.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-gh-32876914109-fix-ci-cd.md`
+  severity: low
+  summary: No Admin.UI test can exercise the static prerender pass, because every render declares an interactive renderer.
+  evidence: Production Admin.UI renders `InteractiveServer` (`src/Hexalith.EventStore.Admin.UI/Components/Routes.razor`, `Components/App.razor`), which prerenders with `IsInteractive == false` before the interactive pass. `AdminUITestContext.TestRendererInfo` is `protected virtual` so a derived context can opt into `("Static", false)`, and `SetRendererInfo` now latches so a test can choose per-test — but no test does, and no shared helper exists, so the prerender branch of every component is untested.
+  status: open — the seam exists; adding prerender coverage is a separate test-design pass.
+
+## Deferred from: Story 3.15 loop-7 landing (2026-08-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: high
+  summary: SUPERSEDES the loop-6 landing note in the sense that two loop-6 fixes were themselves regressions, both reproduced with live controls and closed in loop 7.
+  evidence: (1) Narrowing the nuspec DTD scan to the XML prolog also made `_reject_prolog_declarations` return silently when the prolog did not begin with `<`. `utf-8-sig` strips exactly one BOM, so a doubled `EF BB BF` left a residual `U+FEFF` and the scan was skipped; with the fix reverted in a scratch copy a nuspec carrying `<!DOCTYPE package [<!ENTITY smuggle "Hexalith.Evil">]>` is ACCEPTED and returns id `Hexalith.Evil`. (2) Adding `TypeError` to `_is_repository_path`'s catch in both dispatchers made a bytes repository path answer False, so such a module escaped displacement and the post-execution shadow check; verified `str -> True, bytes -> False` before the fix and `bytes -> True` after. The lesson recorded here: a narrowing fix needs a control proving the *old* behaviour is still covered on the path it narrowed.
+  status: closed 2026-08-25 (loop 7) — retained as a recorded regression class, not as open work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The per-platform Production-smoke cleanup allowance is a verifier-side constant rather than a field in `smoke-results.json`, kept in step only by a focused test.
+  evidence: The capture stamps `started_at` before the platform deadline and `ended_at` after an independent 30s cleanup budget, so a legitimate window is the platform budget plus that budget. Recording `cleanup_timeout_seconds` in the smoke summary would be the self-describing fix, but the retained smoke bytes are frozen evidence from 2026-08-21 and must not be rewritten to satisfy a later schema. `CLEANUP_ALLOWANCE_SECONDS` in `v1.py` therefore duplicates `CLEANUP_TIMEOUT_SECONDS` in the capture tool; `CleanupAllowanceAgreesBetweenVerifierAndCaptureTool` pins them equal. Fold the field into the schema at the next legitimate re-capture.
+  status: open — accepted for this packet.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The assembler still imports the trusted handler through ordinary importlib rather than the source-only loader the dispatchers use.
+  evidence: Loop 7 set `sys.dont_write_bytecode` before the import, made the assembler verify that the imported `v1` and `v3` modules resolve to their repository paths, bound `Path(__file__).resolve()` instead of the pristine repository file, and removed the stale `__pycache__` trees. A stale `.pyc` can still be *read* by that import. The end-to-end trust property holds regardless, because the assembler runs the pinned verifier -- which loads the whole trust path from verified source bytes -- over its own output and propagates its exit code. Duplicating the ~90-line source-only loader into a third file is the remaining option and is deliberately not taken; it is the same twin-maintenance hazard already filed for the two dispatchers.
+  status: open — accepted; revisit together with the dispatcher-loader deduplication entry.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The closed GitHub envelope schema has no recorded capture provenance and no tolerance path, so a future GitHub API field addition would block owner receipt re-collection with no documented remedy.
+  evidence: `GITHUB_COMMENT_FIELDS`, `GITHUB_USER_FIELDS` and `GITHUB_REACTION_FIELDS` (`tools/deployed_runtime_parity_handlers/v1.py:143`) are exact key sets transcribed from the retained 2026-08 captures; `_exact_object` rejects any envelope carrying an unlisted key. The tuples already include fields GitHub added relatively recently (`user_view_type`, `minimized`, `pin`), which shows the payload shape does drift. Nothing records the capture command, the capture date, or the `X-GitHub-Api-Version` the tuples correspond to, and there is no remedy documented anywhere. Consequence for the one action gating this story: if GitHub adds a field before the three `#352` receipts are collected, every freshly captured source fails with `GitHub acceptance source schema is invalid`, and the operator's only path is to edit a subject-bound handler -- which re-mints and burns any receipt already collected in the same pass. Record the capture command and pin `X-GitHub-Api-Version` in the capture procedure, or split the tuples into required-plus-ignored sets.
+  status: open — accepted for this packet; close before or during the next receipt collection.

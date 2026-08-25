@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import importlib.machinery
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -20,7 +21,7 @@ HANDLERS = {
 # on-disk handler source before import, so an unreviewed edit never executes. Recompute with:
 # sha256sum tools/release_evidence_handlers/v3.py
 HANDLER_FILE_SHA256 = {
-    "release_evidence_handlers.v3": "410952dcb855e52278ef2575ce6d53bc2df36c0d7a936eca464cba0e4cdf41b4",
+    "release_evidence_handlers.v3": "f212c784bb0b4b006d683f25248c40a14edf19198cbfaee61f520e07b3bb03d2",
 }
 # Importing a submodule also executes its package initializer, so pinning the leaf alone leaves
 # that file free to run unreviewed code. Every file on the import path is pinned and verified
@@ -30,6 +31,12 @@ HANDLER_FILE_SHA256 = {
 HANDLER_PACKAGE_FILE_SHA256 = {
     "release_evidence_handlers": "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
 }
+# A support-safe reason alone leaves the operator without a next step. Every failure names the
+# rerun trigger too, matching the sibling Story 3.15 dispatcher.
+RERUN_TRIGGER = (
+    "Re-derive the retained Story 3.14 packet from trusted sources and revalidate it after any "
+    "source, workflow, package, OCI, provenance, authority, or codec change."
+)
 
 
 # Execute only the source bytes whose hashes were checked. In particular, never allow a valid stale
@@ -91,8 +98,13 @@ def _is_repository_path(value):
     ):
         return False
     try:
-        path = Path(value).resolve()
-    except (OSError, RuntimeError, ValueError):
+        # A bytes sys.path entry or module origin is a real repository path, so it must be decoded
+        # rather than dropped. Returning False for it -- which is what catching TypeError alone did
+        # -- let such a module escape both displacement and the post-execution shadow check, turning
+        # a loud crash into a silent guard bypass. TypeError stays only as a backstop for a value
+        # os.fsdecode itself cannot handle.
+        path = Path(os.fsdecode(value)).resolve()
+    except (OSError, RuntimeError, TypeError, ValueError):
         return False
     root = _repository_root().resolve()
     return path == root or root in path.parents
@@ -154,13 +166,6 @@ def _load_verified_module(module_name, path, source, *, is_package=False):
     return module
 
 
-def _verify_imported_file(module, path):
-    expected = path.resolve()
-    actual = Path(getattr(module, "__file__", "") or "").resolve()
-    if actual != expected:
-        raise DispatchError("trusted live handler was not imported from its verified path")
-
-
 def _load_handler(module_name):
     if set(HANDLERS.values()) != set(HANDLER_FILE_SHA256):
         raise DispatchError("trusted live handler configuration is inconsistent")
@@ -181,8 +186,9 @@ def _load_handler(module_name):
     package = _load_verified_module(package_name, package_path, package_source, is_package=True)
     module = _load_verified_module(module_name, handler_path, handler_source)
     setattr(package, leaf_name, module)
-    _verify_imported_file(package, package_path)
-    _verify_imported_file(module, handler_path)
+    # No post-import path assertion: _load_verified_module sets __file__ from the same path such a
+    # check would compare against, so it could not fail. Provenance is established before execution
+    # by hashing every file on the trust path and exec()ing exactly those bytes.
     if module.EXPECTED_PACKET_CODEC_SHA256 != V3_PACKET_CODEC_SHA256:
         raise DispatchError("trusted live handler codec pin is inconsistent")
     return module
@@ -223,7 +229,12 @@ def validate(evidence_path, manifest_path, packet_root=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("evidence", type=Path)
-    parser.add_argument("--manifest", type=Path, default=Path("tools/release-packages.json"))
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path(__file__).resolve().parent / "release-packages.json",
+        help="Release package manifest; defaults to the manifest beside this script.",
+    )
     parser.add_argument(
         "--packet-root",
         type=Path,
@@ -232,8 +243,11 @@ def main():
     arguments = parser.parse_args()
     try:
         digest = validate(arguments.evidence, arguments.manifest, arguments.packet_root)
-    except (OSError, DispatchError, ValueError, json.JSONDecodeError) as error:
-        print(f"[corrective-release-evidence] fail: {error}", file=sys.stderr)
+    except (OSError, DispatchError, TypeError, ValueError, json.JSONDecodeError) as error:
+        print(
+            f"[corrective-release-evidence] fail: {error}; rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
         return 1
     print(f"[corrective-release-evidence] pass: sha256:{digest}")
     return 0

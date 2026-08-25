@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Capture bounded, digest-pinned Production /alive evidence for Story 3.15."""
+"""Capture bounded, digest-pinned Production /alive evidence for Story 3.15.
+
+Environmental prerequisite: the linux/arm64 smoke runs under QEMU user-mode emulation on an amd64
+host. Register it first with the pinned emulator image
+
+    docker run --privileged --rm \
+        tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 \
+        --install all
+
+The registration is host state, not an input byte this packet can hash, so it is recorded as a
+documented precondition rather than bound into the subject.
+"""
 
 import argparse
 import hashlib
@@ -15,7 +26,25 @@ from pathlib import Path
 REPOSITORY = "Hexalith/Hexalith.EventStore"
 IMAGE_REPOSITORY = "registry.hexalith.com/eventstore"
 INDEX_DIGEST = "sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3"
+# The whole-platform wall-clock budget: one monotonic deadline bounds pull, run, port discovery,
+# readiness polling and inspection for a single platform. The retained smoke record reports it as
+# timeout_seconds, and the verifier requires the recorded per-platform window to fit inside it.
 TIMEOUT_SECONDS = 180
+# Cleanup runs after that budget is spent, in the failure mode it exists for, so it must not reuse
+# the exhausted deadline: doing so made remaining_seconds raise before subprocess.run was ever
+# called, leaking the container and its published host port while the record still claimed an
+# attempt had timed out. Cleanup gets its own small independent budget.
+CLEANUP_TIMEOUT_SECONDS = 30
+RERUN_TRIGGER = (
+    "Re-run the bounded two-platform Production smoke capture against the pinned index digest, "
+    "then reassemble and revalidate the closure packet."
+)
+# The refusal path must not tell the operator to "re-run the capture", because the guard they just
+# hit would refuse that too. Name the flag, or the alternative of capturing into a fresh root.
+REFUSAL_RERUN_TRIGGER = (
+    "Capture into an empty packet root, or re-run with --force to deliberately overwrite the "
+    "retained smoke evidence, then reassemble and revalidate the closure packet."
+)
 PLATFORMS = (
     ("linux/amd64", "sha256:4d42f969dc5f57e0f9baa927c588346d77c31fd2615793b5d8c12c239585af63"),
     ("linux/arm64", "sha256:ede853318267146a9888574f79e16ea1e51c1f363a35910fe883b5a9d7256f44"),
@@ -33,22 +62,26 @@ def now():
     return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
-def remaining_seconds(deadline, arguments):
-    """Return the one platform budget's remaining wall-clock time or fail immediately."""
+def remaining_seconds(deadline, arguments, budget=None):
+    """Return the remaining wall-clock time of one budget, or fail immediately.
+
+    ``budget`` is resolved here rather than as a def-time default, so a test that rebinds
+    TIMEOUT_SECONDS on the imported module changes the reported budget too.
+    """
     remaining = deadline - time.monotonic()
     if remaining <= 0:
-        raise subprocess.TimeoutExpired(arguments, TIMEOUT_SECONDS)
+        raise subprocess.TimeoutExpired(arguments, TIMEOUT_SECONDS if budget is None else budget)
     return remaining
 
 
-def run(deadline, *arguments, check=True):
-    """Run one command within the remaining portion of a platform's monotonic deadline."""
+def run(deadline, *arguments, check=True, budget=None):
+    """Run one command within the remaining portion of a monotonic deadline."""
     return subprocess.run(
         arguments,
         check=check,
         capture_output=True,
         text=True,
-        timeout=remaining_seconds(deadline, arguments),
+        timeout=remaining_seconds(deadline, arguments, budget),
     )
 
 
@@ -63,8 +96,12 @@ def parse_curl_write_out(value):
 def capture_platform(output_root, platform, child_digest):
     immutable_image = f"{IMAGE_REPOSITORY}@{child_digest}"
     container_name = f"hexalith-story315-{platform.split('/')[1]}-{uuid.uuid4().hex[:12]}"
-    deadline = time.monotonic() + TIMEOUT_SECONDS
+    # started_at is stamped before the deadline opens, so the recorded window encloses the whole
+    # platform capture including cleanup. Stamping it after made (ended_at - started_at) always
+    # shorter than the budget, which left the verifier's duration guard unfireable by construction
+    # for evidence this script produces.
     started_at = now()
+    deadline = time.monotonic() + TIMEOUT_SECONDS
     attempts = 0
     http_status = 0
     redirect_count = 0
@@ -146,7 +183,15 @@ def capture_platform(output_root, platform, child_digest):
         print(f"[corrected-deployed-runtime-parity-smokes] {platform} capture failed: {error}", file=sys.stderr)
     finally:
         try:
-            run(deadline, "docker", "rm", "--force", container_name)
+            cleanup_deadline = time.monotonic() + CLEANUP_TIMEOUT_SECONDS
+            run(
+                cleanup_deadline,
+                "docker",
+                "rm",
+                "--force",
+                container_name,
+                budget=CLEANUP_TIMEOUT_SECONDS,
+            )
             cleanup = "pass"
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
             print(
@@ -185,11 +230,49 @@ def capture_platform(output_root, platform, child_digest):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    # RawDescriptionHelpFormatter keeps the pinned binfmt registration command in the docstring
+    # copy-pasteable instead of being rewrapped into one unusable line.
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("packet_root", type=Path)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an already populated smokes/ directory instead of refusing.",
+    )
     arguments = parser.parse_args()
     output_root = arguments.packet_root / "smokes"
-    output_root.mkdir(parents=True, exist_ok=True)
+    # Running this against a live packet root used to overwrite the three hash-bound smoke files
+    # with failure records, recoverable only through git. Refuse unless the operator opts in. The
+    # refusal exits 2, distinct from the exit 1 a genuine smoke failure produces, so a caller can
+    # tell "I would have destroyed evidence" from "the runtime did not answer".
+    try:
+        populated = output_root.is_dir() and any(output_root.iterdir())
+    except OSError as error:
+        print(
+            "[corrected-deployed-runtime-parity-smokes] fail: "
+            f"{output_root} could not be inspected: {error}; rerun: {REFUSAL_RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
+        return 2
+    if not arguments.force and populated:
+        print(
+            "[corrected-deployed-runtime-parity-smokes] fail: "
+            f"{output_root} already holds retained smoke evidence; pass --force to overwrite; "
+            f"rerun: {REFUSAL_RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        output_root.mkdir(parents=True, exist_ok=True)
+    except (OSError, FileExistsError) as error:
+        print(
+            "[corrected-deployed-runtime-parity-smokes] fail: "
+            f"{output_root} is not a usable output directory: {error}; "
+            f"rerun: {REFUSAL_RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
+        return 2
     started_at = now()
     platforms = [capture_platform(output_root, platform, digest) for platform, digest in PLATFORMS]
     ended_at = now()
@@ -208,6 +291,13 @@ def main():
         "timeout_seconds": TIMEOUT_SECONDS,
     }
     (output_root / "smoke-results.json").write_bytes(canonical_bytes(result))
+    if result["exit_code"] != 0:
+        print(
+            "[corrected-deployed-runtime-parity-smokes] fail: "
+            "one or both bounded Production smokes did not pass; "
+            f"rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
     print(f"[corrected-deployed-runtime-parity-smokes] {result['result']}")
     return result["exit_code"]
 
