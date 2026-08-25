@@ -1679,3 +1679,65 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: The changed v3 issue-number normalization has no direct regression test.
   evidence: `release_evidence_handlers.v3.repository_issue_html_url` rejects padded and non-ASCII digits, but the existing `AuthorityHtmlUrlFollowsTheAcceptedIssueUrl` test exercises the sibling codec implementation. A v3-focused mutation test is needed in the predecessor-maintenance lane.
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-08-25, loop 6)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: `redirect_count == 0` is structurally unfireable and the new test now pins that property.
+  evidence: The capture never passes `--location`, so curl's `num_redirects` is always 0; both the producer's `redirect_count == 0` and the verifier's `item["redirect_count"] != 0` (`tools/deployed_runtime_parity_handlers/v1.py:639`) can never fire. `CorrectedDeployedRuntimeParitySmokeCaptureTests.cs` now asserts `line.ShouldNotContain("--location")`, converting an already-acknowledged deferral into an asserted invariant.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The post-execution import-shadow backstop runs only on the success path and no test reaches it with a repository module loaded.
+  evidence: `_verify_no_repository_import_shadows` (`tools/validate-corrected-deployed-runtime-parity.py:164`, called at `:280`) sits inside the `try` after `validate_packet_files` succeeds, so it can invalidate a verdict but cannot prevent a shadow module's side effects. `RepositoryLocalStandardLibraryShadowCannotExecute` fails earlier at the receipt-count check, so making the backstop a no-op changes no test outcome. The `sys.path` half of the protection is genuinely covered.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: v3's timestamp parser is looser than v1's, so frozen-predecessor timestamps are checked by the weaker rule.
+  evidence: `tools/release_evidence_handlers/v3.py:456-465`. Carried forward from loop 4; re-confirmed unchanged at HEAD.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: No size bound on retained files, and the nuspec decompression-bomb half of the earlier entry is still open.
+  evidence: `tools/deployed_runtime_parity_handlers/v1.py:161-185` reads every retained and discovered file whole into memory with no upper bound on `size`. `tools/release_evidence_handlers/v3.py:436` still performs an uncapped `archive.read(nuspecs[0])`; loop 4's hardening closed only the entity-expansion half, so a small `.nupkg` declaring a huge `.nuspec` entry still expands unbounded before any check.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: All failure modes collapse to exit 1 and, for loader failures, to a single message that hides the chained cause.
+  evidence: `tools/validate-corrected-deployed-runtime-parity.py:195-197` re-raises every `_load_verified_module` exception as `DispatchError("trusted live handler could not be loaded")`, and `main()` prints only `str(error)`, so a syntax error, a missing dependency and a tampered handler are indistinguishable. A tampered verifier is likewise indistinguishable from invalid evidence.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: Roughly 90 lines of security-critical loader code are duplicated across the two dispatchers with no sync test.
+  evidence: `_is_repository_path`, `_module_is_repository_local`, `_begin/_end_trusted_import_environment`, `_load_verified_module` and `_verify_imported_file` exist in both `tools/validate-corrected-deployed-runtime-parity.py:113-243` and `tools/validate-corrective-release-evidence.py:85-162`, with divergent signatures (`relative` vs `path`) and the release copy missing the docstrings the parity copy carries. Nothing asserts the twins stay in sync, and the bytes-`TypeError` defect is present in both.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Several distinct fail-closed branches share one message, so no test can show which clause fired.
+  evidence: `tools/deployed_runtime_parity_handlers/v1.py:855` raises `GitHub acceptance source is not authenticated to the rostered owner` for eight or-ed conditions, and is the single expected message for both `ReceiptSourceAnchoredOnForeignLineageIssueFailsClosed` and all three cases of `ReceiptSourceIdentityMustResolveToOneComment`. The registry path has the same shape.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: The two timestamp-rejected owner comments are named in three documents but retained nowhere, and the `dab64f5f` pair was never annotated.
+  evidence: `3-15-corrected-deployed-runtime-parity-closure.md:70-76`, the proof packet and `docs/ci.md` all state that comments `5409140199` and `5409147909` were marked `SUPERSEDED -- INVALID TIMESTAMP-MISMATCH ATTEMPT`, but no bytes for either are retained under `evidence/story-3-15/`, so the claim is unverifiable from the repository. The `dab64f5f` owner comments `5408186984`/`5408189299` received no equivalent annotation and remain acceptance-shaped JSON on the now-allowlisted `#352` thread; their rejection rests solely on `subject_sha256` inequality.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: The Code Map's frozen fence was extended and its line anchors were not refreshed.
+  evidence: The Code Map marks `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:317-603,1124-1235` as frozen ("do not extend its frozen candidate contract"). This change inserted 156 lines at `:895`, growing the file 1291 -> 1447, so the `1124-1235` anchor now lands on `CopyDirectory`/`LoadIdentity`/`MutateNuspecRepositoryUrl` instead of the helpers it named. The three added tests are dispatcher-trust tests rather than candidate-contract extensions, so the letter of the note holds, but the anchors are stale.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: Two submodule gitlink bumps rode into a Story 3.15 evidence commit undeclared.
+  evidence: Commit `67c645ab` bumps `references/Hexalith.FrontComposer` `a229be7e` -> `596e286f` and `references/Hexalith.Tenants` `09c746b3` -> `daf6c76c` alongside the spec entry that asserts "No replacement acceptance, deployment, publication, registry, consumer, predecessor, commit, or push action was performed." Neither the spec change log, the story record, `deferred-work.md` nor `docs/ci.md` mentions them. Both targets were verified contained in their submodules' `origin/main`, so no dangling gitlink is published -- this is unrecorded scope, the known concurrent-loop absorption pattern.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: `RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` is build-state dependent, not code dependent.
+  evidence: `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:55-88` shells out to `dotnet publish -p:RuntimeIdentifiers="linux-musl-x64;linux-musl-arm64"` with no preceding RID-aware restore. It failed once with `NETSDK1047: Assets file ... doesn't have a target for 'net10.0/linux-musl-x64'` and passed on an immediate identical re-run, so its result depends on whether `obj/project.assets.json` already carries those RIDs.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: medium
+  summary: Nothing enforces deferred-work ledger format -- every governance test is skipped.
+  evidence: All `Dw6*` cases in `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/` carry `[Fact(Skip = ...)]` (Dw6Bookkeeping 4, Dw6LedgerSweep 4, Dw6CheckerReport 5, Dw6GovernanceVocabulary 6) and both `Dw4DeferredWorkDispositionAtddTests` cases are skipped as well. This is why the loop-6 block could be appended with missing `severity:` fields, absolute machine-local `source_spec` paths, and duplicate entries without any gate objecting.
