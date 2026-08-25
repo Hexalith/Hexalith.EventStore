@@ -12,6 +12,11 @@ commitlint.config.mjs text eol=lf
 # Story 1.21 hashes canonical evidence bytes; keep those JSON and checksum artifacts LF-stable.
 _bmad-output/implementation-artifacts/evidence/story-1-21/*.json text eol=lf
 _bmad-output/implementation-artifacts/evidence/story-1-21/*.txt text eol=lf
+# Story 3.13 hash-binds its raw OCI objects and registry/tag responses through
+# identity-crosswalk.json exactly as 3.14 and 3.15 do, and was missing these rules.
+_bmad-output/implementation-artifacts/evidence/story-3-13/** text eol=lf
+_bmad-output/implementation-artifacts/evidence/story-3-13/**/*.nupkg binary
+_bmad-output/implementation-artifacts/evidence/story-3-13/**/*.raw binary
 # Story 3.14 binds every packet file by exact SHA-256 and retains the codec that verifies them.
 # A core.autocrlf checkout would rewrite these and break every binding at once.
 _bmad-output/implementation-artifacts/evidence/story-3-14/** text eol=lf

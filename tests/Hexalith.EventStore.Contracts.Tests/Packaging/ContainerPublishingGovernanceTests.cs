@@ -770,15 +770,35 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies digest-bearing raw OCI objects cannot be rewritten by text normalization.
+    /// Verifies every tracked digest-bearing raw OCI object cannot be rewritten by text
+    /// normalization. The tracked set is enumerated rather than hand-listed: git check-attr answers
+    /// for any path string, so a hand-listed path that no longer exists passes vacuously while the
+    /// real evidence goes unchecked, and a newly added packet is silently left uncovered.
     /// </summary>
-    [Theory]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/successful/run-artifact/3.96.2/eventstore/index.raw")]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/story-3-15/oci/index.raw")]
-    public void DigestBearingRawOciEvidenceIsBinary(string path)
+    [Fact]
+    public void DigestBearingRawOciEvidenceIsBinary()
     {
-        string attributes = RunGit(FindRepositoryRoot(), "check-attr", "text", "--", path);
-        attributes.ShouldBe($"{path}: text: unset");
+        string root = FindRepositoryRoot();
+        string[] tracked = RunGit(root, "ls-files", "-z", "*.raw")
+            .Split('\0', StringSplitOptions.RemoveEmptyEntries);
+
+        // Coverage control: an empty enumeration would make every assertion below vacuous.
+        tracked.Length.ShouldBeGreaterThan(0);
+
+        List<string> normalizable = [];
+        foreach (string path in tracked)
+        {
+            File.Exists(Path.Combine(root, path)).ShouldBeTrue(path);
+            if (RunGit(root, "check-attr", "text", "--", path) != $"{path}: text: unset")
+            {
+                normalizable.Add(path);
+            }
+        }
+
+        normalizable.ShouldBeEmpty(
+            "these tracked digest-bearing raw objects are not marked binary in .gitattributes, so a "
+            + "core.autocrlf checkout would rewrite them and break their recorded SHA-256:\n"
+            + string.Join('\n', normalizable));
     }
 
     /// <summary>

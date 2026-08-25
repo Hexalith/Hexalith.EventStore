@@ -215,10 +215,14 @@ development_status:
   # 2026-08-16 planning reconciliation: v3.94.1 is retained as rejected and non-authorizing.
   # Story 3.14 owns the corrective release; Story 3.15 owns positive deployed-runtime parity closure.
   # 2026-08-21: the content-bound disposition envelope at evidence/story-3-13/disposition/6cee8dad...
-  # verifies and Story 3.13 owns the v3.94.1 rejection only. Acceptance is exactly 0/3, so the story
-  # moves to review and can never reach done until the EventStore owner, Release owner, and Test
-  # Architect each accept the unchanged envelope. Story 3.14 owns the corrective release and Story
-  # 3.15 owns positive deployed-runtime parity; neither depends on this row.
+  # verifies and Story 3.13 owns the v3.94.1 rejection only. Story 3.14 owns the corrective release
+  # and Story 3.15 owns positive deployed-runtime parity; neither depends on this row.
+  # 2026-08-24 closure (supersedes the 0/3 wording above): the acceptance contract was re-shaped to
+  # the Story 3.15 form because the original demanded a #story-3-13-<hash>-<role> commit anchor that
+  # GitHub never mints, so only a fixture could ever have satisfied it. Three role-bound receipts
+  # were then collected on issue #351 -- never #324/#346, which are a different lineage -- and the
+  # row reached done at 3/3. Caveat: both owner roles resolve to one account, with tooling third,
+  # so two of the three acceptances are a self-attestation.
   # The story key stays tracker-level: both Story 3.13 proof-packet filenames are pinned by hash
   # inside the frozen review subjects and the focused verifier, so they are unrenameable and
   # proposal section 4.9's atomic-rename condition cannot be met. Only the display title changed.

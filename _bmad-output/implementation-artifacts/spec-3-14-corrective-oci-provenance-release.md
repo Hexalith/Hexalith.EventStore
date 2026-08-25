@@ -33,7 +33,7 @@ context:
 | Real multi-RID archive | Source SHA and version | Both configs contain identical exact source, release, SHA-pinned docs, revision, and version labels | Any invalid/divergent label fails |
 | Candidate selection | Protected `production` environment reviewer approval, live release/package/registry destinations, and (opt-in, `require-publication-authority: true`) a dispatch-reserved stable version | The shared Builds preflight resolves the version floor from every live destination and admits only a candidate that is absent and newer than all of them, and Semantic Release must independently resolve the identical value; when the opt-in gate is enabled, that value must additionally equal the reservation | Ambiguity, stale read, or collision blocks; with the gate enabled, a reservation mismatch also blocks |
 | Authorized publication | Protected `production` environment reviewer approval; when the opt-in gate is enabled, also an unexpired one-use GitHub authority for run/attempt and scope, pinned to `github:jpiquot` | Environment approval authorizes an ordinary publication; when the gate is enabled, all writes must additionally match one reservation, consumed once | Missing approval blocks; with the gate enabled, a missing, expired, replayed, wrong-role, wrong-owner, or mismatched authority also blocks |
-| Partial publication | Any write succeeds before a later failure | Preserve the partial version as immutable non-authorizing evidence; tag immutability and one-use authority consumption are what force a retry onto a fresh version and a fresh authority | Retry requires a new version and new authority |
+| Partial publication | Any write succeeds before a later failure | Preserve the partial version as immutable non-authorizing evidence; tag immutability alone is what forces a retry onto a fresh version, and when the opt-in gate is enabled one-use authority consumption additionally forces a fresh authority | Retry requires a new version; with the gate enabled it also requires a new authority |
 | Complete publication | Packages, OCI bytes, and both smokes pass | Emit canonical evidence for 3.15 without selecting a deployed identity | Environment/product failures remain distinct and blocking |
 
 </frozen-after-approval>
@@ -132,6 +132,18 @@ and archive-memory suggestions either remain fail-closed or fall outside the acc
 contract without a demonstrated consumer failure.
 
 ## Spec Change Log
+
+- 2026-08-25 -- Owner-ratified amendment of the `Partial publication` row, completing the
+  2026-08-22 change. That entry made the reservation/authority mechanism opt-in via
+  `require-publication-authority` (Builds default `true`, EventStore declares `false`) but amended
+  only `Candidate selection` and `Authorized publication`, leaving this row asserting that "one-use
+  authority consumption" forces a retry onto a fresh authority -- a mechanism that does not run in
+  the operative posture, since `release.yml` declares the gate off and no authority exists to
+  consume. The row now states that tag immutability alone forces a retry onto a fresh version, with
+  authority consumption applying only when the gate is enabled. Raised as a blocking Decision by the
+  chunk-3 code review (2026-08-24), which found it to be the identical inconsistency the chunk-2
+  Decision was opened for; note the row had already been amended once on 2026-08-21, which is when
+  the authority-consumption language was introduced.
 
 - 2026-08-22 -- Owner-ratified amendment of the `Candidate selection` and `Authorized publication`
   rows to resolve the chunk-2 review Decision that the frozen matrix still mandated the reservation
@@ -292,7 +304,7 @@ tampered `v3.py` validate `exit 0`, so `TamperedLiveHandlerBytesCannotExecuteEve
 - [x] [Review][Patch] [LOW] Documentation and ledger hygiene — `docs/ci.md:239` says "neither test validates `reserved-version` or `release-authority-issue-url` themselves" three sentences after stating that one asserts their absence (intended: their *values*); the sibling `ShouldNotContain` assertions are unscoped, so a `release.yml` comment naming those keys reddens the suite; and `spec-3-14` now carries three identically-named `### Review Findings` headings (`:65`, `:102`, `:204`) at inconsistent nesting, colliding as anchors [docs/ci.md:239]
 
 - [x] [Review][Patch] [HIGH] (from Decision 1) Narrow the trusted-live-handler claim to the 3.14 CLI — the Story 3.15 section states the handler "revalidates the frozen predecessor with its trusted live handler", but `validate-corrected-deployed-runtime-parity.py:54` bare-imports and `v1.py:12` pulls `release_evidence_handlers.v3` transitively, so no pin covers it on that path [docs/ci.md:377]
-- [ ] [Review][Patch] [MEDIUM] (from Decision 2) Amend the frozen `Partial publication` row and add a Spec Change Log entry — tag immutability alone forces retry onto a fresh version while the gate is opt-out; one-use authority consumption applies only when `require-publication-authority: true` [_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md:36]
+- [x] [Review][Patch] [MEDIUM] (from Decision 2) Amend the frozen `Partial publication` row and add a Spec Change Log entry — tag immutability alone forces retry onto a fresh version while the gate is opt-out; one-use authority consumption applies only when `require-publication-authority: true` [_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md:36]
 - [x] [Review][Patch] [MEDIUM] (from Decision 3) Bind the `docs/ci.md` publication-pin prose to the constant — add `ci.ShouldContain(ApprovedBuildsReleaseSha);` beside the existing `secrets.ShouldContain(...)`, whose own comment already names this drift class. Closes the carry-forward chunk-2 item [tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:747]
 
 - [x] [Review][Defer] (from Decision 3) No executable guard asserts the release caller's `uses:` SHA is reachable on the Hexalith.Builds remote [.github/workflows/release.yml:103] — deferred, the Release dispatch already fails closed and loudly on an unresolvable SHA

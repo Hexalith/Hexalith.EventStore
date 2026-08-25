@@ -408,21 +408,32 @@ manifests, and both configs, then runs bounded digest-pinned `/alive` smokes und
 hosting environment for `linux/amd64` and `linux/arm64`.
 
 `tools/validate-corrected-deployed-runtime-parity.py` dispatches only to the exact allowlisted v1
-handler. The handler never executes packet-supplied code: it parses and rehashes retained bytes,
-checks the closed technical inventory, recomputes the canonical subject, and validates exactly three
-subject-addressed receipts. The Story 3.14 CLI independently pins the live v3 predecessor handler;
-the Story 3.15 path currently imports that predecessor handler transitively and must bind those bytes
-when its in-review packet is re-frozen. The packet's current subject is
-`bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`. The rostered
-EventStore owner, Release owner, and Test Architect receipts currently validate for those exact
-bytes, subject to Story 3.15 completion review. Because the roster maps both owner roles to
-`github:jpiquot`, those two acceptances are a self-attestation rather than independent three-party
-review.
+handler. Every file on the import path — the v1 handler, its package initializer, the v3 predecessor
+handler, and *its* package initializer — is pinned and verified before the first import, so an
+unreviewed edit never executes. The handler never executes packet-supplied code: it parses and
+rehashes retained bytes, checks the closed technical inventory, recomputes the canonical subject,
+and validates exactly three subject-addressed receipts.
 
-The only selected identity is
-`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
-That positive verdict is evidence, not operational authority: deployment, package publication,
-registry mutation, consumer removal, and predecessor mutation remain separately prohibited.
+The closure's `dispatch` block binds all four of those files. This closes a gap found in the
+2026-08-25 review: previously only `v1.py` and its dispatcher were bound, so a tampered `v3.py` —
+which performs predecessor validation, nuspec identity parsing, and the release-manifest check —
+produced the identical subject and selected identity with all three receipts still valid, contrary
+to the closure's own rerun trigger. Binding those bytes changed `v1.py` and therefore the canonical
+subject, which by that same rerun trigger **rejected every receipt collected for the superseded
+subject**. Those three receipts are retained, unbound, under
+`_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/`.
+
+The packet's current subject is
+`1dee194f93612c0861b536023bdb20cb329ad0adfd12f5eafe87913b90c81f26`, and the packet **fails closed**
+at zero of three receipts until the rostered EventStore owner, Release owner, and Test Architect
+each accept those exact new bytes. Because the roster maps both owner roles to `github:jpiquot`,
+two of those three acceptances are a self-attestation rather than independent three-party review.
+
+The only identity the closure may ever select is
+`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,
+and it is selected only once parity is available. That verdict is evidence, not operational
+authority: deployment, package publication, registry mutation, consumer removal, and predecessor
+mutation remain separately prohibited.
 
 ## Submodules
 

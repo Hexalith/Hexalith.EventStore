@@ -1531,3 +1531,33 @@ status: open
   summary: No executable guard asserts that the release caller's pinned reusable-workflow SHA is reachable on the Hexalith.Builds remote rather than only in a local object store.
   evidence: `.github/workflows/release.yml:103,110` pin `builds-execution-sha`, and the story record's warning that a rotation target must exist on the remote was deleted in `f2d2575c` with nothing replacing it. This is the defect that produced the chunk-A+B blocking Decision, when `63409393…` was pinned while it existed only on an unpushed branch (it has since been merged to Builds `main` and superseded by `a07078ad…`). Deferred 2026-08-24 by owner decision: an unresolvable `uses:` SHA already fails the Release dispatch at startup — the quarantined run `32347773728` failure mode — so nothing publishes silently, and every candidate guard costs either network plus auth inside the Tier-1 CI-gating Contracts lane or a `origin/main` remote-tracking ref that a CI submodule checkout may not populate (and which reds on force-pushes it should not judge). The recurring drift class is closed separately by binding the `docs/ci.md` pin prose to `ApprovedBuildsReleaseSha`.
   severity: low
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-08-25, loop 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The Story 3.13 closure-packet gate `ValidateAcceptances` still enforces the unmintable `#story-3-13-<hash>-<role>` commit anchor that only a fixture can satisfy.
+  evidence: `DeployedRuntimeParityClosureTests.cs:7378` builds `ApprovedSourceSha + "#story-3-13-" + subjectHash + "-" + role` and `:7405,:7409` require `retained-immutable-external-record` and `acceptance-source/v1`, while the disposition path moved to `/v2` and `github-issue-comment` (`:74,:5400-5412`). Live at `:1011` and at `:6144` inside the `story_may_be_done` gate. A genuine GitHub-collected receipt is rejected by it; the synthetic `CreateAcceptanceReceipts` fixture is its only witness. Same defect class Story 3.13 was reopened to remove.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `author_association` requirements diverge between the registry authority source and acceptance receipts, and the divergence was resolved downward to keep real evidence passing.
+  evidence: `_validate_receipts` requires MEMBER/OWNER/COLLABORATOR (`v1.py:794,:809`); the retained roster comment `registry/role-registry-source.json` is CONTRIBUTOR, so `_validate_registry` admits CONTRIBUTOR too. Owner decision needed: tighten the registry to match the receipts (requires a new roster comment) or record the weaker bar as intended.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The OCI `created` provenance labels are self-comparing in tests and unchecked by the codec, and the retained child configs carry a malformed truncated value.
+  evidence: `CorrectiveOciProvenanceReleaseTests.cs:118` sets `expected ??= ExpectedLabels(observedCreated)` where `observedCreated` is read from the first child config, so child 1 compares to itself; `v3.py:134 _expected_labels` omits `created` from the five enforced keys. Both retained configs carry `org.opencontainers.image.created = "2026-08-20T11"`, truncated at the first colon, inside the selected identity.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Two Production-smoke guards are green by construction -- `redirect_count` and `observed_runtime_platform` can never disagree with what they are checked against.
+  evidence: `capture-corrected-deployed-runtime-parity-smokes.py` invokes `curl` without `--location`, so `num_redirects` is structurally 0 and the verifier's `redirect_count != 0` check cannot fire; `observed_runtime_platform` comes from `docker image inspect {{.Os}}/{{.Architecture}}`, i.e. the metadata `--platform` already selected. Separately, `smokes/*.log` are canonical JSON restatements of `smoke-results.json`, so the log-versus-summary comparison is between two hand-written documents rather than a retained transcript.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `FrozenStory314PacketRemainsByteForByteUnchanged` hashes a single file despite asserting whole-packet immutability.
+  evidence: The test re-hashes only `release-identity.json` and runs the 3.14 validator; every other file in the frozen packet could be rewritten with the test still green.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The `_bmad-output/test-artifacts/` gate artifacts backing the Test Architect receipt disagree with the matrix they summarize and cite a nonexistent test method.
+  evidence: `traceability-matrix.md` lists S315-UNIT-001 as `CheckedInTechnicalPacketFailsClosedUntilThreeReceiptsExist`, which exists nowhere; every listed line number is 1-3 low, indicating the matrix was generated before the final edits. `e2e-trace-summary.json` reports `cases: 19` against the matrix's 48, `pct: 100` on zero P1/P2/P3 totals, and `evaluator: Administrator` while the matrix signs off as `bmad:murat`. The files also sit outside the hash-closed packet and are bound by nothing.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The Hexalith.Builds gitlink was rotated to the tip of origin/main while the release workflow pin was left behind.
+  evidence: The gitlink moved to `22a578b5` (== `origin/main`), which changes `Github/publish-containers/publication_preflight.py` and `publish-containers.sh` -- the executed release helpers -- but `.github/workflows/release.yml` still pins `a07078ad`. The Builds-side counterpart of this diff's preflight tightening is therefore not in the executed release path, and rotation is supposed to happen from the pin rather than from main.

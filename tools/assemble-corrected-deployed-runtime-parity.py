@@ -121,6 +121,10 @@ def build_document(packet_root):
 
     handler_binding = binding(root / v1.HANDLER_FILE, v1.HANDLER_FILE)
     verifier_binding = binding(root / v1.VERIFIER_FILE, v1.VERIFIER_FILE)
+    predecessor_handler_binding = binding(
+        root / v1.PREDECESSOR_HANDLER_FILE, v1.PREDECESSOR_HANDLER_FILE)
+    predecessor_package_binding = binding(
+        root / v1.PREDECESSOR_PACKAGE_FILE, v1.PREDECESSOR_PACKAGE_FILE)
     existing_subject = packet_root / "subject.json"
     created_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     if existing_subject.exists():
@@ -132,6 +136,8 @@ def build_document(packet_root):
         "deployment_authorized": False,
         "dispatch": {
             "handler": handler_binding,
+            "predecessor_handler": predecessor_handler_binding,
+            "predecessor_package": predecessor_package_binding,
             "schema": v1.SCHEMA,
             "verifier": verifier_binding,
             "version": v1.CODEC_VERSION,

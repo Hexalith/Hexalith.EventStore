@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-08-21'
 status: 'in-review'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
-review_loop_iteration: 0
+review_loop_iteration: 2
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-3-context.md'
@@ -101,7 +101,119 @@ re-verifications are confirmations, not findings).
 - [x] [Review][Patch] `deferred-work.md` "chunk 2" section precedes "chunk 1", both dated the same day — breaks the ledger's otherwise chronological append order. [_bmad-output/implementation-artifacts/deferred-work.md:22, :39]
 - [x] [Review][Patch] This spec's own Verification section documents a command outcome that contradicts actual behavior — running the checked-in `closure.json` command directly returns `fail: exactly three packet-bound receipts are required`, exit 1 (verified), not the "expected: ... pass" the Verification section states; contradicts the companion story record, which correctly documents the fail-closed expectation. [_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md:81]
 
+### Review Findings (2026-08-25, full review -- 3 layers x 5 diff chunks, 15 reviewers; none failed)
+
+Scope: the complete baseline diff at `94591f35` (639,621 bytes, 78 files), chunked by byte-exact
+partition into tooling/CI, the 3.15 suite plus evidence payloads, the 3.13 suite, the 3.14 and
+governance suites, and docs/specs/ledgers. Every load-bearing claim below was reproduced locally
+before triage; several plausible findings were refuted by running them and are not listed.
+
+**blocking (fixed in this pass):**
+
+- [x] [Review][HIGH] **Fail-open in the trusted-handler pin.** `_load_handler` hashed only the leaf
+  module, but `importlib.util.find_spec` imports the parent package first, so
+  `release_evidence_handlers/__init__.py` executed unhashed. Reproduced: injected code printed *and
+  the validator still returned `pass`, exit 0* -- not merely un-pinned but fail-open, while the
+  comment added in the same diff claimed "an unreviewed edit never executes". Fixed by pinning every
+  file on the import path and resolving paths from the script instead of `find_spec` (which itself
+  triggers the parent import). [tools/validate-corrective-release-evidence.py:22-31,72-96]
+- [x] [Review][HIGH] **The transitive verifier was unbound, so the rerun trigger did not hold.**
+  `v1.py` delegates predecessor validation, nuspec identity parsing, and the release-manifest check
+  to `release_evidence_handlers.v3`, whose digest appeared nowhere in the packet. Reproduced: a
+  tampered `v3.py` yielded `pass` with the *identical* subject `bb58d691...` and identical selected
+  identity, leaving all three receipts valid -- contradicting frozen AC2 ("binds ... verifier
+  identity; any transitive change invalidates all receipts") and the closure's own `rerun_trigger`.
+  `docs/ci.md` had recorded this as owed "when its in-review packet is re-frozen"; the re-freeze had
+  happened without paying it. Fixed by binding `v3.py` and its package initializer in `dispatch`,
+  and pinning all four import-path files before the first import.
+  [tools/deployed_runtime_parity_handlers/v1.py:37-45,268-300; tools/validate-corrected-deployed-runtime-parity.py:17-30,62-70]
+- [x] [Review][HIGH] **Guard covering two path strings, one of them fictional.**
+  `DigestBearingRawOciEvidenceIsBinary` asserted
+  `evidence/story-3-15/oci/index.raw`, which does not exist -- `git check-attr` answers for any path
+  string, so that case passed vacuously. Confirmed 14 of 24 tracked `.raw` files were `text: auto`,
+  all under `story-3-13` and all digest-bearing via `identity-crosswalk.json`. Fixed by enumerating
+  `git ls-files '*.raw'` with an existence check and a coverage control, and by adding the missing
+  `story-3-13/**` rules. All 24 are now `text: unset` with zero byte churn.
+  [tests/.../ContainerPublishingGovernanceTests.cs:772-800; .gitattributes:15-19]
+
+**patch (fixed in this pass):**
+
+- [x] [Review][Patch] Registry role lines were `dict(findall(...))`, i.e. last-wins, so a *prepended*
+  contradicting `- eventstore-owner: github:mallory` was silently discarded and the mapping compared
+  equal. The existing negative test only appended, which loses. Duplicate role keys now reject.
+- [x] [Review][Patch] The disclaimer gate matched `"authorizes no"` and `"deployment"` anywhere in
+  the body, so `"authorizes nothing; this deployment is fully authorized"` satisfied it. Both markers
+  must now fall inside one sentence.
+- [x] [Review][Patch] The roster comment was authenticated far more weakly than an acceptance
+  receipt in the same file (login only). Now also binds `user.id`, `updated_at == created_at`, and
+  `performed_via_github_app is None`.
+- [x] [Review][Patch] Stale or foreign acceptance trees were invisible: `_validate_inventory` skipped
+  the whole `acceptances/` prefix. Only the bound subject's directory is exempt now; anything else
+  under `acceptances/` is rejected.
+- [x] [Review][Patch] Neither tamper test had a positive control, so a broken temp-tree harness was
+  indistinguishable from the guard firing. Both now assert the untampered copy validates first.
+- [x] [Review][Patch] `docs/ci.md`'s digest assertion was presence-only and could not notice a
+  superseded digest left beside the current one; the Story 3.15 section's 64-hex token set is now
+  exact.
+- [x] [Review][Patch] `sprint-status.yaml`'s comment above the Story 3.13 row still read "Acceptance
+  is exactly 0/3 ... can never reach done" directly above `done`, and recorded nothing about issue
+  #351 or the self-attestation caveat.
+- [x] [Review][Patch] This spec's Design Notes asserted Story 3.14's spec was `done` and its tracker
+  `review`; the same changeset set both to `in-progress`.
+- [x] [Review][Patch] `docs/brownfield/deployment-guide.md` prose named two mandatory provenance
+  properties while its own samples pass three and `Directory.Build.targets` hard-fails without the
+  third.
+
+**deferred (recorded in deferred-work.md, not fixed here):**
+
+- [ ] [Review][Defer] `ValidateAcceptances` (`DeployedRuntimeParityClosureTests.cs:7267`) still
+  enforces the `.../commit/<sha>#story-3-13-<hash>-<role>` anchor, `acceptance-source/v1`, and
+  `retained-immutable-external-record` -- the unmintable shape Story 3.13 was reopened to remove,
+  surviving on the sibling closure-packet path while the disposition path moved to `/v2` and
+  `github-issue-comment`. Live at two call sites including the `story_may_be_done` gate. Only a
+  fixture can satisfy it; a genuine GitHub receipt would be rejected.
+- [ ] [Review][Defer] `author_association` asymmetry: the receipt path requires
+  MEMBER/OWNER/COLLABORATOR, but the retained roster comment is CONTRIBUTOR, so the stricter set
+  would reject genuine evidence. CONTRIBUTOR is admitted in `_validate_registry` only to preserve
+  the existing authority; which side should move is an owner decision.
+- [ ] [Review][Defer] `created` provenance labels are self-comparing
+  (`expected ??= ExpectedLabels(observedCreated)`) and `v3.py`'s `_expected_labels` omits `created`
+  entirely, so the publisher-supplied instant can stop reaching the image undetected. The retained
+  child configs both carry the malformed `2026-08-20T11`, truncated at the first colon.
+- [ ] [Review][Defer] `redirect_count` cannot fail: the capture invokes `curl` without `--location`,
+  so `num_redirects` is structurally zero. Likewise `observed_runtime_platform` is read from the
+  image metadata `--platform` already selected, so the verifier's mismatch check cannot fire.
+- [ ] [Review][Defer] `smokes/*.log` are canonical JSON restatements of `smoke-results.json`, not
+  transcripts, so the log-versus-summary check compares two hand-written documents.
+- [ ] [Review][Defer] `FrozenStory314PacketRemainsByteForByteUnchanged` hashes one file.
+- [ ] [Review][Defer] `_bmad-output/test-artifacts/` gate artifacts: the matrix names a test method
+  that does not exist with every line number off by two, `pct: 100` is reported on zero totals, and
+  `evaluator` is `Administrator` while the matrix signs off as `bmad:murat`.
+- [ ] [Review][Defer] The Builds gitlink was moved to the tip of `origin/main` (`22a578b5`) while
+  `release.yml` still pins `a07078ad`, so the Builds-side preflight change is not in the executed
+  release path. Rotation is supposed to happen from the pin, never from main.
+
 ## Spec Change Log
+
+- 2026-08-25 (code review loop 2, amend-and-re-freeze): a 15-reviewer pass over the full baseline
+  diff found two reproduced trust defects. The `release_evidence_handlers` package initializer
+  executed unhashed **and the packet still validated `pass`, exit 0**; and the transitively imported
+  `v3.py` -- which performs most of the closure's validation -- was bound nowhere, so a tampered
+  verifier produced the identical subject and identity with all three receipts intact, violating
+  frozen AC2 and the closure's own rerun trigger. Both are fixed: every import-path file is pinned
+  and verified before the first import, and `dispatch` now binds `v3.py` and both package
+  initializers. Also hardened the registry duplicate-role and disclaimer gates, added acceptance-tree
+  closure, gave both tamper tests positive controls, made the `docs/ci.md` digest check exact, and
+  replaced the vacuous raw-binary guard with an enumeration that revealed 14 unprotected
+  digest-bearing `.raw` files (now covered by new `story-3-13/**` rules).
+  Binding those bytes changed `v1.py`, so by the rerun trigger the canonical subject moved
+  `bb58d691...` -> `1dee194f93612c0861b536023bdb20cb329ad0adfd12f5eafe87913b90c81f26` and **all three
+  receipts collected on 2026-08-22 were rejected**. They are genuine and were not deleted: they are
+  retained outside the packet root at `evidence/story-3-15/superseded-acceptances/` with a README
+  explaining why they no longer bind. The packet is back to **fail-closed at 0 of 3** and selects no
+  identity until the three roles accept the new subject -- an Ask First action, not taken here.
+  Focused suite 52/0/0 (was 48); Contracts 1633/1633; Contracts Release build 0W/0E.
+
 
 - 2026-08-21: Implemented and mutation-proved the trusted v1 verifier; independently retained both
   package byte domains, the raw OCI graph, and two passing bounded Production smokes. Canonical
@@ -140,7 +252,7 @@ re-verifications are confirmations, not findings).
 
 ## Design Notes
 
-The owner confirmed on 2026-08-21 that Story 3.14's `status: done` spec is authoritative over its stale `review` tracker row. Receipts live beneath `acceptances/<subject-sha256>/` so the subject binds technical evidence and the registry without signing itself. Publication authority is checked for validity at its recorded use, not required to remain unexpired at later verification time.
+On 2026-08-21 the owner confirmed Story 3.14's spec was authoritative over its then-stale tracker row. That reading is superseded: Story 3.14's spec and tracker row now agree at `in-progress`, and neither authorizes Story 3.15 closure. Story 3.15 depends on the frozen 3.14 *packet* bytes (predecessor digest `4d1a0c33...`), which are unchanged, not on 3.14's lifecycle state. Receipts live beneath `acceptances/<subject-sha256>/` so the subject binds technical evidence and the registry without signing itself. Publication authority is checked for validity at its recorded use, not required to remain unexpired at later verification time.
 
 **2026-08-22 (code review, accepted trade-offs):** Each receipt's `durable_source` is cross-checked against a file retained inside the same packet the receipt author controls, not fetched live from the GitHub API — this proves internal consistency (receipt and source agree byte-for-byte) but not independence. Accepted for this story; mirrors the same accepted gap already recorded for Story 3.13's analogous mechanism.
 
@@ -152,5 +264,5 @@ The owner-role registry's `authority_source` is a GitHub comment ratifying revie
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: exact predecessor digest passes.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: zero warnings and errors.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -noLogo` -- expected: all matrix and mutation cases pass with none skipped.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: canonical pass for subject `bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`, selecting index `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3` after all three real subject-bound receipts validate.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: **fail-closed**, `exactly three packet-bound receipts are required`, exit 1. The 2026-08-25 re-freeze moved the canonical subject to `1dee194f93612c0861b536023bdb20cb329ad0adfd12f5eafe87913b90c81f26`, which rejected the three receipts collected for the superseded subject; no identity is selected until three receipts bind the new subject. The positive path is proved on a synthesized packet by `ThreeAuthenticatedRolesClosePositiveParityOnOneUnchangedSubject`.
 - `git diff --check` -- expected: no whitespace errors.

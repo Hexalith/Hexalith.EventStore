@@ -36,6 +36,13 @@ PREDECESSOR_PACKET_ROOT = (
 MANIFEST_FILE = "tools/release-packages.json"
 HANDLER_FILE = "tools/deployed_runtime_parity_handlers/v1.py"
 VERIFIER_FILE = "tools/validate-corrected-deployed-runtime-parity.py"
+# This handler delegates predecessor validation, nuspec identity parsing, and the release-manifest
+# check to release_evidence_handlers.v3, so those bytes decide most of the closure verdict. The
+# subject must bind them too, or a v3 change would leave the subject and every receipt valid while
+# altering what "parity available" means -- the transitive change the rerun trigger forbids. The
+# package initializer is bound as well because importing the leaf executes it.
+PREDECESSOR_HANDLER_FILE = "tools/release_evidence_handlers/v3.py"
+PREDECESSOR_PACKAGE_FILE = "tools/release_evidence_handlers/__init__.py"
 PLATFORMS = ("linux/amd64", "linux/arm64")
 REQUIRED_ROLES = ("eventstore-owner", "release-owner", "test-architect")
 EXPECTED_IDENTITIES = {
@@ -260,14 +267,30 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
     if document["schema"] != SCHEMA or document["repository"] != REPOSITORY or document["story_id"] != "3.15":
         raise EvidenceError("closure identity is invalid")
 
-    dispatch = _exact_object(document["dispatch"], ("handler", "schema", "verifier", "version"), "dispatch schema is invalid")
+    dispatch = _exact_object(
+        document["dispatch"],
+        ("handler", "predecessor_handler", "predecessor_package", "schema", "verifier", "version"),
+        "dispatch schema is invalid",
+    )
     if dispatch["schema"] != SCHEMA or dispatch["version"] != CODEC_VERSION:
         raise EvidenceError("dispatch identity is invalid")
     handler_binding = _binding(dispatch["handler"])
     verifier_binding = _binding(dispatch["verifier"])
-    if handler_binding["file"] != HANDLER_FILE or verifier_binding["file"] != VERIFIER_FILE:
+    predecessor_handler_binding = _binding(dispatch["predecessor_handler"])
+    predecessor_package_binding = _binding(dispatch["predecessor_package"])
+    if (
+        handler_binding["file"] != HANDLER_FILE
+        or verifier_binding["file"] != VERIFIER_FILE
+        or predecessor_handler_binding["file"] != PREDECESSOR_HANDLER_FILE
+        or predecessor_package_binding["file"] != PREDECESSOR_PACKAGE_FILE
+    ):
         raise EvidenceError("dispatch files are not trusted")
-    for binding in (handler_binding, verifier_binding):
+    for binding in (
+        handler_binding,
+        verifier_binding,
+        predecessor_handler_binding,
+        predecessor_package_binding,
+    ):
         live = _repository_file(repository_root, binding["file"]).read_bytes()
         if len(live) != binding["size"] or hashlib.sha256(live).hexdigest() != binding["sha256"]:
             raise EvidenceError("dispatch identity does not select the trusted live verifier")
@@ -623,7 +646,18 @@ def _validate_registry(document, packet_root):
     source_document = load_json_bytes(source_bytes)
     body = source_document.get("body")
     user = source_document.get("user")
-    role_lines = dict(ROLE_MAPPING_LINE.findall(body)) if isinstance(body, str) else {}
+    # findall() fed straight into dict() is last-wins, so a prepended contradicting role line would
+    # be silently discarded. Reject any repeated role key before comparing the mapping.
+    matches = ROLE_MAPPING_LINE.findall(body) if isinstance(body, str) else []
+    role_lines = dict(matches)
+    duplicate_roles = len(matches) != len(role_lines)
+    # Both markers must land in one sentence, not merely somewhere in the body: searched
+    # independently, a body such as "authorizes nothing; this deployment is fully authorized"
+    # satisfies them while asserting the opposite.
+    disclaimed = isinstance(body, str) and any(
+        all(marker in sentence for marker in REGISTRY_AUTHORITY_DISCLAIMER_MARKERS)
+        for sentence in re.split(r"(?<=[.;])\s+|\n", body)
+    )
     if (
         source_document.get("id") != 5290564372
         or source_document.get("url")
@@ -632,9 +666,21 @@ def _validate_registry(document, packet_root):
         != "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5290564372"
         or not isinstance(user, dict)
         or user.get("login") != "jpiquot"
+        # Authenticate the roster comment as strongly as an acceptance receipt's source: a login
+        # alone is reassignable, and an edited comment can be rewritten after the fact.
+        or user.get("id") != 6775094
+        or source_document.get("updated_at") != source_document.get("created_at")
+        or source_document.get("performed_via_github_app") is not None
+        # NOTE: the receipt path requires MEMBER/OWNER/COLLABORATOR, but the retained roster
+        # comment is CONTRIBUTOR, so that stricter set would reject genuine evidence. CONTRIBUTOR
+        # is admitted here only to preserve the existing authority; the asymmetry with
+        # _validate_receipts is deliberate and is recorded for owner decision, not settled here.
+        or source_document.get("author_association")
+        not in ("MEMBER", "OWNER", "COLLABORATOR", "CONTRIBUTOR")
         or not isinstance(body, str)
+        or duplicate_roles
         or role_lines != EXPECTED_IDENTITIES
-        or any(marker not in body for marker in REGISTRY_AUTHORITY_DISCLAIMER_MARKERS)
+        or not disclaimed
         or registry["created_at"] != source_document.get("created_at")
     ):
         raise EvidenceError("owner-role registry authority source is invalid")
@@ -659,11 +705,21 @@ def _validate_inventory(document, packet_root):
     if inventory_bytes != expected_text:
         raise EvidenceError("technical inventory is not closed over the exact retained files")
     closed = expected | {document["technical_inventory"]["file"], document["subject"]["file"], "closure.json"}
-    actual = {
-        path.relative_to(packet_root).as_posix()
-        for path in packet_root.rglob("*")
-        if path.is_file() and not path.relative_to(packet_root).as_posix().startswith("acceptances/")
-    }
+    # The bound subject's own acceptance directory is close-listed by _validate_receipts, so it is
+    # excluded here -- but only that one directory. Anything else under acceptances/ is a stale or
+    # foreign receipt tree (a superseded subject's, or a planted one) and must be rejected rather
+    # than riding along unhashed.
+    bound_acceptances = document["acceptances"]["directory"].rstrip("/") + "/"
+    actual = set()
+    for path in packet_root.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(packet_root).as_posix()
+        if relative.startswith(bound_acceptances):
+            continue
+        if relative.startswith("acceptances/"):
+            raise EvidenceError("packet retains an acceptance tree outside the bound subject")
+        actual.add(relative)
     if actual - closed:
         raise EvidenceError("packet contains files outside the closed technical inventory")
 

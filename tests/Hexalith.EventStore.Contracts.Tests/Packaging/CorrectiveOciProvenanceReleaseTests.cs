@@ -825,8 +825,11 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     /// Verifies an unreviewed edit to the executing live handler fails closed even when the retained
     /// packet's declared codec digest, schema, and version are all untouched and still dispatch to it.
     /// </summary>
-    [Fact]
-    public void TamperedLiveHandlerBytesCannotExecuteEvenWithAValidPacket()
+    /// <param name="tamperedFile">Import-path file to append unreviewed code to.</param>
+    [Theory]
+    [InlineData("v3.py")]
+    [InlineData("__init__.py")]
+    public void TamperedLiveHandlerBytesCannotExecuteEvenWithAValidPacket(string tamperedFile)
     {
         string root = FindRepositoryRoot();
         string checkedInPacket = Path.Combine(
@@ -844,9 +847,27 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             File.Copy(
                 Path.Combine(root, "tools", "release_evidence_handlers", "__init__.py"),
                 Path.Combine(handlers, "__init__.py"));
-            string handlerPath = Path.Combine(handlers, "v3.py");
-            File.Copy(Path.Combine(root, "tools", "release_evidence_handlers", "v3.py"), handlerPath);
-            File.AppendAllText(handlerPath, "\nprint('untrusted-handler-executed')\n");
+            File.Copy(
+                Path.Combine(root, "tools", "release_evidence_handlers", "v3.py"),
+                Path.Combine(handlers, "v3.py"));
+
+            // Control: without tampering, this partial tree must actually validate. Otherwise the
+            // expected failure below could come from the incomplete copy rather than the guard.
+            ProcessResult control = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrective-release-evidence.py",
+                Path.Combine(checkedInPacket, "release-identity.json"),
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket);
+            control.ExitCode.ShouldBe(0, control.Error);
+
+            // Importing the leaf also executes its package initializer, so both are on the
+            // import path and both must be pinned before the first import.
+            File.AppendAllText(
+                Path.Combine(handlers, tamperedFile), "\nprint('untrusted-handler-executed')\n");
 
             ProcessResult tampered = RunProcess(
                 temporary,

@@ -12,10 +12,11 @@ Built via **.NET SDK container support** — **no Dockerfiles**. Defaults centra
 Defaults: base `mcr.microsoft.com/dotnet/aspnet:10.0-alpine`, registry `registry.hexalith.com`,
 non-root user `app`, port `8080`, and OCI labels (source/licenses/vendor). When no explicit tag
 is supplied, the tag defaults to the mandatory provenance release version.
-Every `PublishContainer` invocation must pass the exact source commit and release
-version through `ContainerProvenanceSourceSha` and
-`ContainerProvenanceReleaseVersion`; publication fails closed when either is
-missing.
+Every `PublishContainer` invocation must pass the exact source commit, release
+version, and build instant through `ContainerProvenanceSourceSha`,
+`ContainerProvenanceReleaseVersion`, and `ContainerProvenanceCreated`; publication
+fails closed when any is missing, and `ContainerProvenanceCreated` must be an exact
+UTC RFC 3339 second so both child configs agree.
 
 | Project | Image |
 |---------|-------|

@@ -37,26 +37,38 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     ];
 
     /// <summary>
-    /// Verifies the retained packet closes parity only after all three real subject-bound receipts exist.
+    /// Verifies the checked-in packet fails closed while no receipt binds the current subject.
+    /// Binding the transitively imported predecessor handler changed the canonical subject, so the
+    /// rerun trigger rejected the three receipts collected for the superseded subject; they are
+    /// retained under evidence/story-3-15/superseded-acceptances/ and authorize nothing here.
+    /// The positive path is proved on a synthesized packet by
+    /// <see cref="ThreeAuthenticatedRolesClosePositiveParityOnOneUnchangedSubject"/>.
     /// </summary>
     [Fact]
-    public void CheckedInPacketSelectsOnlyTheCorrectedIdentityAfterThreeReceiptsExist()
+    public void CheckedInPacketFailsClosedUntilThreeReceiptsBindTheCurrentSubject()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
-        (int exitCode, string output, string error) = RunValidator(root, packet);
+        (int exitCode, _, string error) = RunValidator(root, packet);
 
-        exitCode.ShouldBe(0, error);
-        output.ShouldContain("selected=" + IndexDigest);
+        exitCode.ShouldNotBe(0);
+        error.ShouldContain("exactly three packet-bound receipts are required");
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(3);
-        closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
         closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
+
+        // The superseded receipts must stay outside the packet: reachable for audit, never bound.
+        string superseded = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-15",
+            "superseded-acceptances");
+        Directory.Exists(superseded).ShouldBeTrue();
+        Directory.Exists(Path.Combine(packet, "acceptances", "bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709"))
+            .ShouldBeFalse();
     }
 
     /// <summary>
@@ -417,6 +429,20 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
         ci.ShouldContain(subjectSha256);
         ci.ShouldContain(IndexDigest["sha256:".Length..]);
+
+        // Presence alone cannot notice a superseded digest left behind beside the current one, so
+        // require the set of 64-hex tokens in the Story 3.15 section to be exactly the expected two.
+        int section = ci.IndexOf("### Story 3.15", StringComparison.Ordinal);
+        section.ShouldBeGreaterThan(-1);
+        string[] digests = Regex.Matches(ci[section..], "[0-9a-f]{64}")
+            .Select(match => match.Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        digests.ShouldBe(
+            new[] { subjectSha256, IndexDigest["sha256:".Length..], PredecessorSha256 }
+                .Order(StringComparer.Ordinal)
+                .ToArray());
     }
 
     /// <summary>
@@ -777,6 +803,63 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         JsonNode binding = closure["acceptances"]!["receipts"]![index].ShouldNotBeNull();
         binding["sha256"] = ComputeSha256(receiptPath);
         binding["size"] = new FileInfo(receiptPath).Length;
+    }
+
+    /// <summary>
+    /// Verifies unreviewed bytes anywhere on the verifier's import path fail closed before they
+    /// execute. Each case tampers one file in a copied tool tree; the injected marker must never
+    /// reach stdout. The untampered control proves the copied tree can otherwise reach validation,
+    /// so a broken harness cannot masquerade as the guard firing.
+    /// </summary>
+    /// <param name="tamperedFile">Import-path file to append unreviewed code to.</param>
+    [Theory]
+    [InlineData("deployed_runtime_parity_handlers/__init__.py")]
+    [InlineData("deployed_runtime_parity_handlers/v1.py")]
+    [InlineData("release_evidence_handlers/__init__.py")]
+    [InlineData("release_evidence_handlers/v3.py")]
+    public void TamperedImportPathBytesNeverExecute(string tamperedFile)
+    {
+        string root = FindRepositoryRoot();
+        string packet = Path.Combine(root, EvidenceRelativePath);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-import-{Guid.NewGuid():N}");
+        try
+        {
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+
+            // Control: the copied tree must reach real validation before anything is tampered.
+            (int controlExit, _, string controlError) = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrected-deployed-runtime-parity.py",
+                Path.Combine(packet, "closure.json"),
+                "--packet-root",
+                packet);
+            controlExit.ShouldNotBe(0);
+            controlError.ShouldContain("exactly three packet-bound receipts are required");
+
+            File.AppendAllText(
+                Path.Combine(temporary, "tools", tamperedFile),
+                "\nprint('untrusted-import-executed')\n");
+
+            (int exitCode, string output, string error) = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrected-deployed-runtime-parity.py",
+                Path.Combine(packet, "closure.json"),
+                "--packet-root",
+                packet);
+
+            exitCode.ShouldNotBe(0);
+            error.ShouldContain("trusted live handler source does not match its pinned SHA-256");
+            output.ShouldNotContain("untrusted-import-executed");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
     }
 
     private static (int ExitCode, string Output, string Error) RunValidator(string root, string packet) =>
