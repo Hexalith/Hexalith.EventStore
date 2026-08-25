@@ -28,13 +28,16 @@ UTC RFC 3339 second so both child configs agree.
 | `references/Hexalith.Tenants/src/Hexalith.Tenants` (submodule) | `registry.hexalith.com/tenants` |
 
 ```bash
-# Publish one image to a local tar (no registry push)
+# Publish one image to a local tar (no registry push).
+# ContainerRegistry is cleared so the archived image is named `eventstore:<version>`
+# rather than `registry.hexalith.com/eventstore:<version>`.
 SOURCE_SHA="$(git rev-parse HEAD)"
 RELEASE_VERSION="0.0.0-staging.sha${SOURCE_SHA:0:12}"
 CREATED="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 SOURCE_URL="https://github.com/Hexalith/Hexalith.EventStore/commit/$SOURCE_SHA"
 dotnet publish src/Hexalith.EventStore/Hexalith.EventStore.csproj \
   --configuration Release -t:PublishContainer \
+  -p:ContainerRegistry= \
   -p:ContainerArchiveOutputPath=/tmp/eventstore.tar.gz \
   -p:ContainerImageTag="$RELEASE_VERSION" \
   -p:ContainerProvenanceSourceSha="$SOURCE_SHA" \

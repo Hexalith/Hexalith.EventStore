@@ -46,6 +46,7 @@ is_semver_without_numeric_padding() {
       return 1
     fi
   done
+  return 0
 }
 
 is_semver_without_numeric_padding "$version" ||

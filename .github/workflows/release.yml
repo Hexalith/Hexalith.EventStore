@@ -88,14 +88,14 @@ jobs:
       id-token: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@22a578b576a515d2af214fe81859447fffc97981
     with:
       solution: Hexalith.EventStore.slnx
       timeout-minutes: 60
       environment-name: production
       governed-release: false
       publish-containers: true
-      builds-execution-sha: a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec
+      builds-execution-sha: 22a578b576a515d2af214fe81859447fffc97981
       source-branch: main
       source-ci-workflow: ci.yml
       package-manifest: tools/release-packages.json

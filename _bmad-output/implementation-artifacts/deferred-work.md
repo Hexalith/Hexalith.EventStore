@@ -1741,3 +1741,37 @@ status: open
   severity: medium
   summary: Nothing enforces deferred-work ledger format -- every governance test is skipped.
   evidence: All `Dw6*` cases in `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/` carry `[Fact(Skip = ...)]` (Dw6Bookkeeping 4, Dw6LedgerSweep 4, Dw6CheckerReport 5, Dw6GovernanceVocabulary 6) and both `Dw4DeferredWorkDispositionAtddTests` cases are skipped as well. This is why the loop-6 block could be appended with missing `severity:` fields, absolute machine-local `source_spec` paths, and duplicate entries without any gate objecting.
+
+## Deferred from: code review of spec-4-5-append-durability-race-evidence.md (2026-08-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: low
+  summary: Contender discrimination in the append-durability race depends on two undocumented sentinel values.
+  evidence: `IsExactActorContender` (`tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceLiveSidecarTests.cs:609-620`) requires `candidate.GlobalPosition > 0`, while the raw probe deliberately writes `globalPosition: 0`; nothing documents 0 as reserved. Separately `session.sessionId` is the same ULID as `rawContender.messageId` in every capture (`01KZG95BBK9G9M0Q859KR65N4T` in the committed one), so the session and the raw contender are indistinguishable in log correlation. Not reachable as a misclassification today because `UserId`, `DomainServiceVersion` and the `story-4-5-contender` extension also discriminate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: low
+  summary: The sealed LiveSidecar receipt exercises a PostgreSQL profile that the packet's provider record does not declare.
+  evidence: `evidence/story-4-5/0776785f.../live-sidecar-test-results.json` contains an `Oq8Postgresql` test collection and an `IdempotencyAdmissionOq8PostgresqlTests` case, but `providerProfile` and `environment.md` document only Dapr 1.18.1, `state.redis` and `redis:6`. No Postgres image, version or connection profile is captured anywhere in the packet, so the 75-test receipt is not fully characterized by the environment it ships with.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: medium
+  summary: A durability packet records no Redis durability configuration.
+  evidence: `providerProfile.redisImage` is the floating tag `"redis:6"` rather than an image digest, and no `appendonly`, `save`, or `INFO persistence` output is captured in `append-durability-race.json` or `environment.md`. The story's headline claim is that a durable write was silently lost, and the Redis persistence settings are precisely the configuration that claim depends on; a re-capture on a differently-configured `redis:6` would be indistinguishable from the reviewed one. Belongs with the deferred multi-provider fencing capture, which must record per-provider durability settings anyway.
+
+### Deferred from: code review of spec-3-14-corrective-oci-provenance-release.md (2026-08-25, chunk 4)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  severity: low
+  summary: The trusted-import shadow check in the Story 3.14 dispatcher detects only after the handler has already executed.
+  evidence: `_verify_no_repository_import_shadows` is called at the end of the `try` in `validate()`, after `validate_identity` and `validate_packet_files` have run, and is skipped entirely when validation raises. A repository-local shadow that did load would have executed its top-level code before being reported. Deferred: largely subsumed by the isolated-mode re-exec applied 2026-08-26, which removes the window in which any repository-local shadow can resolve at all (verified: a planted `tools/json.py` executed and the packet still validated `exit 0` before the fix, and no longer executes after it). Relocating the remaining check into `finally` would mask the original exception it is meant to accompany, so it is left as post-hoc defence in depth.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  severity: low
+  summary: `deploy/README.md` still teaches `staging-latest` mutable tags and names a workflow that does not exist.
+  evidence: `deploy/README.md:370` describes "the `deploy-staging.yml` workflow uses `staging-latest` mutable tags for staging deployments", but `.github/workflows/` contains no `deploy-staging.yml`, and this loop removed `staging-latest` as the container-tag default in `Directory.Build.targets:17` (updating `docs/brownfield/deployment-guide.md` but not this file). Deferred: pre-existing documentation drift, and `_bmad-output/planning-artifacts/epics.md:5139` already scopes deployment-documentation digest teaching to backlog Story 7.9.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md`
+  severity: low
+  summary: The reservation-input governance assertions were narrowed to one exact four-space `with:` block.
+  evidence: `ContainerPublishingGovernanceTests` moved `release-version:`, `reserved-version:`, `release-authority-issue-url:` and `release-authority-owner:` from whole-file `ShouldNotContain` into the extracted `    with:` block, so a job whose `with:` is written at another indentation would not be examined. Deferred: theoretical — `.github/workflows/release.yml` has exactly two jobs and one `with:` mapping, and the new `Count(line => line.Equals("    with:")) == 1` assertion added in the same change fails closed if a second four-space mapping ever appears.

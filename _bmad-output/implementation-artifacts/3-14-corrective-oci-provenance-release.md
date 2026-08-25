@@ -37,9 +37,14 @@ Post-release review hardening initially rotated the EventStore release caller to
 `63409393541f1437e23006b7a4e05174f8b50da7`, but that revision was not yet published to the
 Hexalith.Builds remote when the pin was set, so a Release dispatch could not then have resolved the
 reusable workflow. The revision later reached remote `main`; the caller now pins
-`a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`, which superseded `63409393…`, is reachable on
-Hexalith.Builds `main`, and is asserted by `ApprovedBuildsReleaseSha` in
-`ContainerPublishingGovernanceTests.cs`. This does not rewrite the historical release execution:
+`22a578b576a515d2af214fe81859447fffc97981`, which supersedes both `63409393…` and the
+`a07078ad…` pin the corrective release itself executed under, is reachable on Hexalith.Builds
+`main`, and is asserted by `ApprovedBuildsReleaseSha` in `ContainerPublishingGovernanceTests.cs`.
+The 2026-08-26 rotation is recorded in the Spec Change Log: `domain-release.yml` is byte-identical
+across it, so only the executed helper tree moved. The development gitlink is `22a578b5…` as well;
+the governance rule is now that the pin is an ancestor of, or equal to, the gitlink, since the
+former inequality forbade exactly the state a legitimate rotation produces. This does not rewrite
+the historical release execution:
 the packet correctly remains bound to executed Builds SHA `eadddc7b5d8e9392e5931758ffb608b57b5fdc6c`,
 while the ordinary development gitlink is pinned independently of the release caller. The gitlink has
 moved several times since this record was first written (`145ab857` at `4038cf33`, `eadddc7b` at
@@ -108,11 +113,16 @@ among the five rebound by `Directory.Build.targets`, and neither the codec nor t
 inspected any label outside the five. The published image is otherwise correct and its identity,
 source, revision and version labels are unaffected; the malformed values are timestamps only.
 Post-release hardening now rebinds both created labels and makes a direct multi-RID archive test
-pass one explicit publisher-shaped instant while asserting the complete label surface rather than a
-five-key allowlist. The current Hexalith.Builds development source generates one publisher-owned RFC
-3339 instant and forwards it to every container publish. EventStore's immutable `a07078ad…` release
-pin predates that publisher change and must be rotated only after the Builds change receives its own
-reviewed commit. Reissuing v3.96.2 was deliberately not attempted: the labels are
+pass one explicit publisher-shaped instant, asserting it against the value the publish supplied
+rather than against the artifact's own output, and asserting the complete label surface rather than
+a five-key allowlist. The MSBuild fallback was then removed entirely, because a locally-defaulted
+property is re-evaluated independently by the SDK's inner RID builds: the instant must be an
+explicit global property or the two children can disagree. That made the input mandatory while the
+`a07078ad…` release pin still omitted it, which would have failed every governed container publish
+*after* NuGet publication. The 2026-08-26 code review resolved this by rotating the release pin to
+`22a578b5…`, whose publisher generates one `date -u` instant and forwards it to every container
+publish; `PinnedPublisherForwardsEveryMandatoryProvenanceInput` now binds the two surfaces together
+so the gap cannot silently reopen. Reissuing v3.96.2 was deliberately not attempted: the labels are
 not contract-bound by the Story 3.14 matrix, and a re-release would consume a further version and a
 further one-use authority.
 
@@ -137,15 +147,17 @@ quarantined version nor any earlier authority record. The packet retains the exa
 - `python3 tools/validate-corrective-release-evidence.py <release-identity> --manifest tools/release-packages.json --packet-root <packet>` — pass; canonical SHA-256
   `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
 - Contracts Release/package-mode build — pass, zero warnings and zero errors.
-- Focused corrective-release and container-governance suite — 70 passed, zero failed, zero skipped
-  (30 corrective-release cases and 40 container-governance cases);
+- Focused corrective-release and container-governance suite — 92 passed, zero failed, zero skipped
+  (44 corrective-release cases and 48 container-governance cases), measured 2026-08-26 by running
+  each class, not counted from this ledger;
   includes the checked-in packet's exact final digest and manifest, package-origin, workflow,
   checksum, raw-smoke, authority-window/edit, receipt-schema, reservation, and provenance mutations.
 - Shared Builds publication preflight and publisher-contract counts recorded for the release execution
   SHA `eadddc7b…` were 54 passed and 123 passed for the full harness, both with zero skipped. The
-  independently pinned `a07078ad…` fixture runs two named authority cases directly from that exact
-  archived commit and requires both to pass without skips.
-- Complete Contracts regression suite — 1439 passed, zero failed, zero skipped.
+  pinned `22a578b5…` fixture runs two named authority cases directly from that exact archived
+  commit and requires both to pass without skips, and a separate check reads the same archived
+  publisher to prove it forwards every provenance property the build requires.
+- Complete Contracts regression suite — 1721 passed, zero failed, zero skipped (2026-08-26).
 - Manifest pack/validation — exactly 14 valid packages.
 - Shell syntax, action lint, and `git diff --check` — pass in both owning repositories.
 

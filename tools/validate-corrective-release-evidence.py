@@ -1,13 +1,32 @@
 #!/usr/bin/env python3
 """Validate retained Story 3.14 evidence and print its canonical identity digest."""
 
-import argparse
-import hashlib
-import importlib.machinery
-import json
 import sys
-import types
-from pathlib import Path
+
+# Fail closed before any other import can resolve. Running this file as a script puts its own
+# directory on sys.path[0], so a repository-local tools/json.py -- or argparse, hashlib, types,
+# pathlib -- executes ahead of every pin, long before validate() gets a chance to sanitize
+# sys.path. Re-exec once under isolated mode, which drops the script directory, PYTHONPATH and
+# the user site directory from import resolution. os is resolved through sys.modules rather than
+# imported, because that import is itself shadowable; the interpreter has already loaded the real
+# module during startup.
+if __name__ == "__main__" and not sys.flags.isolated:
+    _os = sys.modules.get("os")
+    if _os is None:
+        raise SystemExit(
+            "[corrective-release-evidence] fail: cannot establish isolated import resolution")
+    _os.execv(
+        sys.executable,
+        [sys.executable, "-I", _os.path.abspath(__file__), *sys.argv[1:]],
+    )
+
+import argparse  # noqa: E402
+import hashlib  # noqa: E402
+import importlib.machinery  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import types  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 
 SCHEMA = "hexalith.eventstore.corrective-release-identity.v1"
@@ -32,8 +51,10 @@ HANDLER_PACKAGE_FILE_SHA256 = {
 }
 
 
-# Execute only the source bytes whose hashes were checked. In particular, never allow a valid stale
-# .pyc to become a second executable representation of the trusted handler.
+# The handlers are executed from source bytes this script hashes itself (see _load_verified_module),
+# so no .pyc is ever consulted for them. This setting is the matching hygiene on the write side:
+# it stops a run from leaving behind bytecode that some other, ordinary import path could later
+# treat as a second executable representation of a handler.
 sys.dont_write_bytecode = True
 
 
@@ -67,12 +88,14 @@ def _load_dispatch_metadata(evidence_bytes):
 
 
 def _verify_pinned_source(path, expected):
+    # Each failure gets its own sentence: an operator reading a CI log must be able to tell an
+    # unpinned file from an unreadable one from an edited one without opening this script.
     if expected is None:
-        raise DispatchError("trusted live handler source is unavailable")
+        raise DispatchError("trusted live handler file is not pinned in the dispatch table")
     try:
         source = path.read_bytes()
     except OSError as error:
-        raise DispatchError("trusted live handler source is unavailable") from error
+        raise DispatchError("trusted live handler source could not be read") from error
     if hashlib.sha256(source).hexdigest() != expected:
         raise DispatchError("trusted live handler source does not match its pinned SHA-256")
     return source
@@ -91,8 +114,10 @@ def _is_repository_path(value):
     ):
         return False
     try:
-        path = Path(value).resolve()
-    except (OSError, RuntimeError, ValueError):
+        # os.fsdecode, not Path(value): Path raises TypeError on bytes, which is not in the caught
+        # tuple, so a bytes __file__ produced a raw traceback instead of the fail: line.
+        path = Path(os.fsdecode(value)).resolve()
+    except (OSError, RuntimeError, TypeError, ValueError):
         return False
     root = _repository_root().resolve()
     return path == root or root in path.parents
@@ -154,19 +179,12 @@ def _load_verified_module(module_name, path, source, *, is_package=False):
     return module
 
 
-def _verify_imported_file(module, path):
-    expected = path.resolve()
-    actual = Path(getattr(module, "__file__", "") or "").resolve()
-    if actual != expected:
-        raise DispatchError("trusted live handler was not imported from its verified path")
-
-
 def _load_handler(module_name):
     if set(HANDLERS.values()) != set(HANDLER_FILE_SHA256):
         raise DispatchError("trusted live handler configuration is inconsistent")
     package_name, _, leaf_name = module_name.rpartition(".")
     if not package_name or not leaf_name:
-        raise DispatchError("trusted live handler source is unavailable")
+        raise DispatchError("trusted live handler module name is malformed")
     if set(HANDLER_PACKAGE_FILE_SHA256) != {name.rpartition(".")[0] for name in HANDLER_FILE_SHA256}:
         raise DispatchError("trusted live handler configuration is inconsistent")
     # Resolve from this script, never through find_spec: find_spec imports the parent package,
@@ -181,9 +199,10 @@ def _load_handler(module_name):
     package = _load_verified_module(package_name, package_path, package_source, is_package=True)
     module = _load_verified_module(module_name, handler_path, handler_source)
     setattr(package, leaf_name, module)
-    _verify_imported_file(package, package_path)
-    _verify_imported_file(module, handler_path)
-    if module.EXPECTED_PACKET_CODEC_SHA256 != V3_PACKET_CODEC_SHA256:
+    # No "was it imported from the verified path?" check here: _load_verified_module sets __file__
+    # from that same path and executes only bytes this function hashed, so such a check compares a
+    # value to its own origin and can never fail. The pin above is the real guarantee.
+    if getattr(module, "EXPECTED_PACKET_CODEC_SHA256", None) != V3_PACKET_CODEC_SHA256:
         raise DispatchError("trusted live handler codec pin is inconsistent")
     return module
 

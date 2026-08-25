@@ -115,7 +115,13 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 JsonElement labels = config.RootElement.GetProperty("config").GetProperty("Labels");
                 string observedCreated = labels.GetProperty("org.opencontainers.image.created")
                     .GetString().ShouldNotBeNull();
-                expected ??= ExpectedLabels(observedCreated);
+
+                // Bind the label to the value the publish actually passed. Seeding the expectation
+                // from the first child compared the artifact against itself: any instant that both
+                // children happened to agree on -- including a build-time UtcNow -- passed, and no
+                // validator checks the created labels either.
+                observedCreated.ShouldBe(Created);
+                expected ??= ExpectedLabels(Created);
                 ValidateLabels(labels, expected);
                 childLabels.Add(labels.EnumerateObject().ToDictionary(
                     property => property.Name,
@@ -210,7 +216,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerProvenanceSourceSha", "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD", "ContainerProvenanceSourceSha must be an exact lowercase 40-character commit SHA.", false)]
     [InlineData("ContainerProvenanceReleaseVersion", "01.2.3", "ContainerProvenanceReleaseVersion must be SemVer without build metadata or leading-zero numeric identifiers.", false)]
     [InlineData("ContainerImageTag", "0.0.0-other", "ContainerImageTag must equal ContainerProvenanceReleaseVersion.", false)]
-    [InlineData("ContainerImageTags", "latest", "ContainerImageTags must contain only ContainerProvenanceReleaseVersion.", false)]
+    [InlineData("ContainerImageTags", "latest", "ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else.", false)]
     [InlineData("ContainerProvenanceCreated", "2026-08-21T09:15Z", "ContainerProvenanceCreated must be an exact UTC RFC 3339 second.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
     [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", false)]
@@ -218,6 +224,8 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerProvenanceRepositoryUrl", "http://github.com/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https://.", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https://github.com/Hexalith/Hexalith.EventStore\n", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://github..com", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
+    [InlineData("ContainerProvenanceRepositoryUrl", "https://example.test:99999/x", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", true)]
     [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", true)]
     [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", true)]
@@ -262,6 +270,37 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
+    /// Verifies well-formed provenance URLs still pass. The negative rows alone cannot detect an
+    /// over-tightened pattern -- a regex that rejects everything satisfies every one of them, and
+    /// the failure would surface only at publish time.
+    /// </summary>
+    /// <param name="repositoryUrl">A well-formed https repository URL.</param>
+    [Theory]
+    [InlineData("https://github.com/Hexalith/Hexalith.EventStore")]
+    [InlineData("https://example.test")]
+    [InlineData("https://example.test:8443/hexalith")]
+    [InlineData("https://example.test/hexalith?ref=main")]
+    public void ContainerPublicationAcceptsWellFormedProvenanceUrls(string repositoryUrl)
+    {
+        ProcessResult result = RunProcess(
+            FindRepositoryRoot(),
+            "dotnet",
+            "msbuild",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "-t:ValidateContainerProvenanceInputs",
+            "-p:EnableContainer=true",
+            "-p:UseHexalithProjectReferences=false",
+            "-p:NuGetAudit=false",
+            "-p:MinVerVersionOverride=1.0.0",
+            $"-p:ContainerProvenanceSourceSha={SourceSha}",
+            $"-p:ContainerProvenanceReleaseVersion={Version}",
+            $"-p:ContainerProvenanceCreated={Created}",
+            $"-p:ContainerProvenanceRepositoryUrl={repositoryUrl}");
+
+        result.ExitCode.ShouldBe(0, result.Output + result.Error);
+    }
+
+    /// <summary>
     /// Verifies an omitted image tag defaults to the exact provenance version rather than a
     /// non-SemVer staging alias.
     /// </summary>
@@ -283,6 +322,27 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             $"-p:ContainerProvenanceCreated={Created}");
 
         result.ExitCode.ShouldBe(0, result.Output + result.Error);
+
+        // Exit 0 alone is green by construction: the tag guard's '$(ContainerImageTag)' != ''
+        // precondition is false when the default is deleted, so the target succeeds while the
+        // image silently falls back to the SDK's own tag. Read the evaluated value instead.
+        ProcessResult evaluated = RunProcess(
+            FindRepositoryRoot(),
+            "dotnet",
+            "msbuild",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "-t:ValidateContainerProvenanceInputs",
+            "-p:EnableContainer=true",
+            "-p:UseHexalithProjectReferences=false",
+            "-p:NuGetAudit=false",
+            "-p:MinVerVersionOverride=1.0.0",
+            $"-p:ContainerProvenanceSourceSha={SourceSha}",
+            $"-p:ContainerProvenanceReleaseVersion={Version}",
+            $"-p:ContainerProvenanceCreated={Created}",
+            "-getProperty:ContainerImageTag");
+
+        evaluated.ExitCode.ShouldBe(0, evaluated.Output + evaluated.Error);
+        evaluated.Output.Trim().ShouldBe(Version);
     }
 
     /// <summary>
@@ -896,6 +956,77 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
+    /// Verifies a shadow of one of the dispatcher's <em>own</em> top-level imports never executes.
+    /// The sibling case above plants a module <c>v3.py</c> imports, i.e. one resolved after
+    /// sanitization; these resolve before any repository code runs, so they were the reachable
+    /// half of the same hole.
+    /// </summary>
+    /// <param name="shadowedModule">A standard-library module the dispatcher imports at load time.</param>
+    [Theory]
+    [InlineData("json")]
+    [InlineData("argparse")]
+    [InlineData("hashlib")]
+    public void CorrectiveDispatcherRejectsShadowsOfItsOwnImports(string shadowedModule)
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string temporary = Path.Combine(
+            Path.GetTempPath(), $"eventstore-corrective-self-shadow-{Guid.NewGuid():N}");
+        try
+        {
+            string tools = Path.Combine(temporary, "tools");
+            string handlers = Path.Combine(tools, "release_evidence_handlers");
+            Directory.CreateDirectory(handlers);
+            File.Copy(
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                Path.Combine(tools, "validate-corrective-release-evidence.py"));
+            File.Copy(
+                Path.Combine(root, "tools", "release_evidence_handlers", "__init__.py"),
+                Path.Combine(handlers, "__init__.py"));
+            File.Copy(
+                Path.Combine(root, "tools", "release_evidence_handlers", "v3.py"),
+                Path.Combine(handlers, "v3.py"));
+
+            // Print a marker, then hand back the genuine module so the run continues. A shadow that
+            // merely crashed could not distinguish "never imported" from "imported and failed".
+            File.WriteAllText(
+                Path.Combine(tools, shadowedModule + ".py"),
+                $"""
+                 import sys, os, importlib.util, importlib.machinery
+                 print('corrective-self-shadow-executed', flush=True)
+                 _here = os.path.dirname(os.path.abspath(__file__))
+                 _paths = [p for p in sys.path if os.path.abspath(p or os.getcwd()) != _here]
+                 _spec = importlib.machinery.PathFinder.find_spec('{shadowedModule}', _paths)
+                 _real = importlib.util.module_from_spec(_spec)
+                 sys.modules['{shadowedModule}'] = _real
+                 _spec.loader.exec_module(_real)
+                 """);
+
+            ProcessResult result = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrective-release-evidence.py",
+                Path.Combine(checkedInPacket, "release-identity.json"),
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket);
+
+            (result.Output + result.Error).ShouldNotContain("corrective-self-shadow-executed");
+            result.ExitCode.ShouldBe(0, result.Output + result.Error);
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies the source-only predecessor dispatcher removes its own tools directory from import
     /// resolution, so a repository-local zipfile shadow cannot execute from verified handler code.
     /// </summary>
@@ -1049,6 +1180,71 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 Directory.Delete(temporary, recursive: true);
             }
         }
+    }
+
+    /// <summary>
+    /// Verifies the publisher at the pinned release SHA forwards every provenance property the build
+    /// requires with no default. Nothing bound these two surfaces together, so removing the
+    /// <c>ContainerProvenanceCreated</c> fallback made the property mandatory while the pinned
+    /// publisher still omitted it -- a release that publishes 14 packages, then fails at container
+    /// publish. The required set is derived from the target rather than hand-listed, so a future
+    /// mandatory input is covered the day it is added.
+    /// </summary>
+    [Fact]
+    public void PinnedPublisherForwardsEveryMandatoryProvenanceInput()
+    {
+        string root = FindRepositoryRoot();
+        string targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
+
+        Match validation = Regex.Match(
+            targets,
+            @"(?s)<Target Name=""ValidateContainerProvenanceInputs""(?<body>.*?)</Target>");
+        validation.Success.ShouldBeTrue();
+
+        // Every provenance property the validation target reads...
+        HashSet<string> validated = Regex
+            .Matches(validation.Groups["body"].Value, @"\$\((?<name>ContainerProvenance[A-Za-z]+)\)")
+            .Select(match => match.Groups["name"].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        // ...minus those the targets file defaults for itself. What remains has no source but the
+        // publisher, so the publisher must supply it or the build fails closed.
+        HashSet<string> defaulted = Regex
+            .Matches(targets, @"<(?<name>ContainerProvenance[A-Za-z]+) Condition=""'\$\(\k<name>\)' == ''""")
+            .Select(match => match.Groups["name"].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        string[] mandatory = [.. validated.Except(defaulted, StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+
+        // Coverage control: an empty or unexpected set would make the assertion below vacuous.
+        mandatory.ShouldBe(
+            ["ContainerProvenanceCreated", "ContainerProvenanceReleaseVersion", "ContainerProvenanceSourceSha"],
+            "the set of publisher-supplied provenance inputs changed; confirm the pinned publisher supplies each.");
+
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        Match releasePin = Regex.Match(
+            workflow,
+            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
+        releasePin.Success.ShouldBeTrue();
+        string releaseSha = releasePin.Groups["sha"].Value;
+
+        string builds = Path.Combine(root, "references", "Hexalith.Builds");
+        ProcessResult publisher = RunProcess(
+            builds, "git", "show", $"{releaseSha}:Github/publish-containers/publish-containers.sh");
+        publisher.ExitCode.ShouldBe(
+            0,
+            $"Pinned Builds release SHA {releaseSha} is unavailable in references/Hexalith.Builds. " +
+            "Fetch that exact pin before running the publisher contract check. " + publisher.Error);
+
+        // Pattern control: an empty or unrecognisable script would satisfy nothing below vacuously.
+        publisher.Output.ShouldContain("dotnet publish");
+
+        List<string> missing = [.. mandatory.Where(name => !publisher.Output.Contains($"-p:{name}=", StringComparison.Ordinal))];
+        missing.ShouldBeEmpty(
+            $"the publisher at pinned Builds SHA {releaseSha} does not forward every provenance property "
+            + "ValidateContainerProvenanceInputs requires, so a governed release would fail at container "
+            + "publish after NuGet packages are already pushed:\n"
+            + string.Join('\n', missing));
     }
 
     /// <summary>

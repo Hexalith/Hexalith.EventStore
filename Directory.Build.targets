@@ -5,7 +5,8 @@
     Opt-in per project with:
       <EnableContainer>true</EnableContainer>
       <ContainerRepository>image-name</ContainerRepository>
-    CI/CD may override ContainerRegistry and ContainerImageTags via env or -p:.
+    CI/CD may override ContainerRegistry via env or -p:. The image tag is not free:
+    it must equal ContainerProvenanceReleaseVersion, and defaults to it when unset.
     Loaded as .targets (post-project) so EnableContainer set in the project is visible.
   -->
   <PropertyGroup Condition="'$(EnableContainer)' == 'true'">
@@ -31,9 +32,12 @@
     <ContainerGenerateLabelsImageVersion>false</ContainerGenerateLabelsImageVersion>
     <ContainerGenerateLabelsImageCreated>false</ContainerGenerateLabelsImageCreated>
     <!--
-      The publisher supplies one exact RFC 3339 instant so both child configs
-      agree. This must be an explicit global property: an MSBuild-local fallback
-      is re-evaluated independently by the SDK's inner RID builds.
+      These three URLs default from each other so a caller need only override the
+      repository. ContainerProvenanceCreated deliberately has no default: it must be
+      one publisher-owned instant shared by both child configs, and an MSBuild-local
+      fallback is re-evaluated independently by the SDK's inner RID builds, so the
+      children would disagree. The validation target below fails closed when it is
+      absent; the pinned publisher contract test proves the publisher supplies it.
     -->
     <ContainerProvenanceRepositoryUrl Condition="'$(ContainerProvenanceRepositoryUrl)' == ''">https://github.com/Hexalith/Hexalith.EventStore</ContainerProvenanceRepositoryUrl>
     <ContainerProvenanceReleaseUrl Condition="'$(ContainerProvenanceReleaseUrl)' == ''">$(ContainerProvenanceRepositoryUrl)/releases/tag/v$(ContainerProvenanceReleaseVersion)</ContainerProvenanceReleaseUrl>
@@ -63,7 +67,7 @@
     <Error Condition="'$(ContainerImageTag)' != '' and '$(ContainerImageTag)' != '$(ContainerProvenanceReleaseVersion)'"
            Text="ContainerImageTag must equal ContainerProvenanceReleaseVersion." />
     <Error Condition="'$(ContainerImageTags)' != '' and '$(ContainerImageTags)' != '$(ContainerProvenanceReleaseVersion)'"
-           Text="ContainerImageTags must contain only ContainerProvenanceReleaseVersion." />
+           Text="ContainerImageTags must be exactly ContainerProvenanceReleaseVersion and nothing else." />
     <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceCreated)', '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$')) != 'true'"
            Text="ContainerProvenanceCreated must be an exact UTC RFC 3339 second." />
     <!--
@@ -73,11 +77,11 @@
       including a colon-truncated value like "https", the exact defect class this story exists
       to reject. Validate shape here regardless of which source supplied the value.
     -->
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceRepositoryUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?(?:/[^\s]*)?\z')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceRepositoryUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\s]*)?\z')) != 'true'"
            Text="ContainerProvenanceRepositoryUrl must be a well-formed https URL." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?(?:/[^\s]*)?\z')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceReleaseUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\s]*)?\z')) != 'true'"
            Text="ContainerProvenanceReleaseUrl must be a well-formed https URL." />
-    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceDocumentationUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?(?:/[^\s]*)?\z')) != 'true'"
+    <Error Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(ContainerProvenanceDocumentationUrl)', '\Ahttps://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::(?:[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?(?:[/?#][^\s]*)?\z')) != 'true'"
            Text="ContainerProvenanceDocumentationUrl must be a well-formed https URL." />
   </Target>
 

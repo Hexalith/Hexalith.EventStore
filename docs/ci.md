@@ -212,7 +212,7 @@ container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
-`a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`. The reusable workflow verifies its
+`22a578b576a515d2af214fe81859447fffc97981`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
@@ -269,7 +269,9 @@ source proof, frozen identity, and version-floor checks run either way. No
 projected version such as `3.96.0` is ever embedded as release policy.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
-action only after the applicable preflight gates and NuGet publication:
+action only after the applicable preflight gates and NuGet publication. That
+ordering is why a container-publish failure is expensive: the packages and the
+tag are already published when it fires.
 
 GitHub validates reusable-workflow permissions against every nested job before
 it starts the caller, including skipped jobs. The EventStore caller therefore
@@ -304,11 +306,18 @@ all descriptor byte sizes and raw hashes, config descriptor media types, and
 config `os`/`architecture` must all agree. Exact raw child-manifest and config
 bytes are retained beside the raw parent index with independent hashes.
 Both configs must also contain identical exact
-`org.opencontainers.image.source`, `.url`, `.documentation`, `.revision`, `.version`,
-`.created`, and `org.opencontainers.artifact.created` labels. EventStore rebinds those labels after the .NET SDK
-multi-RID inner-build parser so URL colons cannot be truncated to `https` and
-passes source revision, release version, and one publisher-owned RFC 3339 creation instant as
-explicit publisher inputs.
+`org.opencontainers.image.source`, `.url`, `.documentation`, `.revision`, and
+`.version` labels. Those five, and only those five, are what the shared validator and the
+retained-evidence codec check. EventStore rebinds them after the .NET SDK multi-RID inner-build
+parser so URL colons cannot be truncated to `https`, and passes source revision, release version,
+and one publisher-owned RFC 3339 creation instant as explicit publisher inputs.
+
+`org.opencontainers.image.created` and `org.opencontainers.artifact.created` are rebound the same
+way but are **not** validator-enforced. They joined the rebind set after v3.96.2 shipped, so that
+release's retained child configs both carry the colon-truncated `2026-08-20T11`. The truncation is
+what made the two children agree; once rebinding was in place a build-time fallback would have made
+them differ instead, which is why `ContainerProvenanceCreated` is now a mandatory publisher-owned
+input with no MSBuild default, forwarded by the publisher at the pinned release SHA.
 
 Both immutable child references (`repository@sha256:...`) are explicitly pulled
 with bounded timeouts and run the same bounded
@@ -457,9 +466,11 @@ bounded all smoke-capture work by one per-platform monotonic deadline, and corre
 trigger to bind receipt-source **policy** changes. Those trusted-byte changes re-minted the subject
 again and superseded every `dab64f5f...` receipt.
 
-The packet's current subject is
-`a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`, and the packet passes with
-**three of three roster-bound role receipts**. Fresh EventStore-owner comment `5409145568`, fresh
+As of 2026-08-26, with Story 3.15 still `in-progress`, the packet's current subject is
+`a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f` and it passes with
+**three of three roster-bound role receipts**. That is the state of the evidence, not a story
+status: the subject is re-minted by any change to the verifier's trusted bytes or receipt-source
+policy, and each re-mint rejects every receipt collected for its predecessor. Fresh EventStore-owner comment `5409145568`, fresh
 Release-owner comment `5409148235`, and the `bmad:murat` Test Architect record all bind that exact
 subject. The `dab64f5f...` receipts and sources remain byte-for-byte in the superseded audit area.
 The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test

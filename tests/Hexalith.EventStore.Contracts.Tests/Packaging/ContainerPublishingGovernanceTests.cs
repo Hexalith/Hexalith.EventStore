@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class ContainerPublishingGovernanceTests
 {
-    private const string ApprovedBuildsReleaseSha = "a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec";
+    private const string ApprovedBuildsReleaseSha = "22a578b576a515d2af214fe81859447fffc97981";
     private const int ExpectedPackageCount = 14;
     private static readonly TimeSpan PublicationPreflightTimeout = TimeSpan.FromSeconds(10);
 
@@ -511,17 +511,28 @@ public sealed class ContainerPublishingGovernanceTests
         // reservation inputs were a Story 3.14 corrective-release gate; the caller now
         // declares the opt-out explicitly so a dropped input can never be read as one.
         workflow.ShouldContain("require-publication-authority: false");
-        workflow.ShouldNotContain("${{ inputs.");
-        workflow.ShouldNotContain("github.event.inputs.");
+        // Scope these to the job block for the same reason the reservation inputs are scoped below:
+        // a release.yml comment naming any of them must not redden the suite.
+        string commentFreeWorkflow = string.Join(
+            '\n',
+            workflow.Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Split('\n')
+                .Where(line => !line.TrimStart().StartsWith('#')));
+        commentFreeWorkflow.ShouldNotContain("${{ inputs.");
+        commentFreeWorkflow.ShouldNotContain("github.event.inputs.");
         // A bare `\s*$` assertion is vacuous here: in multiline mode `$` matches before the
         // immediately following newline regardless of what an indented `inputs:` child below it
         // contains, so it accepts the old input-carrying form too. Extract the block instead.
         workflow.ShouldContain("  workflow_dispatch:");
         string dispatchBlock = ExtractYamlBlock(workflow, "  workflow_dispatch:");
-        Regex.IsMatch(dispatchBlock, "(?m)^\\s*(?:inputs|[\"']inputs[\"']):").ShouldBeFalse();
-        workflow.ShouldNotContain("release-owner-allowlist:");
-        workflow.ShouldNotContain("references/Hexalith.Builds");
-        workflow.ShouldNotContain("secrets: inherit");
+        // YAML permits whitespace before the colon and quoting around the key, and a flow mapping
+        // puts the whole child on the marker line where no block scan would ever see it.
+        Regex.IsMatch(dispatchBlock, "(?m)^\\s*[\"']?inputs[\"']?\\s*:")
+            .ShouldBeFalse($"workflow_dispatch must declare no inputs, but the block is:\n{dispatchBlock}");
+        dispatchBlock.ShouldNotContain("{", Case.Sensitive, "a flow mapping would hide inputs from the block scan");
+        commentFreeWorkflow.ShouldNotContain("release-owner-allowlist:");
+        commentFreeWorkflow.ShouldNotContain("references/Hexalith.Builds");
+        commentFreeWorkflow.ShouldNotContain("secrets: inherit");
 
         Match releaseJob = Regex.Match(workflow, @"(?ms)^  release:\r?\n(?<block>.*)\z");
         releaseJob.Success.ShouldBeTrue();
@@ -533,7 +544,21 @@ public sealed class ContainerPublishingGovernanceTests
         string gitlink = RunGit(root, "ls-tree", "HEAD", "references/Hexalith.Builds");
         Match gitlinkEntry = Regex.Match(gitlink, @"^160000 commit (?<sha>[0-9a-f]{40})\s+references/Hexalith\.Builds$");
         gitlinkEntry.Success.ShouldBeTrue();
-        gitlinkEntry.Groups["sha"].Value.ShouldNotBe(ApprovedBuildsReleaseSha);
+
+        // The pin is chosen deliberately rather than inherited from wherever the development
+        // gitlink drifts. Inequality does not express that: it forbids the correct state that
+        // arises the moment a legitimate bump lands on the release pin. What the rule actually
+        // means is that the pin is reviewed history the gitlink already contains, so assert
+        // ancestor-or-equal instead -- local, network-free, and true after a rotation.
+        string builds = Path.Combine(root, "references", "Hexalith.Builds");
+        string gitlinkSha = gitlinkEntry.Groups["sha"].Value;
+        RunGitExitCode(builds, "cat-file", "-e", $"{ApprovedBuildsReleaseSha}^{{commit}}").ShouldBe(
+            0,
+            $"Pinned Builds release SHA {ApprovedBuildsReleaseSha} is unavailable in references/Hexalith.Builds.");
+        RunGitExitCode(builds, "merge-base", "--is-ancestor", ApprovedBuildsReleaseSha, gitlinkSha).ShouldBe(
+            0,
+            $"The release pin {ApprovedBuildsReleaseSha} must be an ancestor of, or equal to, the development "
+            + $"gitlink {gitlinkSha}; the gitlink must never point at history that excludes the reviewed pin.");
 
         workflow.Replace("\r\n", "\n", StringComparison.Ordinal)
             .Split('\n')
@@ -779,11 +804,18 @@ public sealed class ContainerPublishingGovernanceTests
     public void DigestBearingRawOciEvidenceIsBinary()
     {
         string root = FindRepositoryRoot();
-        string[] tracked = RunGit(root, "ls-files", "-z", "*.raw")
-            .Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        string[] tracked =
+        [
+            .. new[] { "*.raw", "*.nupkg" }
+                .SelectMany(pattern => RunGit(root, "ls-files", "-z", pattern)
+                    .Split('\0', StringSplitOptions.RemoveEmptyEntries)),
+        ];
 
-        // Coverage control: an empty enumeration would make every assertion below vacuous.
+        // Coverage control: an empty enumeration would make every assertion below vacuous, and both
+        // extensions must actually be present -- .nupkg bytes are hash-bound exactly as .raw are.
         tracked.Length.ShouldBeGreaterThan(0);
+        tracked.ShouldContain(path => path.EndsWith(".raw", StringComparison.Ordinal));
+        tracked.ShouldContain(path => path.EndsWith(".nupkg", StringComparison.Ordinal));
 
         List<string> normalizable = [];
         foreach (string path in tracked)
@@ -799,6 +831,69 @@ public sealed class ContainerPublishingGovernanceTests
             "these tracked digest-bearing raw objects are not marked binary in .gitattributes, so a "
             + "core.autocrlf checkout would rewrite them and break their recorded SHA-256:\n"
             + string.Join('\n', normalizable));
+    }
+
+    /// <summary>
+    /// Verifies the wrapper rejects malformed positional release versions by executing it. Every
+    /// other harness hardcodes a well-formed version, so the rule could have been reverted to the
+    /// looser pattern with the whole suite still green.
+    /// </summary>
+    /// <param name="version">The candidate Semantic Release version.</param>
+    /// <param name="rejected">Whether the version must fail the wrapper's own version rule.</param>
+    [Theory]
+    [InlineData("01.2.3", true)]
+    [InlineData("1.02.3", true)]
+    [InlineData("1.2.03", true)]
+    [InlineData("1.0.0-alpha.01", true)]
+    [InlineData("1.0.0+build.5", true)]
+    [InlineData("not-a-version", true)]
+    // Controls: a wrapper that rejected everything would satisfy every row above. These must get
+    // past the version rule and fail on the next check instead.
+    [InlineData("3.96.2", false)]
+    [InlineData("1.0.0-alpha.1", false)]
+    [InlineData("1.0.0-0valid", false)]
+    public void PublicationPreflightWrapperRejectsMalformedPositionalVersions(string version, bool rejected)
+    {
+        const string VersionRejection =
+            "A semantic release version without build metadata or leading-zero numeric identifiers is required.";
+
+        string root = FindRepositoryRoot();
+        ProcessStartInfo start = new("bash")
+        {
+            WorkingDirectory = root,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+        start.ArgumentList.Add("scripts/validate-publication-preflight.sh");
+        start.ArgumentList.Add(version);
+        start.ArgumentList.Add("verify");
+        foreach (string name in new[]
+        {
+            "HEXALITH_BUILDS_EXECUTION_SHA",
+            "HEXALITH_RELEASE_REQUIRE_AUTHORITY",
+            "HEXALITH_RELEASE_RESERVED_VERSION",
+            "HEXALITH_RELEASE_AUTHORITY_ISSUE_URL",
+            "HEXALITH_RELEASE_AUTHORITY_OWNER",
+        })
+        {
+            start.Environment.Remove(name);
+        }
+
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        string output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        // Every case fails closed somewhere; the question is whether it fails on the version rule.
+        process.ExitCode.ShouldNotBe(0, output);
+        if (rejected)
+        {
+            output.ShouldContain(VersionRejection);
+        }
+        else
+        {
+            output.ShouldNotContain(VersionRejection);
+        }
     }
 
     /// <summary>
@@ -827,16 +922,19 @@ public sealed class ContainerPublishingGovernanceTests
         string withBlock = ExtractYamlBlock(workflow, "    with:");
         if (Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*true\s*$"))
         {
-            Regex.IsMatch(withBlock, @"(?m)^\s*reserved-version:\s*\S[^\r\n]*$").ShouldBeTrue();
-            Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-issue-url:\s*\S[^\r\n]*$").ShouldBeTrue();
-            Regex.IsMatch(
-                withBlock,
-                @"(?m)^\s*release-authority-owner:\s*github:jpiquot\s*$").ShouldBeTrue();
+            Regex.IsMatch(withBlock, @"(?m)^\s*reserved-version:\s*\S[^\r\n]*$")
+                .ShouldBeTrue($"the enabled authority gate requires reserved-version:\n{withBlock}");
+            Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-issue-url:\s*\S[^\r\n]*$")
+                .ShouldBeTrue($"the enabled authority gate requires release-authority-issue-url:\n{withBlock}");
+            Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-owner:\s*github:jpiquot\s*$")
+                .ShouldBeTrue($"the enabled authority gate must pin release-authority-owner to github:jpiquot:\n{withBlock}");
         }
         else
         {
-            Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*false\s*$").ShouldBeTrue();
-            Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-owner:").ShouldBeFalse();
+            Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*false\s*$")
+                .ShouldBeTrue($"the authority posture must be declared, never inferred:\n{withBlock}");
+            Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-owner:")
+                .ShouldBeFalse($"an owner pin with the gate off is a half-declared posture:\n{withBlock}");
         }
     }
 
@@ -1144,6 +1242,27 @@ public sealed class ContainerPublishingGovernanceTests
         }
 
         throw new DirectoryNotFoundException("Could not locate the Hexalith.EventStore repository root.");
+    }
+
+    private static int RunGitExitCode(string workingDirectory, params string[] arguments)
+    {
+        ProcessStartInfo start = new("git")
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        _ = process.StandardOutput.ReadToEnd();
+        _ = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return process.ExitCode;
     }
 
     private static string RunGit(string workingDirectory, params string[] arguments)
