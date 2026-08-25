@@ -274,11 +274,27 @@ public sealed partial class ProjectionCheckpointTracker(
                     // A v2 row can advance only through a fenced completion transition that also
                     // persists exact receipts and the cumulative prefix fingerprint. The legacy
                     // checkpoint-only path must never erase those fields or invent completion.
+                    Log.CheckpointAdvanceRefused(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        projectionName,
+                        CheckpointRefusalReasonCodes.DeliveryRowRequiresFencedCompletion);
                     return false;
                 }
 
                 if (deliveryRead.Classification is ProjectionDeliveryStateClassification.SchemaRegression
                     or ProjectionDeliveryStateClassification.Unsupported) {
+                    Log.CheckpointAdvanceRefused(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        projectionName,
+                        deliveryRead.Classification == ProjectionDeliveryStateClassification.SchemaRegression
+                            ? CheckpointRefusalReasonCodes.DeliveryRowSchemaRegression
+                            : CheckpointRefusalReasonCodes.DeliveryRowUnsupported);
                     return false;
                 }
 
@@ -286,7 +302,18 @@ public sealed partial class ProjectionCheckpointTracker(
                     .ReadWriterProtocolAsync(cancellationToken)
                     .ConfigureAwait(false);
                 if (protocol?.IsCurrent == true) {
-                    // After cutover, no five-field writer may create or advance a scoped row.
+                    // After cutover, no five-field writer may create or advance a scoped row. This is the only
+                    // refusal that applies even when the aggregate has NO scoped row, so it silently makes every
+                    // legacy advance impossible for every tenant if the named-projection path cannot create one.
+                    // It must therefore name itself: reported as optimistic-concurrency exhaustion it is
+                    // indistinguishable from a write race that does not exist.
+                    Log.CheckpointAdvanceRefused(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        projectionName,
+                        CheckpointRefusalReasonCodes.PostCutoverWriterProtocol);
                     return false;
                 }
 
@@ -877,7 +904,37 @@ public sealed partial class ProjectionCheckpointTracker(
     // back to the legacy aggregate-wide value.
     internal sealed record ProjectionCheckpointMigrationMarker(bool Migrated);
 
+    /// <summary>
+    /// Stable reasons a projection-scoped checkpoint advance was refused for a structural reason rather than lost
+    /// to an optimistic-concurrency race.
+    /// </summary>
+    internal static class CheckpointRefusalReasonCodes {
+        /// <summary>A current v2 delivery row may advance only through the fenced completion transition.</summary>
+        public const string DeliveryRowRequiresFencedCompletion = "delivery-row-requires-fenced-completion";
+
+        /// <summary>The persisted delivery row is older than the reader's schema.</summary>
+        public const string DeliveryRowSchemaRegression = "delivery-row-schema-regression";
+
+        /// <summary>The persisted delivery row is not understood by this reader.</summary>
+        public const string DeliveryRowUnsupported = "delivery-row-unsupported";
+
+        /// <summary>The writer-protocol marker is current, so no five-field writer may create or advance a row.</summary>
+        public const string PostCutoverWriterProtocol = "post-cutover-writer-protocol";
+    }
+
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 1145,
+            Level = LogLevel.Warning,
+            Message = "Projection checkpoint advance refused for a structural reason: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ProjectionName={ProjectionName}, ReasonCode={ReasonCode}, Stage=ProjectionCheckpointAdvanceRefused")]
+        public static partial void CheckpointAdvanceRefused(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string projectionName,
+            string reasonCode);
+
         [LoggerMessage(
             EventId = 1144,
             Level = LogLevel.Warning,

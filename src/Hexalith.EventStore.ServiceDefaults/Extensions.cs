@@ -79,6 +79,11 @@ public static class Extensions {
 
         if (IsOtlpConfigured(builder.Configuration)) {
             _ = telemetry.UseOtlpExporter();
+
+            // Registered only alongside the exporter, because only the exporter can block disposal. Without it an
+            // unreachable OTLP collector parks the exporter thread in its retry sleep and provider disposal joins
+            // that thread with no timeout, so IHost.DisposeAsync never returns and the process cannot be stopped.
+            builder.Services.AddHostedService<BoundedTelemetryShutdownService>();
         }
 
         return builder;
