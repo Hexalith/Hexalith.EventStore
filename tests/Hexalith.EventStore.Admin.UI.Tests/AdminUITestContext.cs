@@ -1,7 +1,9 @@
 using Bunit;
+using Bunit.Rendering;
 
 using Hexalith.EventStore.Admin.UI.Tests.Services;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,10 +18,13 @@ using NSubstitute;
 namespace Hexalith.EventStore.Admin.UI.Tests;
 
 /// <summary>
-/// Base test context for Admin.UI bUnit tests.
-/// Registers FluentUI components and mock services.
+/// Base test context for Admin.UI bUnit tests. Registers FluentUI components and mock services,
+/// and intercepts every render entry point so the renderer info FluentUI v5 requires is applied.
+/// Any new render helper added here MUST route through <see cref="EnsureRendererInfo"/>.
 /// </summary>
 public class AdminUITestContext : BunitContext {
+    private bool _rendererInfoSet;
+
     public AdminUITestContext() {
         // Register FluentUI components
         _ = Services.AddFluentUIComponents();
@@ -100,6 +105,66 @@ public class AdminUITestContext : BunitContext {
             AuthenticationStateProvider asp = sp.GetRequiredService<AuthenticationStateProvider>();
             return asp.GetAuthenticationStateAsync();
         });
+    }
+
+    /// <summary>
+    /// Gets the renderer info applied to every render. Production Admin.UI runs
+    /// <c>InteractiveServer</c>; override to exercise the static prerender pass instead.
+    /// </summary>
+    protected virtual RendererInfo TestRendererInfo => new("Server", true);
+
+    /// <inheritdoc/>
+    /// <remarks>Applies <see cref="TestRendererInfo"/> before the first render.</remarks>
+    public override IRenderedComponent<ContainerFragment> Render(RenderFragment renderFragment) {
+        EnsureRendererInfo();
+        return base.Render(renderFragment);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>Applies <see cref="TestRendererInfo"/> before the first render.</remarks>
+    public override IRenderedComponent<TComponent> Render<TComponent>(RenderFragment renderFragment) {
+        EnsureRendererInfo();
+        return base.Render<TComponent>(renderFragment);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>Applies <see cref="TestRendererInfo"/> before the first render.</remarks>
+    public override IRenderedComponent<TComponent> Render<TComponent>(Action<ComponentParameterCollectionBuilder<TComponent>>? parameterBuilder = null) {
+        // Defense in depth, and deliberately not covered by a test: bUnit's implementation of this
+        // overload dispatches virtually into Render<TComponent>(RenderFragment) above, so removing
+        // this line changes no behaviour today and no test would go red. Keep it so the contract
+        // survives a bUnit release that stops routing through the fragment overload.
+        EnsureRendererInfo();
+        return base.Render(parameterBuilder);
+    }
+
+    /// <summary>
+    /// Sets the renderer info and records that a test has chosen one, so
+    /// <see cref="EnsureRendererInfo"/> will not overwrite it at render time.
+    /// </summary>
+    /// <param name="rendererInfo">Renderer info to apply.</param>
+    public new void SetRendererInfo(RendererInfo? rendererInfo) {
+        base.SetRendererInfo(rendererInfo);
+        _rendererInfoSet = true;
+    }
+
+    /// <summary>
+    /// Declares the renderer info once, immediately before the first render, unless a test already
+    /// set one. FluentUI v5 components (FluentLayoutHamburger and friends) read
+    /// <see cref="ComponentBase.RendererInfo"/> through <c>IsInteractive</c>, and bUnit throws
+    /// <see cref="MissingRendererInfoException"/> when it is unset. This cannot run in the
+    /// constructor: touching <see cref="BunitContext.Renderer"/> builds the service provider and
+    /// seals <see cref="BunitContext.Services"/>, which derived contexts and tests still register
+    /// into. The unsynchronized check-then-set is safe because a bUnit context instance is scoped
+    /// to a single test and every render is dispatched from that test's thread.
+    /// </summary>
+    protected void EnsureRendererInfo() {
+        if (_rendererInfoSet) {
+            return;
+        }
+
+        // Latches _rendererInfoSet only after the call succeeds.
+        SetRendererInfo(TestRendererInfo);
     }
 
     private sealed class TestHostEnvironment : IHostEnvironment {
