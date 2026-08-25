@@ -896,6 +896,162 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
+    /// Verifies the source-only predecessor dispatcher removes its own tools directory from import
+    /// resolution, so a repository-local zipfile shadow cannot execute from verified handler code.
+    /// </summary>
+    [Fact]
+    public void CorrectiveDispatcherRejectsRepositoryLocalImportShadowing()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-corrective-shadow-{Guid.NewGuid():N}");
+        try
+        {
+            string tools = Path.Combine(temporary, "tools");
+            string handlers = Path.Combine(tools, "release_evidence_handlers");
+            Directory.CreateDirectory(handlers);
+            File.Copy(
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                Path.Combine(tools, "validate-corrective-release-evidence.py"));
+            File.Copy(
+                Path.Combine(root, "tools", "release_evidence_handlers", "__init__.py"),
+                Path.Combine(handlers, "__init__.py"));
+            File.Copy(
+                Path.Combine(root, "tools", "release_evidence_handlers", "v3.py"),
+                Path.Combine(handlers, "v3.py"));
+            File.WriteAllText(
+                Path.Combine(tools, "zipfile.py"),
+                "print('corrective-zipfile-shadow-executed')\nraise RuntimeError('shadow loaded')\n");
+
+            ProcessResult result = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrective-release-evidence.py",
+                Path.Combine(checkedInPacket, "release-identity.json"),
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket);
+
+            result.ExitCode.ShouldBe(0, result.Error);
+            result.Output.ShouldNotContain("corrective-zipfile-shadow-executed");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies preloaded modules with the trusted package names are displaced before verified
+    /// initializer and handler bytes execute.
+    /// </summary>
+    [Fact]
+    public void CorrectiveDispatcherCannotReusePreloadedHandlerModules()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        const string Wrapper =
+            "import runpy,sys,types;" +
+            "p=types.ModuleType('release_evidence_handlers');p.__file__='/tmp/preloaded/__init__.py';p.__path__=[];" +
+            "m=types.ModuleType('release_evidence_handlers.v3');m.__file__='/tmp/preloaded/v3.py';" +
+            "m.validate_identity=lambda *a,**k:(print('preloaded-handler-executed'),b'')[1];" +
+            "p.v3=m;sys.modules[p.__name__]=p;sys.modules[m.__name__]=m;" +
+            "sys.argv=[sys.argv[1],*sys.argv[2:]];runpy.run_path(sys.argv[0],run_name='__main__')";
+
+        ProcessResult result = RunProcess(
+            root,
+            "python3",
+            "-c",
+            Wrapper,
+            Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+            Path.Combine(checkedInPacket, "release-identity.json"),
+            "--manifest",
+            Path.Combine(root, "tools", "release-packages.json"),
+            "--packet-root",
+            checkedInPacket);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        result.Output.ShouldNotContain("preloaded-handler-executed");
+    }
+
+    /// <summary>
+    /// Verifies timestamp-valid stale bytecode cannot replace the exact v3 source bytes whose hash
+    /// the corrective dispatcher checked.
+    /// </summary>
+    [Fact]
+    public void CorrectiveDispatcherNeverExecutesStaleHandlerBytecode()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-corrective-pyc-{Guid.NewGuid():N}");
+        try
+        {
+            string tools = Path.Combine(temporary, "tools");
+            string handlers = Path.Combine(tools, "release_evidence_handlers");
+            Directory.CreateDirectory(handlers);
+            File.Copy(
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                Path.Combine(tools, "validate-corrective-release-evidence.py"));
+            File.Copy(
+                Path.Combine(root, "tools", "release_evidence_handlers", "__init__.py"),
+                Path.Combine(handlers, "__init__.py"));
+            string handlerPath = Path.Combine(handlers, "v3.py");
+            File.Copy(Path.Combine(root, "tools", "release_evidence_handlers", "v3.py"), handlerPath);
+
+            byte[] trusted = File.ReadAllBytes(handlerPath);
+            string trustedText = Encoding.UTF8.GetString(trusted);
+            const string ReplaceableLine =
+                "# sit in tools/ today, so a later fix to this file cannot invalidate an already-frozen packet.";
+            int lineStart = trustedText.IndexOf(ReplaceableLine, StringComparison.Ordinal);
+            lineStart.ShouldBeGreaterThan(0);
+            string maliciousLine = "print('stale-corrective-bytecode-executed')".PadRight(ReplaceableLine.Length);
+            maliciousLine.Length.ShouldBe(ReplaceableLine.Length);
+            byte[] malicious = [.. trusted];
+            Encoding.ASCII.GetBytes(maliciousLine).CopyTo(malicious, lineStart);
+            DateTime timestampCandidate = DateTime.UtcNow.AddMinutes(-1);
+            DateTime cacheTimestamp = new(
+                timestampCandidate.Ticks - (timestampCandidate.Ticks % TimeSpan.TicksPerSecond),
+                DateTimeKind.Utc);
+            File.WriteAllBytes(handlerPath, malicious);
+            File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
+            ProcessResult compile = RunProcess(temporary, "python3", "-m", "py_compile", handlerPath);
+            compile.ExitCode.ShouldBe(0, compile.Error);
+            File.WriteAllBytes(handlerPath, trusted);
+            File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
+
+            ProcessResult result = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrective-release-evidence.py",
+                Path.Combine(checkedInPacket, "release-identity.json"),
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket);
+
+            result.ExitCode.ShouldBe(0, result.Error);
+            result.Output.ShouldNotContain("stale-corrective-bytecode-executed");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies the shared authority fixtures execute replay, mismatch, expiry, and wrong-role cases.
     /// </summary>
     [Fact]

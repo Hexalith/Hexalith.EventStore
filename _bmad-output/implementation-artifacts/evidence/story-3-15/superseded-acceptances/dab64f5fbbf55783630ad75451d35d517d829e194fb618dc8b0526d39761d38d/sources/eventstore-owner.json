@@ -1,9 +1,9 @@
 {
-  "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975180",
-  "html_url": "https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5407975180",
+  "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5408186984",
+  "html_url": "https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5408186984",
   "issue_url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/352",
-  "id": 5407975180,
-  "node_id": "IC_kwDORNpC788AAAABQlcnDA",
+  "id": 5408186984,
+  "node_id": "IC_kwDORNpC788AAAABQlpiaA",
   "user": {
     "login": "jpiquot",
     "id": 6775094,
@@ -25,12 +25,12 @@
     "user_view_type": "public",
     "site_admin": false
   },
-  "created_at": "2026-08-25T08:59:45Z",
-  "updated_at": "2026-08-25T08:59:45Z",
+  "created_at": "2026-08-25T09:16:21Z",
+  "updated_at": "2026-08-25T09:16:21Z",
   "author_association": "MEMBER",
-  "body": "Story 3.15 reviewer-roster ratification\nI ratify the exact reviewer-role mappings for Hexalith/Hexalith.EventStore Story 3.15:\n- eventstore-owner: github:jpiquot\n- release-owner: github:jpiquot\n- test-architect: bmad:murat\nThis dual EventStore-owner / Release-owner mapping to github:jpiquot is intentional. The Test Architect receipt from bmad:murat is accepted as rostered.\nThis comment is the durable external authority_source for reviewer-roster.json. It authorizes no package recovery, release, registry mutation, deployment, consumer migration, or Story 3.15 done status.\n",
+  "body": "{\"accepted_at\":\"2026-08-25T09:16:21Z\",\"accepted_limitations\":[\"This packet supplies immutable deployed-runtime parity evidence only.\",\"It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.\",\"The Test Architect acceptance is a self-attested BMAD record without independent external authentication.\"],\"accepted_scope\":\"Story 3.15 corrected deployed-runtime parity for dab64f5fbbf55783630ad75451d35d517d829e194fb618dc8b0526d39761d38d\",\"decision\":\"accepted\",\"reviewer_identity\":\"github:jpiquot\",\"role\":\"eventstore-owner\",\"schema\":\"hexalith.eventstore.deployed-runtime-parity-acceptance.v1\",\"subject_sha256\":\"dab64f5fbbf55783630ad75451d35d517d829e194fb618dc8b0526d39761d38d\"}",
   "reactions": {
-    "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975180/reactions",
+    "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5408186984/reactions",
     "total_count": 0,
     "+1": 0,
     "-1": 0,

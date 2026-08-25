@@ -14,9 +14,9 @@ SCHEMA = "hexalith.eventstore.corrected-deployed-runtime-parity.v1"
 V3_PACKET_CODEC_SHA256 = "814502bd962e00dfbac243e2443c3709b46bdbb69e197691443a083e283d32a9"
 RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
-    "Production-smoke, inventory, registry, verifier, decision, or receipt-source change."
+    "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "e8b6538b11d626bb248fa9a0a61b22a2b2d4c39b5e6561f4e334a50a731f6b3d"
+V1_HANDLER_SHA256 = "886fc7141063185f21f2658afc347cf9428b5c781b97fc81a07d612d9961ca41"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -32,7 +32,7 @@ IMPORT_PATH_FILE_SHA256 = {
     "release_evidence_handlers/__init__.py":
         "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
     "release_evidence_handlers/v3.py":
-        "5cb007497466090956eb35a7d5340cfe4c9e07920a1b55dd1801d422509e0f1b",
+        "410952dcb855e52278ef2575ce6d53bc2df36c0d7a936eca464cba0e4cdf41b4",
 }
 EXPECTED_IMPORT_PATH_FILES = {
     "deployed_runtime_parity_handlers/__init__.py",
@@ -79,7 +79,10 @@ def _load_dispatch_metadata(evidence_bytes):
     try:
         document = json.loads(evidence_bytes, object_pairs_hook=_unique_object)
         dispatch = document["dispatch"]
-        key = (dispatch["schema"], dispatch["version"], dispatch["handler"]["sha256"])
+        version = dispatch["version"]
+        if type(version) is not int:
+            raise DispatchError("closure dispatch metadata is invalid")
+        key = (dispatch["schema"], version, dispatch["handler"]["sha256"])
         if key not in HANDLERS:
             raise DispatchError("closure does not select a trusted live handler")
     except (KeyError, TypeError, json.JSONDecodeError) as error:
@@ -105,6 +108,74 @@ def _verify_import_path():
             )
         sources[relative] = source
     return sources
+
+
+def _is_repository_path(value):
+    """Return whether one import path or module origin resolves inside this repository."""
+    if (
+        not isinstance(value, (str, bytes))
+        or not value
+        or value in ("built-in", "frozen")
+        or (isinstance(value, str) and value.startswith("<"))
+    ):
+        return False
+    try:
+        path = Path(value).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return False
+    root = _repository_root().resolve()
+    return path == root or root in path.parents
+
+
+def _module_is_repository_local(module):
+    """Recognize repository modules through either normal or spec-provided origins."""
+    if _is_repository_path(getattr(module, "__file__", None)):
+        return True
+    spec = getattr(module, "__spec__", None)
+    return _is_repository_path(getattr(spec, "origin", None))
+
+
+def _begin_trusted_import_environment():
+    """Remove repository search roots and stale/preloaded repository modules.
+
+    Verified source modules still execute ordinary imports for standard-library dependencies such
+    as zipfile. Python consults both sys.modules and the script directory before the standard
+    library, so hashing the four handler files alone is insufficient: tools/zipfile.py or a
+    preloaded repository module could otherwise execute as part of the trusted verdict.
+    """
+    original_path = list(sys.path)
+    sys.path[:] = [entry for entry in original_path if not _is_repository_path(entry or str(Path.cwd()))]
+    trusted_names = {
+        "deployed_runtime_parity_handlers",
+        "deployed_runtime_parity_handlers.v1",
+        "release_evidence_handlers",
+        "release_evidence_handlers.v3",
+    }
+    displaced = {}
+    for name, module in list(sys.modules.items()):
+        if name == "__main__":
+            continue
+        if name in trusted_names or (module is not None and _module_is_repository_local(module)):
+            displaced[name] = module
+            sys.modules.pop(name, None)
+    return original_path, displaced, trusted_names
+
+
+def _verify_no_repository_import_shadows(trusted_names):
+    """Fail closed if handler execution loaded any unverified repository module."""
+    for name, module in list(sys.modules.items()):
+        if name in trusted_names or name == "__main__" or module is None:
+            continue
+        if _module_is_repository_local(module):
+            raise DispatchError("trusted live handler resolved a repository-local import shadow")
+
+
+def _end_trusted_import_environment(original_path, displaced, trusted_names):
+    """Restore process import state after one isolated verifier execution."""
+    for name in trusted_names:
+        sys.modules.pop(name, None)
+    sys.modules.update(displaced)
+    sys.path[:] = original_path
 
 
 def _load_verified_module(module_name, relative, source, *, is_package=False):
@@ -179,32 +250,37 @@ def validate(evidence_path, manifest_path=None, packet_root=None):
     document, module_name = _load_dispatch_metadata(evidence_bytes)
     _verify_dispatch_table()
     sources = _verify_import_path()
-    handler, predecessor_handler, handler_package, predecessor_package = _load_handler(
-        module_name, sources)
-    _verify_imported_file(handler, module_name.replace(".", "/") + ".py")
-    _verify_imported_file(predecessor_handler, "release_evidence_handlers/v3.py")
-    _verify_imported_file(handler_package, "deployed_runtime_parity_handlers/__init__.py")
-    _verify_imported_file(predecessor_package, "release_evidence_handlers/__init__.py")
-    manifest_path = manifest_path or repository_root / handler.MANIFEST_FILE
-    manifest_bytes = manifest_path.read_bytes()
-    expected_package_ids = handler.validate_release_manifest(handler.load_json_bytes(manifest_bytes))
-    manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
-    canonical = handler.validate_identity(
-        document,
-        expected_package_ids,
-        manifest_sha256,
-        repository_root,
-    )
-    if evidence_bytes != canonical:
-        raise handler.EvidenceError("closure bytes are not the selected codec's canonical UTF-8 form")
-    handler.validate_packet_files(
-        document,
-        packet_root or evidence_path.parent,
-        expected_package_ids,
-        manifest_sha256,
-        repository_root,
-    )
-    return document["subject"]["sha256"], document["selected_deployed_identity"]
+    original_path, displaced, trusted_names = _begin_trusted_import_environment()
+    try:
+        handler, predecessor_handler, handler_package, predecessor_package = _load_handler(
+            module_name, sources)
+        _verify_imported_file(handler, module_name.replace(".", "/") + ".py")
+        _verify_imported_file(predecessor_handler, "release_evidence_handlers/v3.py")
+        _verify_imported_file(handler_package, "deployed_runtime_parity_handlers/__init__.py")
+        _verify_imported_file(predecessor_package, "release_evidence_handlers/__init__.py")
+        manifest_path = manifest_path or repository_root / handler.MANIFEST_FILE
+        manifest_bytes = manifest_path.read_bytes()
+        expected_package_ids = handler.validate_release_manifest(handler.load_json_bytes(manifest_bytes))
+        manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+        canonical = handler.validate_identity(
+            document,
+            expected_package_ids,
+            manifest_sha256,
+            repository_root,
+        )
+        if evidence_bytes != canonical:
+            raise handler.EvidenceError("closure bytes are not the selected codec's canonical UTF-8 form")
+        handler.validate_packet_files(
+            document,
+            packet_root or evidence_path.parent,
+            expected_package_ids,
+            manifest_sha256,
+            repository_root,
+        )
+        _verify_no_repository_import_shadows(trusted_names)
+        return document["subject"]["sha256"], document["selected_deployed_identity"]
+    finally:
+        _end_trusted_import_environment(original_path, displaced, trusted_names)
 
 
 def main():

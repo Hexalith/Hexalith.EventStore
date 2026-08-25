@@ -1635,3 +1635,47 @@ status: open
   severity: low
   summary: The `summary_bindings` deletion reduces `validate_packet_files`' standalone behavior inside a line range the Code Map freezes, leaving a vestigial `summaries` dict.
   evidence: The diff removes the one-shared-two-platform-summary check from `v3.validate_packet_files`, a public entry point, inside the Code Map's frozen `v3.py:863-974` "preserve v3 behavior" range. It is redundant today only because every present caller invokes `validate_identity` first (`v1.py:445-452`, `validate-corrective-release-evidence.py:108/115`), where the identical constraint is enforced at `v3.py:397`. Confirmed independently by three review layers as not-lost-verification; carried here as a frozen-range and dead-code note. The now-purposeless `summaries` cache at `v3.py:944-952` invites the reader to assume a guard is still present.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The pinned release publisher cannot supply the newly mandatory container creation timestamp, while a governance test encodes release-pin/gitlink inequality as policy.
+  evidence: `.github/workflows/release.yml` pins Builds `a07078ad...`, whose publisher omits `ContainerProvenanceCreated`; `Directory.Build.targets` rejects that omission, and NuGet publication precedes container publication. `ContainerPublishingGovernanceTests.cs` separately requires the release pin to differ from the development gitlink, obstructing the straightforward alignment fix. This belongs to the Story 3.14 release lane.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The legacy release job retains unused `attestations: write` and `id-token: write` permissions.
+  evidence: `.github/workflows/release.yml` grants both permissions to the production release job although the current legacy path does not consume them. Removing or splitting them changes release-workflow authority and is outside Story 3.15's evidence-only boundary.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Container provenance URL validation accepts unrelated hosts and malformed percent escapes instead of enforcing the repository-derived canonical URLs.
+  evidence: `Directory.Build.targets` checks only an HTTPS-shaped regex; values such as an unrelated repository URL or a path containing `%ZZ` pass and can enter OCI labels. Canonical URI derivation and validation belong to the corrective-publisher lane rather than this parity packet.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The container provenance creation-time regex accepts calendar-impossible dates.
+  evidence: `Directory.Build.targets` bounds month and day fields independently, so a value such as `2026-02-31T09:15:00Z` satisfies the claimed RFC 3339 validation. Correct calendar validation is a publisher/input-contract follow-up.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The multi-RID provenance test compares the produced creation label to its first observed value rather than the supplied creation instant.
+  evidence: `CorrectiveOciProvenanceReleaseTests.RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` feeds `observedCreated` into `ExpectedLabels`, so two children can share the same wrong valid timestamp and still pass. The test should compare both labels directly with its `Created` input.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The container default-tag test never observes the tag value it claims was defaulted.
+  evidence: `ContainerPublicationDefaultsTagToProvenanceVersion` runs only `ValidateContainerProvenanceInputs` and checks exit zero; deleting or breaking the default assignment can leave that test green. A future publisher test should inspect the evaluated tag or produced archive.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The frozen Story 3.14 timestamp parser remains weaker than the strict Story 3.15 parser.
+  evidence: `tools/release_evidence_handlers/v3.py` uses `value.replace("Z", "+00:00")` with `datetime.fromisoformat`, admitting spaces, arbitrary offsets, and other shapes that v1 rejects. Tightening the frozen predecessor contract is separate Story 3.14 evidence maintenance.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The packet inventory does not require the validated closure path to be the packet root's `closure.json`.
+  evidence: `_validate_inventory` permits literal `closure.json` but checks only unexpected actual files, while the CLI accepts independent evidence and packet-root paths. A copied packet root without its own closure can validate against an external closure, which is a CLI/inventory contract follow-up.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The checked-in traceability gate artifacts remain superseded and do not cover the final Story 3.15 subject or current focused suite.
+  evidence: `_bmad-output/test-artifacts/gate-decision.json`, `e2e-trace-summary.json`, and `traceability-matrix.md` explicitly describe a superseded collection while retaining PASS-shaped fields. Regeneration belongs to the trace workflow and is not evidence created by the parity verifier.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: A remaining Story 3.13 acceptance path still requires an unmintable synthetic commit-fragment source contract.
+  evidence: `DeployedRuntimeParityClosureTests.ValidateAcceptances` retains the `#story-3-13-<hash>-<role>` commit anchor and v1 schema at live call sites, while genuine GitHub acceptances use issue-comment sources. This is Story 3.13 compatibility debt, not part of positive Story 3.15 closure.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The changed v3 issue-number normalization has no direct regression test.
+  evidence: `release_evidence_handlers.v3.repository_issue_html_url` rejects padded and non-ASCII digits, but the existing `AuthorityHtmlUrlFollowsTheAcceptedIssueUrl` test exercises the sibling codec implementation. A v3-focused mutation test is needed in the predecessor-maintenance lane.

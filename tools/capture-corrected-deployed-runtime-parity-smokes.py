@@ -33,13 +33,37 @@ def now():
     return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
-def run(*arguments, check=True):
-    return subprocess.run(arguments, check=check, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
+def remaining_seconds(deadline, arguments):
+    """Return the one platform budget's remaining wall-clock time or fail immediately."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise subprocess.TimeoutExpired(arguments, TIMEOUT_SECONDS)
+    return remaining
+
+
+def run(deadline, *arguments, check=True):
+    """Run one command within the remaining portion of a platform's monotonic deadline."""
+    return subprocess.run(
+        arguments,
+        check=check,
+        capture_output=True,
+        text=True,
+        timeout=remaining_seconds(deadline, arguments),
+    )
+
+
+def parse_curl_write_out(value):
+    """Parse the exact two-integer curl write-out retained by the smoke contract."""
+    fields = value.strip().split()
+    if len(fields) != 2 or any(not field.isascii() or not field.isdigit() for field in fields):
+        raise RuntimeError(f"curl produced malformed write-out: {value!r}")
+    return int(fields[0]), int(fields[1])
 
 
 def capture_platform(output_root, platform, child_digest):
     immutable_image = f"{IMAGE_REPOSITORY}@{child_digest}"
     container_name = f"hexalith-story315-{platform.split('/')[1]}-{uuid.uuid4().hex[:12]}"
+    deadline = time.monotonic() + TIMEOUT_SECONDS
     started_at = now()
     attempts = 0
     http_status = 0
@@ -48,8 +72,9 @@ def capture_platform(output_root, platform, child_digest):
     cleanup = "failure"
     observed_platform = "unknown/unknown"
     try:
-        run("docker", "pull", "--platform", platform, immutable_image)
+        run(deadline, "docker", "pull", "--platform", platform, immutable_image)
         run(
+            deadline,
             "docker",
             "run",
             "--detach",
@@ -75,14 +100,17 @@ def capture_platform(output_root, platform, child_digest):
             "Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
             immutable_image,
         )
-        port_output = run("docker", "port", container_name, "8080/tcp").stdout.strip()
+        port_output = run(deadline, "docker", "port", container_name, "8080/tcp").stdout.strip()
         if ":" not in port_output:
             raise RuntimeError(f"docker port produced no host mapping for {container_name}: {port_output!r}")
         port = port_output.rsplit(":", 1)[1]
-        deadline = time.monotonic() + TIMEOUT_SECONDS
-        while time.monotonic() < deadline:
+        if not port.isascii() or not port.isdigit():
+            raise RuntimeError(f"docker port produced an invalid host mapping for {container_name}: {port_output!r}")
+        while True:
+            curl_budget = remaining_seconds(deadline, ("curl",))
             attempts += 1
             response = run(
+                deadline,
                 "curl",
                 "--silent",
                 "--show-error",
@@ -91,25 +119,40 @@ def capture_platform(output_root, platform, child_digest):
                 "--write-out",
                 "%{http_code} %{num_redirects}",
                 "--max-time",
-                "5",
+                format(min(5.0, curl_budget), ".6f"),
                 f"http://127.0.0.1:{port}/alive",
                 check=False,
             )
-            if response.returncode == 0:
-                http_status, redirect_count = (int(value) for value in response.stdout.split())
-                if 200 <= http_status < 300 and redirect_count == 0:
-                    exit_code = 0
-                    break
-            time.sleep(2)
-        image_id = run("docker", "inspect", "--format", "{{.Image}}", container_name).stdout.strip()
+            http_status, redirect_count = parse_curl_write_out(response.stdout)
+            if response.returncode == 0 and http_status == 200 and redirect_count == 0:
+                exit_code = 0
+                break
+            time.sleep(min(2.0, remaining_seconds(deadline, ("readiness-poll",))))
+        image_id = run(
+            deadline, "docker", "inspect", "--format", "{{.Image}}", container_name
+        ).stdout.strip()
+        if not image_id:
+            raise RuntimeError(f"docker inspect produced no image identity for {container_name}")
         observed_platform = run(
-            "docker", "image", "inspect", "--format", "{{.Os}}/{{.Architecture}}", image_id
+            deadline,
+            "docker",
+            "image",
+            "inspect",
+            "--format",
+            "{{.Os}}/{{.Architecture}}",
+            image_id,
         ).stdout.strip()
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, RuntimeError, OSError) as error:
         print(f"[corrected-deployed-runtime-parity-smokes] {platform} capture failed: {error}", file=sys.stderr)
     finally:
-        cleanup_result = run("docker", "rm", "--force", container_name, check=False)
-        cleanup = "pass" if cleanup_result.returncode == 0 else "failure"
+        try:
+            run(deadline, "docker", "rm", "--force", container_name)
+            cleanup = "pass"
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
+            print(
+                f"[corrected-deployed-runtime-parity-smokes] {platform} cleanup failed: {error}",
+                file=sys.stderr,
+            )
     ended_at = now()
     outcome = "pass" if exit_code == 0 and cleanup == "pass" and observed_platform == platform else "failure"
     record = {

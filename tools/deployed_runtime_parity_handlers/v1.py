@@ -59,7 +59,7 @@ REQUIRED_LIMITATIONS = (
 )
 RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
-    "Production-smoke, inventory, registry, verifier, decision, or receipt-source change."
+    "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
 INDEX_MEDIA_TYPE = "application/vnd.oci.image.index.v1+json"
 MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json"
@@ -67,17 +67,17 @@ CONFIG_MEDIA_TYPE = "application/vnd.oci.image.config.v1+json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$", re.ASCII)
 ROLE_MAPPING_LINE = re.compile(r"^- (eventstore-owner|release-owner|test-architect): (\S+)$", re.MULTILINE)
-# This retained authority source is intentionally reused only as a role-holder fact. Require its
-# exact non-authority sentence: a regex that merely puts "authorizes no" before "deployment" also
-# accepts phrases such as "authorizes no obstacle to deployment" and contradictory continuations.
+# Require the Story-3.15-scoped authority source's exact non-authority sentence: a regex that merely
+# puts "authorizes no" before "deployment" also accepts phrases such as "authorizes no obstacle to
+# deployment" and contradictory continuations.
 REGISTRY_AUTHORITY_DISCLAIMER = (
     "This comment is the durable external authority_source for reviewer-roster.json. It authorizes "
-    "no package recovery, release, registry mutation, deployment, consumer migration, or Story 3.13 "
+    "no package recovery, release, registry mutation, deployment, consumer migration, or Story 3.15 "
     "done status."
 )
 EXPECTED_REGISTRY_AUTHORITY_BODY = (
-    "Story 3.13 reviewer-roster ratification\n"
-    "I ratify the exact reviewer-role mappings for Hexalith/Hexalith.EventStore Story 3.13:\n"
+    "Story 3.15 reviewer-roster ratification\n"
+    "I ratify the exact reviewer-role mappings for Hexalith/Hexalith.EventStore Story 3.15:\n"
     "- eventstore-owner: github:jpiquot\n"
     "- release-owner: github:jpiquot\n"
     "- test-architect: bmad:murat\n"
@@ -88,11 +88,10 @@ EXPECTED_REGISTRY_AUTHORITY_BODY = (
 ISSUE_COMMENT_ANCHOR = re.compile(
     r"\Ahttps://github\.com/Hexalith/Hexalith\.EventStore/issues/([1-9][0-9]*)#issuecomment-([1-9][0-9]*)\Z"
 )
-# Story 1.20 collected acceptances on issue 324 and Story 3.14 on issue 346. Reusing either thread
-# for a Story 3.15 receipt is the cross-lineage splice this story family exists to prevent, and the
-# superseded bb58d691 receipts did exactly that. A dedicated Story 3.15 acceptance issue is
-# required; these two threads are rejected by number so a spliced receipt cannot be re-collected.
-FOREIGN_LINEAGE_ISSUES = (324, 346)
+# Both GitHub acceptance receipts and the owner-role authority source must resolve to this dedicated
+# Story 3.15 thread. A positive allowlist rejects every past and future sibling issue automatically
+# and also guarantees both owner receipts share one issue.
+STORY_3_15_ISSUE = 352
 # Each rostered role is bound to exactly one source kind. Without this, an owner receipt could
 # present a self-attested bmad record and skip GitHub authentication entirely.
 EXPECTED_SOURCE_KINDS = {
@@ -593,7 +592,9 @@ def _validate_smokes(document, packet_root):
         or results["index_digest"] != INDEX_DIGEST
         or results["environment"] != "Production"
         or results["endpoint"] != "/alive"
+        or type(results["timeout_seconds"]) is not int
         or results["timeout_seconds"] != 180
+        or type(results["exit_code"]) is not int
         or results["exit_code"] != 0
         or results["result"] != "pass"
         or [item.get("platform") for item in platforms if isinstance(item, dict)] != list(PLATFORMS)
@@ -630,11 +631,13 @@ def _validate_smokes(document, packet_root):
         if (
             item["child_digest"] != expected_children[item["platform"]]
             or item["observed_runtime_platform"] != item["platform"]
-            or not isinstance(item["attempts"], int)
-            or isinstance(item["attempts"], bool)
+            or type(item["attempts"]) is not int
             or item["attempts"] <= 0
+            or type(item["http_status"]) is not int
             or item["http_status"] != 200
+            or type(item["redirect_count"]) is not int
             or item["redirect_count"] != 0
+            or type(item["exit_code"]) is not int
             or item["exit_code"] != 0
             or item["readiness_result"] != "pass"
             or item["cleanup"] != "pass"
@@ -671,12 +674,9 @@ def _validate_smokes(document, packet_root):
 def _validate_registry(document, packet_root):
     """Validate the owner-role registry and its retained GitHub authority source.
 
-    The authority source is reused across stories because it records a role-holder identity fact
-    (who currently holds each rostered role), not release-lineage evidence for this specific
-    closure -- so a comment dated and scoped to a different story is acceptable here. To keep that
-    reuse from silently widening into a release authorization, the comment must itself explicitly
-    disclaim deployment authority, and its role-mapping lines must match the required identities
-    exactly, with no extra or contradictory role assignment accepted.
+    The authority source is scoped to Story 3.15 and retained from the dedicated acceptance issue.
+    It must explicitly disclaim deployment authority, and its role-mapping lines must match the
+    required identities exactly, with no extra or contradictory role assignment accepted.
     """
     registry_bytes = _verify_file(packet_root, document["owner_role_registry"])
     registry = load_json_bytes(registry_bytes)
@@ -707,23 +707,21 @@ def _validate_registry(document, packet_root):
     # substring would allow a contradictory deployment-authority sentence to be appended unchanged.
     authority_body_agrees = normalized_body == EXPECTED_REGISTRY_AUTHORITY_BODY
     if (
-        source_document.get("id") != 5290564372
+        source_document.get("id") != 5407975180
         or source_document.get("url")
-        != "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5290564372"
+        != "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975180"
         or source_document.get("html_url")
-        != "https://github.com/Hexalith/Hexalith.EventStore/issues/324#issuecomment-5290564372"
+        != "https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5407975180"
+        or source_document.get("issue_url")
+        != "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/352"
         or not isinstance(user, dict)
         # Authenticate the roster comment as strongly as an acceptance receipt's source. Both paths
         # consume the same named account tuple so re-rostering cannot silently split their checks.
         or (user.get("login"), user.get("id")) != OWNER_GITHUB_ACCOUNT
         or source_document.get("updated_at") != source_document.get("created_at")
         or source_document.get("performed_via_github_app") is not None
-        # NOTE: the receipt path requires MEMBER/OWNER/COLLABORATOR, but the retained roster
-        # comment is CONTRIBUTOR, so that stricter set would reject genuine evidence. CONTRIBUTOR
-        # is admitted here only to preserve the existing authority; the asymmetry with
-        # _validate_receipts is deliberate and is recorded for owner decision, not settled here.
         or source_document.get("author_association")
-        not in ("MEMBER", "OWNER", "COLLABORATOR", "CONTRIBUTOR")
+        not in ("MEMBER", "OWNER", "COLLABORATOR")
         or not isinstance(body, str)
         or duplicate_roles
         or role_lines != EXPECTED_IDENTITIES
@@ -872,7 +870,7 @@ def _github_comment_identity_agrees(source_document):
     The three URL fields were previously prefix-matched independently, so a receipt could cite a
     comment id from one thread, an anchor from another, and an issue_url from a third -- the exact
     splice shape Story 3.13 was reopened to close. Every field must now resolve to one comment on
-    one non-foreign issue.
+    the one dedicated Story 3.15 issue.
     """
     comment_id = source_document.get("id")
     if not isinstance(comment_id, int) or isinstance(comment_id, bool) or comment_id <= 0:
@@ -881,7 +879,7 @@ def _github_comment_identity_agrees(source_document):
     if anchor is None:
         return False
     issue_number = int(anchor.group(1))
-    if issue_number in FOREIGN_LINEAGE_ISSUES or int(anchor.group(2)) != comment_id:
+    if issue_number != STORY_3_15_ISSUE or int(anchor.group(2)) != comment_id:
         return False
     return (
         source_document.get("url")

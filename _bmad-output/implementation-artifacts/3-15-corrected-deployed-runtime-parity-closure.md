@@ -2,14 +2,15 @@
 
 ## Current verdict
 
-**Deployed-runtime parity is NOT available.** The packet **fails closed at zero of three
-receipts**. The technical lineage is complete and reproduces, but no acceptance binds the current
-canonical subject, so no deployment-grade identity is selected.
+**Deployed-runtime parity is available.** The technical lineage reproduces and exactly three fresh,
+roster-bound role receipts bind the unchanged current subject. The verifier selects only the
+approved OCI index while every operational-authority flag remains false.
 
 The current canonical subject is
-`sha256:93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0`.
-`acceptances/93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0/` is empty and
-awaits the rostered EventStore owner, Release owner, and Test Architect.
+`sha256:a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`.
+Its `acceptances` directory contains the three current receipts and their exact retained sources.
+The prior `dab64f5f...` tree remains byte-for-byte outside the packet under
+`evidence/story-3-15/superseded-acceptances/`.
 
 Running the retained verifier reproduces exactly this state:
 
@@ -17,15 +18,15 @@ Running the retained verifier reproduces exactly this state:
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source change.
+[corrected-deployed-runtime-parity] pass: subject=sha256:a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
 $ echo $?
-1
+0
 ```
 
-The identity the closure would select once parity becomes available is
-`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. It is not selected today.
+The selected deployed identity is
+`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 
-### Why the subject changed three times
+### Why the subject changed five times
 
 Three 2026-08-25 review loops each re-minted the subject, and by the packet's own rerun trigger each
 re-mint rejected every receipt collected against the prior subject.
@@ -40,28 +41,60 @@ re-mint rejected every receipt collected against the prior subject.
   four-module import provenance, rejected XML entity declarations and symlinks, made every
   recomputed-content guard mutation-reachable, and bound the Test Architect self-attestation
   limitation into every receipt. Subject `5acb8176…` → `93559e61…`.
+- The authorized completion pass created dedicated Story 3.15 issue `#352`, retained a
+  Story-3.15-scoped MEMBER-authenticated roster source, and replaced the issue denylist with an exact
+  `#352` allowlist. Binding those new handler and registry bytes changed subject `93559e61…` →
+  `dab64f5f…` before any final receipt was collected.
+- The trusted-verifier review then isolated dependency imports, made the predecessor dispatcher
+  source-only, rejected non-UTF-8 nuspec XML and non-integer smoke facts, bounded the complete smoke
+  capture lifecycle, and corrected the rerun trigger to bind receipt-source policy changes.
+  Subject `dab64f5f…` → `a8cc777e…`; all `dab64f5f…` receipts became superseded.
 
-The superseded receipts are additionally rejected on lineage: both owner comments were anchored on
+The first superseded receipt set is additionally rejected on lineage: both owner comments were anchored on
 issue [#346](https://github.com/Hexalith/Hexalith.EventStore/issues/346), which is Story 3.14's
-acceptance thread. Reusing it is the cross-lineage splice this story family exists to prevent, and
-the verifier now rejects issues `#324` and `#346` by number.
+acceptance thread. Reusing it is the cross-lineage splice this story family exists to prevent. The
+verifier now accepts owner receipts only from dedicated issue `#352`, rejecting every sibling issue.
 
-### Blocking owner action
+### Acceptance action
 
-Parity cannot become available without an **Ask First** owner action that this record does not
-perform and does not authorize:
+With fresh exact-subject authorization, the three current acceptances were collected against
+`a8cc777e...` and retained without changing the subject:
 
-1. Open a **dedicated Story 3.15 acceptance issue** — not `#324` (Story 1.20) and not `#346`
-   (Story 3.14); both are rejected by number.
-2. Collect three receipts against the exact bytes of subject
-   `sha256:93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0`, one per rostered role.
-3. Re-run the assembler and verifier; both must report three receipts.
+1. EventStore-owner comment
+   [5409145568](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409145568),
+   created at `2026-08-25T10:33:29Z`.
+2. Release-owner comment
+   [5409148235](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409148235),
+   created at `2026-08-25T10:33:45Z`.
+3. Test Architect `bmad:murat` self-attested record, accepted at `2026-08-25T10:34:41Z`.
+
+The first timestamp attempt for each owner role crossed GitHub's second boundary. Comments
+[5409140199](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409140199) and
+[5409147909](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409147909) were
+immediately marked `SUPERSEDED — INVALID TIMESTAMP-MISMATCH ATTEMPT` and were not retained as packet
+sources.
+
+### Superseded acceptance history
+
+The owner authorized and completed evidence acceptance against exact historical subject
+`dab64f5f…`:
+
+1. Dedicated Story 3.15 issue [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352)
+   carries the scoped roster and both owner acceptances.
+2. Comment [5408186984](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5408186984)
+   supplies the EventStore-owner acceptance, and comment
+   [5408189299](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5408189299)
+   supplies the Release-owner acceptance.
+3. The Test Architect `bmad:murat` acceptance carried the exact self-attestation limitation.
+
+Those three receipts and sources are preserved byte-for-byte in the superseded audit area and
+authorize nothing for `a8cc777e…`.
 
 **Self-attestation caveat:** the owner-role registry maps both `eventstore-owner` and
 `release-owner` to `github:jpiquot`, and the `test-architect` receipt is a self-attested
 `bmad-test-architect-record` without independent external authentication. Every receipt must repeat
-that subject-bound limitation. A 3-of-3 result is therefore one authenticated human account plus a
-self-authored BMAD record, not independent three-party review.
+that subject-bound limitation. A 3-of-3 result would therefore be two roster-bound owner roles held
+by one authenticated human plus a self-authored BMAD record, not independent three-party review.
 
 This record supplies evidence only. It never authorizes deployment, publication, registry mutation,
 consumer removal, or predecessor changes.
@@ -78,8 +111,8 @@ consumer removal, or predecessor changes.
 | OCI index | `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3` |
 | amd64 child | `sha256:4d42f969dc5f57e0f9baa927c588346d77c31fd2615793b5d8c12c239585af63` |
 | arm64 child | `sha256:ede853318267146a9888574f79e16ea1e51c1f363a35910fe883b5a9d7256f44` |
-| Technical inventory | `2d066fb5a5c48c7dd9184f382c098bac36b9e531cd6d86dfc5aa231747ceea86` |
-| Owner-role registry | `534268c2b5fbf39709e558f9806670d4ed8dd70574574f63babf903dc23e54fc` |
+| Technical inventory | `fec6deccc686e4abe83987da16c3935e3e688fa585aa7c5575dead54b4d97611` |
+| Owner-role registry | `aee4f46be8208ea13704a38d9329320b8a7641b0cdd33e61a138114c8c142f2f` |
 
 The retained [closure](evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json)
 and [canonical subject](evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/subject.json)
@@ -119,14 +152,13 @@ The role registry retains the owner-ratified mappings:
 - `release-owner` → `github:jpiquot`
 - `test-architect` → `bmad:murat`
 
-The EventStore owner previously accepted the superseded `bb58d691…` subject at
-`2026-08-22T15:19:54Z` in
-[issue comment 5381125968](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381125968),
-the Release owner previously accepted that superseded subject at `2026-08-22T15:20:08Z` in
-[issue comment 5381126900](https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-5381126900),
-and the Test Architect previously accepted it at `2026-08-22T15:20:29Z` in the retained
-`bmad:murat` source record. Those receipts remain byte-retained outside the packet but bind neither
-the current subject nor an allowed acceptance issue.
+The current EventStore-owner acceptance was created at `2026-08-25T10:33:29Z` in issue comment
+[5409145568](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409145568).
+The current Release-owner acceptance was created at `2026-08-25T10:33:45Z` in issue comment
+[5409148235](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409148235).
+The current Test Architect acceptance was created at `2026-08-25T10:34:41Z` in the retained
+`bmad:murat` source record. All three bind exact subject `a8cc777e…`; the earlier `dab64f5f…`
+receipts remain superseded and unbound.
 
 No planning approval, release authority, prior receipt, label, tag, self-declared role, or synthetic
 test fixture is treated as a Story 3.15 acceptance. The two owner receipts require retained GitHub
@@ -139,14 +171,19 @@ invalidates all of them.
 
 - Story 3.14 predecessor validation: pass, exact digest `4d1a0c33…`.
 - Contracts Release/package-mode build: pass, zero warnings and errors.
-- Focused Story 3.15 suite: 96 passed, zero failed, zero skipped. Its positive case uses explicit
+- Focused Story 3.15 closure and smoke-capture suites: 114 passed, zero failed, zero skipped. The
+  positive closure case uses explicit
   synthetic test fixtures only to mutation-prove the receipt contract; those fixtures are never
   copied into the retained packet.
-- Checked-in Story 3.15 verifier: expected fail-closed at zero receipts; current subject `93559e61…`.
+- Focused predecessor/provenance suite: 34 passed, zero failed, zero skipped.
+- Complete Contracts suite: 1702 passed, zero failed, zero skipped.
+- Checked-in Story 3.15 assembler and verifier: pass at three receipts without subject drift;
+  subject `a8cc777e…`; selected OCI index `4b141085…`; all non-authority flags false.
 - `git diff --check`: recorded at final handoff.
 
 ## Rerun trigger
 
 Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI,
-Production-smoke, inventory, registry, verifier, decision, or receipt-source change. Do not edit an
-old receipt or move it to a new subject directory.
+Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change. An
+individual source replacement invalidates its bound receipt and any complete verdict without
+re-minting the subject. Do not edit an old receipt or move it to a new subject directory.

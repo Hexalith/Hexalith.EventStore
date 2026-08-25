@@ -434,9 +434,26 @@ def nuspec_identity(package_path):
             if len(nuspecs) != 1:
                 raise EvidenceError("package does not contain exactly one nuspec")
             nuspec_bytes = archive.read(nuspecs[0])
-            if b"<!DOCTYPE" in nuspec_bytes.upper() or b"<!ENTITY" in nuspec_bytes.upper():
+            try:
+                nuspec_text = nuspec_bytes.decode("utf-8-sig", errors="strict")
+            except UnicodeDecodeError as error:
+                raise EvidenceError("package nuspec is not strict UTF-8 XML") from error
+            if "\x00" in nuspec_text:
+                raise EvidenceError("package nuspec is not strict UTF-8 XML")
+            declaration = re.match(r"\A\s*<\?xml\s+([^?]*)\?>", nuspec_text, re.IGNORECASE)
+            encoding = None if declaration is None else re.search(
+                r"\bencoding\s*=\s*(['\"])([^'\"]+)\1",
+                declaration.group(1),
+                re.IGNORECASE,
+            )
+            if encoding is not None and encoding.group(2).casefold() not in {"utf-8", "utf8"}:
+                raise EvidenceError("package nuspec is not strict UTF-8 XML")
+            if re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", nuspec_text, re.IGNORECASE):
                 raise EvidenceError("package nuspec contains forbidden DTD or entity declarations")
-            root = element_tree.fromstring(nuspec_bytes)
+            # Re-encoding the strictly decoded text prevents ElementTree from independently
+            # honoring a second byte-level encoding while preserving the parser's normal XML
+            # declaration behavior for the only accepted encoding.
+            root = element_tree.fromstring(nuspec_text.encode("utf-8"))
     except (OSError, zipfile.BadZipFile, element_tree.ParseError) as error:
         raise EvidenceError("package archive could not be independently inspected") from error
     namespace = {"n": root.tag.partition("}")[0].removeprefix("{")} if root.tag.startswith("{") else {}

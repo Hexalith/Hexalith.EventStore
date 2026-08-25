@@ -2,9 +2,9 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
-review_loop_iteration: 4
+review_loop_iteration: 5
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-3-context.md'
@@ -44,7 +44,10 @@ context:
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:317-603,1124-1235` -- predecessor mutation and canonicalization patterns; do not extend its frozen candidate contract.
 - `tools/assemble-corrected-deployed-runtime-parity.py` -- deterministic packet producer: re-mints the subject, derives the package count and parity verdict from retained evidence rather than asserting them, and runs the pinned verifier over its own output before exiting.
 - `tools/capture-corrected-deployed-runtime-parity-smokes.py` -- bounded two-platform Production smoke capture.
-- `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/` -- the three receipts bound to superseded subject `bb58d691...`, retained unbound for audit. They must never be moved back into the packet; both owner sources are anchored on issue `#346` and are rejected on lineage as well as on subject.
+- `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/` -- complete
+  receipt/source trees bound to superseded subjects `bb58d691...` and `dab64f5f...`, retained unbound
+  for audit. They must never be moved back into the packet; the `bb58d691...` owner sources are
+  anchored on issue `#346` and are rejected on lineage as well as on subject.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- new positive-closure and fail-closed mutation suite.
 - `_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` -- immutable predecessor packet; only the successful `v3.96.2` subgraph is selectable.
 - `_bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` -- new hash-closed technical evidence, subject-addressed acceptances, and final verdict.
@@ -175,10 +178,9 @@ before triage; several plausible findings were refuted by running them and are n
   surviving on the sibling closure-packet path while the disposition path moved to `/v2` and
   `github-issue-comment`. Live at two call sites including the `story_may_be_done` gate. Only a
   fixture can satisfy it; a genuine GitHub receipt would be rejected.
-- [ ] [Review][Defer] `author_association` asymmetry: the receipt path requires
-  MEMBER/OWNER/COLLABORATOR, but the retained roster comment is CONTRIBUTOR, so the stricter set
-  would reject genuine evidence. CONTRIBUTOR is admitted in `_validate_registry` only to preserve
-  the existing authority; which side should move is an owner decision.
+- [x] [Review][Defer→Resolved 2026-08-25] `author_association` asymmetry is closed: the new
+  Story-3.15-scoped roster comment is MEMBER-authenticated, and both registry and receipt paths now
+  require MEMBER/OWNER/COLLABORATOR. The CONTRIBUTOR exception was removed.
 - [ ] [Review][Defer] `created` provenance labels are self-comparing
   (`expected ??= ExpectedLabels(observedCreated)`) and `v3.py`'s `_expected_labels` omits `created`
   entirely, so the publisher-supplied instant can stop reaching the image undetected. The retained
@@ -278,9 +280,9 @@ Every `v1.py` / verifier / `v3.py` edit below re-mints the subject; landing them
 collected against `5acb8176...`, costs nothing. Collecting receipts first makes each fix cost three receipts.
 
 - [x] [Review][Decision→Patch] RESOLVED 2026-08-25 (loop 4): ACCEPT + BIND LIMITATION -- keep the `bmad-test-architect-record` shape and add the self-attestation caveat to `REQUIRED_LIMITATIONS`, so every receipt must repeat it verbatim. `REQUIRED_LIMITATIONS` is subject-bound, so this re-mints; free at 0/3. Original finding: Test Architect acceptance source is unauthenticated by construction -- `_validate_receipts`'s `bmad-test-architect-record` branch builds `expected_source` purely from the receipt itself (`{k: v for k, v in receipt.items() if k != "durable_source"}` plus three constants), so the "durable source" carries no information the receipt did not already assert: no external identity, no independent timestamp, no signature, no URL anchor. Confirmed byte-for-byte against the retained superseded pair at `evidence/story-3-15/superseded-acceptances/bb58d691.../{test-architect.json,sources/test-architect.json}`. The check cannot fail for any producer-generated pair. Combined with `EXPECTED_IDENTITIES` mapping both `eventstore-owner` and `release-owner` to `github:jpiquot`, "three authenticated roles" resolves to one authenticated account plus a self-authored file. Spec AC3 requires "exactly the authenticated ... Test Architect"; the frozen Never forbids trusting "self-declared roles". The `_validate_receipts` docstring concedes only the GitHub trade-off, which does not describe this branch. DECISION: require an external anchor for the test-architect role, or formally accept and add the limitation to `REQUIRED_LIMITATIONS` (which is itself subject-bound). [tools/deployed_runtime_parity_handlers/v1.py:846-855]
-- [ ] [Review][Decision→Patch] RESOLVED 2026-08-25 (loop 4): FULL ALLOWLIST -- BLOCKED on an Ask First owner action. Open the dedicated Story 3.15 acceptance issue, then replace the denylist check with `issue_number != STORY_3_15_ISSUE` and DELETE `FOREIGN_LINEAGE_ISSUES`; 324/346/351 and every future sibling thread are then rejected automatically, and the cross-receipt "same issue" property falls out because both GitHub receipts must equal N. Cannot be landed until the issue number exists. Original finding: Anti-splice protection is a two-element denylist, not the dedicated-issue allowlist its comment claims -- `FOREIGN_LINEAGE_ISSUES = (324, 346)` rejects only Story 1.20's and Story 3.14's threads. Story 3.13's own dedicated acceptance thread `#351` (recorded at `spec-3-13-deployed-runtime-parity-closure.md:431`) is accepted, as is any freshly opened issue. `_github_comment_identity_agrees` is called once per receipt with no cross-receipt state, so `eventstore-owner` and `release-owner` may resolve to two different issues. The comment above the constant claims it prevents "the cross-lineage splice this story family exists to prevent"; it delivers "not #324 and not #346". DECISION: the fix requires the dedicated Story 3.15 issue number, which is an Ask First owner action that has not happened. Pin that number once opened, and require both GitHub receipts to share it. [tools/deployed_runtime_parity_handlers/v1.py:79,861-885]
+- [x] [Review][Decision→Patch] RESOLVED 2026-08-25 (authorized completion): FULL ALLOWLIST -- dedicated Story 3.15 issue `#352` is now pinned as `STORY_3_15_ISSUE`; `FOREIGN_LINEAGE_ISSUES` was deleted, so 324/346/351 and every future sibling issue fail closed automatically and both owner receipts must resolve to the same thread. Four mutation cases plus the positive closure prove the allowlist. Original finding: Anti-splice protection was a two-element denylist that accepted Story 3.13 issue `#351`, arbitrary fresh issues, and two owner receipts from different threads. [tools/deployed_runtime_parity_handlers/v1.py]
 - [x] [Review][Decision→Patch] RESOLVED 2026-08-25 (loop 4): KEEP DECORATIVE, REMOVE THE DUPLICATION HAZARD -- introduce one named constant for the `(login, id)` pair consumed by both `_validate_registry` and `_validate_receipts`, plus an assertion that the two paths agree, so re-rostering fails a check instead of silently splitting them. Deriving identities from the registry was rejected: the registry carries only `github:jpiquot` strings, not the numeric id, so deriving it would force a registry format change and a new roster comment for a latent-only risk. Original finding: The owner-role registry is validated but carries no authority -- `_validate_registry` asserts `registry["roles"] == {role: [EXPECTED_IDENTITIES[role]]}` and `role_lines != EXPECTED_IDENTITIES`, both comparisons against a module constant, so the registry is only ever proven to equal the hardcoded roster. `_validate_receipts` then independently re-hardcodes `login != "jpiquot"` and `id != 6775094` rather than deriving them from the validated registry. Re-rostering a role would leave the registry check accepting the new roster while the receipt check silently kept demanding the old account. The numeric id is a bare literal in two places with no named constant. DECISION: make the registry load-bearing (derive expected identities from it -- its digest is already subject-bound via `authority.owner_role_registry_sha256`), or keep it decorative and say so. [tools/deployed_runtime_parity_handlers/v1.py:673-679,710,839]
-- [ ] [Review][Decision→Patch] RESOLVED 2026-08-25 (loop 4): COLLECT A 3.15-SCOPED ROSTER -- BLOCKED on an Ask First owner action. Post a roster ratification on the dedicated Story 3.15 issue naming this story, retain it, and repoint `registry.authority_source` at it. This retires the #324 lineage contradiction, the `CONTRIBUTOR`-only `author_association` exception (a fresh owner comment will be `OWNER`/`MEMBER`), and the #324 hardcode together. Note `CONTRIBUTOR` cannot simply be dropped while the current source is retained -- the existing comment is `CONTRIBUTOR`, so the stricter set would reject genuine evidence. Original finding: The registry's authority source is issue #324 -- a thread the same file denylists -- and is scoped to Story 3.13 -- `_validate_registry` hardcodes `html_url == ".../issues/324#issuecomment-5290564372"` while `v1.py:76-79` declares #324 a cross-lineage splice thread. The retained body (`registry/role-registry-source.json`) reads "Story 3.13 reviewer-roster ratification ... I ratify the exact reviewer-role mappings for ... Story 3.13" and never names 3.15; epic-3-context states Story 3.15 "cannot splice in 3.13 evidence". This is also the only site admitting `CONTRIBUTOR` as a sufficient `author_association`, and the only receipt-shaped source whose `issue_url` is never validated (unlike the receipt path, which requires all four fields to agree). The in-code comment states the asymmetry "is deliberate and is recorded for owner decision, not settled here" -- this is that decision. [tools/deployed_runtime_parity_handlers/v1.py:697-724]
+- [x] [Review][Decision→Patch] RESOLVED 2026-08-25 (authorized completion): COLLECT A 3.15-SCOPED ROSTER -- retained MEMBER-authenticated issue comment `5407975180` from dedicated issue `#352`, repointed `registry.authority_source`, required its `issue_url`, exact Story 3.15 body, and full owner-grade association, and removed the `CONTRIBUTOR` exception and Story-3.13 hardcodes. The retained source semantically matches the live GitHub API document. Original finding: the registry authority source was a Story-3.13-scoped CONTRIBUTOR comment from foreign issue `#324`. [tools/deployed_runtime_parity_handlers/v1.py]
 - [x] [Review][Patch] Pinned-source verification is fail-open: tampered bytecode executes while every SHA-256 pin passes, turning the 0/3 packet into `pass` [tools/validate-corrected-deployed-runtime-parity.py:32-37]
 - [x] [Review][Patch] Every recomputed-content guard is unreachable by its own test suite -- the 13-case theory pins `_verify_file`'s pre-check message, proving the branch is never entered [tools/deployed_runtime_parity_handlers/v1.py:506-551,575-593,673-679,743-745]
 - [x] [Review][Patch] The `dispatch` live-file binding loop has no negative test; restricting it to `handler_binding` alone leaves the suite green [tools/deployed_runtime_parity_handlers/v1.py:319-327]
@@ -302,7 +304,69 @@ collected against `5acb8176...`, costs nothing. Collecting receipts first makes 
 - [x] [Review][Defer] `"closure.json"` is hardcoded into the closed inventory while the CLI accepts an arbitrary evidence path and `--packet-root` [tools/deployed_runtime_parity_handlers/v1.py:746] -- deferred, pre-existing
 - [x] [Review][Defer] The `summary_bindings` deletion reduces `validate_packet_files`' standalone behavior inside a spec-frozen line range, leaving a vestigial `summaries` dict [tools/release_evidence_handlers/v3.py:944-952] -- deferred, pre-existing
 
+### Review Findings (2026-08-25, trusted-verifier hardening pass)
+
+- [x] [Review][Patch] Execute all four Story 3.15 trust-path modules only from their verified source
+  bytes under sanitized import resolution; evict stale/preloaded module names and reject
+  repository-local dependency shadows.
+- [x] [Review][Patch] Make the Story 3.14 dispatcher source-only for its exact verified package
+  initializer and v3 handler, with path/origin consistency and shadow/preload mutation coverage.
+- [x] [Review][Patch] Strictly admit only UTF-8 nuspec XML and reject DTD/entity declarations before
+  ElementTree parsing, including a UTF-16 bypass regression.
+- [x] [Review][Patch] Require exact JSON integers for dispatch version and every aggregate/platform
+  Production-smoke numeric fact; booleans and equal-valued floats fail closed.
+- [x] [Review][Patch] Use one monotonic per-platform smoke deadline across pull, run, port discovery,
+  readiness, and inspection; give every subprocess only the remaining time, require exact HTTP
+  200/zero redirects, retain malformed curl failures, and contain cleanup command, timeout, and
+  OSError paths with executable recording/failing fakes.
+- [x] [Review][Patch] Correct the rerun trigger from `receipt-source change` to
+  `receipt-source policy change`: individual post-subject source replacement invalidates its own
+  receipt and the complete verdict, while policy changes re-mint the subject.
+- [x] [Review][Patch] Use `three roster-bound role receipts` in operator-facing claims and preserve
+  the explicit fact that both owner roles map to one authenticated human while Test Architect is
+  self-attested.
+- [x] [Review][Patch] Preserve the complete `dab64f5f...` acceptance/source tree byte-for-byte in
+  `superseded-acceptances`, re-mint subject `a8cc777e...`, and initially leave the production packet
+  stable and fail-closed at 0/3 without collecting replacement receipts. Fresh receipts were
+  collected only in the subsequent separately authorized acceptance pass.
+
 ## Spec Change Log
+
+- **2026-08-25 (authorized acceptance completion for hardened subject):** With renewed authorization
+  for exact unchanged subject
+  `a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`, retained EventStore-owner
+  issue comment `5409145568`, Release-owner issue comment `5409148235`, and the Test Architect
+  `bmad:murat` self-attested record. Reassembly remains on `a8cc777e...`, reports `receipts=3
+  verifier_exit=0`, and the verifier selects only OCI index
+  `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`; deployment,
+  publication, registry-mutation, consumer-removal, and predecessor-change authority flags all
+  remain false. Timestamp-mismatched attempts `5409140199` and `5409147909` were immediately marked
+  visibly superseded and are not retained as packet sources. Both owner roles still map to one
+  authenticated human; the Test Architect record remains explicitly self-attested.
+
+- **2026-08-25 (trusted-verifier hardening):** Closed all eight review findings above in one re-mint.
+  The current subject is
+  `a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`; repeat assembly reports
+  `receipts=0 verifier_exit=1`. The full `dab64f5f...` receipt/source tree is retained unmodified in
+  the superseded audit area. No replacement acceptance, deployment, publication, registry,
+  consumer, predecessor, commit, or push action was performed. Verification: Contracts Release
+  build 0W/0E; Story 3.15 closure and capture suites 114/114; predecessor/provenance suite 34/34;
+  full Contracts suite 1702/1702; no skipped tests.
+
+- **2026-08-25 (authorized acceptance completion):** Created dedicated Story 3.15 issue
+  [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352), retained its
+  MEMBER-authenticated roster comment `5407975180`, replaced the issue denylist with a positive
+  `#352` allowlist, and removed the cross-story roster and `CONTRIBUTOR` exception. Binding the new
+  handler and registry bytes re-minted subject `93559e61...` ->
+  `dab64f5fbbf55783630ad75451d35d517d829e194fb618dc8b0526d39761d38d` before any final receipt was
+  collected. With renewed exact-subject authorization, EventStore-owner comment `5408186984`,
+  Release-owner comment `5408189299`, and the Test Architect `bmad:murat` record were retained
+  beneath the new subject. The assembler and verifier pass at 3/3, select only OCI index
+  `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`, and preserve every
+  deployment/publication/registry/consumer/predecessor authority flag as false. One first owner
+  comment crossed GitHub's one-second timestamp boundary; it was visibly marked superseded and is
+  not retained. Focused suite: 98 passed, zero failed or skipped; complete Contracts suite:
+  1683 passed, zero failed or skipped; Contracts Release build: 0W/0E.
 
 - **2026-08-25 (loop 4, implementation):** Closed every unblocked verifier-core finding with
   mutation evidence: the dispatcher now compiles only the four verified source files and confirms
@@ -394,7 +458,12 @@ On 2026-08-21 the owner confirmed Story 3.14's spec was authoritative over its t
 
 **2026-08-22 (code review, accepted trade-offs):** Each receipt's `durable_source` is cross-checked against a file retained inside the same packet the receipt author controls, not fetched live from the GitHub API — this proves internal consistency (receipt and source agree byte-for-byte) but not independence. Accepted for this story; mirrors the same accepted gap already recorded for Story 3.13's analogous mechanism.
 
-The owner-role registry's `authority_source` is a GitHub comment ratifying reviewer-role identities. The retained comment (`role-registry-source.json`) is dated 2026-08-14 and its own body reads "Story 3.13 reviewer-roster ratification" — it predates Story 3.15 and never names it. Reuse across stories is intentional: the comment records a role-holder identity fact (who currently holds each rostered role), not release-lineage evidence scoped to one closure, so it is not "spliced 3.13 evidence" in the sense the epic-3 no-splicing rule prohibits (packages/OCI/smokes/predecessor lineage). To keep that reuse from silently widening into a release authorization, `_validate_registry` (`tools/deployed_runtime_parity_handlers/v1.py`) now requires the comment to explicitly disclaim deployment authority (`REGISTRY_AUTHORITY_DISCLAIMER_MARKERS`) and requires its role-mapping lines to match the required identities exactly, rejecting any extra or contradicting role assignment.
+The owner-role registry's `authority_source` is Story-3.15-scoped GitHub comment `5407975180` on
+dedicated issue `#352`. Its exact body ratifies the three mappings and explicitly disclaims package
+recovery, release, registry mutation, deployment, consumer migration, and Story 3.15 done authority.
+The verifier binds the comment id and all three URLs to `#352`, requires the shared owner login/id,
+unchanged timestamp, MEMBER/OWNER/COLLABORATOR association, exact body, and no GitHub App producer.
+Both owner receipts are independently constrained to the same positively allowlisted issue.
 
 ## Verification
 
@@ -402,8 +471,8 @@ The owner-role registry's `authority_source` is a GitHub comment ratifying revie
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: exact predecessor digest passes.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: zero warnings and errors.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -noLogo` -- expected: all matrix and mutation cases pass with none skipped.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: **fail-closed**, `exactly three packet-bound receipts are required`, the exact rerun trigger, exit 1. Three 2026-08-25 re-freezes moved the canonical subject to `93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0` (loop 2 bound `v3.py`: `bb58d691...` -> `1dee194f...`; loop 3 hardened the verifier: `1dee194f...` -> `5acb8176...`; loop 4 closed the verifier-core findings: `5acb8176...` -> `93559e61...`). Each re-mint rejected every receipt bound to the prior subject; no identity is selected until three receipts bind `93559e61...`, collected on a *dedicated* Story 3.15 issue. The positive path is proved on a synthesized packet by `ThreeAuthenticatedRolesClosePositiveParityOnOneUnchangedSubject`.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: re-mints the identical subject `93559e61...` on repeat runs (deterministic), runs the pinned verifier over its own output, and exits 1 while receipts are incomplete.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: **pass**, exact current subject `a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`, exactly three roster-bound role receipts, and selected identity only `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`, exit 0. The prior `dab64f5f...` receipt/source tree remains byte-identical outside the packet.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: reproduces identical subject `a8cc777e...` on repeat runs, runs the pinned verifier over its own output, reports `receipts=3 verifier_exit=0`, and exits 0.
 - `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py` -- expected: `text: set`, `eol: lf` for each, so the SHA-256 pins cannot be broken by working-tree EOL drift.
 - `git diff --check` -- expected: no whitespace errors.
 
@@ -411,8 +480,11 @@ The owner-role registry's `authority_source` is a GitHub comment ratifying revie
 
 **Start here — what the packet now claims**
 
-- Fail-closed verdict, blocking owner action, and the three subject re-mints, in one place.
-  [`3-15-...-closure.md:45`](3-15-corrected-deployed-runtime-parity-closure.md#L45)
+- Passing verdict, exact current subject, and evidence-only boundary in one place.
+  [`3-15-...-closure.md:3`](3-15-corrected-deployed-runtime-parity-closure.md#L3)
+
+- Fresh owner comments and self-attested Test Architect receipt bind the unchanged subject.
+  [`3-15-...-closure.md:58`](3-15-corrected-deployed-runtime-parity-closure.md#L58)
 
 - The blocking release defect this loop recorded rather than actioned.
   [`deferred-work.md:1569`](deferred-work.md#L1569)
@@ -422,7 +494,7 @@ The owner-role registry's `authority_source` is a GitHub comment ratifying revie
 - All four comment fields must resolve to one comment on one issue.
   [`v1.py:861`](../../tools/deployed_runtime_parity_handlers/v1.py#L861)
 
-- Story 1.20 and Story 3.14 threads rejected by number; the superseded receipts used `#346`.
+- Only dedicated Story 3.15 issue `#352` is allowlisted; every sibling thread is rejected.
   [`v1.py:79`](../../tools/deployed_runtime_parity_handlers/v1.py#L79)
 
 - Each rostered role bound to exactly one source kind, so owners cannot self-attest.
@@ -441,19 +513,22 @@ The owner-role registry's `authority_source` is a GitHub comment ratifying revie
 
 **Trust chain — verified bytes must be the executed bytes**
 
-- Stale bytecode can no longer stand in for verified source.
-  [`validate-...-parity.py:37`](../../tools/validate-corrected-deployed-runtime-parity.py#L37)
+- Repository-local dependency shadows cannot participate in verified handler execution.
+  [`validate-...-parity.py:138`](../../tools/validate-corrected-deployed-runtime-parity.py#L138)
 
-- A handler registered without a pin can no longer import unpinned.
-  [`validate-...-parity.py:44`](../../tools/validate-corrected-deployed-runtime-parity.py#L44)
+- The predecessor dispatcher executes only exact verified source bytes under the same isolation.
+  [`validate-corrective-release-evidence.py:138`](../../tools/validate-corrective-release-evidence.py#L138)
 
-- The imported module must be the file that was hashed.
-  [`validate-...-parity.py:93`](../../tools/validate-corrected-deployed-runtime-parity.py#L93)
+- Strict numeric smoke facts reject JSON booleans and equal-valued floats.
+  [`v1.py:565`](../../tools/deployed_runtime_parity_handlers/v1.py#L565)
 
 - SHA-pinned Python can no longer be CRLF-rewritten by an EditorConfig-honouring editor.
   [`.gitattributes:11`](../../.gitattributes#L11)
 
 **Producer discipline**
+
+- One monotonic deadline bounds pull, run, readiness, inspection, and cleanup attempts.
+  [`capture-...-smokes.py:63`](../../tools/capture-corrected-deployed-runtime-parity-smokes.py#L63)
 
 - Refuses to assemble a packet over failed Production smokes.
   [`assemble-...-parity.py:120`](../../tools/assemble-corrected-deployed-runtime-parity.py#L120)
@@ -469,13 +544,16 @@ The owner-role registry's `authority_source` is a GitHub comment ratifying revie
 
 **Operator handoff**
 
-- Records the loop-3 re-mint and corrects the transitive-binding claim.
-  [`ci.md:429`](../../docs/ci.md#L429)
+- Records the 3/3 subject-bound verdict and the one-human/self-attested identity limitation.
+  [`ci.md:460`](../../docs/ci.md#L460)
 
 **Tests and supporting artifacts**
 
-- 96 cases; every new guard mutation-proved with a positive control.
-  [`CorrectedDeployedRuntimeParityClosureTests.cs:1`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L1)
+- 108 closure cases mutation-prove the trusted verifier and current 3/3 packet.
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:106`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L106)
+
+- Six executable fake-command cases prove capture arguments and bounded failure retention.
+  [`CorrectedDeployedRuntimeParitySmokeCaptureTests.cs:19`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParitySmokeCaptureTests.cs#L19)
 
 - Restored remediation assertion plus four mutation-proved dead guards.
   [`DeployedRuntimeParityClosureTests.cs:1`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1)

@@ -432,9 +432,8 @@ A second 2026-08-25 review loop hardened the verifier further, and by the same r
 re-minted the subject again. That loop made the acceptance-source checks bind what they claimed to:
 the retained comment's `id`, `url`, `html_url` anchor, and `issue_url` must now all resolve to one
 comment on one issue (previously each was prefix-matched independently, so a receipt could splice a
-comment id from one thread onto an anchor from another), the two Story-1.20 and Story-3.14 threads
-`#324` and `#346` are rejected by number, and each rostered role is bound to exactly one source
-kind. It also closed a disclaimer bypass — `authorizes nothing beyond deployment role identity`
+comment id from one thread onto an anchor from another), and each rostered role is bound to exactly
+one source kind. It also closed a disclaimer bypass — `authorizes nothing beyond deployment role identity`
 satisfied the previous substring markers while asserting the opposite — normalized CRLF comment
 bodies, made a date-only timestamp fail closed instead of crashing the verifier, and made the
 assembler run the pinned verifier over its own output rather than always exiting zero. The
@@ -447,12 +446,32 @@ shared named identity, replaced the disclaimer regex with the retained exact non
 made every recomputed semantic check mutation-reachable, and added an explicit manifest override and
 rerun trigger to failure output. Those verifier changes re-minted the subject once more.
 
+The authorized completion pass then created dedicated Story 3.15 issue `#352`, retained its
+Story-3.15-scoped MEMBER-authenticated roster comment, replaced the two-issue denylist with a single
+positive issue allowlist, and required both owner receipts to resolve to that exact thread. Binding
+the new handler and registry bytes re-minted the subject again.
+
+A subsequent trusted-verifier review made both dispatchers execute only verified source bytes
+under sanitized import resolution, rejected non-UTF-8 nuspec XML and non-integer smoke facts,
+bounded all smoke-capture work by one per-platform monotonic deadline, and corrected the rerun
+trigger to bind receipt-source **policy** changes. Those trusted-byte changes re-minted the subject
+again and superseded every `dab64f5f...` receipt.
+
 The packet's current subject is
-`93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0`, and the packet **fails closed**
-at zero of three receipts until the rostered EventStore owner, Release owner, and Test Architect
-each accept those exact new bytes. Because the roster maps both owner roles to `github:jpiquot`,
-the Test Architect record remains self-attested without external authentication, and the three
-roles therefore do not represent independent three-party review.
+`a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`, and the packet passes with
+**three of three roster-bound role receipts**. Fresh EventStore-owner comment `5409145568`, fresh
+Release-owner comment `5409148235`, and the `bmad:murat` Test Architect record all bind that exact
+subject. The `dab64f5f...` receipts and sources remain byte-for-byte in the superseded audit area.
+The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
+Architect record is explicitly self-attested without independent external authentication.
+
+Owner comments `5409140199` and `5409147909` had timestamp mismatches, were immediately marked
+visibly superseded, and are not retained in the packet. Reassembly reports `receipts=3
+verifier_exit=0` without changing the current subject.
+
+The subject cannot bind each post-subject receipt-source instance without a hash cycle. It binds
+the source policy instead: replacing one retained source invalidates that source's receipt and any
+complete 3/3 verdict, while a source-policy change re-mints the subject and rejects all receipts.
 
 The only identity the closure may ever select is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,

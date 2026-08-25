@@ -2,64 +2,74 @@
 
 ## Decision
 
-The technical evidence passes and reproduces. **No acceptance binds the current subject**, so the
-packet **fails closed at zero of three receipts** and selects no identity. Deployed-runtime parity
-is **not** available.
+The technical evidence passes and reproduces, and the acceptance gate is complete. Current subject
+`sha256:a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`
+has **three of three roster-bound role receipts**, so the retained verifier reports deployed-runtime
+parity available.
 
-Canonical subject:
-`sha256:93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0`.
-
-Identity the closure would select once parity becomes available (not selected today):
+The only candidate selected identity remains
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
+This packet grants no deployment, publication, registry mutation, consumer removal, or predecessor
+change authority.
 
-## Bound evidence
+## Bound technical evidence
 
 - Frozen predecessor identity: `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
 - Source/release: `f343bb0153e9cdcb8b12ec10153813072f5ad38d`, `v3.96.2`.
-- Packages: 14 NuGet.org archives with one `.signature.p7s` entry, independently rehashed and cross-mapped to the
-  14 Story 3.14 GitHub release assets.
-- OCI: independent raw index, two child manifests, and two configs; exact `linux/amd64` and
-  `linux/arm64` graph.
-- Runtime: bounded Production `/alive`, HTTP 200, zero redirects, cleanup pass for both immutable
-  children.
-- Technical inventory: 24 exact retained files, SHA-256
-  `2d066fb5a5c48c7dd9184f382c098bac36b9e531cd6d86dfc5aa231747ceea86`.
+- Packages: 14 NuGet.org archives independently rehashed and cross-mapped to the Story 3.14 assets.
+- OCI: independent raw index, two child manifests, and two configs for `linux/amd64` and
+  `linux/arm64`.
+- Runtime: bounded Production `/alive`, exact HTTP 200, zero redirects, cleanup pass for both
+  immutable children.
 - Owner registry: SHA-256
-  `534268c2b5fbf39709e558f9806670d4ed8dd70574574f63babf903dc23e54fc`.
+  `aee4f46be8208ea13704a38d9329320b8a7641b0cdd33e61a138114c8c142f2f`.
 
-The `dispatch` block binds the four files that decide the verdict. Recompute each with `sha256sum`:
+The current dispatch binds these verdict-bearing live files:
 
 | Role | File | SHA-256 |
 | --- | --- | --- |
-| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `e8b6538b11d626bb248fa9a0a61b22a2b2d4c39b5e6561f4e334a50a731f6b3d` |
-| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `96e5d7d92f88110be23677580f265fde1abfa77c88c30967f6e663deadf80217` |
-| Predecessor handler | `tools/release_evidence_handlers/v3.py` | `5cb007497466090956eb35a7d5340cfe4c9e07920a1b55dd1801d422509e0f1b` |
+| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `886fc7141063185f21f2658afc347cf9428b5c781b97fc81a07d612d9961ca41` |
+| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `00365d223eaf7c76a9a2fecd9ad7ec49288ff3395b6fc4e075da54c549b2097f` |
+| Predecessor handler | `tools/release_evidence_handlers/v3.py` | `410952dcb855e52278ef2575ce6d53bc2df36c0d7a936eca464cba0e4cdf41b4` |
 | Predecessor package | `tools/release_evidence_handlers/__init__.py` | `a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625` |
 
-The v1 package initializer is pinned in the verifier's `IMPORT_PATH_FILE_SHA256`, whose own bytes
-are bound by the verifier row above, so the trust chain closes transitively over all five files.
+Both dispatchers execute only the exact verified initializer and handler source bytes under
+sanitized import resolution. Repository-local standard-library/dependency shadows and stale or
+preloaded trusted module names cannot participate in the verdict.
 
-The subject and receipt directories sit outside the technical inventory to avoid a checksum cycle.
-The subject binds the inventory and every decision input; `closure.json` binds the subject and,
-when present, the three subject-addressed receipt files.
+## Superseded acceptances
 
-## Acceptances
+The three receipts for subject `dab64f5f...` and their exact retained sources were moved
+byte-for-byte outside the packet to
+`evidence/story-3-15/superseded-acceptances/dab64f5f.../`. They authorize nothing for the current
+subject. The earlier `bb58d691...` set remains in the same audit area.
 
-`acceptances/93559e6134c16d15e295b7c3fbf83d959e86da75d2dfe4201ffdde4d42ac39a0/` is **empty**. Three
-receipts — one each for `eventstore-owner`, `release-owner`, and `test-architect` — must be
-collected against the exact subject bytes above, on a **dedicated Story 3.15 issue**. Issues `#324`
-(Story 1.20) and `#346` (Story 3.14) are rejected by number as cross-lineage splices.
+For both complete historical sets, the two owner roles map to one authenticated GitHub human,
+`github:jpiquot`, while the Test Architect role is the explicitly limited, self-attested
+`bmad:murat` record. This is why the operator-facing claim is “three roster-bound role receipts,”
+not three independently authenticated people.
 
-Three earlier receipts exist but bind the superseded subject
-`bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709` and were anchored on `#346`.
-They are retained, unbound and non-authorizing, under
-`evidence/story-3-15/superseded-acceptances/bb58d691…/`. They must not be moved back into the
-packet.
+The subject binds receipt-source **policy**. An individual post-subject source replacement does not
+re-mint the subject (avoiding a hash cycle), but it invalidates that source's bound receipt and
+therefore any complete 3/3 verdict.
 
-Even a complete receipt set would be one authenticated human account plus a self-authored BMAD
-record: the roster maps both owner roles to `github:jpiquot`, and the Test Architect receipt is a
-`bmad-test-architect-record` without independent external authentication. Every receipt must repeat
-that subject-bound limitation.
+## Current acceptances
+
+Dedicated Story 3.15 issue [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352)
+retains the two owner-role acceptances for the exact current subject:
+
+- EventStore owner: comment
+  [5409145568](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409145568),
+  created at `2026-08-25T10:33:29Z`.
+- Release owner: comment
+  [5409148235](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409148235),
+  created at `2026-08-25T10:33:45Z`.
+- Test Architect: self-attested `bmad:murat` record accepted at `2026-08-25T10:34:41Z`.
+
+Both owner roles map to the same authenticated GitHub human, `github:jpiquot`; the Test Architect
+record has no independent external authentication. The packet therefore claims three roster-bound
+role receipts, not three independently authenticated people. Timestamp-mismatched owner comments
+`5409140199` and `5409147909` were visibly marked superseded and are not retained as sources.
 
 ## Reproduce
 
@@ -67,17 +77,10 @@ that subject-bound limitation.
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source change.
+[corrected-deployed-runtime-parity] pass: subject=sha256:a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
 $ echo $?
-1
+0
 ```
 
-To rebuild the packet after any bound input changes, run
-`tools/assemble-corrected-deployed-runtime-parity.py <packet-root>`; it re-mints the subject, runs
-the verifier over its own output, and exits non-zero unless three receipts bind the result.
-
-## Authority boundary
-
-Even a passing receipt set proves immutable evidence only. `deployment_authorized`,
-`consumer_removal_authorized`, `publication_authorized`, and `grants_mutation_authority` remain
-false. Deployment and consumer removal require separate owner decisions outside this packet.
+Reassembly deterministically reproduces subject `a8cc777e...`, reports
+`receipts=3 verifier_exit=0`, and exits 0. It does not copy or rewrite any superseded receipt.
