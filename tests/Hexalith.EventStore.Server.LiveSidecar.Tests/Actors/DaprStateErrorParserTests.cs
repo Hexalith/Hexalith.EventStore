@@ -5,6 +5,8 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 
 /// <summary>Deterministic malformed-body coverage for the Story 4.5 generic ETag control.</summary>
+[Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public sealed class DaprStateErrorParserTests
 {
     /// <summary>Verifies valid Dapr state errors are captured without a diagnostic.</summary>

@@ -5,6 +5,8 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 
 /// <summary>Deterministic branch coverage for the outcome-neutral Story 4.5 classifier.</summary>
+[Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public sealed class AppendDurabilityRaceClassifierTests
 {
     /// <summary>Gets supported, inconsistent, rejection, and infrastructure classification cases.</summary>

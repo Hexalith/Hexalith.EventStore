@@ -26,7 +26,6 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 public class ActorConcurrencyConflictTests
 {
     private const string EvidenceDirectoryEnvironmentVariable = "HEXALITH_STORY_4_5_EVIDENCE_DIR";
-    private const string MutationEnvironmentVariable = "HEXALITH_STORY_4_5_MUTATION";
     private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(30);
     private static readonly JsonSerializerOptions EvidenceJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -129,6 +128,7 @@ public class ActorConcurrencyConflictTests
     [Fact]
     public async Task MetadataKey_StaleEtagUpdate_IsRejected()
     {
+        string? mutationArmed = Story45MutationSwitch.Armed;
         using var operationCancellation = new CancellationTokenSource(OperationTimeout);
         string key = $"story-4-5-generic-etag-{Guid.NewGuid():N}";
         string seedJson = JsonSerializer.Serialize(new { writer = "seed", version = 0 });
@@ -140,29 +140,37 @@ public class ActorConcurrencyConflictTests
             seedJson,
             etag: null,
             operationCancellation.Token).ConfigureAwait(true);
-        seed.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        seed.StatusCode.ShouldBe(
+            HttpStatusCode.NoContent,
+            "the generic-state seed write is a harness precondition, not one of the recorded invariants");
 
         (string originalJson, string originalEtag) = await GetStateWithEtagAsync(
             key,
             operationCancellation.Token).ConfigureAwait(true);
-        JsonDocument.Parse(originalJson).RootElement.GetProperty("writer").GetString().ShouldBe("seed");
+        JsonCapture original = JsonCapture.From(originalJson);
 
         using HttpResponseMessage first = await SaveStateAsync(
             key,
             firstUpdateJson,
             originalEtag,
             operationCancellation.Token).ConfigureAwait(true);
-        first.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        first.StatusCode.ShouldBe(
+            HttpStatusCode.NoContent,
+            "the intervening conditional write is a harness precondition, not one of the recorded invariants");
 
         (string currentJson, string currentEtag) = await GetStateWithEtagAsync(
             key,
             operationCancellation.Token).ConfigureAwait(true);
-        currentEtag.ShouldNotBe(originalEtag, "the successful intervening write must advance the ETag before the original token is called stale");
-        JsonDocument.Parse(currentJson).RootElement.GetProperty("writer").GetString().ShouldBe("first");
+        JsonCapture current = JsonCapture.From(currentJson);
+        bool etagAdvanced = !string.Equals(originalEtag, currentEtag, StringComparison.Ordinal);
+        bool seedThenFirstObserved = string.Equals(original.Writer, "seed", StringComparison.Ordinal)
+            && string.Equals(current.Writer, "first", StringComparison.Ordinal);
 
         // Perturbation: replay the token that is still current instead of the stale one, so the
         // provider has nothing to reject and the 409 surface never appears.
-        string replayedEtag = IsMutation("generic-409-semantics") ? currentEtag : originalEtag;
+        string replayedEtag = Story45MutationSwitch.IsArmed("generic-409-semantics")
+            ? currentEtag
+            : originalEtag;
         using HttpResponseMessage stale = await SaveStateAsync(
             key,
             rejectedUpdateJson,
@@ -173,17 +181,19 @@ public class ActorConcurrencyConflictTests
             .ConfigureAwait(true);
         DaprStateErrorParser.Capture staleError = DaprStateErrorParser.Parse(staleResponseBody);
 
-        // Perturbation: overwrite the retained value after the rejection, leaving the 409 surface
-        // intact so attribution stays on the retention invariant.
-        if (IsMutation("retained-generic-value"))
-        {
-            using HttpResponseMessage overwrite = await SaveStateAsync(
-                key,
-                rejectedUpdateJson,
-                etag: null,
-                operationCancellation.Token).ConfigureAwait(true);
-            overwrite.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        }
+        // The store must retain the value of the last write the provider *acknowledged*. When the
+        // stale replay is rejected that is the first conditional update; when a perturbation makes
+        // the provider accept the replay, the expectation follows the acknowledgement instead of
+        // spuriously falsifying the retention invariant.
+        bool staleReplayAcknowledged = (int)stale.StatusCode is >= 200 and < 300;
+        string expectedRetainedJson = staleReplayAcknowledged ? rejectedUpdateJson : firstUpdateJson;
+        string expectedRetainedWriter = staleReplayAcknowledged ? "stale" : "first";
+
+        // Perturbation: read the retained value from a key the run never wrote, so the retention
+        // check stops inspecting the value the provider actually kept.
+        string retainedReadKey = Story45MutationSwitch.IsArmed("retained-generic-value")
+            ? $"{key}-never-written"
+            : key;
 
         string? retainedRedisJson = null;
         string? retainedReadExceptionType = null;
@@ -192,7 +202,7 @@ public class ActorConcurrencyConflictTests
         JsonElement? retainedRedisValue = null;
         try
         {
-            retainedRedisJson = await _fixture.GetGenericStateJsonAsync(key).ConfigureAwait(true);
+            retainedRedisJson = await _fixture.GetGenericStateJsonAsync(retainedReadKey).ConfigureAwait(true);
 
             // Parse inside the guard: a malformed or non-JSON body must be captured as a read
             // diagnostic, never thrown before the evidence file is written.
@@ -212,51 +222,89 @@ public class ActorConcurrencyConflictTests
             && string.Equals(staleError.ErrorCode, "ERR_STATE_SAVE", StringComparison.Ordinal)
             && staleError.Message?.Contains("etag mismatch", StringComparison.OrdinalIgnoreCase) == true;
         bool retainedValueMatchesExpected = retainedRedisNode is not null
-            && JsonNode.DeepEquals(retainedRedisNode, JsonNode.Parse(firstUpdateJson));
+            && JsonNode.DeepEquals(retainedRedisNode, JsonNode.Parse(expectedRetainedJson));
+        bool staleTokenProvenStale = etagAdvanced && seedThenFirstObserved;
 
+        var invariants = new Dictionary<string, bool>(StringComparer.Ordinal)
+        {
+            ["stale-token-proven-stale"] = staleTokenProvenStale,
+            ["generic-409-semantics"] = exactConflictSurface,
+            ["retained-generic-value"] = retainedValueMatchesExpected,
+        };
         var evidence = new
         {
-            schemaVersion = 2,
+            schemaVersion = 3,
             baselineCommit = "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
+            mutationArmed,
             key,
             seedStatus = (int)seed.StatusCode,
             original = new
             {
                 etag = originalEtag,
-                value = JsonSerializer.Deserialize<JsonElement>(originalJson),
+                rawJson = originalJson,
+                value = original.Value,
+                parseExceptionType = original.ExceptionType,
             },
             interveningUpdate = new
             {
                 status = (int)first.StatusCode,
                 etag = currentEtag,
-                value = JsonSerializer.Deserialize<JsonElement>(currentJson),
-                etagAdvanced = !string.Equals(originalEtag, currentEtag, StringComparison.Ordinal),
+                rawJson = currentJson,
+                value = current.Value,
+                parseExceptionType = current.ExceptionType,
+                etagAdvanced,
             },
             staleReplay = new
             {
                 suppliedEtag = replayedEtag,
+                suppliedEtagWasStale = !Story45MutationSwitch.IsArmed("generic-409-semantics"),
                 status = (int)stale.StatusCode,
                 responseBody = staleResponseBody,
                 errorCode = staleError.ErrorCode,
                 errorMessage = staleError.Message,
                 parseError = staleError.ParseError,
+                acknowledged = staleReplayAcknowledged,
             },
+            retainedReadKey,
+            expectedRetainedWriter,
             redisRetainedValue = retainedRedisValue,
             redisRetainedRawJson = retainedRedisJson,
             retainedValueMatchesExpected,
             retainedReadExceptionType,
             retainedReadExceptionMessage,
+            invariants,
         };
         await WriteEvidenceAsync("generic-etag-control.json", evidence).ConfigureAwait(true);
 
-        AssertInvariant(
-            exactConflictSurface,
-            "generic-409-semantics",
-            "the stale generic-state update must return HTTP 409 with Dapr ERR_STATE_SAVE ETag-mismatch semantics");
-        AssertInvariant(
-            retainedValueMatchesExpected,
-            "retained-generic-value",
-            "Redis must retain the full successful first conditional value after rejecting the stale replay");
+        AssertInvariants(invariants);
+    }
+
+    /// <summary>A non-throwing capture of a Dapr-sourced JSON body.</summary>
+    /// <param name="Value">The parsed document, when it parsed.</param>
+    /// <param name="Writer">The <c>writer</c> property, when present as a string.</param>
+    /// <param name="ExceptionType">Why the body could not be parsed.</param>
+    private sealed record JsonCapture(JsonElement? Value, string? Writer, string? ExceptionType)
+    {
+        /// <summary>Parses a Dapr-sourced body without throwing.</summary>
+        /// <param name="json">The verbatim body.</param>
+        /// <returns>The capture.</returns>
+        public static JsonCapture From(string json)
+        {
+            try
+            {
+                JsonElement value = JsonSerializer.Deserialize<JsonElement>(json);
+                string? writer = value.ValueKind == JsonValueKind.Object
+                    && value.TryGetProperty("writer", out JsonElement writerElement)
+                    && writerElement.ValueKind == JsonValueKind.String
+                        ? writerElement.GetString()
+                        : null;
+                return new JsonCapture(value, writer, null);
+            }
+            catch (Exception ex)
+            {
+                return new JsonCapture(null, null, ex.GetType().FullName);
+            }
+        }
     }
 
     private async Task<(string Json, string ETag)> GetStateWithEtagAsync(
@@ -324,26 +372,17 @@ public class ActorConcurrencyConflictTests
     }
 
     /// <summary>
-    /// Asserts one material invariant, tagging the failure message with the invariant name so a
-    /// mutation receipt binds to the invariant that actually failed.
+    /// Asserts every named invariant in one assertion whose message enumerates <em>all</em> failed
+    /// invariant tags, so attribution never depends on assertion order.
     /// </summary>
-    /// <param name="satisfied">The observed invariant value.</param>
-    /// <param name="invariantName">The stable invariant name.</param>
-    /// <param name="message">The human-readable requirement.</param>
-    private static void AssertInvariant(bool satisfied, string invariantName, string message)
-        => satisfied.ShouldBeTrue($"[invariant:{invariantName}] {message}");
-
-    /// <summary>
-    /// Indicates whether the named input perturbation is armed. A mutation changes what the
-    /// harness does; it never inverts an assertion.
-    /// </summary>
-    /// <param name="mutationName">The perturbation name.</param>
-    /// <returns><see langword="true"/> when the perturbation is armed.</returns>
-    private static bool IsMutation(string mutationName)
-        => string.Equals(
-            Environment.GetEnvironmentVariable(MutationEnvironmentVariable),
-            mutationName,
-            StringComparison.Ordinal);
+    /// <param name="invariants">The named invariant results.</param>
+    private static void AssertInvariants(IReadOnlyDictionary<string, bool> invariants)
+    {
+        string[] failed = [.. invariants.Where(item => !item.Value).Select(item => item.Key)];
+        failed.ShouldBeEmpty(
+            "Falsified Story 4.5 invariants: "
+            + string.Join(" ", failed.Select(name => $"[invariant:{name}]")));
+    }
 
     private async Task WriteEvidenceAsync(string fileName, object evidence)
     {
@@ -351,8 +390,7 @@ public class ActorConcurrencyConflictTests
         _output.WriteLine(json);
 
         string? directory = Environment.GetEnvironmentVariable(EvidenceDirectoryEnvironmentVariable);
-        string? mutation = Environment.GetEnvironmentVariable(MutationEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(directory) || !string.IsNullOrWhiteSpace(mutation))
+        if (string.IsNullOrWhiteSpace(directory) || Story45MutationSwitch.Armed is not null)
         {
             return;
         }

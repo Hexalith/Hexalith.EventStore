@@ -27,7 +27,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
 public sealed class AppendDurabilityRaceLiveSidecarTests
 {
     private const string EvidenceDirectoryEnvironmentVariable = "HEXALITH_STORY_4_5_EVIDENCE_DIR";
-    private const string MutationEnvironmentVariable = "HEXALITH_STORY_4_5_MUTATION";
+    private const string UnreachableProbeEndpoint = "http://127.0.0.1:1";
     private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(30);
     private static readonly JsonSerializerOptions ReadJsonOptions = new()
     {
@@ -61,6 +61,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
     [Fact]
     public async Task SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome()
     {
+        string? mutationArmed = Story45MutationSwitch.Armed;
         string aggregateId = $"append-race-{UniqueIdHelper.GenerateSortableUniqueStringId()}";
         var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         string actorMessageId = UniqueIdHelper.GenerateSortableUniqueStringId();
@@ -130,6 +131,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         string rawResponseBody = string.Empty;
         Exception? rawException = null;
         DateTimeOffset? rawCompletedAtUtc = null;
+        string genericActorKeyProbeUrl = string.Empty;
         HttpStatusCode? genericActorKeyStatusCode = null;
         string genericActorKeyResponseBody = string.Empty;
         Exception? genericActorKeyException = null;
@@ -147,7 +149,12 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             identity,
             (targetCommand, _) =>
             {
-                session.Arm(identity.ActorId, targetCommand.MessageId);
+                // Perturbation: arm the gate for a message id the command does not carry, so the
+                // recorded gate target no longer identifies the intended writer.
+                string armedMessageId = Story45MutationSwitch.IsArmed("gate-targeting")
+                    ? $"{targetCommand.MessageId}-mutated"
+                    : targetCommand.MessageId;
+                session.Arm(identity.ActorId, armedMessageId);
                 return Task.FromResult(
                     DomainResult.Success(
                     [new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented()]));
@@ -164,7 +171,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
 
                 // Perturbation: release the gate before the contending writers run, so the actor
                 // is no longer held across the probes. Breaks the observed hold, not an assertion.
-                if (IsMutation("gate-timing"))
+                if (Story45MutationSwitch.IsArmed("gate-hold"))
                 {
                     session.Release();
                     await actorTask.ConfigureAwait(true);
@@ -212,14 +219,16 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
 
                 // Perturbation: skip the namespace probe entirely, so the run cannot say which
                 // namespace exposed the key.
-                if (!IsMutation("key-addressability"))
+                if (!Story45MutationSwitch.IsArmed("key-addressability"))
                 {
+                    genericActorKeyProbeUrl =
+                        $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(identity.MetadataKey)}";
                     try
                     {
                         using var addressCancellation = new CancellationTokenSource(OperationTimeout);
                         using var addressRequest = new HttpRequestMessage(
                             HttpMethod.Get,
-                            $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(identity.MetadataKey)}");
+                            genericActorKeyProbeUrl);
                         using HttpResponseMessage addressResponse = await http
                             .SendAsync(addressRequest, HttpCompletionOption.ResponseContentRead, addressCancellation.Token)
                             .ConfigureAwait(true);
@@ -236,12 +245,13 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
 
                 genericActorKeyCompletedAtUtc = DateTimeOffset.UtcNow;
 
-                // Perturbation: skip the gated readback, so an acknowledged raw write is never
-                // proven durable while the actor is still held.
-                if (!IsMutation("intermediate-raw-durability"))
+                intermediateEventCapture = await TryReadActorStateAsync<EventEnvelope>(
+                    $"{identity.EventStreamKeyPrefix}1").ConfigureAwait(true);
+
+                // Perturbation: skip the gated metadata half of the readback, so an acknowledged
+                // raw write is never corroborated by the metadata the same transaction wrote.
+                if (!Story45MutationSwitch.IsArmed("intermediate-raw-durability"))
                 {
-                    intermediateEventCapture = await TryReadActorStateAsync<EventEnvelope>(
-                        $"{identity.EventStreamKeyPrefix}1").ConfigureAwait(true);
                     intermediateMetadataCapture = await TryReadActorStateAsync<AggregateMetadata>(
                         identity.MetadataKey).ConfigureAwait(true);
                 }
@@ -277,38 +287,67 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             }
         }
 
+        // Perturbation: skip the one-past-the-end probe, so nothing rules out an event beyond the
+        // metadata sequence and the final shape becomes unclassifiable.
         StateReadCapture<EventEnvelope>? unexpectedNextEventCapture = null;
-        if (finalSequenceWithinBounds)
+        bool nextEventProbed = false;
+        if (finalSequenceWithinBounds && !Story45MutationSwitch.IsArmed("final-state-classified"))
         {
             unexpectedNextEventCapture = await TryReadActorStateAsync<EventEnvelope>(
                 $"{identity.EventStreamKeyPrefix}{finalSequence + 1}").ConfigureAwait(true);
+            nextEventProbed = true;
         }
+
+        // Perturbation: send the sidecar liveness probe to an unroutable endpoint, so the run can
+        // no longer claim it completed against healthy infrastructure.
+        string healthProbeUrl = Story45MutationSwitch.IsArmed("infrastructure-free")
+            ? $"{UnreachableProbeEndpoint}/v1.0/healthz"
+            : $"{_fixture.DaprHttpEndpoint}/v1.0/healthz";
+        (HttpStatusCode? sidecarHealthStatus, Exception? sidecarHealthException) =
+            await ProbeSidecarHealthAsync(healthProbeUrl).ConfigureAwait(true);
+        bool sidecarHealthy = sidecarHealthException is null
+            && sidecarHealthStatus is >= HttpStatusCode.OK and < HttpStatusCode.MultipleChoices;
 
         DateTimeOffset finalReadAtUtc = DateTimeOffset.UtcNow;
         EventEnvelope? intermediateEvent = intermediateEventCapture?.Value;
         AggregateMetadata? intermediateMetadata = intermediateMetadataCapture?.Value;
         bool rawSucceeded = rawStatusCode is >= HttpStatusCode.OK and < HttpStatusCode.MultipleChoices;
-        bool rawDurabilityProven = IsExactRawContender(intermediateEvent, rawEvent)
+
+        // The classifier only needs to know whether the raw *event* was durable while gated; the
+        // invariant additionally requires the metadata written by the same transaction, so the
+        // metadata-only perturbation falsifies the invariant without changing the classification.
+        bool rawEventDurabilityProven = IsExactRawContender(intermediateEvent, rawEvent);
+        bool rawDurabilityProven = rawEventDurabilityProven
             && intermediateMetadata?.CurrentSequence == 1;
         bool intermediateDurabilityConsistent = !rawSucceeded || rawDurabilityProven;
-        bool gateTimingProven = gateWaitException is null
-            && session.ArmedAtUtc is not null
+
+        // Recorded, NOT an invariant: these comparisons are stamped in sequential program order on
+        // the test thread and hold regardless of sidecar behavior, so they are not evidence. Only
+        // the observed hold below (actor task incomplete, release after the gated reads) is.
+        bool timestampChainInProgramOrder = session.ArmedAtUtc is not null
             && session.FirstAllocationEnteredAtUtc is not null
             && rawCompletedAtUtc is not null
             && genericActorKeyCompletedAtUtc is not null
             && intermediateReadAtUtc is not null
-            && session.ReleasedAtUtc is not null
             && session.ArmedAtUtc.Value <= session.FirstAllocationEnteredAtUtc.Value
             && session.FirstAllocationEnteredAtUtc.Value <= rawCompletedAtUtc.Value
             && rawCompletedAtUtc.Value <= genericActorKeyCompletedAtUtc.Value
-            && genericActorKeyCompletedAtUtc.Value <= intermediateReadAtUtc.Value
+            && genericActorKeyCompletedAtUtc.Value <= intermediateReadAtUtc.Value;
+
+        bool gateHoldProven = gateWaitException is null
+            && intermediateReadAtUtc is not null
+            && session.ReleasedAtUtc is not null
             && intermediateReadAtUtc.Value <= session.ReleasedAtUtc.Value
             && actorTaskIncompleteAtGate == true
             && actorTaskIncompleteAfterRaw == true
-            && actorTaskIncompleteAfterIntermediate == true
+            && actorTaskIncompleteAfterIntermediate == true;
+        bool gateTargetingProven = gateWaitException is null
+            && session.ArmCalls == 1
             && session.GateInterceptions == 1
             && string.Equals(session.TargetActorId, identity.ActorId, StringComparison.Ordinal)
             && string.Equals(session.TargetMessageId, actorMessageId, StringComparison.Ordinal);
+
+        string compositeMetadataRedisKey = _fixture.GetAggregateActorRedisKeyForEvidence(identity.MetadataKey);
         bool compositeActorKeyReadable = intermediateMetadata is not null || finalMetadata is not null;
 
         // Outcome-neutral: record which namespace exposed the actor key instead of requiring the
@@ -325,42 +364,51 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                         && !string.IsNullOrEmpty(genericActorKeyResponseBody)
                         ? "actor-key-readable-through-generic-namespace"
                         : "generic-probe-unrecognized-response";
-        bool keyAddressabilityProven = genericActorKeyException is null
-            && genericActorKeyStatusCode is not null
-            && !string.Equals(
+        bool keyAddressabilityProven = (string.Equals(
                 keyAddressabilityClassification,
-                "generic-probe-unrecognized-response",
+                "actor-key-absent-from-generic-namespace",
                 StringComparison.Ordinal)
+            || string.Equals(
+                keyAddressabilityClassification,
+                "actor-key-readable-through-generic-namespace",
+                StringComparison.Ordinal))
             && compositeActorKeyReadable;
 
-        // Perturbation: match the actor contender against an identity no persisted event carries.
-        // Scoped to the exact-contender check so attribution stays on final-state-consistency.
-        string exactMatchActorMessageId = IsMutation("final-state-consistency")
-            ? $"{actorMessageId}-mutated"
-            : actorMessageId;
         bool exactContendersOnly = finalEvents.All(
             item => IsExactRawContender(item, rawEvent)
-                || IsExactActorContender(item, identity, exactMatchActorMessageId, rawEvent.EventTypeName));
+                || IsExactActorContender(item, identity, actorMessageId, rawEvent.EventTypeName));
         bool finalReadsSucceeded = finalMetadataCapture.ExceptionType is null
             && finalEventCaptures.All(item => item.ExceptionType is null)
             && unexpectedNextEventCapture?.ExceptionType is null;
-        bool finalShapeConsistent = finalSequenceWithinBounds
-            && finalReadsSucceeded
-            && exactContendersOnly
-            && (finalMetadata is null
-                ? finalEvents.Count == 0 && unexpectedNextEventCapture?.Value is null
-                : finalEvents.Count == finalSequence
-                    && finalEvents.Select(item => item.SequenceNumber)
-                        .SequenceEqual(Enumerable.Range(1, finalEvents.Count).Select(value => (long)value))
-                    && finalEvents.Select(item => item.SequenceNumber).Distinct().Count() == finalEvents.Count
-                    && finalEvents.Select(item => item.MessageId).Distinct(StringComparer.Ordinal).Count() == finalEvents.Count
-                    && finalEvents.All(item => item.Identity == identity)
-                    && (finalSequence == 0 || finalMetadata.LastModified == finalEvents[^1].Timestamp)
-                    && unexpectedNextEventCapture?.Value is null);
+        bool finalStateFullyRead = finalReadsSucceeded
+            && nextEventProbed
+            && (finalMetadata is null || finalEventCaptures.Count == finalSequence);
+
+        // Demoted from a hard requirement to a recorded classification (owner decision, loop-2 D2):
+        // a torn interleaving is the anomaly this spike exists to catch and must be recorded, not
+        // red-gate the required live-sidecar check. Only an *unclassifiable* shape fails.
+        string finalShapeClassification = ClassifyFinalShape(
+            finalStateFullyRead,
+            finalSequenceWithinBounds,
+            finalSequence,
+            finalMetadata,
+            finalEvents,
+            unexpectedNextEventCapture?.Value is not null,
+            exactContendersOnly,
+            identity);
+        bool finalStateClassified = !string.Equals(
+            finalShapeClassification,
+            "unclassified-final-shape",
+            StringComparison.Ordinal);
 
         // Recorded, not required: a provider that populates the metadata ETag is a first-class
-        // observation for the deferred fencing decision, not a test failure.
-        bool finalMetadataEtagPresent = !string.IsNullOrEmpty(finalMetadata?.ETag);
+        // observation for the deferred fencing decision, not a test failure. Three-state so an
+        // absent metadata record is never reported as an absent ETag.
+        string metadataEtagState = finalMetadata is null
+            ? "metadata-absent"
+            : string.IsNullOrEmpty(finalMetadata.ETag)
+                ? "etag-absent"
+                : "etag-present";
 
         bool rawSurvives = finalEvents.Any(item => IsExactRawContender(item, rawEvent));
         bool actorSurvives = finalEvents.Any(
@@ -373,14 +421,14 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             || actorException?.GetType().Name.Contains("ConcurrencyConflict", StringComparison.Ordinal) == true;
         // Perturbation: classify against a sequence the final state does not exhibit, so the
         // classification stops corroborating the observed allocation telemetry.
-        long classifierSequence = IsMutation("conflict-retry-classification")
+        long classifierSequence = Story45MutationSwitch.IsArmed("conflict-retry-classification")
             ? finalSequence + 1
             : finalSequence;
         AppendDurabilityRaceClassifier.Result classification = AppendDurabilityRaceClassifier.Classify(
             new AppendDurabilityRaceClassifier.Input(
                 rawStatusCode is null ? null : (int)rawStatusCode.Value,
                 rawException?.GetType().FullName,
-                rawDurabilityProven,
+                rawEventDurabilityProven,
                 rawSurvives,
                 actorSurvives,
                 actorResult?.Accepted == true,
@@ -391,8 +439,9 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 retryCount));
         bool retryClassificationConsistent = session.AllocationAttempts >= 1
             && session.GateInterceptions == 1
+            && classifierSequence == finalSequence
             && classification.IsInternallyConsistent
-            && (finalSequence != 2
+            && (classifierSequence != 2
                 || !(rawSurvives && actorSurvives)
                 || retryCount >= 1);
         bool infrastructureFree = gateWaitException is null
@@ -401,21 +450,47 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             && intermediateEventCapture?.ExceptionType is null
             && intermediateMetadataCapture?.ExceptionType is null
             && finalReadsSucceeded
+            && sidecarHealthy
             && !classification.IsInfrastructureFailure;
 
-        string stateStoreComponentSha256 = Convert.ToHexString(
-            SHA256.HashData(Encoding.UTF8.GetBytes(_fixture.StateStoreComponentYaml))).ToLowerInvariant();
+        string observedDaprRuntime = await DaprTestContainerFixture
+            .ReadObservedDaprRuntimeVersionAsync().ConfigureAwait(true);
+        string observedRedisImage = await DaprTestContainerFixture
+            .ReadObservedRedisImageAsync().ConfigureAwait(true);
+        string observedRedisImageDigest = await DaprTestContainerFixture
+            .ReadObservedRedisImageDigestAsync().ConfigureAwait(true);
+        string observedRedisPersistence = await DaprTestContainerFixture
+            .ReadObservedRedisPersistenceAsync().ConfigureAwait(true);
+        string stateStoreComponentSha256 = Sha256Hex(_fixture.StateStoreComponentCanonicalYaml);
+        var invariants = new Dictionary<string, bool>(StringComparer.Ordinal)
+        {
+            ["gate-hold"] = gateHoldProven,
+            ["gate-targeting"] = gateTargetingProven,
+            ["intermediate-raw-durability"] = intermediateDurabilityConsistent,
+            ["key-addressability"] = keyAddressabilityProven,
+            ["final-state-classified"] = finalStateClassified,
+            ["conflict-retry-classification"] = retryClassificationConsistent,
+            ["infrastructure-free"] = infrastructureFree,
+        };
         var evidence = new
         {
-            schemaVersion = 3,
+            schemaVersion = 4,
             baselineCommit = "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
+            mutationArmed,
             providerProfile = new
             {
-                daprRuntime = "1.18.1",
+                daprRuntimeObserved = observedDaprRuntime,
+                daprRuntimeSource = "daprd --version, read from the exact binary this fixture launches",
                 stateStoreType = "state.redis",
-                redisImage = "redis:6",
+                redisImageObserved = observedRedisImage,
+                redisImageDigestObserved = observedRedisImageDigest,
+                redisPersistenceObserved = observedRedisPersistence,
+                redisProbeSource = "docker inspect dapr_redis / redis-cli config get appendonly save",
                 appId = _fixture.AppId,
                 stateStoreComponentSha256,
+                stateStoreComponentSha256Scope =
+                    "SHA-256 of the generated component with the per-run scopes list removed, so the digest binds configuration identity across runs",
+                stateStoreComponentCanonicalYaml = _fixture.StateStoreComponentCanonicalYaml,
                 stateStoreComponentYaml = _fixture.StateStoreComponentYaml,
                 allocatorDecoratorType = typeof(LiveSidecarGlobalPositionAllocator).FullName,
                 productionAllocatorType = LiveSidecarGlobalPositionAllocator.ProductionAllocatorTypeName,
@@ -436,6 +511,8 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 actorTaskIncompleteAtGate,
                 actorTaskIncompleteAfterRaw,
                 actorTaskIncompleteAfterIntermediate,
+                timestampChainInProgramOrder,
+                timestampChainIsEvidence = false,
             },
             aggregate = new
             {
@@ -445,6 +522,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 identity.ActorId,
                 eventKey = $"{identity.EventStreamKeyPrefix}1",
                 identity.MetadataKey,
+                compositeMetadataRedisKey,
             },
             actorContender = new
             {
@@ -476,12 +554,16 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             keyAddressability = new
             {
                 completedAtUtc = genericActorKeyCompletedAtUtc,
+                genericStateProbeUrl = genericActorKeyProbeUrl,
+                genericStateKey = identity.MetadataKey,
                 genericStateStatus = genericActorKeyStatusCode is null
                     ? null
                     : (int?)genericActorKeyStatusCode.Value,
                 genericStateBody = genericActorKeyResponseBody,
                 genericStateExceptionType = genericActorKeyException?.GetType().FullName,
                 genericStateExceptionMessage = genericActorKeyException?.Message,
+                compositeRedisKey = compositeMetadataRedisKey,
+                compositeRedisMetadata = intermediateMetadata ?? finalMetadata,
                 compositeActorRedisReadable = compositeActorKeyReadable,
                 classification = keyAddressabilityClassification,
             },
@@ -492,6 +574,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 eventRead = intermediateEventCapture,
                 metadata = intermediateMetadata,
                 metadataRead = intermediateMetadataCapture,
+                rawEventDurabilityProven,
                 rawDurabilityProven,
                 attemptedRegardlessOfRawStatus = gateWaitException is null,
             },
@@ -500,8 +583,11 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 readAtUtc = finalReadAtUtc,
                 metadata = finalMetadata,
                 metadataRead = finalMetadataCapture,
-                metadataEtagPresent = finalMetadataEtagPresent,
+                metadataEtagState,
                 finalSequenceWithinBounds,
+                nextEventProbed,
+                finalStateFullyRead,
+                shapeClassification = finalShapeClassification,
                 eventReads = finalEventCaptures,
                 events = finalEvents,
                 unexpectedNextEventRead = unexpectedNextEventCapture,
@@ -512,18 +598,18 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 rawDurableWriteLost,
                 actorAcknowledgedWriteLost,
             },
-            invariants = new
+            infrastructure = new
             {
-                gateTimingProven,
-                intermediateDurabilityConsistent,
-                finalShapeConsistent,
-                retryClassificationConsistent,
-                keyAddressabilityProven,
-                infrastructureFree,
+                sidecarHealthProbeUrl = healthProbeUrl,
+                sidecarHealthStatus = sidecarHealthStatus is null ? null : (int?)sidecarHealthStatus.Value,
+                sidecarHealthExceptionType = sidecarHealthException?.GetType().FullName,
+                sidecarHealthy,
             },
+            invariants,
             observation = new
             {
                 classification = classification.Name,
+                classifierSequence,
                 classification.IsInternallyConsistent,
                 classification.IsInfrastructureFailure,
                 classification.RecognizedRejectionOrConflict,
@@ -533,34 +619,107 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         };
         await WriteEvidenceAsync("append-durability-race.json", evidence).ConfigureAwait(true);
 
-        AssertInvariant(
-            intermediateDurabilityConsistent,
-            "intermediate-raw-durability",
-            "an acknowledged raw write must be proven durable by the exact contender and metadata while the gate is held");
-        AssertInvariant(
-            gateTimingProven,
-            "gate-timing",
-            "the exact target must arm one gate interception and the actor task must remain incomplete through all gated probes");
-        AssertInvariant(
-            keyAddressabilityProven,
-            "key-addressability",
-            "the logical metadata key must be absent from generic state while the composite actor key is readable in Redis");
-        AssertInvariant(
-            finalShapeConsistent,
-            "final-state-consistency",
-            "final Redis state must be bounded, gapless, metadata-consistent, and contain only the exact two contenders");
-        AssertInvariant(
-            retryClassificationConsistent,
-            "conflict-retry-classification",
-            "allocation telemetry and final state must support a non-infrastructure race classification");
-        infrastructureFree.ShouldBeTrue(
-            $"Infrastructure/probe failures must fail only after evidence is written. Classification: {classification.Name}.");
+        AssertInvariants(invariants);
+    }
+
+    /// <summary>
+    /// Classifies the observed final Redis shape. Every anomaly gets its own recorded name so a
+    /// torn interleaving is captured rather than failing the run; only a shape the harness did not
+    /// fully read is reported as unclassifiable.
+    /// </summary>
+    private static string ClassifyFinalShape(
+        bool finalStateFullyRead,
+        bool finalSequenceWithinBounds,
+        long finalSequence,
+        AggregateMetadata? finalMetadata,
+        List<EventEnvelope> finalEvents,
+        bool unexpectedNextEventPresent,
+        bool exactContendersOnly,
+        AggregateIdentity identity)
+    {
+        if (!finalSequenceWithinBounds)
+        {
+            return "final-sequence-out-of-bounds";
+        }
+
+        if (!finalStateFullyRead)
+        {
+            return "unclassified-final-shape";
+        }
+
+        if (finalMetadata is null)
+        {
+            return finalEvents.Count == 0 && !unexpectedNextEventPresent
+                ? "no-metadata-no-events"
+                : "events-without-metadata";
+        }
+
+        if (finalEvents.Count != finalSequence)
+        {
+            return "metadata-sequence-without-matching-events";
+        }
+
+        if (!finalEvents.Select(item => item.SequenceNumber)
+            .SequenceEqual(Enumerable.Range(1, finalEvents.Count).Select(value => (long)value)))
+        {
+            return "non-contiguous-event-sequence";
+        }
+
+        if (finalEvents.Select(item => item.MessageId).Distinct(StringComparer.Ordinal).Count() != finalEvents.Count)
+        {
+            return "duplicate-event-message-ids";
+        }
+
+        if (unexpectedNextEventPresent)
+        {
+            return "event-beyond-metadata-sequence";
+        }
+
+        if (!finalEvents.All(item => item.Identity == identity))
+        {
+            return "foreign-aggregate-identity-present";
+        }
+
+        if (!exactContendersOnly)
+        {
+            return "foreign-writer-present";
+        }
+
+        if (finalSequence > 0 && finalMetadata.LastModified != finalEvents[^1].Timestamp)
+        {
+            return "metadata-timestamp-mismatch";
+        }
+
+        return $"gapless-{finalSequence}-event-stream";
+    }
+
+    private static async Task<(HttpStatusCode? Status, Exception? Error)> ProbeSidecarHealthAsync(string url)
+    {
+        try
+        {
+            using var http = new HttpClient
+            {
+                Timeout = Timeout.InfiniteTimeSpan,
+            };
+            using var cancellation = new CancellationTokenSource(OperationTimeout);
+            using HttpResponseMessage response = await http
+                .GetAsync(url, cancellation.Token)
+                .ConfigureAwait(true);
+            return (response.StatusCode, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, ex);
+        }
     }
 
     private string BuildActorStateUri(AggregateIdentity identity)
         => $"{_fixture.DaprHttpEndpoint}/v1.0/actors/"
             + $"{Uri.EscapeDataString(_fixture.AggregateActorTypeName)}/"
             + $"{Uri.EscapeDataString(identity.ActorId)}/state";
+
+    private static string Sha256Hex(string value)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
     private static string CreateActorStateTransaction(
         EventEnvelope rawEvent,
@@ -666,28 +825,19 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
     }
 
     /// <summary>
-    /// Asserts one material invariant. The failure message carries a stable
-    /// <c>[invariant:&lt;name&gt;]</c> tag so a mutation receipt can be bound to the invariant that
-    /// actually failed rather than to the filename the operator chose.
+    /// Asserts every named invariant in one assertion whose message enumerates <em>all</em> failed
+    /// invariant tags. Attribution therefore does not depend on assertion order: the receipt names
+    /// every invariant the run falsified, and the committed capture carries the same per-invariant
+    /// booleans so a validator can pin the exact set a perturbation is expected to falsify.
     /// </summary>
-    /// <param name="satisfied">The observed invariant value.</param>
-    /// <param name="invariantName">The stable invariant name.</param>
-    /// <param name="message">The human-readable requirement.</param>
-    private static void AssertInvariant(bool satisfied, string invariantName, string message)
-        => satisfied.ShouldBeTrue($"[invariant:{invariantName}] {message}");
-
-    /// <summary>
-    /// Indicates whether the named input perturbation is armed. A mutation changes what the
-    /// harness does -- it never inverts an assertion -- so a conjunct that is true by program
-    /// construction cannot produce a passing mutation receipt.
-    /// </summary>
-    /// <param name="mutationName">The perturbation name.</param>
-    /// <returns><see langword="true"/> when the perturbation is armed.</returns>
-    private static bool IsMutation(string mutationName)
-        => string.Equals(
-            Environment.GetEnvironmentVariable(MutationEnvironmentVariable),
-            mutationName,
-            StringComparison.Ordinal);
+    /// <param name="invariants">The named invariant results.</param>
+    private static void AssertInvariants(IReadOnlyDictionary<string, bool> invariants)
+    {
+        string[] failed = [.. invariants.Where(item => !item.Value).Select(item => item.Key)];
+        failed.ShouldBeEmpty(
+            "Falsified Story 4.5 invariants: "
+            + string.Join(" ", failed.Select(name => $"[invariant:{name}]")));
+    }
 
     private async Task WriteEvidenceAsync(string fileName, object evidence)
     {
@@ -695,8 +845,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         _output.WriteLine(json);
 
         string? directory = Environment.GetEnvironmentVariable(EvidenceDirectoryEnvironmentVariable);
-        string? mutation = Environment.GetEnvironmentVariable(MutationEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(directory) || !string.IsNullOrWhiteSpace(mutation))
+        if (string.IsNullOrWhiteSpace(directory) || Story45MutationSwitch.Armed is not null)
         {
             return;
         }

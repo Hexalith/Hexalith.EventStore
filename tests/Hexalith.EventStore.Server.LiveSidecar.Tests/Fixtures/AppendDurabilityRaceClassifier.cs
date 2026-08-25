@@ -6,7 +6,7 @@ public static class AppendDurabilityRaceClassifier
     /// <summary>Input facts captured after both contenders quiesce.</summary>
     /// <param name="RawHttpStatus">The raw writer HTTP status, or null when no response arrived.</param>
     /// <param name="RawExceptionType">The raw writer transport exception type, if any.</param>
-    /// <param name="RawDurabilityProven">Whether Redis contained the exact raw contender while gated.</param>
+    /// <param name="RawDurabilityProven">Whether Redis contained the exact raw contender event while gated. The caller's metadata corroboration is a separate invariant and is deliberately not an input here.</param>
     /// <param name="RawSurvives">Whether the exact raw contender remains in final Redis state.</param>
     /// <param name="ActorSurvives">Whether the exact actor contender remains in final Redis state.</param>
     /// <param name="ActorAccepted">Whether the actor acknowledged the command.</param>

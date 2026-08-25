@@ -44,8 +44,20 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// </summary>
 public sealed class DaprTestContainerFixture : IAsyncLifetime
 {
-    private static readonly int PlacementPort = OperatingSystem.IsWindows() ? 6050 : 50005;
-    private static readonly int SchedulerPort = OperatingSystem.IsWindows() ? 6060 : 50006;
+    // `dapr init` publishes the control plane on different host ports depending on the CLI
+    // version and platform: the container ports are 50005/50006, but recent CLIs remap them to
+    // 6050/6060 on the host. Probing both candidates removes the stale OS predicate that made the
+    // fixture abort on a perfectly healthy control plane.
+    private static readonly int[] PlacementPortCandidates = [50005, 6050];
+    private static readonly int[] SchedulerPortCandidates = [50006, 6060];
+    private static int _placementPort;
+    private static int _schedulerPort;
+
+    /// <summary>Gets the placement host port resolved by the pre-flight probe.</summary>
+    private static int PlacementHostPort => Volatile.Read(ref _placementPort);
+
+    /// <summary>Gets the scheduler host port resolved by the pre-flight probe.</summary>
+    private static int SchedulerHostPort => Volatile.Read(ref _schedulerPort);
     private const int RedisPort = 6379;
     private const int HealthTimeoutSeconds = 60;
     private const int WarmUpTimeoutSeconds = 45;
@@ -118,6 +130,13 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     /// <summary>Gets the exact generated Redis actor-state component supplied to the live Dapr sidecar.</summary>
     public string StateStoreComponentYaml { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Gets the generated actor-state component with the per-run <c>scopes:</c> list removed.
+    /// Hashing this form binds the configuration identity across runs; the raw form still carries
+    /// the randomized application id and is retained separately.
+    /// </summary>
+    public string StateStoreComponentCanonicalYaml { get; private set; } = string.Empty;
 
     /// <summary>Gets the running test host services.</summary>
     public IServiceProvider Services => _testHost?.Services
@@ -597,14 +616,28 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             failures.Add($"Redis is not reachable on localhost:{RedisPort}");
         }
 
-        if (!await IsPortReachableAsync("localhost", PlacementPort, "Placement").ConfigureAwait(false))
+        int placementPort = await ResolveReachablePortAsync(PlacementPortCandidates, "Placement").ConfigureAwait(false);
+        if (placementPort == 0)
         {
-            failures.Add($"Dapr placement service is not reachable on localhost:{PlacementPort}");
+            failures.Add(
+                "Dapr placement service is not reachable on localhost:"
+                + string.Join(" or localhost:", PlacementPortCandidates));
+        }
+        else
+        {
+            Interlocked.Exchange(ref _placementPort, placementPort);
         }
 
-        if (!await IsPortReachableAsync("localhost", SchedulerPort, "Scheduler").ConfigureAwait(false))
+        int schedulerPort = await ResolveReachablePortAsync(SchedulerPortCandidates, "Scheduler").ConfigureAwait(false);
+        if (schedulerPort == 0)
         {
-            failures.Add($"Dapr scheduler service is not reachable on localhost:{SchedulerPort}");
+            failures.Add(
+                "Dapr scheduler service is not reachable on localhost:"
+                + string.Join(" or localhost:", SchedulerPortCandidates));
+        }
+        else
+        {
+            Interlocked.Exchange(ref _schedulerPort, schedulerPort);
         }
 
         if (failures.Count > 0)
@@ -613,6 +646,23 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                 $"Dapr infrastructure pre-flight check failed. Have you run 'dapr init'?\n" +
                 string.Join("\n", failures.Select(f => $"  - {f}")));
         }
+    }
+
+    /// <summary>Returns the first reachable candidate host port, or zero when none answered.</summary>
+    /// <param name="candidates">The candidate host ports published by <c>dapr init</c>.</param>
+    /// <param name="serviceName">The control-plane service name used for diagnostics.</param>
+    /// <returns>The reachable port, or zero.</returns>
+    private static async Task<int> ResolveReachablePortAsync(int[] candidates, string serviceName)
+    {
+        foreach (int candidate in candidates)
+        {
+            if (await IsPortReachableAsync("localhost", candidate, serviceName).ConfigureAwait(false))
+            {
+                return candidate;
+            }
+        }
+
+        return 0;
     }
 
     private static async Task<bool> IsPortReachableAsync(string host, int port, string serviceName)
@@ -651,8 +701,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                     "--profile-port", _daprProfilePort.ToString(),
                     "--resources-path", $"\"{_componentsDir}\"",
                     "--log-level", "info",
-                    "--placement-host-address", $"localhost:{PlacementPort}",
-                    "--scheduler-host-address", $"localhost:{SchedulerPort}"),
+                    "--placement-host-address", $"localhost:{PlacementHostPort}",
+                    "--scheduler-host-address", $"localhost:{SchedulerHostPort}"),
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -715,8 +765,8 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                     "--profile-port", _replicaDaprProfilePort.ToString(),
                     "--resources-path", $"\"{_componentsDir}\"",
                     "--log-level", "info",
-                    "--placement-host-address", $"localhost:{PlacementPort}",
-                    "--scheduler-host-address", $"localhost:{SchedulerPort}"),
+                    "--placement-host-address", $"localhost:{PlacementHostPort}",
+                    "--scheduler-host-address", $"localhost:{SchedulerHostPort}"),
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -754,6 +804,126 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             throw new InvalidOperationException(
                 $"Replica daprd exited immediately with code {_replicaDaprProcess.ExitCode}.\n" +
                 $"stderr: {GetCapturedReplicaStderr()}");
+        }
+    }
+
+    /// <summary>
+    /// Removes the per-run <c>scopes:</c> block from a generated component document so the
+    /// remaining text identifies the provider configuration rather than one randomized run.
+    /// </summary>
+    /// <param name="componentYaml">The generated component document.</param>
+    /// <returns>The component document without its trailing scopes block.</returns>
+    private static string StripScopes(string componentYaml)
+    {
+        string[] lines = componentYaml.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var kept = new List<string>(lines.Length);
+        bool inScopes = false;
+        foreach (string line in lines)
+        {
+            if (line.StartsWith("scopes:", StringComparison.Ordinal))
+            {
+                inScopes = true;
+                continue;
+            }
+
+            if (inScopes)
+            {
+                if (line.Length > 0 && !char.IsWhiteSpace(line[0]))
+                {
+                    inScopes = false;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            kept.Add(line);
+        }
+
+        return string.Join('\n', kept).TrimEnd('\n');
+    }
+
+    /// <summary>
+    /// Reads the version reported by the exact <c>daprd</c> binary this fixture launches, so the
+    /// evidence records an observed runtime rather than a source literal.
+    /// </summary>
+    /// <returns>The trimmed runtime version, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedDaprRuntimeVersionAsync()
+        => await RunCapturedProcessAsync(ResolveDaprdPath(), ["--version"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the image reference of the running <c>dapr_redis</c> container backing the state store.
+    /// </summary>
+    /// <returns>The trimmed image reference, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedRedisImageAsync()
+        => await RunCapturedProcessAsync(
+            "docker",
+            ["inspect", "dapr_redis", "--format", "{{.Config.Image}}"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the repository digest of the running <c>dapr_redis</c> container image.
+    /// </summary>
+    /// <returns>The trimmed digest list, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedRedisImageDigestAsync()
+        => await RunCapturedProcessAsync(
+            "docker",
+            ["inspect", "dapr_redis", "--format", "{{.Image}}"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the Redis persistence configuration that a lost-write finding depends on.
+    /// </summary>
+    /// <returns>The <c>appendonly</c>/<c>save</c> settings, or a diagnostic marker.</returns>
+    public static async Task<string> ReadObservedRedisPersistenceAsync()
+    {
+        // Redis 6 CONFIG GET accepts one parameter per call; two probes keep the capture portable.
+        string appendOnly = await RunCapturedProcessAsync(
+            "docker",
+            ["exec", "dapr_redis", "redis-cli", "config", "get", "appendonly"]).ConfigureAwait(false);
+        string save = await RunCapturedProcessAsync(
+            "docker",
+            ["exec", "dapr_redis", "redis-cli", "config", "get", "save"]).ConfigureAwait(false);
+        return string.Join(
+            " | ",
+            appendOnly.ReplaceLineEndings(" ").Trim(),
+            save.ReplaceLineEndings(" ").Trim());
+    }
+
+    /// <summary>Runs a short probe process and captures its output without throwing.</summary>
+    /// <param name="fileName">The executable to run.</param>
+    /// <param name="arguments">The argument list.</param>
+    /// <returns>Trimmed standard output, or a <c>&lt;unavailable: ...&gt;</c> marker.</returns>
+    private static async Task<string> RunCapturedProcessAsync(string fileName, string[] arguments)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo(fileName)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            foreach (string argument in arguments)
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
+            using var process = new Process { StartInfo = startInfo };
+            _ = process.Start();
+            Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+            Task<string> stderr = process.StandardError.ReadToEndAsync();
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await process.WaitForExitAsync(cancellation.Token).ConfigureAwait(false);
+            string output = await stdout.ConfigureAwait(false);
+            string error = await stderr.ConfigureAwait(false);
+            return process.ExitCode == 0
+                ? output.Trim()
+                : $"<unavailable: exit {process.ExitCode}: {error.Trim()}>";
+        }
+        catch (Exception ex)
+        {
+            return $"<unavailable: {ex.GetType().Name}: {ex.Message}>";
         }
     }
 
@@ -987,6 +1157,15 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         }
     }
 
+    /// <summary>Gets the composite Redis key this fixture reads for one aggregate actor state key.</summary>
+    /// <param name="key">The aggregate state key.</param>
+    /// <returns>The composite Redis hash key.</returns>
+    public string GetAggregateActorRedisKeyForEvidence(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return GetAggregateActorRedisKey(key);
+    }
+
     private string GetAggregateActorRedisKey(string key)
     {
         string[] segments = key.Split(':', 4);
@@ -1025,6 +1204,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
               - {{AppId}}
             """;
         StateStoreComponentYaml = stateStoreYaml;
+        StateStoreComponentCanonicalYaml = StripScopes(stateStoreYaml);
 
         string pubSubYaml = $$"""
             apiVersion: dapr.io/v1alpha1
