@@ -20,12 +20,14 @@ internal sealed record TenantsProjectPaths(
     internal static TenantsProjectPaths Resolve()
     {
         var paths = new TenantsProjectPaths(
-            RepositoryProjectPaths.GetReferencedModuleProjectPath(
+            RepositoryProjectPaths.GetProjectPath(
+                "references",
                 "Hexalith.Tenants",
                 "src",
                 "Hexalith.Tenants",
                 "Hexalith.Tenants.csproj"),
-            RepositoryProjectPaths.GetReferencedModuleProjectPath(
+            RepositoryProjectPaths.GetProjectPath(
+                "references",
                 "Hexalith.Tenants",
                 "src",
                 "Hexalith.Tenants.Api",

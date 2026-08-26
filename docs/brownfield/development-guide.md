@@ -9,7 +9,8 @@
 - **Docker Desktop** (for Redis, integration tests, container builds).
 - **DAPR CLI** + runtime (`daprd`, `placement`, `scheduler`).
 - **Aspire CLI** (`aspire`).
-- **Initialized root Tenants submodule:** `git submodule update --init references/Hexalith.Tenants`.
+- **Initialized root build metadata and Tenants submodules:**
+  `git submodule update --init references/Hexalith.Builds references/Hexalith.Tenants`.
 - For E2E: Playwright browsers.
 
 ## Build

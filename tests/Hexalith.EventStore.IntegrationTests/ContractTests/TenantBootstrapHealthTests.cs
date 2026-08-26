@@ -45,9 +45,14 @@ public class TenantBootstrapHealthTests {
 
         _fixture.App.ResourceNotifications.TryGetCurrentState("tenants", out _).ShouldBeTrue(
             "The default local AppHost topology must provision the checked-out Tenants domain service.");
+        _fixture.App.ResourceNotifications.TryGetCurrentState("tenants-api", out _).ShouldBeTrue(
+            "The default local AppHost topology must provision the checked-out Tenants API host.");
 
         _ = await _fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("tenants", overallCts.Token)
+            .ConfigureAwait(true);
+        _ = await _fixture.App.ResourceNotifications
+            .WaitForResourceHealthyAsync("tenants-api", overallCts.Token)
             .ConfigureAwait(true);
 
         string eventKey = $"eventstore||{_fixture.AggregateActorTypeName}||"

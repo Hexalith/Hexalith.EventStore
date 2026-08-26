@@ -2,7 +2,7 @@
 title: 'Provision the Tenants services with plain Aspire run'
 type: 'bugfix'
 created: '2026-08-26'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '70a0358f943684853f0979b7bd8147cc1b0a135c'
 context:
@@ -41,7 +41,7 @@ context:
 
 - `src/Hexalith.EventStore.AppHost/Program.cs` -- the compile symbol gates both Tenants resources and security edges; add the run-only fallback and share downstream wiring here.
 - `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` -- preserve the conditional references and compile symbol for explicit source mode.
-- `src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs` -- reuse `GetReferencedModuleProjectPath`; its absent-project fallback is diagnosable.
+- `src/Hexalith.EventStore.Aspire/RepositoryProjectPaths.cs` -- reuse `GetProjectPath` to keep both hosts pinned to the root-declared Tenants submodule.
 - `Directory.Build.props` -- read-only invariant: package mode remains the default and `HexalithTenantsFromSource` remains an explicit source-dependency signal.
 - `tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs` -- cover both hosts, wiring parity, fallback, and the missing-project diagnostic.
 - `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` -- require Tenants security relationships in the default run model.
@@ -52,10 +52,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/Hexalith.EventStore.AppHost/Program.cs` -- add run-only Tenants project discovery, fail-fast validation, and shared registration/wiring while preserving the compile-time source branch.
-- [ ] `tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs` and `AspireSecurityResourceNamingTests.cs` -- cover default registration, missing checkout, uniqueness, and wiring parity.
-- [ ] `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs` -- require the Tenants resource in the default contract topology.
-- [ ] `docs/getting-started/quickstart.md`, `docs/brownfield/development-guide.md`, and `docs/reference/nuget-packages.md` -- document submodule prerequisites and the run-versus-package distinction.
+- [x] `src/Hexalith.EventStore.AppHost/Program.cs` -- add run-only Tenants project discovery, fail-fast validation, and shared registration/wiring while preserving the compile-time source branch.
+- [x] `tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs` and `AspireSecurityResourceNamingTests.cs` -- cover default registration, missing checkout, uniqueness, and wiring parity.
+- [x] `tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs` -- require the Tenants resource in the default contract topology.
+- [x] `docs/getting-started/quickstart.md`, `docs/brownfield/development-guide.md`, and `docs/reference/nuget-packages.md` -- document submodule prerequisites and the run-versus-package distinction.
 
 **Acceptance Criteria:**
 - Given an initialized root Tenants submodule, when plain `aspire run` starts, then both Tenants resources become healthy and appear exactly once.
@@ -78,3 +78,44 @@ Aspire.Hosting 13.4.6 provides `ExecutionContext.IsRunMode` and `AddProject(name
 - `aspire start --non-interactive && aspire wait tenants --non-interactive && aspire wait tenants-api --non-interactive && aspire describe --include-hidden --format Json` -- expected: both occur once and are healthy; stop Aspire before builds.
 - `dotnet test tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj --configuration Debug -m:1 --filter FullyQualifiedName~TenantBootstrapHealthTests` -- expected: bootstrap proof runs without skipping when prerequisites exist.
 - Timed requests to `https://localhost:8093/tenants` and `/events` -- expected: neither waits for the prior approximately 30-second missing-app timeout.
+
+## Suggested Review Order
+
+**Runtime topology**
+
+- Separate local resource discovery from package dependency selection.
+  [`Program.cs:74`](../../src/Hexalith.EventStore.AppHost/Program.cs#L74)
+
+- Pin both runtime hosts to the root-declared Tenants checkout and fail fast.
+  [`TenantsProjectPaths.cs:20`](../../src/Hexalith.EventStore.AppHost/TenantsProjectPaths.cs#L20)
+
+- Apply identical DAPR and dependency wiring to both registration paths.
+  [`Program.cs:90`](../../src/Hexalith.EventStore.AppHost/Program.cs#L90)
+
+- Preserve Tenants authentication relationships when security is enabled.
+  [`Program.cs:167`](../../src/Hexalith.EventStore.AppHost/Program.cs#L167)
+
+**Regression coverage**
+
+- Prove default run-mode registration, uniqueness, paths, and DAPR relationships.
+  [`TenantsApiLaunchSettingsTests.cs:119`](../../tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs#L119)
+
+- Exclude path-discovered resources from publish while preserving explicit source mode.
+  [`TenantsApiLaunchSettingsTests.cs:178`](../../tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs#L178)
+
+- Lock root checkout resolution and actionable missing-project diagnostics.
+  [`TenantsApiLaunchSettingsTests.cs:218`](../../tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs#L218)
+
+- Require both Tenants hosts to become healthy in Tier-3 bootstrap proof.
+  [`TenantBootstrapHealthTests.cs:43`](../../tests/Hexalith.EventStore.IntegrationTests/ContractTests/TenantBootstrapHealthTests.cs#L43)
+
+**Operator guidance**
+
+- Explain local run discovery without weakening Release/package invariants.
+  [`development-guide.md:76`](../../docs/brownfield/development-guide.md#L76)
+
+- Make fresh-clone root submodule prerequisites executable.
+  [`quickstart.md:19`](../../docs/getting-started/quickstart.md#L19)
+
+- Clarify runtime discovery versus NuGet/project-reference selection.
+  [`nuget-packages.md:94`](../../docs/reference/nuget-packages.md#L94)

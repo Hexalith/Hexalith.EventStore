@@ -45,8 +45,8 @@ context:
 - `tools/assemble-corrected-deployed-runtime-parity.py` -- deterministic packet producer: re-mints the subject, derives the package count and parity verdict from retained evidence rather than asserting them, and runs the pinned verifier over its own output before exiting.
 - `tools/capture-corrected-deployed-runtime-parity-smokes.py` -- bounded two-platform Production smoke capture.
 - `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/` -- complete
-  receipt/source trees bound to superseded subjects `bb58d691...` and `dab64f5f...`, retained unbound
-  for audit. They must never be moved back into the packet; the `bb58d691...` owner sources are
+  receipt/source trees bound to superseded subjects `bb58d691...`, `dab64f5f...`, and `a8cc777e...`,
+  retained unbound for audit. They must never be moved back into the packet; the `bb58d691...` owner sources are
   anchored on issue `#346` and are rejected on lineage as well as on subject.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- new positive-closure and fail-closed mutation suite.
 - `_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` -- immutable predecessor packet; only the successful `v3.96.2` subgraph is selectable.
@@ -347,10 +347,10 @@ submodule `origin/main`; loop-4 owner decisions 1-4 all landed; and **loop 4's h
 fail-open is genuinely closed** -- proven with a live control (a plain `import` picked up the
 tampered bytecode while the source-only loader ignored it and kept the genuine rerun trigger).
 
-**Landing-cost inversion (drives every decision below).** Loop 4 ran at 0/3, where a re-mint was
-free. The packet is now at **3/3**, so every `v1.py` / verifier / `v3.py` edit re-mints the subject
-and burns all three receipts. Test-only, record-only and ledger-only patches are free; verifier
-patches must be batched into exactly one re-mint, landed together, and only then re-collected.
+**Historical landing-cost inversion (drove every decision below).** Loop 4 ran at 0/3, where a
+re-mint was free. At the loop-6 review snapshot the packet was **3/3**, so each `v1.py` / verifier /
+`v3.py` edit would have burned all three receipts. The implementation therefore batched the trusted
+byte patches into the single current `c22d35b...` 0/3 re-mint.
 
 **Theme: no fail-open was found in the closure verdict.** The findings are concentrated in three
 recurring classes -- guards that cannot fire, tests that pass for a different reason than they name,
@@ -583,8 +583,8 @@ Both owner receipts are independently constrained to the same positively allowli
 - Full Contracts assembly -- 1753 run, 269 failed, zero skipped. Every observed failure is inside the unrelated `Oq8PlatformClosureTests` fail-fast cascade on the pre-existing bound-source drift `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`. Excluding that one class proves the remainder: 1438 passed, zero failed or skipped. Story 3.15 does not re-seal or weaken another story's evidence.
 - `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected fail-closed at exactly zero receipts, exact rerun trigger, exit 1.
 - `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- two repeat runs reproduce subject `c22d35b...`, report `receipts=0 verifier_exit=1`, and exit 1.
-- `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py tools/capture-corrected-deployed-runtime-parity-smokes.py tools/assemble-corrected-deployed-runtime-parity.py` -- expected: `text: set`, `eol: lf` for every SHA-pinned producer/import path.
-- `git diff --check` -- expected: no whitespace errors.
+- `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py tools/capture-corrected-deployed-runtime-parity-smokes.py tools/assemble-corrected-deployed-runtime-parity.py` -- pass: `text: set`, `eol: lf` for every SHA-pinned producer/import path.
+- `git diff --check` -- pass, no whitespace errors.
 
 ## Suggested Review Order
 

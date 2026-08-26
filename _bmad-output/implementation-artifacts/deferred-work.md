@@ -1822,3 +1822,7 @@ status: open
   severity: low
   summary: Canonicalizes the prior loop-6 ledger block without rewriting append-only history.
   evidence: Every absolute machine-local `source_spec` value in that historical block is interpreted as the repository-relative path shown here. Entries that omitted `severity` carry the severity stated by their equivalent earlier entry, or `low` when no earlier severity exists. Duplicate v3-timestamp and `closure.json` inventory-path entries are one open item each and are consolidated by reference to their first occurrence; repeated loop-3 items do not create additional work. The skipped deferred-work governance tests remain the single separately recorded format-enforcement deferral.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-aspire-run-provisions-tenants.md`
+  summary: Add a blocking CI runtime smoke that starts the package-mode AppHost, waits for both Tenants hosts, and exercises the Tenants API.
+  evidence: AppHost model tests cover default and publish topology, and Tier-3 now requires both hosts to become healthy, but `.github/workflows/integration.yml` explicitly excludes the Aspire `IntegrationTests` project pending dedicated Aspire-in-CI support.

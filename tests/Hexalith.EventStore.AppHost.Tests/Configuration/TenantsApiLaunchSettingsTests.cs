@@ -241,6 +241,29 @@ public class TenantsApiLaunchSettingsTests
     }
 
     [Fact]
+    public void TenantsProjectPaths_ResolveUsesRootDeclaredSubmodule()
+    {
+        string repositoryRoot = RepositoryProjectPaths.GetRepositoryRoot();
+
+        TenantsProjectPaths paths = TenantsProjectPaths.Resolve();
+
+        paths.DomainServiceProjectPath.ShouldBe(Path.Combine(
+            repositoryRoot,
+            "references",
+            "Hexalith.Tenants",
+            "src",
+            "Hexalith.Tenants",
+            "Hexalith.Tenants.csproj"));
+        paths.ApiProjectPath.ShouldBe(Path.Combine(
+            repositoryRoot,
+            "references",
+            "Hexalith.Tenants",
+            "src",
+            "Hexalith.Tenants.Api",
+            "Hexalith.Tenants.Api.csproj"));
+    }
+
+    [Fact]
     public void AppHostProgram_ExplicitSourceBranchUsesGeneratedTenantProjectsExactlyOnce()
     {
         string program = ReadRepositorySource(Path.Combine(

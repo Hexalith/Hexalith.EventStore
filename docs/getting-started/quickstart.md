@@ -21,7 +21,7 @@ Clone the repository and navigate into the project directory:
 ```bash
 $ git clone https://github.com/Hexalith/Hexalith.EventStore.git
 $ cd Hexalith.EventStore
-$ git submodule update --init references/Hexalith.Tenants
+$ git submodule update --init references/Hexalith.Builds references/Hexalith.Tenants
 ```
 
 The root Tenants submodule is a local runtime prerequisite. A plain `aspire run` resolves its
