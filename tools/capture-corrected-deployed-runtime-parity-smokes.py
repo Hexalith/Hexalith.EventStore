@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Capture bounded, digest-pinned Production /alive evidence for Story 3.15."""
+"""Capture bounded, digest-pinned Production /alive evidence for Story 3.15.
+
+The arm64 capture requires host binfmt registration from the digest-pinned image
+``tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0``.
+That host state is an operator prerequisite rather than a retained subject input.
+"""
 
 import argparse
 import hashlib
@@ -16,6 +21,11 @@ REPOSITORY = "Hexalith/Hexalith.EventStore"
 IMAGE_REPOSITORY = "registry.hexalith.com/eventstore"
 INDEX_DIGEST = "sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3"
 TIMEOUT_SECONDS = 180
+CLEANUP_TIMEOUT_SECONDS = 30
+RERUN_TRIGGER = (
+    "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
+    "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
+)
 PLATFORMS = (
     ("linux/amd64", "sha256:4d42f969dc5f57e0f9baa927c588346d77c31fd2615793b5d8c12c239585af63"),
     ("linux/arm64", "sha256:ede853318267146a9888574f79e16ea1e51c1f363a35910fe883b5a9d7256f44"),
@@ -63,8 +73,8 @@ def parse_curl_write_out(value):
 def capture_platform(output_root, platform, child_digest):
     immutable_image = f"{IMAGE_REPOSITORY}@{child_digest}"
     container_name = f"hexalith-story315-{platform.split('/')[1]}-{uuid.uuid4().hex[:12]}"
-    deadline = time.monotonic() + TIMEOUT_SECONDS
     started_at = now()
+    deadline = time.monotonic() + TIMEOUT_SECONDS
     attempts = 0
     http_status = 0
     redirect_count = 0
@@ -146,7 +156,10 @@ def capture_platform(output_root, platform, child_digest):
         print(f"[corrected-deployed-runtime-parity-smokes] {platform} capture failed: {error}", file=sys.stderr)
     finally:
         try:
-            run(deadline, "docker", "rm", "--force", container_name)
+            # Cleanup gets its own small budget. Reusing an exhausted capture deadline skipped the
+            # command entirely in the failure mode where forced removal matters most.
+            cleanup_deadline = time.monotonic() + min(CLEANUP_TIMEOUT_SECONDS, TIMEOUT_SECONDS)
+            run(cleanup_deadline, "docker", "rm", "--force", container_name)
             cleanup = "pass"
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
             print(
@@ -187,8 +200,20 @@ def capture_platform(output_root, platform, child_digest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("packet_root", type=Path)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Explicitly overwrite an existing smoke evidence directory.",
+    )
     arguments = parser.parse_args()
     output_root = arguments.packet_root / "smokes"
+    if output_root.exists() and any(output_root.iterdir()) and not arguments.force:
+        print(
+            "[corrected-deployed-runtime-parity-smokes] fail: retained smoke evidence already "
+            f"exists at {output_root}; rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
+        return 1
     output_root.mkdir(parents=True, exist_ok=True)
     started_at = now()
     platforms = [capture_platform(output_root, platform, digest) for platform, digest in PLATFORMS]
@@ -209,6 +234,11 @@ def main():
     }
     (output_root / "smoke-results.json").write_bytes(canonical_bytes(result))
     print(f"[corrected-deployed-runtime-parity-smokes] {result['result']}")
+    if result["exit_code"] != 0:
+        print(
+            f"[corrected-deployed-runtime-parity-smokes] rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
     return result["exit_code"]
 
 

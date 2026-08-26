@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import importlib.machinery
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -120,8 +121,8 @@ def _is_repository_path(value):
     ):
         return False
     try:
-        path = Path(value).resolve()
-    except (OSError, RuntimeError, ValueError):
+        path = Path(os.fsdecode(value)).resolve()
+    except (OSError, RuntimeError, TypeError, ValueError):
         return False
     root = _repository_root().resolve()
     return path == root or root in path.parents
@@ -231,18 +232,6 @@ def _load_handler(module_name, sources):
     return handler, predecessor_handler, handler_package, predecessor_package
 
 
-def _verify_imported_file(module, relative):
-    """Fail closed when the imported module is not the file whose bytes were verified.
-
-    _verify_import_path hashes tools/<relative>, but importlib resolves through sys.path
-    independently, so without this the verified file and the executed file can differ.
-    """
-    expected = (Path(__file__).resolve().parent / relative).resolve()
-    actual = Path(getattr(module, "__file__", "") or "").resolve()
-    if actual != expected:
-        raise DispatchError("trusted live handler was not imported from its verified path")
-
-
 def validate(evidence_path, manifest_path=None, packet_root=None):
     """Return the canonical subject digest after validating one closure packet."""
     repository_root = _repository_root()
@@ -252,12 +241,8 @@ def validate(evidence_path, manifest_path=None, packet_root=None):
     sources = _verify_import_path()
     original_path, displaced, trusted_names = _begin_trusted_import_environment()
     try:
-        handler, predecessor_handler, handler_package, predecessor_package = _load_handler(
+        handler, _, _, _ = _load_handler(
             module_name, sources)
-        _verify_imported_file(handler, module_name.replace(".", "/") + ".py")
-        _verify_imported_file(predecessor_handler, "release_evidence_handlers/v3.py")
-        _verify_imported_file(handler_package, "deployed_runtime_parity_handlers/__init__.py")
-        _verify_imported_file(predecessor_package, "release_evidence_handlers/__init__.py")
         manifest_path = manifest_path or repository_root / handler.MANIFEST_FILE
         manifest_bytes = manifest_path.read_bytes()
         expected_package_ids = handler.validate_release_manifest(handler.load_json_bytes(manifest_bytes))

@@ -440,15 +440,32 @@ def nuspec_identity(package_path):
                 raise EvidenceError("package nuspec is not strict UTF-8 XML") from error
             if "\x00" in nuspec_text:
                 raise EvidenceError("package nuspec is not strict UTF-8 XML")
-            declaration = re.match(r"\A\s*<\?xml\s+([^?]*)\?>", nuspec_text, re.IGNORECASE)
-            encoding = None if declaration is None else re.search(
-                r"\bencoding\s*=\s*(['\"])([^'\"]+)\1",
-                declaration.group(1),
-                re.IGNORECASE,
+            declaration_start = re.match(r"\A\s*<\?xml\b", nuspec_text, re.IGNORECASE)
+            if declaration_start is not None:
+                declaration_end = nuspec_text.find("?>", declaration_start.start())
+                if declaration_end < 0:
+                    raise EvidenceError("package nuspec is not strict UTF-8 XML")
+                declaration = nuspec_text[declaration_start.start():declaration_end + 2]
+                encodings = re.findall(
+                    r"\bencoding\s*=\s*(['\"])([^'\"]+)\1",
+                    declaration,
+                    re.IGNORECASE,
+                )
+                if len(encodings) > 1 or (
+                    "encoding" in declaration.casefold() and len(encodings) != 1
+                ):
+                    raise EvidenceError("package nuspec is not strict UTF-8 XML")
+                if encodings and encodings[0][1].casefold() not in {"utf-8", "utf8"}:
+                    raise EvidenceError("package nuspec is not strict UTF-8 XML")
+            # Reject declarations that can define expanding entities, but do not mistake the same
+            # literal text inside a comment or CDATA description for executable XML markup.
+            declaration_scan = re.sub(
+                r"<!--.*?-->|<!\[CDATA\[.*?\]\]>",
+                "",
+                nuspec_text,
+                flags=re.DOTALL,
             )
-            if encoding is not None and encoding.group(2).casefold() not in {"utf-8", "utf8"}:
-                raise EvidenceError("package nuspec is not strict UTF-8 XML")
-            if re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", nuspec_text, re.IGNORECASE):
+            if re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", declaration_scan, re.IGNORECASE):
                 raise EvidenceError("package nuspec contains forbidden DTD or entity declarations")
             # Re-encoding the strictly decoded text prevents ElementTree from independently
             # honoring a second byte-level encoding while preserving the parser's normal XML

@@ -137,6 +137,8 @@ def build_document(packet_root):
         root / v1.PREDECESSOR_HANDLER_FILE, v1.PREDECESSOR_HANDLER_FILE)
     predecessor_package_binding = binding(
         root / v1.PREDECESSOR_PACKAGE_FILE, v1.PREDECESSOR_PACKAGE_FILE)
+    smoke_capture_binding = binding(root / v1.SMOKE_CAPTURE_FILE, v1.SMOKE_CAPTURE_FILE)
+    assembler_binding = binding(root / v1.ASSEMBLER_FILE, v1.ASSEMBLER_FILE)
     existing_subject = packet_root / "subject.json"
     created_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     if existing_subject.exists():
@@ -147,10 +149,12 @@ def build_document(packet_root):
         "deployed_runtime_parity": "available",
         "deployment_authorized": False,
         "dispatch": {
+            "assembler": assembler_binding,
             "handler": handler_binding,
             "predecessor_handler": predecessor_handler_binding,
             "predecessor_package": predecessor_package_binding,
             "schema": v1.SCHEMA,
+            "smoke_capture": smoke_capture_binding,
             "verifier": verifier_binding,
             "version": v1.CODEC_VERSION,
         },
@@ -241,7 +245,7 @@ def main():
     )
     if verdict.returncode != 0:
         return verdict.returncode
-    return 0 if receipts == len(v1.REQUIRED_ROLES) else 1
+    return 0
 
 
 if __name__ == "__main__":

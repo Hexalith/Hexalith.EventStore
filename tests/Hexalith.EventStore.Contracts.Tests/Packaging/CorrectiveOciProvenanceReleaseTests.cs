@@ -882,6 +882,47 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
+    /// Verifies Python equality cannot let a JSON boolean or equal-valued float select codec v3.
+    /// </summary>
+    /// <param name="jsonValue">Non-integer JSON representation equal to three or true.</param>
+    [Theory]
+    [InlineData("3.0")]
+    [InlineData("true")]
+    public void CorrectiveDispatcherVersionRequiresAnExactJsonInteger(string jsonValue)
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-corrective-version-{Guid.NewGuid():N}");
+        try
+        {
+            string packetRoot = CopyPacket(checkedInPacket, temporary);
+            JsonObject identity = LoadIdentity(packetRoot);
+            identity["codec"]!["version"] = JsonNode.Parse(jsonValue);
+            File.WriteAllBytes(
+                Path.Combine(packetRoot, "release-identity.json"),
+                CanonicalJsonBytes(identity));
+
+            ProcessResult result = RunEvidenceValidator(
+                root,
+                Path.Combine(packetRoot, "release-identity.json"),
+                packetRoot);
+
+            result.ExitCode.ShouldNotBe(0);
+            result.Error.ShouldContain("release identity dispatch metadata is invalid");
+            result.Error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies an unreviewed edit to the executing live handler fails closed even when the retained
     /// packet's declared codec digest, schema, and version are all untouched and still dispatch to it.
     /// </summary>
@@ -1079,8 +1120,9 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies preloaded modules with the trusted package names are displaced before verified
-    /// initializer and handler bytes execute.
+    /// Verifies preloaded modules with trusted names are displaced during validation and restored
+    /// afterward. The source-only loader overwrites those names either way, so checking only that
+    /// their marker did not execute cannot exercise the displacement loop.
     /// </summary>
     [Fact]
     public void CorrectiveDispatcherCannotReusePreloadedHandlerModules()
@@ -1090,12 +1132,15 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
             "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
         const string Wrapper =
-            "import runpy,sys,types;" +
+            "import importlib.util,pathlib,sys,types;" +
             "p=types.ModuleType('release_evidence_handlers');p.__file__='/tmp/preloaded/__init__.py';p.__path__=[];" +
             "m=types.ModuleType('release_evidence_handlers.v3');m.__file__='/tmp/preloaded/v3.py';" +
-            "m.validate_identity=lambda *a,**k:(print('preloaded-handler-executed'),b'')[1];" +
             "p.v3=m;sys.modules[p.__name__]=p;sys.modules[m.__name__]=m;" +
-            "sys.argv=[sys.argv[1],*sys.argv[2:]];runpy.run_path(sys.argv[0],run_name='__main__')";
+            "s=importlib.util.spec_from_file_location('corrective_dispatcher',sys.argv[1]);" +
+            "d=importlib.util.module_from_spec(s);s.loader.exec_module(d);" +
+            "d.validate(pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3]),pathlib.Path(sys.argv[4]));" +
+            "assert sys.modules[p.__name__] is p and sys.modules[m.__name__] is m;" +
+            "print('preloaded-handlers-restored')";
 
         ProcessResult result = RunProcess(
             root,
@@ -1110,7 +1155,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             checkedInPacket);
 
         result.ExitCode.ShouldBe(0, result.Error);
-        result.Output.ShouldNotContain("preloaded-handler-executed");
+        result.Output.ShouldContain("preloaded-handlers-restored");
     }
 
     /// <summary>
@@ -1159,6 +1204,23 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             compile.ExitCode.ShouldBe(0, compile.Error);
             File.WriteAllBytes(handlerPath, trusted);
             File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
+
+            ProcessResult cachePath = RunProcess(
+                temporary,
+                "python3",
+                "-c",
+                "import importlib.util,sys;print(importlib.util.cache_from_source(sys.argv[1]))",
+                handlerPath);
+            cachePath.ExitCode.ShouldBe(0, cachePath.Error);
+            File.Exists(cachePath.Output.Trim()).ShouldBeTrue();
+            ProcessResult ordinaryImport = RunProcess(
+                temporary,
+                "python3",
+                "-c",
+                "import sys;sys.path.insert(0,sys.argv[1]);import release_evidence_handlers.v3",
+                tools);
+            ordinaryImport.ExitCode.ShouldBe(0, ordinaryImport.Error);
+            ordinaryImport.Output.ShouldContain("stale-corrective-bytecode-executed");
 
             ProcessResult result = RunProcess(
                 temporary,

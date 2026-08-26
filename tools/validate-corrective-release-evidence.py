@@ -31,6 +31,10 @@ from pathlib import Path  # noqa: E402
 
 SCHEMA = "hexalith.eventstore.corrective-release-identity.v1"
 V3_PACKET_CODEC_SHA256 = "814502bd962e00dfbac243e2443c3709b46bdbb69e197691443a083e283d32a9"
+RERUN_TRIGGER = (
+    "Restore the frozen Story 3.14 packet, trusted verifier bytes, and release manifest, then rerun "
+    "the complete corrective-release validation command."
+)
 HANDLERS = {
     (SCHEMA, 3, V3_PACKET_CODEC_SHA256): "release_evidence_handlers.v3",
 }
@@ -242,7 +246,11 @@ def validate(evidence_path, manifest_path, packet_root=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("evidence", type=Path)
-    parser.add_argument("--manifest", type=Path, default=Path("tools/release-packages.json"))
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=_repository_root() / "tools" / "release-packages.json",
+    )
     parser.add_argument(
         "--packet-root",
         type=Path,
@@ -252,7 +260,10 @@ def main():
     try:
         digest = validate(arguments.evidence, arguments.manifest, arguments.packet_root)
     except (OSError, DispatchError, ValueError, json.JSONDecodeError) as error:
-        print(f"[corrective-release-evidence] fail: {error}", file=sys.stderr)
+        print(
+            f"[corrective-release-evidence] fail: {error}; rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
         return 1
     print(f"[corrective-release-evidence] pass: sha256:{digest}")
     return 0

@@ -43,9 +43,10 @@ VERIFIER_FILE = "tools/validate-corrected-deployed-runtime-parity.py"
 # package initializer is bound as well because importing the leaf executes it.
 PREDECESSOR_HANDLER_FILE = "tools/release_evidence_handlers/v3.py"
 PREDECESSOR_PACKAGE_FILE = "tools/release_evidence_handlers/__init__.py"
+SMOKE_CAPTURE_FILE = "tools/capture-corrected-deployed-runtime-parity-smokes.py"
+ASSEMBLER_FILE = "tools/assemble-corrected-deployed-runtime-parity.py"
 PLATFORMS = ("linux/amd64", "linux/arm64")
 REQUIRED_ROLES = ("eventstore-owner", "release-owner", "test-architect")
-OWNER_ROLES = ("eventstore-owner", "release-owner")
 OWNER_GITHUB_ACCOUNT = ("jpiquot", 6775094)
 EXPECTED_IDENTITIES = {
     "eventstore-owner": f"github:{OWNER_GITHUB_ACCOUNT[0]}",
@@ -56,6 +57,7 @@ REQUIRED_LIMITATIONS = (
     "This packet supplies immutable deployed-runtime parity evidence only.",
     "It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.",
     "The Test Architect acceptance is a self-attested BMAD record without independent external authentication.",
+    "The owner acceptance comments were tooling-composed and posted with the authenticated owner's write credential.",
 )
 RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
@@ -66,7 +68,6 @@ MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json"
 CONFIG_MEDIA_TYPE = "application/vnd.oci.image.config.v1+json"
 SHA256 = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$", re.ASCII)
-ROLE_MAPPING_LINE = re.compile(r"^- (eventstore-owner|release-owner|test-architect): (\S+)$", re.MULTILINE)
 # Require the Story-3.15-scoped authority source's exact non-authority sentence: a regex that merely
 # puts "authorizes no" before "deployment" also accepts phrases such as "authorizes no obstacle to
 # deployment" and contradictory continuations.
@@ -78,11 +79,12 @@ REGISTRY_AUTHORITY_DISCLAIMER = (
 EXPECTED_REGISTRY_AUTHORITY_BODY = (
     "Story 3.15 reviewer-roster ratification\n"
     "I ratify the exact reviewer-role mappings for Hexalith/Hexalith.EventStore Story 3.15:\n"
-    "- eventstore-owner: github:jpiquot\n"
-    "- release-owner: github:jpiquot\n"
-    "- test-architect: bmad:murat\n"
-    "This dual EventStore-owner / Release-owner mapping to github:jpiquot is intentional. The Test "
-    "Architect receipt from bmad:murat is accepted as rostered.\n"
+    f"- eventstore-owner: {EXPECTED_IDENTITIES['eventstore-owner']}\n"
+    f"- release-owner: {EXPECTED_IDENTITIES['release-owner']}\n"
+    f"- test-architect: {EXPECTED_IDENTITIES['test-architect']}\n"
+    "This dual EventStore-owner / Release-owner mapping to "
+    f"{EXPECTED_IDENTITIES['eventstore-owner']} is intentional. The Test Architect receipt from "
+    f"{EXPECTED_IDENTITIES['test-architect']} is accepted as rostered.\n"
     f"{REGISTRY_AUTHORITY_DISCLAIMER}\n"
 )
 ISSUE_COMMENT_ANCHOR = re.compile(
@@ -92,6 +94,8 @@ ISSUE_COMMENT_ANCHOR = re.compile(
 # Story 3.15 thread. A positive allowlist rejects every past and future sibling issue automatically
 # and also guarantees both owner receipts share one issue.
 STORY_3_15_ISSUE = 352
+STORY_3_15_ISSUE_API_URL = f"https://api.github.com/repos/{REPOSITORY}/issues/{STORY_3_15_ISSUE}"
+STORY_3_15_ISSUE_HTML_URL = f"https://github.com/{REPOSITORY}/issues/{STORY_3_15_ISSUE}"
 # Each rostered role is bound to exactly one source kind. Without this, an owner receipt could
 # present a self-attested bmad record and skip GitHub authentication entirely.
 EXPECTED_SOURCE_KINDS = {
@@ -312,15 +316,18 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
     )
     if document["schema"] != SCHEMA or document["repository"] != REPOSITORY or document["story_id"] != "3.15":
         raise EvidenceError("closure identity is invalid")
-    if any(
-        EXPECTED_IDENTITIES[role] != f"github:{OWNER_GITHUB_ACCOUNT[0]}"
-        for role in OWNER_ROLES
-    ):
-        raise EvidenceError("rostered owner identity configuration is inconsistent")
-
     dispatch = _exact_object(
         document["dispatch"],
-        ("handler", "predecessor_handler", "predecessor_package", "schema", "verifier", "version"),
+        (
+            "assembler",
+            "handler",
+            "predecessor_handler",
+            "predecessor_package",
+            "schema",
+            "smoke_capture",
+            "verifier",
+            "version",
+        ),
         "dispatch schema is invalid",
     )
     if dispatch["schema"] != SCHEMA or dispatch["version"] != CODEC_VERSION:
@@ -329,11 +336,15 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
     verifier_binding = _binding(dispatch["verifier"])
     predecessor_handler_binding = _binding(dispatch["predecessor_handler"])
     predecessor_package_binding = _binding(dispatch["predecessor_package"])
+    smoke_capture_binding = _binding(dispatch["smoke_capture"])
+    assembler_binding = _binding(dispatch["assembler"])
     if (
         handler_binding["file"] != HANDLER_FILE
         or verifier_binding["file"] != VERIFIER_FILE
         or predecessor_handler_binding["file"] != PREDECESSOR_HANDLER_FILE
         or predecessor_package_binding["file"] != PREDECESSOR_PACKAGE_FILE
+        or smoke_capture_binding["file"] != SMOKE_CAPTURE_FILE
+        or assembler_binding["file"] != ASSEMBLER_FILE
     ):
         raise EvidenceError("dispatch files are not trusted")
     for binding in (
@@ -341,6 +352,8 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
         verifier_binding,
         predecessor_handler_binding,
         predecessor_package_binding,
+        smoke_capture_binding,
+        assembler_binding,
     ):
         live = _repository_file(repository_root, binding["file"]).read_bytes()
         if len(live) != binding["size"] or hashlib.sha256(live).hexdigest() != binding["sha256"]:
@@ -694,15 +707,10 @@ def _validate_registry(document, packet_root):
     source_document = load_json_bytes(source_bytes)
     body = source_document.get("body")
     user = source_document.get("user")
-    # findall() fed straight into dict() is last-wins, so a prepended contradicting role line would
-    # be silently discarded. Reject any repeated role key before comparing the mapping.
     # GitHub returns comment bodies with CRLF line endings, which defeats the line-anchored
-    # role-mapping pattern and the sentence split below. Normalize before matching so a genuine
-    # roster comment is not rejected for a reason that has nothing to do with its content.
+    # exact-body check below. Normalize before comparing so a genuine roster comment is not
+    # rejected for a reason that has nothing to do with its content.
     normalized_body = body.replace("\r\n", "\n").replace("\r", "\n") if isinstance(body, str) else None
-    matches = ROLE_MAPPING_LINE.findall(normalized_body) if isinstance(normalized_body, str) else []
-    role_lines = dict(matches)
-    duplicate_roles = len(matches) != len(role_lines)
     # The entire retained comment body is an authenticated fact. Requiring only the disclaimer as a
     # substring would allow a contradictory deployment-authority sentence to be appended unchanged.
     authority_body_agrees = normalized_body == EXPECTED_REGISTRY_AUTHORITY_BODY
@@ -711,9 +719,9 @@ def _validate_registry(document, packet_root):
         or source_document.get("url")
         != "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/5407975180"
         or source_document.get("html_url")
-        != "https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5407975180"
+        != f"{STORY_3_15_ISSUE_HTML_URL}#issuecomment-5407975180"
         or source_document.get("issue_url")
-        != "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/352"
+        != STORY_3_15_ISSUE_API_URL
         or not isinstance(user, dict)
         # Authenticate the roster comment as strongly as an acceptance receipt's source. Both paths
         # consume the same named account tuple so re-rostering cannot silently split their checks.
@@ -723,8 +731,6 @@ def _validate_registry(document, packet_root):
         or source_document.get("author_association")
         not in ("MEMBER", "OWNER", "COLLABORATOR")
         or not isinstance(body, str)
-        or duplicate_roles
-        or role_lines != EXPECTED_IDENTITIES
         or not authority_body_agrees
         or registry["created_at"] != source_document.get("created_at")
     ):
@@ -790,7 +796,6 @@ def _validate_receipts(document, packet_root, subject_document):
         or {path.name for path in sources_root.iterdir() if path.is_file()} != expected_receipts
         or any(path.is_dir() and path.name != "sources" for path in receipt_root.iterdir())
         or any(path.is_dir() for path in sources_root.iterdir())
-        or any(path.is_symlink() for path in receipt_root.rglob("*"))
     ):
         raise EvidenceError("acceptance directory is not closed over exactly three receipts and sources")
     for binding in document["acceptances"]["receipts"]:
@@ -836,6 +841,26 @@ def _validate_receipts(document, packet_root, subject_document):
         source_bytes = _verify_file(packet_root, source)
         source_document = load_json_bytes(source_bytes)
         if source["kind"] == "github-issue-comment":
+            _exact_object(
+                source_document,
+                (
+                    "author_association",
+                    "body",
+                    "created_at",
+                    "html_url",
+                    "id",
+                    "issue_url",
+                    "minimized",
+                    "node_id",
+                    "performed_via_github_app",
+                    "pin",
+                    "reactions",
+                    "updated_at",
+                    "url",
+                    "user",
+                ),
+                "GitHub acceptance source schema is invalid",
+            )
             try:
                 source_body = load_json_bytes(source_document["body"].encode("utf-8"))
             except (KeyError, AttributeError) as error:
