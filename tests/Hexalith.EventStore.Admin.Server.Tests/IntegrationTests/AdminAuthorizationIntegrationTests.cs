@@ -1,8 +1,14 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
+using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+
+using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.IntegrationTests;
 
@@ -68,29 +74,63 @@ public class AdminAuthorizationIntegrationTests : IDisposable {
     }
 
     [Fact]
-    public async Task OperatorRole_GetTenants_NotForbiddenOrUnauthorized() {
-        // Tenant list is a read operation — ReadOnly policy allows Operator access (AC14)
+    public async Task OperatorRole_GetTenants_ReturnsForbidden() {
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Operator"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
 
-        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/tenants");
+        using HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/tenants");
 
-        response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.ShouldNotBe(HttpStatusCode.Forbidden);
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]
-    public async Task AdminRole_GetTenants_NotForbiddenOrUnauthorized() {
+    public async Task AdminRole_GetTenants_ReturnsOk() {
+        ITenantQueryService tenantQueryService = _host.GetService<ITenantQueryService>();
+        IReadOnlyList<TenantSummary> expectedTenants =
+        [
+            new("tenant-a", "Tenant A", TenantStatusType.Active),
+        ];
+        _ = tenantQueryService
+            .ListTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(expectedTenants);
+
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Admin"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
 
-        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/tenants");
+        using HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/tenants");
 
-        // Authorization should pass for Admin role (mock service may return null → 204)
-        response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.ShouldNotBe(HttpStatusCode.Forbidden);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        IReadOnlyList<TenantSummary>? tenants = await response.Content
+            .ReadFromJsonAsync<IReadOnlyList<TenantSummary>>();
+        tenants.ShouldNotBeNull();
+        tenants.Count.ShouldBe(1);
+        tenants[0].ShouldBe(expectedTenants[0]);
+        _ = tenantQueryService.Received(1).ListTenantsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AdminRole_PostTenant_ReturnsAccepted() {
+        ITenantCommandService tenantCommandService = _host.GetService<ITenantCommandService>();
+        _ = tenantCommandService
+            .CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "01JAXYZ1234567890ABCDEFGH", "Accepted", null));
+
+        SetClaims(
+            new Claim(AdminClaimTypes.AdminRole, "Admin"),
+            new Claim(AdminClaimTypes.Tenant, "tenant-a"));
+
+        var request = new CreateTenantRequest("tenant-a", "Tenant A", "Test tenant");
+        using HttpResponseMessage response = await _client.PostAsJsonAsync("/api/v1/admin/tenants", request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        _ = tenantCommandService.Received(1).CreateTenantAsync(
+            Arg.Is<CreateTenantRequest>(value =>
+                value.TenantId == request.TenantId
+                && value.Name == request.Name
+                && value.Description == request.Description),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

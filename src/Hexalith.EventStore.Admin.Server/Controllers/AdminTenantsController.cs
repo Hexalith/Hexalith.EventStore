@@ -89,7 +89,7 @@ public class AdminTenantsController(
     /// <summary>
     /// Creates a new tenant.
     /// </summary>
-    [HttpPost("CreateTenant")]
+    [HttpPost]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
@@ -244,7 +244,7 @@ public class AdminTenantsController(
     /// </summary>
     // Restricted to Admin: this endpoint has no route tenantId to scope on, so a tenant-scoped
     // ReadOnly/Operator caller must not be able to enumerate every tenant in the platform.
-    [HttpGet("ListTenants")]
+    [HttpGet]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(IReadOnlyList<TenantSummary>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

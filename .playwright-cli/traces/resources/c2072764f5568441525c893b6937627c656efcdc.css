@@ -1,0 +1,976 @@
+/* Hexalith Admin UI — Global Styles */
+
+/* Semantic status color tokens (UX Spec) */
+:root {
+    --hexalith-status-success: #1A7F37;
+    --hexalith-status-inflight: #0969DA;
+    --hexalith-status-warning: #9A6700;
+    --hexalith-status-error: #CF222E;
+    --hexalith-status-neutral: #656D76;
+    --hexalith-brand: #0066CC;
+
+    /* Fluent UI v5 brand tokens — preserves v4 CustomColor="#0066CC" */
+    --colorBrandBackground: #0066CC;
+    --colorBrandBackgroundHover: #005AB5;
+    --colorBrandBackgroundPressed: #004E9E;
+    --colorBrandBackgroundSelected: #005AB5;
+    --colorBrandForegroundLink: #0066CC;
+    --colorBrandForegroundLinkHover: #005AB5;
+    --colorBrandForegroundLinkPressed: #004E9E;
+}
+
+html,
+body {
+    overflow-x: hidden;
+}
+
+/* Note: [data-theme="light"] is intentionally not targeted — light is the :root default.
+   The attribute exists as a semantic DOM marker only. */
+
+/* Explicit dark mode via toggle */
+[data-theme="dark"] {
+    --hexalith-status-success: #2EA043;
+    --hexalith-status-inflight: #58A6FF;
+    --hexalith-status-warning: #D29922;
+    --hexalith-status-error: #F85149;
+    --hexalith-status-neutral: #8B949E;
+    --hexalith-brand: #4A9EFF;
+
+    /* Fluent UI v5 brand tokens — dark mode */
+    --colorBrandBackground: #4A9EFF;
+    --colorBrandBackgroundHover: #5EABFF;
+    --colorBrandBackgroundPressed: #3B8FEF;
+    --colorBrandBackgroundSelected: #5EABFF;
+    --colorBrandForegroundLink: #4A9EFF;
+    --colorBrandForegroundLinkHover: #5EABFF;
+    --colorBrandForegroundLinkPressed: #3B8FEF;
+}
+
+/* System mode: follow OS preference when no explicit theme is set */
+/* Keep in sync with [data-theme="dark"] above */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --hexalith-status-success: #2EA043;
+        --hexalith-status-inflight: #58A6FF;
+        --hexalith-status-warning: #D29922;
+        --hexalith-status-error: #F85149;
+        --hexalith-status-neutral: #8B949E;
+        --hexalith-brand: #4A9EFF;
+
+        /* Fluent UI v5 brand tokens — dark mode */
+        --colorBrandBackground: #4A9EFF;
+        --colorBrandBackgroundHover: #5EABFF;
+        --colorBrandBackgroundPressed: #3B8FEF;
+        --colorBrandBackgroundSelected: #5EABFF;
+        --colorBrandForegroundLink: #4A9EFF;
+        --colorBrandForegroundLinkHover: #5EABFF;
+        --colorBrandForegroundLinkPressed: #3B8FEF;
+    }
+}
+
+/* Skip-to-main-content link */
+.skip-to-main {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9999;
+    padding: 8px 16px;
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    border: 2px solid var(--colorBrandBackground);
+    border-radius: 4px;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.skip-to-main:focus {
+    left: 8px;
+    top: 8px;
+    width: auto;
+    height: auto;
+    overflow: visible;
+}
+
+/* Monospace for machine-generated values */
+.monospace {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Sidebar styling */
+.admin-sidebar {
+    width: 220px;
+    min-width: 220px;
+    transition: width 300ms ease, min-width 300ms ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-right: 1px solid var(--colorNeutralStroke2);
+}
+
+/* Compact-text mode: fixed 140px, labels only (icons hidden below). */
+.admin-sidebar.collapsed {
+    width: 140px;
+    min-width: 140px;
+}
+
+/* Hide FluentNavItem icons in compact-text mode so labels sit immediately
+   after the active-page indicator (the blue bar on the left edge). */
+.admin-sidebar.collapsed fluent-nav-item [slot="start"] {
+    display: none !important;
+}
+
+/* Main content area */
+.admin-main {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* StatCard grid responsive */
+.stat-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+/* Keyboard-accessible StatCard navigation wrapper (role="button" tabindex="0").
+   Provides the pointer affordance plus a visible focus indicator the bare clickable
+   <div> previously lacked. */
+.stat-card-link {
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.stat-card-link:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2, var(--colorBrandStroke1));
+    outline-offset: 2px;
+}
+
+/* Breadcrumb styling */
+.admin-breadcrumb {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+    font-size: 13px;
+}
+
+.breadcrumb-segments {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-breadcrumb a {
+    color: var(--colorBrandForegroundLink);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.admin-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.admin-breadcrumb .separator {
+    margin: 0 6px;
+    color: var(--colorNeutralForeground3);
+}
+
+.admin-breadcrumb .current {
+    color: var(--colorNeutralForeground1);
+    white-space: nowrap;
+}
+
+.breadcrumb-copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: var(--borderRadiusMedium);
+    color: var(--colorNeutralForeground3);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.breadcrumb-copy-btn:hover {
+    color: var(--colorBrandForegroundLink);
+    background: var(--colorSubtleBackgroundHover);
+}
+
+.breadcrumb-truncation-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--colorNeutralForeground3);
+    padding: 0;
+}
+
+.breadcrumb-truncation-btn:hover {
+    color: var(--colorBrandForegroundLink);
+}
+
+/* Warning banner for narrow screens */
+.narrow-screen-warning {
+    display: none;
+    padding: 8px 16px;
+    background: var(--hexalith-status-warning);
+    color: white;
+    text-align: center;
+    font-size: 13px;
+}
+
+/* StatCard severity color transition */
+.stat-card-value {
+    transition: color 300ms ease-out;
+}
+
+/* New-row fade-in animation for real-time updates */
+@keyframes row-fade-in {
+    from { background-color: color-mix(in srgb, var(--hexalith-brand) 10%, transparent); }
+    to { background-color: transparent; }
+}
+
+.stream-row-new {
+    animation: row-fade-in 150ms ease-out;
+}
+
+/* Grid cell text truncation */
+.grid-cell-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Streams grid responsive column visibility */
+.streams-col-domain,
+.streams-col-snapshot {
+    display: table-cell;
+}
+
+.streams-col-tenant {
+    display: table-cell;
+}
+
+/* Responsive breakpoints */
+
+/* Standard: 1280-1919px */
+@media (max-width: 1919px) {
+    .stat-card-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Narrow: <1280px — hide Domain/Snapshot columns, show banner, default to compact-text sidebar.
+   Sidebar width is driven by C# (_sidebarCollapsed in MainLayout), not CSS,
+   to avoid the two systems fighting each other when the user toggles via Ctrl+B. */
+@media (max-width: 1279px) {
+    .stat-card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .narrow-screen-warning {
+        display: block;
+    }
+
+    .streams-col-domain,
+    .streams-col-snapshot {
+        display: none !important;
+    }
+
+    .timeline-col-correlation,
+    .timeline-col-user {
+        display: none !important;
+    }
+}
+
+/* Minimum: <960px — also hide Tenant column and stack stat cards vertically.
+   Banner already shows at <1280px (above), so no banner rule here. */
+@media (max-width: 959px) {
+    .stat-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .streams-col-tenant {
+        display: none !important;
+    }
+}
+
+/* 200% zoom support */
+@media (min-resolution: 192dpi) {
+    .stat-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Timeline row type colors */
+.timeline-row-command {
+    background: rgba(9, 105, 218, 0.05);
+}
+
+.timeline-row-query {
+    background: rgba(128, 128, 128, 0.05);
+}
+
+.timeline-row-event {
+    background: transparent;
+}
+
+.timeline-row-new {
+    animation: row-fade-in 150ms ease-out;
+}
+
+/* Timeline responsive column visibility */
+.timeline-col-correlation,
+.timeline-col-user {
+    display: table-cell;
+}
+
+/* Pipeline chevron */
+.pipeline-chevron {
+    color: var(--colorNeutralForeground3);
+    padding: 0 4px;
+    font-size: 12px;
+}
+
+.pipeline-stage {
+    white-space: nowrap;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .admin-sidebar {
+        transition: none;
+    }
+}
+
+/* Compare mode instruction banner */
+.compare-banner {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: color-mix(in srgb, var(--hexalith-brand) 10%, transparent);
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+/* Windows high-contrast mode */
+@media (forced-colors: active) {
+    .skip-to-main:focus {
+        outline: 2px solid Highlight;
+    }
+
+    .admin-sidebar a:focus,
+    .admin-sidebar button:focus {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+
+    .status-badge__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .stat-card {
+        border: 1px solid CanvasText;
+    }
+
+    .timeline-row-command {
+        background: transparent;
+        border-left: 3px solid Highlight;
+    }
+
+    .timeline-row-query {
+        background: transparent;
+        border-left: 3px solid GrayText;
+    }
+
+    .timeline-row-event {
+        background: transparent;
+        border-left: 3px solid CanvasText;
+    }
+
+    /* FluentDataGrid row selection in forced-colors mode */
+    .fluent-data-grid-row[aria-selected="true"],
+    .fluent-data-grid tr:focus-within {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+}
+
+/* Storage page styles */
+.storage-treemap-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.storage-treemap-container svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.storage-treemap-container g.treemap-rect rect:hover {
+    opacity: 0.85;
+}
+
+.storage-filter-bar {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.storage-toggle-btn {
+    min-width: auto;
+    padding: 4px 8px;
+}
+
+/* Snapshot dialog styles */
+.snapshot-readonly-field {
+    color: var(--colorNeutralForeground3);
+    font-size: 14px;
+    padding: 4px 0;
+}
+
+/* Compaction page styles */
+.compaction-status-running {
+    animation: compaction-pulse 1.5s ease-in-out infinite;
+    background-color: var(--hexalith-status-warning) !important;
+    color: white !important;
+}
+
+.compaction-status-completed {
+    background-color: var(--hexalith-status-success) !important;
+    color: white !important;
+}
+
+.compaction-status-failed {
+    background-color: var(--hexalith-status-error) !important;
+    color: white !important;
+}
+
+@keyframes compaction-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.compaction-error-detail {
+    font-family: var(--fontFamilyBase), 'Cascadia Code', 'Consolas', monospace;
+    font-size: 13px;
+    background-color: var(--colorNeutralBackground2);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+/* Backup status badges */
+.backup-status-running {
+    animation: backup-pulse 1.5s ease-in-out infinite;
+    background-color: var(--hexalith-status-warning) !important;
+    color: white !important;
+}
+
+.backup-status-completed {
+    background-color: var(--hexalith-status-success) !important;
+    color: white !important;
+}
+
+.backup-status-failed {
+    background-color: var(--hexalith-status-error) !important;
+    color: white !important;
+}
+
+.backup-status-validating {
+    animation: backup-pulse 1.5s ease-in-out infinite;
+    background-color: var(--hexalith-status-inflight) !important;
+    color: white !important;
+}
+
+@keyframes backup-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.backup-error-detail {
+    font-family: var(--fontFamilyBase), 'Cascadia Code', 'Consolas', monospace;
+    font-size: 13px;
+    background-color: var(--colorNeutralBackground2);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+/* ── Tenants page (Story 16-5) ── */
+
+.tenant-lifecycle-note {
+    margin: 4px 0 0;
+    color: var(--colorNeutralForeground3);
+    font-size: 13px;
+    max-width: 680px;
+}
+
+.tenant-status-active {
+    background-color: var(--hexalith-status-success) !important;
+    color: white !important;
+}
+
+.tenant-status-disabled {
+    background-color: var(--hexalith-status-error) !important;
+    color: white !important;
+}
+
+.tenant-quota-bar {
+    width: 100%;
+    height: 8px;
+    background-color: var(--colorNeutralStroke1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.tenant-quota-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.tenant-detail-panel {
+    padding: 16px;
+    background-color: var(--colorNeutralBackground2);
+    border-top: 1px solid var(--colorNeutralStroke1);
+    margin-bottom: 16px;
+}
+
+.tenant-comparison-table th,
+.tenant-comparison-table td {
+    font-size: 14px;
+}
+
+.tenant-user-grid {
+    font-size: 14px;
+}
+
+/* ============================================================
+   === MERGED SCOPED CSS (Story 21-8 — Option A) ==============
+   Content merged from 9 .razor.css files on 2026-04-14.
+   v4 FAST tokens renamed to v5 Fluent 2 equivalents.
+   Scope-id pseudo-element prefixes stripped (v5 web components emit no scope-id).
+   Source .razor.css files deleted after merge.
+   ============================================================ */
+
+/* === ActivityChart (merged from Components/ActivityChart.razor.css) === */
+.activity-chart {
+    margin-top: 24px;
+}
+
+.activity-chart-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+}
+
+.activity-chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 160px;
+    padding: 0;
+}
+
+.activity-chart-bar-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.activity-chart-bar-wrapper:hover .activity-chart-bar {
+    background: var(--hexalith-brand, #0066CC);
+    opacity: 0.8;
+}
+
+.activity-chart-bar-wrapper:focus-visible {
+    outline: 2px solid var(--hexalith-brand, #0066CC);
+    outline-offset: 1px;
+    border-radius: 2px;
+}
+
+.activity-chart-bar {
+    width: 100%;
+    background: var(--hexalith-brand, #0066CC);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    transition: opacity 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .activity-chart-bar {
+        transition: none;
+    }
+}
+
+.activity-chart-skeleton {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 160px;
+}
+
+.activity-chart-skeleton-bar {
+    flex: 1;
+    background: var(--colorNeutralBackground3, #e0e0e0);
+    border-radius: 2px 2px 0 0;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .activity-chart-skeleton-bar {
+        animation: none;
+        opacity: 0.6;
+    }
+}
+
+.activity-chart-summary {
+    display: none;
+    font-size: 14px;
+    color: var(--colorNeutralForeground3);
+    padding: 12px 0;
+}
+
+@media (max-width: 1279px) {
+    .activity-chart-bar-wrapper:nth-child(odd) {
+        display: none;
+    }
+}
+
+@media (max-width: 959px) {
+    .activity-chart-bars {
+        display: none;
+    }
+
+    .activity-chart-summary {
+        display: block;
+    }
+}
+
+@media (forced-colors: active) {
+    .activity-chart-bar {
+        background: Highlight;
+    }
+
+    .activity-chart-bar-wrapper:focus-visible {
+        outline-color: Highlight;
+    }
+}
+
+/* === CausationChainView (merged from Components/CausationChainView.razor.css) === */
+.causation-chain {
+    padding: 8px 0;
+    overflow-x: auto;
+}
+
+.chain-node {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-left: 2px solid var(--colorNeutralStroke1);
+    margin-left: 12px;
+}
+
+.chain-node--command {
+    border-left-color: var(--hexalith-status-inflight);
+}
+
+.chain-node--event {
+    border-left-color: var(--hexalith-status-success);
+}
+
+.chain-node--correlation {
+    border-left-color: var(--colorNeutralStroke1);
+}
+
+.chain-node--projections {
+    border-left-color: var(--colorNeutralStroke1);
+}
+
+.chain-node__icon {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+.chain-node__label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.chain-connector {
+    width: 2px;
+    height: 8px;
+    margin-left: 12px;
+    background: var(--colorNeutralStroke1);
+}
+
+@media (forced-colors: active) {
+    .chain-node {
+        border-left-color: CanvasText;
+    }
+
+    .chain-connector {
+        background: CanvasText;
+    }
+}
+
+/* === ProjectionDetailPanel (merged from Components/ProjectionDetailPanel.razor.css) === */
+/* Source file contained only a header comment — no rules to merge. */
+
+/* === ProjectionStatusBadge (merged from Components/ProjectionStatusBadge.razor.css) === */
+/* Source file contained only a header comment — no rules to merge. */
+
+/* === JsonViewer (merged from Components/Shared/JsonViewer.razor.css) === */
+.json-viewer {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: 4px;
+    background: var(--colorNeutralBackground2);
+}
+
+.json-viewer__empty {
+    padding: 16px;
+    color: var(--colorNeutralForeground3);
+    font-style: italic;
+}
+
+.json-viewer__warning {
+    padding: 8px 16px;
+    background: color-mix(in srgb, var(--hexalith-status-warning) 10%, transparent);
+    color: var(--hexalith-status-warning);
+    font-size: 12px;
+}
+
+.json-viewer__raw {
+    padding: 16px;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.json-viewer__code {
+    margin: 0;
+    padding: 12px 16px 12px 0;
+    overflow-x: auto;
+    white-space: pre;
+    counter-reset: json-line;
+}
+
+.json-viewer__code code {
+    display: block;
+}
+
+.json-line {
+    display: block;
+    padding-left: 4px;
+}
+
+.json-line-number {
+    display: inline-block;
+    width: 40px;
+    text-align: right;
+    padding-right: 12px;
+    color: var(--colorNeutralForeground3);
+    user-select: none;
+    opacity: 0.5;
+}
+
+.json-key { color: #0451a5; }
+.json-string { color: #a31515; }
+.json-number { color: #098658; }
+.json-boolean { color: #0000ff; }
+.json-null { color: #808080; }
+
+/* Explicit dark mode via toggle */
+[data-theme="dark"] .json-key { color: #9cdcfe; }
+[data-theme="dark"] .json-string { color: #ce9178; }
+[data-theme="dark"] .json-number { color: #b5cea8; }
+[data-theme="dark"] .json-boolean { color: #569cd6; }
+[data-theme="dark"] .json-null { color: #808080; }
+
+/* System mode: follow OS preference when no explicit theme is set */
+/* Keep in sync with [data-theme="dark"] above */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .json-key { color: #9cdcfe; }
+    :root:not([data-theme]) .json-string { color: #ce9178; }
+    :root:not([data-theme]) .json-number { color: #b5cea8; }
+    :root:not([data-theme]) .json-boolean { color: #569cd6; }
+    :root:not([data-theme]) .json-null { color: #808080; }
+}
+
+.json-viewer__show-all {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-top: 1px solid var(--colorNeutralStroke2);
+    background: var(--colorNeutralBackground3);
+    color: var(--colorBrandForegroundLink);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.json-viewer__show-all:hover {
+    background: var(--colorNeutralBackground4);
+}
+
+@media (forced-colors: active) {
+    .json-viewer {
+        border: 1px solid CanvasText;
+    }
+
+    .json-key,
+    .json-string,
+    .json-number,
+    .json-boolean,
+    .json-null {
+        color: CanvasText;
+    }
+}
+
+/* === StateDiffViewer (merged from Components/StateDiffViewer.razor.css — scope-id prefixes stripped) === */
+.state-diff-viewer {
+    padding: 8px 0;
+}
+
+.diff-field-path {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+.diff-old-value {
+    background: rgba(207, 34, 46, 0.1);
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+.diff-new-value {
+    background: rgba(26, 127, 55, 0.1);
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Explicit dark mode via toggle */
+[data-theme="dark"] .diff-old-value {
+    background: rgba(248, 81, 73, 0.1);
+}
+
+[data-theme="dark"] .diff-new-value {
+    background: rgba(46, 160, 67, 0.1);
+}
+
+/* System mode: follow OS preference when no explicit theme is set */
+/* Keep in sync with [data-theme="dark"] above */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .diff-old-value {
+        background: rgba(248, 81, 73, 0.1);
+    }
+
+    :root:not([data-theme]) .diff-new-value {
+        background: rgba(46, 160, 67, 0.1);
+    }
+}
+
+.diff-old-value span,
+.diff-new-value span {
+    display: inline-block;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+    .diff-old-value {
+        background: transparent;
+        border-left: 3px solid LinkText;
+    }
+
+    .diff-new-value {
+        background: transparent;
+        border-left: 3px solid Highlight;
+    }
+}
+
+/* === TypeDetailPanel (merged from Components/TypeDetailPanel.razor.css — scope-id prefix stripped) === */
+.aggregate-link:hover {
+    text-decoration: none;
+    opacity: 0.8;
+}
+
+/* === Health (merged from Pages/Health.razor.css — scope-id prefix stripped; .monospace deduped against app.css:74) === */
+.observability-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 4px;
+    color: var(--colorNeutralForeground1);
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.15s ease;
+}
+
+.observability-link:hover {
+    background-color: var(--colorSubtleBackgroundHover);
+    text-decoration: none;
+}
+
+.observability-link:active {
+    background-color: var(--colorSubtleBackgroundPressed);
+}
+
+/* === TypeCatalog (merged from Pages/TypeCatalog.razor.css — scope-id prefix stripped) === */
+.type-name-cell {
+    font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace);
+    font-size: 0.85em;
+}

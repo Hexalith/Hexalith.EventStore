@@ -1,0 +1,100 @@
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e93] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e95]:
+    - generic [ref=e97]:
+      - generic [ref=e98]: Hexalith EventStore Admin
+      - generic [ref=e99]:
+        - generic [ref=e100]:
+          - 'generic "Connection status: Disconnected" [ref=e101]':
+            - generic: Disconnected
+          - generic [ref=e102]: —
+        - button "Switch to light theme" [ref=e103] [cursor=pointer]:
+          - generic [ref=e104]:
+            - generic: ⚙
+    - navigation "Main navigation" [ref=e106]:
+      - link "Home" [ref=e107] [cursor=pointer]:
+        - /url: /
+        - img [ref=e108]
+        - text: Home
+      - link "Commands" [ref=e110] [cursor=pointer]:
+        - /url: /commands
+        - img [ref=e111]
+        - text: Commands
+      - link "Events" [ref=e113] [cursor=pointer]:
+        - /url: /events
+        - img [ref=e114]
+        - text: Events
+      - link "Streams" [ref=e116] [cursor=pointer]:
+        - /url: /streams
+        - img [ref=e117]
+        - text: Streams
+      - link "Health" [ref=e119] [cursor=pointer]:
+        - /url: /health
+        - img [ref=e120]
+        - text: Health
+      - link "Dead Letters" [ref=e122] [cursor=pointer]:
+        - /url: /health/dead-letters
+        - img [ref=e123]
+        - text: Dead Letters
+      - link "DAPR" [ref=e125] [cursor=pointer]:
+        - /url: /dapr
+        - img [ref=e126]
+        - text: DAPR
+      - link "Projections" [ref=e128] [cursor=pointer]:
+        - /url: /projections
+        - img [ref=e129]
+        - text: Projections
+      - link "Types" [ref=e131] [cursor=pointer]:
+        - /url: /types
+        - img [ref=e132]
+        - text: Types
+      - link "Services" [ref=e134] [cursor=pointer]:
+        - /url: /services
+        - img [ref=e135]
+        - text: Services
+      - link "Tenants" [ref=e137] [cursor=pointer]:
+        - /url: /tenants
+        - img [ref=e138]
+        - text: Tenants
+      - link "Storage" [ref=e140] [cursor=pointer]:
+        - /url: /storage
+        - img [ref=e141]
+        - text: Storage
+      - link "Snapshots" [ref=e143] [cursor=pointer]:
+        - /url: /snapshots
+        - img [ref=e144]
+        - text: Snapshots
+      - link "Compaction" [ref=e146] [cursor=pointer]:
+        - /url: /compaction
+        - img [ref=e147]
+        - text: Compaction
+      - link "Backups" [ref=e149] [cursor=pointer]:
+        - /url: /backups
+        - img [ref=e150]
+        - text: Backups
+      - link "Consistency" [ref=e152] [cursor=pointer]:
+        - /url: /consistency
+        - img [ref=e153]
+        - text: Consistency
+      - link "Settings" [ref=e155] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e156]
+        - text: Settings
+      - button "Topology" [ref=e158] [cursor=pointer]:
+        - img [ref=e159]
+        - text: Topology
+        - img [ref=e162]
+      - button "Loading..." [disabled] [ref=e164]
+    - generic [ref=e165]:
+      - navigation "Breadcrumb" [ref=e166]:
+        - generic [ref=e167]:
+          - link "Home" [ref=e168] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e169]: /
+          - generic [ref=e170]: Events
+        - button "Copy page URL to clipboard" [ref=e171] [cursor=pointer]:
+          - img [ref=e173]
+      - main [ref=e175]:
+        - heading "Events" [active] [level=1] [ref=e176]
+  - generic "Command palette"
