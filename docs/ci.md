@@ -472,18 +472,29 @@ cleanup/retry, stale-bytecode, XML parsing, and operator-record gaps. It also bo
 smoke-capture producer files and a fourth exact limitation disclosing that the prior owner comments
 were tooling-composed. Those trusted-byte changes caused one batched re-mint.
 
-As of 2026-08-26, with Story 3.15 still `in-progress`, the packet's current subject is
-`c22d35b617fdecf06168071faf442621501c016b629a3674800f50489e2bf22f` and it fails closed at
-**zero of three roster-bound role receipts**. Reassembly deterministically reports `receipts=0
-verifier_exit=1`. The prior `a8cc777e...` receipts and exact sources remain byte-for-byte in the
-superseded audit area. Fresh receipt collection is an Ask First external action and was not
-authorized for this re-mint.
+Step-04 hardening then isolated the verifier before its earliest standard-library imports, required
+`--packet-root` to validate that packet's own `closure.json`, bounded retained-file reads and nuspec
+expansion, confined smoke output to a real in-packet directory even under `--force`, and bound the
+gate record to the immutable canonical subject without citing the superseded trace matrix. Those
+trusted bytes re-minted the subject again.
+
+As of 2026-08-26, the packet's current subject is
+`58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6` and it passes with
+**three of three roster-bound role receipts**. Reassembly deterministically reports `receipts=3
+verifier_exit=0`. The complete `c22d35b...` receipt/source tree—including EventStore-owner comment
+`5424336008`, Release-owner comment `5424339580`, and the `bmad:murat` Test Architect record—remains
+byte-for-byte in the superseded audit area and authorizes nothing for the current subject. Renewed
+authorization retained EventStore-owner comment `5425294818` at `2026-08-26T12:28:20Z`,
+Release-owner comment `5425297492` at `2026-08-26T12:28:33Z`, and the `bmad:murat` Test Architect
+record at `2026-08-26T12:29:42Z`. Initial malformed comment `5425285803` is visibly superseded and
+is not retained.
 
 The roster maps both owner roles to one authenticated human, `github:jpiquot`; the Test Architect
 record is self-attested without independent external authentication; and the historical owner
-comments were tooling-composed and posted with that owner's write credential. All four exact
-limitations must be repeated by future receipts. The retained registry comment's
-`reviewer-roster.json` name is a known copy-carried reference to `owner-role-registry.json`.
+comments were tooling-composed and posted with that owner's write credential. Both the superseded
+c22 receipts and the current receipts repeat all four exact limitations. The retained registry
+comment's `reviewer-roster.json` name is a known copy-carried reference to
+`owner-role-registry.json`.
 
 The arm64 smoke also requires host emulation registered from the pinned `tonistiigi/binfmt`
 prerequisite (digest prefix `400a4873...`). The retained 2026-08-21 smokes were made by the capture

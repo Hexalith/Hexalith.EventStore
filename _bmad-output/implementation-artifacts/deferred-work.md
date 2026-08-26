@@ -1826,3 +1826,118 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-aspire-run-provisions-tenants.md`
   summary: Add a blocking CI runtime smoke that starts the package-mode AppHost, waits for both Tenants hosts, and exercises the Tenants API.
   evidence: AppHost model tests cover default and publish topology, and Tier-3 now requires both hosts to become healthy, but `.github/workflows/integration.yml` explicitly excludes the Aspire `IntegrationTests` project pending dedicated Aspire-in-CI support.
+
+## Ledger supersession: Story 3.15 authorized c22d35b acceptance (2026-08-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Supersedes the loop-6 reconciliation entry's temporary 0/3 receipt blocker.
+  evidence: After explicit renewed authorization, exact-subject EventStore-owner comment `5424336008`, Release-owner comment `5424339580`, and the `bmad:murat` Test Architect record were retained for unchanged subject `c22d35b...`. Two assemblies and direct verification pass at 3/3 without subject drift. This closes only the receipt-collection blocker; every separately deferred item and every false operational-authority flag remains unchanged.
+
+## Ledger supersession: Story 3.15 Step-04 re-mint (2026-08-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Supersedes the c22 acceptance entry after new bound-code hardening re-minted the subject.
+  evidence: Step-04 verifier, handler, nuspec, and smoke-output changes produced exact canonical subject `58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6` at 0/3. The complete c22 receipt/source tree was verified at its original six hashes and moved byte-for-byte into superseded audit storage. No new receipt was authorized, created, or collected; the exact-subject receipt blocker is open again, while every separately deferred item and false operational-authority flag remains unchanged.
+
+## Deferred from: Story 3.15 Step-04 full-baseline review (2026-08-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 4.5 evidence validation is coupled to the mutable whole-file hash of `docs/ci.md`.
+  evidence: Running the retained Story 4.5 `validate-evidence.py` after the Story 3.15 CI documentation update fails with `source drifted since the seal: docs/ci.md`; the underlying mutable-document binding predates Story 3.15 and requires Story 4.5 ownership to redesign or re-seal.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The blocking Contracts lane remains red because the OQ8 evidence seal no longer matches `DaprTestContainerFixture.cs`.
+  evidence: The full Contracts assembly reports failures only in `Oq8PlatformClosureTests`; the current fixture hash differs from the Story 4.14/4.15 bound source identity, while the remainder passes 1,448/1,448. Story 3.15 must not re-seal OQ8 evidence.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Default package-mode AppHost startup with both Tenants hosts has no blocking CI runtime lane.
+  evidence: Model tests inspect resources and annotations, but the only test that waits for both Tenants hosts and persisted bootstrap success lives in `Hexalith.EventStore.IntegrationTests`, which neither the blocking unit list nor integration workflow executes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Metric and logging provider shutdown paths lack the blocking-exporter regression coverage applied to tracing.
+  evidence: `BoundedTelemetryShutdownServiceTests` supplies only `TracerProvider`; deleting the meter and logger shutdown calls leaves the current tests green even though those exporters can still block host disposal.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Cancellation can return from bounded telemetry shutdown before every provider enters its shutdown interlock.
+  evidence: The sequential background shutdown can be cancelled while the tracer blocks, leaving meter and logger providers untouched before later disposal; current tests observe prompt return for one tracer only.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Three structural checkpoint-refusal reason branches have no executed diagnostic assertions.
+  evidence: Tests assert only `PostCutoverWriterProtocol`; `DeliveryRowRequiresFencedCompletion`, `DeliveryRowSchemaRegression`, and `DeliveryRowUnsupported` can be removed or remapped without a test failure.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Checkpoint-refusal logging tests do not pin event ID, level, or structured correlation fields.
+  evidence: The recording logger discards `EventId` and `LogLevel` and asserts only formatted substrings, so OTLP filters can silently lose event `1152` or its tenant/domain/aggregate/projection state.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 3.15 traceability and E2E summary artifacts remain superseded and internally stale.
+  evidence: The current gate no longer links them, but `traceability-matrix.md` and `e2e-trace-summary.json` retain obsolete subjects, method counts, anchors, and withdrawn PASS-era fields and require regeneration before reuse.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The Story 3.15 smoke platform observation is derived from selected image metadata rather than an independent runtime fact.
+  evidence: Capture reads `docker image inspect .Os/.Architecture` after requesting the same platform, so the observed-platform mismatch guard cannot independently prove the executing runtime architecture.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 3.15 smoke logs are canonical JSON restatements rather than retained primary process transcripts.
+  evidence: The log-versus-summary guard compares two producer-written JSON views and cannot independently establish the Docker and curl output from which the smoke verdict was derived.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Container provenance timestamp validation accepts calendar-impossible values.
+  evidence: `Directory.Build.targets` validates timestamp shape without a strict calendar parse, allowing impossible dates to enter OCI provenance labels.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Container provenance URL validation does not reject malformed percent escapes.
+  evidence: The current HTTPS-prefix and character checks can admit syntactically malformed absolute provenance URLs that downstream OCI consumers cannot reliably parse.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: DAPR control-plane port discovery can select an unrelated listener.
+  evidence: `DaprTestContainerFixture` accepts the first candidate port with a TCP connection instead of verifying placement or scheduler service identity, so a foreign listener can mask the healthy endpoint.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Timed-out DAPR probe processes are not killed and awaited.
+  evidence: The fixture timeout path can leave a hung Docker or daprd child process consuming resources because it does not terminate the process tree before propagating cancellation.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 4.5 mutation receipts are matched by suffix instead of exact test identity.
+  evidence: The retained validator can accept an unrelated CTRF test whose name merely ends with the expected method suffix, weakening mutation-evidence provenance.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 4.5 receipt timestamps are not constrained to exact positive JSON integers.
+  evidence: Fractional, boolean, or numeric-string timestamps can be coerced into chronological comparisons and make pre-mutation receipts appear valid.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 4.5 evidence can pass without retained Redis snapshot durability configuration.
+  evidence: The validator checks append-only output but does not require a successful `save`/persistence probe, leaving the durability environment incompletely characterized.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 4.5 source-state paths are not confined to the repository workspace.
+  evidence: Absolute or parent-relative source rows can resolve outside the repository and masquerade as bound source inputs unless paths are normalized and containment-checked.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 4.5 evidence closure does not reject unlisted nested directories.
+  evidence: The retained evidence walk can leave unhashed nested files beside a packet reported as fully closed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Container workflow-dispatch governance parsing can stop at an unindented YAML comment.
+  evidence: The test's indentation-sensitive block scanner can miss later declared inputs when a legal unindented comment appears inside the workflow-dispatch section.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The approved Builds workflow SHA is not proven reachable from the configured remote.
+  evidence: A commit present only in the local submodule object database can satisfy current governance checks even though reusable workflow resolution during release dispatch would fail.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Committed Playwright traces retain transient captures and potentially sensitive session metadata without a repository consumer.
+  evidence: The baseline contains hundreds of duplicate screenshots and network trace records, including anti-forgery cookie and TLS/session metadata; they should be sanitized or replaced by intentional minimal evidence in their owning UI story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The complete recorded baseline contains whitespace errors outside Story 3.15.
+  evidence: `git diff --check 94591f3539ce30372db58e5fdd3ba017ea8c07b8 --` reports trailing whitespace in committed Playwright HTML, Admin UI review prompts, and the stale traceability matrix even though the current Story 3.15 working-tree diff is clean.
+
+## Ledger supersession: Story 3.15 authorized 58f025f acceptance (2026-08-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Supersedes the Step-04 re-mint entry's temporary exact-subject receipt blocker.
+  evidence: After explicit renewed authorization, exact-subject EventStore-owner comment `5425294818`, Release-owner comment `5425297492`, and the `bmad:murat` Test Architect record were retained for unchanged subject `58f025f...`. Direct verification and repeat assembly pass at 3/3 without subject drift and select only OCI index `4b141085...`. Initial malformed comment `5425285803` is visibly superseded and not retained. Every separately deferred item and false operational-authority flag remains unchanged.

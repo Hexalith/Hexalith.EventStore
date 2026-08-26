@@ -206,7 +206,19 @@ def main():
         help="Explicitly overwrite an existing smoke evidence directory.",
     )
     arguments = parser.parse_args()
-    output_root = arguments.packet_root / "smokes"
+    packet_root = arguments.packet_root.resolve()
+    output_root = packet_root / "smokes"
+    # Never follow a retained-output symlink, including a dangling one. ``exists()`` alone misses
+    # dangling symlinks, and --force would otherwise authorize overwriting arbitrary external
+    # paths. Comparing the resolved output to the one literal child of the resolved packet root
+    # also rejects any future path shape that escapes through an intermediate link.
+    if output_root.is_symlink() or output_root.resolve() != output_root:
+        print(
+            "[corrected-deployed-runtime-parity-smokes] fail: smoke output directory must be a "
+            f"real directory inside the packet at {output_root}; rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
+        return 1
     if output_root.exists() and any(output_root.iterdir()) and not arguments.force:
         print(
             "[corrected-deployed-runtime-parity-smokes] fail: retained smoke evidence already "

@@ -284,6 +284,73 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         }
     }
 
+    /// <summary>
+    /// Verifies existing and dangling output-root symlinks are rejected before command execution,
+    /// even when the operator supplies --force. No external retained byte may be read or replaced.
+    /// </summary>
+    /// <param name="shape">Whether the symlink resolves to an existing external directory.</param>
+    /// <param name="force">Whether explicit overwrite was requested.</param>
+    [Theory]
+    [InlineData("existing", false)]
+    [InlineData("existing", true)]
+    [InlineData("dangling", false)]
+    [InlineData("dangling", true)]
+    public void SymlinkedSmokeOutputRootIsAlwaysRejected(string shape, bool force)
+    {
+        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Symbolic-link smoke tests require Linux.");
+        string root = FindRepositoryRoot();
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-link-").FullName;
+        string external = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-smoke-external-{Guid.NewGuid():N}");
+        try
+        {
+            string fakeBin = Path.Combine(temporary, "bin");
+            Directory.CreateDirectory(fakeBin);
+            string dockerLog = Path.Combine(temporary, "docker-argv.log");
+            string curlLog = Path.Combine(temporary, "curl-argv.log");
+            WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("success"));
+            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("200 0"));
+            string marker = Path.Combine(external, "retained.txt");
+            if (shape == "existing")
+            {
+                Directory.CreateDirectory(external);
+                File.WriteAllText(marker, "external-retained-bytes");
+            }
+
+            Directory.CreateSymbolicLink(Path.Combine(temporary, "smokes"), external);
+
+            ProcessResult result = RunCapture(
+                root,
+                temporary,
+                fakeBin,
+                dockerLog,
+                curlLog,
+                force: force);
+
+            result.ExitCode.ShouldBe(1, result.Error);
+            result.Error.ShouldContain("smoke output directory must be a real directory inside the packet");
+            result.Error.ShouldContain("rerun: ");
+            File.Exists(dockerLog).ShouldBeFalse();
+            if (shape == "existing")
+            {
+                File.ReadAllText(marker).ShouldBe("external-retained-bytes");
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+
+            if (Directory.Exists(external))
+            {
+                Directory.Delete(external, recursive: true);
+            }
+        }
+    }
+
     private static ProcessResult RunCapture(
         string root,
         string packetRoot,
@@ -291,7 +358,8 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         string dockerLog,
         string curlLog,
         double? timeoutOverride = null,
-        bool isolateFakePath = false)
+        bool isolateFakePath = false,
+        bool force = false)
     {
         string script = Path.Combine(root, "tools", "capture-corrected-deployed-runtime-parity-smokes.py");
         ProcessStartInfo startInfo = new(ResolveExecutable("python3"))
@@ -318,6 +386,11 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         }
 
         startInfo.ArgumentList.Add(packetRoot);
+        if (force)
+        {
+            startInfo.ArgumentList.Add("--force");
+        }
+
         startInfo.Environment["PATH"] = isolateFakePath
             ? fakeBin
             : fakeBin + Path.PathSeparator + (Environment.GetEnvironmentVariable("PATH") ?? string.Empty);

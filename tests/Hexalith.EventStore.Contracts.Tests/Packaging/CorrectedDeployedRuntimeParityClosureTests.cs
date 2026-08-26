@@ -40,6 +40,10 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string Loop6SupersededSubjectSha256 =
         "a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f";
 
+    /// <summary>Previously accepted subject superseded by the Step-04 bound-code hardening.</summary>
+    private const string Step04SupersededSubjectSha256 =
+        "c22d35b617fdecf06168071faf442621501c016b629a3674800f50489e2bf22f";
+
     private const string SupersededRelativePath =
         "_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances";
 
@@ -70,7 +74,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     private static readonly (string RelativePath, string Sha256)[] SupersededArtefacts =
     [
-        ("README.md", "0cd2cbfcd60bffb2502197c9cf1fbdb467fab116be93fe47c0b0001cf250771a"),
+        ("README.md", "24ec7a65ba9f071bbcab9493805c4afef7db6e6338c80dce8848e37da5a1bf28"),
         (SupersededSubjectSha256 + "/eventstore-owner.json",
             "ad8cc4fb62e5d1b843f42716235a8cce415ab612359b77fd0006c7dbea6ecfbf"),
         (SupersededSubjectSha256 + "/release-owner.json",
@@ -107,6 +111,18 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             "181f2001d93ee982b19758335cb2ba37d7bfd5b0f9e99c77990a40f697d6bb25"),
         (Loop6SupersededSubjectSha256 + "/sources/test-architect.json",
             "c20fee033cfcb055ed2387d0c40109a7da33a0b97e73db98aef71dd975b9e40a"),
+        (Step04SupersededSubjectSha256 + "/eventstore-owner.json",
+            "c01add7cabfc5ea6bc48f50c0209b6c89cf228da3909b8ba70ff6f42887fd8a4"),
+        (Step04SupersededSubjectSha256 + "/release-owner.json",
+            "7d9bb1e0c079a34117a63d3ee114c7efd416c3758a500ad7ea235f6710b8e3c7"),
+        (Step04SupersededSubjectSha256 + "/test-architect.json",
+            "3316e9f576ec755d486a15c962eab50052cccfdd0bc3e86bd851232617f974c5"),
+        (Step04SupersededSubjectSha256 + "/sources/eventstore-owner.json",
+            "cddd8bebc823dbee401e5c6b8776b376d3276afb24b85b2bc5bb5142ee3f7a57"),
+        (Step04SupersededSubjectSha256 + "/sources/release-owner.json",
+            "ba8a7374e203b2d915b3ae7195063e2dc19ec139a53057ee2b5cafb5ca055299"),
+        (Step04SupersededSubjectSha256 + "/sources/test-architect.json",
+            "ec4497455f25bdf9e1137fb24c152f9241e44105bd97f4777852faaeb4a32fa9"),
     ];
 
     /// <summary>
@@ -115,25 +131,24 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const int Story315AcceptanceIssue = 352;
 
     /// <summary>
-    /// Verifies the checked-in packet stays fail-closed after verifier hardening re-mints the
-    /// subject and before separately authorized replacement receipts are collected.
+    /// Verifies the checked-in packet passes only after all three newly authorized exact-subject
+    /// receipts are retained beneath the unchanged subject.
     /// </summary>
     [Fact]
-    public void CheckedInPacketDoesNotSelectIdentityWithoutFreshReceiptsForTheCurrentSubject()
+    public void CheckedInPacketPassesWithThreeReceiptsBoundToTheCurrentSubject()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
         (int exitCode, string output, string error) = RunValidator(root, packet);
-        exitCode.ShouldBe(1, error);
-        output.ShouldNotContain("pass:");
-        error.ShouldContain("exactly three packet-bound receipts are required");
-        error.ShouldContain("rerun: " + RerunTrigger);
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("selected=" + IndexDigest);
 
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
         string subject = closure["subject"]!["sha256"]!.GetValue<string>();
         closure["acceptances"]!["directory"]!.GetValue<string>().ShouldBe("acceptances/" + subject);
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(3);
+        closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
         closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
@@ -146,7 +161,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             .ShouldBeFalse();
         Directory.Exists(Path.Combine(packet, "acceptances", Loop6SupersededSubjectSha256))
             .ShouldBeFalse();
-        Directory.Exists(Path.Combine(packet, "acceptances", subject)).ShouldBeFalse();
+        Directory.Exists(Path.Combine(packet, "acceptances", Step04SupersededSubjectSha256))
+            .ShouldBeFalse();
+        Directory.Exists(Path.Combine(packet, "acceptances", subject)).ShouldBeTrue();
     }
 
     /// <summary>
@@ -999,6 +1016,40 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies an external evidence argument cannot drive validation while --packet-root supplies
+    /// a different packet, even when the external closure bytes are themselves canonical and the
+    /// packet is otherwise fully accepted.
+    /// </summary>
+    [Fact]
+    public void PacketRootRequiresItsOwnClosureAsTheEvidencePath()
+    {
+        string root = FindRepositoryRoot();
+        string packet = CreateAcceptedPacket(root);
+        string external = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-external-closure-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.Copy(Path.Combine(packet, "closure.json"), external);
+
+            ShouldFailClosed(
+                RunProcess(
+                    root,
+                    "python3",
+                    "tools/validate-corrected-deployed-runtime-parity.py",
+                    external,
+                    "--packet-root",
+                    packet),
+                "evidence path is not the packet root's closure.json");
+        }
+        finally
+        {
+            File.Delete(external);
+            Directory.Delete(packet, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies every entry in the dispatcher's import-path pin table matches the live file it
     /// names, so a drifted literal fails closed instead of silently accepting a stale or wrong
     /// module. Checking only the v1 handler would leave the package initializers and the v3
@@ -1170,6 +1221,28 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the machine-readable gate is bound to the current canonical subject, carries the
+    /// same receipt state as the packet, and cannot cite the explicitly superseded trace matrix.
+    /// </summary>
+    [Fact]
+    public void GateDecisionBindsCurrentSubjectWithoutSupersededTraceLink()
+    {
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string subject = closure["subject"]!["sha256"]!.GetValue<string>();
+        int receipts = closure["acceptances"]!["receipts"]!.AsArray().Count;
+        JsonObject gate = LoadJson(Path.Combine(root, "_bmad-output", "test-artifacts", "gate-decision.json"));
+
+        gate["source_sha"]!.GetValue<string>().ShouldBe(subject);
+        gate["links"]!["trace_report_path"]!.GetValue<string>().ShouldBeEmpty();
+        gate["rationale"]!.GetValue<string>().ShouldContain(subject);
+        gate["collection_status"]!.GetValue<string>().ShouldBe(
+            receipts == 3 ? "COLLECTED" : "NOT_COLLECTED");
+        gate["gate_status"]!.GetValue<string>().ShouldBe(receipts == 3 ? "PASS" : "BLOCKED");
+        gate["overall_status"]!.GetValue<string>().ShouldBe(receipts == 3 ? "MET" : "NOT_MET");
+    }
+
+    /// <summary>
     /// Verifies a stray file added anywhere in the retained packet (outside the acceptances
     /// directory) fails closed, even when every declared binding still verifies.
     /// </summary>
@@ -1328,6 +1401,33 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the verifier rejects an oversized retained-file declaration before attempting to
+    /// allocate or read that declared amount. The actual package remains the small valid packet
+    /// file, making the positive control independent of large test-data allocation.
+    /// </summary>
+    [Fact]
+    public void OversizedRetainedFileBindingFailsBeforeRead()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            closure["packages"]!["items"]![0]!["nuget_org"]!["size"] = (16 * 1024 * 1024) + 1;
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "retained file exceeds the support-safe size limit");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies packet-supplied nuspec XML cannot declare or expand internal entities, even after
     /// the mutated package's retained binding is corrected.
     /// </summary>
@@ -1427,6 +1527,80 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             (int exitCode, string output, string error) = RunValidator(root, temporary);
             exitCode.ShouldBe(0, error);
             output.ShouldContain("selected=" + IndexDigest);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a highly compressible but support-safe nuspec still reaches identity parsing and
+    /// can close parity after all downstream bindings are re-minted.
+    /// </summary>
+    [Fact]
+    public void SupportSafeCompressedNuspecStillValidates()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject item = closure["packages"]!["items"]![0]!.AsObject();
+            JsonObject nuget = item["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            string packageId = item["id"]!.GetValue<string>();
+            ReplaceNuspec(
+                packagePath,
+                "<package><metadata><id>" + packageId + "</id><version>3.96.2</version>" +
+                "<description>" + new string('x', 900 * 1024) + "</description>" +
+                "<repository type=\"git\" url=\"https://github.com/Hexalith/Hexalith.EventStore\" " +
+                $"commit=\"{SourceSha}\" /></metadata></package>");
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+            RebindInventoryAndSubject(temporary);
+            AttachThreeAcceptedReceipts(temporary);
+
+            (int exitCode, string output, string error) = RunValidator(root, temporary);
+            exitCode.ShouldBe(0, error);
+            output.ShouldContain("selected=" + IndexDigest);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a small compressed archive cannot expand an oversized nuspec into memory before
+    /// the trusted handler checks its ZipInfo uncompressed size.
+    /// </summary>
+    [Fact]
+    public void OversizedCompressedNuspecFailsBeforeExpansion()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject item = closure["packages"]!["items"]![0]!.AsObject();
+            JsonObject nuget = item["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            string packageId = item["id"]!.GetValue<string>();
+            ReplaceNuspec(
+                packagePath,
+                "<package><metadata><id>" + packageId + "</id><version>3.96.2</version>" +
+                "<description>" + new string('x', (1024 * 1024) + 1) + "</description>" +
+                "<repository type=\"git\" url=\"https://github.com/Hexalith/Hexalith.EventStore\" " +
+                $"commit=\"{SourceSha}\" /></metadata></package>");
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "package nuspec exceeds the support-safe uncompressed size limit");
         }
         finally
         {
@@ -2144,12 +2318,17 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies imports performed by the four verified source modules cannot resolve a same-named
-    /// repository file before the standard library. The shadow raises if imported, while the
-    /// expected incomplete-receipt failure proves real handler validation still ran.
+    /// Verifies neither the dispatcher's own early imports nor imports performed by the four
+    /// verified source modules can resolve a same-named repository file before the standard
+    /// library. Each shadow raises if imported, while the expected incomplete-receipt failure
+    /// proves real handler validation still ran.
     /// </summary>
-    [Fact]
-    public void RepositoryLocalStandardLibraryShadowCannotExecute()
+    /// <param name="module">Repository-local standard-library shadow to plant.</param>
+    /// <param name="marker">Unique output marker emitted only if the shadow executes.</param>
+    [Theory]
+    [InlineData("json.py", "repository-json-shadow-executed")]
+    [InlineData("zipfile.py", "repository-zipfile-shadow-executed")]
+    public void RepositoryLocalStandardLibraryShadowCannotExecute(string module, string marker)
     {
         string root = FindRepositoryRoot();
         string packet = CreateIncompletePacket(root);
@@ -2158,8 +2337,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         {
             CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
             File.WriteAllText(
-                Path.Combine(temporary, "tools", "zipfile.py"),
-                "print('repository-zipfile-shadow-executed')\nraise RuntimeError('shadow loaded')\n");
+                Path.Combine(temporary, "tools", module),
+                $"print('{marker}')\nraise RuntimeError('shadow loaded')\n");
 
             (int exitCode, string output, string error) = RunProcess(
                 temporary,
@@ -2171,7 +2350,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
             exitCode.ShouldBe(1, error);
             error.ShouldContain("exactly three packet-bound receipts are required");
-            output.ShouldNotContain("repository-zipfile-shadow-executed");
+            output.ShouldNotContain(marker);
             output.ShouldNotContain("pass:");
         }
         finally
@@ -2388,6 +2567,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         JsonObject closure = LoadJson(closurePath);
         closure["acceptances"]!["receipts"] = new JsonArray();
         WriteCanonical(closurePath, closure);
+        string acceptancesRoot = Path.Combine(temporary, "acceptances");
+        if (Directory.Exists(acceptancesRoot))
+        {
+            Directory.Delete(acceptancesRoot, recursive: true);
+        }
+
         return temporary;
     }
 

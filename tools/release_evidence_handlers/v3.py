@@ -25,6 +25,10 @@ RETAINED_CODEC_FILE = "successful/tools/release_evidence_codec.py"
 RETAINED_VERIFIER_FILE = "successful/tools/validate-corrective-release-evidence.py"
 SHA40 = re.compile(r"^[0-9a-f]{40}$", re.ASCII)
 SHA256 = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
+# Legitimate package nuspecs in the corrective-release packet are only a few KiB. One MiB leaves
+# generous metadata headroom while preventing a highly compressed archive entry from expanding an
+# attacker-controlled amount of XML in memory before the parser's safety checks run.
+MAX_NUSPEC_UNCOMPRESSED_SIZE = 1024 * 1024
 SEMVER = re.compile(r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$", re.ASCII)
 NONCE = re.compile(r"^[A-Za-z0-9_-]{20,128}$", re.ASCII)
 PLATFORMS = ("linux/amd64", "linux/arm64")
@@ -430,10 +434,13 @@ def nuspec_identity(package_path):
     """Return repository identity fields from one package without expanding XML entities."""
     try:
         with zipfile.ZipFile(Path(package_path)) as archive:
-            nuspecs = [name for name in archive.namelist() if name.endswith(".nuspec")]
+            nuspecs = [entry for entry in archive.infolist() if entry.filename.endswith(".nuspec")]
             if len(nuspecs) != 1:
                 raise EvidenceError("package does not contain exactly one nuspec")
-            nuspec_bytes = archive.read(nuspecs[0])
+            nuspec = nuspecs[0]
+            if nuspec.file_size > MAX_NUSPEC_UNCOMPRESSED_SIZE:
+                raise EvidenceError("package nuspec exceeds the support-safe uncompressed size limit")
+            nuspec_bytes = archive.read(nuspec)
             try:
                 nuspec_text = nuspec_bytes.decode("utf-8-sig", errors="strict")
             except UnicodeDecodeError as error:

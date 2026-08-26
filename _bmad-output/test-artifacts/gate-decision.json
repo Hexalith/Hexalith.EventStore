@@ -1,26 +1,26 @@
 {
   "schema_version": "0.1.0",
-  "evaluated_at": "2026-08-26T08:12:13Z",
+  "evaluated_at": "2026-08-26T12:34:20Z",
   "repo": "eventstore",
   "target": {
     "type": "story",
     "id": "3.15",
     "label": "Story 3.15 Corrected Deployed Runtime Parity Closure"
   },
-  "collection_status": "NOT_COLLECTED",
-  "gate_basis": "exact_subject_roster_bound_receipts",
-  "gate_status": "BLOCKED",
-  "rationale": "Current subject c22d35b617fdecf06168071faf442621501c016b629a3674800f50489e2bf22f reproduces the retained technical candidate but the packet contains zero of three required roster-bound receipts after the loop-6 trusted-byte re-mint. The verifier fails closed and selects no identity. The prior a8cc777e receipt set is retained only as superseded audit evidence. Fresh receipt collection is an Ask First external action and was not authorized for this re-mint. Existing trace artifacts remain superseded and must not be interpreted as a PASS for the current subject.",
+  "collection_status": "COLLECTED",
+  "gate_basis": "exact_canonical_subject_digest_and_roster_bound_receipts",
+  "gate_status": "PASS",
+  "rationale": "Current canonical subject 58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6 reproduces the retained technical candidate after Step-04 verifier, handler, nuspec, and smoke-output hardening and carries exactly three valid roster-bound receipts. Direct verification and repeat assembly pass without subject drift and select only OCI index sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3. The previously accepted c22d35b tree remains superseded; deployment, publication, registry mutation, consumer removal, and predecessor-change authority remain false.",
   "p0_status": "NOT_APPLICABLE",
-  "p1_status": "NOT_APPLICABLE",
-  "overall_status": "NOT_MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
   "critical_open": 0,
   "links": {
-    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix.md",
+    "trace_report_path": "",
     "trace_report_url": "",
     "artifact_url": "",
     "journey_evidence_url": ""
   },
-  "source_sha": "uncommitted-loop-6-working-tree",
-  "superseded_by": "fresh exact-subject receipt collection and trace regeneration"
+  "source_sha": "58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6",
+  "superseded_by": ""
 }

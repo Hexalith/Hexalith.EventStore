@@ -1,6 +1,6 @@
 # Superseded Story 3.15 acceptances
 
-This audit area retains three superseded Story 3.15 acceptance sets:
+This audit area retains four superseded Story 3.15 acceptance sets:
 
 - Three genuine, GitHub-minted acceptance receipts collected on 2026-08-22 for subject
   `bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709`.
@@ -11,7 +11,11 @@ This audit area retains three superseded Story 3.15 acceptance sets:
 - Three roster-bound role receipts collected on 2026-08-25 for subject
   `a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`. They were superseded
   when loop-6 hardening bound both evidence producers and the tooling-composed owner-receipt
-  limitation into the subject before any replacement receipt was requested.
+  limitation into the subject.
+- Three explicitly authorized roster-bound receipts collected on 2026-08-26 for subject
+  `c22d35b617fdecf06168071faf442621501c016b629a3674800f50489e2bf22f`. Step-04 hardening changed
+  bound verifier/handler/producer bytes, so the exact-subject authorization cannot be reused and
+  this complete receipt/source tree was moved here byte-for-byte before re-minting.
 
 Each receipt preserves its original packet-relative `durable_source.file` value byte-for-byte. To
 mechanically resolve that source in this audit tree, replace the leading
@@ -35,7 +39,8 @@ restricted to strict UTF-8 before DTD/entity rejection, smoke numeric facts were
 JSON integers, and the rerun trigger was corrected to bind receipt-source *policy* changes without
 claiming the subject directly binds each post-subject source instance. Those trusted-byte and policy
 changes re-minted the subject. The later `a8cc777e...` set is retained for the same reason after the
-producer and limitation bindings changed again; no replacement receipts are retained here for the
-new subject.
+producer and limitation bindings changed again. The later `c22d35b...` set is retained after the
+Step-04 verifier bootstrap, output-path confinement, retained-size bounds, nuspec expansion bound,
+and packet/gate identity guards changed the content-bound subject again.
 
 They authorize nothing for the current subject. Do not move them back into the packet.

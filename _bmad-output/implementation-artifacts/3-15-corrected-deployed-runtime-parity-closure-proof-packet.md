@@ -2,14 +2,14 @@
 
 ## Decision
 
-Current subject: `c22d35b617fdecf06168071faf442621501c016b629a3674800f50489e2bf22f`
+Current subject: `58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6`
 
-Verifier result: `fail closed` with exactly 0 of 3 roster-bound role receipts; no identity is selected.
+Verifier result: `pass` with exactly 3 of 3 roster-bound role receipts.
 
-The technical evidence reproduces the sole candidate
+The verifier selects the sole candidate
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,
-but the post-hardening acceptance gate is incomplete and selects nothing. This evidence grants no
-deployment, publication, registry mutation, consumer removal, or predecessor-change authority.
+while granting no deployment, publication, registry mutation, consumer removal, or
+predecessor-change authority.
 
 ## Bound technical evidence
 
@@ -27,12 +27,12 @@ The current dispatch binds these live files:
 
 | Role | File | SHA-256 | Size |
 | --- | --- | --- | ---: |
-| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `f3366d3974ea10d8eb9dc83a3b0bb713229d2457df00f574fd980474bc5aa3e0` | 45160 |
-| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `58bae1d84a5f22a3b706ef1c1fc6fc958d2c617f4b33dc09c7f32dca55e29b7e` | 12457 |
-| Predecessor handler | `tools/release_evidence_handlers/v3.py` | `c186f0506f5b7a4153b8afabff8a597c40147f25b209f56455b46f761d2a8638` | 46106 |
+| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `bf8fec6bbd408be0b16f3b64ff219ed8b021e7f6c04aea7f59e819ad51298fef` | 46023 |
+| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `8b6ef79cdc5eb5ee6cf995880709f582c3fb09cba00a39eff2c043f5e055f32c` | 13829 |
+| Predecessor handler | `tools/release_evidence_handlers/v3.py` | `a421791b4c6176afc8120e4e5c4668cb9703976e6f74659c0525119fc5aca5f4` | 46636 |
 | Predecessor package | `tools/release_evidence_handlers/__init__.py` | `a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625` | 78 |
 | Assembler | `tools/assemble-corrected-deployed-runtime-parity.py` | `dce0806368ae08ed1869b8255af9ec5d9834de305b4080ef193b1c3ef90c0e79` | 11722 |
-| Smoke capture | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `c223905278381ad3391893a95578194eb1a63747fc0e757b842d522ced5ac1f3` | 9647 |
+| Smoke capture | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `83ee91db86acc3678edd7d5e900ea9dd2c835c413c7bc7a65b082dd274d37538` | 10390 |
 
 Both dispatchers execute exact verified source bytes under sanitized import resolution. Receipt
 files and source instances remain outside the closed 24-file technical inventory to avoid a hash
@@ -51,8 +51,14 @@ sources remain under `evidence/story-3-15/superseded-acceptances/a8cc777e…/`; 
 the mechanical re-rooting rule for each receipt's historical `durable_source.file` value. They
 authorize nothing for `c22d35b…`.
 
-Fresh EventStore-owner, Release-owner, and Test Architect receipts require a separately authorized
-Ask First collection. No such external write was authorized or performed during this re-mint.
+Subsequent explicit authorization produced EventStore-owner comment `5424336008`, Release-owner
+comment `5424339580`, and the `bmad:murat` Test Architect record for subject `c22d35b…`. Step-04
+bound-code hardening then re-minted the current subject. The complete c22 receipt/source tree is
+retained byte-for-byte under `superseded-acceptances/c22d35b…/`; it authorizes nothing for
+`58f025f…`. Renewed authorization produced EventStore-owner comment `5425294818` at
+`2026-08-26T12:28:20Z`, Release-owner comment `5425297492` at `2026-08-26T12:28:33Z`, and the
+`bmad:murat` Test Architect record at `2026-08-26T12:29:42Z`, all retained beneath the unchanged
+current subject. Malformed attempt `5425285803` is visibly superseded and is not retained.
 
 The subject binds four exact limitations: evidence-only scope, no operational authority, the Test
 Architect's lack of independent external authentication, and the tooling-composed owner comments.
@@ -72,22 +78,21 @@ The packet grants no predecessor-change authority either.
 ## Verification results
 
 - Contracts Release build: pass, zero warnings and errors.
-- Closure 135/135, smoke capture 9/9, predecessor/provenance 46/46; zero skips.
-- Contracts excluding the unrelated OQ8 evidence class: 1438/1438. The full 1753-test invocation
-  reports 269 OQ8-only failures on its pre-existing bound-source drift in
+- Closure 141/141, smoke capture 13/13, predecessor/provenance 46/46; zero skips.
+- Contracts excluding the unrelated OQ8 evidence class: 1448/1448. The full 1763-test invocation
+  retains the known OQ8-only failure cascade on its pre-existing bound-source drift in
   `DaprTestContainerFixture.cs`; this story does not re-seal another story's evidence.
-- Direct Story 3.14 validation passes; direct Story 3.15 validation fails closed at 0/3 as intended.
+- Direct Story 3.14 validation passes; direct Story 3.15 validation passes at exact 3/3.
 
 ## Reproduce
 
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:c22d35b617fdecf06168071faf442621501c016b629a3674800f50489e2bf22f receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6 receipts=3 verifier_exit=0
 $ echo $?
-1
+0
 ```
 
-Two consecutive assemblies reproduce the same subject. Direct verification reports the exact
-three-receipt requirement and exits 1. This is the expected fail-closed verdict, not an assembly
-failure or a PASS-shaped gate.
+Two consecutive assemblies reproduce the same subject. Direct verification passes with all three
+roster-bound receipts and selects only the bound index.

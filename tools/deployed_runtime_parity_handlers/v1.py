@@ -103,6 +103,10 @@ EXPECTED_SOURCE_KINDS = {
     "release-owner": "github-issue-comment",
     "test-architect": "bmad-test-architect-record",
 }
+# Current retained packet files are all below 700 KiB. A 16 MiB ceiling leaves ample operational
+# headroom while ensuring a malformed binding or sparse/planted file cannot make the support-safe
+# verifier allocate arbitrary packet-controlled content before checking its declared identity.
+MAX_RETAINED_FILE_SIZE = 16 * 1024 * 1024
 
 
 class EvidenceError(ValueError):
@@ -242,10 +246,20 @@ def _packet_file(packet_root, relative):
 
 
 def _verify_file(packet_root, binding):
-    content = _packet_file(packet_root, binding["file"]).read_bytes()
+    path = _packet_file(packet_root, binding["file"])
+    content = _read_retained_file(path, binding["size"])
     if len(content) != binding["size"] or hashlib.sha256(content).hexdigest() != binding["sha256"]:
         raise EvidenceError(f"retained file binding mismatch: {binding['file']}")
     return content
+
+
+def _read_retained_file(path, declared_size=None):
+    """Read one retained file only after both declared and on-disk sizes are support-safe."""
+    if declared_size is not None and declared_size > MAX_RETAINED_FILE_SIZE:
+        raise EvidenceError("retained file exceeds the support-safe size limit")
+    if path.stat().st_size > MAX_RETAINED_FILE_SIZE:
+        raise EvidenceError("retained file exceeds the support-safe size limit")
+    return path.read_bytes()
 
 
 def _expected_subject(document):
@@ -469,7 +483,7 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
 def _validate_predecessor(document, expected_package_ids, expected_manifest_sha256, repository_root):
     identity_path = _repository_file(repository_root, PREDECESSOR_IDENTITY_FILE)
     packet_root = _repository_file(repository_root, PREDECESSOR_PACKET_ROOT)
-    identity_bytes = identity_path.read_bytes()
+    identity_bytes = _read_retained_file(identity_path)
     predecessor = predecessor_handler.load_json_bytes(identity_bytes)
     canonical = predecessor_handler.validate_identity(
         predecessor,
@@ -554,7 +568,7 @@ def _validate_oci(document, predecessor, packet_root, repository_root):
             predecessor_binding = predecessor_child[name]
             if (
                 child[name]["digest"] != predecessor_binding["digest"]
-                or content != (predecessor_root / predecessor_binding["file"]).read_bytes()
+                or content != _read_retained_file(predecessor_root / predecessor_binding["file"])
             ):
                 raise EvidenceError(f"independent raw OCI {name} does not match the predecessor")
         manifest = load_json_bytes(_verify_file(packet_root, child["manifest"]))
@@ -750,7 +764,7 @@ def _validate_inventory(document, packet_root):
     expected.update((document["owner_role_registry"]["file"], registry["authority_source"]["file"]))
     inventory_bytes = _verify_file(packet_root, document["technical_inventory"])
     expected_text = "".join(
-        f"{hashlib.sha256(_packet_file(packet_root, relative).read_bytes()).hexdigest()}  {relative}\n"
+        f"{hashlib.sha256(_read_retained_file(_packet_file(packet_root, relative))).hexdigest()}  {relative}\n"
         for relative in sorted(expected)
     ).encode("utf-8")
     if inventory_bytes != expected_text:
