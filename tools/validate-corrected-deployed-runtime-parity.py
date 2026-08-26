@@ -17,7 +17,7 @@ RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
     "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "886fc7141063185f21f2658afc347cf9428b5c781b97fc81a07d612d9961ca41"
+V1_HANDLER_SHA256 = "f3366d3974ea10d8eb9dc83a3b0bb713229d2457df00f574fd980474bc5aa3e0"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -33,7 +33,7 @@ IMPORT_PATH_FILE_SHA256 = {
     "release_evidence_handlers/__init__.py":
         "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
     "release_evidence_handlers/v3.py":
-        "410952dcb855e52278ef2575ce6d53bc2df36c0d7a936eca464cba0e4cdf41b4",
+        "c186f0506f5b7a4153b8afabff8a597c40147f25b209f56455b46f761d2a8638",
 }
 EXPECTED_IMPORT_PATH_FILES = {
     "deployed_runtime_parity_handlers/__init__.py",

@@ -21,9 +21,15 @@ Clone the repository and navigate into the project directory:
 ```bash
 $ git clone https://github.com/Hexalith/Hexalith.EventStore.git
 $ cd Hexalith.EventStore
+$ git submodule update --init references/Hexalith.Tenants
 ```
 
-Start the Aspire AppHost, which launches the CommandAPI, the sample domain service, Redis, and Keycloak:
+The root Tenants submodule is a local runtime prerequisite. A plain `aspire run` resolves its
+domain-service and external API host projects by path and fails before starting any resources when
+either project is unavailable. It does not initialize submodules automatically.
+
+Start the Aspire AppHost, which launches the CommandAPI, Tenants domain and API services, the sample
+domain service, Redis, and Keycloak:
 
 ```bash
 $ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj

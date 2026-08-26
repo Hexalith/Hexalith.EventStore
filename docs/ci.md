@@ -425,10 +425,11 @@ never executes packet-supplied code: it parses and rehashes retained bytes, reje
 nuspec DTD/entity declarations, checks the closed technical inventory, recomputes the canonical
 subject, and validates exactly three subject-addressed receipts.
 
-The closure's `dispatch` block binds the v1 handler, the v3 predecessor handler, and the v3
-package initializer directly; the v1 package initializer is pinned in the dispatcher's
-`IMPORT_PATH_FILE_SHA256`, whose own bytes are bound by `dispatch.verifier`, so the trust chain
-closes transitively over all four. This closes a gap found in the
+The closure's `dispatch` block binds the v1 handler, the v3 predecessor handler, the v3 package
+initializer, the assembler, and the smoke-capture producer directly; the v1 package initializer is
+pinned in the dispatcher's `IMPORT_PATH_FILE_SHA256`, whose own bytes are bound by
+`dispatch.verifier`, so the executable trust chain closes transitively over all four imported
+modules and both packet producers. This closes a gap found in the
 2026-08-25 review: previously only `v1.py` and its dispatcher were bound, so a tampered `v3.py` —
 which performs predecessor validation, nuspec identity parsing, and the release-manifest check —
 produced the identical subject and selected identity with all three receipts still valid, contrary
@@ -466,23 +467,33 @@ bounded all smoke-capture work by one per-platform monotonic deadline, and corre
 trigger to bind receipt-source **policy** changes. Those trusted-byte changes re-minted the subject
 again and superseded every `dab64f5f...` receipt.
 
-As of 2026-08-26, with Story 3.15 still `in-progress`, the packet's current subject is
-`a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f` and it passes with
-**three of three roster-bound role receipts**. That is the state of the evidence, not a story
-status: the subject is re-minted by any change to the verifier's trusted bytes or receipt-source
-policy, and each re-mint rejects every receipt collected for its predecessor. Fresh EventStore-owner comment `5409145568`, fresh
-Release-owner comment `5409148235`, and the `bmad:murat` Test Architect record all bind that exact
-subject. The `dab64f5f...` receipts and sources remain byte-for-byte in the superseded audit area.
-The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
-Architect record is explicitly self-attested without independent external authentication.
+The loop-6 hardening then closed the acceptance-source schema, mutation coverage, assembler caller,
+cleanup/retry, stale-bytecode, XML parsing, and operator-record gaps. It also bound the assembler and
+smoke-capture producer files and a fourth exact limitation disclosing that the prior owner comments
+were tooling-composed. Those trusted-byte changes caused one batched re-mint.
 
-Owner comments `5409140199` and `5409147909` had timestamp mismatches, were immediately marked
-visibly superseded, and are not retained in the packet. Reassembly reports `receipts=3
-verifier_exit=0` without changing the current subject.
+As of 2026-08-26, with Story 3.15 still `in-progress`, the packet's current subject is
+`c22d35b617fdecf06168071faf442621501c016b629a3674800f50489e2bf22f` and it fails closed at
+**zero of three roster-bound role receipts**. Reassembly deterministically reports `receipts=0
+verifier_exit=1`. The prior `a8cc777e...` receipts and exact sources remain byte-for-byte in the
+superseded audit area. Fresh receipt collection is an Ask First external action and was not
+authorized for this re-mint.
+
+The roster maps both owner roles to one authenticated human, `github:jpiquot`; the Test Architect
+record is self-attested without independent external authentication; and the historical owner
+comments were tooling-composed and posted with that owner's write credential. All four exact
+limitations must be repeated by future receipts. The retained registry comment's
+`reviewer-roster.json` name is a known copy-carried reference to `owner-role-registry.json`.
+
+The arm64 smoke also requires host emulation registered from the pinned `tonistiigi/binfmt`
+prerequisite (digest prefix `400a4873...`). The retained 2026-08-21 smokes were made by the capture
+producer pre-image; binding the current producer makes future edits re-mint without claiming those
+historical bytes were recaptured.
 
 The subject cannot bind each post-subject receipt-source instance without a hash cycle. It binds
 the source policy instead: replacing one retained source invalidates that source's receipt and any
-complete 3/3 verdict, while a source-policy change re-mints the subject and rejects all receipts.
+complete 3/3 verdict, while a source-policy or producer change re-mints the subject and rejects all
+receipts.
 
 The only identity the closure may ever select is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,

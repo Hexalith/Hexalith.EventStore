@@ -9,6 +9,7 @@
 - **Docker Desktop** (for Redis, integration tests, container builds).
 - **DAPR CLI** + runtime (`daprd`, `placement`, `scheduler`).
 - **Aspire CLI** (`aspire`).
+- **Initialized root Tenants submodule:** `git submodule update --init references/Hexalith.Tenants`.
 - For E2E: Playwright browsers.
 
 ## Build
@@ -85,6 +86,13 @@ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost
 
 **`EnableKeycloak=false`** falls back to symmetric-key JWT (no Keycloak container). AppHost changes
 require restarting the Aspire app.
+
+Plain local `aspire run` always provisions `tenants` and `tenants-api` from the initialized root
+Tenants checkout, even though repository dependencies remain in package mode by default. Runtime
+project discovery is deliberately separate from `UseHexalithProjectReferences`: that switch still
+controls build dependencies, while run mode uses resolved project paths only for the local topology.
+If either host project is unavailable, startup fails before resources start and names the root
+submodule initialization command. Publish mode never adds these path-discovered resources.
 
 ### Cursor Cloud / VM bootstrap (from CLAUDE.md)
 

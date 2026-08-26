@@ -43,7 +43,7 @@ HANDLERS = {
 # on-disk handler source before import, so an unreviewed edit never executes. Recompute with:
 # sha256sum tools/release_evidence_handlers/v3.py
 HANDLER_FILE_SHA256 = {
-    "release_evidence_handlers.v3": "410952dcb855e52278ef2575ce6d53bc2df36c0d7a936eca464cba0e4cdf41b4",
+    "release_evidence_handlers.v3": "c186f0506f5b7a4153b8afabff8a597c40147f25b209f56455b46f761d2a8638",
 }
 # Importing a submodule also executes its package initializer, so pinning the leaf alone leaves
 # that file free to run unreviewed code. Every file on the import path is pinned and verified

@@ -102,6 +102,14 @@ Inside this repository, cross-repo Hexalith library dependencies use package mod
 `Hexalith.EventStore.*` packages must describe external Hexalith libraries as NuGet package dependencies, not
 as source project edges.
 
+This dependency selection is separate from local AppHost runtime discovery. In this repository, a plain
+`aspire run` resolves `tenants` and `tenants-api` from the initialized root checkout at
+`references/Hexalith.Tenants` even while `UseHexalithProjectReferences=false`. Initialize that checkout with
+`git submodule update --init references/Hexalith.Tenants`; startup fails before launching resources if either
+host project is missing. The path-based resources are run-mode only and are excluded from publish/package
+graphs. Setting `UseHexalithProjectReferences=true` remains the explicit way to compile against Tenants source,
+using the generated `Projects.*` metadata instead of the run-mode path fallback.
+
 ## Which Packages Do I Need?
 
 ### Building a domain service

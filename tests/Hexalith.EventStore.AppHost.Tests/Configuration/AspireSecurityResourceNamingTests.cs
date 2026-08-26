@@ -114,16 +114,9 @@ public sealed class AspireSecurityResourceNamingTests
                 ["eventstore-admin-ui"] = 2,
                 ["sample-api"] = 2,
                 ["sample-blazor-ui"] = 2,
+                ["tenants"] = 3,
+                ["tenants-api"] = 2,
             };
-            if (builder.Resources.Any(static resource => string.Equals(resource.Name, "tenants", StringComparison.Ordinal)))
-            {
-                expectedReferenceCounts.Add("tenants", 3);
-            }
-
-            if (builder.Resources.Any(static resource => string.Equals(resource.Name, "tenants-api", StringComparison.Ordinal)))
-            {
-                expectedReferenceCounts.Add("tenants-api", 2);
-            }
 
             string[] expectedDependents = expectedReferenceCounts.Keys.Order(StringComparer.Ordinal).ToArray();
             builder.Resources

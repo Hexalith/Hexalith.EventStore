@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-08-25
+# last_updated: 2026-08-26T08:12:13Z
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -228,6 +228,11 @@ development_status:
   # proposal section 4.9's atomic-rename condition cannot be met. Only the display title changed.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
+  # 2026-08-26 Story 3.15 loop-6 re-mint: dedicated issue #352 remains the only accepted owner
+  # thread, but subject c22d35b... is fail-closed at 0/3 after binding the assembler, smoke-capture
+  # producer, and tooling-composed-owner-comment limitation. The a8cc777e... set is superseded.
+  # Both owner roles map to github:jpiquot; the bmad:murat Test Architect record is self-attested.
+  # Fresh exact-subject receipts require Ask First authorization and were not collected here.
   3-15-corrected-deployed-runtime-parity-closure: in-progress
   epic-3-retrospective: optional
 

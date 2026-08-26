@@ -1810,3 +1810,15 @@ status: open
   severity: low
   summary: `MetadataKey_StaleEtagUpdate_IsRejected` and `ActorConcurrencyConflictTests` still read as actor-state evidence although the test keys on a generic-state key.
   evidence: The method keys on `story-4-5-generic-etag-{Guid:N}`, and both the class docstring and the story report now say so explicitly, but the method and class names were not changed. Renaming would invalidate `commands.md`, the `MUTATIONS` map in `validate-evidence.py`, and every committed receipt, so it is deferred to the append-fencing follow-up that re-captures anyway.
+
+## Ledger reconciliation: Story 3.15 loop 6 (2026-08-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Supersedes the stale assertion that dedicated Story 3.15 issue creation and receipt collection were never performed.
+  evidence: Issue `#352` and its historical `dab64f5f...` and `a8cc777e...` acceptance passes were previously completed with explicit authorization. The loop-6 trusted-byte batch has since re-minted the live subject to `c22d35b...`, moved the `a8cc777e...` set byte-for-byte to the superseded audit area, and left the current packet fail-closed at 0/3. Fresh exact-subject receipt collection is a new Ask First action and was not authorized or performed in this loop.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  severity: low
+  summary: Canonicalizes the prior loop-6 ledger block without rewriting append-only history.
+  evidence: Every absolute machine-local `source_spec` value in that historical block is interpreted as the repository-relative path shown here. Entries that omitted `severity` carry the severity stated by their equivalent earlier entry, or `low` when no earlier severity exists. Duplicate v3-timestamp and `closure.json` inventory-path entries are one open item each and are consolidated by reference to their first occurrence; repeated loop-3 items do not create additional work. The skipped deferred-work governance tests remain the single separately recorded format-enforcement deferral.

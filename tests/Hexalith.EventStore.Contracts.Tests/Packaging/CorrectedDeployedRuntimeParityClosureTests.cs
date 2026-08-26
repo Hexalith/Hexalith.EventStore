@@ -1092,7 +1092,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
             result.ExitCode.ShouldBe(accepted ? 0 : 1, result.Error);
             result.Output.ShouldContain(accepted ? "receipts=3 verifier_exit=0" : "receipts=0 verifier_exit=1");
-            result.Output.ShouldContain(accepted ? "pass:" : "subject=sha256:");
+            result.Output.ShouldContain("subject=sha256:");
         }
         finally
         {
@@ -2601,6 +2601,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         JsonObject subject = LoadJson(subjectPath);
         subject["authority"]!["owner_role_registry_sha256"] =
             closure["owner_role_registry"]!["sha256"]!.GetValue<string>();
+        subject["evidence"]!["package_domains_sha256"] =
+            ComputeCanonicalSha256(closure["packages"].ShouldNotBeNull());
         subject["evidence"]!["technical_inventory_sha256"] =
             closure["technical_inventory"]!["sha256"]!.GetValue<string>();
         WriteCanonical(subjectPath, subject);
@@ -2749,6 +2751,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
     private static string ComputeSha256(string path) =>
         Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+
+    private static string ComputeCanonicalSha256(JsonNode value) =>
+        Convert.ToHexString(SHA256.HashData(CanonicalBytes(value))).ToLowerInvariant();
 
     private static string ComputeTreeBindingSha256(string root)
     {

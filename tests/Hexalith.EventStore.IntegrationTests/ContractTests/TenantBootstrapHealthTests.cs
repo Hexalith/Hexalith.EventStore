@@ -43,12 +43,8 @@ public class TenantBootstrapHealthTests {
     public async Task TenantBootstrap_FirstSixtySeconds_PersistsAdministratorAndReportsTerminalSuccess() {
         using var overallCts = new CancellationTokenSource(s_overallGuard);
 
-        if (!_fixture.App.ResourceNotifications.TryGetCurrentState("tenants", out _)) {
-            Assert.Skip(
-                "The tenants resource is only present when the AppHost is built with "
-                + "UseHexalithProjectReferences=true / HEXALITH_TENANTS_SOURCE. "
-                + "Package-mode E2E runs do not include the Tenants source host.");
-        }
+        _fixture.App.ResourceNotifications.TryGetCurrentState("tenants", out _).ShouldBeTrue(
+            "The default local AppHost topology must provision the checked-out Tenants domain service.");
 
         _ = await _fixture.App.ResourceNotifications
             .WaitForResourceHealthyAsync("tenants", overallCts.Token)

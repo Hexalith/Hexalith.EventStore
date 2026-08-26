@@ -3,10 +3,18 @@ namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 using System.Text.Json;
 using System.Xml.Linq;
 
+using global::Aspire.Hosting;
+using global::Aspire.Hosting.ApplicationModel;
+using global::Aspire.Hosting.Testing;
+
+using CommunityToolkit.Aspire.Hosting.Dapr;
+
+using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
 using YamlDotNet.RepresentationModel;
 
+[Collection(AspireEnvironmentMutationCollection.Name)]
 public class TenantsApiLaunchSettingsTests
 {
     /// <summary>
@@ -87,9 +95,13 @@ public class TenantsApiLaunchSettingsTests
             "Hexalith.EventStore.AppHost",
             "Program.cs"));
 
-        string tenantsApiBlock = ExtractBlock(program, "IResourceBuilder<ProjectResource> tenantsApi =");
+        string tenantsApiBlock = ExtractBlock(
+            program,
+            "    _ = tenantsApi\n",
+            "\n}\n\n// Add sample domain service");
 
-        tenantsApiBlock.ShouldContain("builder.AddProject<Projects.Hexalith_Tenants_Api>(\"tenants-api\")");
+        program.ShouldContain("tenantsApi = builder.AddProject<Projects.Hexalith_Tenants_Api>(\"tenants-api\");");
+        program.ShouldContain("tenantsApi = builder.AddProject(\"tenants-api\", tenantsProjects.ApiProjectPath);");
         tenantsApiBlock.ShouldContain(".WithReference(eventStore)");
         tenantsApiBlock.ShouldContain(".WaitFor(eventStore)");
         tenantsApiBlock.ShouldContain(".WithExternalHttpEndpoints()");
@@ -102,6 +114,140 @@ public class TenantsApiLaunchSettingsTests
 
         program.ShouldContain("_ = tenantsApi.WithEventStoreAuthenticationValidation(security);");
         program.ShouldNotContain("_ = tenantsApi.WithEventStoreClientCredentials(security);");
+    }
+
+    [Fact]
+    public async Task AppHostModel_DefaultRunMode_RegistersResolvedTenantsHostsExactlyOnceWithExistingWiring()
+    {
+        string? originalSkipPrerequisiteCheck = Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK");
+        string? originalEnableKeycloak = Environment.GetEnvironmentVariable(
+            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey);
+
+        try
+        {
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                "false");
+
+            await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
+                .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
+                .ConfigureAwait(true);
+
+            builder.ExecutionContext.IsRunMode.ShouldBeTrue();
+            ProjectResource tenants = builder.Resources
+                .OfType<ProjectResource>()
+                .Where(static resource => string.Equals(resource.Name, "tenants", StringComparison.Ordinal))
+                .ShouldHaveSingleItem();
+            ProjectResource tenantsApi = builder.Resources
+                .OfType<ProjectResource>()
+                .Where(static resource => string.Equals(resource.Name, "tenants-api", StringComparison.Ordinal))
+                .ShouldHaveSingleItem();
+
+            TenantsProjectPaths resolvedPaths = TenantsProjectPaths.Resolve();
+            Path.GetFullPath(tenants.GetProjectMetadata().ProjectPath)
+                .ShouldBe(resolvedPaths.DomainServiceProjectPath);
+            Path.GetFullPath(tenantsApi.GetProjectMetadata().ProjectPath)
+                .ShouldBe(resolvedPaths.ApiProjectPath);
+
+            IDaprSidecarResource tenantsSidecar = GetSidecar(tenants);
+            DaprSidecarOptions tenantsSidecarOptions = GetOptions(tenantsSidecar);
+            tenantsSidecarOptions.AppId.ShouldBe("tenants");
+            tenantsSidecarOptions.EnableAppHealthCheck.ShouldBe(true);
+            tenantsSidecarOptions.AppHealthCheckPath.ShouldBe("/alive");
+            GetReferencedComponentNames(tenantsSidecar).ShouldBe(["pubsub", "statestore"]);
+            GetReferencedResourceNames(tenants).ShouldContain("eventstore");
+            GetWaitedResourceNames(tenants).ShouldContain("eventstore");
+
+            IDaprSidecarResource tenantsApiSidecar = GetSidecar(tenantsApi);
+            DaprSidecarOptions tenantsApiSidecarOptions = GetOptions(tenantsApiSidecar);
+            tenantsApiSidecarOptions.AppId.ShouldBe("tenants-api");
+            GetReferencedComponentNames(tenantsApiSidecar).ShouldBeEmpty();
+            GetReferencedResourceNames(tenantsApi).ShouldContain("eventstore");
+            GetWaitedResourceNames(tenantsApi).ShouldContain("eventstore");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", originalSkipPrerequisiteCheck);
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                originalEnableKeycloak);
+        }
+    }
+
+    [Fact]
+    public async Task AppHostModel_PublishMode_DoesNotRegisterPathDiscoveredTenantsHosts()
+    {
+        string? originalSkipPrerequisiteCheck = Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK");
+        string? originalEnableKeycloak = Environment.GetEnvironmentVariable(
+            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey);
+
+        try
+        {
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                "false");
+
+            await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
+                .CreateAsync<Projects.Hexalith_EventStore_AppHost>(["--AppHost:Operation=publish"])
+                .ConfigureAwait(true);
+
+            builder.ExecutionContext.IsPublishMode.ShouldBeTrue();
+            builder.Resources.ShouldNotContain(
+                static resource => string.Equals(resource.Name, "tenants", StringComparison.Ordinal));
+            builder.Resources.ShouldNotContain(
+                static resource => string.Equals(resource.Name, "tenants-api", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", originalSkipPrerequisiteCheck);
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                originalEnableKeycloak);
+        }
+    }
+
+    [Theory]
+    [InlineData("domain-service")]
+    [InlineData("api")]
+    public void TenantsProjectPaths_WhenEitherHostIsMissing_FailsWithRootSubmoduleDiagnostic(string missingHost)
+    {
+        TenantsProjectPaths resolvedPaths = TenantsProjectPaths.Resolve();
+        string missingPath = Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            ".missing-tenants-host",
+            missingHost,
+            "missing.csproj");
+        TenantsProjectPaths paths = string.Equals(missingHost, "domain-service", StringComparison.Ordinal)
+            ? resolvedPaths with { DomainServiceProjectPath = missingPath }
+            : resolvedPaths with { ApiProjectPath = missingPath };
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(paths.Validate);
+
+        exception.Message.ShouldContain(TenantsProjectPaths.SubmoduleInitializationCommand);
+        exception.Message.ShouldContain(missingPath);
+        exception.Message.ShouldNotContain(
+            string.Equals(missingHost, "domain-service", StringComparison.Ordinal)
+                ? resolvedPaths.ApiProjectPath
+                : resolvedPaths.DomainServiceProjectPath);
+    }
+
+    [Fact]
+    public void AppHostProgram_ExplicitSourceBranchUsesGeneratedTenantProjectsExactlyOnce()
+    {
+        string program = ReadRepositorySource(Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "src",
+            "Hexalith.EventStore.AppHost",
+            "Program.cs"));
+
+        CountOccurrences(
+            program,
+            "builder.AddProject<Projects.Hexalith_Tenants>(\"tenants\")").ShouldBe(1);
+        CountOccurrences(
+            program,
+            "builder.AddProject<Projects.Hexalith_Tenants_Api>(\"tenants-api\")").ShouldBe(1);
     }
 
     [Fact]
@@ -157,14 +303,61 @@ public class TenantsApiLaunchSettingsTests
     private static string ReadRepositorySource(string path)
         => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
 
-    private static string ExtractBlock(string text, string startMarker)
+    private static string ExtractBlock(string text, string startMarker, string endMarker)
     {
         int start = text.IndexOf(startMarker, StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0, $"Expected to find '{startMarker}'.");
-        int end = text.IndexOf("#endif", start, StringComparison.Ordinal);
-        end.ShouldBeGreaterThan(start, "Expected tenants-api resource registration before the source-mode #endif.");
+        int end = text.IndexOf(endMarker, start, StringComparison.Ordinal);
+        end.ShouldBeGreaterThan(start, $"Expected to find '{endMarker}' after the Tenants API registration.");
         return text[start..end];
     }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        int count = 0;
+        int startIndex = 0;
+        while ((startIndex = text.IndexOf(value, startIndex, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            startIndex += value.Length;
+        }
+
+        return count;
+    }
+
+    private static IDaprSidecarResource GetSidecar(ProjectResource project)
+    {
+        project.TryGetAnnotationsOfType<DaprSidecarAnnotation>(out IEnumerable<DaprSidecarAnnotation>? annotations)
+            .ShouldBeTrue();
+        return annotations!.ShouldHaveSingleItem().Sidecar;
+    }
+
+    private static DaprSidecarOptions GetOptions(IDaprSidecarResource sidecar)
+    {
+        sidecar.TryGetLastAnnotation<DaprSidecarOptionsAnnotation>(out DaprSidecarOptionsAnnotation? annotation)
+            .ShouldBeTrue();
+        return annotation!.Options;
+    }
+
+    private static string[] GetReferencedComponentNames(IDaprSidecarResource sidecar)
+        => sidecar.TryGetAnnotationsOfType<DaprComponentReferenceAnnotation>(
+            out IEnumerable<DaprComponentReferenceAnnotation>? annotations)
+            ? [.. annotations.Select(static annotation => annotation.Component.Name).Order(StringComparer.Ordinal)]
+            : [];
+
+    private static string[] GetReferencedResourceNames(ProjectResource project)
+        => [.. project.Annotations
+            .OfType<ResourceRelationshipAnnotation>()
+            .Where(static annotation => string.Equals(annotation.Type, "Reference", StringComparison.Ordinal))
+            .Select(static annotation => annotation.Resource.Name)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+
+    private static string[] GetWaitedResourceNames(ProjectResource project)
+        => [.. project.Annotations
+            .OfType<WaitAnnotation>()
+            .Select(static annotation => annotation.Resource.Name)
+            .Order(StringComparer.Ordinal)];
 
     private static YamlMappingNode Mapping(YamlMappingNode root, params string[] path)
     {
