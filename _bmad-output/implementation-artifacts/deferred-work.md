@@ -48,6 +48,7 @@ source_spec: _bmad-output/implementation-artifacts/1-20-owner-approved-parity-cl
 severity: low
 reason: The final owner-record limitation-ID comparison is asymmetric across the WORM boundary. Block 15's `validate_final_owner_record` dedupes the record's IDs with `LC_ALL=C sort -u` before diffing them against the expected set, while block 16's `validate_committed_owner_record` uses a plain `LC_ALL=C sort` and separately asserts uniqueness in jq (`length == (map(.id) | unique | length)`). A final approval record carrying a duplicate limitation ID therefore passes approval validation and only fails during A/B/C verification. evidence: Block 15 `diff -u "$EXPECTED_LIMITATION_IDS" <(jq -er '.limitations[].id' "$record" | LC_ALL=C sort -u)` versus block 16 `diff -u "$A_EXPECTED_LIMITATION_IDS" <(jq -er '.limitations[].id' "$record" | LC_ALL=C sort)`. Block 15 also derives its expected set from the generated approval subject while block 16 compares against a hard-coded literal list; the two were verified equal on 2026-07-25 at 9 capability IDs and 32 limitation IDs with no duplicates, so the asymmetry cannot fire against the current packet literal. status: accepted (deliberate acceptance 2026-07-25) — not fixed during the Story 1.20 closure run because the defect is unreachable with the committed approval-subject literal, and every packet edit forces a new candidate SHA and a complete ~50-minute Phase-1 re-gate. Fix by making block 15 use the same plain `sort` plus an explicit jq uniqueness assertion, so a duplicate ID is rejected before the irreversible WORM upload rather than after it. Fold into the next packet change rather than spending a dedicated cycle.
 status: open
+decision: 2026-08-26 Wait for packet change
 
 ### DW-7: The reusable release workflow silently produces a green run that publishes nothing when `main` advances between release dispatch and the `Semantic Release` step. `actions/checkout` pins the dispatched `github.sha`; semantic-release then does its own `git fetch`, sees the live `origin/main` is ahead, prints `ℹ The local branch main is behind the remote one, therefore a new version won't be published.`, and exits 0. The operator sees a successful Release run and reasonably assumes a release was cut. Harden `domain-release.yml` to fail loudly (or emit an unmissable error annotation + non-success outcome) when the checked-out release SHA is no longer the live `main` tip at semantic-release time, instead of a silent no-op green.
 
@@ -97,6 +98,7 @@ location: Oq8PostgresqlFixture
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md
 reason: Evaluate replacing `Oq8PostgresqlFixture`'s manual `docker run`/`docker image inspect` orchestration with GitHub Actions' native `services:` container support (or an equivalent declarative approach), which would pull, health-check, and manage the Postgres container without a hand-rolled prerequisite check. evidence: Blind-hunter review of the CI fix -- this fix patches the one workflow that currently exercises the fixture; the next new workflow, self-hosted runner, or Tier-3 job that reuses `Oq8PostgresqlFixture` will hit the identical "no such image" failure unless the fixture's own contract is revisited.
 status: open
+decision: 2026-08-26 Hybrid external service — Add an injectable external-PostgreSQL mode used by GitHub services while retaining a documented self-managed fallback for local and direct test runs.
 
 ### DW-13: Generalize the reusable publication preflight's hard-coded EventStore package count of exactly 14 so other callers can supply their own immutable expected inventory size without weakening EventStore's manifest contract.
 
@@ -123,6 +125,7 @@ location: HEAD
 source_spec: _bmad-output/implementation-artifacts/spec-simplify-release-architecture.md
 reason: Close the non-atomic gap between the final Zot tag-absence proof and the subsequent registry write. evidence: The final read-only `HEAD` check fails closed on collisions and ambiguous responses, but another writer can still create the tag after absence is observed and before .NET SDK publication begins; Zot absence and write are not atomic.
 status: open
+decision: 2026-08-26 Registry immutability — Configure and verify Zot immutable-tag enforcement, treat write conflicts as terminal collisions, and capture registry-policy evidence in release preflight.
 
 ### DW-16: Make a safe-denial route registration's `Domain`/`QueryType` casing mismatch against real wire values operator-visible (today only the registered-route list itself is logged, not whether any entry actually matches a query type that ever occurs).
 
@@ -146,7 +149,9 @@ origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-26
 location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-6-1-p2-dual-principal-query-envelope-safe-denial.md
 reason: Close the timing side-channel for the safe-denial adapter (Forbidden vs. genuine not-found currently have different latency profiles -- actor-activation-then-403 vs. actor-lookup-failure -- with no constant-time/padding normalization). evidence: Blind-hunter review of 6.1-P2 found no timing normalization despite the story's original AC naming "timing-observable behavior" indistinguishability; full closure requires platform-level work (DAPR actor activation, network jitter) beyond what a query-router decorator controls, so the AC was narrowed to shape/status indistinguishability only and this was split out as separate future hardening.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Keep the approved shape/status guarantee and document that distributed latency is not an authorization contract.
+decision: 2026-08-26 Close timing scope — Keep the approved shape/status guarantee and document that distributed latency is not an authorization contract.
 
 ### DW-19: Expose an authoritative persisted global-position/watermark to projections and `QueryCursorScope`, consumed by Hexalith.Projects Story 6.1-P2's watermark-replay/restart requirement.
 
@@ -278,6 +283,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sa
 location: CounterHistoryGrid
 reason: `CounterHistoryGrid` inserts a history row on every refresh, including HTTP 304 (no change), producing duplicate rows. Deferred (user decision B3): intent is ambiguous — value-change log (skip 304s) vs. polling/ETag-activity log (current behavior is fine). Decide the grid's purpose before changing it.
 status: open
+decision: 2026-08-26 Value changes only — Do not append a history row for 304 responses and add tests distinguishing unchanged refreshes from new values.
 
 ### DW-36: Command contracts with duplicate JSON property names are not diagnosed; the new duplicate JSON-name check only runs for queries, so generated command serialization/model-binding can still fail later. Deferred as command/generator hardening outside the D5 query proof.
 
@@ -401,6 +407,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of D-7-proof-te
 location: PackageGovernanceTests
 reason: LOW (supply-chain) — `PackageGovernanceTests` now require the local workflows to reference shared `Hexalith.Builds` reusable workflows by mutable `@main` (previously enforced full-SHA pinning). Deliberate org CI decision ("main for stability"), not D7 work. Whoever controls `Hexalith.Builds@main` controls this repo's release step (holds `NUGET_API_KEY`); pinning is delegated to the shared repo and unenforced here.
 status: open
+decision: 2026-08-26 Restore SHA pins — Pin every reusable Builds workflow to reviewed immutable SHAs and add governed automation for intentional pin updates.
 
 ### DW-52: MEDIUM — `ListByCursorAsync` (`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:482-488`) lets a `StatusCode = 200` `EventStoreGatewayException` (null/JSON-`null`/shape-mismatch payload from the generic `SubmitQueryAsync<T>`) escape into the Blazor circuit — it catches only `IsUnauthorized` and `IsUnavailableOrInvalid` (`>= 400`), unlike the sibling methods' unfiltered catch-all. Undermines AC7 fail-closed. Pre-existing pattern carried through the migration (filters unchanged by D7); trivially patchable by mirroring the sibling catch-all. Low likelihood — needs a malformed 200 (projection/contract bug).
 
@@ -463,6 +470,7 @@ location: EventStoreDomainEventProcessor.DispatchAsync
 source_spec: _bmad-output/implementation-artifacts/spec-1-4-projection-and-domain-event-consumer-seams.md
 reason: Domain-event processor message-level markers cannot make multiple independently side-effecting handlers atomic; a later handler failure may replay earlier successful handlers. evidence: `EventStoreDomainEventProcessor.DispatchAsync` invokes all registered `IEventStoreDomainEventHandler<TEvent>` handlers sequentially under one message marker. If handler A commits a side effect and handler B throws, the processor releases the message marker so DAPR can redeliver, and handler A can run again. Stronger guarantees need per-handler markers or a transactional/composite handler contract; this story documents handler idempotency and keeps the marker seam message-level.
 status: open
+decision: 2026-08-26 Per-handler markers — Persist acquisition and completion markers per message and handler identity, then retry only handlers without durable completion.
 
 ### DW-60: A misconfigured (non-existent) `PayloadAggregateIdPropertyName` silently drops every consumed event as an aggregate mismatch, indistinguishable from a legitimate value mismatch and with no distinct diagnostic.
 
@@ -479,6 +487,7 @@ location: src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtension
 source_spec: _bmad-output/implementation-artifacts/spec-1-5-domain-module-hosting-observability.md
 reason: Query/projection-handler domain discovery for telemetry only recognizes handlers that carry `[EventStoreDomain]` or expose a public parameterless constructor; a DI-constructed handler with no attribute is silently dropped (its domain gets no diagnostics), and the parameterless path reflectively instantiates handler types at host-build time. evidence: `GetHandlerDomainNames<THandler>` (`src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs:214-240`) yields a domain name only when the handler type has `[EventStoreDomain]` or a public parameterless ctor it can `Activator.CreateInstance`; a handler with only a dependency-injecting ctor and no attribute hits `continue` and is skipped, so its domain never gets an `EventStoreDomainDiagnostics`/keyed service/OTel source — and `GetRequiredKeyedService<EventStoreDomainDiagnostics>(domain)` then throws for that domain's own code while its admission telemetry is silently absent. The parameterless path also executes the handler constructor at host-build time (aborts startup if it throws; leaks a throwaway if the handler is `IDisposable`), and the `handler switch { IDomainQueryHandler => ..., IDomainProjectionHandler => ... }` matches the query branch first, so a type implementing both handler interfaces with divergent domains never registers its projection domain. The spec's residual-risk note accepts the `[EventStoreDomain]` requirement for dependency-heavy handlers; a robust fix resolves domain names from DI-materialized handlers or a static metadata seam rather than reflective construction. Two independent reviewers converged; genuine but requires a design decision, hence deferred rather than auto-patched.
 status: open
+decision: 2026-08-26 Require attribute — Require EventStoreDomain on every query and projection handler used for discovery, diagnose omissions at startup, and remove reflective construction.
 
 ### DW-62: Health endpoints do not declare an explicit anonymous-access contract, so a future global fallback authorization policy could block DAPR app-health probes even when the probe targets `/alive`.
 
@@ -503,6 +512,7 @@ location: references/Hexalith.Tenants/src/Hexalith.Tenants/Program.cs
 source_spec: _bmad-output/implementation-artifacts/spec-1-7-domainservice-packaging-and-guardrails.md
 reason: Domain-module guardrails still cannot broadly ban all direct DAPR/host wiring while the initialized Tenants domain-service host carries transitional `AddDaprClient`, `UseCloudEvents`, controller, MediatR, and router composition. evidence: Story 1.7 strengthens the clean Sample reference and platform-owned state/cursor/telemetry/health/endpoint checks, but a broad scan for all DAPR/host wiring markers would fail current `references/Hexalith.Tenants/src/Hexalith.Tenants/Program.cs`. Enforce the broader rule after the remaining Tenants host composition has moved behind EventStore platform seams or has an explicit permanent exception.
 status: open
+decision: 2026-08-26 Complete migration — Move the remaining Tenants host composition behind reusable EventStore DomainService extensions, then enable the broad guardrail.
 
 ### DW-65: Domain-module endpoint guardrails still rely on lightweight same-file route resolution and do not prove canonical route values passed through cross-file constants or variables.
 
@@ -752,7 +762,9 @@ resolution: already resolved: AggregateActor.cs:1373-1428 records the reminder s
 origin: migrated from legacy ledger ("Deferred from: code review of story-1.9 (2026-07-13)"), 2026-08-26
 location: ProjectionUpdateOrchestrator.cs:129
 reason: Retained legacy aggregate-wide checkpoint feeds the empty-stream drift branch (`ProjectionUpdateOrchestrator.cs:129`). An erased/recreated identity that had a legacy checkpoint and later reads an empty stream logs spurious `CheckpointDriftDetected` (diagnostic noise only — no mutation, no suppressed delivery). Direct consequence of the human-approved Option A retained-legacy-key relaxation; revisit if diagnostic noise is a problem or if a bounded legacy-key cleanup is added.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Preserve approved Option A because runtime correctness is unaffected.
+decision: 2026-08-26 Accept diagnostic noise — Preserve approved Option A because runtime correctness is unaffected.
 
 ### DW-96: `ProjectionUpdateOrchestrator` narrowed `public`→`internal` and dead erase surface. The visibility narrowing is disclosed/justified (verified no external consumer; DI via interfaces; no PublicAPI baseline). `IProjectionReadModelAddressFactory.CreateAggregateOwnedManifest` and `ProjectionEraseOutcomeKind.Denied` are currently unused; they become live only if the slot-completeness decision (Review Finding) adopts manifest-based erasure. Remove or wire per that decision.
 
@@ -781,6 +793,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-10-coordin
 location: ReadModelBatchProtocol.cs:262-269
 reason: Orphaned foreign envelope from an abandoned/never-retried batch permanently blocks any other batch touching that logical key (`ReadModelBatchProtocol.cs:262-269`, InstallAsync foreign-envelope branch → `OptimisticConflict` with no cleanup of the foreign envelope). Inherent to the resumable no-TTL design where prepared/aborting markers and envelopes are retained until reconciled. Decision 5 explicitly defers a bounded retention/cleanup horizon to Story 1.13 (together with its production delivery-checkpoint/dedup contract).
 status: open
+decision: 2026-08-26 Keep dedicated design
 
 ### DW-100: (HARD GATE for Story 1.12/1.13) Run the `ReadModelBatchLiveSidecarTests` lane in a working Tier-3 (real Redis/DAPR) environment before wiring the coordinated batch into production projection dispatch, and add the omitted Task-8 scenarios.
 
@@ -899,6 +912,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-19-correct
 location: src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:199
 reason: The query lifecycle overlay recognizes `Rebuilding` but leaves an in-flight `Erasing` projection indistinguishable from its prior payload state. Define and expose the pre-existing erase-query visibility policy in the erasure lifecycle scope. The query lifecycle overlay recognizes `Rebuilding` but leaves an in-flight `Erasing` projection indistinguishable from its prior payload state. Define and expose the pre-existing erase-query visibility policy in the erasure lifecycle scope. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:199`]
 status: open
+decision: 2026-08-26 Return Unknown metadata — Overlay Erasing as Unknown and remove projection-confirmed freshness and validator evidence while preserving the bounded response shape.
 
 ### DW-116: A blank head-event `MessageId` logs and returns from named dispatch without persisting retry work, so an aggregate with no later trigger can remain unprojected indefinitely. Add a durable malformed-identity disposition or recovery trigger.
 
@@ -997,6 +1011,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-ad
 location: _bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md
 reason: The GitHub login-format regex `^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$` in the proof-packet allowlist predicate (and mirrored in spec verification command 2) accepts trailing and consecutive hyphens that GitHub forbids (`jpiquot-`, `a--b`). Pre-existing packet behavior, currently moot because the spec predicate pins exact membership `["jpiquot"]`; tighten to `^(?=[A-Za-z0-9-]{1,39}$)[A-Za-z0-9](?:-?[A-Za-z0-9])*$` next time the packet validator is opened under an approved gate-logic change (the lookahead keeps GitHub's 39-character cap; the bare `^[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}$` form previously recorded here admits logins up to 77 characters). The GitHub login-format regex `^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$` in the proof-packet allowlist predicate (and mirrored in spec verification command 2) accepts trailing and consecutive hyphens that GitHub forbids (`jpiquot-`, `a--b`). Pre-existing packet behavior, currently moot because the spec predicate pins exact membership `["jpiquot"]`; tighten to `^(?=[A-Za-z0-9-]{1,39}$)[A-Za-z0-9](?:-?[A-Za-z0-9])*$` next time the packet validator is opened under an approved gate-logic change (the lookahead keeps GitHub's 39-character cap; the bare `^[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}$` form previously recorded here admits logins up to 77 characters). [`_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md`]
 status: open
+decision: 2026-08-26 Wait for packet change
 
 ### DW-129: The former EventStore-local `Microsoft.Playwright` declaration was removed; effective MSBuild evaluation now resolves it exactly once from Hexalith.Builds, and the import-only wrapper guard rejects future local masks.
 
@@ -1026,6 +1041,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-ad
 location: n/a
 reason: The Story 1.20 exact-membership literal `["jpiquot"]`×4 now exists in four synchronized places (both packet validators, spec Verification command 2, the allowlist itself), reducing the retained key-set/non-empty/uniqueness predicates to dead code, and the evidence-commit-A validator still lacks the login-format regex the candidate-gate validator carries. Consolidate (single source or documented sync list) at the next approved gate-logic change, together with the ledgered regex tightening above.
 status: open
+decision: 2026-08-26 Reapprove consolidation — After explicit approval, derive membership from one content-bound authority and apply the same login-format validation in both packet gates, updating frozen verification evidence.
 
 ### DW-133: Commit `01830544` ("fix: add commit message validation requirement with commitlint") is misdescribed and mixed: 377 of its 378 lines are the unrelated Story 3.5 artifact `3-5-shared-package-catalog-and-source-package-reference-modes.md`, and its 1-line Copilot entry-point edit is what desynchronized the three shared entry points (see the loop-4 Decision items in the spec). Third mixed-bundle recurrence recorded by this spec's reviews; history is already on `main`, so no rewrite — note it when bisecting across 2026-07-18.
 
@@ -1081,6 +1097,7 @@ location: subject-case
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md
 reason: Reconcile the documented literal lowercase-start rule with commitlint's weaker default `subject-case` behavior. evidence: The restored default rejects `fix: Update status` but accepts descriptions beginning with digits or symbols before uppercase text, despite shared guidance requiring the description to start with a lowercase letter.
 status: open
+decision: 2026-08-26 Enforce literal lowercase — Add a repository commitlint rule or plugin enforcing a lowercase first character and cover symbol/digit fixtures at process level.
 
 ### DW-140: RESOLVED 2026-07-20 — the repository excludes `chore` and uses specific non-release types, including `build(deps)` for automated dependency maintenance.
 
@@ -1130,6 +1147,7 @@ location: SubmitCommandResult
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29745475099-idempotency-result-payload-gating.md
 reason: `SubmitCommandResult` has no field distinguishing why `ResultPayload` is null (still in-flight, domain-rejected, or a durable non-retryable `PublishFailed`) -- all three look identical to callers from the response body alone. evidence: Adversarial review of the CI fix -- pre-existing API design gap in the exact code path this fix restores gating for; not caused by this change.
 status: open
+decision: 2026-08-26 Add outcome field — Design an additive version-compatible outcome/status discriminator, update handlers and OpenAPI, and add serialization compatibility tests.
 
 ### DW-146: `docs/reference/command-api.md` § "Stable Idempotency Outcomes" and `ErrorReferenceEndpoints.ErrorModels` are two independently maintained sources of truth for the same idempotency-admission failure taxonomy, with no cross-link between them.
 
@@ -1777,6 +1795,7 @@ location: src/Hexalith.EventStore.Contracts/Results/DomainServiceWireResult.cs:2
 source_spec: _bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md
 reason: [MEDIUM] Three event-payload writers disagree on serializer options, so persisted payload casing depends on which path produced the event. evidence: `src/Hexalith.EventStore.Contracts/Results/DomainServiceWireResult.cs:29`, `src/Hexalith.EventStore.Server/Events/EventPersister.cs:71` and `src/Hexalith.EventStore.Testing/Fakes/FakeEventPersister.cs:61` all call `JsonSerializer.SerializeToUtf8Bytes` with implicit options. On the deployed DAPR topology `DomainServiceWireResult` is the real writer — `DaprDomainServiceInvoker.cs:192-198` wraps its bytes as `SerializedEventPayload` and `EventPersister.cs:70-71` passes them through untouched — so a future change to `EventPersister`'s options is inert in production. Harmless today (all readers are case-insensitive after Story 4.3), but any converter or naming-policy change applies to one writer only. Story 4.3 was deliberately narrowed to readers-only on 2026-08-07 rather than change a cross-process wire format; unifying the writers needs its own story with a rollout plan.
 status: open
+decision: 2026-08-26 Plan writer migration — Define a versioned writer contract, migrate all three writers together, prove old and new payload readability, and document cross-process rollout.
 
 ### DW-225: [LOW] The shared payload options are frozen with no extension seam, so a domain cannot register a converter for its own payload types.
 
@@ -1785,6 +1804,7 @@ location: EventStorePayloadSerialization.Options
 source_spec: _bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md
 reason: [LOW] The shared payload options are frozen with no extension seam, so a domain cannot register a converter for its own payload types. evidence: `EventStorePayloadSerialization.Options` is made read-only in its static initializer with the reflection resolver baked in. Domains needing enum-as-string, value-object or polymorphic payload converters have no supported way to contribute one, and no `JsonSerializerContext` can be chained in. This is not a regression — every call site previously used its own bare Web options with the same limitation — but centralizing makes it a single explicit decision point. AOT/trimming remain out of scope per the Epic 4 context (reflection-based dispatch is load-bearing).
 status: open
+decision: 2026-08-26 Add extension seam — Design immutable per-domain serializer composition, converter ordering, DI registration, and compatibility tests without permitting global mutation.
 
 ### DW-226: [LOW] `EventStoreProjection.Project`'s typed overload silently skips events with no matching Apply method.
 
@@ -1809,6 +1829,7 @@ location: AggregateReconstructionErrorCategory
 source_spec: _bmad-output/implementation-artifacts/spec-4-3-deterministic-replay-dispatch-and-serialization.md
 reason: [MEDIUM] `AggregateReconstructionErrorCategory` has no member for apply-method ambiguity, so replay reports it as `UnknownEventType`. evidence: `AggregateReplayer` maps `AmbiguousApplyMethodException` onto `AggregateReconstructionErrorCategory.UnknownEventType`, but the type is not unknown — it is known twice, and the two failures have completely different operator remediations ("this stream references a type I have never heard of" versus "your state type has colliding Apply overloads"). Admin and RFC 7807 consumers cannot distinguish them. Adding an `AmbiguousEventType` member changes a public enum in `Hexalith.EventStore.Contracts`, which is a package contract change and was outside Story 4.3's stated scope.
 status: open
+decision: 2026-08-26 Add ambiguity category — Add the enum value, update replay mapping, RFC 7807/admin documentation, and serialization compatibility tests.
 
 ### DW-229: [LOW] Private `JsonSerializerDefaults.Web` options copies survive outside the four Client reader paths that Story 4.3 unified.
 
@@ -1881,6 +1902,7 @@ location: docs/guides/configuration-reference.md
 source_spec: _bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md
 reason: [MEDIUM] `docs/guides/configuration-reference.md` claims exponential backoff between the minimum and maximum drain periods, but drain reminders register a constant period. evidence: `configuration-reference.md:92` documents exponential backoff, while `AggregateActor.GetDrainReminderSchedule` registers a fixed `DrainPeriod` and only clamps it against `MaxDrainPeriod`. Pre-existing drift from Story 4.2. It becomes more consequential with a bounded attempt count, since the wall-clock budget before permanent dead-lettering is then `MaxDrainAttempts * DrainPeriod` (~8 minutes on defaults) rather than a growing backoff window.
 status: open
+decision: 2026-08-26 Correct documentation — Document the fixed recurring interval and clamp semantics, then clarify or deprecate the misleading MaxDrainPeriod description.
 
 ### DW-238: [LOW] `DrainReasonCodes` is `internal` but its values are now part of the public HTTP and wire contract, forcing consumers and tests to hard-code string literals.
 
@@ -1889,6 +1911,7 @@ location: DrainReasonCodes
 source_spec: _bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md
 reason: [LOW] `DrainReasonCodes` is `internal` but its values are now part of the public HTTP and wire contract, forcing consumers and tests to hard-code string literals. evidence: `CommandStatusResponse.RecoveryReasonCode` is returned to external HTTP clients and `DeadLetterMessage.ReasonCode` travels on the dead-letter topic, yet the bounded vocabulary lives only in `internal static class DrainReasonCodes`. The new tests already hard-code `"drain_attempts_exhausted"` and `"drain_publish_failed"` as bare strings. Consider promoting the constants to `Hexalith.EventStore.Contracts` and adding a test pinning the bounded set.
 status: open
+decision: 2026-08-26 Publish reason constants — Move the bounded vocabulary into Contracts, retain wire values, update consumers, and pin the complete set with compatibility tests.
 
 ### DW-239: [LOW] `DeadLetterEntry` carries no extensions field, so the admin surface cannot see the not-replay-eligible marker on an exhaustion dead-letter and its Retry action has no guard.
 
@@ -1897,6 +1920,7 @@ location: src/Hexalith.EventStore.Admin.Abstractions/Models/DeadLetters/DeadLett
 source_spec: _bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md
 reason: [LOW] `DeadLetterEntry` carries no extensions field, so the admin surface cannot see the not-replay-eligible marker on an exhaustion dead-letter and its Retry action has no guard. evidence: `src/Hexalith.EventStore.Admin.Abstractions/Models/DeadLetters/DeadLetterEntry.cs:17` has no extensions property, and `DaprDeadLetterCommandService.RetryDeadLettersAsync` plus the Admin UI Retry action do not consult it. An operator can therefore replay the reduced envelope (empty payload, synthetic user id) as though it were the original command.
 status: open
+decision: 2026-08-26 Expose replay eligibility — Add additive extension or replay-eligibility data, propagate it through query services, and disable retry for non-replayable exhaustion entries.
 
 ### DW-240: [LOW] Actor test fixtures are duplicated across test files, so any `AggregateActor` constructor change now requires four synchronized edits.
 
@@ -2177,6 +2201,7 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: Story 4.4 can report `Retryable=true` when only a recovery-index entry exists and reminder registration failed. evidence: The advisory status uses `drainReminderArmed || recoveryEntryTracked`, but an index entry does not itself activate an idle actor or guarantee an automatic retry.
 status: open
+decision: 2026-08-26 Require confirmed continuation — Report Retryable=true only when a reminder or another demonstrably durable continuation trigger is confirmed; update recovery behavior and tests so registration failure cannot over-promise.
 
 ### DW-273: Newly written normal command statuses leave `Retryable` null even though the public contract reserves null for legacy records.
 
@@ -2217,6 +2242,7 @@ location: DeadLettered
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: A crash after dead-letter broker acceptance but before the `DeadLettered` state save can publish the same exhausted range twice. evidence: The dead-letter sink and actor-state update are not atomic or idempotently coupled, despite Story 4.4's claim that the ordering prevents duplicate dead letters.
 status: open
+decision: 2026-08-26 Build durable idempotency — Introduce a stable dead-letter identity and durable outbox or sink-side deduplication protocol, including recovery tests across acceptance followed by state-save failure.
 
 ### DW-278: Persisted duplicate publication-index entries survive normalization and can leave stale capacity behind.
 
@@ -2233,6 +2259,7 @@ location: Deconstruct
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: Story 4.4's trailing optional parameters on public positional records are binary-breaking for already compiled consumers. evidence: The changes replace prior constructor and `Deconstruct` signatures on `CommandStatusRecord`, `CommandStatusResponse`, `DeadLetterMessage`, and `UnpublishedEventsRecord` without forwarding compatibility members.
 status: open
+decision: 2026-08-26 Add compatibility shims — Add forwarding legacy constructors and Deconstruct overloads for CommandStatusRecord, Response, DeadLetterMessage, and UnpublishedEventsRecord, with binary/API compatibility tests.
 
 ### DW-280: The Story 4.5 evidence validator hashes current worktree files instead of the source blobs captured by its baseline commit.
 
@@ -2454,6 +2481,7 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md
 reason: Add cryptographic reviewer identity and attestation to Story 4.15 receipts. evidence: Receipts are content-bound by hash and exact reviewer text but do not authenticate who produced the approval.
 status: open
+decision: 2026-08-26 Require signed attestations — Define an accepted GitHub OIDC or signature trust policy, emit signed reviewer attestations, and validate issuer, subject, audience, repository, commit, and evidence digest.
 
 ### DW-307: Retain bounded raw execution logs or equivalent replayable command evidence for pre-review commands.
 
@@ -2869,7 +2897,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: _PublishMultiArchContainers
 source_spec: _bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md
 reason: Decide whether the OCI image index should carry provenance annotations. evidence: `_PublishMultiArchContainers` passes no labels to `CreateImageIndex`, and `validate_packet_files` checks the index only for `schemaVersion`, `mediaType` and two descriptors. The multi-arch tag — the artifact a registry UI surfaces — has no `org.opencontainers.image.*` metadata, and no test asserts either way. The spec requires labels on the child configs only, so this is out of the current contract.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Retain child-config labels as the authoritative provenance contract until an index-level consumer requirement exists.
+decision: 2026-08-26 Keep child labels — Retain child-config labels as the authoritative provenance contract until an index-level consumer requirement exists.
 
 ### DW-360: Cross-check the three JSON canonicalisers against one shared fixture.
 
@@ -3063,7 +3093,9 @@ location: evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/acceptanc
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 severity: low
 reason: The Story 3.15 Test Architect receipt (`bmad:murat`) has no externally-checkable anchor comparable to the two GitHub-issue-comment-backed owner receipts. evidence: `evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/acceptances/bb58d691.../test-architect.json` is sourced from a `bmad-test-architect-record` (self-attested by the assembling tooling), unlike the `eventstore-owner`/`release-owner` receipts, which are independently verifiable via `gh api repos/Hexalith/Hexalith.EventStore/issues/comments/<id>`. Reproduces the same durable-receipt-anchor gap already tracked above for Story 3.13's disposition receipts, now recurring for Story 3.15; this is the project's established pattern for `bmad:`-role receipts generally, not a defect unique to this diff.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Close as an explicitly disclosed and accepted limitation of the current governance model.
+decision: 2026-08-26 Accept disclosed model — Close as an explicitly disclosed and accepted limitation of the current governance model.
 
 ### DW-382: `closure.json` declares `deployed_runtime_parity: "available"` and a non-null `selected_deployed_identity` even when `acceptances.receipts` is empty.
 
@@ -3073,6 +3105,7 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: low
 reason: `closure.json` declares `deployed_runtime_parity: "available"` and a non-null `selected_deployed_identity` even when `acceptances.receipts` is empty. evidence: Confirmed unchanged from `HEAD` (pre-existing, not introduced by the 2026-08-22 loop-3 diff) via `git show HEAD:.../closure.json`. The real gate is `_exact_list(receipts, 3, ...)` in `tools/deployed_runtime_parity_handlers/v1.py:360`, which fails closed regardless of those two fields' declared values, so there is no functional hole — but a consumer reading the JSON file directly instead of running `validate-corrected-deployed-runtime-parity.py` would misread pre-acceptance state as already authorized.
 status: open
+decision: 2026-08-26 Encode pending state — Make parity and selected identity conditional on validated receipts, update all consumers and fixtures, then re-mint and reauthorize the packet.
 
 ### DW-383: `RejectDispositionManifest`'s new directory allow-list branch (`actualDirectories.All(allowedDirectories.Contains)`) has no negative test planting an unlisted stray directory.
 
@@ -3191,7 +3224,9 @@ location: eventstore-owner
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 severity: medium
 reason: Story 3.13's three role-bound acceptances are a self-attestation, not independent three-party review. evidence: The packet-bound roster maps `eventstore-owner` and `release-owner` to the same account (`github:jpiquot`), and `test-architect` to `bmad:murat`, a tooling-attested record with no external anchor. The 3/3 gate at `evidence/story-3-13/disposition/6cee8dad.../acceptances/a7ecd455.../` is therefore satisfied by one human plus a bmad record. The two owner receipts are genuinely GitHub-minted and independently re-fetchable (comments 5395155800 / 5395155988 on issue 351), so the evidence is authentic; what is absent is reviewer independence. Same pattern already tracked for Story 3.15's `bmad:murat` receipt.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Close as a disclosed, human-approved acceptance model rather than an authenticity claim about three independent people.
+decision: 2026-08-26 Accept current roles — Close as a disclosed, human-approved acceptance model rather than an authenticity claim about three independent people.
 
 ### DW-396: The development-gitlink guard encodes "deliberately independent of the release pin" as a permanent inequality, so a legitimate submodule bump onto the release pin fails a test with no failure meaning.
 
@@ -3210,7 +3245,9 @@ location: .github/workflows/release.yml:103
 source_spec: _bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md
 severity: low
 reason: No executable guard asserts that the release caller's pinned reusable-workflow SHA is reachable on the Hexalith.Builds remote rather than only in a local object store. evidence: `.github/workflows/release.yml:103,110` pin `builds-execution-sha`, and the story record's warning that a rotation target must exist on the remote was deleted in `f2d2575c` with nothing replacing it. This is the defect that produced the chunk-A+B blocking Decision, when `63409393…` was pinned while it existed only on an unpushed branch (it has since been merged to Builds `main` and superseded by `a07078ad…`). Deferred 2026-08-24 by owner decision: an unresolvable `uses:` SHA already fails the Release dispatch at startup — the quarantined run `32347773728` failure mode — so nothing publishes silently, and every candidate guard costs either network plus auth inside the Tier-1 CI-gating Contracts lane or a `origin/main` remote-tracking ref that a CI submodule checkout may not populate (and which reds on force-pushes it should not judge). The recurring drift class is closed separately by binding the `docs/ci.md` pin prose to `ApprovedBuildsReleaseSha`.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Rely on GitHub reusable-workflow resolution failing before release work and retain local pin integrity checks.
+decision: 2026-08-26 Accept dispatch guard — Rely on GitHub reusable-workflow resolution failing before release work and retain local pin integrity checks.
 
 ### DW-398: The Story 3.13 closure-packet gate `ValidateAcceptances` still enforces the unmintable `#story-3-13-<hash>-<role>` commit anchor that only a fixture can satisfy.
 
@@ -3218,7 +3255,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: DeployedRuntimeParityClosureTests.cs:7378
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The Story 3.13 closure-packet gate `ValidateAcceptances` still enforces the unmintable `#story-3-13-<hash>-<role>` commit anchor that only a fixture can satisfy. evidence: `DeployedRuntimeParityClosureTests.cs:7378` builds `ApprovedSourceSha + "#story-3-13-" + subjectHash + "-" + role` and `:7405,:7409` require `retained-immutable-external-record` and `acceptance-source/v1`, while the disposition path moved to `/v2` and `github-issue-comment` (`:74,:5400-5412`). Live at `:1011` and at `:6144` inside the `story_may_be_done` gate. A genuine GitHub-collected receipt is rejected by it; the synthetic `CreateAcceptanceReceipts` fixture is its only witness. Same defect class Story 3.13 was reopened to remove.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Document the positive path as superseded by the completed negative disposition and remove it only in a separately approved compatibility change.
+decision: 2026-08-26 Retire positive path — Document the positive path as superseded by the completed negative disposition and remove it only in a separately approved compatibility change.
 
 ### DW-399: `author_association` requirements diverge between the registry authority source and acceptance receipts, and the divergence was resolved downward to keep real evidence passing.
 
@@ -3235,7 +3274,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: CorrectiveOciProvenanceReleaseTests.cs:118
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The OCI `created` provenance labels are self-comparing in tests and unchecked by the codec, and the retained child configs carry a malformed truncated value. evidence: `CorrectiveOciProvenanceReleaseTests.cs:118` sets `expected ??= ExpectedLabels(observedCreated)` where `observedCreated` is read from the first child config, so child 1 compares to itself; `v3.py:134 _expected_labels` omits `created` from the five enforced keys. Both retained configs carry `org.opencontainers.image.created = "2026-08-20T11"`, truncated at the first colon, inside the selected identity.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Close because the defect is disclosed and later publisher inputs/tests prevent recurrence without rewriting v3.96.2.
+decision: 2026-08-26 Accept frozen limitation — Close because the defect is disclosed and later publisher inputs/tests prevent recurrence without rewriting v3.96.2.
 
 ### DW-401: Two Production-smoke guards are green by construction -- `redirect_count` and `observed_runtime_platform` can never disagree with what they are checked against.
 
@@ -3244,6 +3285,7 @@ location: smoke-results.js
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: Two Production-smoke guards are green by construction -- `redirect_count` and `observed_runtime_platform` can never disagree with what they are checked against. evidence: `capture-corrected-deployed-runtime-parity-smokes.py` invokes `curl` without `--location`, so `num_redirects` is structurally 0 and the verifier's `redirect_count != 0` check cannot fire; `observed_runtime_platform` comes from `docker image inspect {{.Os}}/{{.Architecture}}`, i.e. the metadata `--platform` already selected. Separately, `smokes/*.log` are canonical JSON restatements of `smoke-results.json`, so the log-versus-summary comparison is between two hand-written documents rather than a retained transcript.
 status: open
+decision: 2026-08-26 Keep deferred
 
 ### DW-402: `FrozenStory314PacketRemainsByteForByteUnchanged` hashes a single file despite asserting whole-packet immutability.
 
@@ -3346,6 +3388,7 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: medium
 reason: v3's timestamp parser is looser than v1's, so the frozen predecessor's timestamps are validated by the weaker rule. evidence: `v1._parse_time` requires a strict `YYYY-MM-DDThh:mm:ss[.ffffff]Z` shape and rejects naive datetimes. The v3 code that `v1` delegates predecessor validation to still uses `value.replace("Z", "+00:00")` (`tools/release_evidence_handlers/v3.py:456-465`), which replaces every `Z` in the string, accepts a space separator, and accepts arbitrary non-UTC offsets. The hardening stops at the module boundary. Deferred because `v3.py` is the frozen Story 3.14 verifier and any edit re-mints the Story 3.15 subject.
 status: open
+decision: 2026-08-26 Keep deferred
 
 ### DW-413: Retained-file `size` has no upper bound and every retained and discovered file is read whole into memory.
 
@@ -3383,6 +3426,7 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: low
 reason: All verifier failures collapse to exit code 1, so "the verifier itself was modified" is indistinguishable from "the evidence did not validate". evidence: `main()` catches `(OSError, DispatchError, ValueError, json.JSONDecodeError)` and returns 1 for all of them. For a supply-chain gate, `DispatchError` (tampered or unpinned handler) deserves a distinct exit status from `EvidenceError`. Deferred because `docs/ci.md` and the test suite assert the current exit contract.
 status: open
+decision: 2026-08-26 Add typed exit codes — Define stable dispatch, evidence, I/O, and usage exit codes; preserve diagnostic safety; update docs, scripts, and compatibility tests.
 
 ### DW-417: `"closure.json"` is hardcoded into the closed technical inventory while the CLI accepts an arbitrary evidence path and an independent `--packet-root`.
 
@@ -3418,7 +3462,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: .github/workflows/release.yml
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The legacy release job retains unused `attestations: write` and `id-token: write` permissions. evidence: `.github/workflows/release.yml` grants both permissions to the production release job although the current legacy path does not consume them. Removing or splitting them changes release-workflow authority and is outside Story 3.15's evidence-only boundary.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Close as an explicit least-practical-privilege exception already approved and documented.
+decision: 2026-08-26 Keep ratified ceiling — Close as an explicit least-practical-privilege exception already approved and documented.
 
 ### DW-421: Container provenance URL validation accepts unrelated hosts and malformed percent escapes instead of enforcing the repository-derived canonical URLs.
 
@@ -3548,6 +3594,7 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: medium
 reason: Roughly 90 lines of security-critical loader code are duplicated across the two dispatchers with no sync test. evidence: `_is_repository_path`, `_module_is_repository_local`, `_begin/_end_trusted_import_environment`, `_load_verified_module` and `_verify_imported_file` exist in both `tools/validate-corrected-deployed-runtime-parity.py:113-243` and `tools/validate-corrective-release-evidence.py:85-162`, with divergent signatures (`relative` vs `path`) and the release copy missing the docstrings the parity copy carries. Nothing asserts the twins stay in sync, and the bytes-`TypeError` defect is present in both.
 status: open
+decision: 2026-08-26 Share one loader — Extract a minimal pinned loader module, migrate both dispatchers, add equivalence/security tests, and regenerate affected packet identities.
 
 ### DW-436: Several distinct fail-closed branches share one message, so no test can show which clause fired.
 
@@ -3565,7 +3612,9 @@ location: docs/ci.md
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 severity: medium
 reason: The two timestamp-rejected owner comments are named in three documents but retained nowhere, and the `dab64f5f` pair was never annotated. evidence: `3-15-corrected-deployed-runtime-parity-closure.md:70-76`, the proof packet and `docs/ci.md` all state that comments `5409140199` and `5409147909` were marked `SUPERSEDED -- INVALID TIMESTAMP-MISMATCH ATTEMPT`, but no bytes for either are retained under `evidence/story-3-15/`, so the claim is unverifiable from the repository. The `dab64f5f` owner comments `5408186984`/`5408189299` received no equivalent annotation and remain acceptance-shaped JSON on the now-allowlisted `#352` thread; their rejection rests solely on `subject_sha256` inequality.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Close with repository documentation that subject mismatch and timestamp validation, not remote annotations, are authoritative.
+decision: 2026-08-26 Document only — Close with repository documentation that subject mismatch and timestamp validation, not remote annotations, are authoritative.
 
 ### DW-438: The Code Map's frozen fence was extended and its line anchors were not refreshed.
 
@@ -3665,7 +3714,9 @@ location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/
 source_spec: _bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md
 severity: medium
 reason: No CI step executes the Story 4.5 evidence validator, so the packet's source binding decays silently under unrelated commits. evidence: `validate-evidence.py` is operator-discipline only. Every sibling committed-evidence directory is pinned either by a blocking test in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/` or by a workflow step (`tools/validate-oq8-platform-evidence.py` from `integration.yml:118`). Deferred by explicit owner decision: wiring a step would change `.github/`, and AC6 requires `git diff 0776785f..HEAD -- src .github` to print nothing. Preserving AC6 wins; the decay cost is accepted. Re-sealing is the recovery, and it was performed on 2026-08-26.
-status: open
+status: done 2026-08-26
+resolution: closed by human decision: Close as an explicit owner-approved tradeoff with operator-driven re-sealing as recovery.
+decision: 2026-08-26 Preserve AC6 — Close as an explicit owner-approved tradeoff with operator-driven re-sealing as recovery.
 
 ### DW-449: `Hexalith.EventStore.Gateway` and `Hexalith.EventStore.TestSubscriber` emit `bin/Debug` output paths inside a Release solution build.
 
@@ -3684,6 +3735,7 @@ source_spec: _bmad-output/implementation-artifacts/spec-4-5-append-durability-ra
 severity: medium
 reason: The ADD-fencing decision recorded in `architecture.md` still has no tracked owner story or trigger. evidence: `architecture.md:603` commits append-path storage fencing to "a separately approved implementation story", but no append-fencing story exists in `epics.md` or `sprint-status.yaml` (`grep -i fenc` finds only Story 4.11's admission fence). Nothing schedules the multi-provider re-capture the decision depends on. Carried forward from the 2026-08-11 review, still open after the 2026-08-26 re-seal.
 status: open
+decision: 2026-08-26 Create owner story — Author and approve a focused append-fencing story with provider scope, trigger, migration risks, and mandatory multi-provider recapture evidence.
 
 ### DW-451: `Oq8PostgresqlFixture` hard-codes control-plane ports `50005`/`50006` and cannot start where `dapr init` publishes `6050`/`6060`.
 
@@ -3693,6 +3745,7 @@ source_spec: _bmad-output/implementation-artifacts/spec-4-5-append-durability-ra
 severity: low
 reason: `Oq8PostgresqlFixture` hard-codes control-plane ports `50005`/`50006` and cannot start where `dapr init` publishes `6050`/`6060`. evidence: `Fixtures/Oq8PostgresqlFixture.cs:38-39` and its `VerifyPrerequisitesAsync` connect to `IPAddress.Loopback` on those exact ports, unlike `DaprTestContainerFixture`, which now probes both candidate pairs. The file is hash-bound by the sealed Story 4.14 (`evidence/story-4-14/.../source-state.json`) and Story 4.15 packets and validated by `tools/validate-oq8-platform-evidence.py` from `integration.yml`, so Story 4.5 must not edit it. The 2026-08-26 capture forwarded `50005->6050` and `50006->6060` instead, which is documented in `environment.md`. Owned by Story 4.14/4.15.
 status: open
+decision: 2026-08-26 Fix and re-seal — Add authenticated candidate-port resolution to Oq8PostgresqlFixture, update its tests, and regenerate both owning evidence packets.
 
 ### DW-452: Classifier completeness for the Story 4.5 race outcome model lives only in a docstring.
 
@@ -3763,6 +3816,7 @@ location: docs/ci.md
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: Story 4.5 evidence validation is coupled to the mutable whole-file hash of `docs/ci.md`. evidence: Running the retained Story 4.5 `validate-evidence.py` after the Story 3.15 CI documentation update fails with `source drifted since the seal: docs/ci.md`; the underlying mutable-document binding predates Story 3.15 and requires Story 4.5 ownership to redesign or re-seal.
 status: open
+decision: 2026-08-26 Redesign and re-seal — Bind stable semantic excerpts or code-only sources, explicitly inventory mutable documentation, and regenerate Story 4.5 validation evidence.
 
 ### DW-460: The blocking Contracts lane remains red because the OQ8 evidence seal no longer matches `DaprTestContainerFixture.cs`.
 
@@ -3771,6 +3825,7 @@ location: DaprTestContainerFixture.cs
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The blocking Contracts lane remains red because the OQ8 evidence seal no longer matches `DaprTestContainerFixture.cs`. evidence: The full Contracts assembly reports failures only in `Oq8PlatformClosureTests`; the current fixture hash differs from the Story 4.14/4.15 bound source identity, while the remainder passes 1,448/1,448. Story 3.15 must not re-seal OQ8 evidence.
 status: open
+decision: 2026-08-26 Re-seal OQ8 evidence — Re-run the owning OQ8 evidence workflow against the current fixture, regenerate bound identities and receipts, and restore the blocking Contracts lane.
 
 ### DW-461: Default package-mode AppHost startup with both Tenants hosts has no blocking CI runtime lane.
 
@@ -3931,6 +3986,7 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: Committed Playwright traces retain transient captures and potentially sensitive session metadata without a repository consumer. evidence: The baseline contains hundreds of duplicate screenshots and network trace records, including anti-forgery cookie and TLS/session metadata; they should be sanitized or replaced by intentional minimal evidence in their owning UI story.
 status: open
+decision: 2026-08-26 Sanitize and minimize — Define a trace retention policy, remove unconsumed duplicates, redact sensitive metadata, and retain only intentional minimal evidence with consumer links.
 
 ### DW-481: The complete recorded baseline contains whitespace errors outside Story 3.15.
 

@@ -1,0 +1,308 @@
+{
+  "DW-115": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Overlay Erasing as Unknown and remove projection-confirmed freshness and validator evidence while preserving the bounded response shape.",
+    "key": "1",
+    "label": "Return Unknown metadata",
+    "resolution": ""
+  },
+  "DW-12": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add an injectable external-PostgreSQL mode used by GitHub services while retaining a documented self-managed fallback for local and direct test runs.",
+    "key": "1",
+    "label": "Hybrid external service",
+    "resolution": ""
+  },
+  "DW-128": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "1",
+    "label": "Wait for packet change",
+    "resolution": ""
+  },
+  "DW-132": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "After explicit approval, derive membership from one content-bound authority and apply the same login-format validation in both packet gates, updating frozen verification evidence.",
+    "key": "1",
+    "label": "Reapprove consolidation",
+    "resolution": ""
+  },
+  "DW-139": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add a repository commitlint rule or plugin enforcing a lowercase first character and cover symbol/digit fixtures at process level.",
+    "key": "1",
+    "label": "Enforce literal lowercase",
+    "resolution": ""
+  },
+  "DW-145": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Design an additive version-compatible outcome/status discriminator, update handlers and OpenAPI, and add serialization compatibility tests.",
+    "key": "1",
+    "label": "Add outcome field",
+    "resolution": ""
+  },
+  "DW-15": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Configure and verify Zot immutable-tag enforcement, treat write conflicts as terminal collisions, and capture registry-policy evidence in release preflight.",
+    "key": "1",
+    "label": "Registry immutability",
+    "resolution": ""
+  },
+  "DW-224": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Define a versioned writer contract, migrate all three writers together, prove old and new payload readability, and document cross-process rollout.",
+    "key": "1",
+    "label": "Plan writer migration",
+    "resolution": ""
+  },
+  "DW-225": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Design immutable per-domain serializer composition, converter ordering, DI registration, and compatibility tests without permitting global mutation.",
+    "key": "1",
+    "label": "Add extension seam",
+    "resolution": ""
+  },
+  "DW-228": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add the enum value, update replay mapping, RFC 7807/admin documentation, and serialization compatibility tests.",
+    "key": "1",
+    "label": "Add ambiguity category",
+    "resolution": ""
+  },
+  "DW-237": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Document the fixed recurring interval and clamp semantics, then clarify or deprecate the misleading MaxDrainPeriod description.",
+    "key": "2",
+    "label": "Correct documentation",
+    "resolution": ""
+  },
+  "DW-238": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Move the bounded vocabulary into Contracts, retain wire values, update consumers, and pin the complete set with compatibility tests.",
+    "key": "1",
+    "label": "Publish reason constants",
+    "resolution": ""
+  },
+  "DW-239": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add additive extension or replay-eligibility data, propagate it through query services, and disable retry for non-replayable exhaustion entries.",
+    "key": "1",
+    "label": "Expose replay eligibility",
+    "resolution": ""
+  },
+  "DW-272": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Report Retryable=true only when a reminder or another demonstrably durable continuation trigger is confirmed; update recovery behavior and tests so registration failure cannot over-promise.",
+    "key": "1",
+    "label": "Require confirmed continuation",
+    "resolution": ""
+  },
+  "DW-277": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Introduce a stable dead-letter identity and durable outbox or sink-side deduplication protocol, including recovery tests across acceptance followed by state-save failure.",
+    "key": "1",
+    "label": "Build durable idempotency",
+    "resolution": ""
+  },
+  "DW-279": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add forwarding legacy constructors and Deconstruct overloads for CommandStatusRecord, Response, DeadLetterMessage, and UnpublishedEventsRecord, with binary/API compatibility tests.",
+    "key": "1",
+    "label": "Add compatibility shims",
+    "resolution": ""
+  },
+  "DW-306": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Define an accepted GitHub OIDC or signature trust policy, emit signed reviewer attestations, and validate issuer, subject, audience, repository, commit, and evidence digest.",
+    "key": "1",
+    "label": "Require signed attestations",
+    "resolution": ""
+  },
+  "DW-35": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Do not append a history row for 304 responses and add tests distinguishing unchanged refreshes from new values.",
+    "key": "1",
+    "label": "Value changes only",
+    "resolution": ""
+  },
+  "DW-382": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Make parity and selected identity conditional on validated receipts, update all consumers and fixtures, then re-mint and reauthorize the packet.",
+    "key": "1",
+    "label": "Encode pending state",
+    "resolution": ""
+  },
+  "DW-401": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep deferred",
+    "resolution": ""
+  },
+  "DW-412": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep deferred",
+    "resolution": ""
+  },
+  "DW-416": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Define stable dispatch, evidence, I/O, and usage exit codes; preserve diagnostic safety; update docs, scripts, and compatibility tests.",
+    "key": "1",
+    "label": "Add typed exit codes",
+    "resolution": ""
+  },
+  "DW-435": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Extract a minimal pinned loader module, migrate both dispatchers, add equivalence/security tests, and regenerate affected packet identities.",
+    "key": "1",
+    "label": "Share one loader",
+    "resolution": ""
+  },
+  "DW-450": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Author and approve a focused append-fencing story with provider scope, trigger, migration risks, and mandatory multi-provider recapture evidence.",
+    "key": "1",
+    "label": "Create owner story",
+    "resolution": ""
+  },
+  "DW-451": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add authenticated candidate-port resolution to Oq8PostgresqlFixture, update its tests, and regenerate both owning evidence packets.",
+    "key": "1",
+    "label": "Fix and re-seal",
+    "resolution": ""
+  },
+  "DW-459": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Bind stable semantic excerpts or code-only sources, explicitly inventory mutable documentation, and regenerate Story 4.5 validation evidence.",
+    "key": "1",
+    "label": "Redesign and re-seal",
+    "resolution": ""
+  },
+  "DW-460": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Re-run the owning OQ8 evidence workflow against the current fixture, regenerate bound identities and receipts, and restore the blocking Contracts lane.",
+    "key": "1",
+    "label": "Re-seal OQ8 evidence",
+    "resolution": ""
+  },
+  "DW-480": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Define a trace retention policy, remove unconsumed duplicates, redact sensitive metadata, and retain only intentional minimal evidence with consumer links.",
+    "key": "1",
+    "label": "Sanitize and minimize",
+    "resolution": ""
+  },
+  "DW-51": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Pin every reusable Builds workflow to reviewed immutable SHAs and add governed automation for intentional pin updates.",
+    "key": "1",
+    "label": "Restore SHA pins",
+    "resolution": ""
+  },
+  "DW-59": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Persist acquisition and completion markers per message and handler identity, then retry only handlers without durable completion.",
+    "key": "1",
+    "label": "Per-handler markers",
+    "resolution": ""
+  },
+  "DW-6": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "1",
+    "label": "Wait for packet change",
+    "resolution": ""
+  },
+  "DW-61": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Require EventStoreDomain on every query and projection handler used for discovery, diagnose omissions at startup, and remove reflective construction.",
+    "key": "1",
+    "label": "Require attribute",
+    "resolution": ""
+  },
+  "DW-64": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Move the remaining Tenants host composition behind reusable EventStore DomainService extensions, then enable the broad guardrail.",
+    "key": "1",
+    "label": "Complete migration",
+    "resolution": ""
+  },
+  "DW-99": {
+    "answered_at": "2026-08-26",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep dedicated design",
+    "resolution": ""
+  }
+}
