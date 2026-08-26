@@ -1,25 +1,26 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "baselineCommit": "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
   "mutationArmed": null,
-  "key": "story-4-5-generic-etag-2f4926a426a841aaaad0ec4958c864d9",
+  "key": "story-4-5-generic-etag-a6bcf6a7bc184e2ba5b794346bbfe6c4",
+  "postUpdateReadKey": "story-4-5-generic-etag-a6bcf6a7bc184e2ba5b794346bbfe6c4",
   "seedStatus": 204,
   "original": {
     "etag": "1",
-    "rawJson": "{\u0022version\u0022:0,\u0022writer\u0022:\u0022seed\u0022}",
+    "rawJson": "{\"writer\":\"seed\",\"version\":0}",
     "value": {
-      "version": 0,
-      "writer": "seed"
+      "writer": "seed",
+      "version": 0
     },
     "parseExceptionType": null
   },
   "interveningUpdate": {
     "status": 204,
     "etag": "2",
-    "rawJson": "{\u0022version\u0022:1,\u0022writer\u0022:\u0022first\u0022}",
+    "rawJson": "{\"writer\":\"first\",\"version\":1}",
     "value": {
-      "version": 1,
-      "writer": "first"
+      "writer": "first",
+      "version": 1
     },
     "parseExceptionType": null,
     "etagAdvanced": true
@@ -28,19 +29,19 @@
     "suppliedEtag": "1",
     "suppliedEtagWasStale": true,
     "status": 409,
-    "responseBody": "{\u0022errorCode\u0022:\u0022ERR_STATE_SAVE\u0022,\u0022message\u0022:\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-42ff15aebf1e46c9881b1e3ca5c5beb4||story-4-5-generic-etag-2f4926a426a841aaaad0ec4958c864d9\u0022}",
+    "responseBody": "{\"errorCode\":\"ERR_STATE_SAVE\",\"message\":\"failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-d7a18487e49243339d31c3bb888d880a||story-4-5-generic-etag-a6bcf6a7bc184e2ba5b794346bbfe6c4\"}",
     "errorCode": "ERR_STATE_SAVE",
-    "errorMessage": "failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-42ff15aebf1e46c9881b1e3ca5c5beb4||story-4-5-generic-etag-2f4926a426a841aaaad0ec4958c864d9",
+    "errorMessage": "failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-d7a18487e49243339d31c3bb888d880a||story-4-5-generic-etag-a6bcf6a7bc184e2ba5b794346bbfe6c4",
     "parseError": null,
     "acknowledged": false
   },
-  "retainedReadKey": "story-4-5-generic-etag-2f4926a426a841aaaad0ec4958c864d9",
+  "retainedReadKey": "story-4-5-generic-etag-a6bcf6a7bc184e2ba5b794346bbfe6c4",
   "expectedRetainedWriter": "first",
   "redisRetainedValue": {
-    "version": 1,
-    "writer": "first"
+    "writer": "first",
+    "version": 1
   },
-  "redisRetainedRawJson": "{\u0022version\u0022:1,\u0022writer\u0022:\u0022first\u0022}",
+  "redisRetainedRawJson": "{\"writer\":\"first\",\"version\":1}",
   "retainedValueMatchesExpected": true,
   "retainedReadExceptionType": null,
   "retainedReadExceptionMessage": null,

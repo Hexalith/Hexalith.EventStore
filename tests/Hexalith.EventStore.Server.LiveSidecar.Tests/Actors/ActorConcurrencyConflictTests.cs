@@ -158,8 +158,25 @@ public class ActorConcurrencyConflictTests
             HttpStatusCode.NoContent,
             "the intervening conditional write is a harness precondition, not one of the recorded invariants");
 
+        // Perturbation: read the post-update state from a decoy key that was seeded and never
+        // updated, so the run inspects a token that never advanced and cannot show the replayed
+        // token became stale. The replayed token itself is unchanged, so the 409 surface stands.
+        string postUpdateReadKey = key;
+        if (Story45MutationSwitch.IsArmed("stale-token-proven-stale"))
+        {
+            postUpdateReadKey = $"{key}-decoy";
+            using HttpResponseMessage decoySeed = await SaveStateAsync(
+                postUpdateReadKey,
+                seedJson,
+                etag: null,
+                operationCancellation.Token).ConfigureAwait(true);
+            decoySeed.StatusCode.ShouldBe(
+                HttpStatusCode.NoContent,
+                "the decoy seed is a perturbation precondition, not one of the recorded invariants");
+        }
+
         (string currentJson, string currentEtag) = await GetStateWithEtagAsync(
-            key,
+            postUpdateReadKey,
             operationCancellation.Token).ConfigureAwait(true);
         JsonCapture current = JsonCapture.From(currentJson);
         bool etagAdvanced = !string.Equals(originalEtag, currentEtag, StringComparison.Ordinal);
@@ -233,10 +250,11 @@ public class ActorConcurrencyConflictTests
         };
         var evidence = new
         {
-            schemaVersion = 3,
+            schemaVersion = 4,
             baselineCommit = "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
             mutationArmed,
             key,
+            postUpdateReadKey,
             seedStatus = (int)seed.StatusCode,
             original = new
             {
@@ -257,7 +275,7 @@ public class ActorConcurrencyConflictTests
             staleReplay = new
             {
                 suppliedEtag = replayedEtag,
-                suppliedEtagWasStale = !Story45MutationSwitch.IsArmed("generic-409-semantics"),
+                suppliedEtagWasStale = !string.Equals(replayedEtag, currentEtag, StringComparison.Ordinal),
                 status = (int)stale.StatusCode,
                 responseBody = staleResponseBody,
                 errorCode = staleError.ErrorCode,

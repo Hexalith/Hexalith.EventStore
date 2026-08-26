@@ -1,8 +1,8 @@
 {
   "reportFormat": "CTRF",
   "specVersion": "0.0.0",
-  "reportId": "206d63bb-dc43-4bd9-a293-36ad25572958",
-  "timestamp": "2026-08-26T06:28:43Z",
+  "reportId": "eb4b46b1-b285-4480-bca6-b1d8552ec3ee",
+  "timestamp": "2026-08-26T06:34:23Z",
   "results": {
     "tool": {
       "name": "xUnit.net v3",
@@ -17,22 +17,22 @@
       "user": "<redacted-machine-user>",
       "suites": [
         {
-          "id": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+          "id": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
           "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
           "environment": "64-bit (x64) .NET 10.0.10 [collection-per-class, non-parallel]",
           "testFramework": "xUnit.net v3 3.2.2+728c1dce01",
           "targetFramework": ".NETCoreApp,Version=v10.0",
-          "start": 1787725673762,
-          "stop": 1787725723696,
-          "duration": 57025,
+          "start": 1787726013992,
+          "stop": 1787726063958,
+          "duration": 53522,
           "collections": [
             {
-              "id": "aa742d76-5c88-4898-bc59-15d2aab0aed4",
-              "name": "Oq8Postgresql"
+              "id": "375f07ef-25d6-4173-a5be-b719ec709e4a",
+              "name": "DaprTestContainer"
             },
             {
-              "id": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
-              "name": "DaprTestContainer"
+              "id": "19abbbbf-3ec5-42b7-9b76-43e2fe0e8f57",
+              "name": "Oq8Postgresql"
             }
           ],
           "errors": []
@@ -47,48 +47,23 @@
       "skipped": 0,
       "other": 0,
       "suites": 1,
-      "start": 1787725673762,
-      "stop": 1787725723696
+      "start": 1787726013992,
+      "stop": 1787726063958
     },
     "tests": [
       {
-        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
-        "status": "passed",
-        "duration": 13953,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
-        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionOq8PostgresqlTests.cs",
-        "line": 20,
-        "tags": [
-          "LiveSidecar"
-        ],
-        "extra": {
-          "id": "dad4310b-8b77-425d-b931-8f1d867e64c2",
-          "collection": "aa742d76-5c88-4898-bc59-15d2aab0aed4",
-          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests",
-          "method": "ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
-          "traits": {
-            "Category": [
-              "LiveSidecar"
-            ],
-            "Profile": [
-              "oq8-postgresql-v1"
-            ]
-          }
-        }
-      },
-      {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionExpiryLiveSidecarTests.ExpiryReminder_AfterApplicationAndSidecarRestart_RetainsOnlyMinimalTombstone",
         "status": "passed",
-        "duration": 9005,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 8958,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionExpiryLiveSidecarTests.cs",
         "line": 17,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "90b7cb9d-54fa-487b-95b8-b6cd6f1f3b94",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "86611c15-f150-4591-96d6-f33588a78e45",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionExpiryLiveSidecarTests",
           "method": "ExpiryReminder_AfterApplicationAndSidecarRestart_RetainsOnlyMinimalTombstone",
           "traits": {
@@ -101,16 +76,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = True, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"same-key-overwrite-raw-durable-write-lost\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
-        "duration": 1,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 10,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "b852e64e-846b-4485-b39f-529bd62837ef",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "49c64c81-a7a3-4de6-921b-8ac24711780e",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -124,15 +99,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = True, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"same-key-overwrite-actor-acknowledged-write-lost\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "95a07b00-8dd6-4ab2-9a7d-979aa54a250e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "3a2a3f09-4db3-48f4-a497-02570f62b498",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -146,15 +121,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-conflict-rejected\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "c7b66f0a-f426-4087-9ffc-9ce88d402850",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "702475f3-438c-4b44-884e-8e3c765cf89d",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -168,15 +143,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 412, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-conflict-rejected\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "27ae2958-9852-47a1-8396-b9bd6b9acadd",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "9b776640-6d3c-408f-9fcc-3ec22747e3a9",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -190,15 +165,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 500, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-infrastructure-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "62c61ff4-c531-4a7f-9553-6fe2a568f551",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "34057c9d-b07f-459b-a3c9-8c7c3700fa4f",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -212,15 +187,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 400, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-unrecognized-http-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "683f80f0-7c69-4453-b614-f00a5a51d191",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "1b2ba2f0-f562-4f84-8ee7-9ae4f68c9933",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -234,15 +209,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = , RawExceptionType = System.Net.Http.HttpRequestException, RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-transport-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "a5f8c83a-07c0-4fe3-a76e-e0a3e1385e9b",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "cfb6469d-87ba-4de6-8533-c8b27b6c6b88",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -256,15 +231,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = System.TimeoutException, FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"actor-writer-infrastructure-error\\\", expectedConsistency: False, expectedInfrastructureFailure: True, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "b1d39407-5ca9-4bad-8574-647f2b6bf1d0",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "27c86875-1be4-45f8-ad53-480e078dcd84",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -278,15 +253,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = True, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"inconsistent-both-acknowledged-total-loss\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "5daa50dd-d396-4a80-ad5e-b0a56718d6d0",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "5cdccf95-e173-42d5-92ea-d83fc9f27365",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -300,15 +275,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"inconsistent-raw-acknowledged-total-loss\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "0b8f8d64-27b2-4349-9b64-0497dcd7a693",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "3645bc0a-2530-4823-90b7-f3cd295404b7",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -322,15 +297,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = True, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"inconsistent-actor-acknowledged-total-loss\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "b7966b28-2dcf-4328-839d-08435348f0de",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "1a09f7cd-0907-4faa-96fb-eba6fa10e07e",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -344,15 +319,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = True, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 0, RetryCount = 0 }, expectedName: \\\"neither-writer-durable\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "30467daf-1719-4209-9159-2bdde548cc5f",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "89ac013c-2869-4f33-838d-989a7440d4b4",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -366,15 +341,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 2, RetryCount = 1 }, expectedName: \\\"conflict-retry-to-sequence-2\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "fd7a79bc-7d7c-42ae-a3b9-d45399dad2cc",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "cf021e7a-c8f5-476f-8b37-21b7e205ac9e",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -388,15 +363,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 2, RetryCount = 0 }, expectedName: \\\"inconsistent-sequence-2-outcome\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "6149f1c7-efa5-4115-b416-9ed1c646dccb",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "719ecbdb-e61e-4c97-a19b-6934bd550a41",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -410,15 +385,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 2, RetryCount = 1 }, expectedName: \\\"inconsistent-sequence-2-outcome\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "dd4b44e6-00b4-44d0-bc9d-692bb89a2f92",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "a6089cdc-10fc-46e4-863a-d7a106e28770",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -432,15 +407,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"inconsistent-raw-acknowledgement-not-proven-durabl\\\"···, expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "d425e8ca-9fd3-4917-9dc8-83d511e8b546",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "ee717257-868c-4893-b38e-0ede86145587",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -454,15 +429,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = True, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"actor-writer-conflict-rejected\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "553a89b9-3962-4e5d-86c5-3339e235b38e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "9efbca3c-231c-4312-9e95-2843fa74a0bd",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -476,15 +451,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = True, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"inconsistent-single-sequence-has-two-writers\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "f4e5e0a3-f901-4835-b7d8-90fc49c66c2c",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "a9ad7d02-eacf-4714-a6ae-6b6958d565ee",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -498,15 +473,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = False, ActorRejected = True, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"actor-writer-rejected\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "8558eff2-824a-47e3-bce7-58d89d774883",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "618e77aa-2372-4f3c-aff6-2eda35cc478e",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -520,15 +495,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 204, RawExceptionType = , RawDurabilityProven = False, RawSurvives = True, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"raw-writer-survived\\\", expectedConsistency: True, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "f7c3b713-8c80-4f70-8958-d651e89c74a7",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "f9092baa-4183-4d4b-9c55-33683300bd4f",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -542,15 +517,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 3, RetryCount = 0 }, expectedName: \\\"inconsistent-final-sequence\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "c250f9de-287c-4973-a6e3-a18d25a35369",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "da15e51b-910e-480d-8c57-f0bd792e7cda",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -564,15 +539,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests.Classify_ReturnsExpectedOutcome(input: Input { RawHttpStatus = 409, RawExceptionType = , RawDurabilityProven = False, RawSurvives = False, ActorSurvives = False, ActorAccepted = False, ActorRejected = False, ActorConflictSignalled = False, ActorExceptionType = , FinalSequence = 1, RetryCount = 0 }, expectedName: \\\"inconsistent-final-writer-missing\\\", expectedConsistency: False, expectedInfrastructureFailure: False, expectedRecognizedRejection: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs",
         "line": 48,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "44eec690-293c-4a56-8b9e-f8794641bfc0",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "219bd4d1-57f4-48f9-89c0-8efe5fecff30",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
           "method": "Classify_ReturnsExpectedOutcome",
           "traits": {
@@ -585,16 +560,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Commands.CommandRoutingIntegrationTests.ProcessCommandAsync_DifferentDomains_RouteToDifferentActors",
         "status": "passed",
-        "duration": 216,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 128,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Commands/CommandRoutingIntegrationTests.cs",
         "line": 32,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "5cd7967c-666b-4110-be75-532be82750a3",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "d01141bb-12e2-4a13-884e-1c743756d4b2",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Commands.CommandRoutingIntegrationTests",
           "method": "ProcessCommandAsync_DifferentDomains_RouteToDifferentActors",
           "traits": {
@@ -607,16 +582,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Commands.CommandRoutingIntegrationTests.ProcessCommandAsync_NoOpResult_ReturnsAcceptedWithZeroEvents",
         "status": "passed",
-        "duration": 17,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 14,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Commands/CommandRoutingIntegrationTests.cs",
         "line": 78,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "347a240d-9424-4e39-a12c-a389c5423030",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "9a3ec2ef-0ef3-440c-ac34-ad6c198a4c78",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Commands.CommandRoutingIntegrationTests",
           "method": "ProcessCommandAsync_NoOpResult_ReturnsAcceptedWithZeroEvents",
           "traits": {
@@ -629,16 +604,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorTenantIsolationTests.ProcessCommandAsync_DifferentTenants_HaveIsolatedState",
         "status": "passed",
-        "duration": 136,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 69,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorTenantIsolationTests.cs",
         "line": 34,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "14866acb-2fef-4eb1-af2b-f8311ffde20e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "de2c7007-237b-4ced-a833-c0a62dbf3000",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorTenantIsolationTests",
           "method": "ProcessCommandAsync_DifferentTenants_HaveIsolatedState",
           "traits": {
@@ -652,15 +627,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorTenantIsolationTests.ProcessCommandAsync_TenantMismatch_RejectedBeforeStateAccess",
         "status": "passed",
         "duration": 5,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorTenantIsolationTests.cs",
         "line": 86,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "8d6b8dab-cdaa-461d-ba51-964efd921112",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "d9f6bd6c-8261-4854-a857-052c7e53c606",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorTenantIsolationTests",
           "method": "ProcessCommandAsync_TenantMismatch_RejectedBeforeStateAccess",
           "traits": {
@@ -673,16 +648,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Commands.ConcurrencyConflictStatusPersistenceLiveSidecarTests.TryHandleAsync_ConcurrencyConflict_PersistsRejectedStatusThroughDaprAsync",
         "status": "passed",
-        "duration": 47,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 27,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Commands/ConcurrencyConflictStatusPersistenceLiveSidecarTests.cs",
         "line": 28,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "33c4ce93-fdbd-4802-8139-286a3112c5aa",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "373b1186-f3e7-4bac-bea5-c07d7ea91d87",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Commands.ConcurrencyConflictStatusPersistenceLiveSidecarTests",
           "method": "TryHandleAsync_ConcurrencyConflict_PersistsRejectedStatusThroughDaprAsync",
           "traits": {
@@ -695,16 +670,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests.CoordinatedErase_IdempotentRerun_ConvergesToCompleteWithRedisUnchanged",
         "status": "passed",
-        "duration": 188,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 131,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionEraseLiveSidecarTests.cs",
         "line": 234,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "0cda6697-170b-4136-9697-c62f453fdc58",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "65e982be-f1e6-474c-b32a-6ff46f993ed8",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests",
           "method": "CoordinatedErase_IdempotentRerun_ConvergesToCompleteWithRedisUnchanged",
           "traits": {
@@ -720,16 +695,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests.StaleCheckpointRecovery_ReadReturnsZeroFromMarker_WithoutTouchingEventStream",
         "status": "passed",
-        "duration": 49,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 48,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionEraseLiveSidecarTests.cs",
         "line": 129,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "d95cd032-96a2-46f5-80d7-ff1727e55947",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "f9c8167b-79df-4232-b771-54a8a175aa41",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests",
           "method": "StaleCheckpointRecovery_ReadReturnsZeroFromMarker_WithoutTouchingEventStream",
           "traits": {
@@ -745,16 +720,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests.CoordinatedErase_PersistsAbsentTargetsAndRetainsMigrationMarker_ResumableNotAtomic",
         "status": "passed",
-        "duration": 34,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 32,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionEraseLiveSidecarTests.cs",
         "line": 66,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "cfe9f317-65d8-4041-9ceb-186da368a84d",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "674c49a1-60d1-4999-b0e1-19fcc7f676e8",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests",
           "method": "CoordinatedErase_PersistsAbsentTargetsAndRetainsMigrationMarker_ResumableNotAtomic",
           "traits": {
@@ -770,16 +745,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests.CoordinatedErase_TenantIsolation_LeavesOtherTenantByteForByteUnchanged",
         "status": "passed",
-        "duration": 30,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 29,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionEraseLiveSidecarTests.cs",
         "line": 176,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "f656f536-48d5-4d69-a5a9-4af4a430e2c0",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "7a30ab66-e27f-4a42-aacd-9c02b1f89c88",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionEraseLiveSidecarTests",
           "method": "CoordinatedErase_TenantIsolation_LeavesOtherTenantByteForByteUnchanged",
           "traits": {
@@ -795,16 +770,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.IdentityReuse_DifferentFingerprint_ReturnsConflict_AndDoesNotMutate",
         "status": "passed",
-        "duration": 51,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 47,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs",
         "line": 92,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "d833d5cc-f602-4074-b093-e8b56335dfe1",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "abe18bca-5123-425a-9ac6-9920516019e9",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
           "method": "IdentityReuse_DifferentFingerprint_ReturnsConflict_AndDoesNotMutate",
           "traits": {
@@ -820,16 +795,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.PartialPrefix_PreservesOldVisibleView_ThenSameIdentityConverges",
         "status": "passed",
-        "duration": 41,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 35,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs",
         "line": 121,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "3f231a2d-e2ae-4207-b4b6-3e1acedc89d0",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "145cc116-b48f-4c31-bc4c-bcc18078ca3e",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
           "method": "PartialPrefix_PreservesOldVisibleView_ThenSameIdentityConverges",
           "traits": {
@@ -845,16 +820,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.ResumableBatch_PersistsDetailIndexAndReceipt_AndLeavesCheckpointUnchanged",
         "status": "passed",
-        "duration": 52,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 45,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs",
         "line": 37,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "02fda041-5727-454a-bc01-9cb381a920b3",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "bea5b084-4462-42a0-9602-aad672d80f77",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
           "method": "ResumableBatch_PersistsDetailIndexAndReceipt_AndLeavesCheckpointUnchanged",
           "traits": {
@@ -870,16 +845,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.PostDispatchCancellation_ReconcilesCommittedBatchWithoutRollback",
         "status": "passed",
-        "duration": 32,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 30,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs",
         "line": 203,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "a39742d9-a9d4-411d-9994-652b5b58ac45",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "5546d72d-4858-4f32-819d-45e1a575c1d5",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
           "method": "PostDispatchCancellation_ReconcilesCommittedBatchWithoutRollback",
           "traits": {
@@ -895,8 +870,8 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.TransactionQualificationProbe_KeepsRedisResumable",
         "status": "passed",
-        "duration": 1,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 2,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs",
         "line": 247,
         "tags": [
@@ -904,8 +879,8 @@
           "TransactionQualificationProbe"
         ],
         "extra": {
-          "id": "74e181c8-7a65-4b33-9669-a5f1c38c867a",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "fa3b6bd3-4f50-42f7-8b9b-70d09c2a412d",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
           "method": "TransactionQualificationProbe_KeepsRedisResumable",
           "traits": {
@@ -922,16 +897,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.ConflictAfterPartialInstall_AbortsAndRestoresPreviousView",
         "status": "passed",
-        "duration": 35,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 29,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs",
         "line": 162,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "77a3b5fa-bc71-4ad1-891d-4497c47b11ab",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "4530218b-56b6-49fb-afb6-49b00733db3d",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests",
           "method": "ConflictAfterPartialInstall_AbortsAndRestoresPreviousView",
           "traits": {
@@ -947,16 +922,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionDeliveryCutoverLiveSidecarTests.CutoverMarker_ReadinessDowngradeAndScopeErase_RehearseAgainstRedis",
         "status": "passed",
-        "duration": 23,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 20,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionDeliveryCutoverLiveSidecarTests.cs",
         "line": 18,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "2631bbdd-cb69-4f0b-9fea-9629a6bf8fc8",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "6a2aca66-bed1-4991-a955-d959d5c7acf9",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionDeliveryCutoverLiveSidecarTests",
           "method": "CutoverMarker_ReadinessDowngradeAndScopeErase_RehearseAgainstRedis",
           "traits": {
@@ -969,16 +944,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.UnsoundClassifications_AreAllProducedByTheCaseTable",
         "status": "passed",
-        "duration": 2,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 1,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 71,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "55fac98b-4024-4075-b3d8-be874a037858",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "635cfd3e-a41e-4bee-ae05-0ebeb877550f",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "UnsoundClassifications_AreAllProducedByTheCaseTable",
           "traits": {
@@ -991,16 +966,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 1, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"gapless-1-event-stream\\\", expectedSound: True)",
         "status": "passed",
-        "duration": 2,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 1,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "c2574300-f7aa-4d2e-ba75-7a4a6482603e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "533dff7e-fae5-4b2e-a33d-be2372a55b44",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1014,15 +989,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 2, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlyArray`1[System.Int64], EventMessageIds = <>z__ReadOnlyArray`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"gapless-2-event-stream\\\", expectedSound: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "61bc2206-2172-4e3a-8412-172b040a87f3",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "4d5ef8e7-6708-4052-a060-ce608f55952b",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1036,15 +1011,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 0, MetadataPresent = False, EventSequenceNumbers = System.Int64[], EventMessageIds = System.String[], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"no-metadata-no-events\\\", expectedSound: True)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "f3b738d8-5398-41d5-bf3a-d646520c5767",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "13161f69-af42-4c50-b247-2869623f2af8",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1058,15 +1033,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = False, FinalSequence = 3, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"final-sequence-out-of-bounds\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "5148b285-0e19-424e-9c5f-08fdaabf29ab",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "a1ca1414-f0d5-435d-ac71-4ff110d2c099",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1080,15 +1055,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = False, FinalSequenceWithinBounds = True, FinalSequence = 1, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"unclassified-final-shape\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "0bed7ca0-2192-471d-b430-8f4198d0f39e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "b94c43dd-53c3-45a1-9c65-193236dbf151",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1102,15 +1077,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 0, MetadataPresent = False, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"events-without-metadata\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "16ae611a-3003-40c3-aad3-06ebf1455824",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "9820f30f-b7aa-4bc7-b86f-7efeab00ace0",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1124,15 +1099,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 0, MetadataPresent = False, EventSequenceNumbers = System.Int64[], EventMessageIds = System.String[], UnexpectedNextEventPresent = True, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"events-without-metadata\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "18420e6f-f820-4bcb-a5f6-0f7efe9546c9",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "9a7f5774-8dfb-4346-94d3-d172703b3a8d",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1146,15 +1121,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 2, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"metadata-sequence-without-matching-events\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "dfec4833-a59f-4766-91e0-1510a938a2a0",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "fef22b34-1a65-4d61-9074-dff2f77d4f15",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1168,15 +1143,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 2, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlyArray`1[System.Int64], EventMessageIds = <>z__ReadOnlyArray`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"non-contiguous-event-sequence\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "4198d02f-0b9a-4183-9e6f-2876ed0c4adf",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "1e3737a6-aedd-45a8-9b94-a7f02d7a8afd",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1190,15 +1165,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 2, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlyArray`1[System.Int64], EventMessageIds = <>z__ReadOnlyArray`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"duplicate-event-message-ids\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "cd8e5547-6515-4e4b-9472-a7010584c076",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "673dd178-ae91-4439-8ac2-78704ab07398",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1212,15 +1187,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 1, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = True, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"event-beyond-metadata-sequence\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "f18a43c4-f8db-446c-ab84-4878a35298e3",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "dcb41e28-b9db-4dae-b4ea-4dc53392ea80",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1234,15 +1209,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 1, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = False, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"foreign-aggregate-identity-present\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "420730b9-6673-48c8-979c-03a1b884ae50",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "22a3ab0a-de56-4f01-9d8f-207d85ebb7e3",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1256,15 +1231,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 1, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = False, MetadataLastModifiedMatchesLastEvent = True }, expectedName: \\\"foreign-writer-present\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "5280d3cf-7852-435c-ac0a-881dcd2698e0",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "f5416763-ec34-4361-83e5-8ca27a145a58",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1278,15 +1253,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests.Classify_ReturnsExpectedShape(input: Input { FinalStateFullyRead = True, FinalSequenceWithinBounds = True, FinalSequence = 1, MetadataPresent = True, EventSequenceNumbers = <>z__ReadOnlySingleElementList`1[System.Int64], EventMessageIds = <>z__ReadOnlySingleElementList`1[System.String], UnexpectedNextEventPresent = False, AllEventsMatchAggregateIdentity = True, ExactContendersOnly = True, MetadataLastModifiedMatchesLastEvent = False }, expectedName: \\\"metadata-timestamp-mismatch\\\", expectedSound: False)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs",
         "line": 57,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "c75e5216-1063-49bd-9d1a-277f57623d19",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "f434375d-c730-41f9-bf8c-f98d4ee43920",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
           "method": "Classify_ReturnsExpectedShape",
           "traits": {
@@ -1299,16 +1274,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.GapThenCanonicalMissingEvent_DoesNotInvokeUntilContiguousAndThenConverges",
         "status": "passed",
-        "duration": 401,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 373,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs",
         "line": 361,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "cf66b856-14e8-425a-bb06-b7da2a74e205",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "376754b4-cc0c-45bc-9fbf-4b6d152556ac",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
           "method": "GapThenCanonicalMissingEvent_DoesNotInvokeUntilContiguousAndThenConverges",
           "traits": {
@@ -1324,16 +1299,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.ReconcileAbsentCheckpoint_PersistsHydratedRowAndOperatorEvidenceTogether",
         "status": "passed",
-        "duration": 20,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 21,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs",
         "line": 420,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "b4bf7ee9-60e4-48db-bb3a-70d6c9a2048c",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "d4dbdcef-cc8c-4968-9279-bbfefbfb5fa1",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
           "method": "ReconcileAbsentCheckpoint_PersistsHydratedRowAndOperatorEvidenceTogether",
           "traits": {
@@ -1349,16 +1324,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.PagedRebuild_MoreThanTwoPages_PersistsEquivalentRedisActorDetailIndexAndCheckpoints",
         "status": "passed",
-        "duration": 527,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 403,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs",
         "line": 514,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "92a2ba50-6db6-4f17-9452-48029e997a0c",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "5b822e57-06a0-4ce2-9841-afdd19f06db1",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
           "method": "PagedRebuild_MoreThanTwoPages_PersistsEquivalentRedisActorDetailIndexAndCheckpoints",
           "traits": {
@@ -1374,16 +1349,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.ConcurrentDuplicateReverseAndConflict_StayEquivalentToOneInOrderDelivery",
         "status": "passed",
-        "duration": 286,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 225,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs",
         "line": 260,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "51dfc6c2-f641-435f-a7a7-4bc8b3f8322d",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "c38822f1-3134-461c-8606-3e3c8ea726f6",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
           "method": "ConcurrentDuplicateReverseAndConflict_StayEquivalentToOneInOrderDelivery",
           "traits": {
@@ -1399,16 +1374,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.DowngradedDetailRow_FailsClosedWithoutHandlerWhileIndexSiblingCompletes",
         "status": "passed",
-        "duration": 112,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 91,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs",
         "line": 460,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "1747402b-85c4-4b08-bcb3-771e392c763a",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "a4f96ecd-01cc-40f0-bd17-a9fc30554a2d",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
           "method": "DowngradedDetailRow_FailsClosedWithoutHandlerWhileIndexSiblingCompletes",
           "traits": {
@@ -1424,16 +1399,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger",
         "status": "passed",
-        "duration": 1501,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 1398,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/NamedProjectionDispatchLiveSidecarTests.cs",
         "line": 41,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "91ff4e84-33de-4086-87b5-1085b8fe8e46",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "3b1b5a54-6261-4996-9d58-068fbab6d60c",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
           "method": "NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger",
           "traits": {
@@ -1449,16 +1424,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.SnapshotIntegrationTests.ProcessCommandAsync_AfterMultipleEvents_RehydratesStateCorrectly",
         "status": "passed",
-        "duration": 348,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 214,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/SnapshotIntegrationTests.cs",
         "line": 37,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "07aab16a-95a2-42ed-ae48-c0ff3e84e412",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "9543e71d-f133-4a90-b768-d91f690e7969",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.SnapshotIntegrationTests",
           "method": "ProcessCommandAsync_AfterMultipleEvents_RehydratesStateCorrectly",
           "traits": {
@@ -1471,16 +1446,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_DifferentAggregateIds_RouteToDifferentActors",
         "status": "passed",
-        "duration": 36,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 27,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 72,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "bc73af94-16be-4f91-9e89-8ad08a7f413e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "11dc0d93-57fc-4ae5-a09a-e2bc2c74aaaa",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_DifferentAggregateIds_RouteToDifferentActors",
           "traits": {
@@ -1493,16 +1468,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_PlumbsAggregateTypeThroughActorPipeline",
         "status": "passed",
-        "duration": 24,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 16,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 283,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "74ca42c1-7937-4daa-b5f7-38194589bd2b",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "c5cfd34a-aecd-4708-b938-d8456426a9ab",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_PlumbsAggregateTypeThroughActorPipeline",
           "traits": {
@@ -1515,16 +1490,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult",
         "status": "passed",
-        "duration": 21,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 17,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 242,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "cd102bbd-5c4a-4f56-9151-d538cd7ceb8d",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "b604ec5c-8b38-452c-85c8-9f0d73267fc5",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_DuplicateCommand_ReturnsCachedResult",
           "traits": {
@@ -1537,16 +1512,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_SuccessfulCommand_TransitionsThroughAllStages",
         "status": "passed",
-        "duration": 20,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 16,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 193,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "80686c65-4c0c-412d-b11c-8f0153ce8695",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "96aeada0-4839-4164-a4e3-2e68cffb4633",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_SuccessfulCommand_TransitionsThroughAllStages",
           "traits": {
@@ -1559,16 +1534,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_DomainRejection_PersistsRejectionEvents",
         "status": "passed",
-        "duration": 25,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 15,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 318,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "a692afa9-e3e9-437a-a091-19c794672ef2",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "66a46024-9529-4705-8cf1-514cd5658ab4",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_DomainRejection_PersistsRejectionEvents",
           "traits": {
@@ -1581,16 +1556,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_NewAggregate_ActivatesActorAndReturnsAccepted",
         "status": "passed",
-        "duration": 17,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 15,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 37,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "8e730438-9fc6-420b-836b-0cd78bac5023",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "4fd2a378-1601-4023-8e01-86b66fa8a888",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_NewAggregate_ActivatesActorAndReturnsAccepted",
           "traits": {
@@ -1603,16 +1578,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_MultipleCommands_PersistsEventsSequentially",
         "status": "passed",
-        "duration": 48,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 34,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 117,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "1fb5ca59-da52-49b1-9501-3595a141b588",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "65f6530a-02c0-4131-8be3-22cd333f5b46",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_MultipleCommands_PersistsEventsSequentially",
           "traits": {
@@ -1625,16 +1600,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests.ProcessCommandAsync_DomainReturnsMultipleEvents_PersistsAtomically",
         "status": "passed",
-        "duration": 26,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 17,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AggregateActorIntegrationTests.cs",
         "line": 151,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "e17f1073-df7f-41a8-a52f-9429a7046606",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "e93534c7-f2fb-425d-ac36-a7a2127e702b",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AggregateActorIntegrationTests",
           "method": "ProcessCommandAsync_DomainReturnsMultipleEvents_PersistsAtomically",
           "traits": {
@@ -1647,19 +1622,19 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceLiveSidecarTests.SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome",
         "status": "passed",
-        "duration": 1144,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 1012,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceLiveSidecarTests.cs",
         "line": 61,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "c2aaa33b-ce22-4a67-878d-fce74115ea8e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "408050ac-7efe-4119-acdf-28c548e6fe6d",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceLiveSidecarTests",
           "method": "SameStreamActorAndRawTransaction_RecordsDurableRaceOutcome",
-          "output": "{\n  \"schemaVersion\": 5,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"mutationArmed\": null,\n  \"providerProfile\": {\n    \"daprRuntimeObserved\": \"1.18.1\",\n    \"daprRuntimeSource\": \"daprd --version, read from the exact binary this fixture launches\",\n    \"stateStoreType\": \"state.redis\",\n    \"redisImageObserved\": \"docker.io/redis:6\",\n    \"redisImageIdObserved\": \"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\n    \"redisRepoDigestsObserved\": \"[\\u0022redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\\u0022]\",\n    \"redisPersistenceObserved\": \"appendonly no | save 3600 1 300 100 60 10000\",\n    \"placementImageObserved\": \"docker.io/daprio/dapr:1.18.2\",\n    \"placementImageIdObserved\": \"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\n    \"schedulerImageObserved\": \"docker.io/daprio/dapr:1.18.2\",\n    \"schedulerImageIdObserved\": \"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\n    \"imageIdVersusRepositoryDigest\": \"*ImageIdObserved is the local image ID from \\u0060docker inspect {{.Image}}\\u0060; it is NOT a registry repository digest and must not be used in \\u0060docker pull name@sha256:...\\u0060. redisRepoDigestsObserved carries the pullable digests.\",\n    \"redisProbeSource\": \"docker inspect dapr_redis / docker image inspect redis:6 / redis-cli config get appendonly, save\",\n    \"controlPlanePorts\": {\n      \"placementProbeOrder\": [\n        50005,\n        6050\n      ],\n      \"schedulerProbeOrder\": [\n        50006,\n        6060\n      ],\n      \"placementResolved\": 50005,\n      \"schedulerResolved\": 50006\n    },\n    \"appId\": \"eventstore-live-f9ab064794254271ba0e0950069970f4\",\n    \"stateStoreComponentSha256\": \"06284f20919e20ca08439ada6811d1d6612a1ffd76e11cded9d9fa5767ae52d4\",\n    \"stateStoreComponentSha256Scope\": \"SHA-256 of the generated component with the per-run terminal scopes block removed, so the digest binds configuration identity across runs\",\n    \"stateStoreComponentCanonicalYaml\": \"apiVersion: dapr.io/v1alpha1\\nkind: Component\\nmetadata:\\n  name: statestore\\nspec:\\n  type: state.redis\\n  version: v1\\n  metadata:\\n    - name: redisHost\\n      value: \\u0022localhost:6379\\u0022\\n    - name: redisPassword\\n      value: \\u0022\\u0022\\n    - name: actorStateStore\\n      value: \\u0022true\\u0022\",\n    \"stateStoreComponentHashedYaml\": \"apiVersion: dapr.io/v1alpha1\\nkind: Component\\nmetadata:\\n  name: statestore\\nspec:\\n  type: state.redis\\n  version: v1\\n  metadata:\\n    - name: redisHost\\n      value: \\u0022localhost:6379\\u0022\\n    - name: redisPassword\\n      value: \\u0022\\u0022\\n    - name: actorStateStore\\n      value: \\u0022true\\u0022\",\n    \"stateStoreComponentYaml\": \"apiVersion: dapr.io/v1alpha1\\nkind: Component\\nmetadata:\\n  name: statestore\\nspec:\\n  type: state.redis\\n  version: v1\\n  metadata:\\n    - name: redisHost\\n      value: \\u0022localhost:6379\\u0022\\n    - name: redisPassword\\n      value: \\u0022\\u0022\\n    - name: actorStateStore\\n      value: \\u0022true\\u0022\\nscopes:\\n  - eventstore-live-f9ab064794254271ba0e0950069970f4\",\n    \"allocatorDecoratorType\": \"Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.LiveSidecarGlobalPositionAllocator\",\n    \"productionAllocatorType\": \"Hexalith.EventStore.Server.Events.DaprGlobalPositionAllocator\",\n    \"allocatorIdentityLimitation\": \"IGlobalPositionAllocator exposes count and cancellation only; the aggregate-specific handler arms immediately before the intended command persists, but the allocator call itself carries no aggregate identity.\"\n  },\n  \"session\": {\n    \"sessionId\": \"01M0YC2WBVFVV8JC5M1J2G3HW9\",\n    \"targetActorId\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n    \"targetMessageId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n    \"armedAtUtc\": \"2026-08-26T06:28:25.6058261+00:00\",\n    \"firstAllocationEnteredAtUtc\": \"2026-08-26T06:28:25.6071143+00:00\",\n    \"releasedAtUtc\": \"2026-08-26T06:28:25.6278816+00:00\",\n    \"armCalls\": 1,\n    \"allocationAttempts\": 1,\n    \"gateInterceptions\": 1,\n    \"retryCount\": 0,\n    \"actorTaskIncompleteAtGate\": true,\n    \"actorTaskIncompleteAfterRaw\": true,\n    \"actorTaskIncompleteAfterIntermediate\": true,\n    \"timestampChainInProgramOrder\": true,\n    \"timestampChainIsEvidence\": false,\n    \"decoyGateOccupantActorId\": null,\n    \"decoyGateOccupantMessageId\": null\n  },\n  \"aggregate\": {\n    \"tenantId\": \"tenant-a\",\n    \"domain\": \"counter\",\n    \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n    \"actorId\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n    \"eventKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:1\",\n    \"metadataKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n    \"compositeMetadataRedisKey\": \"eventstore-live-f9ab064794254271ba0e0950069970f4||AggregateActorTests3650a2144bb34ce0b283d62fd90f53e4||tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7||tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\"\n  },\n  \"actorContender\": {\n    \"messageId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n    \"correlationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n    \"completedAtUtc\": \"2026-08-26T06:28:25.6401942+00:00\",\n    \"result\": {\n      \"accepted\": true,\n      \"errorMessage\": null,\n      \"correlationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n      \"eventCount\": 1,\n      \"resultPayload\": null,\n      \"backpressureExceeded\": false,\n      \"backpressurePendingCount\": null,\n      \"backpressureThreshold\": null,\n      \"rejectionEventType\": null,\n      \"failureReason\": null,\n      \"resultPayloadWithheld\": false\n    },\n    \"exceptionType\": null,\n    \"exceptionMessage\": null,\n    \"survivingEventMessageId\": \"01M0YC2WCY4BRXNFPA2FMZQ9BA\"\n  },\n  \"rawContender\": {\n    \"messageId\": \"01M0YC2WBVFVV8JC5M1J2G3HW9\",\n    \"correlationId\": \"01M0YC2WBVFVV8JC5M1J2G3HWA\",\n    \"completedAtUtc\": \"2026-08-26T06:28:25.6186462+00:00\",\n    \"httpStatus\": 204,\n    \"responseBody\": \"\",\n    \"callerSuppliedEtag\": null,\n    \"exceptionType\": null,\n    \"exceptionMessage\": null\n  },\n  \"gateWait\": {\n    \"exceptionType\": null,\n    \"exceptionMessage\": null\n  },\n  \"keyAddressability\": {\n    \"completedAtUtc\": \"2026-08-26T06:28:25.6221048+00:00\",\n    \"genericStateProbeUrl\": \"http://localhost:40325/v1.0/state/statestore/tenant-a%3Acounter%3Aappend-race-01M0YC2WBVFVV8JC5M1J2G3HW7%3Ametadata\",\n    \"genericStateKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n    \"genericStateStatus\": 204,\n    \"genericStateBody\": \"\",\n    \"genericStateExceptionType\": null,\n    \"genericStateExceptionMessage\": null,\n    \"compositeRedisKey\": \"eventstore-live-f9ab064794254271ba0e0950069970f4||AggregateActorTests3650a2144bb34ce0b283d62fd90f53e4||tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7||tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n    \"compositeRedisMetadata\": {\n      \"currentSequence\": 1,\n      \"lastModified\": \"2026-08-26T06:28:25.5957491+00:00\",\n      \"eTag\": null\n    },\n    \"compositeActorRedisReadable\": true,\n    \"classification\": \"actor-key-absent-from-generic-namespace\"\n  },\n  \"intermediate\": {\n    \"readAtUtc\": \"2026-08-26T06:28:25.6277108+00:00\",\n    \"event\": {\n      \"messageId\": \"01M0YC2WBVFVV8JC5M1J2G3HW9\",\n      \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n      \"aggregateType\": \"counter\",\n      \"tenantId\": \"tenant-a\",\n      \"domain\": \"counter\",\n      \"sequenceNumber\": 1,\n      \"globalPosition\": 0,\n      \"timestamp\": \"2026-08-26T06:28:25.5957491+00:00\",\n      \"correlationId\": \"01M0YC2WBVFVV8JC5M1J2G3HWA\",\n      \"causationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW9\",\n      \"userId\": \"story-4-5-raw-contender\",\n      \"domainServiceVersion\": \"story-4-5-probe\",\n      \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n      \"metadataVersion\": 1,\n      \"serializationFormat\": \"json\",\n      \"payload\": \"e30=\",\n      \"extensions\": {\n        \"story-4-5-contender\": \"raw\"\n      },\n      \"identity\": {\n        \"tenantId\": \"tenant-a\",\n        \"domain\": \"counter\",\n        \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n        \"actorId\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n        \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:\",\n        \"metadataKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n        \"snapshotKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:snapshot\",\n        \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:pipeline:\",\n        \"pubSubTopic\": \"tenant-a.counter.events\",\n        \"queueSession\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\"\n      }\n    },\n    \"eventRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:1\",\n      \"found\": true,\n      \"value\": {\n        \"messageId\": \"01M0YC2WBVFVV8JC5M1J2G3HW9\",\n        \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n        \"aggregateType\": \"counter\",\n        \"tenantId\": \"tenant-a\",\n        \"domain\": \"counter\",\n        \"sequenceNumber\": 1,\n        \"globalPosition\": 0,\n        \"timestamp\": \"2026-08-26T06:28:25.5957491+00:00\",\n        \"correlationId\": \"01M0YC2WBVFVV8JC5M1J2G3HWA\",\n        \"causationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW9\",\n        \"userId\": \"story-4-5-raw-contender\",\n        \"domainServiceVersion\": \"story-4-5-probe\",\n        \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n        \"metadataVersion\": 1,\n        \"serializationFormat\": \"json\",\n        \"payload\": \"e30=\",\n        \"extensions\": {\n          \"story-4-5-contender\": \"raw\"\n        },\n        \"identity\": {\n          \"tenantId\": \"tenant-a\",\n          \"domain\": \"counter\",\n          \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n          \"actorId\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n          \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:\",\n          \"metadataKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n          \"snapshotKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:snapshot\",\n          \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:pipeline:\",\n          \"pubSubTopic\": \"tenant-a.counter.events\",\n          \"queueSession\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\"\n        }\n      },\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"metadata\": {\n      \"currentSequence\": 1,\n      \"lastModified\": \"2026-08-26T06:28:25.5957491+00:00\",\n      \"eTag\": null\n    },\n    \"metadataRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n      \"found\": true,\n      \"value\": {\n        \"currentSequence\": 1,\n        \"lastModified\": \"2026-08-26T06:28:25.5957491+00:00\",\n        \"eTag\": null\n      },\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"rawEventDurabilityProven\": true,\n    \"rawDurabilityProven\": true,\n    \"attemptedRegardlessOfRawStatus\": true\n  },\n  \"final\": {\n    \"readAtUtc\": \"2026-08-26T06:28:26.1790667+00:00\",\n    \"metadata\": {\n      \"currentSequence\": 1,\n      \"lastModified\": \"2026-08-26T06:28:25.6067326+00:00\",\n      \"eTag\": null\n    },\n    \"metadataRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n      \"found\": true,\n      \"value\": {\n        \"currentSequence\": 1,\n        \"lastModified\": \"2026-08-26T06:28:25.6067326+00:00\",\n        \"eTag\": null\n      },\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"metadataEtagState\": \"etag-absent\",\n    \"finalSequenceWithinBounds\": true,\n    \"nextEventProbed\": true,\n    \"finalStateFullyRead\": true,\n    \"tornShapeInjected\": false,\n    \"shapeClassification\": \"gapless-1-event-stream\",\n    \"shapeInput\": {\n      \"finalStateFullyRead\": true,\n      \"finalSequenceWithinBounds\": true,\n      \"finalSequence\": 1,\n      \"metadataPresent\": true,\n      \"eventSequenceNumbers\": [\n        1\n      ],\n      \"eventMessageIds\": [\n        \"01M0YC2WCY4BRXNFPA2FMZQ9BA\"\n      ],\n      \"unexpectedNextEventPresent\": false,\n      \"allEventsMatchAggregateIdentity\": true,\n      \"exactContendersOnly\": true,\n      \"metadataLastModifiedMatchesLastEvent\": true\n    },\n    \"eventReads\": [\n      {\n        \"key\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:1\",\n        \"found\": true,\n        \"value\": {\n          \"messageId\": \"01M0YC2WCY4BRXNFPA2FMZQ9BA\",\n          \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n          \"aggregateType\": \"counter\",\n          \"tenantId\": \"tenant-a\",\n          \"domain\": \"counter\",\n          \"sequenceNumber\": 1,\n          \"globalPosition\": 55,\n          \"timestamp\": \"2026-08-26T06:28:25.6067326+00:00\",\n          \"correlationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n          \"causationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n          \"userId\": \"test-user\",\n          \"domainServiceVersion\": \"v1\",\n          \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n          \"metadataVersion\": 1,\n          \"serializationFormat\": \"json\",\n          \"payload\": \"e30=\",\n          \"extensions\": {\n            \"eventstore.protection\": \"{\\u0022state\\u0022:\\u0022Unprotected\\u0022,\\u0022metadataVersion\\u0022:1}\"\n          },\n          \"identity\": {\n            \"tenantId\": \"tenant-a\",\n            \"domain\": \"counter\",\n            \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n            \"actorId\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n            \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:\",\n            \"metadataKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n            \"snapshotKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:snapshot\",\n            \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:pipeline:\",\n            \"pubSubTopic\": \"tenant-a.counter.events\",\n            \"queueSession\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\"\n          }\n        },\n        \"exceptionType\": null,\n        \"exceptionMessage\": null\n      }\n    ],\n    \"events\": [\n      {\n        \"messageId\": \"01M0YC2WCY4BRXNFPA2FMZQ9BA\",\n        \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n        \"aggregateType\": \"counter\",\n        \"tenantId\": \"tenant-a\",\n        \"domain\": \"counter\",\n        \"sequenceNumber\": 1,\n        \"globalPosition\": 55,\n        \"timestamp\": \"2026-08-26T06:28:25.6067326+00:00\",\n        \"correlationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n        \"causationId\": \"01M0YC2WBVFVV8JC5M1J2G3HW8\",\n        \"userId\": \"test-user\",\n        \"domainServiceVersion\": \"v1\",\n        \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n        \"metadataVersion\": 1,\n        \"serializationFormat\": \"json\",\n        \"payload\": \"e30=\",\n        \"extensions\": {\n          \"eventstore.protection\": \"{\\u0022state\\u0022:\\u0022Unprotected\\u0022,\\u0022metadataVersion\\u0022:1}\"\n        },\n        \"identity\": {\n          \"tenantId\": \"tenant-a\",\n          \"domain\": \"counter\",\n          \"aggregateId\": \"append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n          \"actorId\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\",\n          \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:\",\n          \"metadataKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:metadata\",\n          \"snapshotKey\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:snapshot\",\n          \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:pipeline:\",\n          \"pubSubTopic\": \"tenant-a.counter.events\",\n          \"queueSession\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7\"\n        }\n      }\n    ],\n    \"unexpectedNextEventRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YC2WBVFVV8JC5M1J2G3HW7:events:2\",\n      \"found\": false,\n      \"value\": null,\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"unexpectedNextEventPresent\": false,\n    \"exactContendersOnly\": true,\n    \"rawSurvives\": false,\n    \"actorSurvives\": true,\n    \"rawDurableWriteLost\": true,\n    \"actorAcknowledgedWriteLost\": false\n  },\n  \"infrastructure\": {\n    \"writerEndpoint\": \"http://localhost:40325\",\n    \"sidecarEndpoint\": \"http://localhost:40325\",\n    \"writerEndpointRedirected\": false,\n    \"sidecarHealthProbeUrl\": \"http://localhost:40325/v1.0/healthz\",\n    \"sidecarHealthStatus\": 204,\n    \"sidecarHealthExceptionType\": null,\n    \"sidecarHealthy\": true\n  },\n  \"invariants\": {\n    \"gate-hold\": true,\n    \"gate-targeting\": true,\n    \"intermediate-raw-durability\": true,\n    \"key-addressability\": true,\n    \"final-state-sound\": true,\n    \"conflict-retry-classification\": true,\n    \"infrastructure-free\": true,\n    \"state-store-component-identity\": true\n  },\n  \"observation\": {\n    \"classification\": \"same-key-overwrite-raw-durable-write-lost\",\n    \"classifierSequence\": 1,\n    \"isInternallyConsistent\": true,\n    \"isInfrastructureFailure\": false,\n    \"recognizedRejectionOrConflict\": false,\n    \"invalidOperationExceptionSurfaced\": false,\n    \"concurrencyConflictSignalled\": false\n  }\n}\n",
+          "output": "{\n  \"schemaVersion\": 5,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"mutationArmed\": null,\n  \"providerProfile\": {\n    \"daprRuntimeObserved\": \"1.18.1\",\n    \"daprRuntimeSource\": \"daprd --version, read from the exact binary this fixture launches\",\n    \"stateStoreType\": \"state.redis\",\n    \"redisImageObserved\": \"docker.io/redis:6\",\n    \"redisImageIdObserved\": \"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\n    \"redisRepoDigestsObserved\": \"[\\u0022redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\\u0022]\",\n    \"redisPersistenceObserved\": \"appendonly no | save 3600 1 300 100 60 10000\",\n    \"placementImageObserved\": \"docker.io/daprio/dapr:1.18.2\",\n    \"placementImageIdObserved\": \"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\n    \"schedulerImageObserved\": \"docker.io/daprio/dapr:1.18.2\",\n    \"schedulerImageIdObserved\": \"sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59\",\n    \"imageIdVersusRepositoryDigest\": \"*ImageIdObserved is the local image ID from \\u0060docker inspect {{.Image}}\\u0060; it is NOT a registry repository digest and must not be used in \\u0060docker pull name@sha256:...\\u0060. redisRepoDigestsObserved carries the pullable digests.\",\n    \"redisProbeSource\": \"docker inspect dapr_redis / docker image inspect redis:6 / redis-cli config get appendonly, save\",\n    \"controlPlanePorts\": {\n      \"placementProbeOrder\": [\n        50005,\n        6050\n      ],\n      \"schedulerProbeOrder\": [\n        50006,\n        6060\n      ],\n      \"placementResolved\": 50005,\n      \"schedulerResolved\": 50006\n    },\n    \"appId\": \"eventstore-live-a2b89576d3f34104a51f29f9d6d3187c\",\n    \"stateStoreComponentSha256\": \"06284f20919e20ca08439ada6811d1d6612a1ffd76e11cded9d9fa5767ae52d4\",\n    \"stateStoreComponentSha256Scope\": \"SHA-256 of the generated component with the per-run terminal scopes block removed, so the digest binds configuration identity across runs\",\n    \"stateStoreComponentCanonicalYaml\": \"apiVersion: dapr.io/v1alpha1\\nkind: Component\\nmetadata:\\n  name: statestore\\nspec:\\n  type: state.redis\\n  version: v1\\n  metadata:\\n    - name: redisHost\\n      value: \\u0022localhost:6379\\u0022\\n    - name: redisPassword\\n      value: \\u0022\\u0022\\n    - name: actorStateStore\\n      value: \\u0022true\\u0022\",\n    \"stateStoreComponentHashedYaml\": \"apiVersion: dapr.io/v1alpha1\\nkind: Component\\nmetadata:\\n  name: statestore\\nspec:\\n  type: state.redis\\n  version: v1\\n  metadata:\\n    - name: redisHost\\n      value: \\u0022localhost:6379\\u0022\\n    - name: redisPassword\\n      value: \\u0022\\u0022\\n    - name: actorStateStore\\n      value: \\u0022true\\u0022\",\n    \"stateStoreComponentYaml\": \"apiVersion: dapr.io/v1alpha1\\nkind: Component\\nmetadata:\\n  name: statestore\\nspec:\\n  type: state.redis\\n  version: v1\\n  metadata:\\n    - name: redisHost\\n      value: \\u0022localhost:6379\\u0022\\n    - name: redisPassword\\n      value: \\u0022\\u0022\\n    - name: actorStateStore\\n      value: \\u0022true\\u0022\\nscopes:\\n  - eventstore-live-a2b89576d3f34104a51f29f9d6d3187c\",\n    \"allocatorDecoratorType\": \"Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.LiveSidecarGlobalPositionAllocator\",\n    \"productionAllocatorType\": \"Hexalith.EventStore.Server.Events.DaprGlobalPositionAllocator\",\n    \"allocatorIdentityLimitation\": \"IGlobalPositionAllocator exposes count and cancellation only; the aggregate-specific handler arms immediately before the intended command persists, but the allocator call itself carries no aggregate identity.\"\n  },\n  \"session\": {\n    \"sessionId\": \"01M0YCCNVDBP9TDQD5WVWD36GN\",\n    \"targetActorId\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n    \"targetMessageId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n    \"armedAtUtc\": \"2026-08-26T06:33:46.613429+00:00\",\n    \"firstAllocationEnteredAtUtc\": \"2026-08-26T06:33:46.6144851+00:00\",\n    \"releasedAtUtc\": \"2026-08-26T06:33:46.626708+00:00\",\n    \"armCalls\": 1,\n    \"allocationAttempts\": 1,\n    \"gateInterceptions\": 1,\n    \"retryCount\": 0,\n    \"actorTaskIncompleteAtGate\": true,\n    \"actorTaskIncompleteAfterRaw\": true,\n    \"actorTaskIncompleteAfterIntermediate\": true,\n    \"timestampChainInProgramOrder\": true,\n    \"timestampChainIsEvidence\": false,\n    \"decoyGateOccupantActorId\": null,\n    \"decoyGateOccupantMessageId\": null\n  },\n  \"aggregate\": {\n    \"tenantId\": \"tenant-a\",\n    \"domain\": \"counter\",\n    \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n    \"actorId\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n    \"eventKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:1\",\n    \"metadataKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n    \"compositeMetadataRedisKey\": \"eventstore-live-a2b89576d3f34104a51f29f9d6d3187c||AggregateActorTests89ab0b9124b14a01a5743e1f8e58785a||tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK||tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\"\n  },\n  \"actorContender\": {\n    \"messageId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n    \"correlationId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n    \"completedAtUtc\": \"2026-08-26T06:33:46.6350936+00:00\",\n    \"result\": {\n      \"accepted\": true,\n      \"errorMessage\": null,\n      \"correlationId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n      \"eventCount\": 1,\n      \"resultPayload\": null,\n      \"backpressureExceeded\": false,\n      \"backpressurePendingCount\": null,\n      \"backpressureThreshold\": null,\n      \"rejectionEventType\": null,\n      \"failureReason\": null,\n      \"resultPayloadWithheld\": false\n    },\n    \"exceptionType\": null,\n    \"exceptionMessage\": null,\n    \"survivingEventMessageId\": \"01M0YCCNW5KXNJ0RRYZXYWPGEC\"\n  },\n  \"rawContender\": {\n    \"messageId\": \"01M0YCCNVDBP9TDQD5WVWD36GN\",\n    \"correlationId\": \"01M0YCCNVDBP9TDQD5WVWD36GP\",\n    \"completedAtUtc\": \"2026-08-26T06:33:46.6206019+00:00\",\n    \"httpStatus\": 204,\n    \"responseBody\": \"\",\n    \"callerSuppliedEtag\": null,\n    \"exceptionType\": null,\n    \"exceptionMessage\": null\n  },\n  \"gateWait\": {\n    \"exceptionType\": null,\n    \"exceptionMessage\": null\n  },\n  \"keyAddressability\": {\n    \"completedAtUtc\": \"2026-08-26T06:33:46.6211951+00:00\",\n    \"genericStateProbeUrl\": \"http://localhost:37559/v1.0/state/statestore/tenant-a%3Acounter%3Aappend-race-01M0YCCNVDBP9TDQD5WVWD36GK%3Ametadata\",\n    \"genericStateKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n    \"genericStateStatus\": 204,\n    \"genericStateBody\": \"\",\n    \"genericStateExceptionType\": null,\n    \"genericStateExceptionMessage\": null,\n    \"compositeRedisKey\": \"eventstore-live-a2b89576d3f34104a51f29f9d6d3187c||AggregateActorTests89ab0b9124b14a01a5743e1f8e58785a||tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK||tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n    \"compositeRedisMetadata\": {\n      \"currentSequence\": 1,\n      \"lastModified\": \"2026-08-26T06:33:46.6056392+00:00\",\n      \"eTag\": null\n    },\n    \"compositeActorRedisReadable\": true,\n    \"classification\": \"actor-key-absent-from-generic-namespace\"\n  },\n  \"intermediate\": {\n    \"readAtUtc\": \"2026-08-26T06:33:46.6265201+00:00\",\n    \"event\": {\n      \"messageId\": \"01M0YCCNVDBP9TDQD5WVWD36GN\",\n      \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n      \"aggregateType\": \"counter\",\n      \"tenantId\": \"tenant-a\",\n      \"domain\": \"counter\",\n      \"sequenceNumber\": 1,\n      \"globalPosition\": 0,\n      \"timestamp\": \"2026-08-26T06:33:46.6056392+00:00\",\n      \"correlationId\": \"01M0YCCNVDBP9TDQD5WVWD36GP\",\n      \"causationId\": \"01M0YCCNVDBP9TDQD5WVWD36GN\",\n      \"userId\": \"story-4-5-raw-contender\",\n      \"domainServiceVersion\": \"story-4-5-probe\",\n      \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n      \"metadataVersion\": 1,\n      \"serializationFormat\": \"json\",\n      \"payload\": \"e30=\",\n      \"extensions\": {\n        \"story-4-5-contender\": \"raw\"\n      },\n      \"identity\": {\n        \"tenantId\": \"tenant-a\",\n        \"domain\": \"counter\",\n        \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n        \"actorId\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n        \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:\",\n        \"metadataKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n        \"snapshotKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:snapshot\",\n        \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:pipeline:\",\n        \"pubSubTopic\": \"tenant-a.counter.events\",\n        \"queueSession\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\"\n      }\n    },\n    \"eventRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:1\",\n      \"found\": true,\n      \"value\": {\n        \"messageId\": \"01M0YCCNVDBP9TDQD5WVWD36GN\",\n        \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n        \"aggregateType\": \"counter\",\n        \"tenantId\": \"tenant-a\",\n        \"domain\": \"counter\",\n        \"sequenceNumber\": 1,\n        \"globalPosition\": 0,\n        \"timestamp\": \"2026-08-26T06:33:46.6056392+00:00\",\n        \"correlationId\": \"01M0YCCNVDBP9TDQD5WVWD36GP\",\n        \"causationId\": \"01M0YCCNVDBP9TDQD5WVWD36GN\",\n        \"userId\": \"story-4-5-raw-contender\",\n        \"domainServiceVersion\": \"story-4-5-probe\",\n        \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n        \"metadataVersion\": 1,\n        \"serializationFormat\": \"json\",\n        \"payload\": \"e30=\",\n        \"extensions\": {\n          \"story-4-5-contender\": \"raw\"\n        },\n        \"identity\": {\n          \"tenantId\": \"tenant-a\",\n          \"domain\": \"counter\",\n          \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n          \"actorId\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n          \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:\",\n          \"metadataKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n          \"snapshotKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:snapshot\",\n          \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:pipeline:\",\n          \"pubSubTopic\": \"tenant-a.counter.events\",\n          \"queueSession\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\"\n        }\n      },\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"metadata\": {\n      \"currentSequence\": 1,\n      \"lastModified\": \"2026-08-26T06:33:46.6056392+00:00\",\n      \"eTag\": null\n    },\n    \"metadataRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n      \"found\": true,\n      \"value\": {\n        \"currentSequence\": 1,\n        \"lastModified\": \"2026-08-26T06:33:46.6056392+00:00\",\n        \"eTag\": null\n      },\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"rawEventDurabilityProven\": true,\n    \"rawDurabilityProven\": true,\n    \"attemptedRegardlessOfRawStatus\": true\n  },\n  \"final\": {\n    \"readAtUtc\": \"2026-08-26T06:33:47.1576125+00:00\",\n    \"metadata\": {\n      \"currentSequence\": 1,\n      \"lastModified\": \"2026-08-26T06:33:46.6140927+00:00\",\n      \"eTag\": null\n    },\n    \"metadataRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n      \"found\": true,\n      \"value\": {\n        \"currentSequence\": 1,\n        \"lastModified\": \"2026-08-26T06:33:46.6140927+00:00\",\n        \"eTag\": null\n      },\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"metadataEtagState\": \"etag-absent\",\n    \"finalSequenceWithinBounds\": true,\n    \"nextEventProbed\": true,\n    \"finalStateFullyRead\": true,\n    \"tornShapeInjected\": false,\n    \"shapeClassification\": \"gapless-1-event-stream\",\n    \"shapeInput\": {\n      \"finalStateFullyRead\": true,\n      \"finalSequenceWithinBounds\": true,\n      \"finalSequence\": 1,\n      \"metadataPresent\": true,\n      \"eventSequenceNumbers\": [\n        1\n      ],\n      \"eventMessageIds\": [\n        \"01M0YCCNW5KXNJ0RRYZXYWPGEC\"\n      ],\n      \"unexpectedNextEventPresent\": false,\n      \"allEventsMatchAggregateIdentity\": true,\n      \"exactContendersOnly\": true,\n      \"metadataLastModifiedMatchesLastEvent\": true\n    },\n    \"eventReads\": [\n      {\n        \"key\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:1\",\n        \"found\": true,\n        \"value\": {\n          \"messageId\": \"01M0YCCNW5KXNJ0RRYZXYWPGEC\",\n          \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n          \"aggregateType\": \"counter\",\n          \"tenantId\": \"tenant-a\",\n          \"domain\": \"counter\",\n          \"sequenceNumber\": 1,\n          \"globalPosition\": 55,\n          \"timestamp\": \"2026-08-26T06:33:46.6140927+00:00\",\n          \"correlationId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n          \"causationId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n          \"userId\": \"test-user\",\n          \"domainServiceVersion\": \"v1\",\n          \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n          \"metadataVersion\": 1,\n          \"serializationFormat\": \"json\",\n          \"payload\": \"e30=\",\n          \"extensions\": {\n            \"eventstore.protection\": \"{\\u0022state\\u0022:\\u0022Unprotected\\u0022,\\u0022metadataVersion\\u0022:1}\"\n          },\n          \"identity\": {\n            \"tenantId\": \"tenant-a\",\n            \"domain\": \"counter\",\n            \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n            \"actorId\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n            \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:\",\n            \"metadataKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n            \"snapshotKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:snapshot\",\n            \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:pipeline:\",\n            \"pubSubTopic\": \"tenant-a.counter.events\",\n            \"queueSession\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\"\n          }\n        },\n        \"exceptionType\": null,\n        \"exceptionMessage\": null\n      }\n    ],\n    \"events\": [\n      {\n        \"messageId\": \"01M0YCCNW5KXNJ0RRYZXYWPGEC\",\n        \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n        \"aggregateType\": \"counter\",\n        \"tenantId\": \"tenant-a\",\n        \"domain\": \"counter\",\n        \"sequenceNumber\": 1,\n        \"globalPosition\": 55,\n        \"timestamp\": \"2026-08-26T06:33:46.6140927+00:00\",\n        \"correlationId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n        \"causationId\": \"01M0YCCNVDBP9TDQD5WVWD36GM\",\n        \"userId\": \"test-user\",\n        \"domainServiceVersion\": \"v1\",\n        \"eventTypeName\": \"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\n        \"metadataVersion\": 1,\n        \"serializationFormat\": \"json\",\n        \"payload\": \"e30=\",\n        \"extensions\": {\n          \"eventstore.protection\": \"{\\u0022state\\u0022:\\u0022Unprotected\\u0022,\\u0022metadataVersion\\u0022:1}\"\n        },\n        \"identity\": {\n          \"tenantId\": \"tenant-a\",\n          \"domain\": \"counter\",\n          \"aggregateId\": \"append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n          \"actorId\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\",\n          \"eventStreamKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:\",\n          \"metadataKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:metadata\",\n          \"snapshotKey\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:snapshot\",\n          \"pipelineKeyPrefix\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:pipeline:\",\n          \"pubSubTopic\": \"tenant-a.counter.events\",\n          \"queueSession\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK\"\n        }\n      }\n    ],\n    \"unexpectedNextEventRead\": {\n      \"key\": \"tenant-a:counter:append-race-01M0YCCNVDBP9TDQD5WVWD36GK:events:2\",\n      \"found\": false,\n      \"value\": null,\n      \"exceptionType\": null,\n      \"exceptionMessage\": null\n    },\n    \"unexpectedNextEventPresent\": false,\n    \"exactContendersOnly\": true,\n    \"rawSurvives\": false,\n    \"actorSurvives\": true,\n    \"rawDurableWriteLost\": true,\n    \"actorAcknowledgedWriteLost\": false\n  },\n  \"infrastructure\": {\n    \"writerEndpoint\": \"http://localhost:37559\",\n    \"sidecarEndpoint\": \"http://localhost:37559\",\n    \"writerEndpointRedirected\": false,\n    \"sidecarHealthProbeUrl\": \"http://localhost:37559/v1.0/healthz\",\n    \"sidecarHealthStatus\": 204,\n    \"sidecarHealthExceptionType\": null,\n    \"sidecarHealthy\": true\n  },\n  \"invariants\": {\n    \"gate-hold\": true,\n    \"gate-targeting\": true,\n    \"intermediate-raw-durability\": true,\n    \"key-addressability\": true,\n    \"final-state-sound\": true,\n    \"conflict-retry-classification\": true,\n    \"infrastructure-free\": true,\n    \"state-store-component-identity\": true\n  },\n  \"observation\": {\n    \"classification\": \"same-key-overwrite-raw-durable-write-lost\",\n    \"classifierSequence\": 1,\n    \"isInternallyConsistent\": true,\n    \"isInfrastructureFailure\": false,\n    \"recognizedRejectionOrConflict\": false,\n    \"invalidOperationExceptionSurfaced\": false,\n    \"concurrencyConflictSignalled\": false\n  }\n}\n",
           "traits": {
             "Category": [
               "LiveSidecar"
@@ -1670,8 +1645,8 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.DaprETagServiceLiveSidecarTests.GetCurrentETagAsync_ColdActor_ReturnsNull_WithoutThrowing",
         "status": "passed",
-        "duration": 4,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 3,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/DaprETagServiceLiveSidecarTests.cs",
         "line": 79,
         "tags": [
@@ -1679,8 +1654,8 @@
           "Integration"
         ],
         "extra": {
-          "id": "a3092814-b862-49d8-9c93-d998fc3a7adc",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "6a91133e-707c-49ab-8f2a-8cb71a1b238a",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.DaprETagServiceLiveSidecarTests",
           "method": "GetCurrentETagAsync_ColdActor_ReturnsNull_WithoutThrowing",
           "traits": {
@@ -1697,8 +1672,8 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.DaprETagServiceLiveSidecarTests.GetCurrentETagAsync_AfterRegenerate_ReturnsPersistedETag_NotFailOpenNull",
         "status": "passed",
-        "duration": 6,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 4,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/DaprETagServiceLiveSidecarTests.cs",
         "line": 43,
         "tags": [
@@ -1706,8 +1681,8 @@
           "Integration"
         ],
         "extra": {
-          "id": "457b87e5-e6a0-445c-82fc-ca458e688729",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "561cd2ca-3ad7-4063-b240-b50cc68211a1",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.DaprETagServiceLiveSidecarTests",
           "method": "GetCurrentETagAsync_AfterRegenerate_ReturnsPersistedETag_NotFailOpenNull",
           "traits": {
@@ -1725,15 +1700,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests.IsArmed_RecognizedValue_ArmsOnlyThatPerturbation",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/Story45MutationSwitchTests.cs",
         "line": 41,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "89fc7f98-8b47-4c35-9256-7e2af38d308e",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "abe89bbf-02fd-4e66-8c6f-361b433738e8",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests",
           "method": "IsArmed_RecognizedValue_ArmsOnlyThatPerturbation",
           "traits": {
@@ -1747,15 +1722,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests.Armed_UnrecognizedValue_Throws",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/Story45MutationSwitchTests.cs",
         "line": 17,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "16347a4b-4485-4bb6-9c0c-d1a4d60e0a98",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "3f10c14c-f418-47b9-a4b1-bbd248d387b8",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests",
           "method": "Armed_UnrecognizedValue_Throws",
           "traits": {
@@ -1769,15 +1744,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests.Armed_BlankValue_ReportsNoPerturbation(value: null)",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/Story45MutationSwitchTests.cs",
         "line": 33,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "20a91045-5f84-45a8-a2e7-27fe6c9cb894",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "77eb37f5-1315-4731-a3df-c8c8b1802391",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests",
           "method": "Armed_BlankValue_ReportsNoPerturbation",
           "traits": {
@@ -1791,15 +1766,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests.Armed_BlankValue_ReportsNoPerturbation(value: \\\"\\\")",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/Story45MutationSwitchTests.cs",
         "line": 33,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "6d8e2562-ea53-423d-8e2d-a4d955134757",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "0d3341dd-54d9-49c2-96d4-9c66fef73062",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests",
           "method": "Armed_BlankValue_ReportsNoPerturbation",
           "traits": {
@@ -1813,15 +1788,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests.Armed_BlankValue_ReportsNoPerturbation(value: \\\"   \\\")",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/Story45MutationSwitchTests.cs",
         "line": 33,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "fbd9419e-da12-49d6-97ed-eb8cd65b8ad5",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "e5d95e76-cad5-408a-804c-30ef8117a648",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests",
           "method": "Armed_BlankValue_ReportsNoPerturbation",
           "traits": {
@@ -1835,15 +1810,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests.IsArmed_UnknownName_Throws",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/Story45MutationSwitchTests.cs",
         "line": 62,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "0002c2db-21fb-49f8-9851-6cf60d73b324",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "0819db8f-22f9-4c14-b7ad-40c4c226c1e0",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests",
           "method": "IsArmed_UnknownName_Throws",
           "traits": {
@@ -1856,16 +1831,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Benchmarking.BenchmarkDatasetBuilderLiveSidecarTests.SeedAsync_ProductionActorReadsSnapshotTailAndAppendsNextEvent",
         "status": "passed",
-        "duration": 91,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 75,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Benchmarking/BenchmarkDatasetBuilderLiveSidecarTests.cs",
         "line": 44,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "94efc859-e9b7-43b8-999d-72bd7bfef13a",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "22910164-6379-4465-b60b-8e3361a3fb5c",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Benchmarking.BenchmarkDatasetBuilderLiveSidecarTests",
           "method": "SeedAsync_ProductionActorReadsSnapshotTailAndAppendsNextEvent",
           "traits": {
@@ -1878,16 +1853,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.DomainServices.DaprSerializationRoundTripTests.StoredEvents_SurviveDaprSerializationRoundTrip_WhenPassedToDomainService",
         "status": "passed",
-        "duration": 61,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 38,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/DomainServices/DaprSerializationRoundTripTests.cs",
         "line": 45,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "48814e82-5639-40b2-9e9b-67896e319ef8",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "f0220eca-bc6e-4e01-bc8b-e8baff3f53e0",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.DomainServices.DaprSerializationRoundTripTests",
           "method": "StoredEvents_SurviveDaprSerializationRoundTrip_WhenPassedToDomainService",
           "traits": {
@@ -1900,16 +1875,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.TerminalAdmission_SurvivesApplicationAndSidecarRestart",
         "status": "passed",
-        "duration": 3242,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 3244,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionLiveSidecarTests.cs",
         "line": 191,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "61557733-3c96-494a-b8b0-6bd447afeab7",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "fc4560e1-c96d-4a19-a384-9cc99f716280",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests",
           "method": "TerminalAdmission_SurvivesApplicationAndSidecarRestart",
           "traits": {
@@ -1922,16 +1897,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.LegacyMigration_TargetRedirectInventoryAndDirectoryRemainProvenAfterRestart",
         "status": "passed",
-        "duration": 3660,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 3485,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionLiveSidecarTests.cs",
         "line": 231,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "83196816-e282-4711-8c07-179c14d52a75",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "60b94488-3496-4118-b071-a18c9e777418",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests",
           "method": "LegacyMigration_TargetRedirectInventoryAndDirectoryRemainProvenAfterRestart",
           "traits": {
@@ -1944,16 +1919,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica",
         "status": "passed",
-        "duration": 8584,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 8470,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionLiveSidecarTests.cs",
         "line": 27,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "5a79f10c-4449-4faa-a791-774ee8d33935",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "d3aec3e0-c0ea-4d6d-ab03-49871bb16f63",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests",
           "method": "MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica",
           "traits": {
@@ -1966,16 +1941,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.ConcurrentEquivalentAdmissions_ExecuteOnceAndPersistReplayableTerminalState",
         "status": "passed",
-        "duration": 61,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 52,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionLiveSidecarTests.cs",
         "line": 132,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "1a37b2f3-8eb4-4456-8213-8e4352d72f44",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "2d63144d-ce71-4d78-b5ea-b088bc502b17",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests",
           "method": "ConcurrentEquivalentAdmissions_ExecuteOnceAndPersistReplayableTerminalState",
           "traits": {
@@ -1989,15 +1964,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests.StripTerminalScopes_CrLfInput_IsNormalized",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/StateStoreComponentCanonicalizationTests.cs",
         "line": 37,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "eed7ec31-e831-4778-a4e2-43d2a2e1c48d",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "8d50c42e-f494-474a-a69b-bc163da52e4c",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests",
           "method": "StripTerminalScopes_CrLfInput_IsNormalized",
           "traits": {
@@ -2011,15 +1986,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests.StripTerminalScopes_KeyAfterScopes_Throws",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/StateStoreComponentCanonicalizationTests.cs",
         "line": 47,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "9df448a4-14f3-4454-bb82-ae80fb469f07",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "5ae2fb9b-aac0-421a-81c1-fc74390d3a85",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests",
           "method": "StripTerminalScopes_KeyAfterScopes_Throws",
           "traits": {
@@ -2033,15 +2008,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests.StripTerminalScopes_TerminalBlock_ReturnsEverythingBeforeIt",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/StateStoreComponentCanonicalizationTests.cs",
         "line": 19,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "558a8683-5bc2-4a38-a6ab-35794c91cdd1",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "e45c13fd-ddfc-4ed7-84bb-e374baafd5a1",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests",
           "method": "StripTerminalScopes_TerminalBlock_ReturnsEverythingBeforeIt",
           "traits": {
@@ -2055,15 +2030,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests.StripTerminalScopes_NoScopesBlock_ReturnsDocument",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/StateStoreComponentCanonicalizationTests.cs",
         "line": 32,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "1c60112b-d0d5-4f19-be88-51b500d24189",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "58b05f05-da06-4ed2-84c5-8ca93c55e127",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.StateStoreComponentCanonicalizationTests",
           "method": "StripTerminalScopes_NoScopesBlock_ReturnsDocument",
           "traits": {
@@ -2076,16 +2051,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.TombstoningLifecycleTests.Lifecycle_TerminateThenReactivate_RehydratesAsTerminated",
         "status": "passed",
-        "duration": 63,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 52,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/TombstoningLifecycleTests.cs",
         "line": 46,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "25596b24-8811-449d-8f8b-35f277020f02",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "7ab0be3b-a7e1-44d7-b382-041ff73576b7",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.TombstoningLifecycleTests",
           "method": "Lifecycle_TerminateThenReactivate_RehydratesAsTerminated",
           "traits": {
@@ -2098,16 +2073,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.TombstoningLifecycleTests.Lifecycle_TerminateAfterSnapshotInterval_RehydratesAsTerminated",
         "status": "passed",
-        "duration": 256,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 218,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/TombstoningLifecycleTests.cs",
         "line": 145,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "95e42368-b22e-4454-be0f-856c28d0ff21",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "16433dfc-d05e-4e85-bb93-d66907e56b2f",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.TombstoningLifecycleTests",
           "method": "Lifecycle_TerminateAfterSnapshotInterval_RehydratesAsTerminated",
           "traits": {
@@ -2120,16 +2095,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.TombstoningLifecycleTests.Lifecycle_RepeatedRejectionsAfterTerminate_AppendIdempotently",
         "status": "passed",
-        "duration": 61,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 65,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/TombstoningLifecycleTests.cs",
         "line": 88,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "d4126149-5a1e-4047-959c-4dbb662d9de6",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "5c790499-4d62-44d6-9d45-d5c22aacf375",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.TombstoningLifecycleTests",
           "method": "Lifecycle_RepeatedRejectionsAfterTerminate_AppendIdempotently",
           "traits": {
@@ -2142,16 +2117,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.ProcessCommandAsync_RapidSequentialCommands_AllSucceed",
         "status": "passed",
-        "duration": 39,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 38,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs",
         "line": 86,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "0d1cb4bd-217b-4519-a9c3-635dc14a1548",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "d7c9af74-3267-4d0b-a11d-5f365b52360f",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests",
           "method": "ProcessCommandAsync_RapidSequentialCommands_AllSucceed",
           "traits": {
@@ -2164,16 +2139,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.ProcessCommandAsync_SequentialCommands_NoConflict",
         "status": "passed",
-        "duration": 63,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 60,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs",
         "line": 49,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "7a511f53-10e1-44c3-b301-86d0676f0272",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "c3895074-e930-4bd8-8e7d-3e18991e3d88",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests",
           "method": "ProcessCommandAsync_SequentialCommands_NoConflict",
           "traits": {
@@ -2186,19 +2161,19 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected",
         "status": "passed",
-        "duration": 22,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 19,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs",
         "line": 128,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "b2eff922-89fe-4f8e-b57e-8f8e82a773bd",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "ed5466cd-62e3-4fee-a257-0df192c93efa",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests",
           "method": "MetadataKey_StaleEtagUpdate_IsRejected",
-          "output": "{\n  \"schemaVersion\": 4,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"mutationArmed\": null,\n  \"key\": \"story-4-5-generic-etag-0c10eff78797487abb156dd65e2bc9e4\",\n  \"postUpdateReadKey\": \"story-4-5-generic-etag-0c10eff78797487abb156dd65e2bc9e4\",\n  \"seedStatus\": 204,\n  \"original\": {\n    \"etag\": \"1\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022seed\\u0022,\\u0022version\\u0022:0}\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    },\n    \"parseExceptionType\": null\n  },\n  \"interveningUpdate\": {\n    \"status\": 204,\n    \"etag\": \"2\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022first\\u0022,\\u0022version\\u0022:1}\",\n    \"value\": {\n      \"writer\": \"first\",\n      \"version\": 1\n    },\n    \"parseExceptionType\": null,\n    \"etagAdvanced\": true\n  },\n  \"staleReplay\": {\n    \"suppliedEtag\": \"1\",\n    \"suppliedEtagWasStale\": true,\n    \"status\": 409,\n    \"responseBody\": \"{\\u0022errorCode\\u0022:\\u0022ERR_STATE_SAVE\\u0022,\\u0022message\\u0022:\\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-f9ab064794254271ba0e0950069970f4||story-4-5-generic-etag-0c10eff78797487abb156dd65e2bc9e4\\u0022}\",\n    \"errorCode\": \"ERR_STATE_SAVE\",\n    \"errorMessage\": \"failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-f9ab064794254271ba0e0950069970f4||story-4-5-generic-etag-0c10eff78797487abb156dd65e2bc9e4\",\n    \"parseError\": null,\n    \"acknowledged\": false\n  },\n  \"retainedReadKey\": \"story-4-5-generic-etag-0c10eff78797487abb156dd65e2bc9e4\",\n  \"expectedRetainedWriter\": \"first\",\n  \"redisRetainedValue\": {\n    \"writer\": \"first\",\n    \"version\": 1\n  },\n  \"redisRetainedRawJson\": \"{\\u0022writer\\u0022:\\u0022first\\u0022,\\u0022version\\u0022:1}\",\n  \"retainedValueMatchesExpected\": true,\n  \"retainedReadExceptionType\": null,\n  \"retainedReadExceptionMessage\": null,\n  \"invariants\": {\n    \"stale-token-proven-stale\": true,\n    \"generic-409-semantics\": true,\n    \"retained-generic-value\": true\n  }\n}\n",
+          "output": "{\n  \"schemaVersion\": 4,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"mutationArmed\": null,\n  \"key\": \"story-4-5-generic-etag-566aa06c4f56456d96317a360d24847d\",\n  \"postUpdateReadKey\": \"story-4-5-generic-etag-566aa06c4f56456d96317a360d24847d\",\n  \"seedStatus\": 204,\n  \"original\": {\n    \"etag\": \"1\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022seed\\u0022,\\u0022version\\u0022:0}\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    },\n    \"parseExceptionType\": null\n  },\n  \"interveningUpdate\": {\n    \"status\": 204,\n    \"etag\": \"2\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022first\\u0022,\\u0022version\\u0022:1}\",\n    \"value\": {\n      \"writer\": \"first\",\n      \"version\": 1\n    },\n    \"parseExceptionType\": null,\n    \"etagAdvanced\": true\n  },\n  \"staleReplay\": {\n    \"suppliedEtag\": \"1\",\n    \"suppliedEtagWasStale\": true,\n    \"status\": 409,\n    \"responseBody\": \"{\\u0022errorCode\\u0022:\\u0022ERR_STATE_SAVE\\u0022,\\u0022message\\u0022:\\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-a2b89576d3f34104a51f29f9d6d3187c||story-4-5-generic-etag-566aa06c4f56456d96317a360d24847d\\u0022}\",\n    \"errorCode\": \"ERR_STATE_SAVE\",\n    \"errorMessage\": \"failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-a2b89576d3f34104a51f29f9d6d3187c||story-4-5-generic-etag-566aa06c4f56456d96317a360d24847d\",\n    \"parseError\": null,\n    \"acknowledged\": false\n  },\n  \"retainedReadKey\": \"story-4-5-generic-etag-566aa06c4f56456d96317a360d24847d\",\n  \"expectedRetainedWriter\": \"first\",\n  \"redisRetainedValue\": {\n    \"writer\": \"first\",\n    \"version\": 1\n  },\n  \"redisRetainedRawJson\": \"{\\u0022writer\\u0022:\\u0022first\\u0022,\\u0022version\\u0022:1}\",\n  \"retainedValueMatchesExpected\": true,\n  \"retainedReadExceptionType\": null,\n  \"retainedReadExceptionMessage\": null,\n  \"invariants\": {\n    \"stale-token-proven-stale\": true,\n    \"generic-409-semantics\": true,\n    \"retained-generic-value\": true\n  }\n}\n",
           "traits": {
             "Category": [
               "LiveSidecar"
@@ -2209,16 +2184,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests.RedisActorStateStore_ConcurrentSameAggregateCommands_PersistsGaplessEventStream",
         "status": "passed",
-        "duration": 101,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 87,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/EventPersistenceIntegrationTests.cs",
         "line": 159,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "d1d7efbd-ad8b-44be-97a9-563cc93395c6",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "5cc7dc9a-2284-46b5-8c71-5523a7bc6fb6",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests",
           "method": "RedisActorStateStore_ConcurrentSameAggregateCommands_PersistsGaplessEventStream",
           "traits": {
@@ -2231,16 +2206,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests.ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot",
         "status": "passed",
-        "duration": 287,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 207,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/EventPersistenceIntegrationTests.cs",
         "line": 216,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "b4f4dab7-2235-4746-9295-150c35604dc5",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "e1b3b766-5897-45a6-8aa4-4ff80db04f80",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests",
           "method": "ProcessCommandAsync_ExceedsSnapshotInterval_CreatesSnapshot",
           "traits": {
@@ -2253,16 +2228,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests.RedisStateStore_SequentialCommands_PersistsAllEvents",
         "status": "passed",
-        "duration": 131,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 121,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/EventPersistenceIntegrationTests.cs",
         "line": 42,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "69547900-0309-403f-b021-aeb7979e95b8",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "85e172a8-4289-4253-ae60-605333e60f08",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests",
           "method": "RedisStateStore_SequentialCommands_PersistsAllEvents",
           "traits": {
@@ -2275,16 +2250,16 @@
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests.RedisActorStateStore_IdempotencyRecords_PersistAcrossCalls",
         "status": "passed",
-        "duration": 19,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "duration": 28,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Events/EventPersistenceIntegrationTests.cs",
         "line": 119,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "582a4eec-573d-441b-bb6a-52eb740d89e6",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "1dd81b95-2caa-47d8-8097-15f1bf2c1eaf",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.EventPersistenceIntegrationTests",
           "method": "RedisActorStateStore_IdempotencyRecords_PersistAcrossCalls",
           "traits": {
@@ -2298,15 +2273,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"\\\")",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
         "line": 25,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "4d9d4993-8439-4888-bde3-349fb2e98532",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "91644d66-e545-4dea-b555-27199177b34a",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
           "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic",
           "traits": {
@@ -2320,15 +2295,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"not-json\\\")",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
         "line": 25,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "6594f47c-e242-4cdb-bbd2-710af3d2e041",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "af64a3e8-8523-49eb-8620-b269a3aaef70",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
           "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic",
           "traits": {
@@ -2342,15 +2317,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"[]\\\")",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
         "line": 25,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "94e7858c-190c-4a9e-9630-059c57efd376",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "09488d02-5af0-43e1-83d9-23f3091a42d4",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
           "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic",
           "traits": {
@@ -2364,15 +2339,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"{}\\\")",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
         "line": 25,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "fe589ed4-e423-4d8f-980d-7b8127a62796",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "c8dc7d1f-f6dc-434e-9703-b7ad8e7f5fc2",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
           "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic",
           "traits": {
@@ -2386,15 +2361,15 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_MalformedOrIncompleteBody_ReturnsDiagnostic(responseBody: \\\"{\\\\\\\"errorCode\\\\\\\":17,\\\\\\\"message\\\\\\\":null}\\\")",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
         "line": 25,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "827851c2-8d6b-4cdf-8a75-6d32733dcd29",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "f050aa39-6e42-46e5-ab4a-1f1d1465b4c5",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
           "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic",
           "traits": {
@@ -2408,20 +2383,45 @@
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests.Parse_CompleteError_ReturnsExactFields",
         "status": "passed",
         "duration": 0,
-        "suite": "f68e3f00-9715-4f6b-bfe6-d45dc623a7bf",
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/DaprStateErrorParserTests.cs",
         "line": 13,
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "4811d6ab-a143-44bb-99e0-9818bef4edeb",
-          "collection": "b82af2a8-77fa-4788-b01f-78c520c9cd51",
+          "id": "789efefd-cb58-4c2a-8061-27449c532a48",
+          "collection": "375f07ef-25d6-4173-a5be-b719ec709e4a",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
           "method": "Parse_CompleteError_ReturnsExactFields",
           "traits": {
             "Category": [
               "LiveSidecar"
+            ]
+          }
+        }
+      },
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
+        "status": "passed",
+        "duration": 11589,
+        "suite": "cd082a48-65bb-46a1-b247-f2c9d041b57f",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionOq8PostgresqlTests.cs",
+        "line": 20,
+        "tags": [
+          "LiveSidecar"
+        ],
+        "extra": {
+          "id": "13335e7f-11d3-4285-b471-eddac557da03",
+          "collection": "19abbbbf-3ec5-42b7-9b76-43e2fe0e8f57",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests",
+          "method": "ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
+          "traits": {
+            "Category": [
+              "LiveSidecar"
+            ],
+            "Profile": [
+              "oq8-postgresql-v1"
             ]
           }
         }

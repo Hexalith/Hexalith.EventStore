@@ -1197,9 +1197,12 @@ status: open
 - Redaction gate uses `! rg …`, so an rg failure (exit 2) inverts to success and reports clean having scanned nothing. [`evidence/story-4-5/0776785f.../commands.md:135`]
 - commands.md leaks errexit from the mutation wrapper, uses `exit 2` in the canonical-overwrite guard (closes an interactive shell), and runs the redact/hash block on unguarded variables. [`evidence/story-4-5/0776785f.../commands.md:89`]
 - concurrency-conflict.md Common Causes bullet 1 describes an optimistic-transaction rejection that cannot arise on the current actor commit path, since nothing supplies an etag there; page is otherwise correctly hedged. [`docs/reference/problems/concurrency-conflict.md:14`]
-- The ADD-fencing decision recorded as Deferred has no tracked owner or trigger — no append-fencing story exists in epics.md or sprint-status.yaml. [`_bmad-output/planning-artifacts/architecture.md:558`]
-- Story 4.5 provider profile is a source literal validated against itself (daprRuntime "1.18.1", redisImage "redis:6") and the two deterministic classes lack Collection/Trait attributes — deferred to the approved append-fencing follow-up, which must re-capture across multiple provider profiles anyway, so fixing runtime attribution and test placement is cheapest as part of that multi-profile capture. [`AppendDurabilityRaceLiveSidecarTests.cs:364`]
-- Story 4.5 evidence packet left partially updated by the 2026-08-11 review: harness and validator patched (D1/D2/D4/D5) but the live re-capture could not run — DaprTestContainerFixture probes localhost:50005/50006 while Dapr CLI 1.18 publishes placement/scheduler on 6050/6060, and the local control plane is 1.18.2 against a packet claiming 1.18.1. validate-evidence.py fails until a fresh capture regenerates the receipts, source-state.md, and evidence-sha256.txt. [`DaprTestContainerFixture.cs:47`]
+- The ADD-fencing decision recorded as Deferred has no tracked owner or trigger — no append-fencing story exists in epics.md or sprint-status.yaml. The decision row is at `architecture.md:603`; the earlier `:558` citation pointed at a mermaid line. SUPERSEDED: tracked as the single structured entry "The ADD-fencing decision recorded in `architecture.md` still has no tracked owner story or trigger" in the loop-3 block below; do not action this bullet separately. [`_bmad-output/planning-artifacts/architecture.md:603`]
+
+### Resolved by the 2026-08-25 re-capture (kept for history, no action)
+
+- Story 4.5 provider profile is a source literal validated against itself (daprRuntime "1.18.1", redisImage "redis:6") and the two deterministic classes lack Collection/Trait attributes — deferred to the approved append-fencing follow-up, which must re-capture across multiple provider profiles anyway, so fixing runtime attribution and test placement is cheapest as part of that multi-profile capture. [`AppendDurabilityRaceLiveSidecarTests.cs:414`] RESOLVED 2026-08-26: the owner authorized fixing both in the loop-3 re-capture. Provider facts are now read at capture time (`daprd --version`, `docker inspect dapr_redis`, `redis-cli config get`) and both deterministic classes carry `[Collection("DaprTestContainer")]` + `[Trait("Category", "LiveSidecar")]`.
+- Story 4.5 evidence packet left partially updated by the 2026-08-11 review: harness and validator patched (D1/D2/D4/D5) but the live re-capture could not run — DaprTestContainerFixture probes localhost:50005/50006 while Dapr CLI 1.18 publishes placement/scheduler on 6050/6060, and the local control plane is 1.18.2 against a packet claiming 1.18.1. validate-evidence.py fails until a fresh capture regenerates the receipts, source-state.md, and evidence-sha256.txt. [`DaprTestContainerFixture.cs:47`] RESOLVED 2026-08-26: the fixture now probes both candidate port pairs; `~/.dapr/bin/daprd --version` is genuinely 1.18.1 (only the placement/scheduler container images are 1.18.2, now disclosed in environment.md); the full re-capture and re-seal completed and `validate-evidence.py` exits 0.
 
 ## Deferred from: code review of spec-4-5-append-durability-race-evidence loop 2 (2026-08-11)
 
@@ -1775,3 +1778,35 @@ status: open
   severity: low
   summary: The reservation-input governance assertions were narrowed to one exact four-space `with:` block.
   evidence: `ContainerPublishingGovernanceTests` moved `release-version:`, `reserved-version:`, `release-authority-issue-url:` and `release-authority-owner:` from whole-file `ShouldNotContain` into the extracted `    with:` block, so a job whose `with:` is written at another indentation would not be examined. Deferred: theoretical — `.github/workflows/release.yml` has exactly two jobs and one `with:` mapping, and the new `Count(line => line.Equals("    with:")) == 1` assertion added in the same change fails closed if a second four-space mapping ever appears.
+
+## Deferred from: code review of spec-4-5-append-durability-race-evidence (re-capture and re-seal, 2026-08-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: medium
+  summary: No CI step executes the Story 4.5 evidence validator, so the packet's source binding decays silently under unrelated commits.
+  evidence: `validate-evidence.py` is operator-discipline only. Every sibling committed-evidence directory is pinned either by a blocking test in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/` or by a workflow step (`tools/validate-oq8-platform-evidence.py` from `integration.yml:118`). Deferred by explicit owner decision: wiring a step would change `.github/`, and AC6 requires `git diff 0776785f..HEAD -- src .github` to print nothing. Preserving AC6 wins; the decay cost is accepted. Re-sealing is the recovery, and it was performed on 2026-08-26.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: low
+  summary: `Hexalith.EventStore.Gateway` and `Hexalith.EventStore.TestSubscriber` emit `bin/Debug` output paths inside a Release solution build.
+  evidence: Neither project is a member of `Hexalith.EventStore.slnx`; both are reached only through `ProjectReference`, so the solution configuration never flows to them and `--configuration Release --no-incremental` still resolves them to `bin/Debug/net10.0/`. Both `.csproj` files live under `src/`, which AC6 freezes byte-for-byte, so Story 4.5 records the condition instead of fixing it. `validate-evidence.py` allowlists exactly those two names, re-checks that they really are non-members of the `.slnx`, rejects a `bin/Debug` path from anything else, and separately requires the LiveSidecar test assembly to be a Release output.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: medium
+  summary: The ADD-fencing decision recorded in `architecture.md` still has no tracked owner story or trigger.
+  evidence: `architecture.md:603` commits append-path storage fencing to "a separately approved implementation story", but no append-fencing story exists in `epics.md` or `sprint-status.yaml` (`grep -i fenc` finds only Story 4.11's admission fence). Nothing schedules the multi-provider re-capture the decision depends on. Carried forward from the 2026-08-11 review, still open after the 2026-08-26 re-seal.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: low
+  summary: `Oq8PostgresqlFixture` hard-codes control-plane ports `50005`/`50006` and cannot start where `dapr init` publishes `6050`/`6060`.
+  evidence: `Fixtures/Oq8PostgresqlFixture.cs:38-39` and its `VerifyPrerequisitesAsync` connect to `IPAddress.Loopback` on those exact ports, unlike `DaprTestContainerFixture`, which now probes both candidate pairs. The file is hash-bound by the sealed Story 4.14 (`evidence/story-4-14/.../source-state.json`) and Story 4.15 packets and validated by `tools/validate-oq8-platform-evidence.py` from `integration.yml`, so Story 4.5 must not edit it. The 2026-08-26 capture forwarded `50005->6050` and `50006->6060` instead, which is documented in `environment.md`. Owned by Story 4.14/4.15.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: low
+  summary: Classifier completeness for the Story 4.5 race outcome model lives only in a docstring.
+  evidence: `AppendDurabilityRaceClassifierTests` covers all twenty reachable classification names, but a twenty-first branch added to `AppendDurabilityRaceClassifier` would fail no test. Carried forward from the loop-2 review; unchanged by the 2026-08-26 re-seal.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md`
+  severity: low
+  summary: `MetadataKey_StaleEtagUpdate_IsRejected` and `ActorConcurrencyConflictTests` still read as actor-state evidence although the test keys on a generic-state key.
+  evidence: The method keys on `story-4-5-generic-etag-{Guid:N}`, and both the class docstring and the story report now say so explicitly, but the method and class names were not changed. Renaming would invalidate `commands.md`, the `MUTATIONS` map in `validate-evidence.py`, and every committed receipt, so it is deferred to the append-fencing follow-up that re-captures anyway.

@@ -54,10 +54,37 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     private static int _schedulerPort;
 
     /// <summary>Gets the placement host port resolved by the pre-flight probe.</summary>
-    private static int PlacementHostPort => Volatile.Read(ref _placementPort);
+    private static int PlacementHostPort => RequireResolvedPort(Volatile.Read(ref _placementPort), "placement");
 
     /// <summary>Gets the scheduler host port resolved by the pre-flight probe.</summary>
-    private static int SchedulerHostPort => Volatile.Read(ref _schedulerPort);
+    private static int SchedulerHostPort => RequireResolvedPort(Volatile.Read(ref _schedulerPort), "scheduler");
+
+    /// <summary>Gets the placement host port the pre-flight probe selected, or zero before it ran.</summary>
+    public static int ObservedPlacementPort => Volatile.Read(ref _placementPort);
+
+    /// <summary>Gets the scheduler host port the pre-flight probe selected, or zero before it ran.</summary>
+    public static int ObservedSchedulerPort => Volatile.Read(ref _schedulerPort);
+
+    /// <summary>Gets the placement host ports the pre-flight probe considers, in probe order.</summary>
+    public static IReadOnlyList<int> PlacementPortProbeOrder => PlacementPortCandidates;
+
+    /// <summary>Gets the scheduler host ports the pre-flight probe considers, in probe order.</summary>
+    public static IReadOnlyList<int> SchedulerPortProbeOrder => SchedulerPortCandidates;
+
+    /// <summary>
+    /// Fails loudly when a sidecar would be started before the pre-flight probe resolved a port.
+    /// The backing fields are static and default to zero, so without this guard a sidecar could be
+    /// launched with <c>--placement-host-address localhost:0</c> and no diagnostic.
+    /// </summary>
+    /// <param name="port">The resolved port.</param>
+    /// <param name="serviceName">The control-plane service name.</param>
+    /// <returns>The resolved port.</returns>
+    private static int RequireResolvedPort(int port, string serviceName)
+        => port != 0
+            ? port
+            : throw new InvalidOperationException(
+                $"The Dapr {serviceName} host port has not been resolved. "
+                + "VerifyPrerequisitesAsync must complete before a sidecar is started.");
     private const int RedisPort = 6379;
     private const int HealthTimeoutSeconds = 60;
     private const int WarmUpTimeoutSeconds = 45;
@@ -810,38 +837,38 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
     /// <summary>
     /// Removes the per-run <c>scopes:</c> block from a generated component document so the
     /// remaining text identifies the provider configuration rather than one randomized run.
+    /// The block must be terminal -- exactly what the evidence validator assumes when it
+    /// re-derives the canonical form as everything before <c>"\nscopes:"</c>. A generator that
+    /// ever emits a top-level key after <c>scopes:</c> throws here instead of letting the C# and
+    /// Python derivations diverge silently.
     /// </summary>
     /// <param name="componentYaml">The generated component document.</param>
-    /// <returns>The component document without its trailing scopes block.</returns>
-    private static string StripScopes(string componentYaml)
+    /// <returns>The component document up to, but excluding, its terminal scopes block.</returns>
+    /// <exception cref="InvalidOperationException">A top-level key follows the scopes block.</exception>
+    public static string StripTerminalScopes(string componentYaml)
     {
-        string[] lines = componentYaml.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        var kept = new List<string>(lines.Length);
-        bool inScopes = false;
-        foreach (string line in lines)
+        ArgumentNullException.ThrowIfNull(componentYaml);
+
+        string normalized = componentYaml.Replace("\r\n", "\n", StringComparison.Ordinal);
+        int index = normalized.IndexOf("\nscopes:", StringComparison.Ordinal);
+        if (index < 0)
         {
-            if (line.StartsWith("scopes:", StringComparison.Ordinal))
-            {
-                inScopes = true;
-                continue;
-            }
-
-            if (inScopes)
-            {
-                if (line.Length > 0 && !char.IsWhiteSpace(line[0]))
-                {
-                    inScopes = false;
-                }
-                else
-                {
-                    continue;
-                }
-            }
-
-            kept.Add(line);
+            return normalized.TrimEnd('\n');
         }
 
-        return string.Join('\n', kept).TrimEnd('\n');
+        string remainder = normalized[(index + 1)..];
+        foreach (string line in remainder.Split('\n').Skip(1))
+        {
+            if (line.Length > 0 && !char.IsWhiteSpace(line[0]))
+            {
+                throw new InvalidOperationException(
+                    "The generated state-store component emits a top-level key after 'scopes:'. "
+                    + "The canonical form assumes a terminal scopes block; update both the C# and "
+                    + "the evidence validator together before capturing.");
+            }
+        }
+
+        return normalized[..index];
     }
 
     /// <summary>
@@ -853,22 +880,37 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         => await RunCapturedProcessAsync(ResolveDaprdPath(), ["--version"]).ConfigureAwait(false);
 
     /// <summary>
-    /// Reads the image reference of the running <c>dapr_redis</c> container backing the state store.
+    /// Reads the image reference configured for a running Dapr control-plane or Redis container.
     /// </summary>
+    /// <param name="containerName">The container name, for example <c>dapr_redis</c>.</param>
     /// <returns>The trimmed image reference, or a diagnostic marker when it cannot be read.</returns>
-    public static async Task<string> ReadObservedRedisImageAsync()
+    public static async Task<string> ReadObservedContainerImageAsync(string containerName)
         => await RunCapturedProcessAsync(
             "docker",
-            ["inspect", "dapr_redis", "--format", "{{.Config.Image}}"]).ConfigureAwait(false);
+            ["inspect", containerName, "--format", "{{.Config.Image}}"]).ConfigureAwait(false);
 
     /// <summary>
-    /// Reads the repository digest of the running <c>dapr_redis</c> container image.
+    /// Reads the local image <em>ID</em> of a running container. This is the content digest of the
+    /// image configuration on this host; it is <em>not</em> a registry repository digest and must
+    /// not be used in a <c>docker pull name@sha256:...</c> reference.
     /// </summary>
-    /// <returns>The trimmed digest list, or a diagnostic marker when it cannot be read.</returns>
-    public static async Task<string> ReadObservedRedisImageDigestAsync()
+    /// <param name="containerName">The container name.</param>
+    /// <returns>The trimmed image ID, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedContainerImageIdAsync(string containerName)
         => await RunCapturedProcessAsync(
             "docker",
-            ["inspect", "dapr_redis", "--format", "{{.Image}}"]).ConfigureAwait(false);
+            ["inspect", containerName, "--format", "{{.Image}}"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the registry repository digests of a local image. These are the values that work in a
+    /// <c>docker pull name@sha256:...</c> reference; the list is empty for a locally built image.
+    /// </summary>
+    /// <param name="imageReference">The image reference, for example <c>redis:6</c>.</param>
+    /// <returns>The trimmed JSON digest list, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedRepositoryDigestsAsync(string imageReference)
+        => await RunCapturedProcessAsync(
+            "docker",
+            ["image", "inspect", imageReference, "--format", "{{json .RepoDigests}}"]).ConfigureAwait(false);
 
     /// <summary>
     /// Reads the Redis persistence configuration that a lost-write finding depends on.
@@ -1204,7 +1246,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
               - {{AppId}}
             """;
         StateStoreComponentYaml = stateStoreYaml;
-        StateStoreComponentCanonicalYaml = StripScopes(stateStoreYaml);
+        StateStoreComponentCanonicalYaml = StripTerminalScopes(stateStoreYaml);
 
         string pubSubYaml = $$"""
             apiVersion: dapr.io/v1alpha1

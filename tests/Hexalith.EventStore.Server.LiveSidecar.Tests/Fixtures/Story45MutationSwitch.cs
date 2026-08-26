@@ -18,9 +18,12 @@ public static class Story45MutationSwitch
         "gate-targeting",
         "intermediate-raw-durability",
         "key-addressability",
-        "final-state-classified",
+        "final-state-sound",
         "conflict-retry-classification",
         "infrastructure-free",
+        "infrastructure-free-transport",
+        "state-store-component-identity",
+        "stale-token-proven-stale",
         "generic-409-semantics",
         "retained-generic-value",
     };

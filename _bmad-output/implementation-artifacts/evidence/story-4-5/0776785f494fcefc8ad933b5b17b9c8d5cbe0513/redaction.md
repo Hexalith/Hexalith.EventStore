@@ -21,12 +21,21 @@ Validation performed before hashing (the checked-in semantic validator repeats t
 
 ```bash
 python3 validate-evidence.py .
+
+# The scan must distinguish "no match" from "the scan could not run": rg exits 1 when it finds
+# nothing and 2 when the scan itself failed (bad glob, missing PCRE2, unreadable file). A bare
+# `! rg …` inverts both into success and reports the directory clean having scanned nothing.
+rg_exit=0
+rg -n '/home/[^/[:space:]]+/projects/hexalith/eventstore|"computer": "(?!<redacted-machine>)|"user": "(?!<redacted-machine-user>)' \
+  . --glob '*.json' --glob '*.log' --pcre2 || rg_exit=$?
+case $rg_exit in
+  0) echo "Redaction scan FAILED: unredacted identifiers remain" >&2; false ;;
+  1) echo "Redaction scan clean" ;;
+  *) echo "Redaction scan could not run (rg exit $rg_exit)" >&2; false ;;
+esac
 ```
 
-The redaction scan must distinguish "no match" from "the scan could not run". `rg` exits `1` when it
-finds nothing and `2` when the scan itself failed (bad glob, missing PCRE2, unreadable file); a bare
-`! rg …` inverts both into success and would report the directory clean having scanned nothing. The
-scan in `commands.md` branches explicitly on `0`/`1`/other and is expected to report
+`commands.md` runs the same scan as `story_4_5_redaction_scan`; the expected result is
 `Redaction scan clean`.
 
 `validate-evidence.py` additionally parses every CTRF receipt, verifies the exact positive and

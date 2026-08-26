@@ -144,21 +144,36 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         StateReadCapture<EventEnvelope>? intermediateEventCapture = null;
         StateReadCapture<AggregateMetadata>? intermediateMetadataCapture = null;
 
+        bool gateTargetingPerturbed = Story45MutationSwitch.IsArmed("gate-targeting");
+        string writerEndpoint = DaprEndpointForWriters();
         using AppendDurabilityRaceSession session = _fixture.AppendDurabilityRaceControl.BeginSession(rawMessageId);
         _fixture.DomainServiceInvoker.SetupAggregateHandler(
             identity,
             (targetCommand, _) =>
             {
-                // Perturbation: arm the gate for a message id the command does not carry, so the
-                // recorded gate target no longer identifies the intended writer.
-                string armedMessageId = Story45MutationSwitch.IsArmed("gate-targeting")
-                    ? $"{targetCommand.MessageId}-mutated"
-                    : targetCommand.MessageId;
-                session.Arm(identity.ActorId, armedMessageId);
+                // Under the gate-targeting perturbation the intended writer deliberately does not
+                // arm: a decoy aggregate arms first and its allocation occupies the single gate,
+                // so the harness genuinely holds the wrong writer instead of merely comparing a
+                // rewritten string.
+                if (!gateTargetingPerturbed)
+                {
+                    session.Arm(identity.ActorId, targetCommand.MessageId);
+                }
+
                 return Task.FromResult(
                     DomainResult.Success(
                     [new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented()]));
             });
+
+        Task? decoyTask = null;
+        AggregateIdentity? decoyIdentity = null;
+        string? decoyMessageId = null;
+        if (gateTargetingPerturbed)
+        {
+            (decoyIdentity, decoyMessageId, decoyTask) = await StartDecoyGateOccupantAsync(
+                actorProxyFactory,
+                session).ConfigureAwait(true);
+        }
 
         Task actorTask = ExecuteActorAsync();
         try
@@ -174,6 +189,14 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 if (Story45MutationSwitch.IsArmed("gate-hold"))
                 {
                     session.Release();
+                    await actorTask.ConfigureAwait(true);
+                }
+
+                // Under gate-targeting the decoy holds the gate, so the intended writer runs
+                // unhindered. Await it here so the recorded hold flags are deterministic rather
+                // than a race between the target actor and the probes below.
+                if (gateTargetingPerturbed)
+                {
                     await actorTask.ConfigureAwait(true);
                 }
             }
@@ -194,7 +217,9 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                     using var rawCancellation = new CancellationTokenSource(OperationTimeout);
                     using var rawRequest = new HttpRequestMessage(
                         HttpMethod.Post,
-                        BuildActorStateUri(identity));
+                        $"{writerEndpoint}/v1.0/actors/"
+                            + $"{Uri.EscapeDataString(_fixture.AggregateActorTypeName)}/"
+                            + $"{Uri.EscapeDataString(identity.ActorId)}/state");
                     rawRequest.Content = new StringContent(
                         CreateActorStateTransaction(rawEvent, rawMetadata, identity),
                         Encoding.UTF8,
@@ -222,7 +247,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 if (!Story45MutationSwitch.IsArmed("key-addressability"))
                 {
                     genericActorKeyProbeUrl =
-                        $"{_fixture.DaprHttpEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(identity.MetadataKey)}";
+                        $"{writerEndpoint}/v1.0/state/statestore/{Uri.EscapeDataString(identity.MetadataKey)}";
                     try
                     {
                         using var addressCancellation = new CancellationTokenSource(OperationTimeout);
@@ -264,6 +289,10 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         {
             session.Release();
             await actorTask.ConfigureAwait(true);
+            if (decoyTask is not null)
+            {
+                await decoyTask.ConfigureAwait(true);
+            }
         }
 
         StateReadCapture<AggregateMetadata> finalMetadataCapture = await TryReadActorStateAsync<AggregateMetadata>(
@@ -287,11 +316,19 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             }
         }
 
-        // Perturbation: skip the one-past-the-end probe, so nothing rules out an event beyond the
-        // metadata sequence and the final shape becomes unclassifiable.
+        // Perturbation: tear the persisted stream for real. An extra raw actor-state upsert writes
+        // an event one past the metadata sequence without advancing metadata, so the harness
+        // produces a genuinely torn shape rather than skipping a read.
+        bool tornShapeInjected = false;
+        if (Story45MutationSwitch.IsArmed("final-state-sound") && finalSequenceWithinBounds)
+        {
+            tornShapeInjected = await InjectTornStreamAsync(identity, rawEvent, finalSequence + 1)
+                .ConfigureAwait(true);
+        }
+
         StateReadCapture<EventEnvelope>? unexpectedNextEventCapture = null;
         bool nextEventProbed = false;
-        if (finalSequenceWithinBounds && !Story45MutationSwitch.IsArmed("final-state-classified"))
+        if (finalSequenceWithinBounds)
         {
             unexpectedNextEventCapture = await TryReadActorStateAsync<EventEnvelope>(
                 $"{identity.EventStreamKeyPrefix}{finalSequence + 1}").ConfigureAwait(true);
@@ -302,7 +339,7 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         // no longer claim it completed against healthy infrastructure.
         string healthProbeUrl = Story45MutationSwitch.IsArmed("infrastructure-free")
             ? $"{UnreachableProbeEndpoint}/v1.0/healthz"
-            : $"{_fixture.DaprHttpEndpoint}/v1.0/healthz";
+            : $"{writerEndpoint}/v1.0/healthz";
         (HttpStatusCode? sidecarHealthStatus, Exception? sidecarHealthException) =
             await ProbeSidecarHealthAsync(healthProbeUrl).ConfigureAwait(true);
         bool sidecarHealthy = sidecarHealthException is null
@@ -384,22 +421,23 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             && nextEventProbed
             && (finalMetadata is null || finalEventCaptures.Count == finalSequence);
 
-        // Demoted from a hard requirement to a recorded classification (owner decision, loop-2 D2):
-        // a torn interleaving is the anomaly this spike exists to catch and must be recorded, not
-        // red-gate the required live-sidecar check. Only an *unclassifiable* shape fails.
-        string finalShapeClassification = ClassifyFinalShape(
+        // Recorded in full, and asserted against the shapes the reviewed profile must not exhibit
+        // (owner decision, loop-4). An unexpected-but-real outcome is captured verbatim; a torn
+        // stream still turns something red.
+        var finalShapeInput = new AppendDurabilityFinalShapeClassifier.Input(
             finalStateFullyRead,
             finalSequenceWithinBounds,
             finalSequence,
-            finalMetadata,
-            finalEvents,
+            finalMetadata is not null,
+            [.. finalEvents.Select(item => item.SequenceNumber)],
+            [.. finalEvents.Select(item => item.MessageId)],
             unexpectedNextEventCapture?.Value is not null,
+            finalEvents.All(item => item.Identity == identity),
             exactContendersOnly,
-            identity);
-        bool finalStateClassified = !string.Equals(
-            finalShapeClassification,
-            "unclassified-final-shape",
-            StringComparison.Ordinal);
+            finalMetadata is not null
+                && (finalEvents.Count == 0 || finalMetadata.LastModified == finalEvents[^1].Timestamp));
+        string finalShapeClassification = AppendDurabilityFinalShapeClassifier.Classify(finalShapeInput);
+        bool finalStateSound = AppendDurabilityFinalShapeClassifier.IsSound(finalShapeClassification);
 
         // Recorded, not required: a provider that populates the metadata ETag is a first-class
         // observation for the deferred fencing decision, not a test failure. Three-state so an
@@ -420,7 +458,11 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             || actorException is InvalidOperationException
             || actorException?.GetType().Name.Contains("ConcurrencyConflict", StringComparison.Ordinal) == true;
         // Perturbation: classify against a sequence the final state does not exhibit, so the
-        // classification stops corroborating the observed allocation telemetry.
+        // classification stops corroborating the observed allocation telemetry. The invariant does
+        // not compare classifierSequence with finalSequence -- that comparison would be exactly
+        // `!IsArmed("conflict-retry-classification")` and could never be falsified by an
+        // observation. It is earned by the classifier's own consistency verdict, which is derived
+        // from the observed survivors and retry telemetry.
         long classifierSequence = Story45MutationSwitch.IsArmed("conflict-retry-classification")
             ? finalSequence + 1
             : finalSequence;
@@ -439,7 +481,6 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 retryCount));
         bool retryClassificationConsistent = session.AllocationAttempts >= 1
             && session.GateInterceptions == 1
-            && classifierSequence == finalSequence
             && classification.IsInternallyConsistent
             && (classifierSequence != 2
                 || !(rawSurvives && actorSurvives)
@@ -456,25 +497,56 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
         string observedDaprRuntime = await DaprTestContainerFixture
             .ReadObservedDaprRuntimeVersionAsync().ConfigureAwait(true);
         string observedRedisImage = await DaprTestContainerFixture
-            .ReadObservedRedisImageAsync().ConfigureAwait(true);
-        string observedRedisImageDigest = await DaprTestContainerFixture
-            .ReadObservedRedisImageDigestAsync().ConfigureAwait(true);
+            .ReadObservedContainerImageAsync("dapr_redis").ConfigureAwait(true);
+        string observedRedisImageId = await DaprTestContainerFixture
+            .ReadObservedContainerImageIdAsync("dapr_redis").ConfigureAwait(true);
+        string observedRedisRepoDigests = await DaprTestContainerFixture
+            .ReadObservedRepositoryDigestsAsync("redis:6").ConfigureAwait(true);
         string observedRedisPersistence = await DaprTestContainerFixture
             .ReadObservedRedisPersistenceAsync().ConfigureAwait(true);
-        string stateStoreComponentSha256 = Sha256Hex(_fixture.StateStoreComponentCanonicalYaml);
+        string observedPlacementImage = await DaprTestContainerFixture
+            .ReadObservedContainerImageAsync("dapr_placement").ConfigureAwait(true);
+        string observedPlacementImageId = await DaprTestContainerFixture
+            .ReadObservedContainerImageIdAsync("dapr_placement").ConfigureAwait(true);
+        string observedSchedulerImage = await DaprTestContainerFixture
+            .ReadObservedContainerImageAsync("dapr_scheduler").ConfigureAwait(true);
+        string observedSchedulerImageId = await DaprTestContainerFixture
+            .ReadObservedContainerImageIdAsync("dapr_scheduler").ConfigureAwait(true);
+
+        // Perturbation: hash the raw component, scopes list and all, so the recorded digest stops
+        // binding configuration identity and becomes the per-run nonce loop 3 rejected.
+        string hashedComponentYaml = Story45MutationSwitch.IsArmed("state-store-component-identity")
+            ? _fixture.StateStoreComponentYaml
+            : _fixture.StateStoreComponentCanonicalYaml;
+        string stateStoreComponentSha256 = Sha256Hex(hashedComponentYaml);
+        bool stateStoreComponentIdentityBound =
+            !hashedComponentYaml.Contains("scopes:", StringComparison.Ordinal)
+            && string.Equals(
+                hashedComponentYaml,
+                DaprTestContainerFixture.StripTerminalScopes(_fixture.StateStoreComponentYaml),
+                StringComparison.Ordinal)
+            && string.Equals(
+                stateStoreComponentSha256,
+                Sha256Hex(hashedComponentYaml),
+                StringComparison.Ordinal)
+            && _fixture.StateStoreComponentYaml.Contains(
+                $"scopes:\n  - {_fixture.AppId}",
+                StringComparison.Ordinal);
+
         var invariants = new Dictionary<string, bool>(StringComparer.Ordinal)
         {
             ["gate-hold"] = gateHoldProven,
             ["gate-targeting"] = gateTargetingProven,
             ["intermediate-raw-durability"] = intermediateDurabilityConsistent,
             ["key-addressability"] = keyAddressabilityProven,
-            ["final-state-classified"] = finalStateClassified,
+            ["final-state-sound"] = finalStateSound,
             ["conflict-retry-classification"] = retryClassificationConsistent,
             ["infrastructure-free"] = infrastructureFree,
+            ["state-store-component-identity"] = stateStoreComponentIdentityBound,
         };
         var evidence = new
         {
-            schemaVersion = 4,
+            schemaVersion = 5,
             baselineCommit = "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
             mutationArmed,
             providerProfile = new
@@ -483,14 +555,29 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 daprRuntimeSource = "daprd --version, read from the exact binary this fixture launches",
                 stateStoreType = "state.redis",
                 redisImageObserved = observedRedisImage,
-                redisImageDigestObserved = observedRedisImageDigest,
+                redisImageIdObserved = observedRedisImageId,
+                redisRepoDigestsObserved = observedRedisRepoDigests,
                 redisPersistenceObserved = observedRedisPersistence,
-                redisProbeSource = "docker inspect dapr_redis / redis-cli config get appendonly save",
+                placementImageObserved = observedPlacementImage,
+                placementImageIdObserved = observedPlacementImageId,
+                schedulerImageObserved = observedSchedulerImage,
+                schedulerImageIdObserved = observedSchedulerImageId,
+                imageIdVersusRepositoryDigest =
+                    "*ImageIdObserved is the local image ID from `docker inspect {{.Image}}`; it is NOT a registry repository digest and must not be used in `docker pull name@sha256:...`. redisRepoDigestsObserved carries the pullable digests.",
+                redisProbeSource = "docker inspect dapr_redis / docker image inspect redis:6 / redis-cli config get appendonly, save",
+                controlPlanePorts = new
+                {
+                    placementProbeOrder = DaprTestContainerFixture.PlacementPortProbeOrder,
+                    schedulerProbeOrder = DaprTestContainerFixture.SchedulerPortProbeOrder,
+                    placementResolved = DaprTestContainerFixture.ObservedPlacementPort,
+                    schedulerResolved = DaprTestContainerFixture.ObservedSchedulerPort,
+                },
                 appId = _fixture.AppId,
                 stateStoreComponentSha256,
                 stateStoreComponentSha256Scope =
-                    "SHA-256 of the generated component with the per-run scopes list removed, so the digest binds configuration identity across runs",
+                    "SHA-256 of the generated component with the per-run terminal scopes block removed, so the digest binds configuration identity across runs",
                 stateStoreComponentCanonicalYaml = _fixture.StateStoreComponentCanonicalYaml,
+                stateStoreComponentHashedYaml = hashedComponentYaml,
                 stateStoreComponentYaml = _fixture.StateStoreComponentYaml,
                 allocatorDecoratorType = typeof(LiveSidecarGlobalPositionAllocator).FullName,
                 productionAllocatorType = LiveSidecarGlobalPositionAllocator.ProductionAllocatorTypeName,
@@ -513,6 +600,8 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 actorTaskIncompleteAfterIntermediate,
                 timestampChainInProgramOrder,
                 timestampChainIsEvidence = false,
+                decoyGateOccupantActorId = decoyIdentity?.ActorId,
+                decoyGateOccupantMessageId = decoyMessageId,
             },
             aggregate = new
             {
@@ -587,7 +676,9 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
                 finalSequenceWithinBounds,
                 nextEventProbed,
                 finalStateFullyRead,
+                tornShapeInjected,
                 shapeClassification = finalShapeClassification,
+                shapeInput = finalShapeInput,
                 eventReads = finalEventCaptures,
                 events = finalEvents,
                 unexpectedNextEventRead = unexpectedNextEventCapture,
@@ -600,6 +691,12 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
             },
             infrastructure = new
             {
+                writerEndpoint,
+                sidecarEndpoint = _fixture.DaprHttpEndpoint,
+                writerEndpointRedirected = !string.Equals(
+                    writerEndpoint,
+                    _fixture.DaprHttpEndpoint,
+                    StringComparison.Ordinal),
                 sidecarHealthProbeUrl = healthProbeUrl,
                 sidecarHealthStatus = sidecarHealthStatus is null ? null : (int?)sidecarHealthStatus.Value,
                 sidecarHealthExceptionType = sidecarHealthException?.GetType().FullName,
@@ -623,75 +720,123 @@ public sealed class AppendDurabilityRaceLiveSidecarTests
     }
 
     /// <summary>
-    /// Classifies the observed final Redis shape. Every anomaly gets its own recorded name so a
-    /// torn interleaving is captured rather than failing the run; only a shape the harness did not
-    /// fully read is reported as unclassifiable.
+    /// Starts a decoy command against a different aggregate whose handler arms the single gate, so
+    /// the gate genuinely intercepts a non-target allocation. Used only by the
+    /// <c>gate-targeting</c> perturbation: it changes which writer the harness holds rather than
+    /// rewriting the string an assertion compares.
     /// </summary>
-    private static string ClassifyFinalShape(
-        bool finalStateFullyRead,
-        bool finalSequenceWithinBounds,
-        long finalSequence,
-        AggregateMetadata? finalMetadata,
-        List<EventEnvelope> finalEvents,
-        bool unexpectedNextEventPresent,
-        bool exactContendersOnly,
-        AggregateIdentity identity)
+    /// <param name="actorProxyFactory">The proxy factory bound to the live sidecar.</param>
+    /// <param name="session">The active race session.</param>
+    /// <returns>The decoy identity, its message id, and its in-flight task.</returns>
+    private async Task<(AggregateIdentity Identity, string MessageId, Task Task)> StartDecoyGateOccupantAsync(
+        ActorProxyFactory actorProxyFactory,
+        AppendDurabilityRaceSession session)
     {
-        if (!finalSequenceWithinBounds)
-        {
-            return "final-sequence-out-of-bounds";
-        }
+        var decoyIdentity = new AggregateIdentity(
+            "tenant-a",
+            "counter",
+            $"append-race-decoy-{UniqueIdHelper.GenerateSortableUniqueStringId()}");
+        string decoyMessageId = UniqueIdHelper.GenerateSortableUniqueStringId();
+        var decoyCommand = new CommandEnvelopeBuilder()
+            .WithMessageId(decoyMessageId)
+            .WithCorrelationId(decoyMessageId)
+            .WithCausationId(decoyMessageId)
+            .WithTenantId(decoyIdentity.TenantId)
+            .WithDomain(decoyIdentity.Domain)
+            .WithAggregateId(decoyIdentity.AggregateId)
+            .WithCommandType("IncrementCounter")
+            .Build();
+        _fixture.DomainServiceInvoker.SetupAggregateHandler(
+            decoyIdentity,
+            (command, _) =>
+            {
+                session.Arm(decoyIdentity.ActorId, command.MessageId);
+                return Task.FromResult(
+                    DomainResult.Success(
+                    [new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented()]));
+            });
 
-        if (!finalStateFullyRead)
+        IAggregateActor decoyActor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+            new ActorId(decoyIdentity.ActorId),
+            _fixture.AggregateActorTypeName);
+        Task decoyTask = Task.Run(async () =>
         {
-            return "unclassified-final-shape";
-        }
+            try
+            {
+                _ = await decoyActor.ProcessCommandAsync(decoyCommand).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The decoy exists only to occupy the gate; its own outcome is not evidence.
+            }
+        });
 
-        if (finalMetadata is null)
-        {
-            return finalEvents.Count == 0 && !unexpectedNextEventPresent
-                ? "no-metadata-no-events"
-                : "events-without-metadata";
-        }
-
-        if (finalEvents.Count != finalSequence)
-        {
-            return "metadata-sequence-without-matching-events";
-        }
-
-        if (!finalEvents.Select(item => item.SequenceNumber)
-            .SequenceEqual(Enumerable.Range(1, finalEvents.Count).Select(value => (long)value)))
-        {
-            return "non-contiguous-event-sequence";
-        }
-
-        if (finalEvents.Select(item => item.MessageId).Distinct(StringComparer.Ordinal).Count() != finalEvents.Count)
-        {
-            return "duplicate-event-message-ids";
-        }
-
-        if (unexpectedNextEventPresent)
-        {
-            return "event-beyond-metadata-sequence";
-        }
-
-        if (!finalEvents.All(item => item.Identity == identity))
-        {
-            return "foreign-aggregate-identity-present";
-        }
-
-        if (!exactContendersOnly)
-        {
-            return "foreign-writer-present";
-        }
-
-        if (finalSequence > 0 && finalMetadata.LastModified != finalEvents[^1].Timestamp)
-        {
-            return "metadata-timestamp-mismatch";
-        }
-
-        return $"gapless-{finalSequence}-event-stream";
+        using var decoyGateCancellation = new CancellationTokenSource(OperationTimeout);
+        await session.WaitForFirstAllocationAsync(decoyGateCancellation.Token).ConfigureAwait(true);
+        return (decoyIdentity, decoyMessageId, decoyTask);
     }
+
+    /// <summary>
+    /// Writes one extra event past the metadata sequence through the raw actor-state endpoint,
+    /// without advancing metadata. Used only by the <c>final-state-sound</c> perturbation to
+    /// produce a genuinely torn persisted stream rather than skipping a read.
+    /// </summary>
+    /// <param name="identity">The probed aggregate identity.</param>
+    /// <param name="template">The raw contender used as the payload template.</param>
+    /// <param name="sequence">The sequence to write past the metadata sequence.</param>
+    /// <returns><see langword="true"/> when the tear was acknowledged.</returns>
+    private async Task<bool> InjectTornStreamAsync(
+        AggregateIdentity identity,
+        EventEnvelope template,
+        long sequence)
+    {
+        EventEnvelope torn = template with
+        {
+            MessageId = UniqueIdHelper.GenerateSortableUniqueStringId(),
+            SequenceNumber = sequence,
+        };
+        object[] operations =
+        [
+            new
+            {
+                operation = "upsert",
+                request = new
+                {
+                    key = $"{identity.EventStreamKeyPrefix}{sequence}",
+                    value = torn,
+                },
+            },
+        ];
+
+        using var http = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+        };
+        using var cancellation = new CancellationTokenSource(OperationTimeout);
+        using var request = new HttpRequestMessage(HttpMethod.Post, BuildActorStateUri(identity))
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(operations, EvidenceJsonOptions),
+                Encoding.UTF8,
+                "application/json"),
+        };
+        using HttpResponseMessage response = await http
+            .SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellation.Token)
+            .ConfigureAwait(true);
+        return response.StatusCode is >= HttpStatusCode.OK and < HttpStatusCode.MultipleChoices;
+    }
+
+    /// <summary>
+    /// Gets the Dapr HTTP endpoint the raw writer and the namespace/health probes use. The
+    /// <c>infrastructure-free-transport</c> perturbation redirects it to an unroutable address, so
+    /// the exception-capturing conjuncts of <c>infrastructure-free</c> are exercised rather than
+    /// only the liveness probe.
+    /// </summary>
+    /// <returns>The endpoint base address.</returns>
+    private string DaprEndpointForWriters()
+        => Story45MutationSwitch.IsArmed("infrastructure-free-transport")
+            ? UnreachableProbeEndpoint
+            : _fixture.DaprHttpEndpoint;
 
     private static async Task<(HttpStatusCode? Status, Exception? Error)> ProbeSidecarHealthAsync(string url)
     {

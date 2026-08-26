@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "baselineCommit": "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
   "mutationArmed": null,
   "providerProfile": {
@@ -7,25 +7,44 @@
     "daprRuntimeSource": "daprd --version, read from the exact binary this fixture launches",
     "stateStoreType": "state.redis",
     "redisImageObserved": "docker.io/redis:6",
-    "redisImageDigestObserved": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "redisImageIdObserved": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "redisRepoDigestsObserved": "[\"redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\"]",
     "redisPersistenceObserved": "appendonly no | save 3600 1 300 100 60 10000",
-    "redisProbeSource": "docker inspect dapr_redis / redis-cli config get appendonly save",
-    "appId": "eventstore-live-64fb414a22ad4a8891f62cb243812dc3",
+    "placementImageObserved": "docker.io/daprio/dapr:1.18.2",
+    "placementImageIdObserved": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+    "schedulerImageObserved": "docker.io/daprio/dapr:1.18.2",
+    "schedulerImageIdObserved": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+    "imageIdVersusRepositoryDigest": "*ImageIdObserved is the local image ID from `docker inspect {{.Image}}`; it is NOT a registry repository digest and must not be used in `docker pull name@sha256:...`. redisRepoDigestsObserved carries the pullable digests.",
+    "redisProbeSource": "docker inspect dapr_redis / docker image inspect redis:6 / redis-cli config get appendonly, save",
+    "controlPlanePorts": {
+      "placementProbeOrder": [
+        50005,
+        6050
+      ],
+      "schedulerProbeOrder": [
+        50006,
+        6060
+      ],
+      "placementResolved": 6050,
+      "schedulerResolved": 6060
+    },
+    "appId": "eventstore-live-d7a18487e49243339d31c3bb888d880a",
     "stateStoreComponentSha256": "06284f20919e20ca08439ada6811d1d6612a1ffd76e11cded9d9fa5767ae52d4",
-    "stateStoreComponentSha256Scope": "SHA-256 of the generated component with the per-run scopes list removed, so the digest binds configuration identity across runs",
-    "stateStoreComponentCanonicalYaml": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \u0022localhost:6379\u0022\n    - name: redisPassword\n      value: \u0022\u0022\n    - name: actorStateStore\n      value: \u0022true\u0022",
-    "stateStoreComponentYaml": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \u0022localhost:6379\u0022\n    - name: redisPassword\n      value: \u0022\u0022\n    - name: actorStateStore\n      value: \u0022true\u0022\nscopes:\n  - eventstore-live-64fb414a22ad4a8891f62cb243812dc3",
+    "stateStoreComponentSha256Scope": "SHA-256 of the generated component with the per-run terminal scopes block removed, so the digest binds configuration identity across runs",
+    "stateStoreComponentCanonicalYaml": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"localhost:6379\"\n    - name: redisPassword\n      value: \"\"\n    - name: actorStateStore\n      value: \"true\"",
+    "stateStoreComponentHashedYaml": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"localhost:6379\"\n    - name: redisPassword\n      value: \"\"\n    - name: actorStateStore\n      value: \"true\"",
+    "stateStoreComponentYaml": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"localhost:6379\"\n    - name: redisPassword\n      value: \"\"\n    - name: actorStateStore\n      value: \"true\"\nscopes:\n  - eventstore-live-d7a18487e49243339d31c3bb888d880a",
     "allocatorDecoratorType": "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.LiveSidecarGlobalPositionAllocator",
     "productionAllocatorType": "Hexalith.EventStore.Server.Events.DaprGlobalPositionAllocator",
     "allocatorIdentityLimitation": "IGlobalPositionAllocator exposes count and cancellation only; the aggregate-specific handler arms immediately before the intended command persists, but the allocator call itself carries no aggregate identity."
   },
   "session": {
-    "sessionId": "01M0XK680VMABZAYM2H9Z4S9CG",
-    "targetActorId": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-    "targetMessageId": "01M0XK680VMABZAYM2H9Z4S9CF",
-    "armedAtUtc": "2026-08-25T23:13:21.5620981+00:00",
-    "firstAllocationEnteredAtUtc": "2026-08-25T23:13:21.575622+00:00",
-    "releasedAtUtc": "2026-08-25T23:13:21.725034+00:00",
+    "sessionId": "01M0YC5WWVHTWEV69QVTNHBA2P",
+    "targetActorId": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+    "targetMessageId": "01M0YC5WWVHTWEV69QVTNHBA2N",
+    "armedAtUtc": "2026-08-26T06:30:04.5146208+00:00",
+    "firstAllocationEnteredAtUtc": "2026-08-26T06:30:04.5219417+00:00",
+    "releasedAtUtc": "2026-08-26T06:30:04.5983063+00:00",
     "armCalls": 1,
     "allocationAttempts": 1,
     "gateInterceptions": 1,
@@ -34,25 +53,27 @@
     "actorTaskIncompleteAfterRaw": true,
     "actorTaskIncompleteAfterIntermediate": true,
     "timestampChainInProgramOrder": true,
-    "timestampChainIsEvidence": false
+    "timestampChainIsEvidence": false,
+    "decoyGateOccupantActorId": null,
+    "decoyGateOccupantMessageId": null
   },
   "aggregate": {
     "tenantId": "tenant-a",
     "domain": "counter",
-    "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-    "actorId": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-    "eventKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:1",
-    "metadataKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
-    "compositeMetadataRedisKey": "eventstore-live-64fb414a22ad4a8891f62cb243812dc3||AggregateActorTests626a1788509548d8a14f016051ef5f51||tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA||tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata"
+    "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+    "actorId": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+    "eventKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:1",
+    "metadataKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
+    "compositeMetadataRedisKey": "eventstore-live-d7a18487e49243339d31c3bb888d880a||AggregateActorTests26f6e577ff734d33b695c7a684f6314c||tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX||tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata"
   },
   "actorContender": {
-    "messageId": "01M0XK680VMABZAYM2H9Z4S9CF",
-    "correlationId": "01M0XK680VMABZAYM2H9Z4S9CF",
-    "completedAtUtc": "2026-08-25T23:13:21.8181185+00:00",
+    "messageId": "01M0YC5WWVHTWEV69QVTNHBA2N",
+    "correlationId": "01M0YC5WWVHTWEV69QVTNHBA2N",
+    "completedAtUtc": "2026-08-26T06:30:04.6508783+00:00",
     "result": {
       "accepted": true,
       "errorMessage": null,
-      "correlationId": "01M0XK680VMABZAYM2H9Z4S9CF",
+      "correlationId": "01M0YC5WWVHTWEV69QVTNHBA2N",
       "eventCount": 1,
       "resultPayload": null,
       "backpressureExceeded": false,
@@ -64,12 +85,12 @@
     },
     "exceptionType": null,
     "exceptionMessage": null,
-    "survivingEventMessageId": "01M0XK68B0QEYTGEFAAJTWD2PR"
+    "survivingEventMessageId": "01M0YC5X27QAAYMFSCE1GYR9XT"
   },
   "rawContender": {
-    "messageId": "01M0XK680VMABZAYM2H9Z4S9CG",
-    "correlationId": "01M0XK680VMABZAYM2H9Z4S9CH",
-    "completedAtUtc": "2026-08-25T23:13:21.5884481+00:00",
+    "messageId": "01M0YC5WWVHTWEV69QVTNHBA2P",
+    "correlationId": "01M0YC5WWVHTWEV69QVTNHBA2Q",
+    "completedAtUtc": "2026-08-26T06:30:04.5299355+00:00",
     "httpStatus": 204,
     "responseBody": "",
     "callerSuppliedEtag": null,
@@ -81,35 +102,35 @@
     "exceptionMessage": null
   },
   "keyAddressability": {
-    "completedAtUtc": "2026-08-25T23:13:21.5899788+00:00",
-    "genericStateProbeUrl": "http://localhost:35787/v1.0/state/statestore/tenant-a%3Acounter%3Aappend-race-01M0XK680D3VZR1DMHNQRPA0NA%3Ametadata",
-    "genericStateKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
+    "completedAtUtc": "2026-08-26T06:30:04.5307889+00:00",
+    "genericStateProbeUrl": "http://localhost:37885/v1.0/state/statestore/tenant-a%3Acounter%3Aappend-race-01M0YC5WWJQFVYEYCJHD2HAFGX%3Ametadata",
+    "genericStateKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
     "genericStateStatus": 204,
     "genericStateBody": "",
     "genericStateExceptionType": null,
     "genericStateExceptionMessage": null,
-    "compositeRedisKey": "eventstore-live-64fb414a22ad4a8891f62cb243812dc3||AggregateActorTests626a1788509548d8a14f016051ef5f51||tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA||tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
+    "compositeRedisKey": "eventstore-live-d7a18487e49243339d31c3bb888d880a||AggregateActorTests26f6e577ff734d33b695c7a684f6314c||tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX||tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
     "compositeRedisMetadata": {
       "currentSequence": 1,
-      "lastModified": "2026-08-25T23:13:21.4366008+00:00",
+      "lastModified": "2026-08-26T06:30:04.4437405+00:00",
       "eTag": null
     },
     "compositeActorRedisReadable": true,
     "classification": "actor-key-absent-from-generic-namespace"
   },
   "intermediate": {
-    "readAtUtc": "2026-08-25T23:13:21.7246127+00:00",
+    "readAtUtc": "2026-08-26T06:30:04.5980642+00:00",
     "event": {
-      "messageId": "01M0XK680VMABZAYM2H9Z4S9CG",
-      "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
+      "messageId": "01M0YC5WWVHTWEV69QVTNHBA2P",
+      "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
       "aggregateType": "counter",
       "tenantId": "tenant-a",
       "domain": "counter",
       "sequenceNumber": 1,
       "globalPosition": 0,
-      "timestamp": "2026-08-25T23:13:21.4366008+00:00",
-      "correlationId": "01M0XK680VMABZAYM2H9Z4S9CH",
-      "causationId": "01M0XK680VMABZAYM2H9Z4S9CG",
+      "timestamp": "2026-08-26T06:30:04.4437405+00:00",
+      "correlationId": "01M0YC5WWVHTWEV69QVTNHBA2Q",
+      "causationId": "01M0YC5WWVHTWEV69QVTNHBA2P",
       "userId": "story-4-5-raw-contender",
       "domainServiceVersion": "story-4-5-probe",
       "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
@@ -122,30 +143,30 @@
       "identity": {
         "tenantId": "tenant-a",
         "domain": "counter",
-        "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-        "actorId": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-        "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:",
-        "metadataKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
-        "snapshotKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:snapshot",
-        "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:pipeline:",
+        "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+        "actorId": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+        "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:",
+        "metadataKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
+        "snapshotKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:snapshot",
+        "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:pipeline:",
         "pubSubTopic": "tenant-a.counter.events",
-        "queueSession": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA"
+        "queueSession": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX"
       }
     },
     "eventRead": {
-      "key": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:1",
+      "key": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:1",
       "found": true,
       "value": {
-        "messageId": "01M0XK680VMABZAYM2H9Z4S9CG",
-        "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
+        "messageId": "01M0YC5WWVHTWEV69QVTNHBA2P",
+        "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
         "aggregateType": "counter",
         "tenantId": "tenant-a",
         "domain": "counter",
         "sequenceNumber": 1,
         "globalPosition": 0,
-        "timestamp": "2026-08-25T23:13:21.4366008+00:00",
-        "correlationId": "01M0XK680VMABZAYM2H9Z4S9CH",
-        "causationId": "01M0XK680VMABZAYM2H9Z4S9CG",
+        "timestamp": "2026-08-26T06:30:04.4437405+00:00",
+        "correlationId": "01M0YC5WWVHTWEV69QVTNHBA2Q",
+        "causationId": "01M0YC5WWVHTWEV69QVTNHBA2P",
         "userId": "story-4-5-raw-contender",
         "domainServiceVersion": "story-4-5-probe",
         "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
@@ -158,14 +179,14 @@
         "identity": {
           "tenantId": "tenant-a",
           "domain": "counter",
-          "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-          "actorId": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-          "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:",
-          "metadataKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
-          "snapshotKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:snapshot",
-          "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:pipeline:",
+          "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+          "actorId": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+          "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:",
+          "metadataKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
+          "snapshotKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:snapshot",
+          "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:pipeline:",
           "pubSubTopic": "tenant-a.counter.events",
-          "queueSession": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA"
+          "queueSession": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX"
         }
       },
       "exceptionType": null,
@@ -173,15 +194,15 @@
     },
     "metadata": {
       "currentSequence": 1,
-      "lastModified": "2026-08-25T23:13:21.4366008+00:00",
+      "lastModified": "2026-08-26T06:30:04.4437405+00:00",
       "eTag": null
     },
     "metadataRead": {
-      "key": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
+      "key": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
       "found": true,
       "value": {
         "currentSequence": 1,
-        "lastModified": "2026-08-25T23:13:21.4366008+00:00",
+        "lastModified": "2026-08-26T06:30:04.4437405+00:00",
         "eTag": null
       },
       "exceptionType": null,
@@ -192,18 +213,18 @@
     "attemptedRegardlessOfRawStatus": true
   },
   "final": {
-    "readAtUtc": "2026-08-25T23:13:22.3497135+00:00",
+    "readAtUtc": "2026-08-26T06:30:05.1754833+00:00",
     "metadata": {
       "currentSequence": 1,
-      "lastModified": "2026-08-25T23:13:21.568192+00:00",
+      "lastModified": "2026-08-26T06:30:04.5182631+00:00",
       "eTag": null
     },
     "metadataRead": {
-      "key": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
+      "key": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
       "found": true,
       "value": {
         "currentSequence": 1,
-        "lastModified": "2026-08-25T23:13:21.568192+00:00",
+        "lastModified": "2026-08-26T06:30:04.5182631+00:00",
         "eTag": null
       },
       "exceptionType": null,
@@ -213,22 +234,39 @@
     "finalSequenceWithinBounds": true,
     "nextEventProbed": true,
     "finalStateFullyRead": true,
+    "tornShapeInjected": false,
     "shapeClassification": "gapless-1-event-stream",
+    "shapeInput": {
+      "finalStateFullyRead": true,
+      "finalSequenceWithinBounds": true,
+      "finalSequence": 1,
+      "metadataPresent": true,
+      "eventSequenceNumbers": [
+        1
+      ],
+      "eventMessageIds": [
+        "01M0YC5X27QAAYMFSCE1GYR9XT"
+      ],
+      "unexpectedNextEventPresent": false,
+      "allEventsMatchAggregateIdentity": true,
+      "exactContendersOnly": true,
+      "metadataLastModifiedMatchesLastEvent": true
+    },
     "eventReads": [
       {
-        "key": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:1",
+        "key": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:1",
         "found": true,
         "value": {
-          "messageId": "01M0XK68B0QEYTGEFAAJTWD2PR",
-          "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
+          "messageId": "01M0YC5X27QAAYMFSCE1GYR9XT",
+          "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
           "aggregateType": "counter",
           "tenantId": "tenant-a",
           "domain": "counter",
           "sequenceNumber": 1,
           "globalPosition": 1,
-          "timestamp": "2026-08-25T23:13:21.568192+00:00",
-          "correlationId": "01M0XK680VMABZAYM2H9Z4S9CF",
-          "causationId": "01M0XK680VMABZAYM2H9Z4S9CF",
+          "timestamp": "2026-08-26T06:30:04.5182631+00:00",
+          "correlationId": "01M0YC5WWVHTWEV69QVTNHBA2N",
+          "causationId": "01M0YC5WWVHTWEV69QVTNHBA2N",
           "userId": "test-user",
           "domainServiceVersion": "v1",
           "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
@@ -236,19 +274,19 @@
           "serializationFormat": "json",
           "payload": "e30=",
           "extensions": {
-            "eventstore.protection": "{\u0022state\u0022:\u0022Unprotected\u0022,\u0022metadataVersion\u0022:1}"
+            "eventstore.protection": "{\"state\":\"Unprotected\",\"metadataVersion\":1}"
           },
           "identity": {
             "tenantId": "tenant-a",
             "domain": "counter",
-            "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-            "actorId": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-            "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:",
-            "metadataKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
-            "snapshotKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:snapshot",
-            "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:pipeline:",
+            "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+            "actorId": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+            "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:",
+            "metadataKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
+            "snapshotKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:snapshot",
+            "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:pipeline:",
             "pubSubTopic": "tenant-a.counter.events",
-            "queueSession": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA"
+            "queueSession": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX"
           }
         },
         "exceptionType": null,
@@ -257,16 +295,16 @@
     ],
     "events": [
       {
-        "messageId": "01M0XK68B0QEYTGEFAAJTWD2PR",
-        "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
+        "messageId": "01M0YC5X27QAAYMFSCE1GYR9XT",
+        "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
         "aggregateType": "counter",
         "tenantId": "tenant-a",
         "domain": "counter",
         "sequenceNumber": 1,
         "globalPosition": 1,
-        "timestamp": "2026-08-25T23:13:21.568192+00:00",
-        "correlationId": "01M0XK680VMABZAYM2H9Z4S9CF",
-        "causationId": "01M0XK680VMABZAYM2H9Z4S9CF",
+        "timestamp": "2026-08-26T06:30:04.5182631+00:00",
+        "correlationId": "01M0YC5WWVHTWEV69QVTNHBA2N",
+        "causationId": "01M0YC5WWVHTWEV69QVTNHBA2N",
         "userId": "test-user",
         "domainServiceVersion": "v1",
         "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
@@ -274,24 +312,24 @@
         "serializationFormat": "json",
         "payload": "e30=",
         "extensions": {
-          "eventstore.protection": "{\u0022state\u0022:\u0022Unprotected\u0022,\u0022metadataVersion\u0022:1}"
+          "eventstore.protection": "{\"state\":\"Unprotected\",\"metadataVersion\":1}"
         },
         "identity": {
           "tenantId": "tenant-a",
           "domain": "counter",
-          "aggregateId": "append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-          "actorId": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA",
-          "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:",
-          "metadataKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:metadata",
-          "snapshotKey": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:snapshot",
-          "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:pipeline:",
+          "aggregateId": "append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+          "actorId": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX",
+          "eventStreamKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:",
+          "metadataKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:metadata",
+          "snapshotKey": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:snapshot",
+          "pipelineKeyPrefix": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:pipeline:",
           "pubSubTopic": "tenant-a.counter.events",
-          "queueSession": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA"
+          "queueSession": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX"
         }
       }
     ],
     "unexpectedNextEventRead": {
-      "key": "tenant-a:counter:append-race-01M0XK680D3VZR1DMHNQRPA0NA:events:2",
+      "key": "tenant-a:counter:append-race-01M0YC5WWJQFVYEYCJHD2HAFGX:events:2",
       "found": false,
       "value": null,
       "exceptionType": null,
@@ -305,7 +343,10 @@
     "actorAcknowledgedWriteLost": false
   },
   "infrastructure": {
-    "sidecarHealthProbeUrl": "http://localhost:35787/v1.0/healthz",
+    "writerEndpoint": "http://localhost:37885",
+    "sidecarEndpoint": "http://localhost:37885",
+    "writerEndpointRedirected": false,
+    "sidecarHealthProbeUrl": "http://localhost:37885/v1.0/healthz",
     "sidecarHealthStatus": 204,
     "sidecarHealthExceptionType": null,
     "sidecarHealthy": true
@@ -315,9 +356,10 @@
     "gate-targeting": true,
     "intermediate-raw-durability": true,
     "key-addressability": true,
-    "final-state-classified": true,
+    "final-state-sound": true,
     "conflict-retry-classification": true,
-    "infrastructure-free": true
+    "infrastructure-free": true,
+    "state-store-component-identity": true
   },
   "observation": {
     "classification": "same-key-overwrite-raw-durable-write-lost",

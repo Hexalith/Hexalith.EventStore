@@ -1,8 +1,8 @@
 {
   "reportFormat": "CTRF",
   "specVersion": "0.0.0",
-  "reportId": "8fa8c484-2ce7-4b2f-9849-a111c41dc375",
-  "timestamp": "2026-08-08T08:51:57Z",
+  "reportId": "acec6abd-4baa-4502-9c23-67e5cbb0cdb3",
+  "timestamp": "2026-08-26T06:29:56Z",
   "results": {
     "tool": {
       "name": "xUnit.net v3",
@@ -17,17 +17,17 @@
       "user": "<redacted-machine-user>",
       "suites": [
         {
-          "id": "0c09beb4-c07c-4f88-bf5d-a81d31c2ff8a",
+          "id": "a03783a0-e418-4f1a-b872-c96ce19dee98",
           "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
           "environment": "64-bit (x64) .NET 10.0.10 [collection-per-class, non-parallel]",
           "testFramework": "xUnit.net v3 3.2.2+728c1dce01",
           "targetFramework": ".NETCoreApp,Version=v10.0",
-          "start": 1786179116981,
-          "stop": 1786179117222,
-          "duration": 3779,
+          "start": 1787725795723,
+          "stop": 1787725796026,
+          "duration": 3899,
           "collections": [
             {
-              "id": "97f2dfb8-8d56-4b04-85a9-cf3c694bac85",
+              "id": "e1c71c65-b093-48c3-9e59-a9a8097e8a54",
               "name": "DaprTestContainer"
             }
           ],
@@ -43,28 +43,28 @@
       "skipped": 0,
       "other": 0,
       "suites": 1,
-      "start": 1786179116981,
-      "stop": 1786179117222
+      "start": 1787725795723,
+      "stop": 1787725796026
     },
     "tests": [
       {
         "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected",
         "status": "failed",
-        "duration": 118,
-        "suite": "0c09beb4-c07c-4f88-bf5d-a81d31c2ff8a",
+        "duration": 133,
+        "suite": "a03783a0-e418-4f1a-b872-c96ce19dee98",
         "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs",
-        "line": 129,
-        "message": "Shouldly.ShouldAssertException : mutate ? !satisfied : satisfied\r\n    should be\r\nTrue\r\n    but was\r\nFalse\r\n\r\nAdditional Info:\r\n    the stale generic-state update must return HTTP 409 with Dapr ERR_STATE_SAVE ETag-mismatch semantics",
-        "trace": "   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.AssertInvariant(Boolean satisfied, String mutationName, String message) in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 310\n   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected() in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 230\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)\n--- End of stack trace from previous location ---\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "line": 128,
+        "message": "Shouldly.ShouldAssertException : failed\r\n    should be empty but had\r\n1\r\n    item and was\r\n[\\\"generic-409-semantics\\\"]\r\n\r\nAdditional Info:\r\n    Falsified Story 4.5 invariants: [invariant:generic-409-semantics]",
+        "trace": "   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.AssertInvariants(IReadOnlyDictionary`2 invariants) in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 400\n   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected() in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 297\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)\n--- End of stack trace from previous location ---\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
         "tags": [
           "LiveSidecar"
         ],
         "extra": {
-          "id": "16fbd48f-cde0-496e-b92a-fe43af70afa0",
-          "collection": "97f2dfb8-8d56-4b04-85a9-cf3c694bac85",
+          "id": "37cbe15c-3072-4ff8-b7c3-da1322f13481",
+          "collection": "e1c71c65-b093-48c3-9e59-a9a8097e8a54",
           "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests",
           "method": "MetadataKey_StaleEtagUpdate_IsRejected",
-          "output": "{\n  \"schemaVersion\": 1,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"key\": \"story-4-5-generic-etag-f493cdca2e104324bc0cbb8221553f89\",\n  \"seedStatus\": 204,\n  \"original\": {\n    \"etag\": \"1\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    }\n  },\n  \"interveningUpdate\": {\n    \"status\": 204,\n    \"etag\": \"2\",\n    \"value\": {\n      \"writer\": \"first\",\n      \"version\": 1\n    },\n    \"etagAdvanced\": true\n  },\n  \"staleReplay\": {\n    \"suppliedEtag\": \"1\",\n    \"status\": 409,\n    \"responseBody\": \"{\\u0022errorCode\\u0022:\\u0022ERR_STATE_SAVE\\u0022,\\u0022message\\u0022:\\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-81a33b5b4a79455fb6a34f4d9ca5c0ce||story-4-5-generic-etag-f493cdca2e104324bc0cbb8221553f89\\u0022}\",\n    \"errorCode\": \"ERR_STATE_SAVE\",\n    \"errorMessage\": \"failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-81a33b5b4a79455fb6a34f4d9ca5c0ce||story-4-5-generic-etag-f493cdca2e104324bc0cbb8221553f89\",\n    \"parseError\": null\n  },\n  \"redisRetainedValue\": {\n    \"writer\": \"first\",\n    \"version\": 1\n  },\n  \"retainedValueMatchesExpected\": true,\n  \"retainedReadExceptionType\": null,\n  \"retainedReadExceptionMessage\": null\n}\n",
+          "output": "{\n  \"schemaVersion\": 4,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"mutationArmed\": \"generic-409-semantics\",\n  \"key\": \"story-4-5-generic-etag-33f1da94da6942b49a06406d81dadced\",\n  \"postUpdateReadKey\": \"story-4-5-generic-etag-33f1da94da6942b49a06406d81dadced\",\n  \"seedStatus\": 204,\n  \"original\": {\n    \"etag\": \"1\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022seed\\u0022,\\u0022version\\u0022:0}\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    },\n    \"parseExceptionType\": null\n  },\n  \"interveningUpdate\": {\n    \"status\": 204,\n    \"etag\": \"2\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022first\\u0022,\\u0022version\\u0022:1}\",\n    \"value\": {\n      \"writer\": \"first\",\n      \"version\": 1\n    },\n    \"parseExceptionType\": null,\n    \"etagAdvanced\": true\n  },\n  \"staleReplay\": {\n    \"suppliedEtag\": \"2\",\n    \"suppliedEtagWasStale\": false,\n    \"status\": 204,\n    \"responseBody\": \"\",\n    \"errorCode\": null,\n    \"errorMessage\": null,\n    \"parseError\": \"response body was empty\",\n    \"acknowledged\": true\n  },\n  \"retainedReadKey\": \"story-4-5-generic-etag-33f1da94da6942b49a06406d81dadced\",\n  \"expectedRetainedWriter\": \"stale\",\n  \"redisRetainedValue\": {\n    \"writer\": \"stale\",\n    \"version\": 2\n  },\n  \"redisRetainedRawJson\": \"{\\u0022writer\\u0022:\\u0022stale\\u0022,\\u0022version\\u0022:2}\",\n  \"retainedValueMatchesExpected\": true,\n  \"retainedReadExceptionType\": null,\n  \"retainedReadExceptionMessage\": null,\n  \"invariants\": {\n    \"stale-token-proven-stale\": true,\n    \"generic-409-semantics\": false,\n    \"retained-generic-value\": true\n  }\n}\n",
           "traits": {
             "Category": [
               "LiveSidecar"

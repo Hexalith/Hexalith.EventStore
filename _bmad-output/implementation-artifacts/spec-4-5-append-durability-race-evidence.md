@@ -2,8 +2,8 @@
 title: 'Story 4.5: Append Durability Race Evidence'
 type: 'chore'
 created: '2026-08-08'
-status: 'in-progress'
-review_loop_iteration: 3
+status: 'done'
+review_loop_iteration: 4
 story_key: '4-5-append-durability-race-evidence'
 baseline_commit: '0776785f494fcefc8ad933b5b17b9c8d5cbe0513'
 context:
@@ -121,14 +121,7 @@ Owner decision: fix the correctness and high-severity items and re-seal; defer D
 
 **Verified here:** Release build of the LiveSidecar project is clean (0 warnings, 0 errors); the deterministic branch matrix passes **28/28** (was 25), confirming the three new classifier cases and the dead-branch removal.
 
-**SUPERSEDED 2026-08-26 — see "Resolution (2026-08-26) — owner authorization to unblock, re-capture and re-seal" below. Both blockers named here are now dispositioned: the port fix is authorized, and the runtime-attribution blocker was overstated (`~/.dapr/bin/daprd --version` is `1.18.1`, the profile the packet claims). The packet is still invalid until the re-seal completes.**
-
-**BLOCKED — the re-seal was not completed. The evidence packet is now in a partially-updated state and MUST NOT be treated as valid.** `validate-evidence.py` currently fails at `classifier-parser-test-results.json: expected (28, 28, 0), got (25, 25, 0)`, because the committed receipts predate these changes. Two independent blockers stopped the live capture on this machine:
-
-1. **Port layout mismatch.** `DaprTestContainerFixture.cs:47-48` probes `localhost:50005/50006` on non-Windows, but this machine's `dapr init` (CLI 1.18.0) publishes placement on **6050** and scheduler on **6060**, so the fixture aborts in `InitializeAsync` with "Dapr infrastructure pre-flight check failed". Fixing this means either re-running `dapr init` (destroys the running control plane and its Redis data), installing a port forwarder, or editing the hardcoded ports — none of which this review authorized.
-2. **Runtime attribution would be wrong anyway.** The local control plane containers are `daprio/dapr:1.18.2` while `dapr --version` reports runtime 1.18.1 and the packet's profile claims `1.18.1`. Because D3 (hardcoded provider profile) was deferred, any capture taken here would be silently labelled `1.18.1` — reproducing exactly the defect D3 describes.
-
-**To finish:** run the capture on a host whose `dapr init` matches the fixture's expected ports and whose runtime genuinely is the profile being claimed, following `commands.md` end to end (Release solution build → classifier/parser → focused race + generic-ETag → full suite → 7 mutations → restored focused rerun → redact/hash → `validate-evidence.py` → `sha256sum -c`). Then regenerate `source-state.md` (its `docs/ci.md` and `docs/concepts/architecture-overview.md` rows are already stale at `HEAD`) and `evidence-sha256.txt`. Expected receipt counts after these changes: classifier/parser **28**, full suite **78** — both already updated in the validator.
+**SUPERSEDED 2026-08-26 — see "Resolution (2026-08-26)" and "Execution record (2026-08-26)" below.** Both blockers named here were dispositioned and then cleared: the fixture now probes both control-plane port layouts, and the runtime-attribution blocker was overstated (`~/.dapr/bin/daprd --version` is `1.18.1`, the profile the packet claims; only the placement/scheduler container images are `1.18.2`, now disclosed in `environment.md`). **The re-capture and re-seal completed on 2026-08-26; the packet is valid again** — `python3 validate-evidence.py` exits 0 and `sha256sum -c evidence-sha256.txt` is all-OK.
 
 **Refuted during verification** (raised by a layer, checked against source, and dismissed): "retry count 0 does not prove the budget was not entered" — the `RetryAfterPersistenceConflict:` label is at `AggregateActor.cs:530`, *before* rehydration and before `PersistEventsAsync`, so a genuine retry re-enters `AllocateAsync` and would increment `AllocationAttempts`; the report's inference is sound. "The new tests never run in CI" — `live-sidecar` is a required check on `main`. "`status: 'done'` contradicts `sprint-status: review`" — repo convention, matching spec-4-3 and spec-4-4. "The page asserts unproven behavior as fact" — explicitly hedged (see above). "No deferred-work entry exists for Story 4.5" — five entries exist at `deferred-work.md:1058,1102,1106,1110,1114`, filed by `5bcfdbc8`. "The canonical-overwrite guard runs `realpath` on a missing directory" — `mkdir -p` precedes it at `commands.md:14`. "The redaction regex misses compact JSON" — the `jq` pass at `commands.md:123-127` normalizes every JSON file first.
 
@@ -148,22 +141,22 @@ Code review 2026-08-11 (four layers: blind-hunter, edge-case-hunter, verificatio
 - [x] [Review][Decision] The port blocker's remedy is a one-line test-only change, and the recorded framing overstates it — confirmed on this host: 50005/50006 are closed, 6050/6060 are open, `dapr_placement` publishes `0.0.0.0:6050->50005/tcp`. The fixture's `PlacementPort = OperatingSystem.IsWindows() ? 6050 : 50005` (`DaprTestContainerFixture.cs:47-48`) already contains the right host ports behind a now-stale OS predicate. The Resolution and the deferred-work entry state the only options are re-running `dapr init`, a port forwarder, or "editing the hardcoded ports — none of which this review authorized"; probing both candidates, or correcting the predicate, is inside test scope and would unblock the re-capture. It does touch a hash-bound source, which the re-seal already owes.
 - [x] [Review][Decision] D6 defers a violation of a *frozen* `Always` constraint rather than renegotiating it — the `<frozen-after-approval>` block requires every new test to carry `[Collection("DaprTestContainer")]` + `[Trait("Category", "LiveSidecar")]`; `AppendDurabilityRaceClassifierTests` and `DaprStateErrorParserTests` still carry neither. The exception lives only in `deferred-work.md` and the mutable Resolution block while the frozen text — "do not modify unless human renegotiates" — still states the rule unconditionally.
 
-- [ ] [Review][Patch] Resolution asserts AC8 passes in the present tense while this diff breaks it — `sha256sum -c` is 21/22 at the reviewed tree [`spec-4-5-append-durability-race-evidence.md:174`]
-- [ ] [Review][Patch] BLOCKED note names 1 of 13 broken validator gates; the other 12 are 7 missing `[invariant:]` tags, 2 schema versions, and 3 absent fields [`spec-4-5-append-durability-race-evidence.md:165`]
-- [ ] [Review][Patch] `commands.md` documents a mutation model the code no longer uses ("does not alter ... persisted inputs") and is omitted from the re-seal list [`evidence/story-4-5/0776785f.../commands.md:77`]
-- [ ] [Review][Patch] `verification-summary.md` hard-codes `25 passed`, `75 passed`, and "All 22 listed files OK"; omitted from the re-seal list [`evidence/story-4-5/0776785f.../verification-summary.md:7`]
-- [ ] [Review][Patch] key-addressability failure message still prescribes the outcome the predicate stopped requiring, and that string lands in the evidence receipt [`AppendDurabilityRaceLiveSidecarTests.cs:547`]
-- [ ] [Review][Patch] `infrastructureFree` still carries no `[invariant:]` tag and no perturbation — the loop-1 sub-item was silently dropped, not deferred [`AppendDurabilityRaceLiveSidecarTests.cs:556`]
-- [ ] [Review][Patch] Mutation receipts do not record which perturbation was armed, so an environmental flake yields a receipt byte-equivalent in every field the validator inspects [`validate-evidence.py:71`]
-- [ ] [Review][Patch] Validator does not pin the invariant key set; deleting an invariant from the emitted object still validates [`validate-evidence.py:142`]
-- [ ] [Review][Patch] A probe transport failure is attributed to `key-addressability` rather than infrastructure — `infrastructureFree` shares the `genericActorKeyException is null` conjunct but is asserted 3 positions later [`AppendDurabilityRaceLiveSidecarTests.cs:544`]
-- [ ] [Review][Patch] D4 residual — `JsonDocument.Parse(originalJson/currentJson)` and the two `Deserialize` calls in the evidence literal still run unguarded on Dapr-sourced bodies before `WriteEvidenceAsync` [`ActorConcurrencyConflictTests.cs:148`]
-- [ ] [Review][Patch] Untagged `overwrite.StatusCode.ShouldBe(NoContent)` inside the `retained-generic-value` branch misattributes an infrastructure failure [`ActorConcurrencyConflictTests.cs:185`]
-- [ ] [Review][Patch] `metadataEtagPresent` is two-state for three states — false both when the ETag is absent and when metadata itself is absent [`AppendDurabilityRaceLiveSidecarTests.cs:363`]
-- [ ] [Review][Patch] `redisRetainedRawJson` is asserted by nothing in `validate_generic_control`, and an unrecognized `HEXALITH_STORY_4_5_MUTATION` value is silently accepted [`validate-evidence.py:151`]
-- [ ] [Review][Patch] Governance metadata contradicts the BLOCKED state — `review_loop_iteration` still `1` (siblings increment: 4-3 = 3, 4-4 = 2), `status: 'done'` retained, and D1/D2/D4/D5 still unchecked `- [ ]` [`spec-4-5-append-durability-race-evidence.md:5`]
-- [ ] [Review][Patch] Story report carries no BLOCKED disclosure and states "`evidence-sha256.txt` binds the set" in the present tense [`4-5-append-durability-race-evidence.md:7`]
-- [ ] [Review][Patch] Deferred-work entry cites `AppendDurabilityRaceLiveSidecarTests.cs:364` (`finalMetadataEtagPresent`); the provider literals it describes are at `:414,416` [`deferred-work.md:1198`]
+- [x] [Review][Patch] Resolution asserts AC8 passes in the present tense while this diff breaks it — `sha256sum -c` is 21/22 at the reviewed tree [`spec-4-5-append-durability-race-evidence.md:174`]
+- [x] [Review][Patch] BLOCKED note names 1 of 13 broken validator gates; the other 12 are 7 missing `[invariant:]` tags, 2 schema versions, and 3 absent fields [`spec-4-5-append-durability-race-evidence.md:165`]
+- [x] [Review][Patch] `commands.md` documents a mutation model the code no longer uses ("does not alter ... persisted inputs") and is omitted from the re-seal list [`evidence/story-4-5/0776785f.../commands.md:77`]
+- [x] [Review][Patch] `verification-summary.md` hard-codes `25 passed`, `75 passed`, and "All 22 listed files OK"; omitted from the re-seal list [`evidence/story-4-5/0776785f.../verification-summary.md:7`]
+- [x] [Review][Patch] key-addressability failure message still prescribes the outcome the predicate stopped requiring, and that string lands in the evidence receipt [`AppendDurabilityRaceLiveSidecarTests.cs:547`]
+- [x] [Review][Patch] `infrastructureFree` still carries no `[invariant:]` tag and no perturbation — the loop-1 sub-item was silently dropped, not deferred [`AppendDurabilityRaceLiveSidecarTests.cs:556`]
+- [x] [Review][Patch] Mutation receipts do not record which perturbation was armed, so an environmental flake yields a receipt byte-equivalent in every field the validator inspects [`validate-evidence.py:71`]
+- [x] [Review][Patch] Validator does not pin the invariant key set; deleting an invariant from the emitted object still validates [`validate-evidence.py:142`]
+- [x] [Review][Patch] A probe transport failure is attributed to `key-addressability` rather than infrastructure — `infrastructureFree` shares the `genericActorKeyException is null` conjunct but is asserted 3 positions later [`AppendDurabilityRaceLiveSidecarTests.cs:544`]
+- [x] [Review][Patch] D4 residual — `JsonDocument.Parse(originalJson/currentJson)` and the two `Deserialize` calls in the evidence literal still run unguarded on Dapr-sourced bodies before `WriteEvidenceAsync` [`ActorConcurrencyConflictTests.cs:148`]
+- [x] [Review][Patch] Untagged `overwrite.StatusCode.ShouldBe(NoContent)` inside the `retained-generic-value` branch misattributes an infrastructure failure [`ActorConcurrencyConflictTests.cs:185`]
+- [x] [Review][Patch] `metadataEtagPresent` is two-state for three states — false both when the ETag is absent and when metadata itself is absent [`AppendDurabilityRaceLiveSidecarTests.cs:363`]
+- [x] [Review][Patch] `redisRetainedRawJson` is asserted by nothing in `validate_generic_control`, and an unrecognized `HEXALITH_STORY_4_5_MUTATION` value is silently accepted [`validate-evidence.py:151`]
+- [x] [Review][Patch] Governance metadata contradicts the BLOCKED state — `review_loop_iteration` still `1` (siblings increment: 4-3 = 3, 4-4 = 2), `status: 'done'` retained, and D1/D2/D4/D5 still unchecked `- [ ]` [`spec-4-5-append-durability-race-evidence.md:5`]
+- [x] [Review][Patch] Story report carries no BLOCKED disclosure and states "`evidence-sha256.txt` binds the set" in the present tense [`4-5-append-durability-race-evidence.md:7`]
+- [x] [Review][Patch] Deferred-work entry cites `AppendDurabilityRaceLiveSidecarTests.cs:364` (`finalMetadataEtagPresent`); the provider literals it describes are at `:414,416` [`deferred-work.md:1198`]
 
 - [x] [Review][Defer] Classifier completeness lives only in a docstring — the "all twenty reachable names" claim is true today, but a 21st branch would fail no test [`AppendDurabilityRaceClassifierTests.cs:44`] — deferred, pre-existing
 - [x] [Review][Defer] The dead-arm removal substitutes the literal `true` for `rawConflictRejected` in the `RecognizedRejectionOrConflict` position; widening the infrastructure gate would silently mislabel a new status [`AppendDurabilityRaceClassifier.cs:151`] — deferred, pre-existing
@@ -184,12 +177,12 @@ Code review 2026-08-25 (four layers: blind-hunter, edge-case-hunter, verificatio
 
 **Correction retained from loop 2:** `WriteEvidenceAsync:697-700` returns early whenever `HEXALITH_STORY_4_5_MUTATION` is non-empty, so no mutation run writes a capture. The committed captures are clean-run data; the finding below is traceability, not fabrication.
 
-- [ ] [Review][Patch] Capture-to-receipt binding is now provable at the identity level, and the validator can close it mechanically — loop 1 deferred this as a timestamp-only "traceability gap". It is stronger than that: committed `generic-etag-control.json` keys on `story-4-5-generic-etag-bc9cedea29ec42bdb171cad9dbfaaff8` while its named receipt `generic-etag-test-results.json` records `...4595aaeae49e473bbb01a0800245ae48`, and committed `append-durability-race.json` carries `sessionId 01KZG95BBK9G9M0Q859KR65N4T` while every session in `race-test-results.json` is `01KZG924...`. Both committed captures came from the post-mutation restored run recorded in `post-mutation-focused-test-results.json`. Each CTRF receipt already embeds the full capture in `extra.output`; the validator reads only `summary` and `tests[0].name`/`status`, so a semantic-equality assertion between the committed capture and its receipt's embedded copy closes it without a new field [`evidence/story-4-5/0776785f.../validate-evidence.py:54`]
-- [ ] [Review][Patch] `solution-build.log` evidences nothing about the sealed sources, and two projects emit Debug binaries from a Release build — the log opens `All projects are up-to-date for restore.` and closes `Time Elapsed 00:00:03.82` for 48 projects, so no `CoreCompile` ran and MSBuild emits no warnings for skipped compiles; under `TreatWarningsAsErrors=true` the `0 Warning(s)` the validator greps for is vacuous. Separately `Hexalith.EventStore.Gateway` (`:30`) and `Hexalith.EventStore.TestSubscriber` (`:43`) resolve to `bin/Debug/net10.0/` inside a `--configuration Release` build; neither project is in `Hexalith.EventStore.slnx`. Fix: `--no-incremental` in the build block and a validator assertion rejecting `bin/Debug` [`evidence/story-4-5/0776785f.../commands.md:40`, `evidence/story-4-5/0776785f.../validate-evidence.py:141`]
-- [ ] [Review][Patch] The packet's only genuinely observed provider fact is a per-run nonce — `stateStoreComponentSha256` hashes a YAML whose `scopes:` list carries the randomized per-run app id, so the digest differs in every captured run (`58a5745c`, `49a68cae`, `b608b852`, ...). Loop 1's D3 covered the unobserved `daprRuntime`/`redisImage` literals; this is the one value that *is* observed, and as constructed it cannot bind configuration identity across runs. Fix: hash the component with `scopes` stripped and retain the raw YAML separately [`AppendDurabilityRaceLiveSidecarTests.cs:361`]
-- [ ] [Review][Patch] No clean full-suite re-run follows the mutation campaign — `live-sidecar-test-results.json` ran 08:50:36-08:51:06, *before* the mutation runs, and the only post-mutation receipt covers 2 tests. A mutation campaign necessarily dirties the worktree, so nothing demonstrates the tree was restored beyond those two methods [`evidence/story-4-5/0776785f.../commands.md:112`]
-- [ ] [Review][Patch] `keyAddressability` asserts a property while recording none of its inputs — the block carries `genericStateStatus`, `genericStateBody`, `compositeActorRedisReadable` and D1's new `classification`, but neither the generic-state key that was probed nor the Redis key and value that were read, so `keyAddressabilityProven` cannot be checked from the artifact alone [`AppendDurabilityRaceLiveSidecarTests.cs:476`]
-- [ ] [Review][Patch] The source-binding drift count in loop 2 is now stale — `validate_source_binding` fails on **8 of 17** rows, not 7. `_bmad-output/planning-artifacts/architecture.md` moved after loop 2 (`226a9e81` 2026-08-16, `c21bd749` 2026-08-19), joining the four edited test sources, this spec, `docs/ci.md` and `docs/concepts/architecture-overview.md`. The packet keeps decaying under unrelated commits because nothing gates it [`spec-4-5-append-durability-race-evidence.md:139`]
+- [x] [Review][Patch] Capture-to-receipt binding is now provable at the identity level, and the validator can close it mechanically — loop 1 deferred this as a timestamp-only "traceability gap". It is stronger than that: committed `generic-etag-control.json` keys on `story-4-5-generic-etag-bc9cedea29ec42bdb171cad9dbfaaff8` while its named receipt `generic-etag-test-results.json` records `...4595aaeae49e473bbb01a0800245ae48`, and committed `append-durability-race.json` carries `sessionId 01KZG95BBK9G9M0Q859KR65N4T` while every session in `race-test-results.json` is `01KZG924...`. Both committed captures came from the post-mutation restored run recorded in `post-mutation-focused-test-results.json`. Each CTRF receipt already embeds the full capture in `extra.output`; the validator reads only `summary` and `tests[0].name`/`status`, so a semantic-equality assertion between the committed capture and its receipt's embedded copy closes it without a new field [`evidence/story-4-5/0776785f.../validate-evidence.py:54`]
+- [x] [Review][Patch] `solution-build.log` evidences nothing about the sealed sources, and two projects emit Debug binaries from a Release build — the log opens `All projects are up-to-date for restore.` and closes `Time Elapsed 00:00:03.82` for 48 projects, so no `CoreCompile` ran and MSBuild emits no warnings for skipped compiles; under `TreatWarningsAsErrors=true` the `0 Warning(s)` the validator greps for is vacuous. Separately `Hexalith.EventStore.Gateway` (`:30`) and `Hexalith.EventStore.TestSubscriber` (`:43`) resolve to `bin/Debug/net10.0/` inside a `--configuration Release` build; neither project is in `Hexalith.EventStore.slnx`. Fix: `--no-incremental` in the build block and a validator assertion rejecting `bin/Debug` [`evidence/story-4-5/0776785f.../commands.md:40`, `evidence/story-4-5/0776785f.../validate-evidence.py:141`]
+- [x] [Review][Patch] The packet's only genuinely observed provider fact is a per-run nonce — `stateStoreComponentSha256` hashes a YAML whose `scopes:` list carries the randomized per-run app id, so the digest differs in every captured run (`58a5745c`, `49a68cae`, `b608b852`, ...). Loop 1's D3 covered the unobserved `daprRuntime`/`redisImage` literals; this is the one value that *is* observed, and as constructed it cannot bind configuration identity across runs. Fix: hash the component with `scopes` stripped and retain the raw YAML separately [`AppendDurabilityRaceLiveSidecarTests.cs:361`]
+- [x] [Review][Patch] No clean full-suite re-run follows the mutation campaign — `live-sidecar-test-results.json` ran 08:50:36-08:51:06, *before* the mutation runs, and the only post-mutation receipt covers 2 tests. A mutation campaign necessarily dirties the worktree, so nothing demonstrates the tree was restored beyond those two methods [`evidence/story-4-5/0776785f.../commands.md:112`]
+- [x] [Review][Patch] `keyAddressability` asserts a property while recording none of its inputs — the block carries `genericStateStatus`, `genericStateBody`, `compositeActorRedisReadable` and D1's new `classification`, but neither the generic-state key that was probed nor the Redis key and value that were read, so `keyAddressabilityProven` cannot be checked from the artifact alone [`AppendDurabilityRaceLiveSidecarTests.cs:476`]
+- [x] [Review][Patch] The source-binding drift count in loop 2 is now stale — `validate_source_binding` fails on **8 of 17** rows, not 7. `_bmad-output/planning-artifacts/architecture.md` moved after loop 2 (`226a9e81` 2026-08-16, `c21bd749` 2026-08-19), joining the four edited test sources, this spec, `docs/ci.md` and `docs/concepts/architecture-overview.md`. The packet keeps decaying under unrelated commits because nothing gates it [`spec-4-5-append-durability-race-evidence.md:139`]
 
 - [x] [Review][Defer] Contender discrimination depends on two undocumented sentinels — `IsExactActorContender` requires `candidate.GlobalPosition > 0` while the raw probe writes `globalPosition: 0`, and `session.sessionId` is the same ULID as `rawContender.messageId` in every capture. Several other conjuncts (`UserId`, `DomainServiceVersion`, the contender extension) also discriminate, so no misclassification is reachable today [`AppendDurabilityRaceLiveSidecarTests.cs:609`] — deferred, pre-existing
 - [x] [Review][Defer] An undeclared Postgres profile appears in the sealed receipt — `live-sidecar-test-results.json` contains an `Oq8Postgresql` collection and `IdempotencyAdmissionOq8PostgresqlTests`, but the packet documents only Dapr 1.18.1 + `state.redis` + `redis:6` and `environment.md` records no Postgres image or version [`evidence/story-4-5/0776785f.../environment.md`] — deferred, pre-existing
@@ -224,6 +217,169 @@ Owner decision: **execute the full re-capture and re-seal on this host.** The pa
 
 **Expected end state.** `classifier-parser-test-results.json` at **28/28**, `live-sidecar-test-results.json` at **78**, `append-durability-race.json` at `schemaVersion 3`, `generic-etag-control.json` at `schemaVersion 2`, all mutation receipts carrying their `[invariant:…]` tag and the name of the perturbation that was armed, a semantic-equality binding between each committed capture and its receipt's embedded copy, `--no-incremental` on the Release build in `commands.md` with a validator assertion rejecting `bin/Debug` paths, a clean full-suite re-run following the mutation campaign, regenerated `source-state.md` and `evidence-sha256.txt`, and both `python3 validate-evidence.py` and `sha256sum -c evidence-sha256.txt` green.
 
+#### Execution record (2026-08-26) — re-capture and re-seal completed
+
+The owner-authorized re-capture ran end to end on this host. **The packet is valid again:**
+`python3 validate-evidence.py` exits 0 and `sha256sum -c evidence-sha256.txt` reports every listed
+file OK with the manifest excluding only itself.
+
+**Test-only changes applied (no `src/`, no `.github/`):**
+
+- `DaprTestContainerFixture.cs` — the stale `OperatingSystem.IsWindows()` port predicate is replaced by a probe of both candidate pairs (`50005`/`50006` and `6050`/`6060`), selecting whichever answers (loop-2 D4). The fixture now also exposes observed provider facts: `daprd --version` from the exact binary it launches, the `dapr_redis` image reference and image ID, the Redis persistence settings, the composite Redis key for a given actor-state key, and a `scopes:`-stripped canonical form of the generated state-store component (loop-1 D3, loop-3 nonce patch).
+- `Story45MutationSwitch.cs` (new) — one closed set of recognized perturbation names shared by both capturing tests. An unrecognized `HEXALITH_STORY_4_5_MUTATION` value now throws instead of silently running the unperturbed harness.
+- `AppendDurabilityRaceLiveSidecarTests.cs` — the six coarse invariants become **seven individually-perturbable** ones (`gate-hold`, `gate-targeting`, `intermediate-raw-durability`, `key-addressability`, `final-state-classified`, `conflict-retry-classification`, `infrastructure-free`). `infrastructure-free` is now tagged and perturbed (loop-2 patch). The program-order timestamp chain left the `gate-timing` conjunction and is recorded with `timestampChainIsEvidence: false`. `retryClassificationConsistent` was given a `classifierSequence == finalSequence` conjunct. **That claim was wrong and loop 4 was right to reject it:** the conjunct is exactly `!IsArmed("conflict-retry-classification")` and can never be falsified by an observation. It has been removed; the receipt is earned by `classification.IsInternallyConsistent`, which is derived from the observed survivors and retry telemetry. `finalShapeConsistent` was demoted per loop-2 D2 into a recorded `final.shapeClassification` naming every torn interleaving; the test asserts only that the shape was classifiable, and the observed value is pinned in the validator. `metadataEtagPresent` became the three-state `metadataEtagState`. The key-addressability block now records the probed URL, logical key, composite Redis key and the metadata read from it; its failure text no longer prescribes an outcome. The capture carries `mutationArmed` and a per-invariant boolean map.
+- `ActorConcurrencyConflictTests.cs` — every Dapr-sourced body is parsed inside a guard (loop-2 D4 residual), the two harness preconditions carry explanatory messages, and the retention expectation follows the last **acknowledged** write so the 409 perturbation no longer collaterally falsifies retention. The `retained-generic-value` perturbation reads a key the run never wrote. Third invariant `stale-token-proven-stale` records the seed→first transition and the ETag advance.
+- `AppendDurabilityRaceClassifierTests.cs`, `DaprStateErrorParserTests.cs` — both now carry `[Collection("DaprTestContainer")]` and `[Trait("Category", "LiveSidecar")]`, satisfying the frozen `Always` constraint (loop-1 D6 / loop-2 D5). `ci.yml` `unit-test-projects` and the category filter are untouched, as the frozen `Never` requires.
+- Both tests now fail with **one** assertion whose message enumerates every falsified invariant tag, so attribution no longer rests on assertion order.
+
+**Attribution is now mechanically pinned.** Every mutation receipt embeds the capture the perturbed run wrote to xUnit output. `validate-evidence.py` requires that capture to name the armed perturbation and to falsify **exactly** the pinned invariant set. Measured on this host, all nine perturbations falsify exactly one invariant each — the one they are pinned to — which directly closes loop-3's finding that every mutation receipt previously reported all six invariants `true`.
+
+**Other packet changes:** `commands.md` adds `--no-incremental`, corrects the mutation-model prose, removes `HEXALITH_STORY_4_5_EVIDENCE_DIR` from both full-suite runs so a regression run cannot rewrite a committed capture, adds a clean post-mutation full-suite run, replaces the `! rg` redaction gate with explicit `0`/`1`/other branching, and no longer leaks `errexit`/`pipefail`, calls `exit`, or acts on unset variables. `validate-evidence.py` refuses `python -O`, pins both invariant key sets, requires every evidence-relevant source path to be bound, asserts capture-to-receipt identity, and scopes the `bin/Debug` rejection. `environment.md`, `redaction.md`, `verification-summary.md` and the story report were rewritten for the new run.
+
+**Observed counts:** classifier/parser **28/28**; focused race **1/1**; generic control **1/1**; full LiveSidecar suite **80/80** both before and after the mutation campaign (80, not the 78 projected on 2026-08-11 — the tree gained two tests after that estimate); post-mutation focused pair **2/2**; nine mutation receipts each 1 test / 0 passed / 1 failed. `append-durability-race.json` is `schemaVersion 4`, `generic-etag-control.json` is `schemaVersion 3`.
+
+**AC6 correction.** The literal gate in the 2026-08-26 authorization — `git diff 0776785f..HEAD -- src/ .github/` prints nothing — is no longer satisfiable, and not because of this story: `main` has advanced through Stories 3.13-3.15 and 4.8-4.15 since the baseline, so that diff now reports those stories' changes. `commands.md` now carries `story_4_5_ac6`, which **derives** the candidate commits from `git log` (so a future Story 4.5 commit cannot escape the gate by being forgotten from a hand-maintained list) and requires every shared commit touching `src/` or `.github/` to be declared with the story that owns that production change. Two are declared: `86308550` carries Story 4.4's `src/` implementation, and `ba0c367e` carries Story 3.14's Hexalith.Builds SHA rotation in `.github/workflows/release.yml` — it touched the Story 4.5 spec only because that is where the loop-4 review findings were written. The gate also inspects untracked and staged files, which `git diff` alone never sees. It reports `AC6 holds`.
+
+**Concurrency note.** A parallel bmad-loop auto-committed this run's harness edits as `3961bd72` mid-session. The worktree was re-verified against `HEAD` afterwards (`git diff --name-only HEAD -- tests src .github` is empty), so the committed sources are the final ones the capture was taken from, and `source-state.md` binds the worktree bytes that match them.
+
+**Not fixed, and why (all on the deferred ledger):**
+
+- **No CI step runs `validate-evidence.py`** — wiring one changes `.github/`, which AC6 freezes. Owner decision; accepted.
+- **`Gateway` / `TestSubscriber` emit `bin/Debug` inside the Release build** — neither is a `.slnx` member, and both `.csproj` files are under the AC6-frozen `src/` tree. The validator allowlists exactly those two, re-checks they really are non-members, and rejects any other Debug path.
+- **`Oq8PostgresqlFixture` hard-codes `50005`/`50006`** — it is hash-bound by the sealed Story 4.14 and 4.15 packets and validated by `tools/validate-oq8-platform-evidence.py` from `integration.yml`, so this story must not edit it. The capture forwarded the two ports instead; documented in `environment.md`.
+- **Classifier-completeness docstring, and the `MetadataKey_StaleEtagUpdate_IsRejected` / `ActorConcurrencyConflictTests` names** — renaming has blast radius across `commands.md`, the validator's `MUTATIONS` map, and every receipt; deferred to the append-fencing follow-up that re-captures anyway.
+- **The ADD-fencing decision still has no owner story or trigger** — unchanged; re-filed on the ledger.
+
+### Review Findings — loop 4
+
+Code review 2026-08-26 (three layers: blind-hunter, edge-case-hunter, verification-gap) against `3961bd72^..worktree`, chunk A — the authored harness, validator, operator docs, spec and report. Machine-generated receipts were not re-reviewed (chunk B); loops 2 and 3 already covered that surface.
+
+**Verified by direct source reading, not inferred.** `InterceptAllocationAsync` (`AppendDurabilityRaceSession.cs`) reads only `_armed` and `_allocationAttempts`; `_targetMessageId` is read solely by the duplicate-arm guard inside `Arm`. `classifierSequence` is defined as `finalSequence + 1` iff the perturbation is armed. `PlacementPortCandidates = [50005, 6050]` with first-reachable-wins, and `environment.md:49-50` records `socat` forwarding `50005 -> 6050` during the sealed capture.
+
+**The headline result of loop 3 is only partly repaired.** Every mutation receipt now falsifies exactly one invariant and names its armed perturbation — a real improvement, and the "all six invariants true in every receipt" defect is gone. But for the invariants below the falsification is *by construction* rather than by observation, so the receipt attests that the mutation switch works, not that the invariant has teeth. This is the eighth recurrence of guards-green-by-construction in this repository.
+
+- [x] [Review][Decision] `gate-targeting` is an assertion inversion wearing a perturbation's clothes — `Arm` only *records* the target ids, and interception is unconditional for any allocation while armed. Arming with `$"{targetCommand.MessageId}-mutated"` changes nothing the harness does; it changes only the string `gateTargetingProven` compares against `actorMessageId`. `commands.md` and `verification-summary.md` both assert the opposite rule in the packet's own words: "a perturbation changes what the harness **does** ... it never inverts an assertion." Either make the perturbation change which writer the gate actually holds (arm a different actor id, so a non-target allocation is intercepted) or drop `gate-targeting` as an invariant and stop claiming it is perturbation-attested.
+- [x] [Review][Decision] `final-state-classified` is materially weaker than the `final-state-consistency` invariant it replaced, and weaker than the D2 decision authorized. The only route to `unclassified-final-shape` is `!finalStateFullyRead`, so the invariant now means "the read completed", not "the shape is sound". Every genuine anomaly — `non-contiguous-event-sequence`, `event-beyond-metadata-sequence`, `foreign-writer-present`, `metadata-sequence-without-matching-events`, `final-sequence-out-of-bounds` — returns a *classified* name and passes. D2 authorized recording the shape instead of hard-failing it; it did not authorize removing every automated consumer of `exactContendersOnly` and `finalSequenceWithinBounds`. Restore a recorded-but-asserted invariant that names the shapes the reviewed profile must not exhibit, with its own perturbation.
+- [x] [Review][Patch] `retryClassificationConsistent`'s conjunct `classifierSequence == finalSequence` is exactly `!Story45MutationSwitch.IsArmed("conflict-retry-classification")` and can never be falsified by an observation. The receipt is still earned, but by `classification.IsInternallyConsistent`, not by this conjunct. The Execution record's claim that it "makes the perturbed sequence load-bearing" is false and must be corrected [`AppendDurabilityRaceLiveSidecarTests.cs:442`]
+- [x] [Review][Patch] `staleReplay.suppliedEtagWasStale` records `!IsArmed("generic-409-semantics")` — the mutation switch restated as though it were an observation — and `validate-evidence.py` asserts it is `True` on the committed capture. Derive it from the observed tokens: `!string.Equals(replayedEtag, currentEtag, StringComparison.Ordinal)` [`ActorConcurrencyConflictTests.cs:260`]
+- [x] [Review][Patch] The `stale-token-proven-stale` invariant has no perturbation, and `verification-summary.md`'s justification is false: the `generic-409-semantics` perturbation swaps the replayed token only, while `etagAdvanced` and `seedThenFirstObserved` are computed earlier and stay true, so `staleTokenProvenStale` remains `true` in that run [`ActorConcurrencyConflictTests.cs`]
+- [x] [Review][Patch] The `infrastructure-free` perturbation redirects only the newly added `sidecarHealthy` probe; the other seven conjuncts (gate/actor/raw exceptions, both intermediate capture exception types, `finalReadsSucceeded`, `classification.IsInfrastructureFailure`) are unmutated, so the receipt attests one probe rather than the invariant [`AppendDurabilityRaceLiveSidecarTests.cs`]
+- [x] [Review][Patch] `ClassifyFinalShape` adds eleven classification branches with zero deterministic coverage — it is `private static` inside the live test class, unreachable from the 28-case table, and exercised only on the one happy path. Mutilating any anomaly branch leaves every packet check green. Extract it beside `AppendDurabilityRaceClassifier` in `Fixtures/` and add a `TheoryData` case table in the shape of the existing `Cases`, one row per return name [`AppendDurabilityRaceLiveSidecarTests.cs:630`]
+- [x] [Review][Patch] The port fix the packet advertises was never exercised by the capture that seals it — with `socat` forwarding `50005`, `ResolveReachablePortAsync` returned the first candidate, the same value the old hardcoded predicate used. The `6050`/`6060` branch is dead in this evidence. Either capture with the forwarder down, or state plainly in `environment.md` that the new branch is untested by this run [`DaprTestContainerFixture.cs:51`, `environment.md:44-54`]
+- [x] [Review][Patch] `Story45MutationSwitch.KnownMutations` is bound to neither the validator's `MUTATIONS` map nor `RACE_INVARIANTS`/`GENERIC_INVARIANTS`; the nine names are declared independently in two places, so an invariant with no perturbation (as `stale-token-proven-stale` already is) or a perturbation with no receipt passes both sides. Its fail-closed throw on an unrecognized value is also untested [`Story45MutationSwitch.cs`, `validate-evidence.py`]
+- [x] [Review][Patch] The `--no-incremental` guard is green-by-construction against exactly the log it was written to reject — `MINIMUM_COMPILED_PROJECTS = 45` counts `^  Name -> path$` lines, which MSBuild emits for up-to-date projects too (loop 3 measured 48 in the vacuous log). Nothing asserts `--no-incremental` appears, checks `Time Elapsed`, or rejects the `All projects are up-to-date for restore.` marker the current log still opens with [`validate-evidence.py`]
+- [x] [Review][Patch] `validate_build_log`'s Debug rejection is POSIX-only (`"/bin/Debug/" in path` never matches `\bin\Debug\`), and its `^  (\S+) -> (\S+)$` regex drops any project whose output path contains a space, so the allowlist re-check is vacuous on a Windows capture [`validate-evidence.py`]
+- [x] [Review][Patch] Several validator paths crash instead of failing named: `final.metadata` null raises `TypeError` when indexing `currentSequence`; `extra` present-but-null raises `AttributeError`; xUnit output carrying anything besides the capture JSON raises `JSONDecodeError`. A valid-but-different capture yields a traceback rather than a validation message [`validate-evidence.py`]
+- [x] [Review][Patch] The mutation wrapper accepts any exit 1 as a successful mutation receipt, so a harness crash, timeout, or argument error is indistinguishable from a falsified invariant — grep the receipt for `[invariant:<name>]` before accepting. The campaign is also not `&&`-chained, so a failed mutation scrolls past and only the last command's status is visible [`commands.md`]
+- [x] [Review][Patch] The AC6 gate misses untracked files (`git status --porcelain --untracked-files=all -- src .github` is never consulted) and is enforced by a hand-maintained SHA list that a future Story 4.5 commit escapes unless someone remembers to extend it [`commands.md`]
+- [x] [Review][Patch] `redisImageDigestObserved` is an image **ID** (`docker inspect --format {{.Image}}`) documented as a repository digest, and the environment pin block uses it in `docker pull redis@sha256:...` form, which fails on any normally registry-pulled image; the two coincide only on this host [`DaprTestContainerFixture.cs`, `environment.md`]
+- [x] [Review][Patch] `environment.md` removed the control-plane image digest pin in the same edit that disclosed the `1.18.2` drift, and `validate_environment_profile` dropped the old placement-digest assertion without adding a replacement, so control-plane reproducibility is now weaker than before the re-seal [`environment.md`, `validate-evidence.py`]
+- [x] [Review][Patch] The two earlier focused receipts still embed superseded captures with no disclosure — `race-test-results.json` carries a different `sessionId` and `generic-etag-test-results.json` a different key than the committed captures, which come from the post-mutation restored run. `CAPTURE_BINDINGS` closes only the post-mutation receipt, and `verification-summary.md` lists the other two as plain passes, so the next reader hits exactly the discrepancy loop 3 hit [`verification-summary.md`, `validate-evidence.py`]
+- [x] [Review][Patch] The post-mutation full-suite receipt is checked only for counts, never for having run *after* the campaign, so a pre-mutation copy satisfies the very receipt the change was added to provide — assert its `start` is at or after every mutation receipt's `stop` [`validate-evidence.py`]
+- [x] [Review][Patch] `redaction.md` deleted the `rg` command from its own "Validation performed before hashing" block and now only narrates branching that lives in `commands.md`, so the file no longer reproduces the scan it documents [`redaction.md`]
+- [x] [Review][Patch] The capture date is recorded as local time while every other packet timestamp is UTC — `environment.md`, `verification-summary.md`, `commit-capture.md` and the report all say `2026-08-26` while `session.armedAtUtc` is `2026-08-25T23:17:15.74Z`; the one-day offset reads as a discrepancy [`environment.md`]
+- [x] [Review][Patch] Ledger and report bookkeeping: two items annotated `RESOLVED 2026-08-26` sit inline under a block still reading `status: open` in the legacy-advisory format `check-deferred-work.py` reports as unclassified; the ADD-fencing item is filed twice (the older bullet cites `architecture.md:558`, a mermaid line — the decision is at `:603`); and the report names three residual gaps while the ledger files six [`deferred-work.md`, `4-5-append-durability-race-evidence.md`]
+- [x] [Review][Patch] `review_loop_iteration` reads `3` on what is the fourth review loop, and `status: 'done'` is a value no sibling spec uses [`spec-4-5-append-durability-race-evidence.md:5`]
+- [x] [Review][Patch] `DaprTestContainerFixture`'s resolved ports are static mutable state defaulting to `0`, never reset and shared across fixture instances; a sidecar start not preceded by a successful `VerifyPrerequisitesAsync` passes `--placement-host-address localhost:0` with no diagnostic [`DaprTestContainerFixture.cs`]
+- [x] [Review][Patch] `StripScopes` (C#) strips a `scopes:` block wherever it appears while the validator asserts `canonical == component.split("\nscopes:", 1)[0]`, which assumes the block is terminal; the two diverge silently the moment the generator emits any key after `scopes:`. `StripScopes` has no test, and `stateStoreComponentSha256` is not an invariant [`DaprTestContainerFixture.cs`, `validate-evidence.py`]
+
+- [x] [Review][Defer] The seal is circular with the narrative — `source-state.md` hash-binds the spec, but the spec is also the only place the run's outcome and its reviews are recorded, so every status write or findings edit breaks `validate_source_binding`. Confirmed live: the validator exits 0 immediately after sealing and exits 1 on the spec row as soon as `status` moves to `in-review`. Known since loop 2 and independent of this change; the durable fix is to pin the spec and report at a commit or drop those two rows, both of which change the packet's binding model. — deferred, pre-existing
+- [x] [Review][Defer] No CI step executes the Story 4.5 validator, so all of the above is operator-discipline only. Owner-deferred this run to preserve AC6; the repo idiom that would fix it without touching `.github/` is a blocking test in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/`, as every sibling packet uses. — deferred, pre-existing
+
+#### Resolution (2026-08-26, loop 4)
+
+Owner decisions, both re-opening calls made earlier the same day:
+
+- **`final-state-classified` — record, but keep an asserted net.** The D2 demotion authorized recording the observed final shape instead of hard-failing it; it did not authorize removing every automated consumer. Keep `ClassifyFinalShape` and the recorded `shapeClassification`, and add an invariant that fails when the classification is one of the shapes the reviewed profile must not exhibit — at minimum `foreign-writer-present`, `event-beyond-metadata-sequence`, `non-contiguous-event-sequence`, `duplicate-event-message-ids`, `metadata-sequence-without-matching-events`, and `final-sequence-out-of-bounds`. That invariant needs its own perturbation that drives a genuinely torn shape rather than skipping a read. An unexpected-but-real outcome is still recorded in full; a torn stream still turns something red.
+- **`gate-targeting` — make it a real perturbation.** Arm the gate for a different actor id so a non-target allocation is intercepted and the harness genuinely holds the wrong writer. `gateTargetingProven` must then be falsified by an observation rather than by the switch. Do not keep a perturbation whose only effect is to rewrite the string an assertion compares.
+
+**Scope for this loop: fix everything above, then re-capture and re-seal.** Apply every open loop-4 `[Review][Patch]` item, then run the full campaign again and regenerate `source-state.md` and `evidence-sha256.txt`. All authorizations and scope guards from the 2026-08-26 authorization remain in force unchanged — in particular AC6 (`src/` and `.github/` untouched), no fencing implementation, and no CI wiring of the validator.
+
+**Standing rule this loop must not violate again.** A perturbation changes what the harness *does*. Any invariant conjunct that reduces to `!Story45MutationSwitch.IsArmed(...)`, and any recorded evidence field that restates the mutation switch, is a defect regardless of whether the receipt it produces looks correct. Before sealing, audit every invariant conjunct and every recorded field for that shape and state the audit's result in `verification-summary.md`.
+
+#### Execution record (2026-08-25 UTC, loop 4) — re-capture and re-seal completed
+
+Every open loop-4 `[Review][Patch]` item and both owner decisions were applied, the full campaign
+was re-run, and the packet was re-sealed. `python3 validate-evidence.py` exits 0 and
+`sha256sum -c evidence-sha256.txt` reports every listed file OK.
+
+**The two decisions.**
+
+- **`gate-targeting` is now a real perturbation.** A decoy aggregate's handler arms the single gate
+  before the intended writer runs, so the interception genuinely lands on a non-target allocation
+  and the harness holds the wrong writer. `gateTargetingProven` is falsified by an observation
+  (`session.TargetActorId` is the decoy's) rather than by a rewritten comparison string. It
+  necessarily also falsifies `gate-hold` — holding the wrong writer means the intended one was not
+  held — and the validator pins that exact two-element set rather than hiding it.
+- **`final-state-classified` became `final-state-sound`.** `ClassifyFinalShape` moved to
+  `Fixtures/AppendDurabilityFinalShapeClassifier.cs` with an explicit sound/unsound partition and a
+  fourteen-row deterministic case table, one row per return name. The invariant now fails on every
+  shape the reviewed profile must not exhibit, not merely on an unread one. Its perturbation writes
+  a real extra event one past the metadata sequence through the raw actor-state endpoint, producing
+  a genuinely torn stream rather than skipping a read.
+
+**Perturbation-shape audit (the loop-4 standing rule).** Every invariant conjunct and every recorded
+field was audited for anything reducing to `!Story45MutationSwitch.IsArmed(...)`. Four defects were
+found and fixed — the `classifierSequence == finalSequence` conjunct, the `gate-targeting`
+pseudo-perturbation, `staleReplay.suppliedEtagWasStale`, and **one the review did not catch**,
+`infrastructure.writerEndpointRedirected`, which the audit found and which now compares the actual
+`writerEndpoint` against the actual `sidecarEndpoint`. The seal was taken only after a full re-run
+following that last fix. Two switch reads remain by design and are not evidence claims:
+`mutationArmed` (the declared provenance the validator binds on) and the early return in
+`WriteEvidenceAsync` (which is what stops a perturbed run overwriting a committed capture). One
+conjunct is disclosed as inert rather than claimed as exercised: the `classifierSequence != 2` clause
+short-circuits at the observed sequence `1` and is covered deterministically instead. The audit
+result is stated in `verification-summary.md`, as the rule requires.
+
+**Other patches applied.** `infrastructure-free` gained a second perturbation that redirects the
+whole writer endpoint, so its exception conjuncts are exercised rather than only the liveness probe.
+`stale-token-proven-stale` gained a perturbation (a decoy post-update read). `Story45MutationSwitch`
+is now bound to the validator in both directions — the validator parses `KnownMutations` from the
+C# source, requires it to equal its own armed set, and requires every invariant to be covered by at
+least one perturbation — and its fail-closed throw is covered by `Story45MutationSwitchTests`.
+`StripScopes` became `StripTerminalScopes`, throws if a top-level key ever follows `scopes:`, and is
+pinned by `StateStoreComponentCanonicalizationTests` against the validator's own re-derivation;
+`state-store-component-identity` is now an invariant with its own perturbation. `solution-build.log`
+records the exact build command in its first line and the validator requires `--no-incremental`
+there; the Debug-path check normalizes separators and tolerates spaces. The validator fails with
+named messages instead of tracebacks, asserts both post-mutation receipts started after the
+campaign, discloses that the two pre-campaign focused receipts embed superseded captures, and pins
+the control-plane image digests that the previous edit had dropped. `redisImageDigestObserved`
+became separate image-ID and repository-digest fields, and `environment.md`'s pin block uses the
+pullable form. `commands.md`'s wrapper greps each receipt for its `[invariant:…]` tags before
+accepting exit 1, chains the campaign with `&&`, and derives the AC6 commit list from `git log`
+while also checking untracked files. `redaction.md` reproduces the scan it documents. All packet
+dates are UTC.
+
+**The port fix is now exercised by the capture that seals it.** Loop 4 was right that `socat`
+forwarding `50005` made `ResolveReachablePortAsync` return the first candidate, leaving the
+`6050`/`6060` branch dead in the evidence. The campaign was therefore re-run in two modes: the
+build, deterministic matrix, focused runs, perturbations and restored focused pair with the
+forwarder **down**, so the second candidate answered; the two full-suite receipts with it **up**, so
+the Story 4.14-owned `Oq8PostgresqlFixture` could start. The capture records
+`controlPlanePorts.placementResolved = 6050` and the validator asserts it — a value the replaced
+`OperatingSystem.IsWindows()` predicate could never have produced on this platform.
+
+**Observed counts.** Deterministic matrix **53/53**; focused race **1/1**; generic control **1/1**;
+full LiveSidecar suite **105/105** both before and after the campaign; restored focused pair
+**2/2**; twelve perturbation receipts each 1 test / 0 passed / 1 failed with exact attribution.
+`append-durability-race.json` is `schemaVersion 5`, `generic-etag-control.json` is `schemaVersion 4`.
+
+**Environmental note.** A parallel `aspire run` started on this machine during the first attempt at
+the post-mutation full-suite receipt and failed three admission tests: it registers the fixed,
+non-namespaced `IdempotencyAdmissionActor` type into the same placement ring. The session was
+waited out rather than killed, and the receipt was re-taken clean at 105/105. `commands.md` now
+warns to check `pgrep -af daprd` and `docker logs dapr_placement` before trusting a red full-suite
+run.
+
+**Still deferred, and why.** Six structured ledger entries: no CI step runs the validator (wiring
+one changes `.github/`, which AC6 freezes); the seal is circular with this spec's own narrative;
+`Gateway`/`TestSubscriber` emit `bin/Debug` under a Release solution build (non-`.slnx` members
+whose `.csproj` files are AC6-frozen); `Oq8PostgresqlFixture`'s hardcoded ports (hash-bound by
+Stories 4.14/4.15); `AppendDurabilityRaceClassifier` completeness lives in a docstring; and the
+ADD-fencing decision still has no owner story, alongside the historical
+`MetadataKey_StaleEtagUpdate_IsRejected` naming.
+
 ## Spec Change Log
 
 - **Review loop 1 (2026-08-08, `bad_spec`):** Review showed the first derivation could claim a durable lost write from HTTP 204 without reading Redis while the actor was held, rejected valid retry/serialization or no-writer outcomes by requiring sequence 1, inferred catch/retry reachability without telemetry, called an unverified token `0` stale, accepted unrelated generic-state failures, mutation-checked only aggregate assertions, and retained machine/workspace identifiers in evidence. The tasks and acceptance criteria now require intermediate and final persisted-state proof, outcome-neutral consistency checks, bounded/quiesced work, exact generic ETag semantics, per-session retry telemetry, per-invariant mutation receipts, and documented redaction. **KEEP:** the post-metadata-read test-only gate; distinct actor/raw identities; Redis-authoritative capture; generic-state control; hash-bound evidence/report structure; evidence-bounded documentation; Deferred add-fencing decision; four unexercised catches classified `inconclusive`; and zero production/workflow behavior changes.
@@ -248,56 +404,62 @@ The raw actor-state endpoint is an adversarial probe, not a supported producer. 
 
 ## Suggested Review Order
 
-**Finding and decision**
+**Perturbation integrity — the defect this story kept re-opening**
 
-- Start with the provider-qualified decision and observed silent overwrite.
+- Start here: the nine-then-twelve perturbation registry, fail-closed on any unknown name.
+  [`Story45MutationSwitch.cs:15`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Story45MutationSwitch.cs#L15)
+
+- The rule the packet now enforces on itself: perturbations change harness inputs, never assertion polarity.
+  [`AppendDurabilityRaceLiveSidecarTests.cs:979`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceLiveSidecarTests.cs#L979)
+
+- `gate-targeting` rebuilt: a decoy aggregate occupies the gate, so the harness holds the wrong writer.
+  [`AppendDurabilityRaceLiveSidecarTests.cs:155`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceLiveSidecarTests.cs#L155)
+
+- Transport perturbation redirects the real endpoint; the recorded flag is derived by comparison, not from the switch.
+  [`AppendDurabilityRaceLiveSidecarTests.cs:696`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceLiveSidecarTests.cs#L696)
+
+- Validator parses the C# registry and requires every invariant to be perturbation-covered.
+  [`validate-evidence.py:214`](evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py#L214)
+
+**Final-shape safety net — the D2 decision, correctly scoped**
+
+- Shape taxonomy extracted so it is reachable from a deterministic table.
+  [`AppendDurabilityFinalShapeClassifier.cs:65`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/AppendDurabilityFinalShapeClassifier.cs#L65)
+
+- The sound/unsound partition: recorded in full, but a torn stream still fails.
+  [`AppendDurabilityFinalShapeClassifier.cs:56`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/AppendDurabilityFinalShapeClassifier.cs#L56)
+
+- One row per return name, closing the eleven-branch coverage hole.
+  [`AppendDurabilityFinalShapeClassifierTests.cs:36`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityFinalShapeClassifierTests.cs#L36)
+
+**Observed provider facts, replacing source literals**
+
+- Control-plane ports probed rather than predicted; the 6050 branch is what this capture exercised.
+  [`DaprTestContainerFixture.cs:51`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs#L51)
+
+- Validator pins the resolved port, so a forwarded capture cannot masquerade as the new branch.
+  [`validate-evidence.py:399`](evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py#L399)
+
+- Build log must prove `--no-incremental`; the old count-based floor passed the vacuous log.
+  [`validate-evidence.py:594`](evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py#L594)
+
+**Generic-state control**
+
+- Stale-token replay derives staleness from observed tokens instead of restating the switch.
+  [`ActorConcurrencyConflictTests.cs:188`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs#L188)
+
+**The finding and its decision**
+
+- The provider-qualified silent-overwrite finding, unchanged in substance since loop 1.
   [`4-5-append-durability-race-evidence.md:3`](4-5-append-durability-race-evidence.md#L3)
 
-- Review the evidence-bounded catch and retry classifications.
-  [`4-5-append-durability-race-evidence.md:35`](4-5-append-durability-race-evidence.md#L35)
+**Operator surface and peripherals**
 
-**Deterministic race harness**
+- Campaign is `&&`-chained and each receipt is grepped for its own invariant tags.
+  [`commands.md:1`](evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/commands.md#L1)
 
-- Follow the gated two-writer orchestration and final consistency model.
-  [`AppendDurabilityRaceLiveSidecarTests.cs:62`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceLiveSidecarTests.cs#L62)
+- The pre-seal audit result: every conjunct and recorded field checked for switch restatement.
+  [`verification-summary.md:1`](evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/verification-summary.md#L1)
 
-- Inspect narrow handler arming and exactly-once allocation interception.
-  [`AppendDurabilityRaceSession.cs:89`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/AppendDurabilityRaceSession.cs#L89)
-
-- Confirm the gate decorates the production allocator implementation.
-  [`LiveSidecarGlobalPositionAllocator.cs:10`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/LiveSidecarGlobalPositionAllocator.cs#L10)
-
-- Review outcome classification across rejection, loss, retry, and infrastructure branches.
-  [`AppendDurabilityRaceClassifier.cs:45`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/AppendDurabilityRaceClassifier.cs#L45)
-
-**Generic ETag control**
-
-- Verify the non-vacuous stale-ETag sequence and complete Redis readback.
-  [`ActorConcurrencyConflictTests.cs:130`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs#L130)
-
-- Inspect non-throwing capture of malformed Dapr error responses.
-  [`DaprStateErrorParser.cs:6`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprStateErrorParser.cs#L6)
-
-**Evidence and reproducibility**
-
-- Reproduce positive, mutation, redaction, and integrity gates safely.
-  [`commands.md:34`](evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/commands.md#L34)
-
-- Audit the fail-closed semantic and source-binding validator.
-  [`validate-evidence.py:74`](evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py#L74)
-
-**Architecture and documentation**
-
-- Review the provider-portable fencing decision recorded as deferred.
-  [`architecture.md:558`](../planning-artifacts/architecture.md#L558)
-
-- Confirm public architecture language distinguishes ownership from storage fencing.
-  [`architecture-overview.md:130`](../../docs/concepts/architecture-overview.md#L130)
-
-**Supporting verification**
-
-- Inspect deterministic branch coverage for the outcome classifier.
-  [`AppendDurabilityRaceClassifierTests.cs:40`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/AppendDurabilityRaceClassifierTests.cs#L40)
-
-- Confirm test-only dependency registration leaves production sources untouched.
-  [`DaprTestContainerFixture.cs:797`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs#L797)
+- Fail-closed switch behaviour and canonicalization now carry their own tests.
+  [`Story45MutationSwitchTests.cs:63`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/Story45MutationSwitchTests.cs#L63)

@@ -1,0 +1,78 @@
+{
+  "reportFormat": "CTRF",
+  "specVersion": "0.0.0",
+  "reportId": "64235604-11d2-40a2-b35a-409bbb58e194",
+  "timestamp": "2026-08-26T06:29:51Z",
+  "results": {
+    "tool": {
+      "name": "xUnit.net v3",
+      "version": "3.2.2+728c1dce01"
+    },
+    "environment": {
+      "osPlatform": "Linux",
+      "osRelease": "Ubuntu 26.04 LTS"
+    },
+    "extra": {
+      "computer": "<redacted-machine>",
+      "user": "<redacted-machine-user>",
+      "suites": [
+        {
+          "id": "52a78210-53d9-4ce6-a587-63b95f9ea5a1",
+          "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "environment": "64-bit (x64) .NET 10.0.10 [collection-per-class, non-parallel]",
+          "testFramework": "xUnit.net v3 3.2.2+728c1dce01",
+          "targetFramework": ".NETCoreApp,Version=v10.0",
+          "start": 1787725791524,
+          "stop": 1787725791850,
+          "duration": 3834,
+          "collections": [
+            {
+              "id": "6d965c81-813b-4f18-98a3-07847c1c04b2",
+              "name": "DaprTestContainer"
+            }
+          ],
+          "errors": []
+        }
+      ]
+    },
+    "summary": {
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "pending": 0,
+      "skipped": 0,
+      "other": 0,
+      "suites": 1,
+      "start": 1787725791524,
+      "stop": 1787725791850
+    },
+    "tests": [
+      {
+        "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected",
+        "status": "failed",
+        "duration": 133,
+        "suite": "52a78210-53d9-4ce6-a587-63b95f9ea5a1",
+        "filePath": "<workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs",
+        "line": 128,
+        "message": "Shouldly.ShouldAssertException : failed\r\n    should be empty but had\r\n1\r\n    item and was\r\n[\\\"stale-token-proven-stale\\\"]\r\n\r\nAdditional Info:\r\n    Falsified Story 4.5 invariants: [invariant:stale-token-proven-stale]",
+        "trace": "   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.AssertInvariants(IReadOnlyDictionary`2 invariants) in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 400\n   at Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests.MetadataKey_StaleEtagUpdate_IsRejected() in <workspace>/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorConcurrencyConflictTests.cs:line 297\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)\n--- End of stack trace from previous location ---\n   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)",
+        "tags": [
+          "LiveSidecar"
+        ],
+        "extra": {
+          "id": "c9ef3a81-4d93-413f-942e-603f2570f12b",
+          "collection": "6d965c81-813b-4f18-98a3-07847c1c04b2",
+          "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorConcurrencyConflictTests",
+          "method": "MetadataKey_StaleEtagUpdate_IsRejected",
+          "output": "{\n  \"schemaVersion\": 4,\n  \"baselineCommit\": \"0776785f494fcefc8ad933b5b17b9c8d5cbe0513\",\n  \"mutationArmed\": \"stale-token-proven-stale\",\n  \"key\": \"story-4-5-generic-etag-e12db4f791e2493d95e1ed8e3c58f65f\",\n  \"postUpdateReadKey\": \"story-4-5-generic-etag-e12db4f791e2493d95e1ed8e3c58f65f-decoy\",\n  \"seedStatus\": 204,\n  \"original\": {\n    \"etag\": \"1\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022seed\\u0022,\\u0022version\\u0022:0}\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    },\n    \"parseExceptionType\": null\n  },\n  \"interveningUpdate\": {\n    \"status\": 204,\n    \"etag\": \"1\",\n    \"rawJson\": \"{\\u0022writer\\u0022:\\u0022seed\\u0022,\\u0022version\\u0022:0}\",\n    \"value\": {\n      \"writer\": \"seed\",\n      \"version\": 0\n    },\n    \"parseExceptionType\": null,\n    \"etagAdvanced\": false\n  },\n  \"staleReplay\": {\n    \"suppliedEtag\": \"1\",\n    \"suppliedEtagWasStale\": false,\n    \"status\": 409,\n    \"responseBody\": \"{\\u0022errorCode\\u0022:\\u0022ERR_STATE_SAVE\\u0022,\\u0022message\\u0022:\\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-d9cb5a7a0ed34597a4dd3e1e13bff12a||story-4-5-generic-etag-e12db4f791e2493d95e1ed8e3c58f65f\\u0022}\",\n    \"errorCode\": \"ERR_STATE_SAVE\",\n    \"errorMessage\": \"failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-d9cb5a7a0ed34597a4dd3e1e13bff12a||story-4-5-generic-etag-e12db4f791e2493d95e1ed8e3c58f65f\",\n    \"parseError\": null,\n    \"acknowledged\": false\n  },\n  \"retainedReadKey\": \"story-4-5-generic-etag-e12db4f791e2493d95e1ed8e3c58f65f\",\n  \"expectedRetainedWriter\": \"first\",\n  \"redisRetainedValue\": {\n    \"writer\": \"first\",\n    \"version\": 1\n  },\n  \"redisRetainedRawJson\": \"{\\u0022writer\\u0022:\\u0022first\\u0022,\\u0022version\\u0022:1}\",\n  \"retainedValueMatchesExpected\": true,\n  \"retainedReadExceptionType\": null,\n  \"retainedReadExceptionMessage\": null,\n  \"invariants\": {\n    \"stale-token-proven-stale\": false,\n    \"generic-409-semantics\": true,\n    \"retained-generic-value\": true\n  }\n}\n",
+          "traits": {
+            "Category": [
+              "LiveSidecar"
+            ]
+          },
+          "exception": "Shouldly.ShouldAssertException"
+        }
+      }
+    ]
+  }
+}
