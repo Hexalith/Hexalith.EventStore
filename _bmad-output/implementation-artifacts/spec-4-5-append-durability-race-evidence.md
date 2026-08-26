@@ -380,6 +380,23 @@ Stories 4.14/4.15); `AppendDurabilityRaceClassifier` completeness lives in a doc
 ADD-fencing decision still has no owner story, alongside the historical
 `MetadataKey_StaleEtagUpdate_IsRejected` naming.
 
+### Review Findings — loop 5, chunk 1
+
+- [ ] [Review][Patch] The current evidence packet fails its authoritative validator because the `docs/ci.md` source binding has drifted, while the spec still claims the packet is valid [`evidence/story-4-5/0776785f.../validate-evidence.py:696`]
+- [ ] [Review][Patch] Out-of-range final sequences skip all event readback, so the unexpected outcome is classified without being recorded in full [`AppendDurabilityRaceLiveSidecarTests.cs:305`]
+- [ ] [Review][Patch] The validator trusts emitted raw-durability booleans instead of re-deriving the headline claim from the captured event and metadata, and it omits the generic control's seed/update status prerequisites [`evidence/story-4-5/0776785f.../validate-evidence.py:441`]
+- [ ] [Review][Patch] Every surfaced `InvalidOperationException` is labeled a concurrency conflict, allowing an unrelated actor failure to pass as a recognized race outcome [`AppendDurabilityRaceLiveSidecarTests.cs:457`]
+- [ ] [Review][Patch] The documented control-plane pullable digest is not captured, while image IDs and repository digests receive only prefix/substring validation [`DaprTestContainerFixture.cs:899`]
+- [ ] [Review][Patch] Timed-out provider probe processes are neither killed nor awaited before the capture continues [`DaprTestContainerFixture.cs:938`]
+- [ ] [Review][Patch] Control-plane port discovery accepts the first TCP listener without verifying that it is the expected Dapr placement or scheduler service [`DaprTestContainerFixture.cs:682`]
+- [ ] [Review][Patch] Positive receipts are accepted from summary counters without exact passed entries, exact test identities, and strict positive timestamps [`evidence/story-4-5/0776785f.../validate-evidence.py:242`]
+- [ ] [Review][Patch] Capture identity is not semantically bound: `baselineCommit` is ignored and the declared `state.redis` type is not matched to the canonical component YAML [`evidence/story-4-5/0776785f.../validate-evidence.py:360`]
+- [ ] [Review][Patch] Build evidence can target another artifact or repeat output lines, while a machine-specific elapsed-time floor substitutes for deterministic compile proof [`evidence/story-4-5/0776785f.../validate-evidence.py:582`]
+- [ ] [Review][Patch] `source-state.md` paths are not confined to the repository workspace, so absolute or parent-relative rows can bind external files as repository inputs [`evidence/story-4-5/0776785f.../validate-evidence.py:685`]
+- [ ] [Review][Patch] Malformed-but-readable evidence can raise raw JSON, type, or manifest-unpack tracebacks instead of the named `EvidenceError` contract [`evidence/story-4-5/0776785f.../validate-evidence.py:375`]
+- [ ] [Review][Patch] Redaction validation recognizes one Linux workspace shape and only top-level CTRF machine/user fields, leaving other platform paths and nested host metadata unchecked [`evidence/story-4-5/0776785f.../validate-evidence.py:668`]
+- [ ] [Review][Patch] Private support records violate the repository baseline requiring one C# type per file [`ActorConcurrencyConflictTests.cs:304`; `AppendDurabilityRaceLiveSidecarTests.cs:1004`]
+
 ## Spec Change Log
 
 - **Review loop 1 (2026-08-08, `bad_spec`):** Review showed the first derivation could claim a durable lost write from HTTP 204 without reading Redis while the actor was held, rejected valid retry/serialization or no-writer outcomes by requiring sequence 1, inferred catch/retry reachability without telemetry, called an unverified token `0` stale, accepted unrelated generic-state failures, mutation-checked only aggregate assertions, and retained machine/workspace identifiers in evidence. The tasks and acceptance criteria now require intermediate and final persisted-state proof, outcome-neutral consistency checks, bounded/quiesced work, exact generic ETag semantics, per-session retry telemetry, per-invariant mutation receipts, and documented redaction. **KEEP:** the post-metadata-read test-only gate; distinct actor/raw identities; Redis-authoritative capture; generic-state control; hash-bound evidence/report structure; evidence-bounded documentation; Deferred add-fencing decision; four unexercised catches classified `inconclusive`; and zero production/workflow behavior changes.
