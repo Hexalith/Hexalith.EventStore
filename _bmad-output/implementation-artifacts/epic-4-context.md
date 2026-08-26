@@ -1,10 +1,10 @@
-# Epic 4 Context: Event Correctness And Recovery
+# Epic 4 Context: Operators Can Trust Command and Event Integrity
 
-<!-- Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change. -->
+<!-- Generated from planning artifacts. Regenerate with compile-epic-context if planning docs change. -->
 
 ## Goal
 
-Make persisted event metadata and command processing trustworthy under duplicate, concurrent, expired-key, replay, append-race, and crash conditions. Operators and consumers must be able to rely on stable event identity, faithful duplicate results, tenant-scoped idempotency admission, deterministic replay, recoverable publication, and explicitly specified ordering behavior without silent data loss or duplicate side effects.
+Make command processing and persisted event behavior trustworthy under retries, concurrency, replay, expiry, crashes, and partial failure. Operators, domain authors, and reliability engineers must be able to rely on stable event identity, durable idempotency admission, deterministic dispatch, recoverable publication, and ordering semantics that are explicitly specified and proven before production behavior changes.
 
 ## Stories
 
@@ -26,33 +26,31 @@ Make persisted event metadata and command processing trustworthy under duplicate
 
 ## Requirements & Constraints
 
-- Persisted events receive non-zero actor-allocated global positions while aggregate sequence numbers remain gapless. CloudEvent IDs use the persisted event `MessageId`, and duplicate command replies reproduce every original result field without degradation.
-- Resume and idempotency decisions match the exact message, causation, and command type rather than correlation alone. Command status and archive identity use tenant plus message ID, with correlation retained only as an index. Tenant authorization precedes every status or idempotency read; transient failures remain retryable and terminal domain outcomes remain deduplicated.
-- Durable admission accepts only trusted, versioned canonical intent and a fixed retention class. Public callers provide only an opaque idempotency key and cannot choose descriptor, digest, actor, fence, state, expiry, policy, or tier authority. Raw keys and canonical intent never enter actor or event state, envelopes, status/archive records, logs, traces, metrics, errors, or evidence artifacts.
-- Admission prevents duplicate side effects through reservation, fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts. Conflicting live intent is rejected. Any expired-key reuse returns the same non-retryable `idempotency_key_expired` outcome before downstream work. Consumed, unavailable, corrupt, ambiguous, or uninventoried legacy state never becomes a fresh miss.
-- Replay dispatch requires exact or namespace-boundary-safe event-type matching, rejects ambiguity clearly, and preserves unambiguous legacy short-name behavior. Command, rehydrate, projection, and pub/sub paths share one serializer-options definition.
-- Committed but unpublished events must be detected and published, drained, or made explicitly recoverable without requiring resubmission under the same correlation ID. Stable `MessageId` values make retry publication duplicate-safe.
-- Append fencing cannot change until a real DAPR/Redis live-sidecar two-writer race and actual conflict-exception surface are recorded and reviewed. Global-position sharding likewise cannot change until the frozen ordering specification is revised and approved, including the gappy, not strictly commit-ordered semantics.
-- High-risk validation inspects persisted production-path state, read models, markers, checkpoints, before/after snapshots, and CloudEvent bodies, not only status codes or mocks. Durable-admission evidence must prove restart/failover survival, multi-host serialization, inclusive expiry, atomic compaction, rotation and migration safety, leakage absence, and zero downstream work for every non-execute result.
+- Persisted events have non-zero actor-allocated positions and gapless per-aggregate sequence numbers. Global allocation may contain reservation gaps and does not promise strict commit order. CloudEvent IDs use persisted event `MessageId`; duplicate command replies preserve the original result fields.
+- Resume and idempotency use exact command identity rather than correlation alone. Tenant authorization must precede state access, terminal results replay faithfully, transient pre-commit outcomes remain retryable, and ambiguous, corrupt, unavailable, consumed, or unsafe legacy state never becomes a fresh miss.
+- Durable admission accepts only a trusted, versioned canonical-intent descriptor and fixed retention class. Callers provide only an opaque idempotency key and cannot select descriptor, digest, actor, fence, state, expiry, or policy authority. Raw keys, protected intent, results, and secrets must not leak into state identifiers, envelopes, diagnostics, telemetry, or evidence.
+- Admission must prevent duplicate side effects across reservation, execution, recovery, expiry, compaction, restart, rotation, migration, and concurrent hosts. Conflicting live intent fails permanently; every expired-key reuse fails identically before protected work.
+- Replay dispatch must resolve event types deterministically, detect ambiguity, preserve supported legacy names, and use one immutable serializer-options path across command, rehydrate, projection, and pub/sub readers.
+- Committed-but-unpublished events must remain durably discoverable and recoverable without command resubmission. Republishing reuses the persisted event identity so at-least-once delivery remains deduplicatable.
+- Append fencing is evidence-first: observe a real live-sidecar two-writer race and conflict behavior before selecting a provider-portable design. Global-position sharding is spec-first: no implementation, persisted-state, public-contract, migration, or topology change may begin until a content-bound successor to the frozen ordering specification is human-approved.
+- High-risk verification must inspect persisted state, event bodies, checkpoints, topology, restart/failover behavior, and zero downstream work for non-execute outcomes. HTTP statuses and mock calls alone are insufficient.
 
 ## Technical Decisions
 
-- The gateway remains the command/query policy boundary. Admission precedes durable mutation: a dedicated admission actor owns tenant/key serialization, reservation, and monotonic fence issuance, while `AggregateActor` remains the durable event-mutation coordinator and accepts only an internal current-fence context.
-- Exactly the current non-zero fence may cross aggregate, domain-service, provider, repository, projection, audit, or scheduling side-effect boundaries or finalize a terminal result. A fence is reused only for safe resume.
-- Admission identity is partitioned by managed tenant, digest-key version, and a domain-separated HMAC-SHA-256 digest of the opaque key. A separate verification tag detects collisions; comparisons are constant-time and sensitive buffers are zeroed.
-- Digest rotation uses a tenant-scoped directory and a persisted prepare/copy/source-redirect/directory-flip protocol that maintains one canonical authority. Unknown, colliding, or retired versions fail closed; incompatible hosts fail readiness.
-- Expiry atomically replaces replay payload and live intent with a fence-free minimal tombstone. Mutation results retain replay for exactly 86,400 seconds; commit results use `DateTimeOffset.AddYears(7)`. Tombstones persist for tenant lifetime plus the governed 400-day post-deletion period, subject to legal holds.
-- Legacy migration is allowed only from a closed, versioned inventory. Targets remain non-executable until acknowledged, redirects are durable, and ambiguous evidence permits read-only diagnosis only.
-- Event delivery is at-least-once and unordered; consumers deduplicate by `MessageId` and use sequence ordering only where domain semantics define it. The approved multi-host admission proof uses at least two independent EventStore sidecars sharing the `oq8-postgresql-v1` PostgreSQL actor-state profile and production resiliency policy.
-- Reflection-based dispatch remains load-bearing, so AOT and trimming are out of scope. Message, correlation, causation, and aggregate identifiers remain ULID-safe and must not be parsed as GUIDs.
+- The gateway remains the command/query policy boundary. After authentication, current authorization, and canonical validation, a dedicated tenant/key admission actor owns serialization, reservation, state transitions, and monotonic fencing. `AggregateActor` remains the sole durable event-mutation coordinator and accepts only a current internal fence.
+- Exactly the current non-zero fence may cross an aggregate, domain-service, provider, repository, projection, audit, or scheduling side-effect boundary or finalize a terminal result. Safe recovery resumes the persisted identity and fence; uncertainty never creates new execution authority.
+- Current global positions are non-zero, unique scalar values from the DAPR-backed allocator, but their gaps mean they are not a strict global commit sequence. A sharding successor must define shard ownership, uniqueness and monotonicity boundaries, representation, comparison rules, cursor/checkpoint behavior, mixed-history compatibility, rollout, rollback, and unsupported cross-shard comparisons.
+- Event delivery is at-least-once and unordered. Consumers deduplicate by `MessageId`; sequence ordering is meaningful only within its documented domain boundary. Projection or notification signals do not by themselves prove user-visible success.
+- Admission identity is partitioned by tenant and digest-key version with domain-separated HMAC-SHA-256 key digests and collision verification. Rotation and legacy migration preserve one canonical executable authority; expiry atomically replaces live/replay state with a fence-free minimal tombstone.
+- Production-equivalent admission proof uses at least two independent EventStore hosts and DAPR sidecars sharing the `oq8-postgresql-v1` PostgreSQL actor-state profile with production resiliency. Same-process fixtures and direct actor calls are supporting evidence only.
+- Reflection-based dispatch remains load-bearing; AOT and trimming are out of scope. EventStore identifiers remain ULID-safe and must not be validated as GUIDs.
 
 ## UX & Interaction Patterns
 
-Command lifecycle surfaces distinguish Received, Processing, EventsStored, EventsPublished, Completed, Rejected, PublishFailed, and TimedOut with text as well as status styling. A committed-but-unpublished command routes to recovery instead of encouraging resubmission as though persistence failed. Projection lifecycle states are authoritative only for projection-backed provenance; handler-computed, missing, or invalid provenance renders `Unknown`.
+Command lifecycle surfaces distinguish received, processing, events stored, events published, completed, rejected, publication failed, and timed out states using text as well as styling. Committed-but-unpublished work routes to recovery rather than encouraging resubmission. Shard-local and globally comparable positions must be labeled accurately. Projection lifecycle claims are authoritative only for projection-backed provenance; otherwise surfaces render `Unknown` and never infer state from an ETag or acceptance response.
 
 ## Cross-Story Dependencies
 
-- Stories 4.9-4.15 are a backward-only dependency chain. Story 4.8 is historical evidence, not active implementation, and only Story 4.15 can close the EventStore OQ8 platform gate. The downstream consumer retains final cross-repository OQ8 authority.
-- Story 4.1 stable identity supports Story 4.4 duplicate-safe recovery, but publication recovery remains separate from admission resume.
-- Story 4.5 evidence gates append-fencing work. Story 4.6 approval gates sharding, which must preserve event identity and CloudEvent ID behavior.
-- Story 4.7 requires Tenants maintainer approval, an exact Tenants SHA, and production-path evidence. It does not block EventStore platform provenance enforcement, which fails safe to `Unknown` until producer evidence exists.
+- Story 4.1 establishes stable identity used by publication recovery and any later allocation design. Story 4.5 gates append-fencing decisions; it gates Story 4.6 only if the selected sharding design changes append fencing or provider write semantics.
+- Story 4.8 is a historical, non-executable ledger. Stories 4.9-4.15 form the ordered OQ8 authority and evidence chain; later work cannot retroactively authorize an earlier unsafe outcome, and platform completion does not grant release, deployment, consumer migration, or downstream repository authority.
+- Story 4.7 depends on separately authenticated Tenants-maintainer authority and exact external-repository evidence. Existing EventStore provenance enforcement remains fail-safe while that follow-up is incomplete.
