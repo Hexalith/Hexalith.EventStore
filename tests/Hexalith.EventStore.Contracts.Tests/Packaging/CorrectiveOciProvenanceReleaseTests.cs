@@ -1149,9 +1149,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             Wrapper,
             Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
             Path.Combine(checkedInPacket, "release-identity.json"),
-            "--manifest",
             Path.Combine(root, "tools", "release-packages.json"),
-            "--packet-root",
             checkedInPacket);
 
         result.ExitCode.ShouldBe(0, result.Error);

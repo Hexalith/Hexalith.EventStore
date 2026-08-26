@@ -136,6 +136,11 @@ Predecessor mutation is likewise outside this packet's authority. No role is sel
 
 - Story 3.14 predecessor validation: pass at exact frozen identity `4d1a0c33…`.
 - Contracts Release/package-mode build: pass, zero warnings and errors.
+- Focused closure: 135 passed; smoke capture: 9 passed; predecessor/provenance: 46 passed. All
+  three focused runs have zero failures and zero skips.
+- Contracts excluding the unrelated OQ8 closure class: 1438 passed, zero failed or skipped. The
+  complete 1753-test run has 269 OQ8-only failures because that separate packet detects pre-existing
+  bound-source drift in `DaprTestContainerFixture.cs`; Story 3.15 does not re-seal it.
 - Checked-in assembly: stable `c22d35b…`, `receipts=0`, `verifier_exit=1`, exit 1 as required.
 - Checked-in verifier: expected fail-closed at zero receipts.
 - `git diff --check`: pass at final local verification.

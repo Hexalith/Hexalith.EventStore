@@ -69,6 +69,15 @@ Auditors must verify these false flags directly:
 
 The packet grants no predecessor-change authority either.
 
+## Verification results
+
+- Contracts Release build: pass, zero warnings and errors.
+- Closure 135/135, smoke capture 9/9, predecessor/provenance 46/46; zero skips.
+- Contracts excluding the unrelated OQ8 evidence class: 1438/1438. The full 1753-test invocation
+  reports 269 OQ8-only failures on its pre-existing bound-source drift in
+  `DaprTestContainerFixture.cs`; this story does not re-seal another story's evidence.
+- Direct Story 3.14 validation passes; direct Story 3.15 validation fails closed at 0/3 as intended.
+
 ## Reproduce
 
 ```text

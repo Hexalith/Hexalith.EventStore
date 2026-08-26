@@ -573,96 +573,81 @@ Both owner receipts are independently constrained to the same positively allowli
 
 ## Verification
 
-**Commands:**
-- `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: exact predecessor digest passes.
-- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- expected: zero warnings and errors.
-- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -noLogo` -- expected: all matrix and mutation cases pass with none skipped.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: **pass**, exact current subject `a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`, exactly three roster-bound role receipts, and selected identity only `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`, exit 0. The prior `dab64f5f...` receipt/source tree remains byte-identical outside the packet.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected: reproduces identical subject `a8cc777e...` on repeat runs, runs the pinned verifier over its own output, reports `receipts=3 verifier_exit=0`, and exits 0.
-- `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py` -- expected: `text: set`, `eol: lf` for each, so the SHA-256 pins cannot be broken by working-tree EOL drift.
+**Commands and observed results:**
+
+- `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- pass, exact predecessor digest `4d1a0c33...`. The repository-root-derived default-manifest form also passes.
+- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0 --no-restore` -- pass, zero warnings and errors.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -noLogo` -- 135 passed, zero failed or skipped.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- 9 passed, zero failed or skipped.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests -noLogo` -- 46 passed, zero failed or skipped.
+- Full Contracts assembly -- 1753 run, 269 failed, zero skipped. Every observed failure is inside the unrelated `Oq8PlatformClosureTests` fail-fast cascade on the pre-existing bound-source drift `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs`. Excluding that one class proves the remainder: 1438 passed, zero failed or skipped. Story 3.15 does not re-seal or weaken another story's evidence.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- expected fail-closed at exactly zero receipts, exact rerun trigger, exit 1.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- two repeat runs reproduce subject `c22d35b...`, report `receipts=0 verifier_exit=1`, and exit 1.
+- `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py tools/capture-corrected-deployed-runtime-parity-smokes.py tools/assemble-corrected-deployed-runtime-parity.py` -- expected: `text: set`, `eol: lf` for every SHA-pinned producer/import path.
 - `git diff --check` -- expected: no whitespace errors.
 
 ## Suggested Review Order
 
-**Start here — what the packet now claims**
+**Current evidence state**
 
-- Passing verdict, exact current subject, and evidence-only boundary in one place.
-  [`3-15-...-closure.md:3`](3-15-corrected-deployed-runtime-parity-closure.md#L3)
+- Exact 0/3 fail-closed subject and evidence-only authority boundary.
+  [`3-15-...-closure.md:8`](3-15-corrected-deployed-runtime-parity-closure.md#L8)
 
-- Fresh owner comments and self-attested Test Architect receipt bind the unchanged subject.
-  [`3-15-...-closure.md:58`](3-15-corrected-deployed-runtime-parity-closure.md#L58)
+- Compact proof, technical inventory count, trust chain, producer provenance, and runnable assembly.
+  [`3-15-...-proof-packet.md:14`](3-15-corrected-deployed-runtime-parity-closure-proof-packet.md#L14)
 
-- The blocking release defect this loop recorded rather than actioned.
-  [`deferred-work.md:1569`](deferred-work.md#L1569)
+- CI/operator view of the loop-6 re-mint and superseded receipt set.
+  [`ci.md:470`](../../docs/ci.md#L470)
 
-**Acceptance-source binding — the cross-lineage splice**
+**Acceptance-source binding**
 
-- All four comment fields must resolve to one comment on one issue.
-  [`v1.py:861`](../../tools/deployed_runtime_parity_handlers/v1.py#L861)
+- Only dedicated Story 3.15 issue `#352` is allowlisted.
+  [`v1.py:96`](../../tools/deployed_runtime_parity_handlers/v1.py#L96)
 
-- Only dedicated Story 3.15 issue `#352` is allowlisted; every sibling thread is rejected.
-  [`v1.py:79`](../../tools/deployed_runtime_parity_handlers/v1.py#L79)
+- The receipt tree is close-listed, and GitHub source envelopes are exact-schema validated.
+  [`v1.py:780`](../../tools/deployed_runtime_parity_handlers/v1.py#L780)
 
-- Each rostered role bound to exactly one source kind, so owners cannot self-attest.
-  [`v1.py:82`](../../tools/deployed_runtime_parity_handlers/v1.py#L82)
+- All comment identity/anchor fields resolve to the allowlisted issue and rostered owner.
+  [`v1.py:880`](../../tools/deployed_runtime_parity_handlers/v1.py#L880)
 
-**Guards that did not hold the property they stated**
+**Trusted execution and producer binding**
 
-- Word-bounded negation; `authorizes nothing beyond deployment...` no longer passes.
-  [`v1.py:71`](../../tools/deployed_runtime_parity_handlers/v1.py#L71)
+- Both live producer bindings participate in dispatch validation.
+  [`v1.py:322`](../../tools/deployed_runtime_parity_handlers/v1.py#L322)
 
-- Date-only timestamps now fail closed instead of raising an uncaught `TypeError`.
-  [`v1.py:191`](../../tools/deployed_runtime_parity_handlers/v1.py#L191)
+- Parity and predecessor dispatchers execute already-verified source bytes.
+  [`validate-...-parity.py:195`](../../tools/validate-corrected-deployed-runtime-parity.py#L195)
+  [`validate-corrective-release-evidence.py:179`](../../tools/validate-corrective-release-evidence.py#L179)
 
-- An unknown package id fails closed naming the id, rather than escaping as `KeyError`.
-  [`v1.py:471`](../../tools/deployed_runtime_parity_handlers/v1.py#L471)
+- Bytes-valued import paths fail support-safely rather than escaping as `TypeError`.
+  [`validate-...-parity.py:124`](../../tools/validate-corrected-deployed-runtime-parity.py#L124)
+  [`validate-corrective-release-evidence.py:123`](../../tools/validate-corrective-release-evidence.py#L123)
 
-**Trust chain — verified bytes must be the executed bytes**
+- Assembly binds both producer files and propagates the pinned verifier's exit.
+  [`assemble-...-parity.py:140`](../../tools/assemble-corrected-deployed-runtime-parity.py#L140)
+  [`assemble-...-parity.py:229`](../../tools/assemble-corrected-deployed-runtime-parity.py#L229)
 
-- Repository-local dependency shadows cannot participate in verified handler execution.
-  [`validate-...-parity.py:138`](../../tools/validate-corrected-deployed-runtime-parity.py#L138)
+- Capture records the binfmt prerequisite, retries readiness, attempts bounded cleanup after an
+  exhausted capture deadline, and refuses implicit evidence overwrite.
+  [`capture-...-smokes.py:4`](../../tools/capture-corrected-deployed-runtime-parity-smokes.py#L4)
+  [`capture-...-smokes.py:161`](../../tools/capture-corrected-deployed-runtime-parity-smokes.py#L161)
+  [`capture-...-smokes.py:204`](../../tools/capture-corrected-deployed-runtime-parity-smokes.py#L204)
 
-- The predecessor dispatcher executes only exact verified source bytes under the same isolation.
-  [`validate-corrective-release-evidence.py:138`](../../tools/validate-corrective-release-evidence.py#L138)
+**Mutation evidence and drift guards**
 
-- Strict numeric smoke facts reject JSON booleans and equal-valued floats.
-  [`v1.py:565`](../../tools/deployed_runtime_parity_handlers/v1.py#L565)
+- Checked-in fail-closed and synthetic 3/3 positive controls.
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:122`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L122)
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:184`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L184)
 
-- SHA-pinned Python can no longer be CRLF-rewritten by an EditorConfig-honouring editor.
-  [`.gitattributes:11`](../../.gitattributes#L11)
+- Real assembler caller and both operator-record drift guards.
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:1081`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L1081)
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:1144`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L1144)
 
-**Producer discipline**
+- Closed GitHub source, XML CDATA/declaration, registry-authentication, and smoke lifecycle cases.
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:1405`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L1405)
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:1648`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L1648)
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:1872`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L1872)
+  [`CorrectedDeployedRuntimeParitySmokeCaptureTests.cs:182`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParitySmokeCaptureTests.cs#L182)
 
-- One monotonic deadline bounds pull, run, readiness, inspection, and cleanup attempts.
-  [`capture-...-smokes.py:63`](../../tools/capture-corrected-deployed-runtime-parity-smokes.py#L63)
-
-- Refuses to assemble a packet over failed Production smokes.
-  [`assemble-...-parity.py:120`](../../tools/assemble-corrected-deployed-runtime-parity.py#L120)
-
-- Package count derived from the items, not asserted as a literal.
-  [`assemble-...-parity.py:170`](../../tools/assemble-corrected-deployed-runtime-parity.py#L170)
-
-- Re-stamps `created_at` on content change so a re-mint cannot misdate itself.
-  [`assemble-...-parity.py:190`](../../tools/assemble-corrected-deployed-runtime-parity.py#L190)
-
-- Assemble and verify are one operation; exit code reflects the real verdict.
-  [`assemble-...-parity.py:240`](../../tools/assemble-corrected-deployed-runtime-parity.py#L240)
-
-**Operator handoff**
-
-- Records the 3/3 subject-bound verdict and the one-human/self-attested identity limitation.
-  [`ci.md:460`](../../docs/ci.md#L460)
-
-**Tests and supporting artifacts**
-
-- 108 closure cases mutation-prove the trusted verifier and current 3/3 packet.
-  [`CorrectedDeployedRuntimeParityClosureTests.cs:106`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L106)
-
-- Six executable fake-command cases prove capture arguments and bounded failure retention.
-  [`CorrectedDeployedRuntimeParitySmokeCaptureTests.cs:19`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParitySmokeCaptureTests.cs#L19)
-
-- Restored remediation assertion plus four mutation-proved dead guards.
-  [`DeployedRuntimeParityClosureTests.cs:1`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs#L1)
-
-- Stale `PASS` gate withdrawn rather than left standing over a superseded subject.
+- Superseded gate status is replaced by a current 0/3 blocked decision.
   [`gate-decision.json:1`](../../_bmad-output/test-artifacts/gate-decision.json#L1)

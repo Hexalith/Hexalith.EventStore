@@ -194,10 +194,17 @@ public class TenantsApiLaunchSettingsTests
                 .ConfigureAwait(true);
 
             builder.ExecutionContext.IsPublishMode.ShouldBeTrue();
-            builder.Resources.ShouldNotContain(
-                static resource => string.Equals(resource.Name, "tenants", StringComparison.Ordinal));
-            builder.Resources.ShouldNotContain(
-                static resource => string.Equals(resource.Name, "tenants-api", StringComparison.Ordinal));
+            ProjectResource[] tenantsResources =
+            [
+                .. builder.Resources
+                    .OfType<ProjectResource>()
+                    .Where(static resource => resource.Name is "tenants" or "tenants-api"),
+            ];
+            tenantsResources.ShouldAllBe(resource =>
+                ReferenceEquals(
+                    resource.GetProjectMetadata().GetType().Assembly,
+                    typeof(Projects.Hexalith_EventStore_AppHost).Assembly),
+                "Publish mode may contain explicit source-mode Projects.* resources, but never path-discovered resources.");
         }
         finally
         {
