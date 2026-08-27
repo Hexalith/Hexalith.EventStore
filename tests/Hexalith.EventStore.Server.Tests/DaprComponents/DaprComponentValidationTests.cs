@@ -101,7 +101,10 @@ public class DaprComponentValidationTests {
         sampleBlock.ShouldContain("AddEventStoreDomainModule");
         sampleBlock.ShouldContain("isolatedDaprResourcesPath: emptyDaprResourcesPath");
 
-        string tenantsBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> tenants =", "IResourceBuilder<ProjectResource> sample =");
+        string tenantsBlock = GetBlock(
+            appHost,
+            "if (tenants is not null && tenantsApi is not null) {",
+            "// Add sample domain service with DAPR sidecar via the platform domain-module extension (A4).");
         tenantsBlock.ShouldContain("AddEventStoreDomainModule");
         tenantsBlock.ShouldNotContain("isolatedDaprResourcesPath");
 
