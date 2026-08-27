@@ -28,10 +28,12 @@
 #   eventstore is NOT listed in publishingScopes = can publish to ANY topic.
 #   This supports NFR20 (dynamic tenant provisioning without restart).
 #   sample= (empty) denies sample from publishing to any topic.
+#   works= (empty) denies Works from publishing to any topic.
 #
 # SUBSCRIBER-SIDE SCOPING (Story 5.3, FR29):
 #   eventstore is NOT listed in subscriptionScopes = can subscribe to all topics.
 #   sample= (empty) denies sample from subscribing to any topic.
+#   works=work.events grants Works access to its regular event topic only.
 #   External subscribers are explicitly scoped to authorized tenant topics only.
 #   Dead-letter topic subscription is SEPARATE from regular event topic subscription.
 #   Unauthorized subscription attempts are rejected at the DAPR sidecar and are
@@ -116,7 +118,7 @@ spec:
     # only, but leaving it in production-bound manifests is non-zero squatting risk and is
     # tracked by post-epic-4-r4a5-D2-followup (see deferred-work.md).
     - name: publishingScopes
-      value: "sample=;eventstore-test-subscriber="
+      value: "sample=;works=;eventstore-test-subscriber="
     # Subscription scoping (Story 5.3, FR29):
     # sample= (empty) denies sample from subscribing to any topic.
     # eventstore is NOT listed = unrestricted subscription to all topics.
@@ -130,7 +132,7 @@ spec:
     # R4-A5 test subscriber's narrow subscribe grant. Production overlays MUST strip this
     # segment. See post-epic-4-r4a5-D2-followup in deferred-work.md.
     - name: subscriptionScopes
-      value: "sample=;eventstore-test-subscriber=tenant-a.counter.events;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+      value: "sample=;works=work.events;eventstore-test-subscriber=tenant-a.counter.events;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 # Component-level scoping: eventstore and explicitly authorized subscriber app-ids
 # can access this pub/sub component.
 # Domain services (sample) have zero pub/sub access -- cannot publish, subscribe,
@@ -144,6 +146,7 @@ spec:
 #     - ops-monitor
 scopes:
   - eventstore
+  - works
   # DEV-ONLY: `eventstore-test-subscriber` is the Tier 3 R4-A5 test subscriber app-id.
   # Production deployment overlays MUST remove this entry. Tracked by
   # post-epic-4-r4a5-D2-followup in deferred-work.md.
