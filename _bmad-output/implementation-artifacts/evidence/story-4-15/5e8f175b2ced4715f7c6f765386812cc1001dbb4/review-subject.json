@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-review-subject/v1",
-  "createdOn": "2026-08-13",
+  "createdOn": "2026-08-27",
   "proposedDecision": "eventstore-platform-complete",
   "design": {
     "version": "1.0.0",
@@ -18,15 +18,15 @@
     },
     "sourceArtifactIdentity": {
       "path": "source-artifact-identity.json",
-      "sha256": "6f8959f77136a6f93f8e6225c447ca3adb1adfbbb883f36f70dd04d848344337"
+      "sha256": "3d85d9720a2a439909a062513d42548ba93259b897bfeb768341d2f0beaec5ec"
     },
     "limitations": {
       "path": "limitations.json",
-      "sha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92"
+      "sha256": "914af77a8419e2fb75583886a103829b0aa460a8f61e6c46681f8f3c56ea62c9"
     },
     "closureValidator": {
       "path": "validator-sha256.txt",
-      "sha256": "38ff6b8939dfe7d58ac19ccd62afb1357098a6cabbf03f260355e6363f533e90"
+      "sha256": "d76de29f9dd48bf9654b9b84cfae99e93a1ea653a462db7b00706713bb766427"
     },
     "validatorRequirements": {
       "path": "requirements-oq8.txt",
@@ -46,11 +46,11 @@
     },
     "closureTests": {
       "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-      "sha256": "d546a20ac0c5a11ab7eeccdc1b67dc900070bc69946b39dda7d897b93cb0549f"
+      "sha256": "4085ae558bad0eed21759a3e4f561e35710f3cd3375705f4041b0089083e83e3"
     },
     "preReviewExecution": {
       "path": "pre-review-execution.json",
-      "sha256": "7b3a97c5af2b535b64c3b9ae5e4e84b7b5b89b6ec51ab7f7df12f3ddf5d73eee"
+      "sha256": "fd8ff495b876c7aa53dbd65afa0f6ef6e10b35c486fc9063de6673ac979dbfe0"
     },
     "captureManifest": {
       "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",
@@ -59,21 +59,21 @@
   },
   "identity": {
     "repository": "Hexalith/Hexalith.EventStore",
-    "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
-    "landedSourceTree": "21f9819026a1338efbab70d69991b3570c1b54f7",
+    "landedSourceCommit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "landedSourceTree": "96fdfbba56df41b58889bf7f3b532a64d15314bd",
     "boundPathCount": 26,
     "captureArtifactCount": 7
   },
   "reviewedPublicDocs": {
-    "docs/concepts/architecture-overview.md": "0a47913a3f491276c962bd97f7271039ed4fc38aec168529efb776383a9a7c94",
-    "docs/concepts/command-lifecycle.md": "04841f013229b1b6c1059f58a137f4500400fb6579b3026e7a68c6cff7e9e8e1",
-    "docs/guides/configuration-reference.md": "f1e5686363b9359f2a82595c10a2a945ab19f203c7a99ed9c8ae5520c967d98a",
-    "docs/reference/command-api.md": "c10319ef39ee00659a3aa4b2056f2e0698c8cbd3f6e57ddb3581889dc24d8d3b"
+    "docs/concepts/architecture-overview.md": "8eb99ee1053be809e9e0b136d183a9ad3a591f766f82247a2109e344027043db",
+    "docs/concepts/command-lifecycle.md": "c82edf5422be21e096afaecef0bd254f28f924fb5557c73b6fc22d9da7334cd0",
+    "docs/guides/configuration-reference.md": "e2fde4db539fc2fadfa545394cb81cabc270bd37bba4f3cce2687e25407f8f0d",
+    "docs/reference/command-api.md": "6b0bfd403d371c1278ad0e09516cfd995b26e8de98f3c85c9e1a20d68d5cc821"
   },
   "handoff": {
     "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
     "story": "4.15",
-    "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
+    "landedSourceCommit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
     "consumerInstructions": {
       "mode": "source-only",
       "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
@@ -86,7 +86,7 @@
     "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
     "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
     "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
-    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit 4b0a7b1d3628a857f131cfbff99030714aefc747.",
+    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4.",
     "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
     "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption."
   ],

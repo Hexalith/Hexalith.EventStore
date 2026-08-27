@@ -2,7 +2,7 @@
   "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
   "role": "test",
   "reviewer": "Murat (Test Architect)",
-  "reviewedOn": "2026-08-13",
+  "reviewedOn": "2026-08-27",
   "decision": "approved",
   "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
   "acceptedScope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",

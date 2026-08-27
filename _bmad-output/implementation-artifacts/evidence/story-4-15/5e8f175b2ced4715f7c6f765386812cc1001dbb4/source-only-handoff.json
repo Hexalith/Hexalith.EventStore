@@ -1,7 +1,7 @@
 {
   "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
   "story": "4.15",
-  "landedSourceCommit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
+  "landedSourceCommit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
   "reviewSubjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
   "limitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
   "reviewReceipts": {

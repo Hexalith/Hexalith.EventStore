@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-pre-review-execution/v1",
-  "executedOn": "2026-08-13",
+  "executedOn": "2026-08-27",
   "scope": "receipt-independent-isolated-candidate",
   "authority": {
     "reviewReceiptsValidated": false,
@@ -9,11 +9,11 @@
   },
   "validator": {
     "path": "tools/validate-oq8-platform-evidence.py",
-    "sha256": "585e4d8634f6862a99a3431da37634a23d3aac5886a83b76f0bc4a7f0d309726"
+    "sha256": "c478fe80743423f48d2e6d3d1f4caf0345411c7b38e37281576a329d6bcb9e42"
   },
   "testSource": {
     "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-    "sha256": "d546a20ac0c5a11ab7eeccdc1b67dc900070bc69946b39dda7d897b93cb0549f"
+    "sha256": "4085ae558bad0eed21759a3e4f561e35710f3cd3375705f4041b0089083e83e3"
   },
   "finalValidation": {
     "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",

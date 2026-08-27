@@ -1,1 +1,0 @@
-585e4d8634f6862a99a3431da37634a23d3aac5886a83b76f0bc4a7f0d309726  tools/validate-oq8-platform-evidence.py

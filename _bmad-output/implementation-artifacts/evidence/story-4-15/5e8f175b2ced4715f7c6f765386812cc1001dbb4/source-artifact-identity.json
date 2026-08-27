@@ -2,8 +2,8 @@
   "schema": "hexalith.eventstore.story-4-15-source-artifact-identity/v1",
   "repository": "Hexalith/Hexalith.EventStore",
   "landedSource": {
-    "commit": "4b0a7b1d3628a857f131cfbff99030714aefc747",
-    "tree": "21f9819026a1338efbab70d69991b3570c1b54f7",
+    "commit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "tree": "96fdfbba56df41b58889bf7f3b532a64d15314bd",
     "pathCount": 26,
     "pathSet": "union of Story 4.14 candidateFiles and sourceInputs"
   },
@@ -108,23 +108,28 @@
   "landedGitByteOverrides": {
     ".github/workflows/integration.yml": {
       "captureWorktreeSha256": "afb28e703e9b9d51b5144e10c0368cf6ac94ab01cf5e456ef2090a6d444e3205",
-      "landedGitSha256": "a9fe1bcd85c8232a0e0e46f3e8891cd2da056a9699f1804d4f9f8ae8dafccb91",
-      "reason": "Story 4.14 capture hashed the original integration workflow; landed commit 4b0a7b1d retains later CI history-fetch and Dapr runtime-pin wiring as historical evidence for the evolved orchestration path."
+      "landedGitSha256": "343163fd164bb49252ad2ec67c7fbc90aa2f3aaecafa4d4d51640ccc39e7b777",
+      "reason": "Story 4.14 capture hashed the original integration workflow; landed commit 5e8f175b retains later CI history-fetch and Dapr runtime-pin wiring as historical evidence for the evolved orchestration path."
     },
     "src/Hexalith.EventStore/Program.cs": {
       "captureWorktreeSha256": "245f79cc04998118da9caec70cdf290d67fb23e71a91100af46c4a019af5be7f",
       "landedGitSha256": "7203089f0035e3a45cf7ccf6c6fffdc120e4b2dc2d9fd53b8031ed87e7ad83e9",
       "reason": "The capture hashed CRLF working-tree bytes while the landed Git blob stores LF bytes under tracked text normalization."
     },
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs": {
+      "captureWorktreeSha256": "0da109af79cb0ded1c9e7377c4140a561ef682f1cf23b7c0fbb6284b7401c216",
+      "landedGitSha256": "28a89849a864014f4e18ab0bd791c4e905cc662799c8a58fce7e9627762dde9a",
+      "reason": "Story 4.5 fixture hardening advanced at landed commit 5e8f175b after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source."
+    },
     "tests/Hexalith.EventStore.Server.Tests/Actors/PublicationRecoveryActivationTests.cs": {
       "captureWorktreeSha256": "7aff4137378e9f2529b1770dd81c6638e8159277b4e92a5653ffc61a65ad2eb4",
       "landedGitSha256": "bfc4c85147df8d468d8ed33a9e00c4c372ce18d2512f07913095190527b15b6d",
-      "reason": "Committed publication-recovery tests advanced at landed commit 4b0a7b1d after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source."
+      "reason": "Committed publication-recovery tests advanced before landed commit 5e8f175b after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source."
     },
     "tools/validate-oq8-platform-evidence.py": {
       "captureWorktreeSha256": "0e9a352e7757f452dbc1f41dbd7036d76088f56be732a03c9b48ba4d6ab1c8b1",
       "landedGitSha256": "5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647",
-      "reason": "Story 4.14 capture hashed the original validator; landed commit 4b0a7b1d retains the later closure-validator evolution, while current validator bytes remain bound by validator-sha256.txt."
+      "reason": "Story 4.14 capture hashed the original validator; landed commit 5e8f175b retains the later closure-validator evolution, while current validator bytes remain bound by validator-sha256.txt."
     }
   },
   "capture": {

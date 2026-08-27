@@ -2,7 +2,7 @@
   "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "reviewedOn": "2026-08-13",
+  "reviewedOn": "2026-08-27",
   "decision": "approved",
   "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
   "acceptedScope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",

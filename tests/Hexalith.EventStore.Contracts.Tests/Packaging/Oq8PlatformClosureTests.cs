@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class Oq8PlatformClosureTests
 {
-    private const string LandedSource = "4b0a7b1d3628a857f131cfbff99030714aefc747";
+    private const string LandedSource = "5e8f175b2ced4715f7c6f765386812cc1001dbb4";
     private static readonly Regex EventStorePlatformCompleteTrue = new(
         "\"eventStorePlatformComplete\"\\s*:\\s*true",
         RegexOptions.CultureInvariant,
@@ -1362,7 +1362,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("docs/concepts/architecture-overview.md", "Cannot read evidence path")]
     [InlineData("deploy/dapr/resiliency.yaml", "Cannot hash evidence path")]
     [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json", "Manifest artifact missing: observations.json")]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747/reviews/security.json", "Closure artifact missing: reviews/security.json")]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/reviews/security.json", "Closure artifact missing: reviews/security.json")]
     [Trait("OQ8Phase", "FinalOnly")]
     public void MissingRequiredPathFailsSafely(string relative, string expected)
     {
@@ -1699,7 +1699,7 @@ public sealed class Oq8PlatformClosureTests
                 break;
             }
             case "candidate-duplicate-subject":
-                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-13\",", "  \"createdOn\": \"2026-08-13\",\n  \"createdOn\": \"2026-08-13\",");
+                InsertDuplicateJsonField(subjectPath, "  \"createdOn\": \"2026-08-27\",", "  \"createdOn\": \"2026-08-27\",\n  \"createdOn\": \"2026-08-27\",");
                 break;
             case "candidate-duplicate-authority":
                 InsertDuplicateJsonField(subjectPath, "    \"releaseApproved\": false,", "    \"releaseApproved\": false,\n    \"releaseApproved\": false,");

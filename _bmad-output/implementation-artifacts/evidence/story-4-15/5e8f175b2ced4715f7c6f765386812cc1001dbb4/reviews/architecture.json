@@ -2,7 +2,7 @@
   "schema": "hexalith.eventstore.story-4-15-review-receipt/v1",
   "role": "architecture",
   "reviewer": "Winston (System Architect)",
-  "reviewedOn": "2026-08-13",
+  "reviewedOn": "2026-08-27",
   "decision": "approved",
   "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
   "acceptedScope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
@@ -11,7 +11,7 @@
     "All twelve subject bindings, four public-document bindings, nested Story 4.14 manifest entries, and nine crosswalk evidence bindings independently match current bytes.",
     "The 1.0.0 design reference and SHA-256 1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8 are consistent throughout; the unavailable design bytes remain Folders-owned as explicitly limited.",
     "OQ8-1 through OQ8-8 form a coherent invariant-to-story and evidence crosswalk with no architecture-scope corrective finding.",
-    "Landed commit 4b0a7b1d3628a857f131cfbff99030714aefc747 resolves to tree 21f9819026a1338efbab70d69991b3570c1b54f7; all 26 landed paths reconcile, ancestry holds, and all 24 non-evolved capability paths remain unchanged.",
+    "Landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 resolves to tree 96fdfbba56df41b58889bf7f3b532a64d15314bd; all 26 landed paths reconcile, ancestry holds, and all 24 non-evolved capability paths remain unchanged.",
     "Architecture boundaries accurately distinguish exact landed-tree authority from limited current-path verification and later unbound repository work, while source-only bootstrap and verification instructions remain explicit and consistent.",
     "Approval is limited to EventStore platform completeness and the source-only handoff for this exact subject; it grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
   ],

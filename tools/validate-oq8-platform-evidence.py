@@ -38,22 +38,22 @@ EVIDENCE = (
 CLOSURE = (
     ROOT
     / "_bmad-output/implementation-artifacts/evidence/story-4-15"
-    / "4b0a7b1d3628a857f131cfbff99030714aefc747"
+    / "5e8f175b2ced4715f7c6f765386812cc1001dbb4"
 )
 DESIGN_VERSION = "1.0.0"
 DESIGN_SHA256 = "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8"
 BASELINE = "e60a3777c581d70b62f67173ccc2372b5b64a425"
-LANDED_SOURCE = "4b0a7b1d3628a857f131cfbff99030714aefc747"
-LANDED_TREE = "21f9819026a1338efbab70d69991b3570c1b54f7"
+LANDED_SOURCE = "5e8f175b2ced4715f7c6f765386812cc1001dbb4"
+LANDED_TREE = "96fdfbba56df41b58889bf7f3b532a64d15314bd"
 PROFILE = "oq8-postgresql-v1"
 POSTGRES_IMAGE = "postgres:18.4"
 COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"
-CURRENT_REVIEW_DATE = "2026-08-13"
+CURRENT_REVIEW_DATE = "2026-08-27"
 PINNED_PYYAML_VERSION = "6.0.3"
 PINNED_PYYAML_REQUIREMENT = f"PyYAML=={PINNED_PYYAML_VERSION}"
 MAX_SPRINT_STATUS_BYTES = 1_048_576
 EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
-CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/4b0a7b1d3628a857f131cfbff99030714aefc747"
+CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
 FOCUSED_TRAITS = {
     "Category": ["LiveSidecar"],
@@ -146,10 +146,10 @@ EXPECTED_DOCUMENTS = {
     "docs/guides/configuration-reference.md",
 }
 EXPECTED_DOCUMENT_HASHES = {
-    "docs/concepts/architecture-overview.md": "0a47913a3f491276c962bd97f7271039ed4fc38aec168529efb776383a9a7c94",
-    "docs/concepts/command-lifecycle.md": "04841f013229b1b6c1059f58a137f4500400fb6579b3026e7a68c6cff7e9e8e1",
-    "docs/guides/configuration-reference.md": "f1e5686363b9359f2a82595c10a2a945ab19f203c7a99ed9c8ae5520c967d98a",
-    "docs/reference/command-api.md": "c10319ef39ee00659a3aa4b2056f2e0698c8cbd3f6e57ddb3581889dc24d8d3b",
+    "docs/concepts/architecture-overview.md": "8eb99ee1053be809e9e0b136d183a9ad3a591f766f82247a2109e344027043db",
+    "docs/concepts/command-lifecycle.md": "c82edf5422be21e096afaecef0bd254f28f924fb5557c73b6fc22d9da7334cd0",
+    "docs/guides/configuration-reference.md": "e2fde4db539fc2fadfa545394cb81cabc270bd37bba4f3cce2687e25407f8f0d",
+    "docs/reference/command-api.md": "6b0bfd403d371c1278ad0e09516cfd995b26e8de98f3c85c9e1a20d68d5cc821",
 }
 DOCUMENT_REQUIRED_TEXT = (
     "reviewed source-only handoff",
@@ -184,7 +184,7 @@ EXPECTED_LIMITATIONS = [
     "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
     "The production-path capture used shipped Release entry assemblies with a test-only hosting startup, deterministic time, trusted intent adapter, boundary counter, and Testing environment disclosure.",
     "Raw PostgreSQL values and raw diagnostics were intentionally excluded; committed evidence contains sanitized structural projections, bounded counts, hashes, and invariant results.",
-    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit 4b0a7b1d3628a857f131cfbff99030714aefc747.",
+    "The original capture bound a dirty candidate against e60a3777c581d70b62f67173ccc2372b5b64a425; this closure independently binds the same 26 paths at landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4.",
     "This is a source-only EventStore platform handoff. It grants no release, package, registry, deployment, runtime pin, external-repository, consumer-migration, or final-consumer authority.",
     "Folders retains its own final cross-repository decision and must independently verify the referenced design and EventStore source before consumption.",
 ]
@@ -1229,8 +1229,8 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
         landed_overrides == {
             ".github/workflows/integration.yml": {
                 "captureWorktreeSha256": "afb28e703e9b9d51b5144e10c0368cf6ac94ab01cf5e456ef2090a6d444e3205",
-                "landedGitSha256": "a9fe1bcd85c8232a0e0e46f3e8891cd2da056a9699f1804d4f9f8ae8dafccb91",
-                "reason": "Story 4.14 capture hashed the original integration workflow; landed commit 4b0a7b1d retains later CI history-fetch and Dapr runtime-pin wiring as historical evidence for the evolved orchestration path.",
+                "landedGitSha256": "343163fd164bb49252ad2ec67c7fbc90aa2f3aaecafa4d4d51640ccc39e7b777",
+                "reason": "Story 4.14 capture hashed the original integration workflow; landed commit 5e8f175b retains later CI history-fetch and Dapr runtime-pin wiring as historical evidence for the evolved orchestration path.",
             },
             "src/Hexalith.EventStore/Program.cs": {
                 "captureWorktreeSha256": "245f79cc04998118da9caec70cdf290d67fb23e71a91100af46c4a019af5be7f",
@@ -1240,12 +1240,17 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
             "tests/Hexalith.EventStore.Server.Tests/Actors/PublicationRecoveryActivationTests.cs": {
                 "captureWorktreeSha256": "7aff4137378e9f2529b1770dd81c6638e8159277b4e92a5653ffc61a65ad2eb4",
                 "landedGitSha256": "bfc4c85147df8d468d8ed33a9e00c4c372ce18d2512f07913095190527b15b6d",
-                "reason": "Committed publication-recovery tests advanced at landed commit 4b0a7b1d after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source.",
+                "reason": "Committed publication-recovery tests advanced before landed commit 5e8f175b after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source.",
+            },
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestContainerFixture.cs": {
+                "captureWorktreeSha256": "0da109af79cb0ded1c9e7377c4140a561ef682f1cf23b7c0fbb6284b7401c216",
+                "landedGitSha256": "28a89849a864014f4e18ab0bd791c4e905cc662799c8a58fce7e9627762dde9a",
+                "reason": "Story 4.5 fixture hardening advanced at landed commit 5e8f175b after Story 4.14 capture; the override bridges capture worktree bytes to the intentional landed Git capability source.",
             },
             "tools/validate-oq8-platform-evidence.py": {
                 "captureWorktreeSha256": "0e9a352e7757f452dbc1f41dbd7036d76088f56be732a03c9b48ba4d6ab1c8b1",
                 "landedGitSha256": "5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647",
-                "reason": "Story 4.14 capture hashed the original validator; landed commit 4b0a7b1d retains the later closure-validator evolution, while current validator bytes remain bound by validator-sha256.txt.",
+                "reason": "Story 4.14 capture hashed the original validator; landed commit 5e8f175b retains the later closure-validator evolution, while current validator bytes remain bound by validator-sha256.txt.",
             },
         },
         "Landed Git-byte override declaration drift",

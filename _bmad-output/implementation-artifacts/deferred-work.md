@@ -4005,57 +4005,130 @@ severity: low
 reason: Supersedes the Step-04 re-mint entry's temporary exact-subject receipt blocker. evidence: After explicit renewed authorization, exact-subject EventStore-owner comment `5425294818`, Release-owner comment `5425297492`, and the `bmad:murat` Test Architect record were retained for unchanged subject `58f025f...`. Direct verification and repeat assembly pass at 3/3 without subject drift and select only OCI index `4b141085...`. Initial malformed comment `5425285803` is visibly superseded and not retained. Every separately deferred item and false operational-authority flag remains unchanged.
 status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Correct the Admin tenants controller documentation for its Admin-only collection read.
-  evidence: The class summary says all read endpoints use the ReadOnly policy, but `GET /api/v1/admin/tenants` deliberately requires `AdminAuthorizationPolicies.Admin`; the mismatch predates this route-restoration story.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Sanitize or exclude committed Playwright network traces that retain cookie headers.
-  evidence: Tracked `.playwright-cli/traces/*.network` captures contain Cookie and Set-Cookie metadata, creating an avoidable repository disclosure surface unrelated to this route fix.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Remove or explicitly govern the large set of transient Playwright-generated artifacts.
-  evidence: The baseline adds hundreds of near-duplicate frames, downloaded assets, snapshots, and traces with substantial repository weight but no durable consumer contract.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Reconcile the claimed Aspire timeout fix with the retained 30-second `/events` trace.
-  evidence: A retained Playwright network trace records `/events` taking about 30 seconds while the owning completed spec claims that timeout was eliminated.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Replace failed Aspire browser captures with valid connected-state acceptance evidence.
-  evidence: Final snapshots remain disconnected or loading, and other retained captures report certificate failures or are empty, so they do not substantiate the owning runtime acceptance claim.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Make the publish-mode resource-graph assertion fail when no resources are discovered.
-  evidence: `TenantsApiLaunchSettingsTests` applies `ShouldAllBe` to a collection that can be empty, allowing the asserted resource contract to pass vacuously.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Exercise missing Tenants project checkouts through the real AppHost startup path.
-  evidence: The missing-host test constructs and validates a synthetic record after a successful real resolution, so it does not prove startup fails before resource registration.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Compile or execute the explicit Tenants source branch in AppHost verification.
-  evidence: The current guard only counts source-text substrings and does not verify that the conditional source branch builds with its Dapr, security, dependency, and health wiring.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Verify resolved Tenants projects belong to the expected root-declared submodule checkout.
-  evidence: `TenantsProjectPaths.Validate` checks only file existence and does not establish the claimed relationship to the root gitlink or pinned revision.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Restore an unambiguous Git-source field in the gate decision artifact.
-  evidence: `_bmad-output/test-artifacts/gate-decision.json` repurposes `source_sha` from a canonical Git commit to a 64-character subject digest, making consumers unable to interpret the field consistently.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Make the positive gate decision auditable from retained evidence links.
-  evidence: The gate status is `PASS` while the trace report and other evidence-link fields are empty, so the artifact cannot independently support its verdict.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Return a structured smoke-capture failure when the output root is a regular file.
-  evidence: `capture-corrected-deployed-runtime-parity-smokes.py` calls directory iteration without first rejecting a non-directory `smokes` path, allowing `NotADirectoryError` to escape the documented failure channel.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Define and test successful forced replacement of retained smoke evidence.
-  evidence: The `--force` path neither clears unexpected stale files before recapture nor has a successful-path regression test, so a nominally successful capture can leave an inventory the verifier rejects.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Bound reads of packet-controlled `closure.json` before allocation.
-  evidence: The parity validator reads `closure.json` without the retained-file size bound used elsewhere, permitting oversized input to consume unbounded memory before fail-closed validation.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Make retained-file size enforcement resistant to replacement races.
-  evidence: `_verify_file` checks path size and then reads by path, leaving a time-of-check/time-of-use window in which a replacement can bypass the intended memory bound.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Test the corrective validator's repository-root manifest default from another working directory.
-  evidence: Existing process tests always pass an explicit manifest from the repository root, so the new location-independent default can regress undetected.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Assert the corrective validator's exact rerun instruction on failure.
-  evidence: Production now appends a recovery trigger to CLI errors, but malformed-input tests assert only the primary failure and would pass if the rerun instruction disappeared.
-- source_spec: `_bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md`
-  summary: Exercise the actual on-disk retained-file size guard.
-  evidence: The current oversized test inflates only the declared binding while retaining a small real file, so removal of the filesystem-size guard would not fail the test lane.
+### DW-483: Correct the Admin tenants controller documentation for its Admin-only collection read.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: src/Hexalith.EventStore.Admin.Server/Controllers/AdminTenantsController.cs
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Correct the Admin tenants controller documentation for its Admin-only collection read. The class summary says all read endpoints use the ReadOnly policy, but `GET /api/v1/admin/tenants` deliberately requires `AdminAuthorizationPolicies.Admin`; the mismatch predates this route-restoration story.
+status: open
+
+### DW-484: Reconcile the claimed Aspire timeout fix with the retained 30-second `/events` trace.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: .playwright-cli/traces/*.network
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Reconcile the claimed Aspire timeout fix with the retained 30-second `/events` trace. A retained Playwright network trace records `/events` taking about 30 seconds while the owning completed spec claims that timeout was eliminated.
+status: open
+
+### DW-485: Replace failed Aspire browser captures with valid connected-state acceptance evidence.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: .playwright-cli/page-*.yml and .playwright-cli/console-*.log
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Replace failed Aspire browser captures with valid connected-state acceptance evidence. Final snapshots remain disconnected or loading, and other retained captures report certificate failures or are empty, so they do not substantiate the owning runtime acceptance claim.
+status: open
+
+### DW-486: Make the publish-mode resource-graph assertion fail when no resources are discovered.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Make the publish-mode resource-graph assertion fail when no resources are discovered. `TenantsApiLaunchSettingsTests` applies `ShouldAllBe` to a collection that can be empty, allowing the asserted resource contract to pass vacuously.
+status: open
+
+### DW-487: Exercise missing Tenants project checkouts through the real AppHost startup path.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Exercise missing Tenants project checkouts through the real AppHost startup path. The missing-host test constructs and validates a synthetic record after a successful real resolution, so it does not prove startup fails before resource registration.
+status: open
+
+### DW-488: Compile or execute the explicit Tenants source branch in AppHost verification.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tests/Hexalith.EventStore.AppHost.Tests/Configuration/TenantsApiLaunchSettingsTests.cs:259
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Compile or execute the explicit Tenants source branch in AppHost verification. The current guard only counts source-text substrings and does not verify that the conditional source branch builds with its Dapr, security, dependency, and health wiring.
+status: open
+
+### DW-489: Verify resolved Tenants projects belong to the expected root-declared submodule checkout.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: src/Hexalith.EventStore.AppHost/TenantsProjectPaths.cs
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Verify resolved Tenants projects belong to the expected root-declared submodule checkout. `TenantsProjectPaths.Validate` checks only file existence and does not establish the claimed relationship to the root gitlink or pinned revision.
+status: open
+
+### DW-490: Restore an unambiguous Git-source field in the gate decision artifact.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: _bmad-output/test-artifacts/gate-decision.json
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Restore an unambiguous Git-source field in the gate decision artifact. `_bmad-output/test-artifacts/gate-decision.json` repurposes `source_sha` from a canonical Git commit to a 64-character subject digest, making consumers unable to interpret the field consistently.
+status: open
+
+### DW-491: Make the positive gate decision auditable from retained evidence links.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: _bmad-output/test-artifacts/gate-decision.json
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Make the positive gate decision auditable from retained evidence links. The gate status is `PASS` while the trace report and other evidence-link fields are empty, so the artifact cannot independently support its verdict.
+status: open
+
+### DW-492: Return a structured smoke-capture failure when the output root is a regular file.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tools/capture-corrected-deployed-runtime-parity-smokes.py
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Return a structured smoke-capture failure when the output root is a regular file. `capture-corrected-deployed-runtime-parity-smokes.py` calls directory iteration without first rejecting a non-directory `smokes` path, allowing `NotADirectoryError` to escape the documented failure channel.
+status: open
+
+### DW-493: Define and test successful forced replacement of retained smoke evidence.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tools/capture-corrected-deployed-runtime-parity-smokes.py
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Define and test successful forced replacement of retained smoke evidence. The `--force` path neither clears unexpected stale files before recapture nor has a successful-path regression test, so a nominally successful capture can leave an inventory the verifier rejects.
+status: open
+
+### DW-494: Bound reads of packet-controlled `closure.json` before allocation.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tools/validate-corrected-deployed-runtime-parity.py:261
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Bound reads of packet-controlled `closure.json` before allocation. The parity validator reads `closure.json` without the retained-file size bound used elsewhere, permitting oversized input to consume unbounded memory before fail-closed validation.
+status: open
+
+### DW-495: Make retained-file size enforcement resistant to replacement races.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tools/deployed_runtime_parity_handlers/v1.py
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Make retained-file size enforcement resistant to replacement races. `_verify_file` checks path size and then reads by path, leaving a time-of-check/time-of-use window in which a replacement can bypass the intended memory bound.
+status: open
+
+### DW-496: Test the corrective validator's repository-root manifest default from another working directory.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Test the corrective validator's repository-root manifest default from another working directory. Existing process tests always pass an explicit manifest from the repository root, so the new location-independent default can regress undetected.
+status: open
+
+### DW-497: Assert the corrective validator's exact rerun instruction on failure.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Assert the corrective validator's exact rerun instruction on failure. Production now appends a recovery trigger to CLI errors, but malformed-input tests assert only the primary failure and would pass if the rerun instruction disappeared.
+status: open
+
+### DW-498: Exercise the actual on-disk retained-file size guard.
+
+origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-page-error.md"), 2026-08-27
+location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:1404
+source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
+reason: Exercise the actual on-disk retained-file size guard. The current oversized test inflates only the declared binding while retaining a small real file, so removal of the filesystem-size guard would not fail the test lane.
+status: open
