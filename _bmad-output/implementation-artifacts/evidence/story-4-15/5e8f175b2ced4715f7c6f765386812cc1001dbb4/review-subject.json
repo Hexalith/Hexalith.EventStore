@@ -18,7 +18,7 @@
     },
     "sourceArtifactIdentity": {
       "path": "source-artifact-identity.json",
-      "sha256": "3d85d9720a2a439909a062513d42548ba93259b897bfeb768341d2f0beaec5ec"
+      "sha256": "deed514352a86deedeb4e94ccb596af3540c0beeb1487b2adc5e74a65fa8c338"
     },
     "limitations": {
       "path": "limitations.json",
@@ -26,7 +26,7 @@
     },
     "closureValidator": {
       "path": "validator-sha256.txt",
-      "sha256": "d76de29f9dd48bf9654b9b84cfae99e93a1ea653a462db7b00706713bb766427"
+      "sha256": "9f7ecc4e7fb9fdf91c6774c21c201ad27f7395ff79e771a4cd8a0bf4055b070d"
     },
     "validatorRequirements": {
       "path": "requirements-oq8.txt",
@@ -50,7 +50,7 @@
     },
     "preReviewExecution": {
       "path": "pre-review-execution.json",
-      "sha256": "fd8ff495b876c7aa53dbd65afa0f6ef6e10b35c486fc9063de6673ac979dbfe0"
+      "sha256": "adce3e985737346844e2c1aff834edfe364de69fbb4e06e15d84ff07eb7fc628"
     },
     "captureManifest": {
       "path": "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/evidence-sha256.txt",

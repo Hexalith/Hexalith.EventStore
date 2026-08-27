@@ -9,7 +9,7 @@
   },
   "validator": {
     "path": "tools/validate-oq8-platform-evidence.py",
-    "sha256": "c478fe80743423f48d2e6d3d1f4caf0345411c7b38e37281576a329d6bcb9e42"
+    "sha256": "9652019053810366ec3a7682490a5b85385880b63bb3bf2ca7023b0a49c18dde"
   },
   "testSource": {
     "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",

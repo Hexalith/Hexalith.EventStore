@@ -1003,7 +1003,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-17)"), 2026-08-26
 location: references/Hexalith.Builds
 reason: Commit `ba203bde` is unbuildable in isolation: it converts the only local definition of `Microsoft.Extensions.TimeProvider.Testing` to `PackageVersion Update` while `references/Hexalith.Builds` was still pinned at `edbaeaed`, whose central props do not define the package, so CPM restore of `Server.Tests`, `Server.LiveSidecar.Tests`, and `Admin.Server.Tests` fails with NU1010 at that commit; coherence arrives only with `ea6ce49b`'s Builds bump to `cfafcbf1`. Bisect/rollback hazard only — history is already on `main`, so no rewrite; note it when bisecting across 2026-07-17.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit ea6ce49b8656ef7ee7267ac3cc4949734a31821d restored CPM coherence by bumping Hexalith.Builds to the revision defining Microsoft.Extensions.TimeProvider.Testing.
 
 ### DW-128: The GitHub login-format regex `^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$` in the proof-packet allowlist predicate (and mirrored in spec verification command 2) accepts trailing and consecutive hyphens that GitHub forbids (`jpiquot-`, `a--b`). Pre-existing packet behavior, currently moot because the spec predicate pins exact membership `["jpiquot"]`; tighten to `^(?=[A-Za-z0-9-]{1,39}$)[A-Za-z0-9](?:-?[A-Za-z0-9])*$` next time the packet validator is opened under an approved gate-logic change (the lookahead keeps GitHub's 39-character cap; the bare `^[A-Za-z0-9](?:-?[A-Za-z0-9]){0,38}$` form previously recorded here admits logins up to 77 characters).
 
@@ -1361,7 +1362,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1009-1022
 source_spec: _bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md
 reason: [HIGH] `EnrichRowsAsync` publishes member/owner counts as `TenantCountValue.Known(...)` from a detail payload that `LoadTenantDetailAsync` returns raw — no tenant-identity check, no `Members` null guard, no `IsDegraded` check. A detail projection returning the wrong tenant attributes another tenant's member and owner counts to the row; a payload omitting `members` throws `NullReferenceException` that escapes the gateway into the Blazor render. evidence: Story 2.6 second-pass code review (blind-hunter + edge-case-hunter + verification-gap, independently) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1009-1022` and `:1028-1034`]. The sibling search path guards all three cases at `:715-722` (`!string.Equals(detail.TenantId, candidate.TenantId, StringComparison.Ordinal) || detail.Name is null || detail.Members is null`), which is direct evidence the guards are considered necessary. `TenantDetail.Members` is a positional `IReadOnlyList<TenantMember>` with no null validation (`src/Hexalith.Tenants.Contracts/Queries/TenantDetail.cs:13`), so `{"members": null}` deserializes to null. The NRE escape path is confirmed: `EnrichRowsAsync` catches only `EventStoreGatewayException` (`:1018`), `ListByCursorAsync` likewise (`:849`), and `ListTenantsAsync` returns from the non-search path at `:500` outside its `try`. No test feeds a mismatched or null-member detail into the enrichment loop.
-status: open
+status: done 2026-08-27
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:2065-2084 verifies detail identity and usable members before publishing counts; Hexalith.Tenants commit a49d793f5.
 
 ### DW-172: [HIGH] A single row's detail-enrichment failure with any status outside `{403,404,503}` unwinds past the already-successful list fetch and maps the whole page to `TenantListSurfaceKind.Error`. The most reachable trigger is the client's own `EventStoreGatewayException(200, "Query response did not contain a payload.")`.
 
@@ -1387,7 +1389,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1163-1173
 source_spec: _bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md
 reason: [MEDIUM] Three further 304 evidence asymmetries beyond the `Degraded` one already on record: a 304 carrying no lifecycle evidence re-affirms the previous claim (so `Current` survives indefinitely where the identical 200 yields `Unknown`); per-row `Freshness` is never rewritten on any 304 branch, so row badges contradict the surface banner; and a `Degraded` surface cannot be cleared by refreshing because the server ETag is content-derived and does not change when only lifecycle recovers. evidence: Story 2.6 second-pass code review (edge-case-hunter + blind-hunter) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1163-1173`, the four 304 branches at `:232-244`, `:313-325`, `:429-435`, `:872-886`, and `:1270-1272`]. Confirmed pre-existing: the pre-2.6 predicate `metadata?.IsDegraded == true || metadata?.IsStale is not null ? ResolveFreshness(metadata) : previous` produced the same carry-forward and the same 200/304 divergence; Story 2.6 widened the trigger set with the lifecycle clause but did not introduce the shape. The 200 paths rewrite rows explicitly (`:262`, `:353`, `:467`) while the 304 branches use `previous with { ... }`, which copies `Rows` by reference; both `TenantDataGrid.razor:76` and `GlobalAdministratorsPage.razor:346` bind the per-row value. Server ETag is per-projection, not per-response-state (`QueriesController.cs:113-115`). status: RESOLVED 2026-07-30 by the Story 2.6 fourth-pass review. Retained rows were already rewritten in the 2026-07-27 patch; all retained-snapshot lifecycle resolution now consumes only explicit, valid `304` lifecycle evidence and otherwise fails closed to `Unknown`, so neither `Current` nor `Degraded` is sticky. A gateway regression proves a projection-backed lifecycle-less `304` cannot inherit the previous value.
-status: open
+status: done 2026-08-27
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1933-1944 resolves explicit 304 freshness/lifecycle and rewrites every retained row.
 
 ### DW-175: [MEDIUM] `ResolveTenantListKindForFreshness` lacks the surface-kind whitelist its three siblings open with, so an `Error`, `Unauthorized` or `Loading` previous falls through to `previous.Rows.Count == 0 ? Empty : Ready` — the surface would assert "you have no tenants" on top of a failed or denied read.
 
@@ -1786,7 +1789,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-3.13 (
 location: 3-13-deployed-runtime-parity-closure.md:588
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: [LOW] The story's File List omits several evidence files the tests and crosswalk already depend on and validate. evidence: `3-13-deployed-runtime-parity-closure.md:588` lists only a bare evidence-directory reference plus `reviewer-roster.json`, but `DeployedRuntimeParityClosureTests.cs` and `identity-crosswalk.json` reference and validate additional files (e.g. `deployment-authority.json`, `deployment-authority-source.json`, `release-provenance.json`, and further smoke/log files) not named in the File List. Documentation completeness only, not a functional gap.
-status: open
+status: done 2026-08-27
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:783-800 now lists the proof packets, complete evidence directory, roster, specs, tracker, documentation, and verifier.
 
 ### DW-224: [MEDIUM] Three event-payload writers disagree on serializer options, so persisted payload casing depends on which path produced the event.
 
@@ -2275,7 +2279,8 @@ origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-
 location: AGENTS.md
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: BMAD project-context sync can write `AGENTS.md` outside the selected project through a compass area path. evidence: `cmd_sync` joins unvalidated absolute or parent-traversing `area` values to `project_root` without resolving and enforcing containment.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit 2b9502b6 replaced the retired compass-sync implementation; .agents/skills/bmad-project-context/SKILL.md:18,29,35 resolves one explicit target, prohibits early writes, and asks before spanning working trees.
 
 ### DW-282: BMAD project-context sync can duplicate or remove user-authored text when managed markers are missing, reversed, or duplicated.
 
@@ -2283,7 +2288,8 @@ origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-
 location: apply_block
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: BMAD project-context sync can duplicate or remove user-authored text when managed markers are missing, reversed, or duplicated. evidence: `apply_block` validates neither marker cardinality nor ordering before slicing or appending the managed block.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit 2b9502b6 replaced the retired apply_block implementation; .agents/skills/bmad-project-context/SKILL.md:62-66 requires showing the complete block before an approved byte-preserving splice.
 
 ### DW-283: BMAD project-context sync does not re-anchor relative Markdown links that include fragments or query strings.
 
@@ -2291,7 +2297,8 @@ origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-
 location: decision.md
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: BMAD project-context sync does not re-anchor relative Markdown links that include fragments or query strings. evidence: `rewrite_links` only processes targets that literally end in `.md`, so links such as `decision.md#rationale` break when moved to another directory.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit 2b9502b6 retired the script-based sync/link-rewrite implementation; the current .agents/skills/bmad-project-context/SKILL.md has no document-moving or rewrite_links path.
 
 ### DW-284: The installed BMAD project-context implementation lacks regression coverage for its filesystem-writing and resolution paths.
 
@@ -2464,7 +2471,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 4.15 Step 4 review (2
 location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md
 reason: Write sanitized fresh-capture outputs atomically. evidence: A process interruption can currently leave a partial test, support, or validation document in the capture directory.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tools/validate-oq8-platform-evidence.py:575-581 writes JSON to a temporary sibling and atomically replaces the destination; introduced by commit e5fef514.
 
 ### DW-305: Reject symlinks throughout fresh capture inputs and output directories.
 
@@ -2497,7 +2505,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 4.15 Step 4 review (2
 location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md
 reason: Bind the closure-assembly commit identity after the Story 4.15 artifacts land. evidence: The packet binds the landed OQ8 capability commit and current path equivalence, but not the later commit that contains the closure layer itself.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit 5e8f175b re-captured and re-sealed the packet; evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/review-subject.json:62-89 and source-artifact-identity.json:2-8 bind the landed commit, tree, and source paths.
 
 ### DW-309: [HIGH] Dead-letter republish if mark-save fails after broker accept (reconfirmed, group-1 review).
 
@@ -2800,7 +2809,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: Reseal or revert Story 4.5's self-invalidating evidence packet. evidence: `evidence/story-4-5/0776785f.../validate-evidence.py` was modified by `3e365150` after the packet was sealed at `86308550`; `sha256sum -c evidence-sha256.txt` now reports a genuine content mismatch. Found incidentally during the Story 3.13 evidence-integrity sweep; not a Story 3.13 defect.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 re-captured and re-sealed the Story 4.5 packet and regenerated evidence-sha256.txt.
 
 ### DW-348: Exercise every provider-state response through the normal provider-verification lane.
 
@@ -3677,7 +3687,8 @@ location: append-durability-race.js
 source_spec: _bmad-output/implementation-artifacts/spec-4-5-append-durability-race-evidence.md
 severity: medium
 reason: A durability packet records no Redis durability configuration. evidence: `providerProfile.redisImage` is the floating tag `"redis:6"` rather than an image digest, and no `appendonly`, `save`, or `INFO persistence` output is captured in `append-durability-race.json` or `environment.md`. The story's headline claim is that a durable write was silently lost, and the Redis persistence settings are precisely the configuration that claim depends on; a re-capture on a differently-configured `redis:6` would be indistinguishable from the reviewed one. Belongs with the deferred multi-provider fencing capture, which must record per-provider durability settings anyway.
-status: open
+status: done 2026-08-27
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/environment.md:20 retains appendonly and save configuration; AppendDurabilityRaceLiveSidecarTests.cs:559-567 records Redis digest and persistence observations.
 
 ### DW-445: The trusted-import shadow check in the Story 3.14 dispatcher detects only after the handler has already executed.
 
@@ -3772,7 +3783,8 @@ location: dab64f5f
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 severity: low
 reason: Supersedes the stale assertion that dedicated Story 3.15 issue creation and receipt collection were never performed. evidence: Issue `#352` and its historical `dab64f5f...` and `a8cc777e...` acceptance passes were previously completed with explicit authorization. The loop-6 trusted-byte batch has since re-minted the live subject to `c22d35b...`, moved the `a8cc777e...` set byte-for-byte to the superseded audit area, and left the current packet fail-closed at 0/3. Fresh exact-subject receipt collection is a new Ask First action and was not authorized or performed in this loop.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit a6cf34d462256b99d696d0ec9f2f1643aaf3e3ec finalized current subject 58f025f with three exact-subject receipts, superseding the historical dab64f5f/c22 receipt-state assertions.
 
 ### DW-455: Canonicalizes the prior loop-6 ledger block without rewriting append-only history.
 
@@ -3798,7 +3810,8 @@ location: c22d35b
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 severity: low
 reason: Supersedes the loop-6 reconciliation entry's temporary 0/3 receipt blocker. evidence: After explicit renewed authorization, exact-subject EventStore-owner comment `5424336008`, Release-owner comment `5424339580`, and the `bmad:murat` Test Architect record were retained for unchanged subject `c22d35b...`. Two assemblies and direct verification pass at 3/3 without subject drift. This closes only the receipt-collection blocker; every separately deferred item and every false operational-authority flag remains unchanged.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit a6cf34d462256b99d696d0ec9f2f1643aaf3e3ec finalized current subject 58f025f with three receipts; the c22 acceptance state is retained only as superseded history.
 
 ### DW-458: Supersedes the c22 acceptance entry after new bound-code hardening re-minted the subject.
 
@@ -3807,7 +3820,8 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 severity: low
 reason: Supersedes the c22 acceptance entry after new bound-code hardening re-minted the subject. evidence: Step-04 verifier, handler, nuspec, and smoke-output changes produced exact canonical subject `58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6` at 0/3. The complete c22 receipt/source tree was verified at its original six hashes and moved byte-for-byte into superseded audit storage. No new receipt was authorized, created, or collected; the exact-subject receipt blocker is open again, while every separately deferred item and false operational-authority flag remains unchanged.
-status: open
+status: done 2026-08-27
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md:637-638 records direct validation and repeat assembly passing at three receipts for subject 58f025f.
 
 ### DW-459: Story 4.5 evidence validation is coupled to the mutable whole-file hash of `docs/ci.md`.
 
@@ -3824,7 +3838,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 Step-04 full-bas
 location: DaprTestContainerFixture.cs
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The blocking Contracts lane remains red because the OQ8 evidence seal no longer matches `DaprTestContainerFixture.cs`. evidence: The full Contracts assembly reports failures only in `Oq8PlatformClosureTests`; the current fixture hash differs from the Story 4.14/4.15 bound source identity, while the remainder passes 1,448/1,448. Story 3.15 must not re-seal OQ8 evidence.
-status: open
+status: done 2026-08-27
+resolution: already resolved: Commit e79f467278ea876b2ad01d38de96345fc1f2fc70 regenerated the OQ8 source identity and closure artifacts and updated Oq8PlatformClosureTests and validate-oq8-platform-evidence.py against the current fixture.
 decision: 2026-08-26 Re-seal OQ8 evidence — Re-run the owning OQ8 evidence workflow against the current fixture, regenerate bound identities and receipts, and restore the blocking Contracts lane.
 
 ### DW-461: Default package-mode AppHost startup with both Tenants hosts has no blocking CI runtime lane.
@@ -4003,7 +4018,8 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 severity: low
 reason: Supersedes the Step-04 re-mint entry's temporary exact-subject receipt blocker. evidence: After explicit renewed authorization, exact-subject EventStore-owner comment `5425294818`, Release-owner comment `5425297492`, and the `bmad:murat` Test Architect record were retained for unchanged subject `58f025f...`. Direct verification and repeat assembly pass at 3/3 without subject drift and select only OCI index `4b141085...`. Initial malformed comment `5425285803` is visibly superseded and not retained. Every separately deferred item and false operational-authority flag remains unchanged.
-status: open
+status: done 2026-08-27
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md:474 records exact-subject 58f025f validation at 3/3 receipts with no subject drift.
 
 ### DW-483: Correct the Admin tenants controller documentation for its Admin-only collection read.
 

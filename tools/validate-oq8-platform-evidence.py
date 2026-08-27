@@ -1249,7 +1249,7 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
             },
             "tools/validate-oq8-platform-evidence.py": {
                 "captureWorktreeSha256": "0e9a352e7757f452dbc1f41dbd7036d76088f56be732a03c9b48ba4d6ab1c8b1",
-                "landedGitSha256": "5c23fe250f113c40c452eea781b8151d58e2ddc5197baa8d678b33cfad572647",
+                "landedGitSha256": "585e4d8634f6862a99a3431da37634a23d3aac5886a83b76f0bc4a7f0d309726",
                 "reason": "Story 4.14 capture hashed the original validator; landed commit 5e8f175b retains the later closure-validator evolution, while current validator bytes remain bound by validator-sha256.txt.",
             },
         },
