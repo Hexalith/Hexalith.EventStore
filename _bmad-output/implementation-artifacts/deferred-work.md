@@ -3839,7 +3839,7 @@ location: DaprTestContainerFixture.cs
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The blocking Contracts lane remains red because the OQ8 evidence seal no longer matches `DaprTestContainerFixture.cs`. evidence: The full Contracts assembly reports failures only in `Oq8PlatformClosureTests`; the current fixture hash differs from the Story 4.14/4.15 bound source identity, while the remainder passes 1,448/1,448. Story 3.15 must not re-seal OQ8 evidence.
 status: done 2026-08-27
-resolution: already resolved: Commit e79f467278ea876b2ad01d38de96345fc1f2fc70 regenerated the OQ8 source identity and closure artifacts and updated Oq8PlatformClosureTests and validate-oq8-platform-evidence.py against the current fixture.
+resolution: Resolved 2026-08-27 by re-sealing Story 4.15 on landed source `5e8f175b2ced4715f7c6f765386812cc1001dbb4`, including the exact fixture capture-to-landed override and three fresh reviews bound to subject `26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f`. The final committed validator passed, the focused `Oq8PlatformClosureTests` class passed 315/315 with zero skips, and the full Contracts assembly passed 1,763/1,763 with zero skips.
 decision: 2026-08-26 Re-seal OQ8 evidence — Re-run the owning OQ8 evidence workflow against the current fixture, regenerate bound identities and receipts, and restore the blocking Contracts lane.
 
 ### DW-461: Default package-mode AppHost startup with both Tenants hosts has no blocking CI runtime lane.

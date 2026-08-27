@@ -2,12 +2,12 @@
   "schema": "hexalith.eventstore.story-4-15-source-only-handoff/v1",
   "story": "4.15",
   "landedSourceCommit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
-  "reviewSubjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
-  "limitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
+  "reviewSubjectSha256": "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f",
+  "limitationsSha256": "914af77a8419e2fb75583886a103829b0aa460a8f61e6c46681f8f3c56ea62c9",
   "reviewReceipts": {
-    "architecture": "20cc63a5253260d94441b62e75d9e28761d1bd7eab92efec381995c31d2acc85",
-    "security": "b0b5defacb528403495308e95d99a85019cc3acd92aa13226b541a92137b347c",
-    "test": "39ec79c15decfbaa9bbe16a1ecb94fc2c7009cf8c9cd891c097acecc12764b8b"
+    "architecture": "814a5aaeefab987f97275d40f1ffe4c79c20eb0d1e5a26a08e562352fae5b933",
+    "security": "219384fde66cb58c5228f9470510f2f63c7ad593f0454905f8054b3ec35ce675",
+    "test": "5c30d136e938c3fd57c798abb8402e552fe89bde3e0a85441dc0fd9b665d1493"
   },
   "consumerInstructions": {
     "mode": "source-only",

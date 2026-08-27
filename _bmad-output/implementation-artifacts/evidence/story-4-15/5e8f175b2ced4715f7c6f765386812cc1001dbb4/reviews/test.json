@@ -4,16 +4,16 @@
   "reviewer": "Murat (Test Architect)",
   "reviewedOn": "2026-08-27",
   "decision": "approved",
-  "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
+  "subjectSha256": "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f",
   "acceptedScope": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
-  "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
+  "acceptedLimitationsSha256": "914af77a8419e2fb75583886a103829b0aa460a8f61e6c46681f8f3c56ea62c9",
   "findings": [
-    "All twelve subject bindings, four public-document hashes, seven immutable Story 4.14 artifacts, 26 landed Git blobs, and the landed tree identity independently match.",
-    "Production evidence covers the exact six-entry writers/failover, expiry/compaction, authority-change, deterministic-support, diagnostic-leakage, and sanitized-capture matrix; deterministic support binds 21 methods and 33 passing cases, and the live PostgreSQL matrix binds one passing case with no skips.",
-    "Pre-review arithmetic confirms 32 of 32 commands and 237 of 237 tests passed with zero failures or skips; Contracts, live-sidecar, and solution Release builds record zero warnings and zero errors.",
-    "Negative coverage includes 49 semantic mutations, 19 retired YAML shapes, 17 invalid active shapes, 72 unsupported YAML structures, four missing or invalid dependency cases, consumer-bootstrap ordering, Git and source failures, bounded diagnostics, and runtime-mode isolation.",
-    "Contracts initializes all root-declared submodules, both workflows use the exact pinned dependency bootstrap before execution, valid sole explicit-key lifecycle syntax remains accepted, and alias, tag, or anchor rejection is scoped to root or lifecycle-affecting constructs.",
-    "Source-only consumer instructions consistently create the virtual environment, install requirements-oq8.txt, and invoke the validator with that interpreter; approval grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
+    "The exact review subject and limitation hashes match; all twelve direct bindings, nine crosswalk evidence bindings, four reviewed public-document hashes, and the seven-file Story 4.14 manifest independently verify without drift.",
+    "The bound capture provides one passing 10.843-second multi-process PostgreSQL production-path case and 21 deterministic methods yielding 33 of 33 passing cases; focused production and support each have zero skips, while the 25 broad-lane skips are explicitly recorded as pre-existing and are not used as closure evidence.",
+    "The production matrix covers writers and failover, inclusive expiry and compaction, authority change, diagnostic leakage, and sanitized PostgreSQL end-state; it uses shipped Release entry assemblies with disclosed Testing-only hosting, deterministic-time, trusted-intent, and boundary-counter seams.",
+    "Recorded pre-review arithmetic recomputes exactly to 32 of 32 successful commands and 237 of 237 passing tests with zero failures or skips; fresh review reruns passed pre-review validation, 49 semantic mutations, authority and limitation mutations, consumer bootstrap, runtime-mode isolation, workflow guards, and Tenants skip and token guards.",
+    "Landed commit and tree identity are exact and ancestral; the 26 captured paths resolve, all 24 non-evolved capability paths show no landed-to-HEAD, worktree, or index drift, and the DaprTestContainerFixture override is exact from 0da109af79cb0ded1c9e7377c4140a561ef682f1cf23b7c0fbb6284b7401c216 to 28a89849a864014f4e18ab0bd791c4e905cc662799c8a58fce7e9627762dde9a.",
+    "Consumer bootstrap is exact and ordered through the local virtual environment and pinned PyYAML 6.0.3, and all nine external operational-authority exclusions remain false."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

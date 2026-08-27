@@ -4,16 +4,16 @@
   "reviewer": "Security Reviewer",
   "reviewedOn": "2026-08-27",
   "decision": "approved",
-  "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
+  "subjectSha256": "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f",
   "acceptedScope": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
-  "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
+  "acceptedLimitationsSha256": "914af77a8419e2fb75583886a103829b0aa460a8f61e6c46681f8f3c56ea62c9",
   "findings": [
-    "All twelve subject bindings, four public-document bindings, nine crosswalk evidence bindings, and the nested immutable Story 4.14 manifest independently match current bytes.",
-    "Pinned PyYAML 6.0.3 distribution provenance, repository requirement consistency, and isolated consumer and CI virtual-environment bootstrap are verified.",
-    "Lifecycle composition fails closed on lifecycle-affecting malformed or multiple documents, duplicate keys, merges, properties, aliases, tags, anchors, unsupported shapes, and ambiguous mappings while retaining valid unrelated YAML scope.",
-    "Protected-content and private-path rejection, current-fence evidence, sanitized evidence constraints, bounded redacted diagnostics, and the one-MiB sprint-status limit remain enforced.",
-    "Retired Story 4.8 is rejected before value validation; missing, wrong, shadowed, or import-failing dependencies and attacker-controlled parser failures remain bounded without traceback or hostile detail disclosure.",
-    "Approval is limited to this exact source-only EventStore subject; release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, and final-consumer authority remain excluded."
+    "The exact review subject and limitations hashes match; all twelve subject bindings and four public-document digests resolve without drift.",
+    "Strict field sets, duplicate and non-finite JSON rejection, bounded subprocesses, safe diagnostics, and 49 recorded semantic mutation cases preserve the fail-closed surface across protected content, bindings, counts, authority, lifecycle, and malformed inputs.",
+    "Committed evidence contains no protected sentinels, sensitive authentication material, or private paths; bounded diagnostic streams report zero post-redaction matches, and PostgreSQL evidence remains structural only.",
+    "PyYAML is exactly pinned to 6.0.3 with installed-distribution provenance checks and isolated workflow bootstrap; YAML parsing rejects aliases, anchors, explicit tags, merge keys, duplicate keys, multi-document streams, oversized input, and unsupported shapes.",
+    "HEAD descends from the landed source; all 24 non-evolved capability paths are byte-equivalent to landed Git blobs, normally indexed, free of staged or semantic worktree changes, and protected from replacement-ref substitution.",
+    "All five capture-to-landed overrides match their landed blobs, including DaprTestContainerFixture.cs 0da109af79cb0ded1c9e7377c4140a561ef682f1cf23b7c0fbb6284b7401c216 to 28a89849a864014f4e18ab0bd791c4e905cc662799c8a58fce7e9627762dde9a; all nine external-authority fields remain false."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

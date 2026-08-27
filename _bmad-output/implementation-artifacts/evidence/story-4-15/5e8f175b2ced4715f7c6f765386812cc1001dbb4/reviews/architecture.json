@@ -4,16 +4,16 @@
   "reviewer": "Winston (System Architect)",
   "reviewedOn": "2026-08-27",
   "decision": "approved",
-  "subjectSha256": "4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389",
+  "subjectSha256": "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f",
   "acceptedScope": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
-  "acceptedLimitationsSha256": "3853e7001a78da7cc0c3824392e43e9f5b286b65ce8d101167991b133ebf2d92",
+  "acceptedLimitationsSha256": "914af77a8419e2fb75583886a103829b0aa460a8f61e6c46681f8f3c56ea62c9",
   "findings": [
-    "All twelve subject bindings, four public-document bindings, nested Story 4.14 manifest entries, and nine crosswalk evidence bindings independently match current bytes.",
-    "The 1.0.0 design reference and SHA-256 1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8 are consistent throughout; the unavailable design bytes remain Folders-owned as explicitly limited.",
-    "OQ8-1 through OQ8-8 form a coherent invariant-to-story and evidence crosswalk with no architecture-scope corrective finding.",
-    "Landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 resolves to tree 96fdfbba56df41b58889bf7f3b532a64d15314bd; all 26 landed paths reconcile, ancestry holds, and all 24 non-evolved capability paths remain unchanged.",
-    "Architecture boundaries accurately distinguish exact landed-tree authority from limited current-path verification and later unbound repository work, while source-only bootstrap and verification instructions remain explicit and consistent.",
-    "Approval is limited to EventStore platform completeness and the source-only handoff for this exact subject; it grants no release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
+    "The exact review subject and limitation bodies match their recorded hashes; all twelve subject bindings, the validator identity and requirements, and all four reviewed public-document hashes resolve to the current bound bytes.",
+    "Landed source 5e8f175b2ced4715f7c6f765386812cc1001dbb4 is a real commit with tree 96fdfbba56df41b58889bf7f3b532a64d15314bd and is an ancestor of HEAD; replacement-ref-isolated Git reads preserve the immutable identity proof.",
+    "All 26 captured capability-path identities match the landed commit, and all five declared capture-to-landed overrides are exact and explained, including DaprTestContainerFixture.cs 0da109af79cb0ded1c9e7377c4140a561ef682f1cf23b7c0fbb6284b7401c216 to 28a89849a864014f4e18ab0bd791c4e905cc662799c8a58fce7e9627762dde9a.",
+    "The 24 non-evolved paths are byte-identical between landed source and HEAD, have normal index flags, and have neither semantic worktree nor staged changes; only integration.yml and the closure validator are explicitly evolved at current HEAD.",
+    "The OQ8-1 through OQ8-8 crosswalk is complete and approved across Stories 4.9 through 4.14; all nine crosswalk evidence bindings and all seven immutable capture-manifest artifacts verify, preserving the production and deterministic evidence boundary.",
+    "Architecture and authority boundaries are coherent: test seams enter shipped Release binaries only through a test-assembly HostingStartup under Testing, docs repeat the source-only install and verification boundary, and every external operational-authority field remains false."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

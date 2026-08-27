@@ -2,7 +2,7 @@
 title: 'Fix CI run 33105831846'
 type: 'bugfix'
 created: '2026-08-27'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_commit: '2ae587024ec7dd7dfaca174bf22aa8d74b7a8dc1'
 context:
@@ -48,9 +48,9 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Story 4.15 validator, closure directory, Contracts tests, packet, and four public docs -- rebind landed commit/tree and add the fixture capture-to-landed override (`0da109…` → `28a898…`); generate the pre-review subject, obtain three fresh content-bound approvals, then seal manifests and outer digests.
-- [ ] `DaprComponentValidationTests.cs` -- extract the Tenants wiring from `if (tenants is not null && tenantsApi is not null) {` through the sample boundary while retaining the existing isolation assertions.
-- [ ] `deferred-work.md` -- record DW-460 resolved with focused and full Contracts evidence.
+- [x] Story 4.15 validator, closure directory, Contracts tests, packet, and four public docs -- rebind landed commit/tree and add the fixture capture-to-landed override (`0da109…` → `28a898…`); generate the pre-review subject, obtain three fresh content-bound approvals, then seal manifests and outer digests.
+- [x] `DaprComponentValidationTests.cs` -- extract the Tenants wiring from `if (tenants is not null && tenantsApi is not null) {` through the sample boundary while retaining the existing isolation assertions.
+- [x] `deferred-work.md` -- record DW-460 resolved with focused and full Contracts evidence.
 
 **Acceptance Criteria:**
 - Given the unchanged 24-path set at and after `5e8f175b…`, when committed OQ8 validation and the full Contracts project run, then all 1,763 baseline tests pass and Story 4.14 remains byte-identical.
