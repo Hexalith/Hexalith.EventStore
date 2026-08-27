@@ -93,6 +93,49 @@ public class PubSubTopicIsolationEnforcementTests {
             "to both regular and dead-letter topics");
     }
 
+    /// <summary>Verifies the Works app has only its required local subscription grant.</summary>
+    [Fact]
+    public void LocalPubSubYaml_WorksHasExactLeastPrivilegeGrant() {
+        Dictionary<string, object> doc = LoadYaml(LocalPubSubPath);
+
+        List<object>? scopeValues = doc.TryGetValue("scopes", out object? scopesObject)
+            ? scopesObject as List<object>
+            : null;
+        string[] scopes = scopeValues
+            .ShouldNotBeNull("Local pub/sub must have component-level scopes")
+            .Select(static scope => scope?.ToString() ?? string.Empty)
+            .ToArray();
+        scopes.Count(static scope => string.Equals(scope, "works", StringComparison.Ordinal)).ShouldBe(1,
+            "Local pub/sub must grant Works component access exactly once");
+
+        string publishingScopes = GetComponentMetadataValue(doc, "publishingScopes")
+            .ShouldNotBeNull("Local pub/sub must have publishingScopes");
+        string[] worksPublishingEntries = publishingScopes
+            .Split(';', StringSplitOptions.None)
+            .Where(static entry => entry.StartsWith("works=", StringComparison.Ordinal))
+            .ToArray();
+        worksPublishingEntries.ShouldBe(["works="],
+            "Works must be explicitly denied publishing to every topic");
+
+        string subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes")
+            .ShouldNotBeNull("Local pub/sub must have subscriptionScopes");
+        string[] worksSubscriptionEntries = subscriptionScopes
+            .Split(';', StringSplitOptions.None)
+            .Where(static entry => entry.StartsWith("works=", StringComparison.Ordinal))
+            .ToArray();
+        worksSubscriptionEntries.ShouldBe(["works=work.events"],
+            "Works must have exactly one regular-topic subscription grant and no dead-letter grant");
+        worksSubscriptionEntries[0]
+            .Split('=', 2, StringSplitOptions.None)[1]
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .ShouldBe(["work.events"]);
+
+        ShouldNotContainAppId(publishingScopes, "eventstore",
+            "eventstore must remain absent from publishingScopes for unrestricted dynamic publishing");
+        ShouldNotContainAppId(subscriptionScopes, "eventstore",
+            "eventstore must remain absent from subscriptionScopes for unrestricted dynamic subscriptions");
+    }
+
     // --- Task 3.5: AC #9 ---
 
     [Fact]
