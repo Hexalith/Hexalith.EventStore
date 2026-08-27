@@ -2,7 +2,7 @@
 title: 'Fix Admin UI tenants collection routes'
 type: 'bugfix'
 created: '2026-08-26'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '5e8f175b2ced4715f7c6f765386812cc1001dbb4'
 context: []
@@ -68,3 +68,29 @@ The root route is the intended REST collection contract and was used before comm
 - `UseHexalithProjectReferences=true aspire start --non-interactive` followed by `aspire wait tenants --non-interactive`, `aspire wait eventstore-admin --non-interactive`, and `aspire wait eventstore-admin-ui --non-interactive` -- expected: source-mode tenants topology is healthy.
 - Browser-open `https://localhost:8093/tenants`, then inspect `aspire otel logs eventstore-admin-ui --non-interactive` -- expected: no 404 for `GET /api/v1/admin/tenants` and no route-mismatch error banner.
 - `git diff --check` -- expected: no whitespace errors.
+
+## Suggested Review Order
+
+**Collection routing**
+
+- Restore the failing list request at the controller-owned collection boundary.
+  [`AdminTenantsController.cs:247`](../../src/Hexalith.EventStore.Admin.Server/Controllers/AdminTenantsController.cs#L247)
+
+- Restore create semantics on the same collection without compatibility aliases.
+  [`AdminTenantsController.cs:92`](../../src/Hexalith.EventStore.Admin.Server/Controllers/AdminTenantsController.cs#L92)
+
+**Authorization and response contracts**
+
+- Prove non-admin enumeration remains fail-closed with an exact 403.
+  [`AdminAuthorizationIntegrationTests.cs:77`](../../tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/AdminAuthorizationIntegrationTests.cs#L77)
+
+- Prove the restored list route reaches its service and returns 200.
+  [`AdminAuthorizationIntegrationTests.cs:88`](../../tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/AdminAuthorizationIntegrationTests.cs#L88)
+
+- Prove the restored create route reaches its service and returns 202.
+  [`AdminAuthorizationIntegrationTests.cs:113`](../../tests/Hexalith.EventStore.Admin.Server.Tests/IntegrationTests/AdminAuthorizationIntegrationTests.cs#L113)
+
+**Review disposition**
+
+- Keep unrelated broad-baseline findings outside this focused bugfix.
+  [`deferred-work.md:4008`](deferred-work.md#L4008)
