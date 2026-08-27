@@ -2,7 +2,7 @@
 title: 'Fix CI run 33105831846'
 type: 'bugfix'
 created: '2026-08-27'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '2ae587024ec7dd7dfaca174bf22aa8d74b7a8dc1'
 context:
@@ -68,5 +68,51 @@ This follows the proven reseal pattern in `spec-gh-31483075631-fix-ci-cd.md`. A 
 **Commands:**
 - `PYTHONDONTWRITEBYTECODE=1 .oq8-python/bin/python tools/validate-oq8-platform-evidence.py --pre-review` -- expected: refreshed identity passes before receipts; final mode still rejects absent approvals.
 - `PYTHONDONTWRITEBYTECODE=1 .oq8-python/bin/python tools/validate-oq8-platform-evidence.py` -- expected: final sealed closure passes after three reviews.
-- Release/package-mode builds plus direct xUnit v3 `-class Oq8PlatformClosureTests` and `-method DaprComponentValidationTests.DomainServiceSidecars_DoNotReferenceStateStoreOrPubSubComponents`, followed by full Contracts and Server project lanes -- expected: zero failures, warnings, or skips beyond configured baselines.
+- Release/package-mode builds plus direct xUnit v3 `-class Oq8PlatformClosureTests` and `-method Hexalith.EventStore.Server.Tests.DaprComponents.DaprComponentValidationTests.DomainServiceSidecars_DoNotReferenceStateStoreOrPubSubComponents`, followed by full Contracts and Server project lanes -- expected: zero failures, warnings, or skips beyond configured baselines.
 - `git merge-base --is-ancestor 5e8f175b2ced4715f7c6f765386812cc1001dbb4 HEAD` and a 24-path diff from that anchor, Story 4.14 tree diff, manifest checksum checks, and `git diff --check` -- expected: ancestry true; no protected drift; all seals and whitespace valid.
+
+## Suggested Review Order
+
+**OQ8 closure reseal**
+
+- Start with the fail-closed landed/current source identity contract.
+  [`validate-oq8-platform-evidence.py:1176`](../../tools/validate-oq8-platform-evidence.py#L1176)
+
+- Inspect the exact landed commit, tree, paths, and fixture override.
+  [`source-artifact-identity.json:4`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/source-artifact-identity.json#L4)
+
+- Confirm the reviewed subject binds every closure input and authority boundary.
+  [`review-subject.json:60`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/review-subject.json#L60)
+
+- Verify fresh architecture approval targets the exact new subject.
+  [`architecture.json:2`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/reviews/architecture.json#L2)
+
+- Check the sealed source-only consumer instructions and denied external authorities.
+  [`source-only-handoff.json:12`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/source-only-handoff.json#L12)
+
+- Confirm the outer packet exposes the rebuilt closure digests.
+  [`4-8-eventstore-oq8-platform-evidence.yaml:36`](4-8-eventstore-oq8-platform-evidence.yaml#L36)
+
+**Server topology guard**
+
+- Review structural extraction of the nullable Tenants wiring block.
+  [`DaprComponentValidationTests.cs:94`](../../tests/Hexalith.EventStore.Server.Tests/DaprComponents/DaprComponentValidationTests.cs#L94)
+
+**Regression and public contract**
+
+- Check adversarial closure tests pin the resealed source and evidence directory.
+  [`Oq8PlatformClosureTests.cs:13`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs#L13)
+
+- Verify public wording records completion without granting operational authority.
+  [`architecture-overview.md:278`](../../docs/concepts/architecture-overview.md#L278)
+
+**Review follow-ups and concurrent context**
+
+- Keep closure-assembly commit binding open until separately solved.
+  [`deferred-work.md:2502`](deferred-work.md#L2502)
+
+- Review incidental Tenants and sweep findings captured without submodule mutation.
+  [`deferred-work.md:4151`](deferred-work.md#L4151)
+
+- Treat the concurrent Tenants gitlink advance as outside this approved fix.
+  [`Hexalith.Tenants:1`](../../references/Hexalith.Tenants#L1)
