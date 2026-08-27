@@ -62,6 +62,33 @@
     "label": "Registry immutability",
     "resolution": ""
   },
+  "DW-163": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add an explicit DAPR-routing requirement and ValidateOnStart enforcement.",
+    "key": "1",
+    "label": "Startup validation",
+    "resolution": ""
+  },
+  "DW-165": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Preserve cached payload but render authoritative Degraded lifecycle consistently.",
+    "key": "1",
+    "label": "Render degraded",
+    "resolution": ""
+  },
+  "DW-190": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Ignore and remove all tracked cache artifacts and add an inventory guard.",
+    "key": "1",
+    "label": "Untrack caches",
+    "resolution": ""
+  },
   "DW-224": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -152,6 +179,15 @@
     "label": "Require signed attestations",
     "resolution": ""
   },
+  "DW-33": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add an explicit no-projection-yet discriminator and map only it and 404 to Empty.",
+    "key": "1",
+    "label": "Typed empty outcome",
+    "resolution": ""
+  },
   "DW-35": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -159,6 +195,24 @@
     "intent": "Do not append a history row for 304 responses and add tests distinguishing unchanged refreshes from new values.",
     "key": "1",
     "label": "Value changes only",
+    "resolution": ""
+  },
+  "DW-357": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-364": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
     "resolution": ""
   },
   "DW-382": {
@@ -197,6 +251,51 @@
     "label": "Add typed exit codes",
     "resolution": ""
   },
+  "DW-418": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-425": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-430": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-432": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-434": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add support-safe loader categories aligned with typed exits.",
+    "key": "1",
+    "label": "Expose taxonomy",
+    "resolution": ""
+  },
   "DW-435": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -204,6 +303,15 @@
     "intent": "Extract a minimal pinned loader module, migrate both dispatchers, add equivalence/security tests, and regenerate affected packet identities.",
     "key": "1",
     "label": "Share one loader",
+    "resolution": ""
+  },
+  "DW-443": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Capture the Postgres profile and re-seal the packet.",
+    "key": "1",
+    "label": "Bind PostgreSQL",
     "resolution": ""
   },
   "DW-450": {
@@ -240,6 +348,24 @@
     "intent": "Re-run the owning OQ8 evidence workflow against the current fixture, regenerate bound identities and receipts, and restore the blocking Contracts lane.",
     "key": "1",
     "label": "Re-seal OQ8 evidence",
+    "resolution": ""
+  },
+  "DW-467": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-468": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep open",
     "resolution": ""
   },
   "DW-480": {

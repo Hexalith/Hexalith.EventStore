@@ -30,7 +30,10 @@ location: n/a
 source_spec: `spec-3-4-aspire-security-resource-naming.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260730-064902-1608; this entry preserves the lingering recommendation for a deliberate later review.
-status: open
+status: done 2026-08-27
+decision: 2026-08-27 Close recommendation — The review cap was exhausted and no actionable defect is recorded.
+resolution: closed by human decision: The review cap was exhausted and no actionable defect is recorded.
+decision: 2026-08-27 Close recommendation — The review cap was exhausted and no actionable defect is recorded.
 
 ### DW-5: Follow-up review still recommended for 3-6-manifest-driven-release-packaging after the damping cap was spent
 origin: review-budget-followup
@@ -38,7 +41,10 @@ location: n/a
 source_spec: `spec-3-6-manifest-driven-release-packaging.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260731-203343-5b29; this entry preserves the lingering recommendation for a deliberate later review.
-status: open
+status: done 2026-08-27
+decision: 2026-08-27 Close recommendation — The review cap was exhausted and no actionable defect is recorded.
+resolution: closed by human decision: The review cap was exhausted and no actionable defect is recorded.
+decision: 2026-08-27 Close recommendation — The review cap was exhausted and no actionable defect is recorded.
 
 ### DW-6: The final owner-record limitation-ID comparison is asymmetric across the WORM boundary. Block 15's `validate_final_owner_record` dedupes the record's IDs with `LC_ALL=C sort -u` before diffing them against the expected set, while block 16's `validate_committed_owner_record` uses a plain `LC_ALL=C sort` and separately asserts uniqueness in jq (`length == (map(.id) | unique | length)`). A final approval record carrying a duplicate limitation ID therefore passes approval validation and only fails during A/B/C verification.
 
@@ -269,6 +275,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sa
 location: n/a
 reason: Blazor components treat "no projection yet" only as HTTP 404; a gateway `Success==false` semantic failure surfaces as `EventStoreGatewayException.StatusCode == 200` and falls through to the generic catch. Matches the old code's 404-only behavior, so no regression, but the empty-state contract could be made explicit.
 status: open
+decision: 2026-08-27 Typed empty outcome — Add an explicit no-projection-yet discriminator and map only it and 404 to Empty.
+decision: 2026-08-27 Typed empty outcome — Add an explicit no-projection-yet discriminator and map only it and 404 to Empty.
 
 ### DW-34: AC8 scope hygiene: the generator command-route mapping (`TryFindUnmappedCommandRouteParameter`) was changed and a command diagnostic test added inside a query-only story (defensible as generator enablement), and the broader D5 branch/working-tree carries CI/CD, `tools/release-*`, `.releaserc.json`, and submodule-pointer changes that belong to D7/D8. Split those out of the D5 change set.
 
@@ -1296,6 +1304,8 @@ location: src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectio
 source_spec: _bmad-output/implementation-artifacts/2-5-dedicated-external-tenants-api-host.md
 reason: [MEDIUM] AD-18 is opt-in and fail-open at the platform seam — `AddEventStoreGatewayClient` registers no routing-header handler, so a host that omits the separate `AddEventStoreDaprServiceInvocation` call silently gets no `dapr-app-id`/`dapr-api-token` ownership with no compile-time error, no startup validation and no runtime diagnostic. Same fail-open shape as the `ApiScope` trap already on record. Harden the platform so the seam fails closed (or emits a startup diagnostic) rather than relying on per-host convention plus source-text guard tests. evidence: Story 2.5 code review (blind-hunter + acceptance-auditor) [`src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:43-48` registers only `ICommandStatusLocationBuilder` and the typed client; the handler is added exclusively at line 63]. Owner decision 2026-07-26: out of Story 2.5 scope (that story reviews the Tenants host boundary, not platform design) — carry as a dedicated Hexalith.EventStore platform hardening story. Note `project-context.md:46` currently misstates this wiring as "wired by `AddEventStoreGatewayClient`"; that text is corrected under Story 2.5.
 status: open
+decision: 2026-08-27 Startup validation — Add an explicit DAPR-routing requirement and ValidateOnStart enforcement.
+decision: 2026-08-27 Startup validation — Add an explicit DAPR-routing requirement and ValidateOnStart enforcement.
 
 ### DW-164: [LOW] `SampleApiLaunchSettingsTests.ExtractBlock` matches an LF-only marker (`";\n\nif (security is not null)"`) against `src/Hexalith.EventStore.AppHost/Program.cs`, so the test fails on any working tree where that file is checked out or rewritten with CRLF line endings. Make the marker line-ending agnostic (normalize the text, or match on a CRLF-tolerant pattern) the way the sibling `TenantsApiLaunchSettingsTests` does with its `#endif` marker.
 
@@ -1313,6 +1323,8 @@ location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/
 source_spec: _bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md
 reason: [MEDIUM] A `304` carrying `Lifecycle: Degraded` renders a normal `Ready` surface, while the identical evidence on a `200` renders `Degraded` — the same authoritative "projection degraded" claim produces two different user-visible surfaces depending only on cache validation. evidence: Story 2.6 code review (blind-hunter + edge-case-hunter) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1169`]. On 200 the five call sites return `*.Degraded(...)` on `IsDegraded == true`; on 304 `ResolveNotModifiedFreshness` routes into `ResolveFreshness`, which returns `Unknown`, and every `Resolve*KindForFreshness` mapping collapses non-`Stale` to `Ready`/`Empty`. Pre-existing: the pre-diff predicate `metadata?.IsDegraded == true || metadata?.IsStale is not null` also routed a degraded 304 into `ResolveFreshness` for the same `Unknown` result, so the diff does not cause it. Reachable through the shipped client, which maps a degraded 304 to `IsDegraded = true` at `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs:154-166`. Newly relevant because the diff added a theory that pins `Degraded -> TenantDetailSurfaceKind.Ready` as expected behaviour. Owned by the Hexalith.Tenants maintainer.
 status: open
+decision: 2026-08-27 Render degraded — Preserve cached payload but render authoritative Degraded lifecycle consistently.
+decision: 2026-08-27 Render degraded — Preserve cached payload but render authoritative Degraded lifecycle consistently.
 
 ### DW-166: [LOW] `IsTenantManagementApiRoute` hardcodes the `api/tenants`, `api/users`, and `api/global-administrators` prefixes with no shared constant or link to the attribute that declares them, so the guard goes blind if the REST base changes.
 
@@ -1406,7 +1418,10 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantDetail/TenantLifecycleAvailability.cs:42
 source_spec: _bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md
 reason: [MEDIUM] `ReadModelFreshnessState.Aging` is absent from the mutation-blocking set. `TenantLifecycleAvailabilityInput.Evaluate` blocks on `Freshness is Stale or Unknown`, so once the deferred persisted-projection-age work makes `Aging` reachable, aging read-model evidence will silently *permit* tenant enable/disable mutations — the opposite of the AD-15 posture applied to `Unknown` and `Stale`. evidence: Story 2.6 second-pass code review (blind-hunter) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantDetail/TenantLifecycleAvailability.cs:42`]. `ResolveFreshness` cannot currently emit `Aging` (`ProjectionLifecycleState` has no `Aging` member and the switch maps everything unmatched to `Unknown`), yet `Aging` branches already exist in `Components/Shared/TruthStateBadge.razor:37,45` with tests at `Components/TruthStateBadgeTests.cs:21` and `State/TenantLifecycleAvailabilityTests.cs:62`. Directly coupled to the existing D6 read-model freshness handoff and to the D3 platform deferral recorded above — close this together with them. Split ownership between Hexalith.EventStore (freshness model) and the Hexalith.Tenants maintainer (gate).
-status: open
+status: done 2026-08-27
+decision: 2026-08-27 Keep friction — Retain the current distinction between Aging and blocked states.
+resolution: closed by human decision: Retain the current distinction between Aging and blocked states.
+decision: 2026-08-27 Keep friction — Retain the current distinction between Aging and blocked states.
 
 ### DW-177: [LOW] A search term containing any control character is silently nulled by `CanonicalizeListRequest`, so the gateway returns an unfiltered full list with `Notice = None` while the user's search box still shows their query — the grid renders every tenant on the page as if it matched.
 
@@ -1522,6 +1537,8 @@ location: tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Test
 source_spec: _bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md
 reason: [LOW] A tracked stale `.lscache` under `Server.Tests` still enumerates `Fixtures/DaprTestContainerCollection.cs` and `Fixtures/DaprTestContainerFixture.cs`, committed residue from the very re-tier this story certifies. The AC1 guard cannot see it. evidence: Story 3.1 closure code review (acceptance-auditor + blind-hunter), verified 2026-07-28 at `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj.lscache:185-187`. The file is tracked (`git ls-files` confirms) and last touched by `9bafe1af`, pre-split. `ReleasePackageManifestTests.cs:429-446` filters candidates to `.cs`/`.csproj` only, so the guard structurally cannot flag it; the story's AC1 evidence (filename search + `.cs` grep) has the same blind spot. Not compiled, so lane separation is unaffected. 34 `.lscache` files are tracked repo-wide, so removing one is a repo-wide convention decision rather than a story-scoped fix. Suggested durable fix: untrack `*.lscache` via `.gitignore`, or widen the guard's file filter.
 status: open
+decision: 2026-08-27 Untrack caches — Ignore and remove all tracked cache artifacts and add an inventory guard.
+decision: 2026-08-27 Untrack caches — Ignore and remove all tracked cache artifacts and add an inventory guard.
 
 ### DW-191: [HIGH, FrontComposer-owned] The release-pin lockstep guard lives in a workflow that does not gate the release it protects. `CiGovernanceTests` carries `[Trait("Category","Governance")]`, which executes only in `quality.yml`; `release.yml` triggers on `workflow_run: workflows: [CI]` and neither needs nor triggers on Quality.
 
@@ -2891,6 +2908,8 @@ location: Path
 source_spec: _bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md
 reason: Clean up the release-evidence codec hygiene cluster. evidence: `_nuspec_identity(package_bytes)` is called with a `Path` and immediately does `zipfile.ZipFile(Path(package_bytes))`; `_parse_timestamp` uses `value.replace("Z", "+00:00")`, replacing every `Z` rather than a trailing designator; `validate_identity:441` compares the index digest to `children[0]` only, never to `children[1]` nor the two children to each other; `EXPECTED_PACKAGE_COUNT = 14` is a fourth uncross-checked copy of the package count; and `validate_packet_files` re-hashes each Builds helper immediately after `_verify_bound_file` performed the identical check. All are gated by the codec re-freeze decision.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-358: Give `observations.json` semantic validation instead of checksum-only coverage.
 
@@ -2951,6 +2970,8 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-14-corrective-oci-prov
 severity: medium
 reason: Split the governed release path into its own reusable workflow file so legacy callers stop having to grant `attestations: write` and `id-token: write`. owner_repo: `Hexalith.Builds` — reusable `.github/workflows/domain-release.yml`. NOT owned by `Hexalith.EventStore`; the EventStore `release.yml` only calls the reusable workflow, so this fix cannot land here. evidence: GitHub validates the maximum permissions across every job in a called workflow, including jobs that never run. Because `governed-release` (`domain-release.yml:478`) declares both scopes, every caller must grant them — EventStore's `release.yml` now does. The legacy `release` job (`:240`) declares no `permissions:` block, so it inherits the caller's set and executes in the protected `production` environment holding both write scopes unused. The obvious narrow fix — an explicit `permissions:` block on the legacy job — is blocked by an existing Builds contract test, `test_governed_release_workflow.GovernedOffParityTests.test_only_the_governed_job_requests_attestation_permissions`, which asserts `assertNotIn("permissions:", job_slice(workflow, "release"))`; that shape was tried during this review and reverted. Splitting the two paths into separate reusable workflow files removes the coupling without contradicting that contract. Epic 3 explicitly withholds signing/SBOM/attestation authority, so the grant should not persist longer than necessary. status: accepted — ratified for now (Story 3.14 D5 option A); nothing is signed or attested because `governed-release: false` keeps the governed job skipped, and `ContainerPublishingGovernanceTests` pins that input.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-365: Unify Roslynator package families under a single `roslynator` family in Hexalith.Builds central package audit.
 
@@ -3455,6 +3476,8 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: low
 reason: The `summary_bindings` deletion reduces `validate_packet_files`' standalone behavior inside a line range the Code Map freezes, leaving a vestigial `summaries` dict. evidence: The diff removes the one-shared-two-platform-summary check from `v3.validate_packet_files`, a public entry point, inside the Code Map's frozen `v3.py:863-974` "preserve v3 behavior" range. It is redundant today only because every present caller invokes `validate_identity` first (`v1.py:445-452`, `validate-corrective-release-evidence.py:108/115`), where the identical constraint is enforced at `v3.py:397`. Confirmed independently by three review layers as not-lost-verification; carried here as a frozen-range and dead-code note. The now-purposeless `summaries` cache at `v3.py:944-952` invites the reader to assume a guard is still present.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-419: The pinned release publisher cannot supply the newly mandatory container creation timestamp, while a governance test encodes release-pin/gitlink inequality as policy.
 
@@ -3515,6 +3538,8 @@ location: tools/release_evidence_handlers/v3.py
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The frozen Story 3.14 timestamp parser remains weaker than the strict Story 3.15 parser. evidence: `tools/release_evidence_handlers/v3.py` uses `value.replace("Z", "+00:00")` with `datetime.fromisoformat`, admitting spaces, arbitrary offsets, and other shapes that v1 rejects. Tightening the frozen predecessor contract is separate Story 3.14 evidence maintenance.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-426: The packet inventory does not require the validated closure path to be the packet root's `closure.json`.
 
@@ -3557,6 +3582,8 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: medium
 reason: `redirect_count == 0` is structurally unfireable and the new test now pins that property. evidence: The capture never passes `--location`, so curl's `num_redirects` is always 0; both the producer's `redirect_count == 0` and the verifier's `item["redirect_count"] != 0` (`tools/deployed_runtime_parity_handlers/v1.py:639`) can never fire. `CorrectedDeployedRuntimeParitySmokeCaptureTests.cs` now asserts `line.ShouldNotContain("--location")`, converting an already-acknowledged deferral into an asserted invariant.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-431: The post-execution import-shadow backstop runs only on the success path and no test reaches it with a repository module loaded.
 
@@ -3575,6 +3602,8 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: low
 reason: v3's timestamp parser is looser than v1's, so frozen-predecessor timestamps are checked by the weaker rule. evidence: `tools/release_evidence_handlers/v3.py:456-465`. Carried forward from loop 4; re-confirmed unchanged at HEAD.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-433: No size bound on retained files, and the nuspec decompression-bomb half of the earlier entry is still open.
 
@@ -3594,6 +3623,8 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: low
 reason: All failure modes collapse to exit 1 and, for loader failures, to a single message that hides the chained cause. evidence: `tools/validate-corrected-deployed-runtime-parity.py:195-197` re-raises every `_load_verified_module` exception as `DispatchError("trusted live handler could not be loaded")`, and `main()` prints only `str(error)`, so a syntax error, a missing dependency and a tampered handler are indistinguishable. A tampered verifier is likewise indistinguishable from invalid evidence.
 status: open
+decision: 2026-08-27 Expose taxonomy — Add support-safe loader categories aligned with typed exits.
+decision: 2026-08-27 Expose taxonomy — Add support-safe loader categories aligned with typed exits.
 
 ### DW-435: Roughly 90 lines of security-critical loader code are duplicated across the two dispatchers with no sync test.
 
@@ -3678,6 +3709,8 @@ source_spec: _bmad-output/implementation-artifacts/spec-4-5-append-durability-ra
 severity: low
 reason: The sealed LiveSidecar receipt exercises a PostgreSQL profile that the packet's provider record does not declare. evidence: `evidence/story-4-5/0776785f.../live-sidecar-test-results.json` contains an `Oq8Postgresql` test collection and an `IdempotencyAdmissionOq8PostgresqlTests` case, but `providerProfile` and `environment.md` document only Dapr 1.18.1, `state.redis` and `redis:6`. No Postgres image, version or connection profile is captured anywhere in the packet, so the 75-test receipt is not fully characterized by the environment it ships with.
 status: open
+decision: 2026-08-27 Bind PostgreSQL — Capture the Postgres profile and re-seal the packet.
+decision: 2026-08-27 Bind PostgreSQL — Capture the Postgres profile and re-seal the packet.
 
 ### DW-444: A durability packet records no Redis durability configuration.
 
@@ -3896,6 +3929,8 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The Story 3.15 smoke platform observation is derived from selected image metadata rather than an independent runtime fact. evidence: Capture reads `docker image inspect .Os/.Architecture` after requesting the same platform, so the observed-platform mismatch guard cannot independently prove the executing runtime architecture.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-468: Story 3.15 smoke logs are canonical JSON restatements rather than retained primary process transcripts.
 
@@ -3904,6 +3939,8 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: Story 3.15 smoke logs are canonical JSON restatements rather than retained primary process transcripts. evidence: The log-versus-summary guard compares two producer-written JSON views and cannot independently establish the Docker and curl output from which the smoke verdict was derived.
 status: open
+decision: 2026-08-27 Keep open
+decision: 2026-08-27 Keep open
 
 ### DW-469: Container provenance timestamp validation accepts calendar-impossible values.
 
