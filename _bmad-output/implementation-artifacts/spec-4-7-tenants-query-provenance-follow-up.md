@@ -2,7 +2,7 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-08-27'
-status: 'awaiting-operator'
+status: 'in-review'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: '168c657676ab2e210401bb5fe1c7ae9df06dc0e7'
