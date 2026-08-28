@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
+using YamlDotNet.Serialization;
+
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
 /// <summary>
@@ -161,6 +163,65 @@ public sealed class ContainerPublishingGovernanceTests
         script.ShouldContain("${HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT-}");
         script.ShouldContain("--expected-package-count \"$expected_package_count\"");
         script.ShouldContain("registry.hexalith.com/eventstore");
+    }
+
+    /// <summary>
+    /// Verifies each reviewed source-proof workflow crosses the repository wrapper unchanged.
+    /// </summary>
+    /// <param name="phase">The publication preflight phase.</param>
+    /// <param name="sourceCiWorkflow">The reviewed exact-source workflow filename.</param>
+    [Theory]
+    [InlineData("verify", "ci.yml")]
+    [InlineData("verify", "commitlint.yml")]
+    [InlineData("publish", "ci.yml")]
+    [InlineData("publish", "commitlint.yml")]
+    public void PublicationPreflightWrapperForwardsAllowedSourceWorkflowUnchanged(
+        string phase,
+        string sourceCiWorkflow)
+    {
+        (int exitCode, _, string error, bool invoked, string[] arguments) =
+            RunWrapperWithPosture(
+                FindRepositoryRoot(),
+                phase,
+                new Dictionary<string, string?>
+                {
+                    ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
+                },
+                sourceCiWorkflow);
+
+        exitCode.ShouldBe(0, error);
+        invoked.ShouldBeTrue();
+        arguments.Count(argument => argument == "--source-ci-workflow").ShouldBe(1);
+        int workflowArgument = Array.IndexOf(arguments, "--source-ci-workflow");
+        arguments[workflowArgument + 1].ShouldBe(sourceCiWorkflow);
+        arguments.Count(argument => argument == "--phase").ShouldBe(1);
+        int phaseArgument = Array.IndexOf(arguments, "--phase");
+        arguments[phaseArgument + 1].ShouldBe(phase);
+    }
+
+    /// <summary>
+    /// Verifies an unreviewed source-proof workflow fails before the pinned preflight executes.
+    /// </summary>
+    /// <param name="sourceCiWorkflow">The unreviewed workflow filename.</param>
+    [Theory]
+    [InlineData("")]
+    [InlineData("unknown.yml")]
+    [InlineData("ci.yaml")]
+    public void PublicationPreflightWrapperRejectsUnknownSourceWorkflow(string sourceCiWorkflow)
+    {
+        (int exitCode, _, string error, bool invoked, _) =
+            RunWrapperWithPosture(
+                FindRepositoryRoot(),
+                "verify",
+                new Dictionary<string, string?>
+                {
+                    ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
+                },
+                sourceCiWorkflow);
+
+        exitCode.ShouldNotBe(0);
+        error.ShouldContain("must be exactly ci.yml or commitlint.yml");
+        invoked.ShouldBeFalse();
     }
 
     /// <summary>
@@ -487,7 +548,7 @@ public sealed class ContainerPublishingGovernanceTests
     /// Verifies that the caller uses one immutable release pin independently of the development gitlink.
     /// </summary>
     [Fact]
-    public void ReleaseCallerPinsSharedExecutionAndOneMappingWithoutPublicationAuthorityInputs()
+    public void ReleaseCallerPinsSharedExecutionAndSelectedSourceMappingWithoutPublicationAuthorityInputs()
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
@@ -505,10 +566,9 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldContain("actions: read");
         workflow.ShouldContain("governed-release: false");
         workflow.ShouldContain("source-branch: main");
-        workflow.ShouldContain("source-ci-workflow: ci.yml");
+        workflow.ShouldContain("source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}");
         workflow.ShouldContain("package-manifest: tools/release-packages.json");
-        // Dispatching a release must not require the operator to answer anything. The
-        // reservation inputs were a Story 3.14 corrective-release gate; the caller now
+        // The reservation inputs were a Story 3.14 corrective-release gate; the caller now
         // declares the opt-out explicitly so a dropped input can never be read as one.
         workflow.ShouldContain("require-publication-authority: false");
         // Scope these to the job block for the same reason the reservation inputs are scoped below:
@@ -518,18 +578,38 @@ public sealed class ContainerPublishingGovernanceTests
             workflow.Replace("\r\n", "\n", StringComparison.Ordinal)
                 .Split('\n')
                 .Where(line => !line.TrimStart().StartsWith('#')));
-        commentFreeWorkflow.ShouldNotContain("${{ inputs.");
         commentFreeWorkflow.ShouldNotContain("github.event.inputs.");
-        // A bare `\s*$` assertion is vacuous here: in multiline mode `$` matches before the
-        // immediately following newline regardless of what an indented `inputs:` child below it
-        // contains, so it accepts the old input-carrying form too. Extract the block instead.
         workflow.ShouldContain("  workflow_dispatch:");
         string dispatchBlock = ExtractYamlBlock(workflow, "  workflow_dispatch:");
-        // YAML permits whitespace before the colon and quoting around the key, and a flow mapping
-        // puts the whole child on the marker line where no block scan would ever see it.
-        Regex.IsMatch(dispatchBlock, "(?m)^\\s*[\"']?inputs[\"']?\\s*:")
-            .ShouldBeFalse($"workflow_dispatch must declare no inputs, but the block is:\n{dispatchBlock}");
         dispatchBlock.ShouldNotContain("{", Case.Sensitive, "a flow mapping would hide inputs from the block scan");
+        string[] dispatchInputNames = DeserializeWorkflowDispatchInputNames(dispatchBlock);
+        dispatchInputNames.ShouldBe(["bypass-validation"]);
+        string bypassInputBlock = ExtractYamlBlock(workflow, "      bypass-validation:");
+        Regex.Matches(bypassInputBlock, @"(?m)^\s{8}required:\s*false\s*$").Count.ShouldBe(1);
+        Regex.Matches(bypassInputBlock, @"(?m)^\s{8}default:\s*false\s*$").Count.ShouldBe(1);
+        Regex.Matches(bypassInputBlock, @"(?m)^\s{8}type:\s*boolean\s*$").Count.ShouldBe(1);
+        commentFreeWorkflow
+            .Split('\n')
+            .Count(line => line.Trim().Equals(
+                "BYPASS_VALIDATION: ${{ inputs['bypass-validation'] }}",
+                StringComparison.Ordinal))
+            .ShouldBe(1);
+        string verifySourceBlock = ExtractYamlBlock(workflow, "  verify-source:");
+        verifySourceBlock.ShouldContain("name: Verify exact live-main source proof");
+        verifySourceBlock.ShouldNotContain("green main", Case.Insensitive);
+        verifySourceBlock
+            .Split('\n')
+            .Count(line => line.Trim().Equals(
+                "source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}",
+                StringComparison.Ordinal))
+            .ShouldBe(1);
+        string producerStepBlock = ExtractNamedWorkflowStepBlock(
+            workflow,
+            "Require current main with selected exact-source proof");
+        producerStepBlock
+            .Split('\n')
+            .Count(line => line.Trim().Equals("id: select-source-proof", StringComparison.Ordinal))
+            .ShouldBe(1);
         commentFreeWorkflow.ShouldNotContain("release-owner-allowlist:");
         commentFreeWorkflow.ShouldNotContain("references/Hexalith.Builds");
         commentFreeWorkflow.ShouldNotContain("secrets: inherit");
@@ -540,6 +620,12 @@ public sealed class ContainerPublishingGovernanceTests
         releaseJobBlock.ShouldContain("attestations: write");
         releaseJobBlock.ShouldContain("id-token: write");
         releaseJobBlock.ShouldContain("governed-release: false");
+        releaseJobBlock
+            .Split('\n')
+            .Count(line => line.Trim().Equals(
+                "source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}",
+                StringComparison.Ordinal))
+            .ShouldBe(1);
 
         string gitlink = RunGit(root, "ls-tree", "HEAD", "references/Hexalith.Builds");
         Match gitlinkEntry = Regex.Match(gitlink, @"^160000 commit (?<sha>[0-9a-f]{40})\s+references/Hexalith\.Builds$");
@@ -628,7 +714,7 @@ public sealed class ContainerPublishingGovernanceTests
     /// Verifies that release is manual and invalid source cannot reach the protected release job.
     /// </summary>
     [Fact]
-    public void ReleaseWorkflowRequiresExactGreenMainBeforeProtectedReleaseJob()
+    public void ReleaseWorkflowRequiresExactLiveMainSourceProofBeforeProtectedReleaseJob()
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
@@ -642,7 +728,9 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldContain("DISPATCH_SHA: ${{ github.sha }}");
         workflow.ShouldContain("refs/heads/main");
         workflow.ShouldContain("git/ref/heads/main");
-        workflow.ShouldContain("actions/workflows/ci.yml/runs");
+        workflow.ShouldContain("source_ci_workflow=\"ci.yml\"");
+        workflow.ShouldContain("source_ci_workflow=\"commitlint.yml\"");
+        workflow.ShouldContain("actions/workflows/${source_ci_workflow}/runs");
         workflow.ShouldContain(".head_sha == $sha");
         workflow.ShouldContain(".event == \"push\"");
         workflow.ShouldContain(".conclusion == \"success\"");
@@ -652,10 +740,16 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies the manual source preflight rejects wrong refs, stale heads, and missing exact-source CI.
+    /// Verifies both manual source-proof modes reject wrong refs, stale heads, and failed proof.
     /// </summary>
-    [Fact]
-    public void ReleaseSourcePreflightFailsClosedAndAcceptsOnlyExactSuccessfulPushCi()
+    /// <param name="bypassValidation">The typed dispatch input rendered for the shell step.</param>
+    /// <param name="expectedSourceWorkflow">The exact source-proof workflow selected by the input.</param>
+    [Theory]
+    [InlineData("false", "ci.yml")]
+    [InlineData("true", "commitlint.yml")]
+    public void ReleaseSourcePreflightFailsClosedAndEmitsSelectedSuccessfulPushProof(
+        string bypassValidation,
+        string expectedSourceWorkflow)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -666,13 +760,46 @@ public sealed class ContainerPublishingGovernanceTests
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         string script = ExtractNamedWorkflowRunBlock(
             workflow,
-            "Require current main with successful exact-source CI");
+            "Require current main with selected exact-source proof");
         string dispatchSha = new('a', 40);
         string staleMainSha = new('b', 40);
 
-        RunReleaseSourcePreflight(script, "refs/heads/release", dispatchSha, dispatchSha, []).ShouldNotBe(0);
-        RunReleaseSourcePreflight(script, "refs/heads/main", dispatchSha, staleMainSha, []).ShouldNotBe(0);
-        RunReleaseSourcePreflight(script, "refs/heads/main", dispatchSha, dispatchSha, []).ShouldNotBe(0);
+        RunReleaseSourcePreflight(
+            script,
+            bypassValidation,
+            expectedSourceWorkflow,
+            "refs/heads/release",
+            dispatchSha,
+            dispatchSha,
+            []).ExitCode.ShouldNotBe(0);
+        RunReleaseSourcePreflight(
+            script,
+            bypassValidation,
+            expectedSourceWorkflow,
+            "refs/heads/main",
+            dispatchSha,
+            staleMainSha,
+            []).ExitCode.ShouldNotBe(0);
+
+        object[] failedRun =
+        [
+            new
+            {
+                head_sha = dispatchSha,
+                head_branch = "main",
+                @event = "push",
+                status = "completed",
+                conclusion = "failure",
+            },
+        ];
+        RunReleaseSourcePreflight(
+            script,
+            bypassValidation,
+            expectedSourceWorkflow,
+            "refs/heads/main",
+            dispatchSha,
+            dispatchSha,
+            failedRun).ExitCode.ShouldNotBe(0);
 
         object[] successfulRun =
         [
@@ -685,12 +812,50 @@ public sealed class ContainerPublishingGovernanceTests
                 conclusion = "success",
             },
         ];
-        RunReleaseSourcePreflight(
+        (int exitCode, string githubOutput) = RunReleaseSourcePreflight(
             script,
+            bypassValidation,
+            expectedSourceWorkflow,
             "refs/heads/main",
             dispatchSha,
             dispatchSha,
-            successfulRun).ShouldBe(0);
+            successfulRun);
+        exitCode.ShouldBe(0);
+        githubOutput.ShouldBe($"source-ci-workflow={expectedSourceWorkflow}\n");
+    }
+
+    /// <summary>
+    /// Verifies malformed bypass values fail before any successful job output is emitted.
+    /// </summary>
+    /// <param name="bypassValidation">The malformed bypass value.</param>
+    [Theory]
+    [InlineData("")]
+    [InlineData("False")]
+    [InlineData("TRUE")]
+    public void ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput(string bypassValidation)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        string script = ExtractNamedWorkflowRunBlock(
+            workflow,
+            "Require current main with selected exact-source proof");
+
+        (int exitCode, string githubOutput) = RunReleaseSourcePreflight(
+            script,
+            bypassValidation,
+            "ci.yml",
+            "refs/heads/main",
+            new string('a', 40),
+            new string('a', 40),
+            []);
+
+        exitCode.ShouldNotBe(0);
+        githubOutput.ShouldBeEmpty();
     }
 
     /// <summary>
@@ -780,6 +945,10 @@ public sealed class ContainerPublishingGovernanceTests
         ci.ShouldContain("linux/arm64");
         ci.ShouldContain("environment/emulation-setup-failure");
         ci.ShouldContain("Story 1.20");
+        ci.ShouldContain("`bypass-validation` input");
+        ci.ShouldContain("`commitlint.yml`");
+        ci.ShouldContain("gh workflow run release.yml --ref main -f bypass-validation=true");
+        ci.ShouldContain("protected `production` environment");
         secrets.ShouldContain("HEXALITH_ZOT_USERNAME");
         secrets.ShouldContain("HEXALITH_ZOT_API_KEY");
         secrets.ShouldContain("Total user-managed secrets: 8");
@@ -917,6 +1086,26 @@ public sealed class ContainerPublishingGovernanceTests
         block.ShouldNotContain("  push:");
     }
 
+    /// <summary>
+    /// Verifies semantic dispatch-input enumeration cannot miss quoted or underscore keys.
+    /// </summary>
+    [Fact]
+    public void WorkflowDispatchInputEnumerationIncludesEveryValidMappingKey()
+    {
+        const string DispatchBlock = """
+                inputs:
+                  bypass-validation:
+                    type: boolean
+                  "quoted_key":
+                    type: string
+                  plain_input:
+                    type: string
+            """;
+
+        DeserializeWorkflowDispatchInputNames(DispatchBlock)
+            .ShouldBe(["bypass-validation", "quoted_key", "plain_input"]);
+    }
+
     private static void AssertAuthorityOwnerPin(string workflow)
     {
         string withBlock = ExtractYamlBlock(workflow, "    with:");
@@ -938,6 +1127,23 @@ public sealed class ContainerPublishingGovernanceTests
         }
     }
 
+    private static string[] DeserializeWorkflowDispatchInputNames(string dispatchBlock)
+    {
+        var deserializer = new DeserializerBuilder().Build();
+        Dictionary<object, object> document = deserializer.Deserialize<Dictionary<object, object>>(
+            $"workflow_dispatch:\n{dispatchBlock}");
+        document.TryGetValue("workflow_dispatch", out object? workflowDispatch).ShouldBeTrue();
+        Dictionary<object, object> workflowDispatchMapping = workflowDispatch as Dictionary<object, object>
+            ?? throw new InvalidDataException("workflow_dispatch must be a YAML mapping.");
+        workflowDispatchMapping.TryGetValue("inputs", out object? inputs).ShouldBeTrue();
+        Dictionary<object, object> inputMapping = inputs as Dictionary<object, object>
+            ?? throw new InvalidDataException("workflow_dispatch inputs must be a YAML mapping.");
+
+        return inputMapping.Keys
+            .Select(key => key as string ?? throw new InvalidDataException("Workflow input keys must be strings."))
+            .ToArray();
+    }
+
     private static string ExtractYamlBlock(string source, string marker)
     {
         string normalized = source.Replace("\r\n", "\n", StringComparison.Ordinal);
@@ -950,6 +1156,29 @@ public sealed class ContainerPublishingGovernanceTests
         {
             string line = lines[index];
             if (line.Length > 0 && line.TakeWhile(char.IsWhiteSpace).Count() <= markerIndent)
+            {
+                break;
+            }
+
+            block.Add(line);
+        }
+
+        return string.Join('\n', block);
+    }
+
+    private static string ExtractNamedWorkflowStepBlock(string source, string stepName)
+    {
+        string[] lines = source.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        int stepIndex = Array.FindIndex(
+            lines,
+            line => line.Trim().Equals($"- name: {stepName}", StringComparison.Ordinal));
+        stepIndex.ShouldBeGreaterThanOrEqualTo(0);
+        int stepIndent = lines[stepIndex].TakeWhile(char.IsWhiteSpace).Count();
+        List<string> block = [lines[stepIndex]];
+        for (int index = stepIndex + 1; index < lines.Length; index++)
+        {
+            string line = lines[index];
+            if (line.Length > 0 && line.TakeWhile(char.IsWhiteSpace).Count() <= stepIndent)
             {
                 break;
             }
@@ -987,8 +1216,10 @@ public sealed class ContainerPublishingGovernanceTests
         return string.Join('\n', block) + "\n";
     }
 
-    private static int RunReleaseSourcePreflight(
+    private static (int ExitCode, string GitHubOutput) RunReleaseSourcePreflight(
         string script,
+        string bypassValidation,
+        string expectedSourceWorkflow,
         string dispatchRef,
         string dispatchSha,
         string liveMainSha,
@@ -1000,14 +1231,18 @@ public sealed class ContainerPublishingGovernanceTests
         try
         {
             string fakeGh = Path.Combine(fakeBin, "gh");
+            string githubOutput = Path.Combine(temporary, "github-output");
             File.WriteAllText(
                 fakeGh,
                 "#!/usr/bin/env bash\n" +
                 "set -euo pipefail\n" +
                 "if [[ \"$*\" == *\"/git/ref/heads/main\"* ]]; then\n" +
                 "  printf '%s\\n' \"$FAKE_LIVE_MAIN_SHA\"\n" +
+                "elif [[ \"$*\" == *\"/actions/workflows/${EXPECTED_SOURCE_WORKFLOW}/runs\"* ]]; then\n" +
+                "  printf '%s\\n' \"$FAKE_SOURCE_RUNS\"\n" +
                 "else\n" +
-                "  printf '%s\\n' \"$FAKE_CI_RUNS\"\n" +
+                "  printf 'Unexpected gh invocation: %s\\n' \"$*\" >&2\n" +
+                "  exit 42\n" +
                 "fi\n");
             if (!OperatingSystem.IsWindows())
             {
@@ -1026,16 +1261,21 @@ public sealed class ContainerPublishingGovernanceTests
             start.ArgumentList.Add("-c");
             start.ArgumentList.Add(script);
             start.Environment["PATH"] = $"{fakeBin}:{start.Environment["PATH"]}";
+            start.Environment["BYPASS_VALIDATION"] = bypassValidation;
+            start.Environment["EXPECTED_SOURCE_WORKFLOW"] = expectedSourceWorkflow;
+            start.Environment["GITHUB_OUTPUT"] = githubOutput;
             start.Environment["GH_TOKEN"] = "test-token";
             start.Environment["REPOSITORY"] = "Hexalith/Hexalith.EventStore";
             start.Environment["DISPATCH_REF"] = dispatchRef;
             start.Environment["DISPATCH_SHA"] = dispatchSha;
             start.Environment["FAKE_LIVE_MAIN_SHA"] = liveMainSha;
-            start.Environment["FAKE_CI_RUNS"] = JsonSerializer.Serialize(new { workflow_runs = workflowRuns });
+            start.Environment["FAKE_SOURCE_RUNS"] = JsonSerializer.Serialize(new { workflow_runs = workflowRuns });
 
             using Process process = Process.Start(start).ShouldNotBeNull();
             process.WaitForExit();
-            return process.ExitCode;
+            return (
+                process.ExitCode,
+                File.Exists(githubOutput) ? File.ReadAllText(githubOutput) : string.Empty);
         }
         finally
         {
@@ -1044,7 +1284,11 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     private static (int ExitCode, string Output, string Error, bool PreflightInvoked, string[] Arguments)
-        RunWrapperWithPosture(string root, string phase, Dictionary<string, string?> posture)
+        RunWrapperWithPosture(
+            string root,
+            string phase,
+            Dictionary<string, string?> posture,
+            string sourceCiWorkflow = "ci.yml")
     {
         string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-posture-{Guid.NewGuid():N}");
         Directory.CreateDirectory(temporary);
@@ -1079,7 +1323,7 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
             start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
             start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
-            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
+            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = sourceCiWorkflow;
             start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
             start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
                 ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);

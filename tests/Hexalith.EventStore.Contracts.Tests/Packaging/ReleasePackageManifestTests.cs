@@ -825,7 +825,8 @@ public sealed class ReleasePackageManifestTests
         releaseJob.ShouldContain("actions: read");
         releaseJob.ShouldContain("environment-name: production");
         releaseJob.ShouldContain("source-branch: main");
-        releaseJob.ShouldContain("source-ci-workflow: ci.yml");
+        releaseJob.ShouldContain(
+            "source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}");
         releaseJob.ShouldContain("package-manifest: tools/release-packages.json");
         releaseJob.ShouldContain("publish-containers: true");
         releaseJob.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");

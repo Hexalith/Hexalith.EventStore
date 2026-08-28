@@ -1,9 +1,11 @@
 <Project Sdk="Aspire.AppHost.Sdk/13.5.3">
 
   <PropertyGroup>
+    <AspireUseCliBundle>false</AspireUseCliBundle>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <IsPublishable>true</IsPublishable>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
     <UserSecretsId>hexalith-eventstore</UserSecretsId>
   </PropertyGroup>
 

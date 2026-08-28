@@ -14,7 +14,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
 | **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
-| **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` tip | Exact-source preflight followed by a protected `production` environment and an immutable `Hexalith.Builds` release workflow for semantic-release, NuGet, GitHub Release, and the approved EventStore container. |
+| **Release** | `.github/workflows/release.yml` | manual dispatch from the current `main` tip | Exact-source CI proof by default, or an explicit Commitlint-proof bypass, followed by a protected `production` environment and an immutable `Hexalith.Builds` release workflow for semantic-release, NuGet, GitHub Release, and the approved EventStore container. |
 
 ## Shared CI/CD Boundary
 
@@ -145,15 +145,33 @@ never accepted as package dependency evidence, anywhere in the nuspec.
 ## Release Flow
 
 Release is an intentional operator action. Ordinary pushes and pull requests
-run CI but never start Release. The dispatch itself takes no inputs: the
-operator selects `main` and runs the workflow, and semantic-release derives the
-version from the commit history. Before requesting environment approval, the
-manual workflow fails closed unless all of these are true:
+run CI but never start Release. The operator selects `main`, optionally supplies
+the boolean `bypass-validation` input, and runs the workflow; semantic-release
+still derives the version from commit history. The input is optional and defaults
+to `false`. Normal mode selects `ci.yml`; bypass mode must be requested explicitly
+with `bypass-validation=true` and selects `commitlint.yml`. Before requesting
+environment approval, the manual workflow fails closed unless all of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
 - the dispatch SHA still equals the live `main` ref returned by GitHub;
-- the exact SHA has a completed, successful `CI` workflow run whose event was a
-  push to `main`.
+- the exact SHA has a completed, successful push run of the selected source-proof
+  workflow: `ci.yml` normally, or `commitlint.yml` only for an explicit bypass.
+
+The bypass changes only the selected exact-source workflow proof. It does not
+bypass the live-`main` identity check, the protected `production` environment,
+the pinned Builds release implementation, package inventory validation,
+immutable source identity, credential checks, destination-absence checks, or
+post-publish package and container verification. It also does not itself prove
+the full unit, contracts, Tenants source-mode, or integration lanes normally
+covered by CI. Bypass mode is an exceptional recovery path after the focused
+regression checks for the repair have passed; it is not a replacement CI result.
+
+Select the current `main` tip in the GitHub Actions UI and explicitly enable
+`bypass-validation`, or dispatch the equivalent request with the GitHub CLI:
+
+```bash
+gh workflow run release.yml --ref main -f bypass-validation=true
+```
 
 The release concurrency group is `release-production` with cancellation
 disabled, so a later request cannot silently replace an approved publication.
@@ -171,9 +189,9 @@ NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
 semantic-release `verifyRelease` phase re-proves that the source is still the
-live `main` tip with exact successful push CI, then freezes exact repository,
-version, source proof, environment, workflow run, approved Builds, helper
-hashes, normalized package IDs, canonical manifest hash, container, and
+live `main` tip with the caller-selected exact successful push proof, then
+freezes exact repository, version, source proof, environment, workflow run,
+approved Builds, helper hashes, normalized package IDs, canonical manifest hash, container, and
 platform identity. It also proves the new version is absent for all 14 NuGet
 IDs and the container tag before Git-tag creation. The `publish` phase requires
 exact frozen-identity equality and repeats both live source proof and every
@@ -193,8 +211,8 @@ evidence; a missing, duplicate, unprefixed, or wrong-source tag fails closed.
 
 The `main` branch accepts changes only through pull requests. Release automation
 therefore does not use `@semantic-release/changelog` or `@semantic-release/git`:
-it tags the already CI-approved source commit and publishes generated notes and
-package assets through the GitHub release without creating or pushing a release
+it tags the commit approved by the selected source proof and publishes generated
+notes and package assets through the GitHub release without creating or pushing a release
 commit to `main`. Any tracked `CHANGELOG.md` update must arrive through its own
 reviewed pull request; GitHub Releases are the current machine-generated release
 record.
@@ -237,7 +255,7 @@ shape-checks whatever owner value it is given; the caller is what pins the ident
 Two separate governance tests hold that line, and it is worth knowing which does what:
 `ReleaseAuthorityOwnerIsPinnedWheneverTheAuthorityGateIsEnabled` checks the owner value
 alone -- if the gate is ever turned on, the owner must be `github:jpiquot` -- while
-`ReleaseCallerPinsSharedExecutionAndOneMappingWithoutPublicationAuthorityInputs` asserts the caller
+`ReleaseCallerPinsSharedExecutionAndSelectedSourceMappingWithoutPublicationAuthorityInputs` asserts the caller
 currently carries none of the three reservation inputs. So while the gate stays off, any
 attempt to re-enable it fails the suite until both tests are updated together; neither
 test validates the values of `reserved-version` or `release-authority-issue-url`.

@@ -2,9 +2,15 @@ name: Release
 
 # Publication is an explicit operator action. The unprotected preflight proves
 # the dispatch selected the current main tip and that exact source already has
-# a successful push CI run before the protected release environment is entered.
+# the selected successful push proof before the protected release environment is entered.
 on:
   workflow_dispatch:
+    inputs:
+      bypass-validation:
+        description: 'Use successful exact-source Commitlint proof instead of CI proof.'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: release-production
@@ -15,21 +21,39 @@ permissions:
 
 jobs:
   verify-source:
-    name: Verify exact green main source
+    name: Verify exact live-main source proof
     runs-on: ubuntu-latest
+    outputs:
+      source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}
     permissions:
       actions: read
       contents: read
     steps:
-      - name: Require current main with successful exact-source CI
+      - name: Require current main with selected exact-source proof
+        id: select-source-proof
         shell: bash
         env:
+          BYPASS_VALIDATION: ${{ inputs['bypass-validation'] }}
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           DISPATCH_REF: ${{ github.ref }}
           DISPATCH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          case "$BYPASS_VALIDATION" in
+            false)
+              source_ci_workflow="ci.yml"
+              ;;
+            true)
+              source_ci_workflow="commitlint.yml"
+              ;;
+            *)
+              echo "bypass-validation must resolve to exactly true or false." >&2
+              exit 1
+              ;;
+          esac
+          printf 'source-ci-workflow=%s\n' "$source_ci_workflow" >> "$GITHUB_OUTPUT"
+
           if [ "$DISPATCH_REF" != "refs/heads/main" ]; then
             echo "Release must be dispatched from refs/heads/main." >&2
             exit 1
@@ -49,14 +73,14 @@ jobs:
             exit 1
           fi
 
-          ci_runs="$(gh api --method GET \
-            "repos/${REPOSITORY}/actions/workflows/ci.yml/runs" \
+          source_runs="$(gh api --method GET \
+            "repos/${REPOSITORY}/actions/workflows/${source_ci_workflow}/runs" \
             -f branch=main \
             -f event=push \
             -f head_sha="$DISPATCH_SHA" \
             -f status=success \
             -f per_page=100)"
-          if ! printf '%s\n' "$ci_runs" | jq -e --arg sha "$DISPATCH_SHA" '
+          if ! printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
             [.workflow_runs[] | select(
               .head_sha == $sha and
               .head_branch == "main" and
@@ -65,7 +89,7 @@ jobs:
               .conclusion == "success"
             )] | length > 0
           ' >/dev/null; then
-            echo "No successful push CI run exists for the exact current main SHA." >&2
+            echo "No successful push ${source_ci_workflow} run exists for the exact current main SHA." >&2
             exit 1
           fi
 
@@ -97,7 +121,7 @@ jobs:
       publish-containers: true
       builds-execution-sha: 22a578b576a515d2af214fe81859447fffc97981
       source-branch: main
-      source-ci-workflow: ci.yml
+      source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}
       package-manifest: tools/release-packages.json
       # Caller-declared so an accidental change to the manifest fails closed
       # instead of redefining the gate it is checked against.

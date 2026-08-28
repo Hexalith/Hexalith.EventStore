@@ -59,8 +59,13 @@ is_semver_without_numeric_padding "$version" ||
   fail "GITHUB_SHA must identify the exact workflow source commit."
 [[ "$source_branch" = "main" ]] ||
   fail "HEXALITH_RELEASE_SOURCE_BRANCH must be exactly main."
-[[ "$source_ci_workflow" = "ci.yml" ]] ||
-  fail "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW must be exactly ci.yml."
+case "$source_ci_workflow" in
+  ci.yml|commitlint.yml)
+    ;;
+  *)
+    fail "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW must be exactly ci.yml or commitlint.yml."
+    ;;
+esac
 [[ "$package_manifest" = "tools/release-packages.json" ]] ||
   fail "HEXALITH_RELEASE_PACKAGE_MANIFEST must identify the authoritative manifest."
 [[ "$release_environment" = "production" ]] ||
