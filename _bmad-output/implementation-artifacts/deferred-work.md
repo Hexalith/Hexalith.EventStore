@@ -4185,42 +4185,82 @@ source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-er
 reason: Exercise the actual on-disk retained-file size guard. The current oversized test inflates only the declared binding while retaining a small real file, so removal of the filesystem-size guard would not fail the test lane.
 status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Reject contradictory terminal paging evidence in the Tenants global-administrators projection loader.
-  evidence: `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/GlobalAdministratorsProjectionLoader.cs:60-75` can mark a page complete when `HasMore` is false even if `NextCursor` is nonblank.
+### DW-499: Reject contradictory terminal paging evidence in the Tenants global-administrators projection loader.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Prevent recovered first-page Tenants snapshots from enabling or confirming global-administrator corrections.
-  evidence: `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/GlobalAdministratorCorrectionSnapshot.cs:293-300,373-379` does not independently reject `PagingRecovered` when an injected snapshot also claims complete evidence.
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/GlobalAdministratorsProjectionLoader.cs:60-75
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: The loader can mark a page complete when `HasMore` is false even if `NextCursor` is nonblank, leaving contradictory terminal paging evidence unreported.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Require every Tenants projection row to be current before confirming a global-administrator correction.
-  evidence: `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/GlobalAdministratorCorrectionSnapshot.cs:293-310` can confirm from an injected complete-marked snapshot containing stale or rebuilding rows, although the preview gate rejects that evidence.
+### DW-500: Prevent recovered first-page Tenants snapshots from enabling or confirming global-administrator corrections.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Revalidate the selected Tenants audit row after projection refresh before opening a correction.
-  evidence: `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Pages/TenantAuditPage.razor:923-935` can continue with availability computed before an awaited refresh after the selected source row has disappeared.
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/GlobalAdministratorCorrectionSnapshot.cs:293-300,373-379
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: The correction snapshot does not independently reject `PagingRecovered` when an injected snapshot also claims complete evidence, so recovered first-page evidence can enable or confirm a correction.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Preserve continuation metadata when the Tenants global-administrators gateway returns an empty page.
-  evidence: `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:891-898` returns `GlobalAdministratorsSnapshot.Empty`, dropping `Cursor` and `HasMore`, so an empty intermediate page can be mistaken for terminal evidence.
+### DW-501: Require every Tenants projection row to be current before confirming a global-administrator correction.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Add audit-page integration coverage for multi-page global-administrator correction refreshes.
-  evidence: Loader unit tests cover a two-page walk, but `TenantAuditPageTests` supplies a fixed one-page snapshot and does not observe the page-owned provider's cursor sequence used to start and confirm corrections.
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/GlobalAdministratorCorrectionSnapshot.cs:293-310
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: Confirmation can proceed from an injected complete-marked snapshot containing stale or rebuilding rows even though the preview gate rejects that evidence.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Test incomplete evidence independently from `HasMore` at both Tenants correction boundaries.
-  evidence: Existing correction-state tests pair `HasMore=true` with `IsCompleteEvidence=false`, so removing only the complete-evidence checks from preview or confirmation would leave the tests green.
+### DW-502: Revalidate the selected Tenants audit row after projection refresh before opening a correction.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Repair the Tenants audit-page correction fixture so it reaches the correction-start assertions.
-  evidence: `TenantAuditPageTests.cs:849` builds rows with non-current defaults, no projection version, and incomplete evidence, while the current loader and page gate require current lifecycle, versioned, complete evidence.
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Pages/TenantAuditPage.razor:923-935
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: The page can continue with availability computed before an awaited projection refresh after the selected source row has disappeared.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Re-audit deferred-work closures DW-171, DW-223, and DW-282 against their original acceptance gaps.
-  evidence: The concurrent sweep marks these entries done although degraded-detail metadata is still discarded, the Story 3.13 File List still omits bound evidence files, and project-context managed-marker cardinality and ordering still fail open.
+### DW-503: Preserve continuation metadata when the Tenants global-administrators gateway returns an empty page.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md`
-  summary: Correct DW-482's evidence citation for the final Story 3.15 receipt assembly.
-  evidence: `deferred-work.md:4022` cites line 474 for subject `58f025f`, but the direct three-receipt validation and repeat assembly are recorded at `spec-3-15-corrected-deployed-runtime-parity-closure.md:637-638`.
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:891-898
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: Returning `GlobalAdministratorsSnapshot.Empty` drops `Cursor` and `HasMore`, so an empty intermediate page can be mistaken for terminal evidence.
+status: open
+
+### DW-504: Add audit-page integration coverage for multi-page global-administrator correction refreshes.
+
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Components/TenantAuditPageTests.cs
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: Loader unit tests cover a two-page walk, but `TenantAuditPageTests` supplies a fixed one-page snapshot and does not observe the page-owned provider's cursor sequence used to start and confirm corrections.
+status: open
+
+### DW-505: Test incomplete evidence independently from `HasMore` at both Tenants correction boundaries.
+
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/State/GlobalAdministratorCorrectionSnapshotTests.cs
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: Existing correction-state tests pair `HasMore=true` with `IsCompleteEvidence=false`, so removing only the complete-evidence checks from preview or confirmation would leave the tests green.
+status: open
+
+### DW-506: Repair the Tenants audit-page correction fixture so it reaches the correction-start assertions.
+
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Components/TenantAuditPageTests.cs:849
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: The fixture builds rows with non-current defaults, no projection version, and incomplete evidence while the current loader and page gate require current lifecycle, versioned, complete evidence.
+status: open
+
+### DW-507: Re-audit deferred-work closures DW-171, DW-223, and DW-282 against their original acceptance gaps.
+
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: _bmad-output/implementation-artifacts/deferred-work.md (DW-171, DW-223, DW-282)
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: The concurrent sweep marks these entries done although degraded-detail metadata is still discarded, the Story 3.13 File List still omits bound evidence files, and project-context managed-marker cardinality and ordering still fail open.
+status: open
+
+### DW-508: Correct DW-482's evidence citation for the final Story 3.15 receipt assembly.
+
+origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-ci-cd.md"), 2026-08-28
+location: _bmad-output/implementation-artifacts/deferred-work.md (DW-482)
+source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
+reason: `deferred-work.md:4022` cites line 474 for subject `58f025f`, but the direct three-receipt validation and repeat assembly are recorded at `spec-3-15-corrected-deployed-runtime-parity-closure.md:637-638`.
+status: open
