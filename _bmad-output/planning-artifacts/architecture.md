@@ -489,9 +489,9 @@ The table is a dated rendering of the current planning baseline; the Builds cata
 | --- | --- |
 | .NET SDK | Repository seed `10.0.302` (`rollForward: latestPatch`); required same-band security baseline `10.0.303` |
 | Target framework | net10.0 |
-| Aspire.Hosting | 13.4.6 |
-| Aspire.Hosting.Keycloak / Kubernetes | 13.4.6-preview.1.26319.6 |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.706 |
+| Aspire.Hosting | 13.5.3 |
+| Aspire.Hosting.Keycloak / Kubernetes | 13.5.3-preview.1.26425.3 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.5.0-preview.1.260825-0345 |
 | DAPR runtime | Repository CI/deployment seed `1.18.0`; production profiles pin a compatible 1.18.x release |
 | Dapr .NET SDK packages | 1.18.5 |
 | DAPR OpenBao secret store | Stable component v1 since DAPR runtime 1.16; `secretstores.hashicorp.vault` |
@@ -499,10 +499,10 @@ The table is a dated rendering of the current planning baseline; the Builds cata
 | FluentValidation | 12.1.1 |
 | ASP.NET Core / SignalR packages | `10.0.11` (catalog and security baseline aligned) |
 | Microsoft.CodeAnalysis packages | 5.6.0 |
-| Microsoft.FluentUI.AspNetCore.Components | 5.0.0-rc.4-26180.1 |
+| Microsoft.FluentUI.AspNetCore.Components | 5.0.0-rc.5-26219.1 |
 | Hexalith.FrontComposer packages | Catalog `HexalithFrontComposerVersion` `4.1.1`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
-| OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.17.0 |
-| OpenTelemetry runtime instrumentation | 1.17.0 (StackExchangeRedis instrumentation `1.17.0-beta.1`) |
+| OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.18.0 |
+| OpenTelemetry runtime instrumentation | 1.18.0 (StackExchangeRedis instrumentation `1.18.0-beta.1`) |
 | Hexalith.Commons.UniqueIds | 2.30.0 |
 | xUnit v3 | 3.2.2 |
 | Shouldly | 4.3.0 |

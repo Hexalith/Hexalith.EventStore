@@ -41,12 +41,47 @@ deferred: []
 
 </intent-contract>
 
+<frozen-after-approval>
+
+## Owner Decision: Phase-Separated Story 4.15 v2 Successor
+
+Create exactly one additive successor under `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2/`. The v1 directory and top-level `4-8-eventstore-oq8-platform-evidence.yaml` remain immutable historical evidence. Current-source closure requires both valid v1 historical evidence and the valid v2 successor; v1 alone never authorizes the evolved live files.
+
+The v2 directory contains exactly these artifacts, with no aliases or additional authority files:
+
+- `source-artifact-identity.json` using schema `hexalith.eventstore.story-4-15-successor-source-identity/v2`.
+- `limitations.json` using schema `hexalith.eventstore.story-4-15-successor-limitations/v2`.
+- `validator-sha256.txt` containing the SHA-256 of the evolved `tools/validate-oq8-platform-evidence.py`.
+- `pre-review-execution.json` using schema `hexalith.eventstore.story-4-15-successor-pre-review-execution/v2`.
+- `review-subject.json` using schema `hexalith.eventstore.story-4-15-successor-review-subject/v2`.
+- `reviews/architecture.json`, `reviews/security.json`, and `reviews/test.json`, each using schema `hexalith.eventstore.story-4-15-successor-review-receipt/v2`.
+- `source-only-handoff.json` using schema `hexalith.eventstore.story-4-15-successor-source-only-handoff/v2`.
+- `closure-sha256.txt`, a path-sorted SHA-256 manifest of every preceding v2 file and never of itself.
+
+Assemble and validate v2 in this order:
+
+1. Evolve the workflow, fixture, governance test, validator, closure test, and documentation; then write `source-artifact-identity.json`, `limitations.json`, `validator-sha256.txt`, and the receipt-independent `pre-review-execution.json`.
+2. Freeze `review-subject.json`. It binds the v1 predecessor commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4` and subject SHA-256 `26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f`; the completed-v1 closure snapshot commit `17e47a390fdfecafba84dce14779ad13b97be339`; the reviewed index `postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636`; the exact candidate-input hashes; and the source identity, limitations, validator record, and pre-review execution hashes. It does not bind its own hash, a final Git commit/tree containing itself, any review receipt, `source-only-handoff.json`, or `closure-sha256.txt`.
+3. Issue the three fresh review receipts only after the subject is frozen. Each receipt binds the SHA-256 of that exact subject and the SHA-256 of `limitations.json`; issuing a receipt must not mutate the subject or any bound candidate input.
+4. Write `source-only-handoff.json` after all receipts exist. It binds the v1 predecessor commit and subject, the v2 subject hash, limitations hash, and the exact architecture/security/test receipt hashes, and repeats every v1 external-authority exclusion.
+5. Write `closure-sha256.txt` last. Closure fails for a missing, additional, reordered, malformed, symlinked, or digest-drifted v2 artifact.
+
+`source-artifact-identity.json` and `review-subject.json` both record the following source transitions:
+
+- `.github/workflows/integration.yml`: predecessor SHA-256 `343163fd164bb49252ad2ec67c7fbc90aa2f3aaecafa4d4d51640ccc39e7b777` with image `postgres:18.4`; successor SHA-256 is computed from the frozen candidate and its image is the reviewed index.
+- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs`: predecessor SHA-256 `7f29993a470d179288a367c8d877e01b7f0f7be4206faf329f5d889b6171cae6` with image `postgres:18.4`; successor SHA-256 is computed from the frozen candidate and its image is the reviewed index.
+- The successor gate-input map contains exact path and candidate SHA-256 pairs for `tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs`, `tools/validate-oq8-platform-evidence.py`, `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs`, and `docs/ci.md`.
+
+V1 validation is historical: validate immutable v1 packet, subject, receipts, handoff, manifests, and their internal bindings byte-for-byte. Preserve `5e8f175b2ced4715f7c6f765386812cc1001dbb4` as v1's declared landed-source identity, but resolve v1 bindings that historically targeted then-current live paths or validator bytes against completed-v1 closure snapshot commit `17e47a390fdfecafba84dce14779ad13b97be339`, not against the evolving working tree. After an evolution explicitly bound by v2, do not compare v1's historical live-path or validator hashes to current working-tree bytes. V2 alone validates the current workflow, fixture, gate inputs, and current validator identity; using v1's `validator-sha256.txt` as the current-validator identity is forbidden.
+
+</frozen-after-approval>
+
 ## Code Map
 
 - `.github/workflows/integration.yml` -- evolved OQ8 orchestration path; its named pull step currently contains `docker pull postgres:18.4` and may safely change to the reviewed digest.
 - `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs` -- runtime authority currently declares private `PostgresImage = "postgres:18.4"`; this file is also one of 24 byte-frozen Story 4.15 capability paths.
 - `_bmad-output/implementation-artifacts/evidence/story-4-15/**` and `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` -- immutable v1 predecessor; read and validate, but do not edit or reseal.
-- `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/**` -- additive versioned successor location; freeze a v2 subject, predecessor binding, exact changed-source and gate identities, limitations, fresh named receipts, and a closed checksum manifest.
+- `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2/**` -- exact additive successor location and file set defined by the frozen owner decision; freeze candidate inputs and subject before receipts, then assemble the handoff and manifest.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs` -- new, unbound deterministic guardrail location; extract the named workflow step and fixture constant, assert one exact match, digest shape, and negative mutations.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` -- read-only evidence; do not add coverage here because Story 4.15 hash-binds it as `workflowGuardrailTests`.
 - `tools/validate-oq8-platform-evidence.py` -- evolve the active entry point so it still proves v1's immutable historical integrity but requires the v2 successor for current-source closure after the bound workflow/fixture change; it must not silently remove a path from v1 or accept v1 alone.
@@ -59,7 +94,7 @@ deferred: []
 **Execution:**
 - `.github/workflows/integration.yml` and `Oq8PostgresqlFixture.cs` -- replace the mutable tag with the reviewed multi-platform index reference after the OQ8 successor/reseal decision is supplied.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs` -- add positive agreement/digest-shape coverage and negative tag-only, mismatch, missing, and duplicate-pull cases.
-- `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/**` -- add the immutable v2 successor described above without modifying any v1 artifact; freeze its subject before issuing fresh architecture, security, and test receipts.
+- `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2/**` -- add the exact immutable v2 successor described above without modifying any v1 artifact; assemble it in the frozen subject → receipts → handoff → manifest order.
 - `tools/validate-oq8-platform-evidence.py` and `Oq8PlatformClosureTests.cs` -- replace v1's current-HEAD authority with the fail-closed v2 successor gate while retaining explicit historical v1 integrity validation and negative proof that v1 alone cannot authorize the changed source.
 - `docs/ci.md` -- document registry index inspection, upstream/version/platform review, coordinated literal rotation, and required validation.
 
@@ -68,10 +103,13 @@ deferred: []
 - Given the reviewed PostgreSQL 18.4 multi-platform index, when the live-sidecar lane runs, then prerequisite inspection, container startup, and captured runtime metadata all use `postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636`.
 - Given the existing Story 4.15 source-only handoff, when repository closure validation runs after implementation, then every v1 artifact remains byte-for-byte valid as historical evidence, v1 alone is explicitly non-authorizing for the changed current source, and the complete v2 successor with fresh content-bound architecture/security/test receipts is the only gate that restores current-source closure.
 - Given a missing, drifted, partially reviewed, predecessor-mismatched, or authority-overstating v2 successor, when either focused or full closure validation runs, then validation fails closed and never falls back to v1 or silently exempts the changed workflow/fixture.
+- Given v2 assembly, when the candidate subject is frozen, then it binds only predecessor/current source identities and receipt-independent gate inputs; each later receipt binds that unchanged subject, the handoff binds the three receipts, and the path-sorted checksum manifest closes the fixed file set last without any self-reference.
+- Given an accepted v2 evolution, when v1 historical integrity and current-source closure are validated, then v1 retains landed-source identity `5e8f175b2ced4715f7c6f765386812cc1001dbb4`, its historical live-path and validator bindings resolve against completed-v1 closure snapshot `17e47a390fdfecafba84dce14779ad13b97be339`, and v2 identities resolve against current candidate bytes and the evolved validator.
 
 ## Spec Change Log
 
 - 2026-08-28: Owner selected the versioned Story 4.15 successor resolution: preserve v1 byte-for-byte, bind the digest-pinned workflow/fixture and successor gate in v2, require fresh architecture/security/test receipts, and make v2 the only active current-source authority.
+- 2026-08-28: Owner refined the selected resolution to an exact phase-separated `v2/` contract: freeze receipt-independent candidate inputs and subject first, issue subject-bound receipts second, bind them in the handoff third, and close the fixed artifact set with a manifest last; validate v1 against its landed historical snapshot and v2 against current bytes.
 
 ## Review Triage Log
 
@@ -89,4 +127,3 @@ The registry inspection performed on 2026-08-27 returned index digest `sha256:a0
 - `python3 tools/validate-oq8-platform-evidence.py` -- expected: immutable v1 historical integrity and complete v2 current-source closure both pass; v1 alone cannot authorize the changed source.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor` -- expected: v1 preservation, v2 successor, missing/drifted receipt, predecessor mismatch, source drift, and authority-boundary cases all pass.
 - `dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ --configuration Release -p:UseHexalithProjectReferences=false` -- expected: the complete live-sidecar suite passes with the digest-pinned image already pulled.
-

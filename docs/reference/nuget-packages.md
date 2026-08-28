@@ -381,8 +381,8 @@ DI registration, domain processor abstractions, the fluent `AddEventStore` exten
 | Package                                   | Version |
 | ----------------------------------------- | ------- |
 | Dapr.Client                               | 1.18.5  |
-| Microsoft.Extensions.Configuration.Binder | 10.0.0  |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.0  |
+| Microsoft.Extensions.Configuration.Binder | 10.0.11 |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.11 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Client
@@ -429,7 +429,7 @@ When naming projection types, use short names for compact ETags — see [Project
 
 | Package                             | Version |
 | ----------------------------------- | ------- |
-| Microsoft.AspNetCore.SignalR.Client | 10.0.5  |
+| Microsoft.AspNetCore.SignalR.Client | 10.0.11 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.SignalR
@@ -454,8 +454,8 @@ Test helpers, in-memory fakes, deterministic gateway doubles, and builders for u
 | Package      | Version |
 | ------------ | ------- |
 | Shouldly     | 4.3.0   |
-| NSubstitute  | 5.3.0   |
-| xunit.assert | 2.9.3   |
+| NSubstitute  | 6.2.0   |
+| xunit.assert | 3.2.2   |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Testing
@@ -490,8 +490,8 @@ audiences, requires HTTPS metadata for publishing, and clears the signing-key ov
 
 | Package                              | Version |
 | ------------------------------------ | ------- |
-| Aspire.Hosting                       | 13.4.6  |
-| CommunityToolkit.Aspire.Hosting.Dapr | 13.4.1-beta.687 |
+| Aspire.Hosting                       | 13.5.3 |
+| CommunityToolkit.Aspire.Hosting.Dapr | 13.5.0-preview.1.260825-0345 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Aspire
