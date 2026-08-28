@@ -1,6 +1,10 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
+using Hexalith.EventStore.Operations.Configuration;
+
+using Microsoft.Extensions.Options;
+
 namespace Hexalith.EventStore.Operations.Telemetry;
 
 /// <summary>
@@ -16,7 +20,7 @@ public sealed class EventStoreOperationsTelemetry
     private readonly TimeProvider _timeProvider;
     private DateTimeOffset? _oldestCapturedAtUtc;
     private long _openCount;
-    private string _topic = "unknown";
+    private string _topic;
 
     internal (long Count, double OldestAgeSeconds) CurrentBacklog
     {
@@ -30,9 +34,20 @@ public sealed class EventStoreOperationsTelemetry
     }
 
     /// <summary>Initializes a telemetry recorder.</summary>
-    public EventStoreOperationsTelemetry(IMeterFactory meterFactory, TimeProvider timeProvider)
+    /// <remarks>
+    /// The backlog gauges are published from construction, before the drain actor has ever been activated, so the
+    /// topic dimension is seeded from configuration rather than from the first observation. A restarted host that
+    /// has not yet activated the actor therefore reports its backlog under the real topic instead of a placeholder
+    /// series an alert rule cannot match.
+    /// </remarks>
+    public EventStoreOperationsTelemetry(
+        IMeterFactory meterFactory,
+        TimeProvider timeProvider,
+        IOptions<EventStoreOperationsOptions> options)
     {
         ArgumentNullException.ThrowIfNull(meterFactory);
+        ArgumentNullException.ThrowIfNull(options);
+        _topic = options.Value.TopicName;
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         Meter meter = meterFactory.Create(MeterName);
         _captures = meter.CreateCounter<long>("eventstore.operations.deadletter.capture");

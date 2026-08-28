@@ -59,11 +59,14 @@ internal static class DeadLetterOperationsEndpointExtensions
 
     /// <summary>Captures one raw dead-letter delivery.</summary>
     /// <remarks>
-    /// This topic is the last queue in the chain: it has no dead-letter destination of its own, so Dapr answers
-    /// any non-2xx with redelivery forever. Conditions that redelivery can never change -- an oversize body, an
-    /// empty body, or a hash conflict against an already-retained item -- are therefore acknowledged and counted
-    /// on the bounded capture metric rather than rejected into an unbounded loop. Only failures that a retry can
-    /// actually resolve, such as a state-store fault, return a non-2xx.
+    /// This topic is the last queue in the chain: it has no dead-letter destination of its own, so a delivery
+    /// this route never acknowledges is redelivered until the sidecar's inbound pub/sub retry budget runs out and
+    /// is then dropped with nothing retained. Conditions that redelivery can never change -- an oversize body, an
+    /// empty body, a hash conflict against an already-retained item, or a body the actor refuses as unretainable
+    /// -- are therefore acknowledged and counted on the bounded capture metric instead of burning that budget for
+    /// an outcome that cannot improve. Only failures a retry can actually resolve, such as a state-store fault,
+    /// return a non-2xx, and those are counted too: the retry budget is finite, so a capture failure that
+    /// outlasts it loses the dead letter, and <c>capture-failed</c> is the only signal an operator gets.
     /// </remarks>
     internal static async Task<IResult> CaptureAsync(
         HttpRequest request,
@@ -100,6 +103,7 @@ internal static class DeadLetterOperationsEndpointExtensions
         }
         catch (Exception)
         {
+            telemetry.Capture(value.TopicName, "capture-failed");
             return Results.StatusCode(StatusCodes.Status500InternalServerError);
         }
 
@@ -108,7 +112,11 @@ internal static class DeadLetterOperationsEndpointExtensions
             DeadLetterCaptureOutcome.Captured => Results.Ok(),
             DeadLetterCaptureOutcome.Duplicate => Results.Ok(),
             DeadLetterCaptureOutcome.HashConflict => Results.Ok(),
-            _ => Results.StatusCode(StatusCodes.Status500InternalServerError),
+
+            // Counted by the actor, which is the side that classified it. Acknowledged here because redelivering
+            // the same bytes reproduces the same rejection.
+            DeadLetterCaptureOutcome.Unretainable => Results.Ok(),
+            _ => UnknownCaptureOutcome(telemetry, value.TopicName),
         };
     }
 
@@ -141,7 +149,7 @@ internal static class DeadLetterOperationsEndpointExtensions
             return OpaqueForbidden();
         }
 
-        int boundedCount = Math.Clamp(count, 1, 500);
+        int boundedCount = Math.Clamp(count, 1, options.Value.MaxListItems);
         int offset = int.TryParse(continuationToken, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed)
             && parsed >= 0
             ? parsed
@@ -167,6 +175,12 @@ internal static class DeadLetterOperationsEndpointExtensions
         IActorProxyFactory actorProxyFactory,
         IOptions<EventStoreOperationsOptions> options)
         => ActionAsync(request, action, actorProxyFactory, options.Value, static (actor, value) => actor.SkipAsync(value));
+
+    private static IResult UnknownCaptureOutcome(EventStoreOperationsTelemetry telemetry, string topic)
+    {
+        telemetry.Capture(topic, "capture-failed");
+        return Results.StatusCode(StatusCodes.Status500InternalServerError);
+    }
 
     private static IDeadLetterDrainActor Actor(IActorProxyFactory factory, EventStoreOperationsOptions options)
     {

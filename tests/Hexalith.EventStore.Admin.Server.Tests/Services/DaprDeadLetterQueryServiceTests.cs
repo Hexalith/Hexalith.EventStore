@@ -97,13 +97,57 @@ public sealed class DaprDeadLetterQueryServiceTests {
             () => service.ListDeadLettersAsync("tenant-a", 10, null, source.Token));
     }
 
+    /// <summary>
+    /// Verifies an authorization refusal from the operations workload is canonicalized on the read surfaces.
+    /// </summary>
+    /// <remarks>
+    /// The command facade already maps 401/403 to <c>Unauthorized</c> (DW11 AC4). Without the same mapping here,
+    /// <c>EnsureSuccessStatusCode</c> raises <see cref="HttpRequestException"/>, which
+    /// <c>AdminDeadLettersController</c> classifies as a backend outage: the operator is told the service is
+    /// temporarily unavailable and to retry, for a refusal no retry can clear.
+    /// </remarks>
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task ReadSurfacesCanonicalizeAuthorizationRefusals(HttpStatusCode status) {
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(new NullAdminAuthContext());
+        handler.SetupErrorResponse(status);
+
+        _ = await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => service.ListDeadLettersAsync("tenant-a", 10, null));
+
+        handler.SetupErrorResponse(status);
+
+        _ = await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => service.GetDeadLetterCountAsync());
+    }
+
+    /// <summary>Verifies an operations workload that never answers becomes the documented timeout.</summary>
+    /// <remarks>
+    /// Both controller catch filters exclude <see cref="OperationCanceledException"/>, so only the rewrite into
+    /// <see cref="TimeoutException"/> keeps a slow backend on the advertised 503 path instead of surfacing as an
+    /// unhandled error.
+    /// </remarks>
+    [Fact]
+    public async Task ListDeadLettersAsyncRewritesInternalTimeout() {
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(
+            new NullAdminAuthContext(),
+            out _,
+            serviceInvocationTimeoutSeconds: 0);
+        handler.SetupException(new OperationCanceledException());
+
+        _ = await Should.ThrowAsync<TimeoutException>(
+            () => service.ListDeadLettersAsync("tenant-a", 10, null));
+    }
+
     private static (DaprDeadLetterQueryService Service, TestHttpMessageHandler Handler) CreateService(
         IAdminAuthContext authContext)
         => CreateService(authContext, out _);
 
     private static (DaprDeadLetterQueryService Service, TestHttpMessageHandler Handler) CreateService(
         IAdminAuthContext authContext,
-        out DaprClient daprClient) {
+        out DaprClient daprClient,
+        int serviceInvocationTimeoutSeconds = 30) {
         daprClient = Substitute.For<DaprClient>();
         _ = daprClient.CreateInvokeMethodRequest(Arg.Any<HttpMethod>(), "eventstore-operations", Arg.Any<string>())
             .Returns(call => new HttpRequestMessage(
@@ -130,7 +174,7 @@ public sealed class DaprDeadLetterQueryServiceTests {
             factory,
             Options.Create(new AdminServerOptions {
                 OperationsAppId = "eventstore-operations",
-                ServiceInvocationTimeoutSeconds = 30,
+                ServiceInvocationTimeoutSeconds = serviceInvocationTimeoutSeconds,
             }),
             authContext,
             NullLogger<DaprDeadLetterQueryService>.Instance);

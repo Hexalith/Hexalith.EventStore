@@ -32,6 +32,14 @@ public sealed class EventStoreOperationsOptions
     /// <summary>Gets or sets the maximum number of items accepted in one operator action.</summary>
     public int MaxActionItems { get; set; } = 100;
 
+    /// <summary>Gets or sets the maximum page size accepted by the operator list endpoint.</summary>
+    /// <remarks>
+    /// The endpoint clamps a caller-supplied page size to this bound and the actor rejects anything above it.
+    /// Both ends read this one value so the clamp and the guard can never drift into a configuration where the
+    /// endpoint forwards a page size the actor refuses.
+    /// </remarks>
+    public int MaxListItems { get; set; } = 500;
+
     /// <summary>Gets or sets the replay recovery reminder interval in seconds.</summary>
     public int ReplayReminderPeriodSeconds { get; set; } = 60;
 
@@ -41,6 +49,12 @@ public sealed class EventStoreOperationsOptions
     /// On exhaustion the item becomes archived with a bounded reason code, so it leaves the backlog and its
     /// telemetry instead of consuming the drain indefinitely. The retained body is untouched and still
     /// inspectable through the operator surface.
+    /// <para>
+    /// The budget is per operator-requested replay, not per item lifetime: an explicit retry resets the counter,
+    /// and an item archived by exhaustion can be retried again once the operator has fixed the target. Without
+    /// both, a target outage longer than <see cref="MaxReplayAttempts"/> reminder periods would strand the item
+    /// permanently -- which is the failure the operator surface exists to recover from.
+    /// </para>
     /// </remarks>
     public int MaxReplayAttempts { get; set; } = 10;
 }

@@ -28,6 +28,7 @@ _ = builder.Services
     .ValidateOnStart();
 builder.Services.AddActors(actorOptions =>
     actorOptions.Actors.RegisterActor<DeadLetterDrainActor>(DeadLetterDrainActor.ActorTypeName));
+builder.Services.AddHostedService<DeadLetterBacklogReconciler>();
 
 WebApplication app = builder.Build();
 if (appApiToken is not null)
