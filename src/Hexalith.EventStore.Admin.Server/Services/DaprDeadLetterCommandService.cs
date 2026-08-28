@@ -15,7 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
 /// DAPR-backed implementation of <see cref="IDeadLetterCommandService"/>.
-/// All write methods delegate to EventStore via DAPR service invocation — never writes directly.
+/// All write methods delegate to the EventStore operations workload via DAPR service invocation.
 /// </summary>
 public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
     private const string ErrorNoOperation = "error-no-operation";
@@ -57,8 +57,8 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
         string tenantId,
         IReadOnlyList<string> messageIds,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            "api/v1/admin/dead-letters/retry",
+        => await InvokeOperationsPostAsync(
+            "internal/dead-letters/retry",
             new { tenantId, messageIds },
             ct).ConfigureAwait(false);
 
@@ -67,8 +67,8 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
         string tenantId,
         IReadOnlyList<string> messageIds,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            "api/v1/admin/dead-letters/skip",
+        => await InvokeOperationsPostAsync(
+            "internal/dead-letters/skip",
             new { tenantId, messageIds },
             ct).ConfigureAwait(false);
 
@@ -77,12 +77,12 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
         string tenantId,
         IReadOnlyList<string> messageIds,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            "api/v1/admin/dead-letters/archive",
+        => await InvokeOperationsPostAsync(
+            "internal/dead-letters/archive",
             new { tenantId, messageIds },
             ct).ConfigureAwait(false);
 
-    private async Task<AdminOperationResult> InvokeEventStorePostAsync<TRequest>(
+    private async Task<AdminOperationResult> InvokeOperationsPostAsync<TRequest>(
         string endpoint,
         TRequest request,
         CancellationToken ct) {
@@ -91,8 +91,10 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
-                _options.EventStoreAppId, endpoint, request)
-                ?? CreateFallbackRequest(endpoint, request);
+                HttpMethod.Post,
+                _options.OperationsAppId,
+                endpoint);
+            httpRequest.Content = JsonContent.Create(request);
 
             string? token = _authContext.GetToken();
             if (token is not null) {
@@ -107,14 +109,14 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-            _logger.LogWarning("EventStore endpoint '{Endpoint}' timed out.", endpoint);
+            _logger.LogWarning("Operations endpoint '{Endpoint}' timed out.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, "Service invocation timed out", "TIMEOUT");
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to invoke EventStore endpoint '{Endpoint}'.", endpoint);
+            _logger.LogWarning(ex, "Failed to invoke operations endpoint '{Endpoint}'.", endpoint);
             return new AdminOperationResult(false, ErrorNoOperation, ex.Message, GetErrorCode(ex));
         }
     }
@@ -153,9 +155,4 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             or HttpStatusCode.Gone => "InvalidOperation",
         _ => ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
     };
-
-    private static HttpRequestMessage CreateFallbackRequest<TRequest>(string endpoint, TRequest request)
-        => new(HttpMethod.Post, endpoint) {
-            Content = JsonContent.Create(request),
-        };
 }

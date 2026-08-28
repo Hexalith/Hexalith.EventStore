@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -15,15 +16,22 @@ using NSubstitute;
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
 public class DaprDeadLetterCommandServiceTests {
-    private const string EventStoreAppId = "eventstore";
+    private const string OperationsAppId = "eventstore-operations";
 
     private static (DaprDeadLetterCommandService Service, TestHttpMessageHandler Handler) CreateService(
         DaprClient? daprClient = null,
         IAdminAuthContext? authContext = null) {
         daprClient ??= Substitute.For<DaprClient>();
+        _ = daprClient.CreateInvokeMethodRequest(
+                HttpMethod.Post,
+                OperationsAppId,
+                Arg.Any<string>())
+            .Returns(call => new HttpRequestMessage(
+                HttpMethod.Post,
+                "http://localhost/" + call.ArgAt<string>(2)));
         authContext ??= new NullAdminAuthContext();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
-            EventStoreAppId = EventStoreAppId,
+            OperationsAppId = OperationsAppId,
             ServiceInvocationTimeoutSeconds = 30,
         });
 
@@ -107,8 +115,10 @@ public class DaprDeadLetterCommandServiceTests {
     [Fact]
     public async Task RetryDeadLettersAsync_ReturnsTimeoutError_WhenServiceTimesOut() {
         DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.CreateInvokeMethodRequest(HttpMethod.Post, OperationsAppId, Arg.Any<string>())
+            .Returns(new HttpRequestMessage(HttpMethod.Post, "http://localhost/internal/dead-letters/retry"));
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
-            EventStoreAppId = EventStoreAppId,
+            OperationsAppId = OperationsAppId,
             ServiceInvocationTimeoutSeconds = 0,
         });
 
@@ -177,6 +187,37 @@ public class DaprDeadLetterCommandServiceTests {
         AdminOperationResult result = await service.ArchiveDeadLettersAsync("tenant-a", ["msg-1"]);
 
         result.Success.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("retry")]
+    [InlineData("skip")]
+    [InlineData("archive")]
+    public async Task ActionsRouteExactlyToOperationsWithTenantIdsAndBearer(string action) {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetToken().Returns("operator-token");
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateService(daprClient, authContext);
+        handler.SetupJsonResponse(new AdminOperationResult(true, "operation", null, null));
+
+        _ = action switch {
+            "retry" => await service.RetryDeadLettersAsync("tenant-a", ["message-a", "message-b"]),
+            "skip" => await service.SkipDeadLettersAsync("tenant-a", ["message-a", "message-b"]),
+            _ => await service.ArchiveDeadLettersAsync("tenant-a", ["message-a", "message-b"]),
+        };
+
+        _ = daprClient.Received(1).CreateInvokeMethodRequest(
+            HttpMethod.Post,
+            OperationsAppId,
+            $"internal/dead-letters/{action}");
+        HttpRequestMessage request = handler.LastRequest.ShouldNotBeNull();
+        request.RequestUri.ShouldNotBeNull().AbsolutePath.ShouldBe($"/internal/dead-letters/{action}");
+        request.Headers.Authorization.ShouldNotBeNull().Parameter.ShouldBe("operator-token");
+        using JsonDocument body = JsonDocument.Parse(handler.LastRequestBody.ShouldNotBeNull());
+        body.RootElement.GetProperty("tenantId").GetString().ShouldBe("tenant-a");
+        body.RootElement.GetProperty("messageIds").EnumerateArray()
+            .Select(static item => item.GetString())
+            .ShouldBe(["message-a", "message-b"]);
     }
 
     // === Error code extraction ===

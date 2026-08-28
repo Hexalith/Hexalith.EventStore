@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using System.Reflection;
 
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Controllers;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -65,6 +67,17 @@ public class AdminDeadLettersControllerCountTests {
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(500);
+    }
+
+    [Fact]
+    public void GetDeadLetterCount_RequiresGlobalAdminPolicy() {
+        AuthorizeAttribute attribute = typeof(AdminDeadLettersController)
+            .GetMethod(nameof(AdminDeadLettersController.GetDeadLetterCount), BindingFlags.Instance | BindingFlags.Public)
+            .ShouldNotBeNull()
+            .GetCustomAttributes<AuthorizeAttribute>()
+            .ShouldHaveSingleItem();
+
+        attribute.Policy.ShouldBe(AdminAuthorizationPolicies.Admin);
     }
 
     private static ClaimsPrincipal CreatePrincipal(string adminRole) {

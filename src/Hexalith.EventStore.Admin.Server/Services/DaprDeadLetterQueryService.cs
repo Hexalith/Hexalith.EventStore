@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -11,39 +14,46 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.Admin.Server.Services;
 
 /// <summary>
-/// DAPR-backed implementation of <see cref="IDeadLetterQueryService"/>.
-/// Reads dead-letter index from the state store. The index is maintained by the DeadLetterPublisher in Server.
+/// Routes authorized dead-letter queries to the dedicated EventStore operations workload.
 /// </summary>
 public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService {
+    private const string InternalRoute = "internal/dead-letters";
+
+    private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprDeadLetterQueryService> _logger;
     private readonly AdminServerOptions _options;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="DaprDeadLetterQueryService"/> class.
+    /// Initializes a new dead-letter query facade.
     /// </summary>
-    /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="daprClient">The Dapr client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory used for Dapr invocation.</param>
     /// <param name="options">The admin server options.</param>
+    /// <param name="authContext">The caller authorization context.</param>
     /// <param name="logger">The logger.</param>
     public DaprDeadLetterQueryService(
         DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
+        IAdminAuthContext authContext,
         ILogger<DaprDeadLetterQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
+        _authContext = authContext;
         _logger = logger;
     }
 
     /// <inheritdoc/>
-    public async Task<int> GetDeadLetterCountAsync(CancellationToken ct = default) {
-        List<DeadLetterEntry>? result = await _daprClient
-            .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, "admin:dead-letters:all", cancellationToken: ct)
-            .ConfigureAwait(false);
-        return result?.Count ?? 0;
-    }
+    public async Task<int> GetDeadLetterCountAsync(CancellationToken ct = default)
+        => await InvokeGetAsync<int>(InternalRoute + "/count", [], ct).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<PagedResult<DeadLetterEntry>> ListDeadLettersAsync(
@@ -52,24 +62,47 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService {
         string? continuationToken,
         CancellationToken ct = default) {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
-        string indexKey = $"admin:dead-letters:{tenantId ?? "all"}";
-        List<DeadLetterEntry>? result = await _daprClient
-            .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, indexKey, cancellationToken: ct)
-            .ConfigureAwait(false);
-
-        if (result is null) {
-            _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-            return new PagedResult<DeadLetterEntry>([], 0, null);
+        if (tenantId is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         }
 
-        int skip = 0;
-        if (continuationToken is not null && int.TryParse(continuationToken, out int offset) && offset >= 0) {
-            skip = offset;
+        List<KeyValuePair<string, string>> query = [new("count", count.ToString(System.Globalization.CultureInfo.InvariantCulture))];
+        if (!string.IsNullOrWhiteSpace(tenantId)) {
+            query.Add(new("tenantId", tenantId));
         }
 
-        var page = result.Skip(skip).Take(count).ToList();
-        string? nextToken = skip + count < result.Count ? (skip + count).ToString() : null;
+        if (!string.IsNullOrWhiteSpace(continuationToken)) {
+            query.Add(new("continuationToken", continuationToken));
+        }
 
-        return new PagedResult<DeadLetterEntry>(page, result.Count, nextToken);
+        return await InvokeGetAsync<PagedResult<DeadLetterEntry>>(InternalRoute, query, ct).ConfigureAwait(false);
+    }
+
+    private async Task<T> InvokeGetAsync<T>(
+        string endpoint,
+        IReadOnlyCollection<KeyValuePair<string, string>> query,
+        CancellationToken ct) {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+        try {
+            using HttpRequestMessage request = query.Count == 0
+                ? _daprClient.CreateInvokeMethodRequest(HttpMethod.Get, _options.OperationsAppId, endpoint)
+                : _daprClient.CreateInvokeMethodRequest(HttpMethod.Get, _options.OperationsAppId, endpoint, query);
+            string? token = _authContext.GetToken();
+            if (token is not null) {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            HttpClient client = _httpClientFactory.CreateClient();
+            using HttpResponseMessage response = await client.SendAsync(request, cts.Token).ConfigureAwait(false);
+            _ = response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<T>(cts.Token).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("The operations workload returned an empty response.");
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+            _logger.LogWarning("Operations endpoint '{Endpoint}' timed out.", endpoint);
+            throw new TimeoutException("The operations workload timed out.");
+        }
     }
 }

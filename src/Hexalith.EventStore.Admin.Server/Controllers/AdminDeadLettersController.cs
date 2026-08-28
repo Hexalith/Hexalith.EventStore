@@ -26,7 +26,7 @@ public class AdminDeadLettersController(
     /// Gets the total count of dead-letter entries across all tenants.
     /// </summary>
     [HttpGet("count")]
-    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
