@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Text;
 
 using Dapr.Actors;
@@ -7,8 +8,11 @@ using Hexalith.EventStore.Operations.Actors;
 using Hexalith.EventStore.Operations.Configuration;
 using Hexalith.EventStore.Operations.Endpoints;
 using Hexalith.EventStore.Operations.Models;
+using Hexalith.EventStore.Operations.Telemetry;
 
 using Microsoft.AspNetCore.Http;
+
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -35,11 +39,14 @@ public sealed class DeadLetterOperationsAuthorizationTests
         _ = factory.CreateActorProxy<IDeadLetterDrainActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
 
+        using ServiceProvider services = new ServiceCollection().AddMetrics().BuildServiceProvider();
+
         IResult result = await DeadLetterOperationsEndpointExtensions.CaptureAsync(
             context.Request,
             factory,
             Options.Create(new EventStoreOperationsOptions()),
-            TimeProvider.System);
+            TimeProvider.System,
+            new EventStoreOperationsTelemetry(services.GetRequiredService<IMeterFactory>(), TimeProvider.System));
 
         result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode
             .ShouldBe(StatusCodes.Status500InternalServerError);

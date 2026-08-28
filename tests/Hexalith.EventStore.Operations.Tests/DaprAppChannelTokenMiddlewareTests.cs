@@ -25,6 +25,25 @@ public sealed class DaprAppChannelTokenMiddlewareTests
             DaprAppChannelSecurity.ValidateConfiguration(environment, null));
     }
 
+    /// <summary>
+    /// Verifies the platform health endpoints stay outside the token boundary.
+    /// </summary>
+    /// <remarks>
+    /// The orchestrator health check and the Dapr sidecar app health probe both call these paths without the
+    /// app token. Guarding them would keep the workload permanently unhealthy in every environment where the
+    /// token is mandatory, which is also where the admin console waits on it.
+    /// </remarks>
+    [Theory]
+    [InlineData("/alive", false)]
+    [InlineData("/health", false)]
+    [InlineData("/ready", false)]
+    [InlineData("/internal/dead-letters", true)]
+    [InlineData("/internal/dead-letters/count", true)]
+    [InlineData("/dead-letters/work/events", true)]
+    [InlineData("/", true)]
+    public void HealthEndpointsBypassTokenBoundary(string path, bool expected)
+        => DaprAppChannelSecurity.RequiresToken(new PathString(path)).ShouldBe(expected);
+
     /// <summary>Verifies only the exact sidecar token reaches the application pipeline.</summary>
     [Theory]
     [InlineData(null, 401, false)]

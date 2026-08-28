@@ -11,6 +11,7 @@ using Hexalith.EventStore.Operations.Actors;
 using Hexalith.EventStore.Operations.Capture;
 using Hexalith.EventStore.Operations.Configuration;
 using Hexalith.EventStore.Operations.Models;
+using Hexalith.EventStore.Operations.Telemetry;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -56,16 +57,27 @@ internal static class DeadLetterOperationsEndpointExtensions
         IOptions<EventStoreOperationsOptions> options)
         => ActionAsync(request, action, actorProxyFactory, options.Value, static (actor, value) => actor.ArchiveAsync(value));
 
+    /// <summary>Captures one raw dead-letter delivery.</summary>
+    /// <remarks>
+    /// This topic is the last queue in the chain: it has no dead-letter destination of its own, so Dapr answers
+    /// any non-2xx with redelivery forever. Conditions that redelivery can never change -- an oversize body, an
+    /// empty body, or a hash conflict against an already-retained item -- are therefore acknowledged and counted
+    /// on the bounded capture metric rather than rejected into an unbounded loop. Only failures that a retry can
+    /// actually resolve, such as a state-store fault, return a non-2xx.
+    /// </remarks>
     internal static async Task<IResult> CaptureAsync(
         HttpRequest request,
         IActorProxyFactory actorProxyFactory,
         IOptions<EventStoreOperationsOptions> options,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        EventStoreOperationsTelemetry telemetry)
     {
+        ArgumentNullException.ThrowIfNull(telemetry);
         EventStoreOperationsOptions value = options.Value;
-        if (request.ContentLength is > 0 && request.ContentLength > value.MaxBodyBytes)
+        if (request.ContentLength > value.MaxBodyBytes)
         {
-            return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            telemetry.Capture(value.TopicName, "oversize");
+            return Results.Ok();
         }
 
         (byte[] body, bool tooLarge) = await ReadBoundedBodyAsync(
@@ -73,9 +85,8 @@ internal static class DeadLetterOperationsEndpointExtensions
             value.MaxBodyBytes).ConfigureAwait(false);
         if (tooLarge || body.Length == 0)
         {
-            return tooLarge
-                ? Results.StatusCode(StatusCodes.Status413PayloadTooLarge)
-                : Results.BadRequest();
+            telemetry.Capture(value.TopicName, tooLarge ? "oversize" : "empty-body");
+            return Results.Ok();
         }
 
         (DeadLetterSafeIdentity identity, string hash) = DeadLetterEnvelopeParser.Parse(body);
@@ -96,7 +107,7 @@ internal static class DeadLetterOperationsEndpointExtensions
         {
             DeadLetterCaptureOutcome.Captured => Results.Ok(),
             DeadLetterCaptureOutcome.Duplicate => Results.Ok(),
-            DeadLetterCaptureOutcome.HashConflict => Results.Conflict(),
+            DeadLetterCaptureOutcome.HashConflict => Results.Ok(),
             _ => Results.StatusCode(StatusCodes.Status500InternalServerError),
         };
     }
@@ -243,17 +254,24 @@ internal static class DeadLetterOperationsEndpointExtensions
     private static IResult OpaqueForbidden()
         => Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "Forbidden");
 
+    /// <summary>Projects a retained item onto the admin contract without exposing a payload.</summary>
+    /// <remarks>
+    /// Only the tenant slot carries the reserved <see cref="DeadLetterSafeIdentity.UnidentifiedTenantId"/>
+    /// scope, because that is the value operator queries filter on. The remaining slots use a distinct
+    /// placeholder so an operator can tell "this field was not safely identifiable" apart from the tenant an
+    /// unidentified envelope is filed under.
+    /// </remarks>
     private static DeadLetterEntry ToAdminEntry(DeadLetterListItem item)
         => new(
             item.Identity.MessageId,
             item.Identity.TenantId ?? DeadLetterSafeIdentity.UnidentifiedTenantId,
-            item.Identity.Domain ?? DeadLetterSafeIdentity.UnidentifiedTenantId,
-            item.Identity.AggregateId ?? DeadLetterSafeIdentity.UnidentifiedTenantId,
-            item.Identity.CorrelationId ?? DeadLetterSafeIdentity.UnidentifiedTenantId,
+            item.Identity.Domain ?? DeadLetterSafeIdentity.UnknownValue,
+            item.Identity.AggregateId ?? DeadLetterSafeIdentity.UnknownValue,
+            item.Identity.CorrelationId ?? DeadLetterSafeIdentity.UnknownValue,
             item.LastReasonCode ?? "retained",
             item.CapturedAtUtc,
             item.ReplayAttempts,
-            item.Identity.EventType ?? DeadLetterSafeIdentity.UnidentifiedTenantId);
+            item.Identity.EventType ?? DeadLetterSafeIdentity.UnknownValue);
 
     private static CancellationToken TestableCancellation(HttpRequest request)
         => request.HttpContext.RequestAborted;

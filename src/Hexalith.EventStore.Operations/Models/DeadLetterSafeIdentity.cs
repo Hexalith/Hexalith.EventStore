@@ -23,6 +23,9 @@ public sealed record DeadLetterSafeIdentity(
     /// <summary>Gets the tenant scope used for retained envelopes whose tenant cannot be identified safely.</summary>
     public const string UnidentifiedTenantId = "unidentified";
 
+    /// <summary>Gets the placeholder shown for a non-tenant identity field that could not be identified safely.</summary>
+    public const string UnknownValue = "unknown";
+
     /// <summary>Gets a value indicating whether direct replay has a complete safe identity.</summary>
     public bool IsReplayable =>
         IsValidValue(MessageId)

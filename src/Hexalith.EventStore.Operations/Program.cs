@@ -32,7 +32,9 @@ builder.Services.AddActors(actorOptions =>
 WebApplication app = builder.Build();
 if (appApiToken is not null)
 {
-    _ = app.UseMiddleware<DaprAppChannelTokenMiddleware>(appApiToken);
+    _ = app.UseWhen(
+        context => DaprAppChannelSecurity.RequiresToken(context.Request.Path),
+        guarded => guarded.UseMiddleware<DaprAppChannelTokenMiddleware>(appApiToken));
 }
 
 app.MapDefaultEndpoints();

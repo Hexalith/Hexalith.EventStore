@@ -36,6 +36,11 @@ internal sealed class EventStoreOperationsOptionsValidator : IValidateOptions<Ev
             failures.Add($"{nameof(options.ReplayReminderPeriodSeconds)} must be between 1 and 86400.");
         }
 
+        if (options.MaxReplayAttempts is < 1 or > 1_000)
+        {
+            failures.Add($"{nameof(options.MaxReplayAttempts)} must be between 1 and 1000.");
+        }
+
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);
