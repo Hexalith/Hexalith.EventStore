@@ -1,4 +1,4 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
+using System.Net;
 
 using Dapr.Client;
 
@@ -6,214 +6,134 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprDeadLetterQueryServiceTests {
-    private const string StateStoreName = "statestore";
-
-    private static DaprDeadLetterQueryService CreateService(DaprClient? daprClient = null) {
-        daprClient ??= Substitute.For<DaprClient>();
-        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
-            StateStoreName = StateStoreName,
-        });
-
-        return new DaprDeadLetterQueryService(
-            daprClient,
-            options,
-            NullLogger<DaprDeadLetterQueryService>.Instance);
-    }
-
-    private static DeadLetterEntry CreateDeadLetter(string messageId, string tenantId)
-        => new(
-            messageId,
-            tenantId,
-            "Counter",
-            "counter-1",
-            "corr-1",
-            "Timeout",
-            DateTimeOffset.UtcNow,
-            1,
-            "IncrementCounter");
-
-    // === GetDeadLetterCountAsync ===
-
+/// <summary>
+/// Verifies dead-letter queries route to the caller-scoped operations workload.
+/// </summary>
+public sealed class DaprDeadLetterQueryServiceTests {
+    /// <summary>Verifies count uses operations service invocation and forwards the JWT.</summary>
     [Fact]
-    public async Task GetDeadLetterCountAsync_ReturnsCount_WhenIndexExists() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        var entries = new List<DeadLetterEntry>
-        {
-            CreateDeadLetter("msg-1", "tenant-a"),
-            CreateDeadLetter("msg-2", "tenant-a"),
-            CreateDeadLetter("msg-3", "tenant-b"),
-        };
-
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            "admin:dead-letters:all",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => entries);
-
-        DaprDeadLetterQueryService service = CreateService(daprClient);
+    public async Task GetDeadLetterCountAsyncRoutesToOperationsAndForwardsJwt() {
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetToken().Returns("operator-token");
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(authContext);
+        handler.SetupJsonResponse(3);
 
         int count = await service.GetDeadLetterCountAsync();
 
         count.ShouldBe(3);
+        HttpRequestMessage request = handler.LastRequest.ShouldNotBeNull();
+        request.Method.ShouldBe(HttpMethod.Get);
+        request.RequestUri.ShouldNotBeNull().AbsolutePath.ShouldBe("/internal/dead-letters/count");
+        request.Headers.Authorization.ShouldNotBeNull().Parameter.ShouldBe("operator-token");
     }
 
+    /// <summary>Verifies tenant and paging values are forwarded without reading state directly.</summary>
     [Fact]
-    public async Task GetDeadLetterCountAsync_ReturnsZero_WhenIndexNotFound() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            "admin:dead-letters:all",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => (List<DeadLetterEntry>?)null);
+    public async Task ListDeadLettersAsyncForwardsTenantAndPagingToOperations() {
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetToken().Returns("operator-token");
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(authContext, out DaprClient daprClient);
+        var expected = new PagedResult<DeadLetterEntry>(
+            [new DeadLetterEntry("message-a", "tenant-a", "work", "work-a", "correlation-a", "retained", DateTimeOffset.UtcNow, 0, "WorkItemCreated")],
+            2,
+            "1");
+        handler.SetupJsonResponse(expected);
 
-        DaprDeadLetterQueryService service = CreateService(daprClient);
+        PagedResult<DeadLetterEntry> result = await service.ListDeadLettersAsync("tenant-a", 1, "0");
 
-        int count = await service.GetDeadLetterCountAsync();
-
-        count.ShouldBe(0);
-    }
-
-    // === ListDeadLettersAsync ===
-
-    [Fact]
-    public async Task ListDeadLettersAsync_ReturnsTenantEntries_WhenTenantIdProvided() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        var entries = new List<DeadLetterEntry>
-        {
-            CreateDeadLetter("msg-1", "tenant-a"),
-            CreateDeadLetter("msg-2", "tenant-a"),
-        };
-
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            "admin:dead-letters:tenant-a",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => entries);
-
-        DaprDeadLetterQueryService service = CreateService(daprClient);
-
-        PagedResult<DeadLetterEntry> result = await service.ListDeadLettersAsync("tenant-a", 10, null);
-
-        result.Items.Count.ShouldBe(2);
         result.TotalCount.ShouldBe(2);
+        Uri uri = handler.LastRequest.ShouldNotBeNull().RequestUri.ShouldNotBeNull();
+        uri.AbsolutePath.ShouldBe("/internal/dead-letters");
+        uri.Query.ShouldContain("tenantId=tenant-a");
+        uri.Query.ShouldContain("count=1");
+        uri.Query.ShouldContain("continuationToken=0");
+        handler.LastRequest.Headers.Authorization.ShouldNotBeNull().Parameter.ShouldBe("operator-token");
+        _ = daprClient.Received(1).CreateInvokeMethodRequest(
+            HttpMethod.Get,
+            "eventstore-operations",
+            "internal/dead-letters",
+            Arg.Any<IReadOnlyCollection<KeyValuePair<string, string>>>());
     }
 
-    [Fact]
-    public async Task ListDeadLettersAsync_ReturnsAllEntries_WhenTenantIdIsNull() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        var entries = new List<DeadLetterEntry>
-        {
-            CreateDeadLetter("msg-1", "tenant-a"),
-            CreateDeadLetter("msg-2", "tenant-b"),
-        };
+    /// <summary>Verifies a non-null whitespace tenant cannot silently become an admin-wide query.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ListDeadLettersAsyncRejectsWhitespaceTenant(string tenantId) {
+        (DaprDeadLetterQueryService service, _) = CreateService(new NullAdminAuthContext());
 
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            "admin:dead-letters:all",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => entries);
-
-        DaprDeadLetterQueryService service = CreateService(daprClient);
-
-        PagedResult<DeadLetterEntry> result = await service.ListDeadLettersAsync(null, 10, null);
-
-        result.Items.Count.ShouldBe(2);
+        _ = await Should.ThrowAsync<ArgumentException>(
+            () => service.ListDeadLettersAsync(tenantId, 10, null));
     }
 
+    /// <summary>Verifies service unavailability is propagated to the existing controller mapping.</summary>
     [Fact]
-    public async Task ListDeadLettersAsync_ReturnsEmpty_WhenIndexNotFound() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            Arg.Any<string>(),
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => (List<DeadLetterEntry>?)null);
+    public async Task ListDeadLettersAsyncPropagatesServiceUnavailable() {
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(new NullAdminAuthContext());
+        handler.SetupErrorResponse(HttpStatusCode.ServiceUnavailable);
 
-        DaprDeadLetterQueryService service = CreateService(daprClient);
-
-        PagedResult<DeadLetterEntry> result = await service.ListDeadLettersAsync("tenant-a", 10, null);
-
-        result.Items.ShouldBeEmpty();
-        result.TotalCount.ShouldBe(0);
-    }
-
-    [Fact]
-    public async Task ListDeadLettersAsync_Throws_WhenExceptionThrown() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            Arg.Any<string>(),
-            cancellationToken: Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("State store down"));
-
-        DaprDeadLetterQueryService service = CreateService(daprClient);
-
-        _ = await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<HttpRequestException>(
             () => service.ListDeadLettersAsync("tenant-a", 10, null));
     }
 
+    /// <summary>Verifies caller cancellation is not rewritten as an operations timeout.</summary>
     [Fact]
-    public async Task ListDeadLettersAsync_PaginatesCorrectly_WithContinuationToken() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        var entries = new List<DeadLetterEntry>
-        {
-            CreateDeadLetter("msg-1", "tenant-a"),
-            CreateDeadLetter("msg-2", "tenant-a"),
-            CreateDeadLetter("msg-3", "tenant-a"),
-            CreateDeadLetter("msg-4", "tenant-a"),
-            CreateDeadLetter("msg-5", "tenant-a"),
-        };
-
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            "admin:dead-letters:tenant-a",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => entries);
-
-        DaprDeadLetterQueryService service = CreateService(daprClient);
-
-        // First page
-        PagedResult<DeadLetterEntry> page1 = await service.ListDeadLettersAsync("tenant-a", 2, null);
-        page1.Items.Count.ShouldBe(2);
-        page1.TotalCount.ShouldBe(5);
-        _ = page1.ContinuationToken.ShouldNotBeNull();
-
-        // Second page
-        PagedResult<DeadLetterEntry> page2 = await service.ListDeadLettersAsync("tenant-a", 2, page1.ContinuationToken);
-        page2.Items.Count.ShouldBe(2);
-        _ = page2.ContinuationToken.ShouldNotBeNull();
-
-        // Last page
-        PagedResult<DeadLetterEntry> page3 = await service.ListDeadLettersAsync("tenant-a", 2, page2.ContinuationToken);
-        page3.Items.Count.ShouldBe(1);
-        page3.ContinuationToken.ShouldBeNull();
-    }
-
-    [Fact]
-    public async Task ListDeadLettersAsync_PropagatesCancellation() {
-        using CancellationTokenSource cts = new();
-        await cts.CancelAsync();
-
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
-            StateStoreName,
-            Arg.Any<string>(),
-            cancellationToken: Arg.Any<CancellationToken>())
-            .Returns<List<DeadLetterEntry>?>(_ => throw new OperationCanceledException());
-
-        DaprDeadLetterQueryService service = CreateService(daprClient);
+    public async Task ListDeadLettersAsyncPropagatesCallerCancellation() {
+        using CancellationTokenSource source = new();
+        await source.CancelAsync();
+        (DaprDeadLetterQueryService service, TestHttpMessageHandler handler) = CreateService(new NullAdminAuthContext());
+        handler.SetupException(new OperationCanceledException(source.Token));
 
         _ = await Should.ThrowAsync<OperationCanceledException>(
-            () => service.ListDeadLettersAsync("tenant-a", 10, null, cts.Token));
+            () => service.ListDeadLettersAsync("tenant-a", 10, null, source.Token));
+    }
+
+    private static (DaprDeadLetterQueryService Service, TestHttpMessageHandler Handler) CreateService(
+        IAdminAuthContext authContext)
+        => CreateService(authContext, out _);
+
+    private static (DaprDeadLetterQueryService Service, TestHttpMessageHandler Handler) CreateService(
+        IAdminAuthContext authContext,
+        out DaprClient daprClient) {
+        daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.CreateInvokeMethodRequest(Arg.Any<HttpMethod>(), "eventstore-operations", Arg.Any<string>())
+            .Returns(call => new HttpRequestMessage(
+                call.ArgAt<HttpMethod>(0),
+                "http://localhost/" + call.ArgAt<string>(2)));
+        _ = daprClient.CreateInvokeMethodRequest(
+                Arg.Any<HttpMethod>(),
+                "eventstore-operations",
+                Arg.Any<string>(),
+                Arg.Any<IReadOnlyCollection<KeyValuePair<string, string>>>() )
+            .Returns(call => {
+                string endpoint = call.ArgAt<string>(2);
+                IReadOnlyCollection<KeyValuePair<string, string>> query = call.ArgAt<IReadOnlyCollection<KeyValuePair<string, string>>>(3);
+                string queryString = string.Join("&", query.Select(static item =>
+                    Uri.EscapeDataString(item.Key) + "=" + Uri.EscapeDataString(item.Value)));
+                return new HttpRequestMessage(call.ArgAt<HttpMethod>(0), "http://localhost/" + endpoint + "?" + queryString);
+            });
+        var handler = new TestHttpMessageHandler();
+        HttpClient client = new(handler) { BaseAddress = new Uri("http://localhost") };
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>()).Returns(client);
+        var service = new DaprDeadLetterQueryService(
+            daprClient,
+            factory,
+            Options.Create(new AdminServerOptions {
+                OperationsAppId = "eventstore-operations",
+                ServiceInvocationTimeoutSeconds = 30,
+            }),
+            authContext,
+            NullLogger<DaprDeadLetterQueryService>.Instance);
+        return (service, handler);
     }
 }

@@ -86,6 +86,7 @@ TIER1_PROJECTS=(
   "tests/Hexalith.EventStore.Admin.Cli.Tests"
   "tests/Hexalith.EventStore.Admin.Mcp.Tests"
   "tests/Hexalith.EventStore.Admin.Server.Tests"
+  "tests/Hexalith.EventStore.Operations.Tests"
   "tests/Hexalith.EventStore.Admin.Server.Host.Tests"
   "tests/Hexalith.EventStore.Admin.UI.Tests"
   "tests/Hexalith.EventStore.AppHost.Tests"

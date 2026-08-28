@@ -21,6 +21,11 @@ public sealed class AdminServerOptions {
     public string EventStoreAppId { get; set; } = "eventstore";
 
     /// <summary>
+    /// Gets or sets the EventStore operations DAPR app ID for subscriber dead-letter management.
+    /// </summary>
+    public string OperationsAppId { get; set; } = "eventstore-operations";
+
+    /// <summary>
     /// Gets or sets the Tenants service DAPR app ID for service invocation.
     /// </summary>
     public string TenantServiceAppId { get; set; } = "tenants";

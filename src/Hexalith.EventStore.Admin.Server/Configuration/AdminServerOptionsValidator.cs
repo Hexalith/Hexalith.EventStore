@@ -20,6 +20,10 @@ public sealed class AdminServerOptionsValidator : IValidateOptions<AdminServerOp
             (failures ??= []).Add($"{nameof(options.EventStoreAppId)} must not be empty.");
         }
 
+        if (string.IsNullOrWhiteSpace(options.OperationsAppId)) {
+            (failures ??= []).Add($"{nameof(options.OperationsAppId)} must not be empty.");
+        }
+
         if (string.IsNullOrWhiteSpace(options.TenantServiceAppId)) {
             (failures ??= []).Add($"{nameof(options.TenantServiceAppId)} must not be empty.");
         }
