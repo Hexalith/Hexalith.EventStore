@@ -267,7 +267,8 @@ resolution: already resolved: src/Hexalith.EventStore.RestApi.Generators/RestApi
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)"), 2026-08-26
 location: RestApiMessageParser.ParseReferenced
 reason: Referenced-message discovery (`RestApiMessageParser.ParseReferenced`) is driven off `CompilationProvider` and emits a reference-equality `ImmutableArray`, so it re-runs the referenced-assembly walk on every compilation and weakens IDE incrementality. Consistent with the generator's pre-existing CompilationProvider usage; perf-only. Consider an equatable model/comparer if editor responsiveness regresses.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.EventStore.RestApi.Generators/RestApiGenerator.cs:37-44 applies RestApiMessageDescriptorArrayComparer, and tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiIncrementalGenerationTests.cs:61-88 proves unrelated syntax edits remain cached.
 
 ### DW-33: Blazor components treat "no projection yet" only as HTTP 404; a gateway `Success==false` semantic failure surfaces as `EventStoreGatewayException.StatusCode == 200` and falls through to the generic catch. Matches the old code's 404-only behavior, so no regression, but the empty-state contract could be made explicit.
 
@@ -704,7 +705,8 @@ origin: migrated from legacy ledger ("Deferred from: review of spec-gh-291843195
 location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md
 reason: Wire and verify Story 1.9 projection slot discovery and canonical read-model address ownership end to end. evidence: The pre-existing slot/address types lack reliable registration and contract coverage, declarations can be skipped by handler-registration early returns, and no production writer currently proves it uses the same canonical key factory as erasure.
-status: open
+status: done 2026-08-28
+resolution: already resolved: Commit 322e3193 implemented projection slot declarations and erasure registration; EventStoreDomainServiceExtensions.cs:544-568 discovers declared slots and ProjectionEraseCoordinator.cs:109-157 reconstructs admitted addresses canonically.
 
 ### DW-88: Finish the Story 1.9 persisted erasure coordinator and lifecycle/admin boundary before exposing partial seams.
 
@@ -1223,7 +1225,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-12-multi-p
 location: domain-release.yml
 source_spec: _bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md
 reason: [LOW] The Builds-identity gate is behaviorally tested only for the SHA-mismatch branch; the repository-identity, authority-URL, and owner-allowlist branches in `domain-release.yml` are only substring-asserted, not provoked with negative env permutations. evidence: Story 3.12 code review (verification-gap layer). Lower priority: the gate is production-proven working (v3.77.2 run 29694935552 step succeeded), so this is defense against a future logic regression in the repo comparison, not a current defect. Owned by the Hexalith.Builds maintainer.
-status: open
+status: done 2026-08-28
+resolution: already resolved: references/Hexalith.Builds/Github/publish-containers/tests/test_governed_release_workflow.py:1029-1049 and test_publication_preflight.py:214-303 exercise repository/ref/SHA and publication-authority rejection paths.
 
 ### DW-154: [LOW] Redirect `Location` with an invalid or out-of-range port (e.g. `:99999`, `:abc`) makes `parsed.port` raise `ValueError` inside the redirect handler, which is not caught (only `URLError`/`TimeoutError` are) -- validator aborts with a raw traceback instead of a clean `unresolved-*` failure.
 
@@ -1322,7 +1325,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1169
 source_spec: _bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md
 reason: [MEDIUM] A `304` carrying `Lifecycle: Degraded` renders a normal `Ready` surface, while the identical evidence on a `200` renders `Degraded` — the same authoritative "projection degraded" claim produces two different user-visible surfaces depending only on cache validation. evidence: Story 2.6 code review (blind-hunter + edge-case-hunter) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1169`]. On 200 the five call sites return `*.Degraded(...)` on `IsDegraded == true`; on 304 `ResolveNotModifiedFreshness` routes into `ResolveFreshness`, which returns `Unknown`, and every `Resolve*KindForFreshness` mapping collapses non-`Stale` to `Ready`/`Empty`. Pre-existing: the pre-diff predicate `metadata?.IsDegraded == true || metadata?.IsStale is not null` also routed a degraded 304 into `ResolveFreshness` for the same `Unknown` result, so the diff does not cause it. Reachable through the shipped client, which maps a degraded 304 to `IsDegraded = true` at `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs:154-166`. Newly relevant because the diff added a theory that pins `Degraded -> TenantDetailSurfaceKind.Ready` as expected behaviour. Owned by the Hexalith.Tenants maintainer.
-status: open
+status: done 2026-08-28
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:867-881 maps a 304 response carrying degraded metadata to GlobalAdministratorsSurfaceKind.Degraded.
 decision: 2026-08-27 Render degraded — Preserve cached payload but render authoritative Degraded lifecycle consistently.
 decision: 2026-08-27 Render degraded — Preserve cached payload but render authoritative Degraded lifecycle consistently.
 
@@ -1588,7 +1592,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-1-re-tier-
 location: references/Hexalith.FrontComposer/.github/workflows/release.yml:89
 source_spec: _bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md
 reason: [LOW, FrontComposer-owned] Asymmetric supply-chain pinning: `release.yml` pins Builds to an exact SHA under the REL-6 identity rationale, while `ci.yml` and `quality.yml` both consume Builds at `@main` — the lanes that authorize the release run unpinned Builds code. evidence: Story 3.1 closure code review (verification-gap), verified 2026-07-28 against `references/Hexalith.FrontComposer/.github/workflows/release.yml:89`, `ci.yml:25`, `quality.yml:40`. Related: the release pin currently trails Builds `main` by a large margin, so the release path executes Builds logic no other lane validated. Owned by the Hexalith.FrontComposer maintainer. Suggested durable fix: assert a bounded `git rev-list --count <pin>..origin/main` distance, or pin all three lanes.
-status: open
+status: done 2026-08-28
+resolution: already resolved: references/Hexalith.FrontComposer/.github/workflows/ci.yml:25 pins the Builds CI workflow to an exact SHA, while release.yml:41-71 authenticates the exact successful CI push SHA before release.
 
 ### DW-197: [MEDIUM, FrontComposer-owned] The release-pin fix duplicates work already tracked as REL-6 and landed direct-to-main against FrontComposer's own frozen spec, which lists "Committing directly to `main` instead of a `fix/` branch + PR" under Ask First.
 
@@ -1798,7 +1803,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-3.13 (
 location: spec-3-13-deployed-runtime-parity-closure.md:7
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: [LOW] `review_loop_iteration: 1` was not incremented despite two documented hardening passes recorded in the same file's Spec Change Log. evidence: `spec-3-13-deployed-runtime-parity-closure.md:7` frontmatter still reads `review_loop_iteration: 1`, while the Spec Change Log records "Applied all 15 code-review patches" and, separately, "Applied the second review-hardening pass ... 115 focused mutation cases," both dated 2026-08-04. Cosmetic drift, not blocking.
-status: open
+status: done 2026-08-28
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:562 explicitly records the human-authorized reset of review_loop_iteration from 15 to 1.
 
 ### DW-223: [LOW] The story's File List omits several evidence files the tests and crosswalk already depend on and validate.
 
@@ -2068,7 +2074,8 @@ origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-
 location: verify-source
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md
 reason: Release `verify-source` job body and fail-closed release inputs (`expected-package-count`, `timeout-minutes`) lack Contracts assertions comparable to the CI job-scoped guards. evidence: Edge-case review of post-baseline release topology changes — not caused by this mixed-job guardrail story.
-status: open
+status: done 2026-08-28
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:597 and :658 pin verify-source structure and release timeout, while :365 pins expected-package-count; commit f18fbf11 added the remaining assertions.
 
 ### DW-255: CommitMessagePolicy markdown helpers can throw on malformed percent-encoding (`Uri.UnescapeDataString`) and can treat tab-indented fences as operative preflight blocks.
 
@@ -3087,7 +3094,8 @@ location: spec-3-13-deployed-runtime-parity-closure.md:7
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 severity: low
 reason: `review_loop_iteration` frontmatter metadata does not track the number of review passes the spec itself narrates. evidence: `spec-3-13-deployed-runtime-parity-closure.md:7` stays `1` although the 2026-08-22 diff alone narrates three distinct passes (the 2026-08-21 loop, its loop-1 historical ledger, and the 2026-08-22 closure). Cosmetic; the same field was previously corrected from `7` to `13` in an earlier chunk of this story.
-status: open
+status: done 2026-08-28
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:562-563 records the human-authorized reset of review_loop_iteration to 1 for the re-scoped contract.
 
 ### DW-378: "Review Closure" sections collapse many granular historical findings into a few broad bullets, discarding per-finding traceability.
 
@@ -3380,7 +3388,8 @@ location: DigestBearingRawOciEvidenceIsBinary
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 severity: medium
 reason: The `.gitattributes` normalization guard enumerates only `*.raw`, leaving 56 `.nupkg` and every digest-bound `.json`/`.txt`/`.log` file unguarded. evidence: `DigestBearingRawOciEvidenceIsBinary` enumerates `git ls-files "*.raw"` only. Deleting the `story-3-15/**/*.nupkg binary` line while keeping `story-3-15/** text eol=lf` turns all 14 story-3-15 packages into text, breaking every `packages.items[*].sha256` binding on a `core.autocrlf=true` checkout, with the suite still green on Linux CI. This loop added `*.py text eol=lf` for the SHA-pinned verifiers, but the enumerating guard was not generalized.
-status: open
+status: done 2026-08-28
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:976-987 enumerates both *.raw and *.nupkg digest-bearing evidence and asserts both tracked classes are binary.
 
 ### DW-409: The multi-RID `org.opencontainers.image.created` assertion compares the artifact to itself.
 
@@ -3529,7 +3538,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: ContainerPublicationDefaultsTagToProvenanceVersion
 source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md
 reason: The container default-tag test never observes the tag value it claims was defaulted. evidence: `ContainerPublicationDefaultsTagToProvenanceVersion` runs only `ValidateContainerProvenanceInputs` and checks exit zero; deleting or breaking the default assignment can leave that test green. A future publisher test should inspect the evaluated tag or produced archive.
-status: open
+status: done 2026-08-28
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:329-345 reads the evaluated ContainerImageTag and asserts it equals the provenance version; commit ba0c367e added this proof.
 
 ### DW-425: The frozen Story 3.14 timestamp parser remains weaker than the strict Story 3.15 parser.
 
@@ -4175,7 +4185,8 @@ origin: migrated from legacy ledger ("flat append from spec-admin-ui-tenants-pag
 location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs
 source_spec: _bmad-output/implementation-artifacts/spec-admin-ui-tenants-page-error.md
 reason: Assert the corrective validator's exact rerun instruction on failure. Production now appends a recovery trigger to CLI errors, but malformed-input tests assert only the primary failure and would pass if the rerun instruction disappeared.
-status: open
+status: done 2026-08-28
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2462-2468 requires the exact rerun trigger on every ShouldFailClosed assertion.
 
 ### DW-498: Exercise the actual on-disk retained-file size guard.
 
@@ -4247,7 +4258,8 @@ origin: migrated from legacy ledger ("flat append from spec-gh-33105831846-fix-c
 location: references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Components/TenantAuditPageTests.cs:849
 source_spec: _bmad-output/implementation-artifacts/spec-gh-33105831846-fix-ci-cd.md
 reason: The fixture builds rows with non-current defaults, no projection version, and incomplete evidence while the current loader and page gate require current lifecycle, versioned, complete evidence.
-status: open
+status: done 2026-08-28
+resolution: already resolved: references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Pages/TenantAuditPageTests.cs:900-913 creates current rows with current lifecycle and a projection version; Tenants commit ead00b0c6.
 
 ### DW-507: Re-audit deferred-work closures DW-171, DW-223, and DW-282 against their original acceptance gaps.
 
