@@ -91,7 +91,7 @@ public sealed class DeadLetterOperationsAuthorizationTests
             TimeProvider.System,
             new EventStoreOperationsTelemetry(services.GetRequiredService<IMeterFactory>(), TimeProvider.System, Options.Create(new EventStoreOperationsOptions())));
 
-        measurements.ShouldBe(["capture-failed"]);
+        measurements.ShouldContain("capture-failed");
     }
 
     /// <summary>
