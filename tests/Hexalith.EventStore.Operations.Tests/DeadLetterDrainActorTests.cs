@@ -195,6 +195,46 @@ public sealed class DeadLetterDrainActorTests
         record.ReplayAttempts.ShouldBe(int.MaxValue);
     }
 
+    /// <summary>
+    /// Verifies a permanently failing replay stops retrying once the attempt ceiling is reached.
+    /// </summary>
+    /// <remarks>
+    /// Without a ceiling, a target that rejects the item forever re-delivers it every reminder period
+    /// indefinitely. On exhaustion the item leaves the open backlog as archived and keeps both the exhaustion
+    /// marker and the last failure reason, so an operator can still see why it stopped.
+    /// </remarks>
+    [Fact]
+    public async Task PermanentlyFailingReplayStopsAtTheAttemptCeiling()
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager stateManager, IDeadLetterReplayTransport transport) =
+            CreateActor(options: new EventStoreOperationsOptions { MaxReplayAttempts = 3 });
+        _ = transport
+            .DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new HttpRequestException(
+                "rejected",
+                null,
+                System.Net.HttpStatusCode.BadRequest)));
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+
+        _ = await actor.RetryAsync(new DeadLetterActionRequest("tenant-a", ["message-a"]));
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            await actor.ReceiveReminderAsync(
+                DeadLetterDrainActor.ReplayReminderName,
+                [],
+                TimeSpan.Zero,
+                TimeSpan.FromMinutes(1));
+        }
+
+        DeadLetterRecord record = Record(stateManager, "message-a");
+        record.State.ShouldBe(DeadLetterReplayState.Archived);
+        record.ReplayAttempts.ShouldBe(3);
+        record.LastReasonCode.ShouldBe("replay-exhausted:target-invalid");
+        await transport.Received(3).DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+        DeadLetterListResult open = await actor.ListAsync(new DeadLetterListRequest(null, 10, 0));
+        open.TotalCount.ShouldBe(0);
+    }
+
     /// <summary>Verifies real activation preserves requested intent and normalizes in-flight work before arming recovery.</summary>
     [Theory]
     [InlineData(DeadLetterReplayState.ReplayRequested, null)]
@@ -304,7 +344,8 @@ public sealed class DeadLetterDrainActorTests
 
     private static (DeadLetterDrainActor Actor, InMemoryStateManager StateManager, IDeadLetterReplayTransport Transport) CreateActor(
         ActorTimerManager? timerManager = null,
-        EventStoreOperationsTelemetry? telemetry = null)
+        EventStoreOperationsTelemetry? telemetry = null,
+        EventStoreOperationsOptions? options = null)
     {
         var stateManager = new InMemoryStateManager();
         timerManager ??= Substitute.For<ActorTimerManager>();
@@ -319,7 +360,7 @@ public sealed class DeadLetterDrainActorTests
             host,
             transport,
             telemetry,
-            Options.Create(new EventStoreOperationsOptions()));
+            Options.Create(options ?? new EventStoreOperationsOptions()));
         s_stateManagerProperty.SetValue(actor, stateManager);
         return (actor, stateManager, transport);
     }

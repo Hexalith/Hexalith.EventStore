@@ -34,10 +34,41 @@ public sealed class EventStoreOperationsHostTests
             .Value.GetString().ShouldBe("pubsub");
         subscription.GetProperty("topic").GetString().ShouldBe("deadletter.work.events");
         subscription.GetProperty("route").GetString().ShouldBe("dead-letters/work/events");
+
+
+        // The dead-letter topic has no dead-letter destination of its own, so a non-2xx here is an unbounded
+        // redelivery loop. An empty body can never become non-empty, so it is acknowledged and counted instead.
         using HttpResponseMessage capture = await client.PostAsync(
             "/dead-letters/work/events",
             new ByteArrayContent([]));
-        capture.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        capture.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    /// <summary>
+    /// Verifies the token boundary rejects untokened operator traffic while health probes still pass.
+    /// </summary>
+    /// <remarks>
+    /// The Dapr sidecar app health check and the orchestrator probe never carry the app token. If they were
+    /// guarded, the workload would never report healthy in exactly the environments where the token is required,
+    /// and the admin console that waits on it would never start.
+    /// </remarks>
+    [Theory]
+    [InlineData("/alive", HttpStatusCode.OK)]
+    [InlineData("/health", HttpStatusCode.OK)]
+    [InlineData("/internal/dead-letters/count", HttpStatusCode.Unauthorized)]
+    public async Task UntokenedProductionRequestsAreGuardedExceptHealthProbes(string path, HttpStatusCode expected)
+    {
+        using var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                _ = builder.UseEnvironment("Production");
+                _ = builder.UseSetting(DaprAppChannelSecurity.ConfigurationKey, "sidecar-secret");
+            });
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync(path);
+
+        response.StatusCode.ShouldBe(expected);
     }
 
     /// <summary>Verifies sidecar-token requests can reach every application-channel surface in Production.</summary>

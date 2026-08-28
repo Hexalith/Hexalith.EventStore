@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Text;
 
 using Dapr.Actors;
@@ -7,8 +8,11 @@ using Hexalith.EventStore.Operations.Actors;
 using Hexalith.EventStore.Operations.Configuration;
 using Hexalith.EventStore.Operations.Endpoints;
 using Hexalith.EventStore.Operations.Models;
+using Hexalith.EventStore.Operations.Telemetry;
 
 using Microsoft.AspNetCore.Http;
+
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -67,35 +71,75 @@ public sealed class DeadLetterCaptureBodyTests
             .Returns(new DeadLetterCaptureResult(DeadLetterCaptureOutcome.Captured));
         IActorProxyFactory factory = Factory(actor);
 
+        using ServiceProvider services = Metrics();
+
         IResult result = await DeadLetterOperationsEndpointExtensions.CaptureAsync(
             context.Request,
             factory,
             Options.Create(new EventStoreOperationsOptions { MaxBodyBytes = body.Length }),
-            TimeProvider.System);
+            TimeProvider.System,
+            Telemetry(services));
 
         result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status200OK);
         _ = await actor.Received(1).CaptureAsync(Arg.Is<DeadLetterCaptureRequest>(request =>
             request.Body.SequenceEqual(body)));
     }
 
-    /// <summary>Verifies the capture endpoint rejects chunked oversize before actor work.</summary>
+    /// <summary>
+    /// Verifies a chunked oversize body is dropped before actor work and acknowledged rather than looped.
+    /// </summary>
+    /// <remarks>
+    /// A body over the retention limit is over it on every redelivery. Because this topic has no dead-letter
+    /// destination of its own, returning a non-2xx would make Dapr redeliver it forever while nothing is ever
+    /// retained. The bounded oversize capture counter is the operator's signal instead.
+    /// </remarks>
     [Fact]
-    public async Task CaptureEndpointRejectsChunkedOversizeBeforeActorInvocation()
+    public async Task CaptureEndpointAcknowledgesChunkedOversizeBeforeActorInvocation()
     {
         var context = new DefaultHttpContext();
         context.Request.ContentLength = null;
         context.Request.Body = new ChunkedReadStream(new byte[128], 9);
         IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
+        using ServiceProvider services = Metrics();
 
         IResult result = await DeadLetterOperationsEndpointExtensions.CaptureAsync(
             context.Request,
             Factory(actor),
             Options.Create(new EventStoreOperationsOptions { MaxBodyBytes = 16 }),
-            TimeProvider.System);
+            TimeProvider.System,
+            Telemetry(services));
 
-        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status413PayloadTooLarge);
+        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status200OK);
         _ = await actor.DidNotReceiveWithAnyArgs().CaptureAsync(default!);
     }
+
+    /// <summary>Verifies a hash conflict is acknowledged, since redelivery can never resolve it.</summary>
+    [Fact]
+    public async Task CaptureEndpointAcknowledgesHashConflict()
+    {
+        byte[] body = Encoding.UTF8.GetBytes(ValidEnvelope());
+        var context = new DefaultHttpContext();
+        context.Request.ContentLength = null;
+        context.Request.Body = new ChunkedReadStream(body, 11);
+        IDeadLetterDrainActor actor = Substitute.For<IDeadLetterDrainActor>();
+        _ = actor.CaptureAsync(Arg.Any<DeadLetterCaptureRequest>())
+            .Returns(new DeadLetterCaptureResult(DeadLetterCaptureOutcome.HashConflict));
+        using ServiceProvider services = Metrics();
+
+        IResult result = await DeadLetterOperationsEndpointExtensions.CaptureAsync(
+            context.Request,
+            Factory(actor),
+            Options.Create(new EventStoreOperationsOptions { MaxBodyBytes = body.Length }),
+            TimeProvider.System,
+            Telemetry(services));
+
+        result.ShouldBeAssignableTo<IStatusCodeHttpResult>().StatusCode.ShouldBe(StatusCodes.Status200OK);
+    }
+
+    private static ServiceProvider Metrics() => new ServiceCollection().AddMetrics().BuildServiceProvider();
+
+    private static EventStoreOperationsTelemetry Telemetry(ServiceProvider services)
+        => new(services.GetRequiredService<IMeterFactory>(), TimeProvider.System);
 
     private static IActorProxyFactory Factory(IDeadLetterDrainActor actor)
     {

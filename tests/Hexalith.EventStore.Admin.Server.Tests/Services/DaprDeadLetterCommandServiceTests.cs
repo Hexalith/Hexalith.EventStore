@@ -235,4 +235,23 @@ public class DaprDeadLetterCommandServiceTests {
         result.Success.ShouldBeFalse();
         result.ErrorCode.ShouldBe("NotFound");
     }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, "Unauthorized")]
+    [InlineData(HttpStatusCode.Forbidden, "Unauthorized")]
+    [InlineData(HttpStatusCode.UnprocessableEntity, "InvalidOperation")]
+    public async Task InvokePost_CanonicalizesAuthorizationAndValidationStatuses(
+        HttpStatusCode status,
+        string expectedErrorCode) {
+        // The operations workload answers an unauthorized caller with 403 and a rejected action with 422.
+        // Both must canonicalize (DW11 AC4) so AdminDeadLettersController surfaces the matching ProblemDetails
+        // instead of a blanket 500 that hides an authorization failure as a server fault.
+        (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(status);
+
+        AdminOperationResult result = await service.RetryDeadLettersAsync("tenant-a", ["msg-1"]);
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe(expectedErrorCode);
+    }
 }

@@ -319,21 +319,31 @@ public sealed class DeadLetterDrainActor(
                     .ConfigureAwait(false);
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
                 _telemetry.Action(_options.TopicName, "replayed", "target-acknowledged");
-                await ObserveBacklogAsync().ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // A target that rejects this item permanently must not be re-delivered every reminder period
+                // forever. Once the attempt ceiling is reached the item leaves the backlog as archived, carrying
+                // both the exhaustion marker and the last failure reason; its retained body is untouched.
                 string reason = ReplayFailureReason(ex);
+                bool exhausted = replaying.ReplayAttempts >= _options.MaxReplayAttempts;
                 await StateManager
                     .SetStateAsync(
                         ItemStateName(messageId),
-                        replaying with { State = DeadLetterReplayState.ReplayRequested, LastReasonCode = reason })
+                        replaying with
+                        {
+                            State = exhausted ? DeadLetterReplayState.Archived : DeadLetterReplayState.ReplayRequested,
+                            LastReasonCode = exhausted ? "replay-exhausted:" + reason : reason,
+                        })
                     .ConfigureAwait(false);
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
-                _telemetry.Action(_options.TopicName, "retryable", reason);
-                await ObserveBacklogAsync().ConfigureAwait(false);
+                _telemetry.Action(_options.TopicName, exhausted ? "exhausted" : "retryable", reason);
             }
         }
+
+        // Observed once per drain rather than once per item: the observation rescans the whole backlog, so
+        // doing it inside the loop makes a drain quadratic in retained items.
+        await ObserveBacklogAsync().ConfigureAwait(false);
 
         if (!await HasReplayRequestsAsync().ConfigureAwait(false))
         {

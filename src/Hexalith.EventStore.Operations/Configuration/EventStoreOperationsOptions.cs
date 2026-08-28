@@ -34,4 +34,13 @@ public sealed class EventStoreOperationsOptions
 
     /// <summary>Gets or sets the replay recovery reminder interval in seconds.</summary>
     public int ReplayReminderPeriodSeconds { get; set; } = 60;
+
+    /// <summary>Gets or sets the number of delivery attempts before a retried item stops being retried.</summary>
+    /// <remarks>
+    /// A target that rejects an item permanently would otherwise be re-delivered every reminder period forever.
+    /// On exhaustion the item becomes archived with a bounded reason code, so it leaves the backlog and its
+    /// telemetry instead of consuming the drain indefinitely. The retained body is untouched and still
+    /// inspectable through the operator surface.
+    /// </remarks>
+    public int MaxReplayAttempts { get; set; } = 10;
 }

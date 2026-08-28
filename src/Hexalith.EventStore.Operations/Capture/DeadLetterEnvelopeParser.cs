@@ -33,7 +33,7 @@ internal static class DeadLetterEnvelopeParser
                 || !TryGetUniqueString(data, "domain", out string? domain)
                 || !TryGetUniqueString(data, "aggregateId", out string? aggregateId)
                 || !TryGetUniqueString(data, "correlationId", out string? correlationId)
-                || !TryGetUniqueAliasString(data, "eventName", "eventType", out string? eventType))
+                || !TryGetUniqueAliasString(data, out string? eventType, "eventTypeName", "eventName", "eventType"))
             {
                 return (new DeadLetterSafeIdentity(fallbackMessageId, null, null, null, null, null), bodySha256);
             }
@@ -68,18 +68,25 @@ internal static class DeadLetterEnvelopeParser
         return matches == 1 && value.ValueKind == JsonValueKind.Object;
     }
 
+    /// <summary>
+    /// Reads the single event-type property, accepting every name the EventStore publisher contract uses.
+    /// </summary>
+    /// <remarks>
+    /// <c>eventTypeName</c> is the name the publisher actually emits: the published <c>data</c> object is a
+    /// serialized <c>EventEnvelope</c> / <c>EventStoreDomainEventEnvelope</c>, whose event-type member is
+    /// <c>EventTypeName</c>. The shorter aliases are retained for envelopes produced by other publishers.
+    /// More than one match stays ambiguous and therefore replay-ineligible.
+    /// </remarks>
     private static bool TryGetUniqueAliasString(
         JsonElement element,
-        string firstName,
-        string secondName,
-        out string? value)
+        out string? value,
+        params string[] names)
     {
         value = null;
         int matches = 0;
         foreach (JsonProperty property in element.EnumerateObject())
         {
-            if (string.Equals(property.Name, firstName, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(property.Name, secondName, StringComparison.OrdinalIgnoreCase))
+            if (names.Any(name => string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)))
             {
                 matches++;
                 value = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : null;
