@@ -1,8 +1,10 @@
 using System.Diagnostics.Metrics;
 
+using Hexalith.EventStore.Operations.Configuration;
 using Hexalith.EventStore.Operations.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -33,7 +35,7 @@ public sealed class EventStoreOperationsTelemetryTests
         listener.Start();
 
         using ServiceProvider services = new ServiceCollection().AddMetrics().BuildServiceProvider();
-        var telemetry = new EventStoreOperationsTelemetry(services.GetRequiredService<IMeterFactory>(), TimeProvider.System);
+        var telemetry = new EventStoreOperationsTelemetry(services.GetRequiredService<IMeterFactory>(), TimeProvider.System, Options.Create(new EventStoreOperationsOptions()));
         telemetry.Capture("deadletter.work.events", "captured");
         telemetry.Action("deadletter.work.events", "retryable", "timeout");
         telemetry.SetBacklog("deadletter.work.events", 2, DateTimeOffset.UtcNow.AddSeconds(-60));
@@ -90,7 +92,7 @@ public sealed class EventStoreOperationsTelemetryTests
 
         using ServiceProvider services = new ServiceCollection().AddMetrics().BuildServiceProvider();
         var timeProvider = new MutableTimeProvider(new DateTimeOffset(2026, 8, 28, 10, 0, 0, TimeSpan.Zero));
-        var telemetry = new EventStoreOperationsTelemetry(services.GetRequiredService<IMeterFactory>(), timeProvider);
+        var telemetry = new EventStoreOperationsTelemetry(services.GetRequiredService<IMeterFactory>(), timeProvider, Options.Create(new EventStoreOperationsOptions()));
         telemetry.SetBacklog("deadletter.work.events", 4, timeProvider.GetUtcNow().AddSeconds(-90));
         telemetry.SetBacklog("deadletter.work.events", 2, timeProvider.GetUtcNow().AddSeconds(-30));
         timeProvider.Advance(TimeSpan.FromSeconds(30));
@@ -107,5 +109,42 @@ public sealed class EventStoreOperationsTelemetryTests
         public override DateTimeOffset GetUtcNow() => _now;
 
         internal void Advance(TimeSpan value) => _now += value;
+    }
+
+    /// <summary>
+    /// Verifies the backlog gauges carry the configured topic before the drain actor has ever been observed.
+    /// </summary>
+    /// <remarks>
+    /// The gauges are published from construction. A host that restarts holding a captured-but-never-retried
+    /// backlog does not activate the actor until something touches it, so a placeholder topic here would publish
+    /// a series no alert rule matches for exactly the backlog nobody is watching.
+    /// </remarks>
+    [Fact]
+    public void BacklogGaugesCarryTheConfiguredTopicBeforeAnyObservation()
+    {
+        var topics = new List<string?>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, active) => {
+            if (instrument.Meter.Name == EventStoreOperationsTelemetry.MeterName
+                && instrument.Name == "eventstore.operations.deadletter.backlog.count") {
+                active.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
+            topics.Add(tags.ToArray().Single(static tag => tag.Key == "topic").Value?.ToString()));
+        listener.Start();
+
+        using ServiceProvider services = new ServiceCollection().AddMetrics().BuildServiceProvider();
+        _ = new EventStoreOperationsTelemetry(
+            services.GetRequiredService<IMeterFactory>(),
+            TimeProvider.System,
+            Options.Create(new EventStoreOperationsOptions { TopicName = "deadletter.telemetry-seed.test" }));
+
+        listener.RecordObservableInstruments();
+
+        // A distinct topic keeps the assertion independent of any other recorder publishing on the same meter
+        // name while the suite runs in parallel. Before the topic was seeded from configuration, this gauge
+        // published under a placeholder until the actor was first observed.
+        topics.ShouldContain("deadletter.telemetry-seed.test");
     }
 }

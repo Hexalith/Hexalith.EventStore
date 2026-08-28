@@ -139,7 +139,10 @@ public sealed class DeadLetterCaptureBodyTests
     private static ServiceProvider Metrics() => new ServiceCollection().AddMetrics().BuildServiceProvider();
 
     private static EventStoreOperationsTelemetry Telemetry(ServiceProvider services)
-        => new(services.GetRequiredService<IMeterFactory>(), TimeProvider.System);
+        => new(
+            services.GetRequiredService<IMeterFactory>(),
+            TimeProvider.System,
+            Options.Create(new EventStoreOperationsOptions()));
 
     private static IActorProxyFactory Factory(IDeadLetterDrainActor actor)
     {

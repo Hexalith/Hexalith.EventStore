@@ -15,6 +15,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
+using NSubstitute.ClearExtensions;
+using NSubstitute.Core;
 
 using Shouldly;
 
@@ -317,7 +319,7 @@ public sealed class DeadLetterDrainActorTests
     [Fact]
     public async Task TenantFilteredListDoesNotOverwriteGlobalBacklogObservation()
     {
-        var telemetry = new EventStoreOperationsTelemetry(s_services.GetRequiredService<IMeterFactory>(), TimeProvider.System);
+        var telemetry = new EventStoreOperationsTelemetry(s_services.GetRequiredService<IMeterFactory>(), TimeProvider.System, Options.Create(new EventStoreOperationsOptions()));
         (DeadLetterDrainActor actor, _, _) = CreateActor(telemetry: telemetry);
         _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
         DeadLetterCaptureRequest second = CaptureRequest("message-b", [2]);
@@ -329,6 +331,136 @@ public sealed class DeadLetterDrainActorTests
         _ = await actor.ListAsync(new DeadLetterListRequest("tenant-a", 10, 0));
 
         telemetry.CurrentBacklog.Count.ShouldBe(2);
+    }
+
+    /// <summary>
+    /// Verifies an operator retry after a fixed target gets a fresh attempt budget instead of inheriting the
+    /// outage's attempts.
+    /// </summary>
+    /// <remarks>
+    /// The ceiling exists to stop an item being re-delivered every reminder period forever. Carrying the counter
+    /// across an explicit retry turns it into a lifetime cap: an item that burned its budget while the target was
+    /// down would be archived on the first delivery after the fix, so the triage-fix-retry loop the operator
+    /// surface exists for could never complete.
+    /// </remarks>
+    [Fact]
+    public async Task OperatorRetryRestartsTheReplayAttemptBudget()
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager stateManager, IDeadLetterReplayTransport transport) =
+            CreateActor(options: new EventStoreOperationsOptions { MaxReplayAttempts = 2 });
+        _ = transport
+            .DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new HttpRequestException("down")));
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        _ = await actor.RetryAsync(new DeadLetterActionRequest("tenant-a", ["message-a"]));
+
+        Record(stateManager, "message-a").ReplayAttempts.ShouldBe(1);
+
+        transport.ClearSubstitute(ClearOptions.ReturnValues);
+        _ = await actor.RetryAsync(new DeadLetterActionRequest("tenant-a", ["message-a"]));
+
+        DeadLetterRecord record = Record(stateManager, "message-a");
+        record.State.ShouldBe(DeadLetterReplayState.Replayed);
+        record.ReplayAttempts.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies an item archived by replay exhaustion can be retried again, while one an operator archived
+    /// deliberately cannot.
+    /// </summary>
+    /// <remarks>
+    /// Exhaustion is an automatic outcome of a failing target, so it must be reversible once the target is fixed;
+    /// a skip or archive is an operator decision, and re-opening it would undo that decision.
+    /// </remarks>
+    [Fact]
+    public async Task ExhaustedItemIsRetryableButOperatorArchivedItemIsNot()
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager stateManager, IDeadLetterReplayTransport transport) =
+            CreateActor(options: new EventStoreOperationsOptions { MaxReplayAttempts = 1 });
+        _ = transport
+            .DeliverAsync(Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new HttpRequestException("down")));
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        _ = await actor.CaptureAsync(CaptureRequest("message-b", [2]));
+        _ = await actor.RetryAsync(new DeadLetterActionRequest("tenant-a", ["message-a"]));
+        _ = await actor.ArchiveAsync(new DeadLetterActionRequest("tenant-a", ["message-b"]));
+
+        Record(stateManager, "message-a").LastReasonCode.ShouldStartWith(DeadLetterDrainActor.ReplayExhaustedPrefix);
+
+        transport.ClearSubstitute(ClearOptions.ReturnValues);
+        DeadLetterActorActionResult exhausted = await actor.RetryAsync(
+            new DeadLetterActionRequest("tenant-a", ["message-a"]));
+        DeadLetterActorActionResult archived = await actor.RetryAsync(
+            new DeadLetterActionRequest("tenant-a", ["message-b"]));
+
+        exhausted.Success.ShouldBeTrue();
+        Record(stateManager, "message-a").State.ShouldBe(DeadLetterReplayState.Replayed);
+        archived.Success.ShouldBeFalse();
+        archived.ReasonCode.ShouldBe("not-found");
+        Record(stateManager, "message-b").State.ShouldBe(DeadLetterReplayState.Archived);
+    }
+
+    /// <summary>
+    /// Verifies the continuation cursor points at an entry the same request would actually return.
+    /// </summary>
+    /// <remarks>
+    /// The cursor is a raw index position, and the index keeps terminal and other-tenant entries. Deriving it
+    /// from the position where the page filled hands the operator a token whose page is empty.
+    /// </remarks>
+    [Fact]
+    public async Task ContinuationCursorSkipsNonMatchingTailAndIsAbsentWhenNoneRemain()
+    {
+        (DeadLetterDrainActor actor, _, _) = CreateActor();
+        _ = await actor.CaptureAsync(CaptureRequest("message-a", [1]));
+        _ = await actor.CaptureAsync(CaptureRequest("message-b", [2]));
+        _ = await actor.ArchiveAsync(new DeadLetterActionRequest("tenant-a", ["message-b"]));
+
+        DeadLetterListResult exhaustedTail = await actor.ListAsync(new DeadLetterListRequest(null, 1, 0));
+
+        exhaustedTail.Items.ShouldHaveSingleItem().Identity.MessageId.ShouldBe("message-a");
+        exhaustedTail.NextOffset.ShouldBeNull();
+
+        _ = await actor.CaptureAsync(CaptureRequest("message-c", [3]));
+        DeadLetterListResult withTail = await actor.ListAsync(new DeadLetterListRequest(null, 1, 0));
+
+        withTail.NextOffset.ShouldNotBeNull();
+        DeadLetterListResult next = await actor.ListAsync(
+            new DeadLetterListRequest(null, 1, withTail.NextOffset!.Value));
+        next.Items.ShouldHaveSingleItem().Identity.MessageId.ShouldBe("message-c");
+    }
+
+    /// <summary>Verifies the actor rejects a page size above the configured list bound.</summary>
+    [Fact]
+    public async Task ListRejectsPageSizeAboveConfiguredBound()
+    {
+        (DeadLetterDrainActor actor, _, _) = CreateActor(
+            options: new EventStoreOperationsOptions { MaxListItems = 5 });
+
+        _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(
+            () => actor.ListAsync(new DeadLetterListRequest(null, 6, 0)));
+        _ = await actor.ListAsync(new DeadLetterListRequest(null, 5, 0));
+    }
+
+    /// <summary>
+    /// Verifies a delivery the actor can never retain is reported, not thrown, and retains nothing.
+    /// </summary>
+    /// <remarks>
+    /// A Dapr actor proxy does not carry the remote exception type, so an exception could not tell the capture
+    /// endpoint whether redelivery might succeed. The endpoint must acknowledge this outcome: the sidecar's
+    /// inbound retry budget is finite and the dead-letter topic has no onward destination, so spending it on a
+    /// rejection these exact bytes always produce only delays the same loss.
+    /// </remarks>
+    [Fact]
+    public async Task CaptureReportsUnretainableInsteadOfThrowing()
+    {
+        (DeadLetterDrainActor actor, InMemoryStateManager stateManager, _) = CreateActor();
+        DeadLetterCaptureRequest valid = CaptureRequest("message-a", [1, 2, 3]);
+        var tampered = valid with { Body = [9, 9, 9] };
+
+        DeadLetterCaptureResult result = await actor.CaptureAsync(tampered);
+
+        result.Outcome.ShouldBe(DeadLetterCaptureOutcome.Unretainable);
+        stateManager.CommittedState.ShouldBeEmpty();
     }
 
     private static DeadLetterCaptureRequest CaptureRequest(string messageId, byte[] body)
@@ -355,7 +487,7 @@ public sealed class DeadLetterDrainActorTests
             TimerManager = timerManager,
         });
         IDeadLetterReplayTransport transport = Substitute.For<IDeadLetterReplayTransport>();
-        telemetry ??= new EventStoreOperationsTelemetry(s_services.GetRequiredService<IMeterFactory>(), TimeProvider.System);
+        telemetry ??= new EventStoreOperationsTelemetry(s_services.GetRequiredService<IMeterFactory>(), TimeProvider.System, Options.Create(new EventStoreOperationsOptions()));
         var actor = new DeadLetterDrainActor(
             host,
             transport,

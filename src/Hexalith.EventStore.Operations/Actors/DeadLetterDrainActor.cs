@@ -26,6 +26,7 @@ public sealed class DeadLetterDrainActor(
     public const string ActorTypeName = "EventStoreDeadLetterDrainActor";
 
     internal const string IndexStateName = "index";
+    internal const string ReplayExhaustedPrefix = "replay-exhausted:";
     internal const string ReplayReminderName = "replay-drain";
 
     private readonly EventStoreOperationsOptions _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
@@ -38,10 +39,14 @@ public sealed class DeadLetterDrainActor(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Identity);
         ArgumentNullException.ThrowIfNull(request.Body);
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.Identity.MessageId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.BodySha256);
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.Topic);
-        if (!request.Identity.HasBoundedRetainedValues()
+
+        // A delivery outside the retained bounds is reported, not thrown. Redelivering the same bytes reproduces
+        // the same rejection, so the endpoint must be able to acknowledge it; a Dapr actor proxy does not carry
+        // the remote exception type, so only a returned outcome can distinguish this from a transient fault.
+        if (string.IsNullOrWhiteSpace(request.Identity.MessageId)
+            || string.IsNullOrWhiteSpace(request.BodySha256)
+            || string.IsNullOrWhiteSpace(request.Topic)
+            || !request.Identity.HasBoundedRetainedValues()
             || !DeadLetterSafeIdentity.IsValidValue(request.Topic)
             || request.Body.Length is < 1
             || request.Body.Length > _options.MaxBodyBytes
@@ -51,7 +56,8 @@ public sealed class DeadLetterDrainActor(
                 Convert.ToHexStringLower(SHA256.HashData(request.Body)),
                 StringComparison.Ordinal))
         {
-            throw new ArgumentException("The retained identity is invalid.", nameof(request));
+            _telemetry.Capture(_options.TopicName, "unretainable");
+            return new DeadLetterCaptureResult(DeadLetterCaptureOutcome.Unretainable);
         }
 
         string itemStateName = ItemStateName(request.Identity.MessageId);
@@ -100,7 +106,7 @@ public sealed class DeadLetterDrainActor(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentOutOfRangeException.ThrowIfNegative(request.Offset);
         ArgumentOutOfRangeException.ThrowIfLessThan(request.Count, 1);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(request.Count, 500);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(request.Count, _options.MaxListItems);
         if (request.TenantId is not null && !DeadLetterSafeIdentity.IsValidValue(request.TenantId))
         {
             throw new ArgumentException("The tenant scope is invalid.", nameof(request));
@@ -125,16 +131,21 @@ public sealed class DeadLetterDrainActor(
             }
 
             totalCount++;
-            if (rawIndex < request.Offset || page.Count >= request.Count)
+            if (rawIndex < request.Offset)
             {
                 continue;
             }
 
-            page.Add(ToListItem(item.Value));
-            if (page.Count == request.Count && rawIndex < index.MessageIds.Count - 1)
+            if (page.Count < request.Count)
             {
-                nextOffset = rawIndex + 1;
+                page.Add(ToListItem(item.Value));
+                continue;
             }
+
+            // The cursor points at the next entry that actually satisfies this request, not merely at the next
+            // raw index. Handing back a cursor derived from index position alone yields an empty page whenever
+            // every later entry is terminal or belongs to another tenant.
+            nextOffset ??= rawIndex;
         }
 
         return new DeadLetterListResult(page, totalCount, nextOffset);
@@ -144,7 +155,8 @@ public sealed class DeadLetterDrainActor(
     public async Task<DeadLetterActorActionResult> RetryAsync(DeadLetterActionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        IReadOnlyList<DeadLetterRecord>? records = await LoadAuthorizedRecordsAsync(request).ConfigureAwait(false);
+        IReadOnlyList<DeadLetterRecord>? records = await LoadAuthorizedRecordsAsync(request, allowExhausted: true)
+            .ConfigureAwait(false);
         if (records is null)
         {
             return HiddenNotFound();
@@ -158,10 +170,19 @@ public sealed class DeadLetterDrainActor(
 
         foreach (DeadLetterRecord record in records)
         {
+            // The attempt counter is reset here on purpose. It bounds one operator-requested replay campaign, not
+            // the item's lifetime: an operator who has fixed the target is asking for a fresh budget, and carrying
+            // the previous outage's attempts forward would exhaust the item on its first delivery and archive it
+            // beyond recovery.
             await StateManager
                 .SetStateAsync(
                     ItemStateName(record.Identity.MessageId),
-                    record with { State = DeadLetterReplayState.ReplayRequested, LastReasonCode = null })
+                    record with
+                    {
+                        State = DeadLetterReplayState.ReplayRequested,
+                        ReplayAttempts = 0,
+                        LastReasonCode = null,
+                    })
                 .ConfigureAwait(false);
         }
 
@@ -333,7 +354,7 @@ public sealed class DeadLetterDrainActor(
                         replaying with
                         {
                             State = exhausted ? DeadLetterReplayState.Archived : DeadLetterReplayState.ReplayRequested,
-                            LastReasonCode = exhausted ? "replay-exhausted:" + reason : reason,
+                            LastReasonCode = exhausted ? ReplayExhaustedPrefix + reason : reason,
                         })
                     .ConfigureAwait(false);
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
@@ -435,7 +456,9 @@ public sealed class DeadLetterDrainActor(
         return new DeadLetterActorActionResult(false, "not-found");
     }
 
-    private async Task<IReadOnlyList<DeadLetterRecord>?> LoadAuthorizedRecordsAsync(DeadLetterActionRequest request)
+    private async Task<IReadOnlyList<DeadLetterRecord>?> LoadAuthorizedRecordsAsync(
+        DeadLetterActionRequest request,
+        bool allowExhausted = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(request.TenantId);
         ArgumentNullException.ThrowIfNull(request.MessageIds);
@@ -458,7 +481,7 @@ public sealed class DeadLetterDrainActor(
                 .TryGetStateAsync<DeadLetterRecord>(ItemStateName(messageId))
                 .ConfigureAwait(false);
             if (!item.HasValue
-                || !IsOpenState(item.Value.State)
+                || !(IsOpenState(item.Value.State) || (allowExhausted && IsReplayExhausted(item.Value)))
                 || !TenantMatches(item.Value.Identity, request.TenantId))
             {
                 return null;
@@ -484,6 +507,15 @@ public sealed class DeadLetterDrainActor(
             tenantId,
             StringComparison.Ordinal);
 
+    /// <summary>
+    /// Identifies an item the drain archived because its replay budget ran out, as opposed to one an operator
+    /// deliberately skipped or archived. Only the former may be re-opened by an explicit retry.
+    /// </summary>
+    private static bool IsReplayExhausted(DeadLetterRecord record)
+        => record.State == DeadLetterReplayState.Archived
+            && record.LastReasonCode is not null
+            && record.LastReasonCode.StartsWith(ReplayExhaustedPrefix, StringComparison.Ordinal);
+
     private static bool IsOpenState(DeadLetterReplayState state)
         => state is DeadLetterReplayState.Pending
             or DeadLetterReplayState.ReplayRequested
@@ -503,6 +535,7 @@ public sealed class DeadLetterDrainActor(
             DeadLetterCaptureOutcome.Captured => "captured",
             DeadLetterCaptureOutcome.Duplicate => "duplicate",
             DeadLetterCaptureOutcome.HashConflict => "hash-conflict",
+            DeadLetterCaptureOutcome.Unretainable => "unretainable",
             _ => "unknown",
         };
 

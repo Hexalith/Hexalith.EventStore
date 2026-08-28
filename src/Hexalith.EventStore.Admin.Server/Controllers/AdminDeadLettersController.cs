@@ -38,6 +38,9 @@ public class AdminDeadLettersController(
                 .ConfigureAwait(false);
             return Ok(count);
         }
+        catch (UnauthorizedAccessException) {
+            return CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Not authorized for the requested dead letters.");
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetDeadLetterCount), ex);
         }
@@ -62,11 +65,20 @@ public class AdminDeadLettersController(
         [FromQuery] string? continuationToken = null,
         CancellationToken ct = default) {
         try {
-            string? effectiveTenantId = ResolveTenantScope(tenantId);
+            if (!TryResolveTenantScope(tenantId, out string? effectiveTenantId)) {
+                return CreateProblemResult(
+                    StatusCodes.Status403Forbidden,
+                    "Tenant Access Denied",
+                    "Not authorized for the requested tenant.");
+            }
+
             PagedResult<DeadLetterEntry> result = await deadLetterQueryService
                 .ListDeadLettersAsync(effectiveTenantId, count, continuationToken, ct)
                 .ConfigureAwait(false);
             return Ok(result);
+        }
+        catch (UnauthorizedAccessException) {
+            return CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Not authorized for the requested dead letters.");
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ListDeadLetters), ex);
@@ -180,16 +192,35 @@ public class AdminDeadLettersController(
         return deduped;
     }
 
-    private string? ResolveTenantScope(string? requestedTenantId) {
-        if (requestedTenantId is not null) {
-            return requestedTenantId;
+    /// <summary>
+    /// Resolves the tenant scope for an unfiltered dead-letter read, refusing to widen a non-admin caller to the
+    /// global backlog.
+    /// </summary>
+    /// <remarks>
+    /// A requested tenant has already been checked against the caller's claims by
+    /// <see cref="AdminTenantAuthorizationFilter"/>. The uncovered case is the request that names no tenant: an
+    /// Operator is granted its role by <c>eventstore:permission=command:replay</c> alone and need not carry a
+    /// tenant claim, so returning <see langword="null"/> here would hand that caller every tenant's backlog.
+    /// This mattered less while the backing index was never populated; the operations workload returns real
+    /// retained items, so the global scope is now restricted to the Admin role, as on the global count endpoint.
+    /// </remarks>
+    /// <param name="requestedTenantId">The tenant explicitly requested by the caller, if any.</param>
+    /// <param name="effectiveTenantId">The resolved scope, or <see langword="null"/> for the global backlog.</param>
+    /// <returns><see langword="true"/> when the caller is authorized for the resolved scope.</returns>
+    private bool TryResolveTenantScope(string? requestedTenantId, out string? effectiveTenantId) {
+        if (!string.IsNullOrWhiteSpace(requestedTenantId)) {
+            effectiveTenantId = requestedTenantId;
+            return true;
         }
 
         if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
-            return null;
+            effectiveTenantId = null;
+            return true;
         }
 
-        return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
+        string? tenantClaim = User.FindFirst(AdminClaimTypes.Tenant)?.Value;
+        effectiveTenantId = tenantClaim;
+        return !string.IsNullOrWhiteSpace(tenantClaim);
     }
 
     private IActionResult MapOperationResult(AdminOperationResult? result) {

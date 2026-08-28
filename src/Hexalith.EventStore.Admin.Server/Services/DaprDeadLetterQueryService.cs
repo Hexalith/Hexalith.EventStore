@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
@@ -96,6 +97,18 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService {
 
             HttpClient client = _httpClientFactory.CreateClient();
             using HttpResponseMessage response = await client.SendAsync(request, cts.Token).ConfigureAwait(false);
+
+            // The operations workload answers an unauthorized caller with 403. Canonicalizing it here (DW11 AC4)
+            // keeps the read surfaces aligned with the command facade: without this, EnsureSuccessStatusCode
+            // raises HttpRequestException, which the controller classifies as a backend outage and reports to the
+            // operator as a transient 503 to retry -- hiding an authorization failure that retrying cannot fix.
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) {
+                _logger.LogWarning(
+                    "Operations endpoint '{Endpoint}' denied the forwarded operator context.",
+                    endpoint);
+                throw new UnauthorizedAccessException("The operations workload denied the request.");
+            }
+
             _ = response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<T>(cts.Token).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("The operations workload returned an empty response.");
