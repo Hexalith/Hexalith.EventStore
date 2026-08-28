@@ -2,9 +2,9 @@
 title: 'Update Packages and Aspire to Latest Compatible Releases'
 type: 'chore'
 created: '2026-08-28'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '05769ed89c4e99b283f862ca956900b14d825b1a'
-review_loop_iteration: 0
+review_loop_iteration: 1
 context:
   - '_bmad-output/project-context.md'
 ---
