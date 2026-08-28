@@ -1,4 +1,40 @@
 {
+  "DW-10": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Pin one reviewed PostgreSQL digest everywhere and add synchronized rotation governance.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
+  "DW-107": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Preserve all-or-nothing publication while periodically retrying and atomically publishing after all bindings validate.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
+  "DW-108": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add a state-bearing overload, preserve the parameterless form, propagate state, and add retry tests.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
+  "DW-109": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add a compatibility-preserving v2 work-ID factory and reconcile legacy v1 ledger entries.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
   "DW-115": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -15,6 +51,15 @@
     "intent": "Add an injectable external-PostgreSQL mode used by GitHub services while retaining a documented self-managed fallback for local and direct test runs.",
     "key": "1",
     "label": "Hybrid external service",
+    "resolution": ""
+  },
+  "DW-126": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Map persisted Erasing to an explicit unavailable or unknown query lifecycle and add transition tests.",
+    "key": "1",
+    "label": "Implement the change",
     "resolution": ""
   },
   "DW-128": {
@@ -143,6 +188,24 @@
     "label": "Expose replay eligibility",
     "resolution": ""
   },
+  "DW-267": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Authorize a successor roster, reseal as required, and collect role-distinct content-bound receipts.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
+  "DW-270": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Authorize a successor schema and reseal it with separate integrity and authorization-scope results.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
   "DW-272": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -168,6 +231,15 @@
     "intent": "Add forwarding legacy constructors and Deconstruct overloads for CommandStatusRecord, Response, DeadLetterMessage, and UnpublishedEventsRecord, with binary/API compatibility tests.",
     "key": "1",
     "label": "Add compatibility shims",
+    "resolution": ""
+  },
+  "DW-280": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Read required sources from the captured commit, reseal under authority, and prove later worktree edits do not invalidate it.",
+    "key": "1",
+    "label": "Implement the change",
     "resolution": ""
   },
   "DW-306": {
@@ -231,6 +303,15 @@
     "intent": "",
     "key": "3",
     "label": "Keep deferred",
+    "resolution": ""
+  },
+  "DW-410": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Migrate to issue-comment anchors, reseal the acceptance material, and update every consumer.",
+    "key": "1",
+    "label": "Implement the change",
     "resolution": ""
   },
   "DW-412": {

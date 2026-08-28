@@ -79,7 +79,10 @@ origin: migrated from legacy ledger ("Deferred from: live-sidecar PostgreSQL ima
 location: .github/dependabot.yml
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md
 reason: Add a `docker` ecosystem entry to `.github/dependabot.yml` so `postgres:18.4` bumps get automated PRs like the existing `nuget`/`npm`/`github-actions` ecosystems. evidence: Blind-hunter review of the CI fix -- Dependabot currently cannot see or bump the Postgres image tag in either the workflow or the fixture, so the sync in the item above would otherwise be 100% manual forever.
-status: open
+status: done 2026-08-28
+decision: 2026-08-28 Accept current behavior — Keep PostgreSQL image updates owner-controlled under the approved frozen scope.
+resolution: closed by human decision: Keep PostgreSQL image updates owner-controlled under the approved frozen scope.
+decision: 2026-08-28 Accept current behavior — Keep PostgreSQL image updates owner-controlled under the approved frozen scope.
 
 ### DW-10: Pin the live-sidecar PostgreSQL image by digest (`postgres@sha256:...`) instead of the mutable `18.4` tag, with a documented rotation process.
 
@@ -88,6 +91,8 @@ location: Oq8PostgresqlFixture.cs
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md
 reason: Pin the live-sidecar PostgreSQL image by digest (`postgres@sha256:...`) instead of the mutable `18.4` tag, with a documented rotation process. evidence: Blind-hunter review of the CI fix -- a mutable tag gives no guarantee the bits pulled today match the bits validated previously; digest pinning needs coordinated changes to both the workflow and `Oq8PostgresqlFixture.cs`, out of scope for the minimal unblock-CI fix.
 status: open
+decision: 2026-08-28 Implement the change — Pin one reviewed PostgreSQL digest everywhere and add synchronized rotation governance.
+decision: 2026-08-28 Implement the change — Pin one reviewed PostgreSQL digest everywhere and add synchronized rotation governance.
 
 ### DW-11: Cache the pulled `postgres:18.4` image (or layer) across `integration.yml` runs instead of re-pulling on every push/PR to `main`.
 
@@ -95,7 +100,10 @@ origin: migrated from legacy ledger ("Deferred from: live-sidecar PostgreSQL ima
 location: integration.yml
 source_spec: _bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md
 reason: Cache the pulled `postgres:18.4` image (or layer) across `integration.yml` runs instead of re-pulling on every push/PR to `main`. evidence: Blind-hunter review of the CI fix -- the image rarely changes but is currently re-pulled in full on every job run with no `actions/cache` or registry mirror.
-status: open
+status: done 2026-08-28
+decision: 2026-08-28 Accept current behavior — Preserve deterministic fresh resolution and avoid cache lifecycle complexity.
+resolution: closed by human decision: Preserve deterministic fresh resolution and avoid cache lifecycle complexity.
+decision: 2026-08-28 Accept current behavior — Preserve deterministic fresh resolution and avoid cache lifecycle complexity.
 
 ### DW-12: Evaluate replacing `Oq8PostgresqlFixture`'s manual `docker run`/`docker image inspect` orchestration with GitHub Actions' native `services:` container support (or an equivalent declarative approach), which would pull, health-check, and manage the Postgres container without a hand-rolled prerequisite check.
 
@@ -307,7 +315,10 @@ resolution: already resolved: src/Hexalith.EventStore.RestApi.Generators/RestApi
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-03)"), 2026-08-26
 location: ParseReferenced
 reason: Referenced contracts that rely on convention routing rather than `[RestRoute]` are not discovered by `ParseReferenced`, even though source contracts without `[RestRoute]` still get default routes. Deferred as generator hardening outside the D5 query proof.
-status: open
+status: done 2026-08-28
+decision: 2026-08-28 Accept current behavior — Require RestRoute on referenced contracts so public endpoint exposure stays intentional.
+resolution: closed by human decision: Require RestRoute on referenced contracts so public endpoint exposure stays intentional.
+decision: 2026-08-28 Accept current behavior — Require RestRoute on referenced contracts so public endpoint exposure stays intentional.
 
 ### DW-38: Query JSON names are deduplicated with `StringComparer.Ordinal`; names differing only by case can still bind ambiguously through query string/model-binding conventions. Deferred as generator hardening outside the D5 query proof.
 
@@ -781,7 +792,10 @@ decision: 2026-08-26 Accept diagnostic noise — Preserve approved Option A beca
 origin: migrated from legacy ledger ("Deferred from: code review of story-1.9 (2026-07-13)"), 2026-08-26
 location: ProjectionUpdateOrchestrator
 reason: `ProjectionUpdateOrchestrator` narrowed `public`→`internal` and dead erase surface. The visibility narrowing is disclosed/justified (verified no external consumer; DI via interfaces; no PublicAPI baseline). `IProjectionReadModelAddressFactory.CreateAggregateOwnedManifest` and `ProjectionEraseOutcomeKind.Denied` are currently unused; they become live only if the slot-completeness decision (Review Finding) adopts manifest-based erasure. Remove or wire per that decision.
-status: open
+status: done 2026-08-28
+decision: 2026-08-28 Accept current behavior — Retain the reserved public members for compatibility and document the active registered-slot path.
+resolution: closed by human decision: Retain the reserved public members for compatibility and document the active registered-slot path.
+decision: 2026-08-28 Accept current behavior — Retain the reserved public members for compatibility and document the active registered-slot path.
 
 ### DW-97: DAPR batch accessor infers key existence from ETag presence (`DaprReadModelBatchStateAccessor.cs:23`): `string.IsNullOrEmpty(etag) ? absent : present`. An ETag-less store or value reads as absent even when a value is returned. Masked on Redis (always returns ETags), and the resumable CAS protocol fundamentally requires ETags, so no impact on the supported backend. Revisit only if a non-ETag state store is ever qualified; existence should then key off value presence, not the ETag.
 
@@ -863,6 +877,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-12-asynchr
 location: src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:37
 reason: `HasFailures` blast radius on named-metadata rejection — a single domain service returning malformed/version-skewed named-projection metadata sets `hasFailures`, which makes `AdminOperationalIndexHostedService.StartAsync` skip ALL admin index writes AND the named-route catalog `Replace` for every app in the refresh; this is a once-at-startup load with no periodic retry, so named dispatch is disabled process-wide until restart. The atomic all-or-nothing publish is spec-mandated (§2); the cross-app coupling + missing refresh cadence is the broader concern. `HasFailures` blast radius on named-metadata rejection — a single domain service returning malformed/version-skewed named-projection metadata sets `hasFailures`, which makes `AdminOperationalIndexHostedService.StartAsync` skip ALL admin index writes AND the named-route catalog `Replace` for every app in the refresh; this is a once-at-startup load with no periodic retry, so named dispatch is disabled process-wide until restart. The atomic all-or-nothing publish is spec-mandated (§2); the cross-app coupling + missing refresh cadence is the broader concern. [src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:37] [verification-gap]
 status: open
+decision: 2026-08-28 Implement the change — Preserve all-or-nothing publication while periodically retrying and atomically publishing after all bindings validate.
+decision: 2026-08-28 Implement the change — Preserve all-or-nothing publication while periodically retrying and atomically publishing after all bindings validate.
 
 ### DW-108: `DomainProjectionHandlerResult.AlreadyCompleted()` has no state overload — a hand-written state-bearing named handler that returns `AlreadyCompleted()` on retry yields null state, so the coordinator advances the projection checkpoint without completing the deferred actor/ETag write (Resolved Contract #3/#5). The legacy adapter (always `Completed`+state) and batch-persistence handlers (null state, no actor write) are unaffected, so reach is narrow. Recommend adding an `AlreadyCompleted(JsonElement? state)` factory overload.
 
@@ -870,6 +886,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-12-asynchr
 location: src/Hexalith.EventStore.DomainService/DomainProjectionHandlerResult.cs:25
 reason: `DomainProjectionHandlerResult.AlreadyCompleted()` has no state overload — a hand-written state-bearing named handler that returns `AlreadyCompleted()` on retry yields null state, so the coordinator advances the projection checkpoint without completing the deferred actor/ETag write (Resolved Contract #3/#5). The legacy adapter (always `Completed`+state) and batch-persistence handlers (null state, no actor write) are unaffected, so reach is narrow. Recommend adding an `AlreadyCompleted(JsonElement? state)` factory overload. `DomainProjectionHandlerResult.AlreadyCompleted()` has no state overload — a hand-written state-bearing named handler that returns `AlreadyCompleted()` on retry yields null state, so the coordinator advances the projection checkpoint without completing the deferred actor/ETag write (Resolved Contract #3/#5). The legacy adapter (always `Completed`+state) and batch-persistence handlers (null state, no actor write) are unaffected, so reach is narrow. Recommend adding an `AlreadyCompleted(JsonElement? state)` factory overload. [src/Hexalith.EventStore.DomainService/DomainProjectionHandlerResult.cs:25] [acceptance-auditor]
 status: open
+decision: 2026-08-28 Implement the change — Add a state-bearing overload, preserve the parameterless form, propagate state, and add retry tests.
+decision: 2026-08-28 Implement the change — Add a state-bearing overload, preserve the parameterless form, propagate state, and add retry tests.
 
 ### DW-109: `ProjectionDeliveryRetryWorkItem.CreateWorkId` omits app id / service version / fingerprint — `WorkId = SHA-256(tenant/domain/aggregate/headSequence)`, so two `(appId, serviceVersion)` bindings serving the same domain+head collide on one ledger item; the second binding's app/version consistency check then fails and it defers forever. Affects blue/green or multi-version rollout of the same domain.
 
@@ -877,6 +895,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-12-asynchr
 location: src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorkItem.cs:44
 reason: `ProjectionDeliveryRetryWorkItem.CreateWorkId` omits app id / service version / fingerprint — `WorkId = SHA-256(tenant/domain/aggregate/headSequence)`, so two `(appId, serviceVersion)` bindings serving the same domain+head collide on one ledger item; the second binding's app/version consistency check then fails and it defers forever. Affects blue/green or multi-version rollout of the same domain. `ProjectionDeliveryRetryWorkItem.CreateWorkId` omits app id / service version / fingerprint — `WorkId = SHA-256(tenant/domain/aggregate/headSequence)`, so two `(appId, serviceVersion)` bindings serving the same domain+head collide on one ledger item; the second binding's app/version consistency check then fails and it defers forever. Affects blue/green or multi-version rollout of the same domain. [src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryRetryWorkItem.cs:44] [blind-hunter]
 status: open
+decision: 2026-08-28 Implement the change — Add a compatibility-preserving v2 work-ID factory and reconcile legacy v1 ledger entries.
+decision: 2026-08-28 Implement the change — Add a compatibility-preserving v2 work-ID factory and reconcile legacy v1 ledger entries.
 
 ### DW-110: `DomainProjectionCatalogRegistry` is in-memory and empty after a domain-service restart — until the gateway re-queries `/admin/operational-index-metadata` (a startup-only load), `Contains(fingerprint)` is false → `/project/v2` returns 400 `UnsupportedCapability` → the coordinator defers/retries. Overlaps the metadata refresh-cadence gap above.
 
@@ -1007,6 +1027,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-1-11-co
 location: src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248
 reason: Reconfirmed the existing Story 1.19 erase-query visibility gap at candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`: a stable `Erasing` lifecycle falls through `QueryRouter.ApplyPersistedLifecycle`, so producer `Current` can remain projection-confirmed and mutation-eligible while read-model targets are being erased. The policy choice (for example `Unknown`, `Unavailable`, or rejecting the query) remains intentionally deferred under the earlier Story 1.19 ledger entry; this review adds no duplicate implementation owner. Reconfirmed the existing Story 1.19 erase-query visibility gap at candidate `8aa6d0f0a417034d0c46eb9506fb7196a013401b`: a stable `Erasing` lifecycle falls through `QueryRouter.ApplyPersistedLifecycle`, so producer `Current` can remain projection-confirmed and mutation-eligible while read-model targets are being erased. The policy choice (for example `Unknown`, `Unavailable`, or rejecting the query) remains intentionally deferred under the earlier Story 1.19 ledger entry; this review adds no duplicate implementation owner. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:248`]
 status: open
+decision: 2026-08-28 Implement the change — Map persisted Erasing to an explicit unavailable or unknown query lifecycle and add transition tests.
+decision: 2026-08-28 Implement the change — Map persisted Erasing to an explicit unavailable or unknown query lifecycle and add transition tests.
 
 ### DW-127: Commit `ba203bde` is unbuildable in isolation: it converts the only local definition of `Microsoft.Extensions.TimeProvider.Testing` to `PackageVersion Update` while `references/Hexalith.Builds` was still pinned at `edbaeaed`, whose central props do not define the package, so CPM restore of `Server.Tests`, `Server.LiveSidecar.Tests`, and `Admin.Server.Tests` fails with NU1010 at that commit; coherence arrives only with `ea6ce49b`'s Builds bump to `cfafcbf1`. Bisect/rollback hazard only — history is already on `main`, so no rewrite; note it when bisecting across 2026-07-17.
 
@@ -2187,6 +2209,8 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: Reviewer roster maps both eventstore-owner and release-owner to the same github:jpiquot identity. evidence: AC4 asks for distinct EventStore-owner and Release-owner acceptances, but the hash-bound roster and verifier currently authorize the same identity for both roles; separation of duties is not enforced and was not renegotiated in frozen intent.
 status: open
+decision: 2026-08-28 Implement the change — Authorize a successor roster, reseal as required, and collect role-distinct content-bound receipts.
+decision: 2026-08-28 Implement the change — Authorize a successor roster, reseal as required, and collect role-distinct content-bound receipts.
 
 ### DW-268: Same working tree advances Epic 4 tracker rows and Story 4.5 LiveSidecar docs/ci prose beside Story 3.13.
 
@@ -2213,6 +2237,8 @@ location: n/a
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: release_authority.verification reports fail under a hash-check method without separating scope failure. evidence: The crosswalk marks result fail while the method text says hash-checked durable predecessor authority, even though the concrete blocker is deployment_authorized false / quarantine-only scope rather than a failed hash.
 status: open
+decision: 2026-08-28 Implement the change — Authorize a successor schema and reseal it with separate integrity and authorization-scope results.
+decision: 2026-08-28 Implement the change — Authorize a successor schema and reseal it with separate integrity and authorization-scope results.
 
 ### DW-271: Story 4.4 activation recovery can permanently starve publication-index entries beyond the fixed head scan and work budgets.
 
@@ -2296,6 +2322,8 @@ location: validate_source_binding
 source_spec: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md
 reason: The Story 4.5 evidence validator hashes current worktree files instead of the source blobs captured by its baseline commit. evidence: `validate_source_binding` reads `workspace / relative`, so ordinary later edits make the committed supposedly re-runnable evidence package fail independently of the captured revision.
 status: open
+decision: 2026-08-28 Implement the change — Read required sources from the captured commit, reseal under authority, and prove later worktree edits do not invalidate it.
+decision: 2026-08-28 Implement the change — Read required sources from the captured commit, reseal under authority, and prove later worktree edits do not invalidate it.
 
 ### DW-281: BMAD project-context sync can write `AGENTS.md` outside the selected project through a compass area path.
 
@@ -2631,7 +2659,10 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence (2026-08-11)"), 2026-08-26
 location: commands.md
 reason: MetadataKey_StaleEtagUpdate_IsRejected no longer touches a metadata key; renaming would break commands.md, the validate-evidence.py MUTATIONS map, and the committed receipts. MetadataKey_StaleEtagUpdate_IsRejected no longer touches a metadata key; renaming would break commands.md, the validate-evidence.py MUTATIONS map, and the committed receipts. [`ActorConcurrencyConflictTests.cs:130`]
-status: open
+status: done 2026-08-28
+decision: 2026-08-28 Accept current behavior — Keep the frozen name as evidence history and require corrected naming only in successor capture work.
+resolution: closed by human decision: Keep the frozen name as evidence history and require corrected naming only in successor capture work.
+decision: 2026-08-28 Accept current behavior — Keep the frozen name as evidence history and require corrected naming only in successor capture work.
 
 ### DW-323: Redaction gate uses `! rg …`, so an rg failure (exit 2) inverts to success and reports clean having scanned nothing.
 
@@ -3409,6 +3440,8 @@ source_spec: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-
 severity: medium
 reason: The Story 3.13 closure acceptance contract still requires the commit anchor that GitHub cannot mint, while the disposition lane was migrated to `#issuecomment-<id>`. evidence: `DeployedRuntimeParityClosureTests.ValidateAcceptances` still builds `<commit-url>#story-3-13-<subject>-<role>` and requires source schema `.../v1`, so only the fixture can satisfy it; the disposition path was moved to the GitHub-minted anchor and `/v2`. The two acceptance surfaces now use different, mutually unsatisfiable anchor contracts. Out of lane for Story 3.15 and left to the 3.13 lane.
 status: open
+decision: 2026-08-28 Implement the change — Migrate to issue-comment anchors, reseal the acceptance material, and update every consumer.
+decision: 2026-08-28 Implement the change — Migrate to issue-comment anchors, reseal the acceptance material, and update every consumer.
 
 ### DW-411: The `_bmad-output/test-artifacts/` gate PASS was withdrawn this loop but not regenerated.
 
