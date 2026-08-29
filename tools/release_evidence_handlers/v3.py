@@ -25,10 +25,6 @@ RETAINED_CODEC_FILE = "successful/tools/release_evidence_codec.py"
 RETAINED_VERIFIER_FILE = "successful/tools/validate-corrective-release-evidence.py"
 SHA40 = re.compile(r"^[0-9a-f]{40}$", re.ASCII)
 SHA256 = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
-# Legitimate package nuspecs in the corrective-release packet are only a few KiB. One MiB leaves
-# generous metadata headroom while preventing a highly compressed archive entry from expanding an
-# attacker-controlled amount of XML in memory before the parser's safety checks run.
-MAX_NUSPEC_UNCOMPRESSED_SIZE = 1024 * 1024
 SEMVER = re.compile(r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$", re.ASCII)
 NONCE = re.compile(r"^[A-Za-z0-9_-]{20,128}$", re.ASCII)
 PLATFORMS = ("linux/amd64", "linux/arm64")
@@ -430,50 +426,82 @@ def _verify_bound_file(root, binding):
     return content
 
 
+def _reject_prolog_declarations(nuspec_text):
+    """Fail closed when the XML prolog declares a DTD or an entity.
+
+    Every exit from the prolog scan must be either "reached the document element" or an
+    EvidenceError. An earlier form returned silently when the first non-space character was not
+    "<", which turned an unparseable prolog into a skipped scan: utf-8-sig strips exactly one BOM,
+    so a doubled BOM left a residual U+FEFF, the scan returned without looking at anything, and
+    expat then consumed the re-emitted BOM and parsed the DTD behind it.
+    """
+    position = 0
+    length = len(nuspec_text)
+    while True:
+        while position < length and nuspec_text[position].isspace():
+            position += 1
+        if position >= length or not nuspec_text.startswith("<", position):
+            raise EvidenceError("package nuspec prolog is malformed")
+        if nuspec_text.startswith("<?", position):
+            end = nuspec_text.find("?>", position + 2)
+            if end < 0:
+                raise EvidenceError("package nuspec prolog is malformed")
+            position = end + 2
+            continue
+        if nuspec_text.startswith("<!--", position):
+            end = nuspec_text.find("-->", position + 4)
+            if end < 0:
+                raise EvidenceError("package nuspec prolog is malformed")
+            position = end + 3
+            continue
+        if nuspec_text.startswith("<!", position):
+            raise EvidenceError("package nuspec contains forbidden DTD or entity declarations")
+        # The document element starts here: the prolog is over and carried no declaration.
+        return
+
+
 def nuspec_identity(package_path):
     """Return repository identity fields from one package without expanding XML entities."""
     try:
         with zipfile.ZipFile(Path(package_path)) as archive:
-            nuspecs = [entry for entry in archive.infolist() if entry.filename.endswith(".nuspec")]
+            nuspecs = [name for name in archive.namelist() if name.endswith(".nuspec")]
             if len(nuspecs) != 1:
                 raise EvidenceError("package does not contain exactly one nuspec")
-            nuspec = nuspecs[0]
-            if nuspec.file_size > MAX_NUSPEC_UNCOMPRESSED_SIZE:
-                raise EvidenceError("package nuspec exceeds the support-safe uncompressed size limit")
-            nuspec_bytes = archive.read(nuspec)
+            nuspec_bytes = archive.read(nuspecs[0])
             try:
                 nuspec_text = nuspec_bytes.decode("utf-8-sig", errors="strict")
             except UnicodeDecodeError as error:
                 raise EvidenceError("package nuspec is not strict UTF-8 XML") from error
             if "\x00" in nuspec_text:
                 raise EvidenceError("package nuspec is not strict UTF-8 XML")
-            declaration_start = re.match(r"\A\s*<\?xml\b", nuspec_text, re.IGNORECASE)
-            if declaration_start is not None:
-                declaration_end = nuspec_text.find("?>", declaration_start.start())
-                if declaration_end < 0:
+            # utf-8-sig strips exactly one leading BOM. A second one survives as U+FEFF, which is
+            # not whitespace, so it would otherwise sit in front of the prolog and be re-emitted
+            # into the bytes handed to ElementTree. Reject any residual BOM anywhere.
+            if "\ufeff" in nuspec_text:
+                raise EvidenceError("package nuspec is not strict UTF-8 XML")
+            # A pseudo-attribute value containing "?" defeated the previous [^?]* body, so the
+            # declaration did not match and the encoding check was skipped rather than failing
+            # closed. Match the declaration non-greedily up to its own "?>", and reject a document
+            # that opens one it never closes.
+            if re.match(r"\A\s*<\?xml[\s?]", nuspec_text, re.IGNORECASE):
+                declaration = re.match(
+                    r"\A\s*<\?xml\s+(.*?)\?>", nuspec_text, re.IGNORECASE | re.DOTALL)
+                if declaration is None:
                     raise EvidenceError("package nuspec is not strict UTF-8 XML")
-                declaration = nuspec_text[declaration_start.start():declaration_end + 2]
-                encodings = re.findall(
+                encoding = re.search(
                     r"\bencoding\s*=\s*(['\"])([^'\"]+)\1",
-                    declaration,
+                    declaration.group(1),
                     re.IGNORECASE,
                 )
-                if len(encodings) > 1 or (
-                    "encoding" in declaration.casefold() and len(encodings) != 1
-                ):
+                if encoding is not None and encoding.group(2).casefold() not in {"utf-8", "utf8"}:
                     raise EvidenceError("package nuspec is not strict UTF-8 XML")
-                if encodings and encodings[0][1].casefold() not in {"utf-8", "utf8"}:
-                    raise EvidenceError("package nuspec is not strict UTF-8 XML")
-            # Reject declarations that can define expanding entities, but do not mistake the same
-            # literal text inside a comment or CDATA description for executable XML markup.
-            declaration_scan = re.sub(
-                r"<!--.*?-->|<!\[CDATA\[.*?\]\]>",
-                "",
-                nuspec_text,
-                flags=re.DOTALL,
-            )
-            if re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", declaration_scan, re.IGNORECASE):
-                raise EvidenceError("package nuspec contains forbidden DTD or entity declarations")
+            # DTD and entity declarations are only legal in the prolog, so only the prolog is
+            # scanned. Scanning the whole document rejected a legitimate nuspec whose description
+            # or release notes merely quote "<!DOCTYPE". A regex for the document element start is
+            # not enough either -- a prolog comment quoting a tag would truncate the scan early --
+            # so the prolog is consumed construct by construct. An undefined entity reference in
+            # the body still fails: ElementTree raises ParseError, which is caught below.
+            _reject_prolog_declarations(nuspec_text)
             # Re-encoding the strictly decoded text prevents ElementTree from independently
             # honoring a second byte-level encoding while preserving the parser's normal XML
             # declaration behavior for the only accepted encoding.

@@ -14,7 +14,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
 | **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
-| **Release** | `.github/workflows/release.yml` | manual dispatch from the current `main` tip | Exact-source CI proof by default, or an explicit Commitlint-proof bypass, followed by a protected `production` environment and an immutable `Hexalith.Builds` release workflow for semantic-release, NuGet, GitHub Release, and the approved EventStore container. |
+| **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` tip | Exact-source preflight followed by a protected `production` environment and an immutable `Hexalith.Builds` release workflow for semantic-release, NuGet, GitHub Release, and the approved EventStore container. |
 
 ## Shared CI/CD Boundary
 
@@ -145,33 +145,15 @@ never accepted as package dependency evidence, anywhere in the nuspec.
 ## Release Flow
 
 Release is an intentional operator action. Ordinary pushes and pull requests
-run CI but never start Release. The operator selects `main`, optionally supplies
-the boolean `bypass-validation` input, and runs the workflow; semantic-release
-still derives the version from commit history. The input is optional and defaults
-to `false`. Normal mode selects `ci.yml`; bypass mode must be requested explicitly
-with `bypass-validation=true` and selects `commitlint.yml`. Before requesting
-environment approval, the manual workflow fails closed unless all of these are true:
+run CI but never start Release. The dispatch itself takes no inputs: the
+operator selects `main` and runs the workflow, and semantic-release derives the
+version from the commit history. Before requesting environment approval, the
+manual workflow fails closed unless all of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
 - the dispatch SHA still equals the live `main` ref returned by GitHub;
-- the exact SHA has a completed, successful push run of the selected source-proof
-  workflow: `ci.yml` normally, or `commitlint.yml` only for an explicit bypass.
-
-The bypass changes only the selected exact-source workflow proof. It does not
-bypass the live-`main` identity check, the protected `production` environment,
-the pinned Builds release implementation, package inventory validation,
-immutable source identity, credential checks, destination-absence checks, or
-post-publish package and container verification. It also does not itself prove
-the full unit, contracts, Tenants source-mode, or integration lanes normally
-covered by CI. Bypass mode is an exceptional recovery path after the focused
-regression checks for the repair have passed; it is not a replacement CI result.
-
-Select the current `main` tip in the GitHub Actions UI and explicitly enable
-`bypass-validation`, or dispatch the equivalent request with the GitHub CLI:
-
-```bash
-gh workflow run release.yml --ref main -f bypass-validation=true
-```
+- the exact SHA has a completed, successful `CI` workflow run whose event was a
+  push to `main`.
 
 The release concurrency group is `release-production` with cancellation
 disabled, so a later request cannot silently replace an approved publication.
@@ -189,9 +171,9 @@ NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
 semantic-release `verifyRelease` phase re-proves that the source is still the
-live `main` tip with the caller-selected exact successful push proof, then
-freezes exact repository, version, source proof, environment, workflow run,
-approved Builds, helper hashes, normalized package IDs, canonical manifest hash, container, and
+live `main` tip with exact successful push CI, then freezes exact repository,
+version, source proof, environment, workflow run, approved Builds, helper
+hashes, normalized package IDs, canonical manifest hash, container, and
 platform identity. It also proves the new version is absent for all 14 NuGet
 IDs and the container tag before Git-tag creation. The `publish` phase requires
 exact frozen-identity equality and repeats both live source proof and every
@@ -211,8 +193,8 @@ evidence; a missing, duplicate, unprefixed, or wrong-source tag fails closed.
 
 The `main` branch accepts changes only through pull requests. Release automation
 therefore does not use `@semantic-release/changelog` or `@semantic-release/git`:
-it tags the commit approved by the selected source proof and publishes generated
-notes and package assets through the GitHub release without creating or pushing a release
+it tags the already CI-approved source commit and publishes generated notes and
+package assets through the GitHub release without creating or pushing a release
 commit to `main`. Any tracked `CHANGELOG.md` update must arrive through its own
 reviewed pull request; GitHub Releases are the current machine-generated release
 record.
@@ -230,7 +212,7 @@ container, smoke, and GitHub publication failures remain blocking.
 
 The reusable-workflow reference and `builds-execution-sha` input contain the
 same reviewed 40-character Builds commit, currently
-`22a578b576a515d2af214fe81859447fffc97981`. The reusable workflow verifies its
+`a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`. The reusable workflow verifies its
 resolved SHA, checks out the nested action at that exact commit, and invokes it
 locally; the action then verifies its own action and helper bytes against the
 same commit before semantic-release can run. This immutable release-tool pin is
@@ -255,7 +237,7 @@ shape-checks whatever owner value it is given; the caller is what pins the ident
 Two separate governance tests hold that line, and it is worth knowing which does what:
 `ReleaseAuthorityOwnerIsPinnedWheneverTheAuthorityGateIsEnabled` checks the owner value
 alone -- if the gate is ever turned on, the owner must be `github:jpiquot` -- while
-`ReleaseCallerPinsSharedExecutionAndSelectedSourceMappingWithoutPublicationAuthorityInputs` asserts the caller
+`ReleaseCallerPinsSharedExecutionAndOneMappingWithoutPublicationAuthorityInputs` asserts the caller
 currently carries none of the three reservation inputs. So while the gate stays off, any
 attempt to re-enable it fails the suite until both tests are updated together; neither
 test validates the values of `reserved-version` or `release-authority-issue-url`.
@@ -287,9 +269,7 @@ source proof, frozen identity, and version-floor checks run either way. No
 projected version such as `3.96.0` is ever embedded as release policy.
 
 The `publishCmd` calls the helper installed by the shared `publish-containers`
-action only after the applicable preflight gates and NuGet publication. That
-ordering is why a container-publish failure is expensive: the packages and the
-tag are already published when it fires.
+action only after the applicable preflight gates and NuGet publication:
 
 GitHub validates reusable-workflow permissions against every nested job before
 it starts the caller, including skipped jobs. The EventStore caller therefore
@@ -324,18 +304,11 @@ all descriptor byte sizes and raw hashes, config descriptor media types, and
 config `os`/`architecture` must all agree. Exact raw child-manifest and config
 bytes are retained beside the raw parent index with independent hashes.
 Both configs must also contain identical exact
-`org.opencontainers.image.source`, `.url`, `.documentation`, `.revision`, and
-`.version` labels. Those five, and only those five, are what the shared validator and the
-retained-evidence codec check. EventStore rebinds them after the .NET SDK multi-RID inner-build
-parser so URL colons cannot be truncated to `https`, and passes source revision, release version,
-and one publisher-owned RFC 3339 creation instant as explicit publisher inputs.
-
-`org.opencontainers.image.created` and `org.opencontainers.artifact.created` are rebound the same
-way but are **not** validator-enforced. They joined the rebind set after v3.96.2 shipped, so that
-release's retained child configs both carry the colon-truncated `2026-08-20T11`. The truncation is
-what made the two children agree; once rebinding was in place a build-time fallback would have made
-them differ instead, which is why `ContainerProvenanceCreated` is now a mandatory publisher-owned
-input with no MSBuild default, forwarded by the publisher at the pinned release SHA.
+`org.opencontainers.image.source`, `.url`, `.documentation`, `.revision`, `.version`,
+`.created`, and `org.opencontainers.artifact.created` labels. EventStore rebinds those labels after the .NET SDK
+multi-RID inner-build parser so URL colons cannot be truncated to `https` and
+passes source revision, release version, and one publisher-owned RFC 3339 creation instant as
+explicit publisher inputs.
 
 Both immutable child references (`repository@sha256:...`) are explicitly pulled
 with bounded timeouts and run the same bounded
@@ -438,16 +411,16 @@ hosting environment for `linux/amd64` and `linux/arm64`.
 handler. Every file on the import path — the v1 handler, its package initializer, the v3 predecessor
 handler, and *its* package initializer — is pinned before execution. The source-only loader compiles
 those verified bytes directly, so stale timestamp-valid bytecode cannot stand in for reviewed
-source, and the imported provenance of all four modules must match the verified paths. The handler
+source and importlib never resolves these modules at all -- provenance is established before
+execution rather than re-checked afterwards. The handler
 never executes packet-supplied code: it parses and rehashes retained bytes, rejects symlinks and
 nuspec DTD/entity declarations, checks the closed technical inventory, recomputes the canonical
 subject, and validates exactly three subject-addressed receipts.
 
-The closure's `dispatch` block binds the v1 handler, the v3 predecessor handler, the v3 package
-initializer, the assembler, and the smoke-capture producer directly; the v1 package initializer is
-pinned in the dispatcher's `IMPORT_PATH_FILE_SHA256`, whose own bytes are bound by
-`dispatch.verifier`, so the executable trust chain closes transitively over all four imported
-modules and both packet producers. This closes a gap found in the
+The closure's `dispatch` block binds the v1 handler, the v3 predecessor handler, and the v3
+package initializer directly; the v1 package initializer is pinned in the dispatcher's
+`IMPORT_PATH_FILE_SHA256`, whose own bytes are bound by `dispatch.verifier`, so the trust chain
+closes transitively over all four. This closes a gap found in the
 2026-08-25 review: previously only `v1.py` and its dispatcher were bound, so a tampered `v3.py` —
 which performs predecessor validation, nuspec identity parsing, and the release-manifest check —
 produced the identical subject and selected identity with all three receipts still valid, contrary
@@ -485,44 +458,68 @@ bounded all smoke-capture work by one per-platform monotonic deadline, and corre
 trigger to bind receipt-source **policy** changes. Those trusted-byte changes re-minted the subject
 again and superseded every `dab64f5f...` receipt.
 
-The loop-6 hardening then closed the acceptance-source schema, mutation coverage, assembler caller,
-cleanup/retry, stale-bytecode, XML parsing, and operator-record gaps. It also bound the assembler and
-smoke-capture producer files and a fourth exact limitation disclosing that the prior owner comments
-were tooling-composed. Those trusted-byte changes caused one batched re-mint.
+A sixth review loop landed as one authorized batch and re-minted the subject. It made
+both packet producers -- the bounded smoke capture tool and the packet assembler -- bound decision
+inputs in the closure `dispatch` block, so a producer edit can no longer change what a passing
+Production smoke means while every receipt stays valid; it closed the schema of the retained GitHub
+comment envelopes, so a stray unreviewed field can no longer persist inside the packet's only
+external authentication artifacts with the subject unchanged; and it bound a fourth limitation
+disclosing that every acceptance receipt is composed by repository tooling and posted with the
+rostered role holder's credential rather than typed by hand. The same batch made cleanup bounded
+rather than skipped when a platform budget is exhausted, made the capture refuse to overwrite a
+populated `smokes/` directory without `--force`, restricted the nuspec DTD scan to the XML prolog,
+and removed a post-import path assertion that was true by construction.
 
-Step-04 hardening then isolated the verifier before its earliest standard-library imports, required
-`--packet-root` to validate that packet's own `closure.json`, bounded retained-file reads and nuspec
-expansion, confined smoke output to a real in-packet directory even under `--force`, and bound the
-gate record to the immutable canonical subject without citing the superseded trace matrix. Those
-trusted bytes re-minted the subject again.
+A seventh review loop landed at zero receipts, where a re-mint costs nothing, and re-minted the
+subject once more. It closed a **fail-open regression the sixth loop introduced**: narrowing the
+nuspec DTD scan to the XML prolog also made that scan return silently when the prolog did not begin
+with `<`, and because `utf-8-sig` strips exactly one byte-order mark, a doubled BOM left a residual
+U+FEFF that skipped the scan entirely -- a nuspec carrying `<!DOCTYPE ... <!ENTITY smuggle ...>` was
+then accepted with the smuggled entity resolving into the package id. Every prolog exit is now
+either "reached the document element" or a fail-closed reason, and a residual BOM is rejected.
+The same loop closed a second regression in both dispatchers: adding `TypeError` to the
+path-resolution catch had silenced a crash by making a bytes repository path answer "not
+repository-local", so such a module escaped both displacement and the post-execution shadow check.
+Paths are now decoded with `os.fsdecode` first. It also made the roster-configuration guard able to
+fail (it had compared the identity table against strings interpolated from that same table), widened
+the per-platform smoke window bound to the platform budget plus the cleanup allowance so the capture
+tool can no longer emit records this verifier rejects, and bound the assembler to the bytes actually
+executing rather than the pristine repository file.
 
-As of 2026-08-26, the packet's current subject is
-`58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6` and it passes with
-**three of three roster-bound role receipts**. Reassembly deterministically reports `receipts=3
-verifier_exit=0`. The complete `c22d35b...` receipt/source tree—including EventStore-owner comment
-`5424336008`, Release-owner comment `5424339580`, and the `bmad:murat` Test Architect record—remains
-byte-for-byte in the superseded audit area and authorizes nothing for the current subject. Renewed
-authorization retained EventStore-owner comment `5425294818` at `2026-08-26T12:28:20Z`,
-Release-owner comment `5425297492` at `2026-08-26T12:28:33Z`, and the `bmad:murat` Test Architect
-record at `2026-08-26T12:29:42Z`. Initial malformed comment `5425285803` is visibly superseded and
-is not retained.
+The packet's current subject is
+`663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31`, and the packet **fails closed at
+zero of three receipts**: each re-mint rejected the receipts collected against the prior subject by
+the same rerun trigger, and collecting replacements on issue `#352` is an owner action outside this
+repository. Until that happens deployed-runtime parity is **unavailable** and **no identity is
+selected**. Reassembly reports `receipts=0 verifier_exit=1`. The `bb58d691...`, `dab64f5f...` and
+`a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit area, whose
+README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with its source.
+Three of the seven subjects never had receipts collected at all, so three retained sets against six
+re-mints is the expected shape, not a gap.
 
-The roster maps both owner roles to one authenticated human, `github:jpiquot`; the Test Architect
-record is self-attested without independent external authentication; and the historical owner
-comments were tooling-composed and posted with that owner's write credential. Both the superseded
-c22 receipts and the current receipts repeat all four exact limitations. The retained registry
-comment's `reviewer-roster.json` name is a known copy-carried reference to
-`owner-role-registry.json`.
+`closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
+`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles are asked
+to accept, not a granted verdict: the verifier grants them only at three of three, and at zero
+receipts it exits 1 and grants nothing. `acceptances.directory` likewise names the address receipts
+must occupy, not a directory that exists today.
 
-The arm64 smoke also requires host emulation registered from the pinned `tonistiigi/binfmt`
-prerequisite (digest prefix `400a4873...`). The retained 2026-08-21 smokes were made by the capture
-producer pre-image; binding the current producer makes future edits re-mint without claiming those
-historical bytes were recaptured.
+The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
+Architect record is explicitly self-attested without independent external authentication. Owner
+comments `5409140199` and `5409147909` had timestamp mismatches, were immediately marked visibly
+superseded, and are not retained in the packet.
+
+Two facts are recorded rather than corrected. The retained roster comment names the ratified
+artifact `reviewer-roster.json` -- wording copy-carried from Story 3.13 -- while the packet retains
+`registry/owner-role-registry.json`; the reference is understood to mean that file, and correcting
+it would need a new owner comment plus another re-mint. And the `linux/arm64` Production smoke
+depends on QEMU user-mode emulation registered from
+`tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0`; that
+registration is host state, not an input byte the packet can hash, so it is documented as an
+environmental prerequisite in the capture script rather than bound into the subject.
 
 The subject cannot bind each post-subject receipt-source instance without a hash cycle. It binds
 the source policy instead: replacing one retained source invalidates that source's receipt and any
-complete 3/3 verdict, while a source-policy or producer change re-mints the subject and rejects all
-receipts.
+complete 3/3 verdict, while a source-policy change re-mints the subject and rejects all receipts.
 
 The only identity the closure may ever select is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,

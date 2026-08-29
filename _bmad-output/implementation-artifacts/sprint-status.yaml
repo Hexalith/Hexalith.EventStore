@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-08-29T10:33:40Z
+# last_updated: 2026-08-25
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '08-29-2026 12:33'
+last_updated: '08-25-2026 18:30'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -58,10 +58,12 @@ development_status:
   1-6-projection-and-domain-event-consumer-seams: done
   1-7-domain-module-hosting-observability: done
   1-8-sample-domain-centric-adoption: done
+  # Split children require Tenants maintainer approval and an exact accepted Tenants SHA.
   1-9-tenants-query-and-read-model-adoption: done
   1-10-tenants-projection-and-event-consumer-adoption: done
   1-11-domain-module-adoption-guardrails: done
   1-12-domainservice-packaging-and-governance: done
+  # Investigation/proof completed `still blocked`; it does not claim parity availability.
   1-13-projection-and-query-sdk-owner-parity-proof: done
   1-14-read-model-and-projection-checkpoint-erasure: done
   1-15-coordinated-read-model-batch-writes: done
@@ -69,7 +71,12 @@ development_status:
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
   1-19-correct-paged-rebuild-and-replay-equivalence: done
+  # Story 1.20 owner-approved parity closure is complete; authorizing commit C
+  # verified every pinned artifact, approval, prerequisite, and migration decision.
+  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
   1-20-owner-approved-parity-closure-and-runtime-pin: done
+  # Approved 2026-08-12 post-closure evidence maintenance. This backlog row does not reopen
+  # Story 1.20 or Epic 1 and grants no predecessor-byte repair authority by itself.
   1-21-frozen-story-1-20-evidence-integrity-repair: done
   epic-1-retrospective: done
 
@@ -77,34 +84,166 @@ development_status:
   2-1-rest-contract-seam-for-command-and-query-messages: done
   2-2-rest-api-generator-discovery-and-controller-emission: done
   2-3-sample-external-api-host-proof: done
+  # Story 2.4 records its accepted Tenants approval/SHA evidence; remaining split children retain their own gates.
   2-4-tenants-rest-contract-metadata-and-routes: done
+  # AD-18 host patch accepted at Tenants 846f988a (pinned 6cc9eb3a); 2026-07-26 code review closed the acceptance gate and hardened the AD-18 guards.
   2-5-dedicated-external-tenants-api-host: done
+  # 2026-07-27 final acceptance: operational lifecycle presentation is committed at Tenants
+  # 55e6000a, published on origin/main, and consumed by the EventStore gitlink. Fresh Sally UX
+  # acceptance and the accepted admin-authored maintainer authority chain are recorded; the complete
+  # project test matrix is green through individual-project fallback validation.
   2-6-tenants-ui-client-library-alignment-and-ux-evidence: done
+  # Story 2.7 corrected the EventStore stale-registration/source-topology prerequisite and
+  # passed focused configuration, CI-guard, and live persisted-provenance evidence with no
+  # net Tenants, EventStore, or Builds dependency-identity change.
   2-7-pre-authorization-registration-and-provenance-correction: done
   2-8-scoped-metadata-rich-projection-notifications: done
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done
+  # EventStore platform enforcement moved to Story 1.2; this is consumer-only review scope.
+  # 2026-07-27: the mutation-gate fix 5eed7a9 is contained by maintainer-authored published merge
+  # d2e5a121, which the EventStore gitlink pins. Review patches add complete provenance coverage and
+  # passing Tier-3 persisted-path consumer evidence; the broader sibling gates remain deferred.
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
+  # 2026-07-28: re-scoped by the approved sprint change proposal — AC2 now tracks EventStore main
+  # and AC3 validates the published Builds catalog, so the unrecoverable 999.1.20-proof bytes no
+  # longer gate this story.
+  # 2026-07-28 code review (4 layers): 3 owner decisions resolved, 13 patches applied, 2 deferred,
+  # 12 dismissed. Returned to in-progress because the AC4 guard fix lived only as an uncommitted
+  # Hexalith.Tenants working-tree edit.
+  # 2026-07-28 delta session: that guard patch was committed and published as Tenants f9e51c6, so
+  # ACCEPTANCE MOVED 578770679b9d -> f9e51c66745557da4f267ab40f32294f2f27fae7. AC2/AC3/AC4 re-proved
+  # there (EventStore 150216c3, Builds 53d53ae -> catalog 3.83.0, unchanged). Maintainer accepted
+  # f9e51c6. Back to review.
+  # 2026-07-28 delta code review (4 layers): 2 owner decisions resolved, 16 patches applied,
+  # 5 deferred, 6 dismissed. The focused delta's carried-forward gap was found to be understated —
+  # the Tenants tree had moved 16 commits / 4006 insertions, not just EventStore's 3 — so by owner
+  # decision the three carried suites were RE-RUN at f9e51c6 in both modes: Server.Tests 738/738,
+  # UI.Tests 1325/1325 (the carried-forward 1276 was wrong), IntegrationTests 167 passed / 1 skipped.
+  # That also closes AD-12's persisted-path requirement at the accepted SHA rather than by
+  # compilation. Also corrected: the "no gitlink was moved by a Story 2.12 commit" claim (false —
+  # e7de0da9 moved two, 5a1d277e moved one), and the receipt's claim that the assets parse covers
+  # ReferenceOutputAssembly="false" edges (false — proved; the Tenants XML guard covers them).
+  # CI on the accepted SHA is green (ci/build-and-test, ci/aspire-tests, codeql, commitlint).
+  # Note AC5's approval has no external GitHub record, by maintainer choice.
+  # Deferred to a follow-up Tenants story by owner decision: four AC4-guard bypasses, because
+  # fixing them would move acceptance off f9e51c6 and re-trigger AC5 a third time.
   2-12-tenants-runtime-identity-adoption-and-package-mode-validatio: done
   epic-2-retrospective: done
 
   epic-3: in-progress
+  # 3.1 moved review -> in-progress on 2026-07-28 (bmad-code-review; four layers, 5 decisions + 16 patches
+  # applied. AC1 amended to require a live-sidecar collection binding after a 17th live class was found bound
+  # to the second live collection Oq8Postgresql. CA1707 ledger re-attestation vindicated by an independent
+  # Roslyn census reproducing all three checkpoint values; all 8 tokens are legitimate test-scope identifiers.
+  # An undeclared Hexalith.Tenants gitlink bump is excluded from this story.)
+  # 3.1 moved in-progress -> review on 2026-07-28 (bmad-dev-story). AC6 fully re-run against the candidate
+  # workspace (FrontComposer b6efcad5, Tenants 7d7b7012): build 0W/0E, Server.Tests 2867/0/25, preflight
+  # exit 3, LiveSidecar 49/49 - deterministic counts byte-identical to the pre-bump run. The first live run
+  # failed 3/49 on actor calls refused by a dead app port; dapr_placement logs show 8 foreign EventStore
+  # app-ids sharing the ring in namespace default, and 3 re-runs on un-rebuilt binaries were 49/49 each, so
+  # it is recorded as an environment blocker with a lane-isolation entry deferred (AC7 forbids patching).
+  # AC7 inventory re-taken: 6 modified paths, not 4 (deferred-work.md and docs/ci.md were missing); the
+  # excluded Tenants advance is now 4 commits / 71 files / +6,734 / -703, still zero non-UI src/ files.
+  # Committed with an explicit pathspec as 15a1b32e on branch docs/story-3-1-closure (project-context.md
+  # forbids direct commits to main); references/Hexalith.Tenants left dirty per D2, then committed
+  # separately as b32c9e90 (D2 reversal retroactively ratified at the post-merge review) and the branch
+  # squash-merged to main as PR #334 (7ab1f08d) with the required commitlint check failing (ruleset
+  # bypass); the remote branch was deleted after the merge.
+  # 3.1 moved review -> done on 2026-07-28 (bmad-code-review, post-merge: four layers over main...b32c9e90.
+  # 1 decision resolved - Tenants D2 reversal ratified; 9 patches applied - lifecycle + attestation
+  # supersessions, AC1 wording aligned to D1 intent, deferred/validation-command counts corrected;
+  # 1 defer - unguarded docs/ci.md pin literal; 2 dismissed. Patched content is working-tree-only
+  # and needs a follow-up PR to land on main.)
   3-1-re-tier-live-sidecar-tests-from-the-release-gate: done
+  # 2026-07-29: FR18 remains satisfied by PR #271/13320952; Story 3.2 adds the missing
+  # deterministic override guard. Closed to done the same day by adversarial code review
+  # (4 decisions resolved, 9 patches applied, 4 deferred, 6 dismissed): the original AC4
+  # assertion could not detect a shared static ActorProxyOptions, so it was hardened into a
+  # call-time-capture fact plus a per-instance-independence fact (mutation-proven, 1F/15P
+  # under the static regression). The duplicated commit-policy block was removed from the
+  # three shared entry points and the missing `revert` type added to the canonical
+  # hexalith-git-instructions.md instead. Post-review CI/package-mode evidence, 0W/0E:
+  # Server.Tests 2869/0/25, Contracts.Tests 778/778, LiveSidecar 49/49, ETag class 2/2 with
+  # the persisted Redis ETag cited by value. Owner ratified the Builds gitlink bump that
+  # raises HexalithTenantsVersion 5.0.0 -> 5.1.0 repo-wide, and accepted the direct-to-main
+  # commits plus the patch release armed by 8ce58f83's `fix:` type.
   3-2-harden-dapr-etag-timeout-for-integration-conditions: done
+  # 3.3 is verification-and-reconciliation: FR19's references/ layout already shipped via the approved
+  # 2026-06-26 correction, so the deliverable is evidence, not a migration. All AC1-AC4 cheap gates were
+  # independently re-run by the 2026-07-29 code review and matched the Dev Agent Record exactly (7/7
+  # references/ submodule paths, no root-level Hexalith.* directory, 7 stale-scan hits all nested under the
+  # references/ tree node, no gitlink change, no .sln); AppHost re-ran 51/51 in Release/package mode.
+  # Review outcome: 2 owner decisions resolved, 11 patches applied, 5 deferred, 4 dismissed. The one code
+  # change (line-ending normalization in an AppHost source-inspection test) was ratified as an accepted
+  # exception to the Task 5 permission. Root cause of that failure was a repo-wide .editorconfig(crlf) vs
+  # .gitattributes(text=auto) conflict leaving 117 files drifted; closed by adding `*.cs text eol=lf`.
+  # Post-patch evidence, Release/package mode 0W/0E: AppHost 54/54 (3 new line-ending pinning tests, the
+  # temp-file one mutation-proven to fail in CI), Server.Tests 2869/0/25 (unchanged baseline).
+  # Owner ratified one AC5 exception: concurrent commit afb90369 bundled two gitlink bumps
+  # (Memories 7d298205->ccd8efa3, Tenants 96bdfd8a->09947a24, both reachable on their remotes) into a
+  # commit titled for this story. Accepted retroactively; no split required. Closed review -> done.
   3-3-references-based-submodule-layout: done
   3-4-aspire-security-resource-naming: done
+  # Story 3.5 establishes Builds as the sole package-version authority before
+  # Story 3.11 may refresh the ecosystem-wide catalog.
+  # Explicit source opt-in and ecosystem-wide AC6 responsibility are approved;
+  # each affected repository still requires its maintainer's authorization and validation.
+  # Story 3.3 and Story 1.20/2.12 gates are satisfied. Full Debug/source integration validation
+  # passed 279/279 on 2026-07-31, and native teardown released the store-global isolation lease.
+  # 2026-07-31 code review (4 layers): 1 owner decision resolved, 10 patches applied,
+  # 0 deferred, 9 dismissed. Post-patch Contracts validation passed 817/817 in
+  # Release/package mode; the DAPR documentation guard and diff hygiene checks are green.
   3-5-shared-package-catalog-and-source-package-reference-modes: done
   3-6-manifest-driven-release-packaging: done
   3-7-shared-workflow-caller-migration: done
   3-8-workflow-reference-and-validation-safety: done
+  # 2026-08-01 code review (4 layers): Administrator accepted delegated Paige/Amelia authority;
+  # 8 patches created and validated the standalone seven-item supply-chain backlog, five-theme
+  # crosswalk, current evidence paths, focused scans, and closed manifest/package safeguards.
+  # No publishing, workflow, credential, repository-setting, registry, or runtime change authorized.
   3-9-supply-chain-publishing-backlog: done
   3-10-generated-api-dapr-aspire-smoke-preflight: done
+  # Administrator approved the exact Builds and EventStore implementation
+  # revisions on 2026-08-01; Story 3.11 is complete.
   3-11-validated-central-package-catalog-refresh: done
+  # v3.75.0 remains failed single-platform evidence; failed partial v3.77.1 is quarantined.
+  # Story 3.12 produced observed candidate v3.77.2 with exactly linux/amd64 and linux/arm64.
+  # Story 1.20 is already done on source/package parity. Positive deployed-runtime parity is
+  # now the backward-only Story 3.14 -> 3.15 path; Story 3.13 retains only the v3.94.1 rejection.
   3-12-multi-platform-eventstore-container-publishing-correction: done
+  # 2026-08-16 planning reconciliation: v3.94.1 is retained as rejected and non-authorizing.
+  # Story 3.14 owns the corrective release; Story 3.15 owns positive deployed-runtime parity closure.
+  # 2026-08-21: the content-bound disposition envelope at evidence/story-3-13/disposition/6cee8dad...
+  # verifies and Story 3.13 owns the v3.94.1 rejection only. Story 3.14 owns the corrective release
+  # and Story 3.15 owns positive deployed-runtime parity; neither depends on this row.
+  # 2026-08-24 closure (supersedes the 0/3 wording above): the acceptance contract was re-shaped to
+  # the Story 3.15 form because the original demanded a #story-3-13-<hash>-<role> commit anchor that
+  # GitHub never mints, so only a fixture could ever have satisfied it. Three role-bound receipts
+  # were then collected on issue #351 -- never #324/#346, which are a different lineage -- and the
+  # row reached done at 3/3. Caveat: both owner roles resolve to one account, with tooling third,
+  # so two of the three acceptances are a self-attestation.
+  # The story key stays tracker-level: both Story 3.13 proof-packet filenames are pinned by hash
+  # inside the frozen review subjects and the focused verifier, so they are unrenameable and
+  # proposal section 4.9's atomic-rename condition cannot be met. Only the display title changed.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
-  3-14-corrective-oci-provenance-release: done
-  3-15-corrected-deployed-runtime-parity-closure: done
-  3-16-latest-compatible-dependency-and-root-submodule-refresh: backlog
+  3-14-corrective-oci-provenance-release: in-progress
+  # 2026-08-25 (loop-7 landing): the packet fails closed at 0 of 3 receipts and grants nothing.
+  # Loop 7 landed at zero receipts, where a re-mint is free, and closed two regressions loop 6 had
+  # introduced -- a nuspec prolog scan skipped behind a residual byte-order mark, and a bytes-path
+  # guard bypass in both dispatchers -- each reproduced with a live control.
+  # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
+  # lineages. The current canonical subject is
+  # 663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31; binding both packet
+  # subject has now been re-minted six times across seven subjects; receipts existed for only three
+  # of them, and all three sets are retained byte-for-byte under
+  # evidence/story-3-15/superseded-acceptances/.
+  # closure.json's deployed_runtime_parity/selected_deployed_identity are the claim the three roles
+  # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
+  # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
+  # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
+  # The row stays in-progress until three receipts bind the current subject.
+  3-15-corrected-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
   epic-4: in-progress
@@ -112,9 +251,12 @@ development_status:
   4-2-resume-and-idempotency-integrity: done
   4-3-deterministic-replay-dispatch-and-serialization: done
   4-4-committed-event-publication-recovery: done
-  4-5-append-durability-race-evidence: review
+  4-5-append-durability-race-evidence: in-progress
   4-6-global-position-sharding-spec-renegotiation: backlog
+  # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   4-7-tenants-query-provenance-follow-up: backlog
+  # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
+  # The August crosswalk maps its checked candidate evidence to focused review stories only.
   4-9-trusted-admission-contract-and-protected-identity: done
   4-10-digest-directory-rotation-and-key-retirement: done
   4-11-admission-state-machine-and-current-fence-enforcement: done
@@ -138,10 +280,13 @@ development_status:
   epic-5-retrospective: optional
 
   epic-6: backlog
+  # Architecture/readiness gate; authorizes 6.2 but does not count as runtime implementation progress.
   6-1-folded-snapshot-frozen-spec: backlog
   6-2-folded-snapshot-implementation: backlog
+  # Architecture/readiness gate; authorizes 6.4 but does not count as runtime implementation progress.
   6-3-projection-delivery-cost-and-sequence-guard-spec: backlog
   6-4-projection-cost-and-sequence-guard-implementation: backlog
+  # Architecture/readiness gate; authorizes 6.6 but does not count as runtime implementation progress.
   6-5-event-versioning-and-upcasting-spec: backlog
   6-6-event-versioning-and-upcasting-implementation: backlog
   epic-6-retrospective: optional
@@ -160,7 +305,9 @@ development_status:
   7-11-persisted-state-evidence-and-read-back-helpers: backlog
   7-12-fake-and-integration-test-reclassification: backlog
   7-13-advisory-and-performance-workflow-hygiene: backlog
+  # Admin.UI is evolved in place across three focused tracks; no second host is authorized.
   7-14-admin-shell-and-canonical-route-migration: backlog
+  # Planning artifacts are complete; these statuses authorize no runtime implementation.
   7-15-gdpr-aggregate-erasure-backlog: done
   7-16-admin-interactive-oidc-backlog: done
   7-17-aggregate-test-kit-backlog: done
@@ -170,7 +317,9 @@ development_status:
   epic-7-retrospective: optional
 
   epic-8: in-progress
+  # Security/architecture gate approved; Story 8.2 alone is authorized for exact-digest/source preflight.
   8-1-shared-payload-protection-security-spec-and-adr: done
+  # Story 8.2 is authorized but remains backlog until its story file is created; Stories 8.3-8.11 remain predecessor-gated.
   8-2-payload-protection-contracts-and-golden-vectors: backlog
   8-3-pdenc-v2-core-cryptographic-engine: backlog
   8-4-compatibility-readers-and-mixed-history-routing: backlog

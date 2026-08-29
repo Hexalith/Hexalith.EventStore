@@ -29,28 +29,28 @@
     "inventory": {
       "covered": 4,
       "total": 4,
-      "pct": 100
+      "pct": "SUPERSEDED"
     },
     "priority_breakdown": {
       "P0": {
         "total": 4,
         "covered": 4,
-        "pct": 100
+        "pct": "SUPERSEDED"
       },
       "P1": {
         "total": 0,
         "covered": 0,
-        "pct": 100
+        "pct": "SUPERSEDED"
       },
       "P2": {
         "total": 0,
         "covered": 0,
-        "pct": 100
+        "pct": "SUPERSEDED"
       },
       "P3": {
         "total": 0,
         "covered": 0,
-        "pct": 100
+        "pct": "SUPERSEDED"
       }
     },
     "by_level": {
@@ -78,7 +78,8 @@
         "tests": 0,
         "criteria_covered": 0
       }
-    }
+    },
+    "withdrawn": "SUPERSEDED"
   },
   "tests": {
     "files": 1,
@@ -132,7 +133,7 @@
     "artifact_url": "",
     "journey_evidence_url": ""
   },
-  "gate_status": "PASS",
+  "gate_status": "SUPERSEDED",
   "gate_criteria": {
     "p0_coverage_required": "100%",
     "p0_coverage_actual": "100%",
@@ -145,5 +146,7 @@
     "overall_coverage_actual": "100%",
     "overall_status": "MET"
   },
-  "superseded_note": "SUPERSEDED 2026-08-25: scored against subject bb58d691 at source_sha 516f2489; the current subject is 5acb8176 and the packet fails closed at 0 of 3. Counts below mix test methods and expanded cases and omit TamperedImportPathBytesNeverExecute."
+  "superseded_note": "SUPERSEDED 2026-08-25 (loop-7 landing): scored against subject bb58d691 at source_sha 516f2489. The subject has been re-minted six more times (bb58d691 -> 1dee194f -> 5acb8176 -> 93559e61 -> dab64f5f -> a8cc777e -> 663747b1); the current subject is 663747b1 and the packet fails closed at 0 of 3 receipts. Every status and coverage field here is withdrawn, not merely annotated. Counts below mix test methods and expanded cases, omit TamperedImportPathBytesNeverExecute, and predate the smoke-capture suite.",
+  "subject_at_evaluation": "bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709",
+  "current_subject": "663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31"
 }

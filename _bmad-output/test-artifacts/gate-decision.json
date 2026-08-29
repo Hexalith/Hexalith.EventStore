@@ -1,26 +1,29 @@
 {
   "schema_version": "0.1.0",
-  "evaluated_at": "2026-08-26T12:34:20Z",
+  "evaluated_at": "2026-08-22T15:17:03Z",
   "repo": "eventstore",
   "target": {
     "type": "story",
     "id": "3.15",
     "label": "Story 3.15 Corrected Deployed Runtime Parity Closure"
   },
-  "collection_status": "COLLECTED",
-  "gate_basis": "exact_canonical_subject_digest_and_roster_bound_receipts",
-  "gate_status": "PASS",
-  "rationale": "Current canonical subject 58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6 reproduces the retained technical candidate after Step-04 verifier, handler, nuspec, and smoke-output hardening and carries exactly three valid roster-bound receipts. Direct verification and repeat assembly pass without subject drift and select only OCI index sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3. The previously accepted c22d35b tree remains superseded; deployment, publication, registry mutation, consumer removal, and predecessor-change authority remain false.",
-  "p0_status": "NOT_APPLICABLE",
-  "p1_status": "MET",
-  "overall_status": "MET",
+  "collection_status": "SUPERSEDED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "SUPERSEDED",
+  "rationale": "SUPERSEDED 2026-08-25 (loop-7 landing). This decision was computed at source_sha 516f2489 against Story 3.15 subject bb58d691, which has since been re-minted six more times: bb58d691 -> 1dee194f -> 5acb8176 -> 93559e61 -> dab64f5f -> a8cc777e -> 663747b1. Every receipt bound to any earlier subject is rejected, and the packet currently fails closed at 0 of 3 receipts. The inventory it scored is also stale: the focused closure suite has grown well past the set scored here, several named cases have been renamed or replaced, and the smoke-capture suite did not exist. Regenerate the trace before relying on any gate verdict. The previous P1 status of MET was vacuous - no P1 requirements exist.",
+  "p0_status": "SUPERSEDED",
+  "p1_status": "SUPERSEDED",
+  "overall_status": "SUPERSEDED",
   "critical_open": 0,
   "links": {
-    "trace_report_path": "",
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix.md",
     "trace_report_url": "",
     "artifact_url": "",
     "journey_evidence_url": ""
   },
-  "source_sha": "58f025f354de40fd5eee973a487417b3da45636032a5d1675c9c8c886005e2c6",
-  "superseded_by": ""
+  "source_sha": "516f2489f6586d35eee58f1158a840c404632637",
+  "superseded_by": "regeneration pending; see _bmad-output/implementation-artifacts/deferred-work.md",
+  "subject_at_evaluation": "bb58d691ee404cc958433e996204e3382721de3931ac64cf8f7a61de97c30709",
+  "current_subject": "663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31",
+  "current_packet_verdict": "fail-closed at 0 of 3 receipts; no identity granted"
 }

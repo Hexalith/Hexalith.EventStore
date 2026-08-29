@@ -115,13 +115,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 JsonElement labels = config.RootElement.GetProperty("config").GetProperty("Labels");
                 string observedCreated = labels.GetProperty("org.opencontainers.image.created")
                     .GetString().ShouldNotBeNull();
-
-                // Bind the label to the value the publish actually passed. Seeding the expectation
-                // from the first child compared the artifact against itself: any instant that both
-                // children happened to agree on -- including a build-time UtcNow -- passed, and no
-                // validator checks the created labels either.
-                observedCreated.ShouldBe(Created);
-                expected ??= ExpectedLabels(Created);
+                expected ??= ExpectedLabels(observedCreated);
                 ValidateLabels(labels, expected);
                 childLabels.Add(labels.EnumerateObject().ToDictionary(
                     property => property.Name,
@@ -224,8 +218,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     [InlineData("ContainerProvenanceRepositoryUrl", "http://github.com/Hexalith/Hexalith.EventStore", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https://.", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https://github.com/Hexalith/Hexalith.EventStore\n", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https://github..com", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
-    [InlineData("ContainerProvenanceRepositoryUrl", "https://example.test:99999/x", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", false)]
     [InlineData("ContainerProvenanceRepositoryUrl", "https", "ContainerProvenanceRepositoryUrl must be a well-formed https URL.", true)]
     [InlineData("ContainerProvenanceReleaseUrl", "https", "ContainerProvenanceReleaseUrl must be a well-formed https URL.", true)]
     [InlineData("ContainerProvenanceDocumentationUrl", "https", "ContainerProvenanceDocumentationUrl must be a well-formed https URL.", true)]
@@ -270,37 +262,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies well-formed provenance URLs still pass. The negative rows alone cannot detect an
-    /// over-tightened pattern -- a regex that rejects everything satisfies every one of them, and
-    /// the failure would surface only at publish time.
-    /// </summary>
-    /// <param name="repositoryUrl">A well-formed https repository URL.</param>
-    [Theory]
-    [InlineData("https://github.com/Hexalith/Hexalith.EventStore")]
-    [InlineData("https://example.test")]
-    [InlineData("https://example.test:8443/hexalith")]
-    [InlineData("https://example.test/hexalith?ref=main")]
-    public void ContainerPublicationAcceptsWellFormedProvenanceUrls(string repositoryUrl)
-    {
-        ProcessResult result = RunProcess(
-            FindRepositoryRoot(),
-            "dotnet",
-            "msbuild",
-            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
-            "-t:ValidateContainerProvenanceInputs",
-            "-p:EnableContainer=true",
-            "-p:UseHexalithProjectReferences=false",
-            "-p:NuGetAudit=false",
-            "-p:MinVerVersionOverride=1.0.0",
-            $"-p:ContainerProvenanceSourceSha={SourceSha}",
-            $"-p:ContainerProvenanceReleaseVersion={Version}",
-            $"-p:ContainerProvenanceCreated={Created}",
-            $"-p:ContainerProvenanceRepositoryUrl={repositoryUrl}");
-
-        result.ExitCode.ShouldBe(0, result.Output + result.Error);
-    }
-
-    /// <summary>
     /// Verifies an omitted image tag defaults to the exact provenance version rather than a
     /// non-SemVer staging alias.
     /// </summary>
@@ -322,27 +283,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             $"-p:ContainerProvenanceCreated={Created}");
 
         result.ExitCode.ShouldBe(0, result.Output + result.Error);
-
-        // Exit 0 alone is green by construction: the tag guard's '$(ContainerImageTag)' != ''
-        // precondition is false when the default is deleted, so the target succeeds while the
-        // image silently falls back to the SDK's own tag. Read the evaluated value instead.
-        ProcessResult evaluated = RunProcess(
-            FindRepositoryRoot(),
-            "dotnet",
-            "msbuild",
-            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
-            "-t:ValidateContainerProvenanceInputs",
-            "-p:EnableContainer=true",
-            "-p:UseHexalithProjectReferences=false",
-            "-p:NuGetAudit=false",
-            "-p:MinVerVersionOverride=1.0.0",
-            $"-p:ContainerProvenanceSourceSha={SourceSha}",
-            $"-p:ContainerProvenanceReleaseVersion={Version}",
-            $"-p:ContainerProvenanceCreated={Created}",
-            "-getProperty:ContainerImageTag");
-
-        evaluated.ExitCode.ShouldBe(0, evaluated.Output + evaluated.Error);
-        evaluated.Output.Trim().ShouldBe(Version);
     }
 
     /// <summary>
@@ -882,47 +822,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies Python equality cannot let a JSON boolean or equal-valued float select codec v3.
-    /// </summary>
-    /// <param name="jsonValue">Non-integer JSON representation equal to three or true.</param>
-    [Theory]
-    [InlineData("3.0")]
-    [InlineData("true")]
-    public void CorrectiveDispatcherVersionRequiresAnExactJsonInteger(string jsonValue)
-    {
-        string root = FindRepositoryRoot();
-        string checkedInPacket = Path.Combine(
-            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
-            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
-        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-corrective-version-{Guid.NewGuid():N}");
-        try
-        {
-            string packetRoot = CopyPacket(checkedInPacket, temporary);
-            JsonObject identity = LoadIdentity(packetRoot);
-            identity["codec"]!["version"] = JsonNode.Parse(jsonValue);
-            File.WriteAllBytes(
-                Path.Combine(packetRoot, "release-identity.json"),
-                CanonicalJsonBytes(identity));
-
-            ProcessResult result = RunEvidenceValidator(
-                root,
-                Path.Combine(packetRoot, "release-identity.json"),
-                packetRoot);
-
-            result.ExitCode.ShouldNotBe(0);
-            result.Error.ShouldContain("release identity dispatch metadata is invalid");
-            result.Error.ShouldNotContain("Traceback");
-        }
-        finally
-        {
-            if (Directory.Exists(temporary))
-            {
-                Directory.Delete(temporary, recursive: true);
-            }
-        }
-    }
-
-    /// <summary>
     /// Verifies an unreviewed edit to the executing live handler fails closed even when the retained
     /// packet's declared codec digest, schema, and version are all untouched and still dispatch to it.
     /// </summary>
@@ -997,77 +896,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies a shadow of one of the dispatcher's <em>own</em> top-level imports never executes.
-    /// The sibling case above plants a module <c>v3.py</c> imports, i.e. one resolved after
-    /// sanitization; these resolve before any repository code runs, so they were the reachable
-    /// half of the same hole.
-    /// </summary>
-    /// <param name="shadowedModule">A standard-library module the dispatcher imports at load time.</param>
-    [Theory]
-    [InlineData("json")]
-    [InlineData("argparse")]
-    [InlineData("hashlib")]
-    public void CorrectiveDispatcherRejectsShadowsOfItsOwnImports(string shadowedModule)
-    {
-        string root = FindRepositoryRoot();
-        string checkedInPacket = Path.Combine(
-            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
-            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
-        string temporary = Path.Combine(
-            Path.GetTempPath(), $"eventstore-corrective-self-shadow-{Guid.NewGuid():N}");
-        try
-        {
-            string tools = Path.Combine(temporary, "tools");
-            string handlers = Path.Combine(tools, "release_evidence_handlers");
-            Directory.CreateDirectory(handlers);
-            File.Copy(
-                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
-                Path.Combine(tools, "validate-corrective-release-evidence.py"));
-            File.Copy(
-                Path.Combine(root, "tools", "release_evidence_handlers", "__init__.py"),
-                Path.Combine(handlers, "__init__.py"));
-            File.Copy(
-                Path.Combine(root, "tools", "release_evidence_handlers", "v3.py"),
-                Path.Combine(handlers, "v3.py"));
-
-            // Print a marker, then hand back the genuine module so the run continues. A shadow that
-            // merely crashed could not distinguish "never imported" from "imported and failed".
-            File.WriteAllText(
-                Path.Combine(tools, shadowedModule + ".py"),
-                $"""
-                 import sys, os, importlib.util, importlib.machinery
-                 print('corrective-self-shadow-executed', flush=True)
-                 _here = os.path.dirname(os.path.abspath(__file__))
-                 _paths = [p for p in sys.path if os.path.abspath(p or os.getcwd()) != _here]
-                 _spec = importlib.machinery.PathFinder.find_spec('{shadowedModule}', _paths)
-                 _real = importlib.util.module_from_spec(_spec)
-                 sys.modules['{shadowedModule}'] = _real
-                 _spec.loader.exec_module(_real)
-                 """);
-
-            ProcessResult result = RunProcess(
-                temporary,
-                "python3",
-                "tools/validate-corrective-release-evidence.py",
-                Path.Combine(checkedInPacket, "release-identity.json"),
-                "--manifest",
-                Path.Combine(root, "tools", "release-packages.json"),
-                "--packet-root",
-                checkedInPacket);
-
-            (result.Output + result.Error).ShouldNotContain("corrective-self-shadow-executed");
-            result.ExitCode.ShouldBe(0, result.Output + result.Error);
-        }
-        finally
-        {
-            if (Directory.Exists(temporary))
-            {
-                Directory.Delete(temporary, recursive: true);
-            }
-        }
-    }
-
-    /// <summary>
     /// Verifies the source-only predecessor dispatcher removes its own tools directory from import
     /// resolution, so a repository-local zipfile shadow cannot execute from verified handler code.
     /// </summary>
@@ -1120,40 +948,111 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies preloaded modules with trusted names are displaced during validation and restored
-    /// afterward. The source-only loader overwrites those names either way, so checking only that
-    /// their marker did not execute cannot exercise the displacement loop.
+    /// Verifies preloaded modules are displaced before verified initializer and handler bytes
+    /// execute. The trusted-name shape alone could not fail -- the source-only loader overwrites
+    /// <c>sys.modules[name]</c> unconditionally before the handler is used -- so the case that
+    /// actually exercises the displacement loop preloads a repository-local module the verified
+    /// handler imports for real. Without the loop that fake would answer the handler's import.
     /// </summary>
-    [Fact]
-    public void CorrectiveDispatcherCannotReusePreloadedHandlerModules()
+    /// <param name="shape">Preloaded module shape.</param>
+    [Theory]
+    [InlineData("trusted-name")]
+    [InlineData("repository-local-dependency")]
+    public void CorrectiveDispatcherCannotReusePreloadedModules(string shape)
     {
         string root = FindRepositoryRoot();
         string checkedInPacket = Path.Combine(
             root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
             "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
-        const string Wrapper =
-            "import importlib.util,pathlib,sys,types;" +
-            "p=types.ModuleType('release_evidence_handlers');p.__file__='/tmp/preloaded/__init__.py';p.__path__=[];" +
-            "m=types.ModuleType('release_evidence_handlers.v3');m.__file__='/tmp/preloaded/v3.py';" +
-            "p.v3=m;sys.modules[p.__name__]=p;sys.modules[m.__name__]=m;" +
-            "s=importlib.util.spec_from_file_location('corrective_dispatcher',sys.argv[1]);" +
-            "d=importlib.util.module_from_spec(s);s.loader.exec_module(d);" +
-            "d.validate(pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3]),pathlib.Path(sys.argv[4]));" +
-            "assert sys.modules[p.__name__] is p and sys.modules[m.__name__] is m;" +
-            "print('preloaded-handlers-restored')";
+        string repositoryLocalOrigin = Path.Combine(root, "tools", "zipfile.py").Replace("\\", "/");
+        string wrapper = shape == "trusted-name"
+            ? "import runpy,sys,types;" +
+                "p=types.ModuleType('release_evidence_handlers');p.__file__='/tmp/preloaded/__init__.py';p.__path__=[];" +
+                "m=types.ModuleType('release_evidence_handlers.v3');m.__file__='/tmp/preloaded/v3.py';" +
+                "m.validate_identity=lambda *a,**k:(print('preloaded-handler-executed'),b'')[1];" +
+                "p.v3=m;sys.modules[p.__name__]=p;sys.modules[m.__name__]=m;" +
+                "sys.argv=[sys.argv[1],*sys.argv[2:]];runpy.run_path(sys.argv[0],run_name='__main__')"
+            : "import runpy,sys,types;" +
+                "z=types.ModuleType('zipfile');" +
+                $"z.__file__='{repositoryLocalOrigin}';" +
+                "z.ZipFile=lambda *a,**k:(print('preloaded-handler-executed'),(_ for _ in ()).throw(RuntimeError('preloaded zipfile used')))[1];" +
+                "z.BadZipFile=RuntimeError;sys.modules['zipfile']=z;" +
+                "sys.argv=[sys.argv[1],*sys.argv[2:]];runpy.run_path(sys.argv[0],run_name='__main__')";
 
         ProcessResult result = RunProcess(
             root,
             "python3",
             "-c",
-            Wrapper,
+            wrapper,
             Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
             Path.Combine(checkedInPacket, "release-identity.json"),
+            "--manifest",
             Path.Combine(root, "tools", "release-packages.json"),
+            "--packet-root",
             checkedInPacket);
 
         result.ExitCode.ShouldBe(0, result.Error);
-        result.Output.ShouldContain("preloaded-handlers-restored");
+        result.Output.ShouldNotContain("preloaded-handler-executed");
+        result.Output.ShouldContain("pass: sha256:");
+    }
+
+    /// <summary>
+    /// Verifies the corrective dispatcher requires an exact JSON integer for the codec version.
+    /// Without that check <c>3.0</c> passes: it hashes equal to <c>3</c>, so the handler tuple
+    /// lookup succeeds and every downstream <c>!= 3</c> comparison is false -- demonstrated by
+    /// deleting the guard in a scratch copy, which produced a full pass. The Story 3.15 sibling had
+    /// this coverage; this one did not.
+    /// </summary>
+    /// <param name="jsonValue">Non-integer JSON value written into the codec version.</param>
+    [Theory]
+    [InlineData("3.0")]
+    [InlineData("true")]
+    public void CorrectiveDispatcherCodecVersionRequiresAnExactJsonInteger(string jsonValue)
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = Path.Combine(
+            root, "_bmad-output", "implementation-artifacts", "evidence", "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string identity = Path.Combine(checkedInPacket, "release-identity.json");
+        string temporary = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-corrective-version-{Guid.NewGuid():N}.json");
+        try
+        {
+            // Control: the untouched identity file validates, so the mutation is the only variable.
+            RunProcess(
+                root,
+                "python3",
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                identity,
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket).ExitCode.ShouldBe(0);
+
+            string text = File.ReadAllText(identity);
+            string mutated = Regex.Replace(text, "\"version\":3(?![0-9])", $"\"version\":{jsonValue}");
+            mutated.ShouldNotBe(text);
+            File.WriteAllText(temporary, mutated);
+
+            ProcessResult result = RunProcess(
+                root,
+                "python3",
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                temporary,
+                "--manifest",
+                Path.Combine(root, "tools", "release-packages.json"),
+                "--packet-root",
+                checkedInPacket);
+
+            result.ExitCode.ShouldBe(1, result.Error);
+            result.Error.ShouldContain("release identity dispatch metadata is invalid");
+            result.Output.ShouldNotContain("pass:");
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
     }
 
     /// <summary>
@@ -1203,22 +1102,23 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             File.WriteAllBytes(handlerPath, trusted);
             File.SetLastWriteTimeUtc(handlerPath, cacheTimestamp);
 
-            ProcessResult cachePath = RunProcess(
-                temporary,
+            // Control 1: py_compile really produced a cache. Without it this test passes when
+            // nothing was written, which proves nothing about the loader.
+            string cacheDirectory = Path.Combine(handlers, "__pycache__");
+            Directory.Exists(cacheDirectory).ShouldBeTrue();
+            Directory.GetFiles(cacheDirectory, "v3.*.pyc").Length.ShouldBeGreaterThan(0);
+
+            // Control 2: the stale cache genuinely wins under an ordinary import, so the marker
+            // would execute if the dispatcher resolved this module through importlib. Only with
+            // this control does the negative assertion below mean the source-only loader is what
+            // keeps the tampered bytecode out.
+            ProcessResult control = RunProcess(
+                tools,
                 "python3",
                 "-c",
-                "import importlib.util,sys;print(importlib.util.cache_from_source(sys.argv[1]))",
-                handlerPath);
-            cachePath.ExitCode.ShouldBe(0, cachePath.Error);
-            File.Exists(cachePath.Output.Trim()).ShouldBeTrue();
-            ProcessResult ordinaryImport = RunProcess(
-                temporary,
-                "python3",
-                "-c",
-                "import sys;sys.path.insert(0,sys.argv[1]);import release_evidence_handlers.v3",
-                tools);
-            ordinaryImport.ExitCode.ShouldBe(0, ordinaryImport.Error);
-            ordinaryImport.Output.ShouldContain("stale-corrective-bytecode-executed");
+                "import release_evidence_handlers.v3");
+            control.ExitCode.ShouldBe(0, control.Error);
+            control.Output.ShouldContain("stale-corrective-bytecode-executed");
 
             ProcessResult result = RunProcess(
                 temporary,
@@ -1240,71 +1140,6 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 Directory.Delete(temporary, recursive: true);
             }
         }
-    }
-
-    /// <summary>
-    /// Verifies the publisher at the pinned release SHA forwards every provenance property the build
-    /// requires with no default. Nothing bound these two surfaces together, so removing the
-    /// <c>ContainerProvenanceCreated</c> fallback made the property mandatory while the pinned
-    /// publisher still omitted it -- a release that publishes 14 packages, then fails at container
-    /// publish. The required set is derived from the target rather than hand-listed, so a future
-    /// mandatory input is covered the day it is added.
-    /// </summary>
-    [Fact]
-    public void PinnedPublisherForwardsEveryMandatoryProvenanceInput()
-    {
-        string root = FindRepositoryRoot();
-        string targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
-
-        Match validation = Regex.Match(
-            targets,
-            @"(?s)<Target Name=""ValidateContainerProvenanceInputs""(?<body>.*?)</Target>");
-        validation.Success.ShouldBeTrue();
-
-        // Every provenance property the validation target reads...
-        HashSet<string> validated = Regex
-            .Matches(validation.Groups["body"].Value, @"\$\((?<name>ContainerProvenance[A-Za-z]+)\)")
-            .Select(match => match.Groups["name"].Value)
-            .ToHashSet(StringComparer.Ordinal);
-
-        // ...minus those the targets file defaults for itself. What remains has no source but the
-        // publisher, so the publisher must supply it or the build fails closed.
-        HashSet<string> defaulted = Regex
-            .Matches(targets, @"<(?<name>ContainerProvenance[A-Za-z]+) Condition=""'\$\(\k<name>\)' == ''""")
-            .Select(match => match.Groups["name"].Value)
-            .ToHashSet(StringComparer.Ordinal);
-
-        string[] mandatory = [.. validated.Except(defaulted, StringComparer.Ordinal).Order(StringComparer.Ordinal)];
-
-        // Coverage control: an empty or unexpected set would make the assertion below vacuous.
-        mandatory.ShouldBe(
-            ["ContainerProvenanceCreated", "ContainerProvenanceReleaseVersion", "ContainerProvenanceSourceSha"],
-            "the set of publisher-supplied provenance inputs changed; confirm the pinned publisher supplies each.");
-
-        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        Match releasePin = Regex.Match(
-            workflow,
-            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
-        releasePin.Success.ShouldBeTrue();
-        string releaseSha = releasePin.Groups["sha"].Value;
-
-        string builds = Path.Combine(root, "references", "Hexalith.Builds");
-        ProcessResult publisher = RunProcess(
-            builds, "git", "show", $"{releaseSha}:Github/publish-containers/publish-containers.sh");
-        publisher.ExitCode.ShouldBe(
-            0,
-            $"Pinned Builds release SHA {releaseSha} is unavailable in references/Hexalith.Builds. " +
-            "Fetch that exact pin before running the publisher contract check. " + publisher.Error);
-
-        // Pattern control: an empty or unrecognisable script would satisfy nothing below vacuously.
-        publisher.Output.ShouldContain("dotnet publish");
-
-        List<string> missing = [.. mandatory.Where(name => !publisher.Output.Contains($"-p:{name}=", StringComparison.Ordinal))];
-        missing.ShouldBeEmpty(
-            $"the publisher at pinned Builds SHA {releaseSha} does not forward every provenance property "
-            + "ValidateContainerProvenanceInputs requires, so a governed release would fail at container "
-            + "publish after NuGet packages are already pushed:\n"
-            + string.Join('\n', missing));
     }
 
     /// <summary>

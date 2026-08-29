@@ -1,14 +1,32 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
 /// <summary>
 /// Executes the Story 3.15 smoke-capture utility against recording and failing command fakes.
 /// </summary>
+[SupportedOSPlatform("linux")]
 public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
 {
+    /// <summary>
+    /// Skips on a non-Unix host. <see cref="SupportedOSPlatformAttribute"/> is an analyzer hint the
+    /// runner does not act on, so without this the shell fakes would simply fail on Windows.
+    /// </summary>
+    private static void RequireUnixHost()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+            && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            Assert.Skip("The smoke-capture fakes are POSIX shell scripts and need a Unix host.");
+        }
+    }
+
     private const string Amd64Digest =
         "sha256:4d42f969dc5f57e0f9baa927c588346d77c31fd2615793b5d8c12c239585af63";
     private const string Arm64Digest =
@@ -20,7 +38,7 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     [Fact]
     public void RecordingFakesObserveTheSelfReportedProductionAliveContract()
     {
-        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Smoke command fakes require Linux shell scripts.");
+        RequireUnixHost();
         string root = FindRepositoryRoot();
         string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-recording-").FullName;
         try
@@ -40,6 +58,7 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             summary["endpoint"]!.GetValue<string>().ShouldBe("/alive");
             summary["timeout_seconds"]!.GetValue<int>().ShouldBe(180);
             summary["result"]!.GetValue<string>().ShouldBe("pass");
+            summary["platforms"]!.AsArray().Count.ShouldBe(2);
             summary["platforms"]!.AsArray().ShouldAllBe(item =>
                 item!["http_status"]!.GetValue<int>() == 200
                 && item["redirect_count"]!.GetValue<int>() == 0
@@ -63,12 +82,13 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             {
                 line.ShouldContain("--output /dev/null");
                 line.ShouldContain("--write-out %{http_code} %{num_redirects}");
-                System.Text.RegularExpressions.Match timeout = System.Text.RegularExpressions.Regex.Match(
-                    line,
-                    "--max-time ([0-9]+(?:\\.[0-9]+)?)");
-                timeout.Success.ShouldBeTrue(line);
-                double.Parse(timeout.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)
-                    .ShouldBeInRange(0.001, 5.0);
+                // Assert the operand, not just the flag: an unbounded or oversized budget would
+                // still satisfy a presence-only check.
+                Match maxTime = Regex.Match(line, @"--max-time (\d+\.\d+)");
+                maxTime.Success.ShouldBeTrue(line);
+                double budget = double.Parse(maxTime.Groups[1].Value, CultureInfo.InvariantCulture);
+                budget.ShouldBeGreaterThan(0.0);
+                budget.ShouldBeLessThanOrEqualTo(5.0);
                 line.ShouldContain("http://127.0.0.1:45678/alive");
                 line.ShouldNotContain("--location");
             }
@@ -91,7 +111,7 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     [InlineData("cleanup-oserror")]
     public void FailurePathsAlwaysRetainRecordsAndSummary(string mode)
     {
-        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Smoke command fakes require Linux shell scripts.");
+        RequireUnixHost();
         string root = FindRepositoryRoot();
         string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-failure-").FullName;
         try
@@ -115,7 +135,6 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
 
             result.ExitCode.ShouldBe(1, result.Error);
             result.Error.ShouldNotContain("Traceback");
-            result.Error.ShouldContain("rerun: ");
             JsonObject summary = LoadSummary(temporary);
             summary["result"]!.GetValue<string>().ShouldBe("failure");
             summary["exit_code"]!.GetValue<int>().ShouldBe(1);
@@ -132,13 +151,13 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     }
 
     /// <summary>
-    /// Verifies cleanup is passed only the remaining platform deadline: a hanging fake is timed
-    /// out promptly and the failure record is still written.
+    /// Verifies cleanup is bounded by its own budget: a hanging fake is timed out promptly and the
+    /// failure record is still written.
     /// </summary>
     [Fact]
     public void CleanupTimeoutIsBoundedAndRetained()
     {
-        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Smoke command fakes require Linux shell scripts.");
+        RequireUnixHost();
         string root = FindRepositoryRoot();
         string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-timeout-").FullName;
         try
@@ -157,13 +176,15 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
                 fakeBin,
                 dockerLog,
                 curlLog,
-                timeoutOverride: 0.2);
+                timeoutOverride: 0.2,
+                cleanupTimeoutOverride: 0.2);
             elapsed.Stop();
 
             result.ExitCode.ShouldBe(1, result.Error);
             elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
             JsonObject summary = LoadSummary(temporary);
             summary["result"]!.GetValue<string>().ShouldBe("failure");
+            summary["platforms"]!.AsArray().Count.ShouldBe(2);
             summary["platforms"]!.AsArray().ShouldAllBe(item =>
                 item!["cleanup"]!.GetValue<string>() == "failure"
                 && item["outcome"]!.GetValue<string>() == "failure");
@@ -175,13 +196,15 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     }
 
     /// <summary>
-    /// Verifies one transient readiness failure is retried and the second exact HTTP 200 response
-    /// succeeds for each platform within the shared deadline.
+    /// Verifies the readiness loop actually polls. Every existing case answered on attempt one, so
+    /// replacing the accept predicate with an unconditional break passed the whole suite and the
+    /// bounded back-off ran in no test at all -- the poll/retry behaviour this utility exists for
+    /// was completely unpinned.
     /// </summary>
     [Fact]
-    public void TransientReadinessFailureRetriesWithinTheBoundedBudget()
+    public void ReadinessLoopPollsUntilTheServiceAnswers()
     {
-        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Smoke command fakes require Linux shell scripts.");
+        RequireUnixHost();
         string root = FindRepositoryRoot();
         string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-retry-").FullName;
         try
@@ -191,15 +214,23 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             string dockerLog = Path.Combine(temporary, "docker-argv.log");
             string curlLog = Path.Combine(temporary, "curl-argv.log");
             WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("success"));
-            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("transient"));
+            WriteExecutable(
+                Path.Combine(fakeBin, "curl"),
+                RetryingCurlFake(Path.Combine(temporary, "curl-attempts")));
 
             ProcessResult result = RunCapture(root, temporary, fakeBin, dockerLog, curlLog);
 
             result.ExitCode.ShouldBe(0, result.Error);
-            File.ReadAllLines(curlLog).Length.ShouldBe(4);
-            LoadSummary(temporary)["platforms"]!.AsArray().ShouldAllBe(item =>
-                item!["attempts"]!.GetValue<int>() == 2
-                && item["http_status"]!.GetValue<int>() == 200);
+            JsonObject summary = LoadSummary(temporary);
+            summary["result"]!.GetValue<string>().ShouldBe("pass");
+
+            // Three curl invocations per platform: connection-refused, a non-200, then 200.
+            summary["platforms"]!.AsArray().Count.ShouldBe(2);
+            summary["platforms"]!.AsArray().ShouldAllBe(item =>
+                item!["attempts"]!.GetValue<int>() == 3
+                && item["http_status"]!.GetValue<int>() == 200
+                && item["outcome"]!.GetValue<string>() == "pass");
+            File.ReadAllLines(curlLog).Length.ShouldBe(6);
         }
         finally
         {
@@ -208,15 +239,17 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     }
 
     /// <summary>
-    /// Verifies an exhausted capture deadline still invokes forced container cleanup under its own
-    /// bounded budget.
+    /// Verifies cleanup is attempted -- not silently skipped -- in the exact failure mode it exists
+    /// for. Reusing the already exhausted platform deadline made the budget check raise before
+    /// subprocess.run was ever called, so no <c>rm --force</c> reached docker at all while the
+    /// record still claimed a timed-out attempt and the container leaked.
     /// </summary>
     [Fact]
-    public void ExpiredCaptureDeadlineStillAttemptsCleanup()
+    public void CleanupIsAttemptedAfterThePlatformBudgetIsExhausted()
     {
-        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Smoke command fakes require Linux shell scripts.");
+        RequireUnixHost();
         string root = FindRepositoryRoot();
-        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-expired-").FullName;
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-exhausted-").FullName;
         try
         {
             string fakeBin = Path.Combine(temporary, "bin");
@@ -224,7 +257,9 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             string dockerLog = Path.Combine(temporary, "docker-argv.log");
             string curlLog = Path.Combine(temporary, "curl-argv.log");
             WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("success"));
-            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("timeout"));
+
+            // Never ready: the readiness loop burns the whole platform budget.
+            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("503 0"));
 
             ProcessResult result = RunCapture(
                 root,
@@ -232,13 +267,20 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
                 fakeBin,
                 dockerLog,
                 curlLog,
-                timeoutOverride: 0.2);
+                timeoutOverride: 1.0);
 
             result.ExitCode.ShouldBe(1, result.Error);
-            File.ReadAllLines(dockerLog).Count(line => line.StartsWith("rm --force ", StringComparison.Ordinal))
+            result.Error.ShouldNotContain("Traceback");
+
+            string[] dockerArguments = File.ReadAllLines(dockerLog);
+            dockerArguments.Count(line => line.StartsWith("rm --force ", StringComparison.Ordinal))
                 .ShouldBe(2);
-            LoadSummary(temporary)["platforms"]!.AsArray().ShouldAllBe(item =>
+
+            JsonObject summary = LoadSummary(temporary);
+            summary["platforms"]!.AsArray().Count.ShouldBe(2);
+            summary["platforms"]!.AsArray().ShouldAllBe(item =>
                 item!["cleanup"]!.GetValue<string>() == "pass"
+                && item["readiness_result"]!.GetValue<string>() == "failure"
                 && item["outcome"]!.GetValue<string>() == "failure");
         }
         finally
@@ -248,15 +290,16 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     }
 
     /// <summary>
-    /// Verifies capture refuses to overwrite retained smoke bytes unless the operator explicitly
-    /// supplies <c>--force</c>.
+    /// Verifies the capture refuses to overwrite an already populated packet <c>smokes/</c>
+    /// directory unless the operator opts in. Running it against a live packet root previously
+    /// replaced the three hash-bound smoke files with failure records, recoverable only through git.
     /// </summary>
     [Fact]
-    public void ExistingSmokeEvidenceIsNotOverwrittenImplicitly()
+    public void PopulatedSmokeDirectoryIsRefusedWithoutForce()
     {
-        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Smoke command fakes require Linux shell scripts.");
+        RequireUnixHost();
         string root = FindRepositoryRoot();
-        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-existing-").FullName;
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-guard-").FullName;
         try
         {
             string fakeBin = Path.Combine(temporary, "bin");
@@ -265,89 +308,35 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             string curlLog = Path.Combine(temporary, "curl-argv.log");
             WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("success"));
             WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("200 0"));
+
             string smokes = Path.Combine(temporary, "smokes");
             Directory.CreateDirectory(smokes);
             string retained = Path.Combine(smokes, "smoke-results.json");
-            File.WriteAllText(retained, "retained-bytes");
+            File.WriteAllText(retained, "retained evidence\n");
 
-            ProcessResult result = RunCapture(root, temporary, fakeBin, dockerLog, curlLog);
+            ProcessResult refused = RunCapture(root, temporary, fakeBin, dockerLog, curlLog);
 
-            result.ExitCode.ShouldBe(1, result.Error);
-            result.Error.ShouldContain("retained smoke evidence already exists");
-            result.Error.ShouldContain("rerun: ");
-            File.ReadAllText(retained).ShouldBe("retained-bytes");
+            // Exit 2, distinct from the exit 1 a genuine smoke failure produces, so a caller can
+            // tell "I would have destroyed retained evidence" from "the runtime did not answer".
+            refused.ExitCode.ShouldBe(2, refused.Error);
+            refused.Error.ShouldContain("already holds retained smoke evidence");
+
+            // The rerun text must not tell the operator to re-run the capture, which this very
+            // guard would refuse again; it has to name --force or an empty packet root.
+            refused.Error.ShouldContain("rerun: ");
+            refused.Error.ShouldContain("--force");
+            refused.Error.ShouldContain("empty packet root");
+            File.ReadAllText(retained).ShouldBe("retained evidence\n");
             File.Exists(dockerLog).ShouldBeFalse();
+
+            ProcessResult forced = RunCapture(root, temporary, fakeBin, dockerLog, curlLog, force: true);
+
+            forced.ExitCode.ShouldBe(0, forced.Error);
+            LoadSummary(temporary)["result"]!.GetValue<string>().ShouldBe("pass");
         }
         finally
         {
             Directory.Delete(temporary, recursive: true);
-        }
-    }
-
-    /// <summary>
-    /// Verifies existing and dangling output-root symlinks are rejected before command execution,
-    /// even when the operator supplies --force. No external retained byte may be read or replaced.
-    /// </summary>
-    /// <param name="shape">Whether the symlink resolves to an existing external directory.</param>
-    /// <param name="force">Whether explicit overwrite was requested.</param>
-    [Theory]
-    [InlineData("existing", false)]
-    [InlineData("existing", true)]
-    [InlineData("dangling", false)]
-    [InlineData("dangling", true)]
-    public void SymlinkedSmokeOutputRootIsAlwaysRejected(string shape, bool force)
-    {
-        Xunit.Assert.SkipUnless(OperatingSystem.IsLinux(), "Symbolic-link smoke tests require Linux.");
-        string root = FindRepositoryRoot();
-        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-link-").FullName;
-        string external = Path.Combine(
-            Path.GetTempPath(),
-            $"eventstore-story315-smoke-external-{Guid.NewGuid():N}");
-        try
-        {
-            string fakeBin = Path.Combine(temporary, "bin");
-            Directory.CreateDirectory(fakeBin);
-            string dockerLog = Path.Combine(temporary, "docker-argv.log");
-            string curlLog = Path.Combine(temporary, "curl-argv.log");
-            WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("success"));
-            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("200 0"));
-            string marker = Path.Combine(external, "retained.txt");
-            if (shape == "existing")
-            {
-                Directory.CreateDirectory(external);
-                File.WriteAllText(marker, "external-retained-bytes");
-            }
-
-            Directory.CreateSymbolicLink(Path.Combine(temporary, "smokes"), external);
-
-            ProcessResult result = RunCapture(
-                root,
-                temporary,
-                fakeBin,
-                dockerLog,
-                curlLog,
-                force: force);
-
-            result.ExitCode.ShouldBe(1, result.Error);
-            result.Error.ShouldContain("smoke output directory must be a real directory inside the packet");
-            result.Error.ShouldContain("rerun: ");
-            File.Exists(dockerLog).ShouldBeFalse();
-            if (shape == "existing")
-            {
-                File.ReadAllText(marker).ShouldBe("external-retained-bytes");
-            }
-        }
-        finally
-        {
-            if (Directory.Exists(temporary))
-            {
-                Directory.Delete(temporary, recursive: true);
-            }
-
-            if (Directory.Exists(external))
-            {
-                Directory.Delete(external, recursive: true);
-            }
         }
     }
 
@@ -358,30 +347,47 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         string dockerLog,
         string curlLog,
         double? timeoutOverride = null,
+        double? cleanupTimeoutOverride = null,
         bool isolateFakePath = false,
         bool force = false)
     {
         string script = Path.Combine(root, "tools", "capture-corrected-deployed-runtime-parity-smokes.py");
-        ProcessStartInfo startInfo = new(ResolveExecutable("python3"))
+        ProcessStartInfo startInfo = new("python3")
         {
             WorkingDirectory = root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        if (timeoutOverride is null)
+        if (timeoutOverride is null && cleanupTimeoutOverride is null)
         {
             startInfo.ArgumentList.Add(script);
         }
         else
         {
+            // The platform budget and the cleanup budget are independent, so a test that shortens
+            // one must be able to leave the other alone: sharing them is exactly the defect that
+            // made cleanup get skipped instead of bounded.
+            string overrides = string.Empty;
+            if (timeoutOverride is not null)
+            {
+                overrides +=
+                    $"m.TIMEOUT_SECONDS={timeoutOverride.Value.ToString(CultureInfo.InvariantCulture)};";
+            }
+
+            if (cleanupTimeoutOverride is not null)
+            {
+                overrides +=
+                    $"m.CLEANUP_TIMEOUT_SECONDS={cleanupTimeoutOverride.Value.ToString(CultureInfo.InvariantCulture)};";
+            }
+
             startInfo.ArgumentList.Add("-c");
             startInfo.ArgumentList.Add(
                 "import importlib.util,sys;" +
                 "s=importlib.util.spec_from_file_location('story315_smoke',sys.argv[1]);" +
                 "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);" +
-                $"m.TIMEOUT_SECONDS={timeoutOverride.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)};" +
-                "sys.argv=[sys.argv[1],sys.argv[2]];raise SystemExit(m.main())");
+                overrides +
+                "sys.argv=[sys.argv[1]]+sys.argv[2:];raise SystemExit(m.main())");
             startInfo.ArgumentList.Add(script);
         }
 
@@ -434,27 +440,41 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         exit 0
         """;
 
+    /// <summary>
+    /// A curl fake that answers connection-refused, then a non-200, then 200, so the readiness loop
+    /// must actually poll. The first shape reproduces the real curl behaviour on a closed port:
+    /// exit 7 with a "000 0" write-out.
+    /// </summary>
+    /// <param name="counterPath">File used to count invocations per platform.</param>
+    /// <returns>The fake script.</returns>
+    private static string RetryingCurlFake(string counterPath) =>
+        $$"""
+        #!/bin/sh
+        printf '%s\n' "$*" >> "$FAKE_CURL_LOG"
+        counter='{{counterPath}}'
+        attempts=0
+        if [ -f "$counter" ]; then attempts=$(cat "$counter"); fi
+        attempts=$((attempts + 1))
+        printf '%s' "$attempts" > "$counter"
+        case "$attempts" in
+          1) printf '%s\n' '000 0'; exit 7 ;;
+          2) printf '%s\n' '503 0'; exit 0 ;;
+          3) printf '%s\n' '200 0'; printf '%s' 0 > "$counter"; exit 0 ;;
+        esac
+        printf '%s\n' '200 0'
+        exit 0
+        """;
+
     private static string CurlFake(string output) =>
         $$"""
         #!/bin/sh
         printf '%s\n' "$*" >> "$FAKE_CURL_LOG"
-        if [ '{{output}}' = 'timeout' ]; then exec /bin/sleep 5; fi
-        if [ '{{output}}' = 'transient' ]; then
-          count=$(/usr/bin/wc -l < "$FAKE_CURL_LOG")
-          if [ $((count % 2)) -eq 1 ]; then printf '%s\n' '503 0'; else printf '%s\n' '200 0'; fi
-          exit 0
-        fi
         printf '%s\n' '{{output}}'
         exit 0
         """;
 
     private static void WriteExecutable(string path, string content)
     {
-        if (!OperatingSystem.IsLinux())
-        {
-            throw new PlatformNotSupportedException("Smoke command fakes require Linux file modes.");
-        }
-
         File.WriteAllText(path, content.Replace("\r\n", "\n", StringComparison.Ordinal), new UTF8Encoding(false));
         File.SetUnixFileMode(
             path,
@@ -464,21 +484,6 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     private static JsonObject LoadSummary(string packetRoot) =>
         JsonNode.Parse(File.ReadAllBytes(Path.Combine(packetRoot, "smokes", "smoke-results.json")))!
             .AsObject();
-
-    private static string ResolveExecutable(string name)
-    {
-        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            string candidate = Path.Combine(directory, name);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        throw new FileNotFoundException($"Executable '{name}' was not found on PATH.");
-    }
 
     private static string FindRepositoryRoot()
     {

@@ -1,31 +1,14 @@
 #!/usr/bin/env python3
 """Validate retained Story 3.15 deployed-runtime parity closure evidence."""
 
+import argparse
+import hashlib
+import importlib.machinery
+import json
+import os
 import sys
-
-# Running a Python file prepends its directory to the import path. Establish isolated resolution
-# before importing even argparse/json/pathlib: otherwise tools/json.py (or another same-named
-# repository file) executes before the later trusted-handler import environment exists. ``sys`` is
-# built in, and CPython has already loaded its frozen ``os`` module during interpreter startup, so
-# no repository-resolved import runs before ``-I`` removes the script directory, PYTHONPATH, and the
-# user site directory. This mirrors the frozen Story 3.14 dispatcher's bootstrap boundary.
-if __name__ == "__main__" and not sys.flags.isolated:
-    _os = sys.modules.get("os")
-    if _os is None:
-        raise SystemExit(
-            "[corrected-deployed-runtime-parity] fail: cannot establish isolated import resolution")
-    _os.execv(
-        sys.executable,
-        [sys.executable, "-I", _os.path.abspath(__file__), *sys.argv[1:]],
-    )
-
-import argparse  # noqa: E402
-import hashlib  # noqa: E402
-import importlib.machinery  # noqa: E402
-import json  # noqa: E402
-import os  # noqa: E402
-import types  # noqa: E402
-from pathlib import Path  # noqa: E402
+import types
+from pathlib import Path
 
 
 SCHEMA = "hexalith.eventstore.corrected-deployed-runtime-parity.v1"
@@ -34,7 +17,7 @@ RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
     "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "bf8fec6bbd408be0b16f3b64ff219ed8b021e7f6c04aea7f59e819ad51298fef"
+V1_HANDLER_SHA256 = "8e29fc6a5122c64e87146ca191df1ead177af9f1981985dbc51f935b415b3f5f"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -50,7 +33,7 @@ IMPORT_PATH_FILE_SHA256 = {
     "release_evidence_handlers/__init__.py":
         "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
     "release_evidence_handlers/v3.py":
-        "a421791b4c6176afc8120e4e5c4668cb9703976e6f74659c0525119fc5aca5f4",
+        "f212c784bb0b4b006d683f25248c40a14edf19198cbfaee61f520e07b3bb03d2",
 }
 EXPECTED_IMPORT_PATH_FILES = {
     "deployed_runtime_parity_handlers/__init__.py",
@@ -138,6 +121,11 @@ def _is_repository_path(value):
     ):
         return False
     try:
+        # A bytes sys.path entry or module origin is a real repository path, so it must be decoded
+        # rather than dropped. Returning False for it -- which is what catching TypeError alone did
+        # -- let such a module escape both displacement and the post-execution shadow check, turning
+        # a loud crash into a silent guard bypass. TypeError stays only as a backstop for a value
+        # os.fsdecode itself cannot handle.
         path = Path(os.fsdecode(value)).resolve()
     except (OSError, RuntimeError, TypeError, ValueError):
         return False
@@ -252,19 +240,18 @@ def _load_handler(module_name, sources):
 def validate(evidence_path, manifest_path=None, packet_root=None):
     """Return the canonical subject digest after validating one closure packet."""
     repository_root = _repository_root()
-    if packet_root is not None:
-        resolved_packet_root = packet_root.resolve()
-        expected_evidence = resolved_packet_root / "closure.json"
-        if evidence_path.resolve() != expected_evidence:
-            raise DispatchError("evidence path is not the packet root's closure.json")
-        packet_root = resolved_packet_root
     evidence_bytes = evidence_path.read_bytes()
     document, module_name = _load_dispatch_metadata(evidence_bytes)
     _verify_dispatch_table()
     sources = _verify_import_path()
     original_path, displaced, trusted_names = _begin_trusted_import_environment()
     try:
-        handler, _, _, _ = _load_handler(
+        # No post-import path assertion: _load_verified_module sets __file__ from the same
+        # relative path such a check would re-derive, so it could not fail. Provenance is
+        # established before execution instead -- _verify_import_path hashes every file on the
+        # trust path and _load_verified_module exec()s exactly those bytes, so importlib never
+        # resolves these modules and there is no independently resolved file to compare against.
+        handler, predecessor_handler, _handler_package, _predecessor_package = _load_handler(
             module_name, sources)
         manifest_path = manifest_path or repository_root / handler.MANIFEST_FILE
         manifest_bytes = manifest_path.read_bytes()
@@ -308,7 +295,7 @@ def main():
     try:
         subject_sha256, selected_identity = validate(
             arguments.evidence, arguments.manifest, arguments.packet_root)
-    except (OSError, DispatchError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, DispatchError, TypeError, ValueError, json.JSONDecodeError) as error:
         print(
             f"[corrected-deployed-runtime-parity] fail: {error}; rerun: {RERUN_TRIGGER}",
             file=sys.stderr,
