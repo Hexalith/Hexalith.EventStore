@@ -1278,6 +1278,7 @@ def validate_successor_source_identity() -> dict[str, Any]:
 
 
 def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) -> None:
+    validate_successor_source_identity()
     require(isinstance(document, dict), "Captured source-state must be an object")
     require(isinstance(identity, dict), "Source identity must be an object")
     require(
@@ -1427,6 +1428,11 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
     require(current.get("unboundLaterPathsAllowed") is True, "Later unbound paths are not explicitly allowed")
     run_git("merge-base", "--is-ancestor", LANDED_SOURCE, "HEAD")
 
+    retained_paths = capability_paths - REPLACED_PRIOR_BOUND_PATHS
+    require(
+        retained_paths | REPLACED_PRIOR_BOUND_PATHS == capability_paths,
+        "Story 4.15 successor replaced paths are not prior current-bound paths",
+    )
     for relative, capture_expected in capture_paths.items():
         override = landed_overrides.get(relative, {})
         landed_expected = override.get("landedGitSha256", capture_expected)
@@ -1434,10 +1440,10 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
             require(override.get("captureWorktreeSha256") == capture_expected, f"Capture/Git override drift: {relative}")
         require_sha256(landed_expected, f"landedGitPaths:{relative}")
         require(sha256_bytes(git_file(LANDED_SOURCE, relative)) == landed_expected, f"Landed source identity drift: {relative}")
-        if relative in capability_paths:
+        if relative in retained_paths:
             require(sha256_bytes(git_file("HEAD", relative)) == landed_expected, f"Current bound source identity drift: {relative}")
 
-    bound_arguments = tuple(sorted(capability_paths))
+    bound_arguments = tuple(sorted(retained_paths))
     index_records = run_git("ls-files", "-v", "-z", "--", *bound_arguments).split(b"\0")
     index_flags: dict[str, str] = {}
     for raw_record in index_records:
@@ -1451,7 +1457,7 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
             fail("Current bound source index record is malformed")
         require(relative not in index_flags, "Current bound source index path is duplicated")
         index_flags[relative] = flag
-    require(set(index_flags) == capability_paths, "Current bound source index path set drift")
+    require(set(index_flags) == retained_paths, "Current bound source index path set drift")
     for relative, flag in index_flags.items():
         require(flag == "H", f"Current bound source index flags are not normal: {relative}")
 
@@ -1513,8 +1519,12 @@ def validate_validator_identity() -> str:
     require(
         len(validator_parts) == 2
         and validator_parts[1] == "tools/validate-oq8-platform-evidence.py"
-        and validator_parts[0] == sha256_file(DEFAULT_ROOT / validator_parts[1]),
+        and validator_parts[0] == PRIOR_VALIDATOR_SHA256,
         "Closure validator identity drift",
+    )
+    require(
+        sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, validator_parts[1])) == PRIOR_VALIDATOR_SHA256,
+        "Closure validator historical identity drift",
     )
     return validator_parts[0]
 
@@ -1623,20 +1633,30 @@ def validate_review_subject(subject: dict[str, Any], crosswalk: dict[str, Any], 
         "sourceArtifactIdentity": ("source-artifact-identity.json", CLOSURE / "source-artifact-identity.json"),
         "limitations": ("limitations.json", CLOSURE / "limitations.json"),
         "closureValidator": ("validator-sha256.txt", CLOSURE / "validator-sha256.txt"),
-        "validatorRequirements": ("requirements-oq8.txt", ROOT / "requirements-oq8.txt"),
-        "ciWorkflow": (".github/workflows/ci.yml", ROOT / ".github/workflows/ci.yml"),
-        "integrationWorkflow": (".github/workflows/integration.yml", ROOT / ".github/workflows/integration.yml"),
+        "validatorRequirements": ("requirements-oq8.txt", None),
+        "ciWorkflow": (".github/workflows/ci.yml", None),
+        "integrationWorkflow": (".github/workflows/integration.yml", None),
         "workflowGuardrailTests": (
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
-            ROOT / "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+            None,
         ),
-        "closureTests": (CLOSURE_TEST_SOURCE, ROOT / CLOSURE_TEST_SOURCE),
+        "closureTests": (CLOSURE_TEST_SOURCE, None),
         "preReviewExecution": (PRE_REVIEW_EXECUTION, CLOSURE / PRE_REVIEW_EXECUTION),
         "captureManifest": (f"{EVIDENCE_DIRECTORY}/evidence-sha256.txt", EVIDENCE / "evidence-sha256.txt"),
     }
     require(set(bindings) == set(expected_bindings), "Review subject binding set drift")
+    run_git("merge-base", "--is-ancestor", PRIOR_CLOSURE_COMMIT, "HEAD")
     for name, (relative, path) in expected_bindings.items():
-        require(bindings.get(name) == {"path": relative, "sha256": sha256_file(path)}, f"Review subject binding drift: {name}")
+        if relative in PRIOR_ROOT_BINDING_HASHES:
+            expected_sha256 = PRIOR_ROOT_BINDING_HASHES[relative]
+            require(
+                sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, relative)) == expected_sha256,
+                f"Review subject historical binding drift: {name}",
+            )
+        else:
+            require(path is not None, f"Review subject binding source is missing: {name}")
+            expected_sha256 = sha256_file(path)
+        require(bindings.get(name) == {"path": relative, "sha256": expected_sha256}, f"Review subject binding drift: {name}")
     require(
         subject.get("identity") == {
             "repository": "Hexalith/Hexalith.EventStore",
@@ -2042,16 +2062,26 @@ def validate_pre_review_execution(document: Any) -> None:
     require(
         document.get("validator") == {
             "path": "tools/validate-oq8-platform-evidence.py",
-            "sha256": sha256_file(DEFAULT_ROOT / "tools/validate-oq8-platform-evidence.py"),
+            "sha256": PRIOR_VALIDATOR_SHA256,
         },
         "Pre-review execution validator identity drift",
     )
     require(
+        sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, "tools/validate-oq8-platform-evidence.py"))
+        == PRIOR_VALIDATOR_SHA256,
+        "Pre-review execution historical validator identity drift",
+    )
+    require(
         document.get("testSource") == {
             "path": CLOSURE_TEST_SOURCE,
-            "sha256": sha256_file(ROOT / CLOSURE_TEST_SOURCE),
+            "sha256": PRIOR_ROOT_BINDING_HASHES[CLOSURE_TEST_SOURCE],
         },
         "Pre-review execution test-source identity drift",
+    )
+    require(
+        sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, CLOSURE_TEST_SOURCE))
+        == PRIOR_ROOT_BINDING_HASHES[CLOSURE_TEST_SOURCE],
+        "Pre-review execution historical test-source identity drift",
     )
     require(document.get("finalValidation") == PRE_REVIEW_FINAL_VALIDATION, "Pre-review final-validation disclosure drift")
     commands = document.get("commands")
