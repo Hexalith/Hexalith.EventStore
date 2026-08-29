@@ -12,7 +12,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux.md
 inputDocumentDigests:
   _bmad-output/planning-artifacts/prd.md: 8f9c88e8b8665c2ded07a6a4df88db95d04339e5c728ef361ee9fbe9c115a699
-  _bmad-output/planning-artifacts/architecture.md: 9a20ba5c6860f124ca52a8801e531132a96dd0a761856fdc4684390d848f4101
+  _bmad-output/planning-artifacts/architecture.md: 623bc23e453aba5a703c5aa1b208bf9f985f5937f5900f5e665f5cb5abe5ca94
   _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md: 3be78b6b856d3bb8e76451ebbfa550d9018bd4bce05e3dc4a2968758f7abf83e
   _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md: 6a058112512b3dcc4468bdf698d6949345ab7ba3844e1a61b725f9a0aca38a3c
   _bmad-output/planning-artifacts/ux.md: 3c827e922c2a05559eac09ad3bff638fed0e2aca789eacd733dbb904e4a42c8c
@@ -2806,7 +2806,78 @@ So that operators have a positive deployment-grade identity without relying on o
 **Then** this packet may be used as immutable EventStore evidence but does not itself authorize either action
 **And** deployment requires its own authority, while consumer removal requires the separate authenticated Consumer-owner receipt bound to that consumer repository/commit, packet subject, capability catalog, applicable-mode matrix, and exact removal subject; Parties 8.6 and G5 remain outside this story.
 
-<!-- Epic 3 story set confirmed complete. -->
+### Story 3.16: Latest-Compatible Dependency And Root Submodule Refresh
+
+As a platform maintainer,
+I want the shared NuGet catalog and root-declared submodule revisions refreshed from authoritative upstream evidence,
+So that current development uses the latest compatible dependency set without weakening reproducibility or overwriting in-flight work.
+
+Requirements coverage: Primary maintenance ownership of FR19 and FR21; supporting NFR9, NFR11, and NFR12.
+
+Architecture constraints: AD-11 through AD-13. Builds remains the sole NuGet version authority; stable, prerelease, framework-coupled, and major families move only with compatible evidence; root gitlinks use exact reachable commits; nested submodules are excluded.
+
+Dependencies: Completed Story 3.11 supplies the audit and validation contract but remains immutable. Existing Story 3.13 through 3.15 evidence remains bound to its original identities. Current unrelated Story 1.21 work must be preserved.
+
+Current reconciliation: The 2026-08-20 live audit evaluated 284 rows, identified 43 stable-pin and four prerelease-channel candidates across 15 audit families, and left seven source-unresolved IDs retained. All seven checked-out root submodules matched then-current upstream main; only the parent Builds and Tenants gitlinks differed, and those advances were already present in the working tree.
+
+Acceptance Criteria:
+
+Given Story 3.16 implementation begins
+When repository and source preflight runs
+Then it records the current EventStore branch, status, remotes, recent history, exact parent gitlinks, each root submodule status/revision/upstream main HEAD, configured NuGet sources, catalog revision, and unrelated modified paths
+And it preserves every pre-existing change, performs no nested initialization or update, and stops before overwriting or absorbing another story’s work.
+
+Given the Builds catalog is audited
+When live NuGet V3 registration and flat-container evidence is collected
+Then every evaluated package row records current version, latest listed stable and prerelease candidates, listing state, source result, family, disposition, rollback group, rationale, evidence, and removal trigger
+And missing, unlisted, or unresolved results never cause a guessed version, downgrade, omitted row, or false latest claim.
+
+Given a stable pin has a newer stable candidate
+When selection is proposed
+Then the latest listed stable candidate is tested as the default
+And any retained older version is accepted only as the latest validated compatible version with exact incompatibility evidence, an accountable owner, and a concrete recheck trigger.
+
+Given an intentional prerelease pin has a newer prerelease candidate
+When selection is proposed
+Then it advances within the intentional channel as one compatible family
+And it neither falls back to an older stable version nor crosses to another channel without explicit architecture and consumer evidence.
+
+Given a family is coupled by SDK, runtime, compiler, adapter, UI, or test-host behavior
+When any member changes
+Then all required family rows and non-CPM exceptions align in one rollback-safe unit and representative consumers pass
+And partial family upgrades, mixed AppHost SDK/package versions, or isolated major bumps are rejected.
+
+Given Microsoft.OpenApi 3.x, xUnit 4.x, Roslyn 5.9, Aspire 13.5, or another major/framework-coupled candidate is considered
+When compatibility validation runs
+Then compile-time, runtime, generated-output, discovery/execution, package-mode, and public-surface effects applicable to that family are proved and required source adaptations are included
+And version recency alone cannot override the existing ASP.NET Core OpenAPI, compiler-host, test-adapter, or AppHost contracts.
+
+Given the accepted catalog is written
+When Builds governance runs
+Then central-version, authoritative-catalog, exception, Dapr, live-audit schema, offline-audit, family, and consumer-authority validators pass and the checked-in audit binds the exact Builds revision and validation results
+And no PackageReference version is added to EventStore or another consumer project.
+
+Given EventStore and in-scope root consumers evaluate the accepted catalog
+When Debug/source and Release/package modes restore, build, test, generate, pack, and inspect dependency graphs
+Then affected AppHost, Server, Contracts, generator, Admin UI, FrontComposer, Tenants, Memories, and release-package boundaries pass with warnings as errors and NuGet audit enabled
+And a source-only success, stale assets file, skipped test lane, or one representative project cannot establish compatibility.
+
+Given root submodule revisions are refreshed
+When authoritative upstream main HEADs are resolved again immediately before application
+Then each of the seven root gitlinks is either already equal or advances to the exact validated reachable revision, with Builds pointing to the accepted catalog commit
+And no nested submodule, unrelated gitlink, detached unpushed commit, recursive update, remote-tracking guess, or local content change is silently included.
+
+Given package or gitlink validation fails
+When rollback is required
+Then only the affected package family or gitlink group is reverted to its recorded before identity and validation is rerun
+And frozen release/evidence packets, unrelated working-tree changes, and other accepted groups remain untouched.
+
+Given Story 3.16 completion is requested
+When final evidence is assembled
+Then it binds exact before/after catalog rows, retained exceptions, configured-source results and UTC time, Builds/EventStore/submodule SHAs, commands/results, package and gitlink rollback groups, documentation snapshots, limitations, and named Builds/EventStore maintainer approvals
+And it performs or implies no NuGet publication, deployment, nested-submodule action, commit, push, merge, or rewrite of Story 3.11 or Story 3.13 through 3.15 evidence without separate authority.
+
+<!-- Epic 3 story set includes the approved Story 3.16 maintenance follow-up. -->
 
 ## Epic 4: Operators Can Trust Command and Event Integrity
 

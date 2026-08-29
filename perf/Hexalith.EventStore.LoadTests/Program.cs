@@ -32,8 +32,8 @@ internal static class Program {
             .WithReportFormats(ReportFormat.Html, ReportFormat.Csv, ReportFormat.Md)
             .Run();
 
-        // Surface a non-zero exit code if any scenario failed assertions, so CI fails the job.
-        return stats.AllFailCount > 0 ? 2 : 0;
+        // Surface a non-zero exit code if any scenario or step failed, so CI fails the job.
+        return LoadTestExitCode.From(stats);
     }
 
     private static Uri ResolveBaseAddress() {

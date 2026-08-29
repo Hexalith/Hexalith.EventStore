@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Hexalith.EventStore.LoadTests.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="NBomber" />
     <PackageReference Include="NBomber.Http" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />

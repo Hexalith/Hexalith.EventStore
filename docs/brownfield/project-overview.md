@@ -22,7 +22,7 @@ state.Apply(Event)                          // fold events back into state
 
 - **Repository:** https://github.com/Hexalith/Hexalith.EventStore
 - **License:** MIT
-- **Framework:** .NET 10 (SDK `10.0.302`, pinned in `global.json`, roll-forward `latestPatch`)
+- **Framework:** .NET 10 (SDK `10.0.400`, pinned in `global.json`, roll-forward `latestPatch`)
 - **Solution file:** `Hexalith.EventStore.slnx` (modern XML solution format — `.sln` is never used)
 
 ## Repository Classification
@@ -32,7 +32,7 @@ state.Apply(Event)                          // fold events back into state
 | Repository type | **Monorepo / multi-part** (multiple deployable services + libraries + submodules) |
 | Project type | **Backend** (event-sourcing server) with a **Blazor** admin/sample UI tier |
 | Primary language | **C#** (`net10.0`, `LangVersion=latest`, Nullable + ImplicitUsings enabled) |
-| Solution projects | **35 projects** (15 `src/`, 3 `samples/`, 1 `perf/`, 17 `tests/`) + 5 submodule projects |
+| Solution projects | **36 projects** (15 `src/`, 3 `samples/`, 1 `perf/`, 18 `tests/`) + 5 submodule projects |
 | Source files | ~900 C# files across `src/` alone |
 | Package management | **Centralized** via `references/Hexalith.Builds/Props/Directory.Packages.props`; root `Directory.Packages.props` is import-only (`ManagePackageVersionsCentrally=true`) |
 | Build conventions | `TreatWarningsAsErrors=true`, Allman braces, file-scoped namespaces, `_camelCase` fields |
@@ -42,7 +42,7 @@ state.Apply(Event)                          // fold events back into state
 
 | Category | Technology | Version | Role |
 |----------|-----------|---------|------|
-| Runtime | .NET | `net10.0` (SDK 10.0.302) | Target framework |
+| Runtime | .NET | `net10.0` (SDK 10.0.400) | Target framework |
 | Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.18.5` | State store, pub/sub, actors, service invocation |
 | Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.5.3` | Local topology + publish targets |
 | DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.5.0-preview.1.260825-0345` | DAPR sidecar wiring in AppHost |
@@ -57,8 +57,8 @@ state.Apply(Event)                          // fold events back into state
 | Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.18.0` | Traces, metrics, structured logs |
 | Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.9.0` | HTTP resilience + service discovery |
 | Identifiers | `Hexalith.Commons.UniqueIds` | `2.30.0` | ULID generation |
-| Testing | xUnit v3 `3.2.2`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.9.0`, Playwright `1.62.0`, Testcontainers `4.14.0`, coverlet `10.0.1` | — | Unit → integration → E2E |
-| Load testing | NBomber + NBomber.Http | `6.5.0` / `6.2.1` | Throughput/latency perf tests |
+| Testing | xUnit v3 `4.0.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.9.0`, Playwright `1.62.0`, Testcontainers `4.14.0`, coverlet `10.0.1` | — | Unit → integration → E2E |
+| Load testing | NBomber + NBomber.Http | `6.6.0` / `6.2.1` | Throughput/latency perf tests |
 | Release | semantic-release (Conventional Commits) | npm `^24.2.3` | Automated versioning + NuGet publish |
 
 ## What's in the Box (high-level)

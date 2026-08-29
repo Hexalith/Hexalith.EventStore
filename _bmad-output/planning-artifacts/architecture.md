@@ -7,7 +7,7 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: final
 created: 2026-07-05
-updated: 2026-08-16
+updated: 2026-08-29
 binds:
   - FR1-FR37
   - NFR1-NFR19
@@ -32,6 +32,8 @@ sources:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-14.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-16.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-20.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-29.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-08-01.md
   - _bmad-output/planning-artifacts/story-id-migration-2026-08-01.md
   - _bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md
@@ -63,10 +65,10 @@ govern; this architecture projects those decisions into EventStore; pre-change
 FR27/NFR7/NFR16 and architecture text is historical context only.
 
 For deployed-runtime parity, the approved 2026-08-16 sprint change proposal and the final PRD
-updated 2026-08-16 govern over stale epic, story, specification, and sprint-tracking text.
-Implementation handoff is blocked until those downstream artifacts atomically encode Story 3.13
-as the rejected `v3.94.1` disposition, Story 3.14 as the corrective release, Story 3.15 as positive
-parity closure, and Epic 3 as open. No stale artifact can authorize positive `v3.94.1` closure.
+updated 2026-08-16 govern. The Epic 3 plan and sprint tracker encode Story 3.13 as the rejected
+`v3.94.1` disposition, Story 3.14 as the corrective release, and Story 3.15 as positive parity
+closure. Epic 3 remains open for the approved Story 3.16 maintenance follow-up. Planning or story
+status never authorizes release, deployment, consumer removal, or positive `v3.94.1` closure.
 
 ```mermaid
 flowchart LR
@@ -152,7 +154,7 @@ flowchart LR
 
 - **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11, NFR16-NFR17
 - **Prevents:** local submodule checkout state, Debug source references, or hard-coded package loops changing released package output; and single-platform or otherwise nonconforming container registry objects being reported as successful releases.
-- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Unset or explicit `UseHexalithProjectReferences=false` is package intent in every configuration, including Debug. Explicit `true` is source intent, but each external edge still requires its root-declared source path to exist; missing source falls back to the centrally pinned package edge. Empty or unset configuration remains package-safe. Submodule packages are not produced by EventStore release jobs. `references/Hexalith.Builds/Props/Directory.Packages.props` is the sole source-owned NuGet version catalog for Hexalith repositories; consumer props only configure CPM and import it. The catalog moves to latest validated compatible versions using configured-source evidence, grouped restore/build/test validation, and representative-consumer proof. Hexalith release families, .NET/ASP.NET patch bands, OpenTelemetry packages, test adapters, and other coupled sets move coherently. Major upgrades and channel changes require explicit proof. Compatibility exceptions record rationale and a removal trigger; missing, unlisted, or older search results never cause a downgrade. The repository SDK seed remains `10.0.302` with `rollForward: latestPatch`; the verified current same-band security floor is SDK `10.0.303` and ASP.NET/runtime `10.0.11`.
+- **Rule:** `tools/release-packages.json` is the EventStore release inventory. Release/package validation uses package-reference mode by default. Source project references require explicit `UseHexalithProjectReferences=true` and are never used for package publication. Unset or explicit `UseHexalithProjectReferences=false` is package intent in every configuration, including Debug. Explicit `true` is source intent, but each external edge still requires its root-declared source path to exist; missing source falls back to the centrally pinned package edge. Empty or unset configuration remains package-safe. Submodule packages are not produced by EventStore release jobs. `references/Hexalith.Builds/Props/Directory.Packages.props` is the sole source-owned NuGet version catalog for Hexalith repositories; consumer props only configure CPM and import it. The catalog moves to latest validated compatible versions using configured-source evidence, grouped restore/build/test validation, and representative-consumer proof. Hexalith release families, .NET/ASP.NET patch bands, OpenTelemetry packages, test adapters, and other coupled sets move coherently. Major upgrades and channel changes require explicit proof. Compatibility exceptions record rationale and a removal trigger; missing, unlisted, or older search results never cause a downgrade. The repository SDK seed and current required SDK are `10.0.400` with `rollForward: latestPatch`; the ASP.NET/runtime security baseline is `10.0.11`.
 
 The EventStore container release is one immutable OCI image index. Released container repositories are exactly the release workflow's `container-projects` mapping - currently the single `eventstore` repository. Any future externally released container image, including `eventstore-admin-ui`, adopts this same index/platform/validation contract and an AD-22 identity mapping before its first release; until then AD-21's `eventstore-admin-ui` is an AppHost/deployment topology identity, not a released registry artifact, and deployment profiles must not require a platform of any released registry image that no release evidence proves. The conforming registry shape has one authority - the SHA-pinned shared Hexalith.Builds publisher/validator the release workflow consumes; neither Builds nor the EventStore caller reinterprets it locally, and shape changes route through an approved proposal and a Builds change, never a validation weakening. That shape: the release version tag resolves to media type `application/vnd.oci.image.index.v1+json` (a Docker manifest list or single-image manifest served for the tag is nonconforming) containing exactly one descriptor per supported platform - `linux/amd64` and `linux/arm64` - each directly referencing an image manifest (nested indexes are nonconforming), with no duplicate, extra, or `unknown` platform and no non-empty platform `variant` value. Index-level annotations and repository co-objects outside the validated descriptor graph confer no release evidence. Platform children are produced by .NET SDK container support, never Dockerfiles.
 
@@ -483,11 +485,11 @@ closure.
 
 ## Stack
 
-The table is a dated rendering of the current planning baseline; the Builds catalog remains live version authority and always wins. Story 3.11 updates version rows only from accepted shared-catalog and compatibility evidence.
+The table is a dated rendering of the current planning baseline; the Builds catalog remains live version authority and always wins. Story 3.11 established the validated refresh contract; approved follow-ups such as Story 3.16 update version rows only from accepted shared-catalog and compatibility evidence.
 
 | Name | Version |
 | --- | --- |
-| .NET SDK | Repository seed `10.0.302` (`rollForward: latestPatch`); required same-band security baseline `10.0.303` |
+| .NET SDK | Repository seed and current required SDK `10.0.400` (`rollForward: latestPatch`) |
 | Target framework | net10.0 |
 | Aspire.Hosting | 13.5.3 |
 | Aspire.Hosting.Keycloak / Kubernetes | 13.5.3-preview.1.26425.3 |
@@ -498,13 +500,13 @@ The table is a dated rendering of the current planning baseline; the Builds cata
 | MediatR | 14.2.0 |
 | FluentValidation | 12.1.1 |
 | ASP.NET Core / SignalR packages | `10.0.11` (catalog and security baseline aligned) |
-| Microsoft.CodeAnalysis packages | 5.6.0 |
+| Microsoft.CodeAnalysis packages | 5.9.0 |
 | Microsoft.FluentUI.AspNetCore.Components | 5.0.0-rc.5-26219.1 |
 | Hexalith.FrontComposer packages | Catalog `HexalithFrontComposerVersion` `4.1.1`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
 | OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.18.0 |
 | OpenTelemetry runtime instrumentation | 1.18.0 (StackExchangeRedis instrumentation `1.18.0-beta.1`) |
 | Hexalith.Commons.UniqueIds | 2.30.0 |
-| xUnit v3 | 3.2.2 |
+| xUnit v3 | 4.0.0 |
 | Shouldly | 4.3.0 |
 | NSubstitute | 6.2.0 |
 
@@ -597,7 +599,6 @@ flowchart TB
 | --- | --- |
 | `ux.md` user journeys, screen states, component-level patterns, accessibility, and localization evidence | PRD makes UX a separate readiness artifact. This spine binds UI-host boundaries and support-safe/projection-confirmed rules only. |
 | Story splitting, renumbering, evidence crosswalks, and sprint-status migration under the approved 2026-07-15 and 2026-08-01 proposals | `epics.md`, active story specs, dated crosswalks, and sprint planning own implementation identity and sequencing; this spine supplies the shared invariants for every resulting slice. |
-| Atomic 2026-08-16 deployed-parity plan alignment | `epics.md`, Stories 3.13-3.15 specifications, and sprint tracking still present stale positive-`v3.94.1` ownership. Architecture can finalize because the authority order above fails closed, but implementation handoff is blocked until all downstream artifacts atomically encode the PRD split; no stale artifact authorizes release, positive parity, deployment, or consumer removal. |
 | Quantitative EventStore UI performance budgets | No production baseline supports a numerical release gate yet. A future UX-performance backlog item may establish measured budgets without weakening accessibility, responsive layout, evidence-state, or support-safety rules. |
 | Exact tenant-vs-domain global-position sharding design | FR24 requires renegotiating the frozen global-ordering spec before implementation. AD-6 preserves current semantics until then. |
 | Append-path storage fencing and write-once enforcement | **ADD, deferred to a separately approved implementation story.** Story 4.5's Dapr `1.18.1` `state.redis` / Redis `6` profile proved that a raw actor-state transaction can become durable at sequence 1 and then be silently overwritten by the actor at the same key; the actor surfaced no exception and consumed none of its one configured retry. AD-5 preserves the sole-owner append path but does not claim physical write-once enforcement; no behavior is inferred for another state-store provider. No append-remediation slice may select a local fence or claim write-once durability before an approved provider-portable ETag/first-write or equivalent fence passes production-path proof. |

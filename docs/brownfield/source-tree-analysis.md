@@ -7,7 +7,7 @@
 ```
 eventstore/
 ├── Hexalith.EventStore.slnx        # THE solution file (XML format; never use .sln)
-├── global.json                     # Pins SDK 10.0.302 (rollForward latestPatch)
+├── global.json                     # Pins SDK 10.0.400 (rollForward latestPatch)
 ├── Directory.Build.props           # Shared build settings: net10.0, Nullable, TreatWarningsAsErrors,
 │                                   #   NuGet metadata, references/Hexalith.Tenants path resolution
 ├── Directory.Build.targets         # Container image defaults (.NET SDK container support, opt-in)
@@ -20,7 +20,7 @@ eventstore/
 │
 ├── src/        # 15 projects — core framework + admin suite (see below)
 ├── samples/    # Counter domain sample + Blazor sample UI + sample tests
-├── tests/      # 17 test projects (Tier 1 unit → Tier 3 integration/E2E)
+├── tests/      # 18 test projects (Tier 1 unit → Tier 3 integration/E2E)
 ├── perf/       # NBomber load tests
 ├── deploy/     # Production DAPR component YAML + deploy/README.md
 ├── docs/       # Hand-authored documentation site (+ docs/brownfield/ = THIS generated set)

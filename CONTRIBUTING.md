@@ -88,7 +88,7 @@ For detailed installation instructions for each tool, see the [Prerequisites](do
 
 ### Required Tools
 
-- **.NET 10 SDK** (10.0.302 or later patch in the same feature band)
+- **.NET 10 SDK** (10.0.400 or later patch in the same feature band)
 - **Node.js** (`^22.14.0` or `>=24.10.0`) and **npm** (for repository tooling
   and Git hook installation)
 - **Docker Desktop** (for local DAPR infrastructure)
