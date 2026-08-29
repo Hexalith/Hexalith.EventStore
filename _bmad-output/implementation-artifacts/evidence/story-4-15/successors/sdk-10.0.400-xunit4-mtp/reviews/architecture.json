@@ -4,7 +4,7 @@
   "reviewer": "Winston (System Architect)",
   "reviewedOn": "2026-08-29",
   "decision": "approved",
-  "subjectSha256": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
+  "subjectSha256": "65f8e031a551b1e333fd0c48f59b1c4d085c238cbdf47d3d8dffe46cf1be0d03",
   "acceptedScope": "SDK 10.0.400/MTP source rebinding, prior-seal retention, Linux control-plane discovery, and source-only authority boundaries",
   "findings": [
     "The successor is additive and selects exact current source bytes without changing or deleting the original Story 4.15 packet, manifest, or artifacts.",

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 
 using Hexalith.EventStore.Operations.Configuration;
@@ -19,7 +20,7 @@ public sealed class EventStoreOperationsTelemetryTests
     [Fact]
     public void MetricDimensionsAreBoundedAndContainNoIdentifiers()
     {
-        var tagSets = new List<string[]>();
+        var tagSets = new ConcurrentQueue<string[]>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, currentListener) =>
         {
@@ -29,9 +30,9 @@ public sealed class EventStoreOperationsTelemetryTests
             }
         };
         listener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
-            tagSets.Add([.. tags.ToArray().Select(static tag => tag.Key).Order(StringComparer.Ordinal)]));
+            tagSets.Enqueue([.. tags.ToArray().Select(static tag => tag.Key).Order(StringComparer.Ordinal)]));
         listener.SetMeasurementEventCallback<double>((_, _, tags, _) =>
-            tagSets.Add([.. tags.ToArray().Select(static tag => tag.Key).Order(StringComparer.Ordinal)]));
+            tagSets.Enqueue([.. tags.ToArray().Select(static tag => tag.Key).Order(StringComparer.Ordinal)]));
         listener.Start();
 
         using ServiceProvider services = new ServiceCollection().AddMetrics().BuildServiceProvider();
@@ -41,22 +42,25 @@ public sealed class EventStoreOperationsTelemetryTests
         telemetry.SetBacklog("deadletter.work.events", 2, DateTimeOffset.UtcNow.AddSeconds(-60));
         listener.RecordObservableInstruments();
 
-        tagSets.Count.ShouldBeGreaterThanOrEqualTo(4);
-        foreach (string[] keys in tagSets)
+        // MeterListener callbacks can arrive concurrently with the test thread under the MTP Tier-1 lane.
+        // Assert over one immutable snapshot while the concurrent queue remains safe for any in-flight callback.
+        string[][] capturedTagSets = tagSets.ToArray();
+        capturedTagSets.Length.ShouldBeGreaterThanOrEqualTo(4);
+        foreach (string[] keys in capturedTagSets)
         {
             keys.All(static key => key is "topic" or "status" or "reason").ShouldBeTrue();
         }
-        tagSets.SelectMany(static keys => keys).ShouldNotContain("messageId");
-        tagSets.SelectMany(static keys => keys).ShouldNotContain("tenantId");
-        tagSets.SelectMany(static keys => keys).ShouldNotContain("aggregateId");
+        capturedTagSets.SelectMany(static keys => keys).ShouldNotContain("messageId");
+        capturedTagSets.SelectMany(static keys => keys).ShouldNotContain("tenantId");
+        capturedTagSets.SelectMany(static keys => keys).ShouldNotContain("aggregateId");
     }
 
     /// <summary>Verifies backlog observations expose the latest global values rather than accumulating samples.</summary>
     [Fact]
     public void BacklogGaugesReportCurrentValues()
     {
-        var counts = new List<long>();
-        var ages = new List<double>();
+        var counts = new ConcurrentQueue<long>();
+        var ages = new ConcurrentQueue<double>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, currentListener) =>
         {
@@ -78,14 +82,14 @@ public sealed class EventStoreOperationsTelemetryTests
         {
             if (string.Equals(state as string, "count", StringComparison.Ordinal))
             {
-                counts.Add(value);
+                counts.Enqueue(value);
             }
         });
         listener.SetMeasurementEventCallback<double>((_, value, _, state) =>
         {
             if (string.Equals(state as string, "age", StringComparison.Ordinal))
             {
-                ages.Add(value);
+                ages.Enqueue(value);
             }
         });
         listener.Start();
@@ -122,7 +126,7 @@ public sealed class EventStoreOperationsTelemetryTests
     [Fact]
     public void BacklogGaugesCarryTheConfiguredTopicBeforeAnyObservation()
     {
-        var topics = new List<string?>();
+        var topics = new ConcurrentQueue<string?>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, active) => {
             if (instrument.Meter.Name == EventStoreOperationsTelemetry.MeterName
@@ -131,7 +135,7 @@ public sealed class EventStoreOperationsTelemetryTests
             }
         };
         listener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
-            topics.Add(tags.ToArray().Single(static tag => tag.Key == "topic").Value?.ToString()));
+            topics.Enqueue(tags.ToArray().Single(static tag => tag.Key == "topic").Value?.ToString()));
         listener.Start();
 
         using ServiceProvider services = new ServiceCollection().AddMetrics().BuildServiceProvider();

@@ -2,13 +2,13 @@
   "schema": "hexalith.eventstore.story-4-15-successor-source-only-handoff/v1",
   "story": "4.15",
   "selectedSuccessorDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp",
-  "reviewedFromHead": "cf320fd907430156d1d82e54f0aa404bdef73704",
-  "reviewSubjectSha256": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
-  "sourceIdentitySha256": "7619474f7b1f6ee8a1099fef877758de81a50d6b5274471657c13f74b3cf9c67",
+  "reviewedBaseCommit": "cf320fd907430156d1d82e54f0aa404bdef73704",
+  "reviewSubjectSha256": "65f8e031a551b1e333fd0c48f59b1c4d085c238cbdf47d3d8dffe46cf1be0d03",
+  "sourceIdentitySha256": "bf2caea9c507034129d22959c2168d183257a865d58812ca41fbfa4213a2b970",
   "reviewReceipts": {
-    "architecture": "2baa9f37b2b685634b5bf7374d6c0c0d3ccdbbccaafa3af858a9ec56e0c07a32",
-    "security": "6003d2c2bbca2f2d989ea6fb7fc1bd1ca9457e43d9bfbe88a37b86d4c16cce2c",
-    "test": "64b2abf0a326dea69fe9c36d22423f912df62620b09fff664f3a9940b8a9b99a"
+    "architecture": "3a7036eff75d8e81829149ad688e2939922bc7577e696edf735a599a738f8e90",
+    "security": "9dbbbc77d05fb018100d6c9a2e03316e1c5c21c2ef0acda6db338d78f4c7939d",
+    "test": "ef0d2094b4922aa45ae62808946dd4caf35a8fd3a5e130da4a38b9578398db1c"
   },
   "consumerInstructions": {
     "mode": "source-only",

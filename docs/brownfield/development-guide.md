@@ -49,7 +49,7 @@ project-reference edges if reused with `--no-restore` in package mode.
 | 1 | `AppHost.Tests` | | app-model config |
 | 1 | `Admin.Abstractions.Tests`, `Admin.Cli.Tests`, `Admin.Mcp.Tests`, `Admin.Server.Tests`, `Admin.Server.Host.Tests` | + NSubstitute | |
 | 1 | `DeferredWorkGovernance.Tests`, `OperationalEvidence.Validator.Tests` | | |
-| 2 (server) | `Server.Tests` | + AspNetCore.Mvc.Testing | **⚠ pre-existing build failure** (CA2007 as error) — excluded from baseline |
+| 2 (server) | `Server.Tests` | + AspNetCore.Mvc.Testing | Included in the Release package-mode build and maintained test lanes |
 | 2 (component) | `Admin.UI.Tests` | bunit | Blazor components |
 | 3 (integration) | `IntegrationTests` | Aspire.Hosting.Testing, Mvc.Testing, StackExchange.Redis, Testcontainers | needs Docker + Aspire |
 | 3 (E2E) | `Admin.UI.E2E` | Playwright | browser automation |
@@ -66,12 +66,12 @@ dotnet test tests/Hexalith.EventStore.IntegrationTests/
 ```
 
 **Test conventions:** Shouldly fluent assertions only (never raw `Assert.*`), NSubstitute for mocks,
-coverlet for coverage. Tier 2/3 tests MUST inspect **state-store end-state** (Redis key contents,
+Microsoft.Testing.Platform with Microsoft code coverage for maintained coverage lanes. Tier 2/3 tests MUST inspect **state-store end-state** (Redis key contents,
 persisted CloudEvent body), not just API status codes or mock counts (R2-A6).
 
-> **Known issue:** `tests/Hexalith.EventStore.Server.Tests` does not build (CA2007 warnings treated as
-> errors). It is excluded from the CI baseline. Fix the CA2007 occurrences (add `.ConfigureAwait(false)`)
-> before relying on it.
+> **Current status:** `tests/Hexalith.EventStore.Server.Tests` participates in the maintained
+> Microsoft.Testing.Platform lanes; warnings remain errors, so async changes must continue to satisfy
+> the repository's `ConfigureAwait` rules.
 
 ## Run the local topology (Aspire)
 

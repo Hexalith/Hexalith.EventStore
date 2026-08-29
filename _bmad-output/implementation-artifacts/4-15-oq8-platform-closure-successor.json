@@ -23,18 +23,18 @@
   },
   "successor": {
     "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp",
-    "manifestSha256": "e89bb69b9f7cd90db67f1013027c857412249ed37bb1c5092b46fd66115a9cf1",
+    "manifestSha256": "59774901d3f6c93310412b8dc4300a13be648f559602191c291a3e655029cabb",
     "files": {
-      "review-subject.json": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
-      "reviews/architecture.json": "2baa9f37b2b685634b5bf7374d6c0c0d3ccdbbccaafa3af858a9ec56e0c07a32",
-      "reviews/security.json": "6003d2c2bbca2f2d989ea6fb7fc1bd1ca9457e43d9bfbe88a37b86d4c16cce2c",
-      "reviews/test.json": "64b2abf0a326dea69fe9c36d22423f912df62620b09fff664f3a9940b8a9b99a",
-      "source-artifact-identity.json": "7619474f7b1f6ee8a1099fef877758de81a50d6b5274471657c13f74b3cf9c67",
-      "source-only-handoff.json": "a9f890cb876ac6887ca936d5e15ebfcafe677555bc9810950000e15f3be9ddae"
+      "review-subject.json": "65f8e031a551b1e333fd0c48f59b1c4d085c238cbdf47d3d8dffe46cf1be0d03",
+      "reviews/architecture.json": "3a7036eff75d8e81829149ad688e2939922bc7577e696edf735a599a738f8e90",
+      "reviews/security.json": "9dbbbc77d05fb018100d6c9a2e03316e1c5c21c2ef0acda6db338d78f4c7939d",
+      "reviews/test.json": "ef0d2094b4922aa45ae62808946dd4caf35a8fd3a5e130da4a38b9578398db1c",
+      "source-artifact-identity.json": "bf2caea9c507034129d22959c2168d183257a865d58812ca41fbfa4213a2b970",
+      "source-only-handoff.json": "5fbe7827db68304e4376b8dbd433cda992e3d6335210a3b41ad2c259c28d83ad"
     },
-    "sourceIdentitySha256": "7619474f7b1f6ee8a1099fef877758de81a50d6b5274471657c13f74b3cf9c67",
-    "reviewSubjectSha256": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
-    "handoffSha256": "a9f890cb876ac6887ca936d5e15ebfcafe677555bc9810950000e15f3be9ddae"
+    "sourceIdentitySha256": "bf2caea9c507034129d22959c2168d183257a865d58812ca41fbfa4213a2b970",
+    "reviewSubjectSha256": "65f8e031a551b1e333fd0c48f59b1c4d085c238cbdf47d3d8dffe46cf1be0d03",
+    "handoffSha256": "5fbe7827db68304e4376b8dbd433cda992e3d6335210a3b41ad2c259c28d83ad"
   },
   "authority": {
     "eventStorePlatformComplete": true,

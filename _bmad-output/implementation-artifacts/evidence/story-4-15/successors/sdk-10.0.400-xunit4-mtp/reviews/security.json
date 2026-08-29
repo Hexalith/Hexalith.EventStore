@@ -4,11 +4,11 @@
   "reviewer": "Security Reviewer",
   "reviewedOn": "2026-08-29",
   "decision": "approved",
-  "subjectSha256": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
+  "subjectSha256": "65f8e031a551b1e333fd0c48f59b1c4d085c238cbdf47d3d8dffe46cf1be0d03",
   "acceptedScope": "successor identity integrity, immutable prior evidence, bounded Docker port parsing, dependency probing, and external authority exclusions",
   "findings": [
     "Docker port discovery accepts one consistent published TCP port and fails closed on absent, malformed, or conflicting mappings.",
-    "The additional NuGet package-cache probing path resolves the pinned coverage extension without expanding any release or external authority."
+    "The EventStore-owned NuGet package-cache probing path is bound here without granting package, shared-workflow, release, or external-repository authority."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

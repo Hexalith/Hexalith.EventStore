@@ -213,8 +213,8 @@ orchestrator over a checkpointed 5-step pipeline — `PipelineState` persisted f
 - Payloads are redacted in `ToString()` on `CommandEnvelope`, `EventEnvelope`, `QueryEnvelope` (SEC-5).
 - No custom retry around DAPR calls — DAPR resiliency policies own transient failures (rule #4).
 - Tenant/domain/aggregate-id components forbid colons → structurally disjoint key spaces (FR15/FR28).
-- `Hexalith.EventStore.Server.Tests` is excluded from the baseline due to a pre-existing CA2007
-  warnings-as-errors build failure (see development-guide.md).
+- `Hexalith.EventStore.Server.Tests` participates in the maintained Microsoft.Testing.Platform lanes;
+  warnings remain errors, including the repository's async `ConfigureAwait` rules (see development-guide.md).
 - **Domain modules are domain-centric (boilerplate lives in DomainService and the client libraries).** A domain module must
   not re-implement platform infrastructure — no own `*.AppHost`/`*.Aspire`/`*.ServiceDefaults`, no custom
   projection/query actor, no hand-rolled DAPR wiring, read-model store, cursor codec, telemetry source/meter,

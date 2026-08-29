@@ -128,7 +128,7 @@ See `docs/guides/security-model.md`.
 
 ## Caveats from the scan
 
-- **No `.github/workflows/` in this checkout** — deployment automation may live elsewhere; verify
-  before assuming an image build/publish pipeline exists here.
+- Repository-owned automation lives under `.github/workflows/`; inspect the current release and
+  integration definitions before relying on a particular image build or publication lane.
 - Kafka partition keys and Service Bus SessionIds are **not yet emitted** by the event publisher, so
   strict per-key ordering on those brokers is not yet guaranteed (per `deploy/README.md`).

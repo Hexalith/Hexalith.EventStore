@@ -4,11 +4,11 @@
   "reviewer": "Murat (Test Architect)",
   "reviewedOn": "2026-08-29",
   "decision": "approved",
-  "subjectSha256": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
+  "subjectSha256": "65f8e031a551b1e333fd0c48f59b1c4d085c238cbdf47d3d8dffe46cf1be0d03",
   "acceptedScope": "xUnit 4 serialization metadata, maintained MTP coverage, focused resolver/production evidence, and fail-closed successor selection",
   "findings": [
-    "Four focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.",
-    "The current MTP workflows, coverage provider wiring, and xUnit ParallelMode.None source are content-bound by the successor identity."
+    "Nine focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.",
+    "The EventStore-owned MTP workflow integration and xUnit ParallelMode.None source are content-bound; external Builds catalog and reusable-workflow authority remain excluded."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

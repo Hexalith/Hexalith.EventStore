@@ -190,11 +190,11 @@ SUCCESSOR_REVIEW_FINDINGS = {
     ],
     "security": [
         "Docker port discovery accepts one consistent published TCP port and fails closed on absent, malformed, or conflicting mappings.",
-        "The additional NuGet package-cache probing path resolves the pinned coverage extension without expanding any release or external authority.",
+        "The EventStore-owned NuGet package-cache probing path is bound here without granting package, shared-workflow, release, or external-repository authority.",
     ],
     "test": [
-        "Four focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.",
-        "The current MTP workflows, coverage provider wiring, and xUnit ParallelMode.None source are content-bound by the successor identity.",
+        "Nine focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.",
+        "The EventStore-owned MTP workflow integration and xUnit ParallelMode.None source are content-bound; external Builds catalog and reusable-workflow authority remain excluded.",
     ],
 }
 EXTERNAL_AUTHORITY_FIELDS = {
@@ -344,11 +344,11 @@ EXPECTED_CAPTURE_COMMAND_RESULTS = {
         "counts": {"warnings": 0, "errors": 0},
     },
     "focused-production-matrix": {
-        "command": FOCUSED_CURRENT_COMMAND,
+        "command": FOCUSED_LEGACY_COMMAND,
         "counts": {"passed": 1, "failed": 0, "skipped": 0},
     },
     "explicit-deterministic-support-oracles": {
-        "command": SUPPORT_CURRENT_COMMAND,
+        "command": SUPPORT_LEGACY_COMMAND,
         "counts": {"methods": 21, "passed": 33, "failed": 0, "skipped": 0},
     },
     "deterministic-support-lane": {
@@ -1328,7 +1328,7 @@ def validate_successor_source_identity() -> dict[str, Any]:
             "schema",
             "reviewedOn",
             "repository",
-            "reviewedFromHead",
+            "reviewedBaseCommit",
             "priorLandedSource",
             "reason",
             "bindingRule",
@@ -1344,7 +1344,7 @@ def validate_successor_source_identity() -> dict[str, Any]:
     )
     require(identity.get("reviewedOn") == "2026-08-29", "Story 4.15 successor review date drift")
     require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Story 4.15 successor repository drift")
-    require(identity.get("reviewedFromHead") == SUCCESSOR_REVIEW_BASE, "Story 4.15 successor review base drift")
+    require(identity.get("reviewedBaseCommit") == SUCCESSOR_REVIEW_BASE, "Story 4.15 successor review base drift")
     require(identity.get("priorLandedSource") == LANDED_SOURCE, "Story 4.15 successor prior source drift")
     require(
         identity.get("reason")
@@ -1353,7 +1353,7 @@ def validate_successor_source_identity() -> dict[str, Any]:
     )
     require(
         identity.get("bindingRule")
-        == "Every listed current source path must exist as a regular file and match its reviewed SHA-256; the reviewed HEAD must remain an ancestor of Git HEAD.",
+        == "Every listed current worktree source path must exist as a regular file and match its reviewed SHA-256; reviewedBaseCommit is an ancestry base only and does not claim those bound worktree bytes exist in that commit.",
         "Story 4.15 successor source binding rule drift",
     )
     require(
@@ -1382,7 +1382,7 @@ def validate_successor_source_identity() -> dict[str, Any]:
             "xunitParallelization": "ParallelMode.None",
             "dockerPublishedControlPlanePorts": True,
             "nugetPackageCacheProbing": True,
-            "focusedPortResolverTests": {"total": 4, "passed": 4, "failed": 0, "skipped": 0},
+            "focusedPortResolverTests": {"total": 9, "passed": 9, "failed": 0, "skipped": 0},
             "focusedProductionOq8": {"total": 1, "passed": 1, "failed": 0, "skipped": 0},
         },
         "Story 4.15 successor validation record drift",
@@ -1458,7 +1458,7 @@ def validate_successor_review_subject(subject: Any, identity: dict[str, Any]) ->
         == {
             "path": "source-artifact-identity.json",
             "sha256": sha256_file(SUCCESSOR / "source-artifact-identity.json"),
-            "reviewedFromHead": SUCCESSOR_REVIEW_BASE,
+            "reviewedBaseCommit": SUCCESSOR_REVIEW_BASE,
             "boundPathCount": len(SUCCESSOR_SOURCE_PATHS),
         },
         "Story 4.15 successor review source identity drift",
@@ -1531,7 +1531,7 @@ def validate_successor_handoff(
             "schema",
             "story",
             "selectedSuccessorDirectory",
-            "reviewedFromHead",
+            "reviewedBaseCommit",
             "reviewSubjectSha256",
             "sourceIdentitySha256",
             "reviewReceipts",
@@ -1547,7 +1547,7 @@ def validate_successor_handoff(
     )
     require(document.get("story") == "4.15", "Story 4.15 successor handoff story drift")
     require(document.get("selectedSuccessorDirectory") == SUCCESSOR_DIRECTORY, "Story 4.15 successor handoff directory drift")
-    require(document.get("reviewedFromHead") == SUCCESSOR_REVIEW_BASE, "Story 4.15 successor handoff review base drift")
+    require(document.get("reviewedBaseCommit") == SUCCESSOR_REVIEW_BASE, "Story 4.15 successor handoff review base drift")
     require(document.get("reviewSubjectSha256") == subject_sha256, "Story 4.15 successor handoff subject drift")
     require(document.get("sourceIdentitySha256") == identity_sha256, "Story 4.15 successor handoff source identity drift")
     require(document.get("reviewReceipts") == receipts, "Story 4.15 successor handoff receipt set drift")

@@ -10,8 +10,8 @@
   },
   "sourceIdentity": {
     "path": "source-artifact-identity.json",
-    "sha256": "7619474f7b1f6ee8a1099fef877758de81a50d6b5274471657c13f74b3cf9c67",
-    "reviewedFromHead": "cf320fd907430156d1d82e54f0aa404bdef73704",
+    "sha256": "bf2caea9c507034129d22959c2168d183257a865d58812ca41fbfa4213a2b970",
+    "reviewedBaseCommit": "cf320fd907430156d1d82e54f0aa404bdef73704",
     "boundPathCount": 12
   },
   "validation": {
@@ -20,8 +20,8 @@
     "dockerPublishedControlPlanePorts": true,
     "nugetPackageCacheProbing": true,
     "focusedPortResolverTests": {
-      "total": 4,
-      "passed": 4,
+      "total": 9,
+      "passed": 9,
       "failed": 0,
       "skipped": 0
     },

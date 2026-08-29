@@ -49,6 +49,9 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("current-source")]
     [InlineData("prior-selection")]
     [InlineData("review-receipt")]
+    [InlineData("reviewed-base-wording")]
+    [InlineData("reviewed-resolver-count")]
+    [InlineData("review-external-authority")]
     [Trait("OQ8Phase", "FinalOnly")]
     public void SuccessorSealMutationsFailClosed(string mutation)
     {
@@ -87,6 +90,41 @@ public sealed class Oq8PlatformClosureTests
                     review["decision"] = "rejected";
                     WriteObject(reviewPath, review);
                     expected = "Story 4.15 successor checksum mismatch: reviews/security.json";
+                    break;
+                }
+                case "reviewed-base-wording":
+                {
+                    string successor = SuccessorPath(artifacts);
+                    string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+                    JsonObject identity = LoadObject(identityPath);
+                    identity["bindingRule"] =
+                        "Every listed current source path must exist as a regular file and match its reviewed SHA-256; the reviewed HEAD must remain an ancestor of Git HEAD.";
+                    WriteObject(identityPath, identity);
+                    ResealSuccessorArtifacts(artifacts);
+                    expected = "Story 4.15 successor source binding rule drift";
+                    break;
+                }
+                case "reviewed-resolver-count":
+                {
+                    string successor = SuccessorPath(artifacts);
+                    string reviewPath = Path.Combine(successor, "reviews", "test.json");
+                    JsonObject review = LoadObject(reviewPath);
+                    review["findings"]![0] =
+                        "Four focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.";
+                    WriteObject(reviewPath, review);
+                    ResealSuccessorArtifacts(artifacts);
+                    expected = "Story 4.15 successor test review findings drift";
+                    break;
+                }
+                case "review-external-authority":
+                {
+                    string successor = SuccessorPath(artifacts);
+                    string reviewPath = Path.Combine(successor, "reviews", "security.json");
+                    JsonObject review = LoadObject(reviewPath);
+                    review["authority"]!["externalRepositoryAuthority"] = true;
+                    WriteObject(reviewPath, review);
+                    ResealSuccessorArtifacts(artifacts);
+                    expected = "External authority overstated: externalRepositoryAuthority";
                     break;
                 }
                 default:
@@ -2663,6 +2701,67 @@ public sealed class Oq8PlatformClosureTests
         packet["platformClosure"]!["closureFiles"]![relative] = ComputeSha256(Path.Combine(closure, relative));
         packet["platformClosure"]!["closureManifestSha256"] = ComputeSha256(manifestPath);
         WriteObject(packetPath, packet);
+    }
+
+    private static string SuccessorPath(string artifacts) => Path.Combine(
+        artifacts,
+        "evidence",
+        "story-4-15",
+        "successors",
+        SuccessorDirectory);
+
+    private static void ResealSuccessorArtifacts(string artifacts)
+    {
+        string successor = SuccessorPath(artifacts);
+        string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+        string subjectPath = Path.Combine(successor, "review-subject.json");
+        string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+
+        JsonObject subject = LoadObject(subjectPath);
+        subject["sourceIdentity"]!["sha256"] = ComputeSha256(identityPath);
+        WriteObject(subjectPath, subject);
+        string subjectSha256 = ComputeSha256(subjectPath);
+
+        JsonObject handoff = LoadObject(handoffPath);
+        handoff["sourceIdentitySha256"] = ComputeSha256(identityPath);
+        handoff["reviewSubjectSha256"] = subjectSha256;
+        foreach (string role in new[] { "architecture", "security", "test" })
+        {
+            string reviewPath = Path.Combine(successor, "reviews", role + ".json");
+            JsonObject review = LoadObject(reviewPath);
+            review["subjectSha256"] = subjectSha256;
+            WriteObject(reviewPath, review);
+            handoff["reviewReceipts"]![role] = ComputeSha256(reviewPath);
+        }
+
+        WriteObject(handoffPath, handoff);
+
+        string[] relativeFiles =
+        [
+            "review-subject.json",
+            "reviews/architecture.json",
+            "reviews/security.json",
+            "reviews/test.json",
+            "source-artifact-identity.json",
+            "source-only-handoff.json",
+        ];
+        string manifestPath = Path.Combine(successor, "successor-sha256.txt");
+        File.WriteAllText(
+            manifestPath,
+            string.Join('\n', relativeFiles.Select(relative => $"{ComputeSha256(Path.Combine(successor, relative))}  {relative}")) + "\n");
+
+        string selectorPath = Path.Combine(artifacts, "4-15-oq8-platform-closure-successor.json");
+        JsonObject selector = LoadObject(selectorPath);
+        selector["successor"]!["manifestSha256"] = ComputeSha256(manifestPath);
+        foreach (string relative in relativeFiles)
+        {
+            selector["successor"]!["files"]![relative] = ComputeSha256(Path.Combine(successor, relative));
+        }
+
+        selector["successor"]!["sourceIdentitySha256"] = ComputeSha256(identityPath);
+        selector["successor"]!["reviewSubjectSha256"] = subjectSha256;
+        selector["successor"]!["handoffSha256"] = ComputeSha256(handoffPath);
+        WriteObject(selectorPath, selector);
     }
 
     private static string ComputeSha256(string path) =>

@@ -2,27 +2,27 @@
   "schema": "hexalith.eventstore.story-4-15-successor-source-identity/v1",
   "reviewedOn": "2026-08-29",
   "repository": "Hexalith/Hexalith.EventStore",
-  "reviewedFromHead": "cf320fd907430156d1d82e54f0aa404bdef73704",
+  "reviewedBaseCommit": "cf320fd907430156d1d82e54f0aa404bdef73704",
   "priorLandedSource": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
   "reason": "SDK 10.0.400 requires Microsoft.Testing.Platform, xUnit 4 serialization metadata, and Linux-safe OQ8 control-plane discovery.",
-  "bindingRule": "Every listed current source path must exist as a regular file and match its reviewed SHA-256; the reviewed HEAD must remain an ancestor of Git HEAD.",
+  "bindingRule": "Every listed current worktree source path must exist as a regular file and match its reviewed SHA-256; reviewedBaseCommit is an ancestry base only and does not claim those bound worktree bytes exist in that commit.",
   "replacedPriorBoundPaths": [
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs"
   ],
   "boundPaths": {
     ".github/workflows/ci.yml": "7cf12a9fe2a125ea49e193af9bf9eebb5d90cea2dffefd63c94efa635fc9edc8",
-    ".github/workflows/integration.yml": "9d225921919efc19ffa8d3fb58fdae04e4ffb4b054f386984a0c166012476f67",
-    "docs/ci.md": "7910a3799aca22d7a7116bda003c24174b474af082befc1ccd8f73e929d008f6",
+    ".github/workflows/integration.yml": "e3310df14798b8609e34698f8909c423cf5993bc83b3050f7e27b60bcb169404",
+    "docs/ci.md": "6f716c7086271974f933bc8732961711a1b54f048f8fc3d2a133b72123b76b38",
     "global.json": "715a0895da9db82e2370e7445c371c39e3a2d032fdcf7dfbc95f9fcb27ddc7c2",
     "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed",
-    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "eb3b1078478c1c7ae4ae409fc71804301108e57d0cced134f5943103212380dd",
-    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "6f9093861889aa4a4d00549a6b86ba649952d3f90ee47ab33a73bbe21aa4a1e7",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "aecbbfe4876af624504236b3f30329a50dcd28c1b1db992e034dd4327fc5781f",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "1a4a61b0b7f5109c1d1fa369fbdde6877a55750c353858c5eb80dfd0545b6611",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs": "36891fd8689ec316ab925d1fb1114eeb54b50499fdfe683cd5ebaf4b7228668c",
-    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "cc8494c446bb269a7f1cf6cd531d863e0c7704f797a8488e4ddedfb895c1ebaf",
-    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs": "d1b10bd179f84515effbea1e4004e4eb577440a3f1e963d1fd44228df54fe395",
-    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "65fd5d5e0804247e6e54feb1a183747af0d2c0d31ebf660d195f4cc39a2c599a",
-    "tools/validate-oq8-platform-evidence.py": "e32a23fbfdbd4405edf172eeaa7b69ea5d54b24332d9ec8406406eee1fdc2cc2"
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "76f45fa2102df293c5d28390383b8001cfa47610412262c9c3626c160694020d",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs": "cbc1be14c3a8c9c58c9951059803a706ab3a54e0ccf130db89f3609c245ed577",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "b4da837279e0730dfd3dfa93eb70c07bd02442981ac61f5ac2ee05d79c3e5376",
+    "tools/validate-oq8-platform-evidence.py": "4c7e60c3271ae56f66386e794034e5b51960fadc687b86220484795742d3f0c4"
   },
   "validation": {
     "sdk": "10.0.400",
@@ -30,8 +30,8 @@
     "dockerPublishedControlPlanePorts": true,
     "nugetPackageCacheProbing": true,
     "focusedPortResolverTests": {
-      "total": 4,
-      "passed": 4,
+      "total": 9,
+      "passed": 9,
       "failed": 0,
       "skipped": 0
     },

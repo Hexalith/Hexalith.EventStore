@@ -455,7 +455,7 @@ Test helpers, in-memory fakes, deterministic gateway doubles, and builders for u
 | ------------ | ------- |
 | Shouldly     | 4.3.0   |
 | NSubstitute  | 6.2.0   |
-| xunit.assert | 3.2.2   |
+| xunit.v3.assert | 4.0.0 |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Testing

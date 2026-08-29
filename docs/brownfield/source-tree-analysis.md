@@ -18,9 +18,9 @@ eventstore/
 ├── aspire.config.json              # Aspire CLI config
 ├── CLAUDE.md / AGENTS.md           # Agent operating instructions
 │
-├── src/        # 15 projects — core framework + admin suite (see below)
-├── samples/    # Counter domain sample + Blazor sample UI + sample tests
-├── tests/      # 18 test projects (Tier 1 unit → Tier 3 integration/E2E)
+├── src/        # 19 projects — core framework + admin suite (see below)
+├── samples/    # 5 projects — Counter domain sample + Blazor sample UI + sample tests
+├── tests/      # 26 test projects (Tier 1 unit → Tier 3 integration/E2E)
 ├── perf/       # NBomber load tests
 ├── deploy/     # Production DAPR component YAML + deploy/README.md
 ├── docs/       # Hand-authored documentation site (+ docs/brownfield/ = THIS generated set)
@@ -117,13 +117,15 @@ samples/
 ├── Hexalith.EventStore.Sample/            # Counter + Greeting domains
 │   └── Counter/  CounterAggregate (fluent), CounterProjectionHandler,
 │                 Commands/, Events/, State/CounterState, Queries/
+├── Hexalith.EventStore.Sample.Api/        # Sample API host
+├── Hexalith.EventStore.Sample.Contracts/  # Sample command/event/query contracts
 ├── Hexalith.EventStore.Sample.BlazorUI/   # Blazor Server sample (3 SignalR refresh patterns)
 │   ├── Components/  CounterCommandForm, CounterValueCard, CounterHistoryGrid
 │   └── Pages/      NotificationPattern, SilentReloadPattern, SelectiveRefreshPattern
 └── Hexalith.EventStore.Sample.Tests/      # Tier 1 unit tests for the sample
 ```
 
-## `tests/` (17 projects) & `perf/`
+## `tests/` (26 solution projects) & `perf/`
 
 See [development-guide.md](./development-guide.md) for the full tiered test matrix. Highlights:
 `Contracts/Client/SignalR/Sample/Testing/AppHost/Admin.*` = Tier 1; `Server.Tests`, `Admin.UI.Tests`

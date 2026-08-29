@@ -32,7 +32,7 @@ state.Apply(Event)                          // fold events back into state
 | Repository type | **Monorepo / multi-part** (multiple deployable services + libraries + submodules) |
 | Project type | **Backend** (event-sourcing server) with a **Blazor** admin/sample UI tier |
 | Primary language | **C#** (`net10.0`, `LangVersion=latest`, Nullable + ImplicitUsings enabled) |
-| Solution projects | **36 projects** (15 `src/`, 3 `samples/`, 1 `perf/`, 18 `tests/`) + 5 submodule projects |
+| Solution projects | **51 projects** (19 `src/`, 5 `samples/`, 1 `perf/`, 26 `tests/`) plus 7 root-declared submodules |
 | Source files | ~900 C# files across `src/` alone |
 | Package management | **Centralized** via `references/Hexalith.Builds/Props/Directory.Packages.props`; root `Directory.Packages.props` is import-only (`ManagePackageVersionsCentrally=true`) |
 | Build conventions | `TreatWarningsAsErrors=true`, Allman braces, file-scoped namespaces, `_camelCase` fields |
@@ -57,7 +57,7 @@ state.Apply(Event)                          // fold events back into state
 | Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.18.0` | Traces, metrics, structured logs |
 | Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.9.0` | HTTP resilience + service discovery |
 | Identifiers | `Hexalith.Commons.UniqueIds` | `2.30.0` | ULID generation |
-| Testing | xUnit v3 `4.0.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.9.0`, Playwright `1.62.0`, Testcontainers `4.14.0`, coverlet `10.0.1` | — | Unit → integration → E2E |
+| Testing | Microsoft.Testing.Platform runner, xUnit v3 `4.0.0`, Microsoft code coverage `18.10.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bunit `2.9.0`, Playwright `1.62.0`, Testcontainers `4.14.0` | — | Unit → integration → E2E |
 | Load testing | NBomber + NBomber.Http | `6.6.0` / `6.2.1` | Throughput/latency perf tests |
 | Release | semantic-release (Conventional Commits) | npm `^24.2.3` | Automated versioning + NuGet publish |
 
