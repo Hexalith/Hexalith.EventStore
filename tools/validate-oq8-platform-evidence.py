@@ -40,11 +40,23 @@ CLOSURE = (
     / "_bmad-output/implementation-artifacts/evidence/story-4-15"
     / "5e8f175b2ced4715f7c6f765386812cc1001dbb4"
 )
+SUCCESSOR_SELECTOR = (
+    ROOT
+    / "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json"
+)
+SUCCESSOR = (
+    ROOT
+    / "_bmad-output/implementation-artifacts/evidence/story-4-15/successors"
+    / "sdk-10.0.400-xunit4-mtp"
+)
 DESIGN_VERSION = "1.0.0"
 DESIGN_SHA256 = "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8"
 BASELINE = "e60a3777c581d70b62f67173ccc2372b5b64a425"
 LANDED_SOURCE = "5e8f175b2ced4715f7c6f765386812cc1001dbb4"
 LANDED_TREE = "96fdfbba56df41b58889bf7f3b532a64d15314bd"
+PRIOR_CLOSURE_COMMIT = "9fbd8cbf2687a2cbb0172a14eaa68f9b276ee105"
+PRIOR_VALIDATOR_SHA256 = "9652019053810366ec3a7682490a5b85385880b63bb3bf2ca7023b0a49c18dde"
+SUCCESSOR_REVIEW_BASE = "cf320fd907430156d1d82e54f0aa404bdef73704"
 PROFILE = "oq8-postgresql-v1"
 POSTGRES_IMAGE = "postgres:18.4"
 COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"
@@ -54,6 +66,8 @@ PINNED_PYYAML_REQUIREMENT = f"PyYAML=={PINNED_PYYAML_VERSION}"
 MAX_SPRINT_STATUS_BYTES = 1_048_576
 EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
 CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4"
+SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp"
+SUCCESSOR_SELECTOR_PATH = "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
 FOCUSED_TRAITS = {
     "Category": ["LiveSidecar"],
@@ -95,6 +109,24 @@ EXPECTED_EVOLVED_PATHS = {
     "tools/validate-oq8-platform-evidence.py",
 }
 EXPECTED_CURRENT_BOUND_PATHS = EXPECTED_CAPTURE_PATHS - EXPECTED_EVOLVED_PATHS
+REPLACED_PRIOR_BOUND_PATHS = {
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
+}
+SUCCESSOR_SOURCE_PATHS = {
+    ".github/workflows/ci.yml",
+    ".github/workflows/integration.yml",
+    "docs/ci.md",
+    "global.json",
+    "tests/Directory.Build.props",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
+    "tools/validate-oq8-platform-evidence.py",
+}
 REQUIRED_FILES = {
     "commands.json",
     "deterministic-support.json",
@@ -116,6 +148,14 @@ CLOSURE_FILES = {
     "source-only-handoff.json",
     "pre-review-execution.json",
     "validator-sha256.txt",
+}
+SUCCESSOR_FILES = {
+    "review-subject.json",
+    "reviews/architecture.json",
+    "reviews/security.json",
+    "reviews/test.json",
+    "source-artifact-identity.json",
+    "source-only-handoff.json",
 }
 REVIEW_ROSTER = {
     "architecture": "Winston (System Architect)",
@@ -179,6 +219,14 @@ DOCUMENT_FORBIDDEN_TEXT = (
     "only after those receipts",
 )
 CLOSURE_TEST_SOURCE = "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs"
+PRIOR_ROOT_BINDING_HASHES = {
+    ".github/workflows/ci.yml": "6a28bd968ad3c865226e3a0c2bccdd75f520ac5455b887f5b7efdaa3b1c0bcce",
+    ".github/workflows/integration.yml": "343163fd164bb49252ad2ec67c7fbc90aa2f3aaecafa4d4d51640ccc39e7b777",
+    "requirements-oq8.txt": "0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "4085ae558bad0eed21759a3e4f561e35710f3cd3375705f4041b0089083e83e3",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "f30ed72b844b845c04509eb3dddf07ea6cac38571c0998b57687f4b2e3568fe1",
+    "tools/validate-oq8-platform-evidence.py": PRIOR_VALIDATOR_SHA256,
+}
 PRE_REVIEW_EXECUTION = "pre-review-execution.json"
 EXPECTED_LIMITATIONS = [
     "The approved Folders design bytes are not tracked in EventStore; only design version 1.0.0 and its approved SHA-256 reference are preserved.",
@@ -692,7 +740,7 @@ def git_file(revision: str, relative: str) -> bytes:
 
 
 def configure_roots(root: Path, git_root: Path, git_timeout_seconds: float = 30.0) -> None:
-    global ROOT, GIT_ROOT, GIT_TIMEOUT_SECONDS, PACKET, EVIDENCE, CLOSURE
+    global ROOT, GIT_ROOT, GIT_TIMEOUT_SECONDS, PACKET, EVIDENCE, CLOSURE, SUCCESSOR_SELECTOR, SUCCESSOR
     require(0 < git_timeout_seconds <= 30, "Git timeout must be greater than zero and no more than 30 seconds")
     ROOT = root.resolve()
     GIT_ROOT = git_root.resolve()
@@ -708,6 +756,8 @@ def configure_roots(root: Path, git_root: Path, git_timeout_seconds: float = 30.
         / "_bmad-output/implementation-artifacts/evidence/story-4-15"
         / LANDED_SOURCE
     )
+    SUCCESSOR_SELECTOR = ROOT / SUCCESSOR_SELECTOR_PATH
+    SUCCESSOR = ROOT / SUCCESSOR_DIRECTORY
 
 
 def require(condition: bool, message: str) -> None:
@@ -1135,6 +1185,96 @@ def validate_manifest() -> dict[str, str]:
         require(sha256_file(path) == expected, f"Evidence checksum mismatch: {name}")
         scan_support_safe(path)
     return manifest
+
+
+def validate_successor_source_identity() -> dict[str, Any]:
+    require(SUCCESSOR_SELECTOR.is_file(), "Story 4.15 successor selector is missing")
+    require(SUCCESSOR.is_dir(), "Story 4.15 successor directory is missing")
+    selector = load_candidate_json(SUCCESSOR_SELECTOR)
+    require(isinstance(selector, dict), "Story 4.15 successor selector must be an object")
+    require(
+        selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v1",
+        "Story 4.15 successor selector schema drift",
+    )
+    successor = selector.get("successor")
+    require(isinstance(successor, dict), "Story 4.15 successor selection is missing")
+    require(successor.get("directory") == SUCCESSOR_DIRECTORY, "Story 4.15 successor directory selection drift")
+
+    identity_path = SUCCESSOR / "source-artifact-identity.json"
+    require(identity_path.is_file(), "Story 4.15 successor source identity is missing")
+    require(
+        successor.get("sourceIdentitySha256") == sha256_file(identity_path),
+        "Story 4.15 successor source identity selection drift",
+    )
+    identity = load_candidate_json(identity_path)
+    require(isinstance(identity, dict), "Story 4.15 successor source identity must be an object")
+    require(
+        set(identity)
+        == {
+            "schema",
+            "reviewedOn",
+            "repository",
+            "reviewedFromHead",
+            "priorLandedSource",
+            "reason",
+            "bindingRule",
+            "replacedPriorBoundPaths",
+            "boundPaths",
+            "validation",
+        },
+        "Story 4.15 successor source identity field set drift",
+    )
+    require(
+        identity.get("schema") == "hexalith.eventstore.story-4-15-successor-source-identity/v1",
+        "Story 4.15 successor source identity schema drift",
+    )
+    require(identity.get("reviewedOn") == "2026-08-29", "Story 4.15 successor review date drift")
+    require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Story 4.15 successor repository drift")
+    require(identity.get("reviewedFromHead") == SUCCESSOR_REVIEW_BASE, "Story 4.15 successor review base drift")
+    require(identity.get("priorLandedSource") == LANDED_SOURCE, "Story 4.15 successor prior source drift")
+    require(
+        identity.get("reason")
+        == "SDK 10.0.400 requires Microsoft.Testing.Platform, xUnit 4 serialization metadata, and Linux-safe OQ8 control-plane discovery.",
+        "Story 4.15 successor reason drift",
+    )
+    require(
+        identity.get("bindingRule")
+        == "Every listed current source path must exist as a regular file and match its reviewed SHA-256; the reviewed HEAD must remain an ancestor of Git HEAD.",
+        "Story 4.15 successor source binding rule drift",
+    )
+    require(
+        identity.get("replacedPriorBoundPaths") == sorted(REPLACED_PRIOR_BOUND_PATHS),
+        "Story 4.15 successor replaced-path declaration drift",
+    )
+    bound_paths = identity.get("boundPaths")
+    require(
+        isinstance(bound_paths, dict) and set(bound_paths) == SUCCESSOR_SOURCE_PATHS,
+        "Story 4.15 successor current source path set drift",
+    )
+    for relative, expected in bound_paths.items():
+        path = Path(relative)
+        require(
+            not path.is_absolute() and ".." not in path.parts and path.as_posix() == relative,
+            "Story 4.15 successor source path is unsafe",
+        )
+        require_sha256(expected, f"Story 4.15 successor source:{relative}")
+        source_path = ROOT / path
+        require(source_path.is_file() and not source_path.is_symlink(), f"Story 4.15 successor source path is missing: {relative}")
+        require(sha256_file(source_path) == expected, f"Story 4.15 successor current source identity drift: {relative}")
+    require(
+        identity.get("validation")
+        == {
+            "sdk": "10.0.400",
+            "xunitParallelization": "ParallelMode.None",
+            "dockerPublishedControlPlanePorts": True,
+            "nugetPackageCacheProbing": True,
+            "focusedPortResolverTests": {"total": 4, "passed": 4, "failed": 0, "skipped": 0},
+            "focusedProductionOq8": {"total": 1, "passed": 1, "failed": 0, "skipped": 0},
+        },
+        "Story 4.15 successor validation record drift",
+    )
+    run_git("merge-base", "--is-ancestor", SUCCESSOR_REVIEW_BASE, "HEAD")
+    return identity
 
 
 def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) -> None:

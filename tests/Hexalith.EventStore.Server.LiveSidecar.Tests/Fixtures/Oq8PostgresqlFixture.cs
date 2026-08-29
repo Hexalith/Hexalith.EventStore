@@ -35,8 +35,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private const string AuthenticationIssuer = "hexalith-oq8-evidence";
     private const string AuthenticationAudience = "hexalith-eventstore";
     private const string AuthenticationSigningKey = "Oq8EvidenceOnlySigningKey-AtLeast32Characters";
-    private const int PlacementPort = 50005;
-    private const int SchedulerPort = 50006;
+    private const int PlacementContainerPort = 50005;
+    private const int SchedulerContainerPort = 50006;
     private const int HealthTimeoutSeconds = 60;
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -61,6 +61,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private string _postgresContainerName = string.Empty;
     private string _repositoryRoot = string.Empty;
     private string _runtimeDirectory = string.Empty;
+    private int _placementHostPort;
+    private int _schedulerHostPort;
 
     /// <summary>Gets a value indicating whether every host and sidecar has a distinct OS process.</summary>
     public bool HasIndependentProcesses
@@ -801,6 +803,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             "exec",
             "--additional-deps", testDependencies,
             "--additionalprobingpath", AppContext.BaseDirectory,
+            "--additionalprobingpath", ResolveNuGetPackageCache(),
             node.ApplicationAssembly,
         })
         {
@@ -882,8 +885,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             "--profile-port", node.DaprProfilePort.ToString(CultureInfo.InvariantCulture),
             "--resources-path", _componentsDirectory,
             "--log-level", "warn",
-            "--placement-host-address", $"localhost:{PlacementPort}",
-            "--scheduler-host-address", $"localhost:{SchedulerPort}",
+            "--placement-host-address", $"localhost:{RequireResolvedControlPlanePort(_placementHostPort, "placement")}",
+            "--scheduler-host-address", $"localhost:{RequireResolvedControlPlanePort(_schedulerHostPort, "scheduler")}",
         })
         {
             startInfo.ArgumentList.Add(argument);
@@ -1526,12 +1529,19 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             ? 0
             : int.Parse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture);
 
-    private static async Task VerifyPrerequisitesAsync()
+    private async Task VerifyPrerequisitesAsync()
     {
+        _placementHostPort = await ResolveDockerPublishedHostPortAsync(
+            "dapr_placement",
+            PlacementContainerPort).ConfigureAwait(false);
+        _schedulerHostPort = await ResolveDockerPublishedHostPortAsync(
+            "dapr_scheduler",
+            SchedulerContainerPort).ConfigureAwait(false);
+
         foreach ((int Port, string Name) prerequisite in new[]
         {
-            (PlacementPort, "Dapr placement"),
-            (SchedulerPort, "Dapr scheduler"),
+            (_placementHostPort, "Dapr placement"),
+            (_schedulerHostPort, "Dapr scheduler"),
         })
         {
             using var client = new TcpClient();
@@ -1551,6 +1561,23 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
         _ = await RunProcessAsync("docker", ["image", "inspect", PostgresImage]).ConfigureAwait(false);
     }
+
+    private static async Task<int> ResolveDockerPublishedHostPortAsync(
+        string containerName,
+        int containerPort)
+    {
+        string output = await RunProcessAsync(
+            "docker",
+            ["port", containerName, $"{containerPort.ToString(CultureInfo.InvariantCulture)}/tcp"])
+            .ConfigureAwait(false);
+        return DockerPublishedPortResolver.ParseHostPort(output, containerName, containerPort);
+    }
+
+    private static int RequireResolvedControlPlanePort(int port, string serviceName)
+        => port is > 0 and <= IPEndPoint.MaxPort
+            ? port
+            : throw new InvalidOperationException(
+                $"The Docker-published Dapr {serviceName} host port was not resolved before sidecar startup.");
 
     private static async Task<string> RunProcessAsync(string fileName, IReadOnlyList<string> arguments)
     {
@@ -1599,6 +1626,21 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         return File.Exists(candidate)
             ? candidate
             : OperatingSystem.IsWindows() ? "daprd.exe" : "daprd";
+    }
+
+    private static string ResolveNuGetPackageCache()
+    {
+        string? configuredPath = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+        string candidate = string.IsNullOrWhiteSpace(configuredPath)
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".nuget",
+                "packages")
+            : Path.GetFullPath(configuredPath);
+        return Directory.Exists(candidate)
+            ? candidate
+            : throw new InvalidOperationException(
+                "The NuGet package cache required by OQ8 hosting-startup dependencies is unavailable.");
     }
 
     private static string FindRepositoryRoot()

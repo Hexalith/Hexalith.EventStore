@@ -145,10 +145,15 @@ never accepted as package dependency evidence, anywhere in the nuspec.
 ## Release Flow
 
 Release is an intentional operator action. Ordinary pushes and pull requests
-run CI but never start Release. The dispatch itself takes no inputs: the
-operator selects `main` and runs the workflow, and semantic-release derives the
-version from the commit history. Before requesting environment approval, the
-manual workflow fails closed unless all of these are true:
+run CI but never start Release. The dispatch exposes one boolean
+`bypass-validation` input, defaulting to `false`; semantic-release still derives
+the version from commit history. The ordinary path requires the successful `CI`
+push run described below. The explicitly selected bypass path instead requires
+the same source SHA to have a successful push run of `commitlint.yml` and can be
+requested only with
+`gh workflow run release.yml --ref main -f bypass-validation=true`. Before
+requesting environment approval, the manual workflow fails closed unless all
+of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
 - the dispatch SHA still equals the live `main` ref returned by GitHub;
