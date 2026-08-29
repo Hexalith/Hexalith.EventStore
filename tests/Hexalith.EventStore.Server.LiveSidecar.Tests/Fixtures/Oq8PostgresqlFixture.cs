@@ -61,8 +61,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private string _postgresContainerName = string.Empty;
     private string _repositoryRoot = string.Empty;
     private string _runtimeDirectory = string.Empty;
-    private int _placementHostPort;
-    private int _schedulerHostPort;
+    private IPEndPoint? _placementHostEndpoint;
+    private IPEndPoint? _schedulerHostEndpoint;
 
     /// <summary>Gets a value indicating whether every host and sidecar has a distinct OS process.</summary>
     public bool HasIndependentProcesses
@@ -885,8 +885,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             "--profile-port", node.DaprProfilePort.ToString(CultureInfo.InvariantCulture),
             "--resources-path", _componentsDirectory,
             "--log-level", "warn",
-            "--placement-host-address", $"localhost:{RequireResolvedControlPlanePort(_placementHostPort, "placement")}",
-            "--scheduler-host-address", $"localhost:{RequireResolvedControlPlanePort(_schedulerHostPort, "scheduler")}",
+            "--placement-host-address", FormatControlPlaneEndpoint(_placementHostEndpoint, "placement"),
+            "--scheduler-host-address", FormatControlPlaneEndpoint(_schedulerHostEndpoint, "scheduler"),
         })
         {
             startInfo.ArgumentList.Add(argument);
@@ -1531,24 +1531,24 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
     private async Task VerifyPrerequisitesAsync()
     {
-        _placementHostPort = await ResolveDockerPublishedHostPortAsync(
+        _placementHostEndpoint = await ResolveDockerPublishedHostEndpointAsync(
             "dapr_placement",
             PlacementContainerPort).ConfigureAwait(false);
-        _schedulerHostPort = await ResolveDockerPublishedHostPortAsync(
+        _schedulerHostEndpoint = await ResolveDockerPublishedHostEndpointAsync(
             "dapr_scheduler",
             SchedulerContainerPort).ConfigureAwait(false);
 
-        foreach ((int Port, string Name) prerequisite in new[]
+        foreach ((IPEndPoint Endpoint, string Name) prerequisite in new[]
         {
-            (_placementHostPort, "Dapr placement"),
-            (_schedulerHostPort, "Dapr scheduler"),
+            (GetConnectEndpoint(_placementHostEndpoint, "placement"), "Dapr placement"),
+            (GetConnectEndpoint(_schedulerHostEndpoint, "scheduler"), "Dapr scheduler"),
         })
         {
             using var client = new TcpClient();
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             try
             {
-                await client.ConnectAsync(IPAddress.Loopback, prerequisite.Port, cancellation.Token)
+                await client.ConnectAsync(prerequisite.Endpoint.Address, prerequisite.Endpoint.Port, cancellation.Token)
                     .ConfigureAwait(false);
             }
             catch (Exception exception)
@@ -1562,7 +1562,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         _ = await RunProcessAsync("docker", ["image", "inspect", PostgresImage]).ConfigureAwait(false);
     }
 
-    private static async Task<int> ResolveDockerPublishedHostPortAsync(
+    private static async Task<IPEndPoint> ResolveDockerPublishedHostEndpointAsync(
         string containerName,
         int containerPort)
     {
@@ -1570,14 +1570,27 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             "docker",
             ["port", containerName, $"{containerPort.ToString(CultureInfo.InvariantCulture)}/tcp"])
             .ConfigureAwait(false);
-        return DockerPublishedPortResolver.ParseHostPort(output, containerName, containerPort);
+        return DockerPublishedPortResolver.ParseHostEndpoint(output, containerName, containerPort);
     }
 
-    private static int RequireResolvedControlPlanePort(int port, string serviceName)
-        => port is > 0 and <= IPEndPoint.MaxPort
-            ? port
-            : throw new InvalidOperationException(
-                $"The Docker-published Dapr {serviceName} host port was not resolved before sidecar startup.");
+    private static string FormatControlPlaneEndpoint(IPEndPoint? endpoint, string serviceName)
+        => GetConnectEndpoint(endpoint, serviceName).ToString();
+
+    private static IPEndPoint GetConnectEndpoint(IPEndPoint? endpoint, string serviceName)
+    {
+        if (endpoint is null)
+        {
+            throw new InvalidOperationException(
+                $"The Docker-published Dapr {serviceName} host endpoint was not resolved before sidecar startup.");
+        }
+
+        IPAddress address = endpoint.Address.Equals(IPAddress.Any)
+            ? IPAddress.Loopback
+            : endpoint.Address.Equals(IPAddress.IPv6Any)
+                ? IPAddress.IPv6Loopback
+                : endpoint.Address;
+        return new IPEndPoint(address, endpoint.Port);
+    }
 
     private static async Task<string> RunProcessAsync(string fileName, IReadOnlyList<string> arguments)
     {

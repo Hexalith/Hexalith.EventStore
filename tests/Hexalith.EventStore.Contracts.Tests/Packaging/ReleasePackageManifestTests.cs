@@ -658,6 +658,10 @@ public sealed class ReleasePackageManifestTests
         validatorBlock.ShouldContain("--support-ctrf \"${RUNNER_TEMP}/oq8-support-results.json\"");
         validatorBlock.ShouldContain("--expected-runtime-version \"$DAPR_RUNTIME_VERSION\"");
 
+        Regex.Matches(integration, @"(?m)^[ \t]*-result-ctrf ""\$\{RUNNER_TEMP\}/oq8-(?:results|support-results)\.json""$")
+            .Count.ShouldBe(2, "Both direct xUnit 4 runner invocations must use the hosted -result-ctrf switch.");
+        integration.ShouldNotContain("\n            -ctrf \"${RUNNER_TEMP}/oq8-");
+
         string liveSidecarJob = ExtractTopLevelWorkflowJobBlock(integration, "live-sidecar");
         liveSidecarJob.ShouldNotContain("continue-on-error");
         liveSidecarJob.ShouldNotContain("|| true");

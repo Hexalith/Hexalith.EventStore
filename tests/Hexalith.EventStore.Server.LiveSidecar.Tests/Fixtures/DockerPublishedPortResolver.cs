@@ -6,40 +6,56 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// <summary>Parses the host endpoint reported by <c>docker port</c> for a control-plane container.</summary>
 internal static class DockerPublishedPortResolver
 {
-    /// <summary>Returns the single host port published for a container port.</summary>
+    /// <summary>Returns one unambiguous local host endpoint published for a container port.</summary>
     /// <param name="output">Standard output from <c>docker port &lt;container&gt; &lt;port&gt;/tcp</c>.</param>
     /// <param name="containerName">Container name used only in the support-safe failure message.</param>
     /// <param name="containerPort">Container port used only in the support-safe failure message.</param>
-    /// <returns>The Docker-published host port.</returns>
-    internal static int ParseHostPort(string output, string containerName, int containerPort)
+    /// <returns>The Docker-published local host endpoint, preserving its address family.</returns>
+    internal static IPEndPoint ParseHostEndpoint(string output, string containerName, int containerPort)
     {
         ArgumentNullException.ThrowIfNull(output);
         ArgumentException.ThrowIfNullOrWhiteSpace(containerName);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(containerPort);
 
-        int[] ports = output
+        string[] lines = output
             .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(ParseEndpointPort)
-            .Where(static port => port is > 0 and <= IPEndPoint.MaxPort)
-            .Distinct()
             .ToArray();
+        if (lines.Length == 0)
+        {
+            throw CreateAmbiguousEndpointException(containerName, containerPort);
+        }
 
-        return ports.Length == 1
-            ? ports[0]
-            : throw new InvalidOperationException(
-                $"Docker did not report one unambiguous host port for {containerName}:{containerPort.ToString(CultureInfo.InvariantCulture)}/tcp.");
+        var endpoints = new List<IPEndPoint>(lines.Length);
+        foreach (string line in lines)
+        {
+            if (!IPEndPoint.TryParse(line, out IPEndPoint? endpoint)
+                || endpoint.Port is <= 0 or > IPEndPoint.MaxPort
+                || !IsLocalBinding(endpoint.Address))
+            {
+                throw CreateAmbiguousEndpointException(containerName, containerPort);
+            }
+
+            endpoints.Add(endpoint);
+        }
+
+        int[] ports = endpoints.Select(static endpoint => endpoint.Port).Distinct().ToArray();
+        if (ports.Length != 1)
+        {
+            throw CreateAmbiguousEndpointException(containerName, containerPort);
+        }
+
+        return endpoints
+            .OrderBy(static endpoint => endpoint.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 0 : 1)
+            .ThenBy(static endpoint => IPAddress.IsLoopback(endpoint.Address) ? 0 : 1)
+            .First();
     }
 
-    private static int ParseEndpointPort(string endpoint)
-    {
-        int separator = endpoint.LastIndexOf(':');
-        return separator >= 0
-            && int.TryParse(
-                endpoint.AsSpan(separator + 1),
-                NumberStyles.None,
-                CultureInfo.InvariantCulture,
-                out int port)
-            ? port
-            : 0;
-    }
+    private static bool IsLocalBinding(IPAddress address)
+        => IPAddress.IsLoopback(address)
+            || address.Equals(IPAddress.Any)
+            || address.Equals(IPAddress.IPv6Any);
+
+    private static InvalidOperationException CreateAmbiguousEndpointException(string containerName, int containerPort)
+        => new(
+            $"Docker did not report one unambiguous local host endpoint for {containerName}:{containerPort.ToString(CultureInfo.InvariantCulture)}/tcp.");
 }

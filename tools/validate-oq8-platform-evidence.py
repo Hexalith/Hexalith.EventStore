@@ -76,6 +76,14 @@ FOCUSED_TRAITS = {
     "Category": ["LiveSidecar"],
     "Profile": [PROFILE],
 }
+FOCUSED_LABELS = {
+    "Category": "LiveSidecar",
+    "Profile": PROFILE,
+}
+FOCUSED_LEGACY_COMMAND = f"dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method {FOCUSED_METHOD} -noColor -ctrf raw-runner-temp"
+FOCUSED_CURRENT_COMMAND = f"dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method {FOCUSED_METHOD} -noColor -result-ctrf raw-runner-temp"
+SUPPORT_LEGACY_COMMAND = "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -method (21 validator-pinned selectors) -noColor -ctrf raw-runner-temp"
+SUPPORT_CURRENT_COMMAND = "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -method (21 validator-pinned selectors) -noColor -result-ctrf raw-runner-temp"
 EXPECTED_SOURCE_INPUTS = {
     "deploy/dapr/resiliency.yaml",
     "deploy/dapr/statestore-postgresql.yaml",
@@ -336,11 +344,11 @@ EXPECTED_CAPTURE_COMMAND_RESULTS = {
         "counts": {"warnings": 0, "errors": 0},
     },
     "focused-production-matrix": {
-        "command": f"dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method {FOCUSED_METHOD} -noColor -ctrf raw-runner-temp",
+        "command": FOCUSED_CURRENT_COMMAND,
         "counts": {"passed": 1, "failed": 0, "skipped": 0},
     },
     "explicit-deterministic-support-oracles": {
-        "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -method (21 validator-pinned selectors) -noColor -ctrf raw-runner-temp",
+        "command": SUPPORT_CURRENT_COMMAND,
         "counts": {"methods": 21, "passed": 33, "failed": 0, "skipped": 0},
     },
     "deterministic-support-lane": {
@@ -1081,11 +1089,12 @@ def sanitize_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
     require(isinstance(tests, list) and len(tests) == 1, "Focused CTRF test record is incomplete")
     test = tests[0]
     require(test.get("name") == FOCUSED_METHOD, "Focused CTRF test identity drift")
-    require(test.get("extra", {}).get("traits") == FOCUSED_TRAITS, "Focused CTRF Category/Profile traits drift")
+    require(test.get("labels") == FOCUSED_LABELS, "Focused CTRF xUnit 4 Category/Profile labels drift")
+    require(test.get("tags") == ["LiveSidecar"], "Focused CTRF xUnit 4 Category tag drift")
     portable = {
         "schemaVersion": 1,
         "runner": "xUnit.net v3",
-        "command": f"dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method {FOCUSED_METHOD} -noColor -ctrf raw-runner-temp",
+        "command": FOCUSED_CURRENT_COMMAND,
         "summary": {
             "tests": 1,
             "passed": 1,
@@ -1096,10 +1105,10 @@ def sanitize_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
             "name": test.get("name"),
             "status": test.get("status"),
             "durationMilliseconds": test.get("duration"),
-            "traits": test.get("extra", {}).get("traits", {}),
+            "traits": {name: [value] for name, value in test.get("labels", {}).items()},
         },
     }
-    validate_focused_document(portable)
+    validate_focused_document(portable, FOCUSED_CURRENT_COMMAND)
     write_json(destination, portable)
     scan_support_safe(destination)
     return portable
@@ -1123,14 +1132,13 @@ def expected_support_classifications() -> dict[str, Any]:
     return classifications
 
 
-def validate_focused_document(document: Any) -> dict[str, Any]:
+def validate_focused_document(document: Any, expected_command: str = FOCUSED_LEGACY_COMMAND) -> dict[str, Any]:
     require(isinstance(document, dict), "test-results.json must be an object")
     require_exact_fields(document, {"schemaVersion", "runner", "command", "summary", "test"}, "Focused result")
     require(document.get("schemaVersion") == 1, "Focused result schemaVersion drift")
     require(document.get("runner") == "xUnit.net v3", "Focused result runner drift")
     require(
-        document.get("command")
-        == f"dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method {FOCUSED_METHOD} -noColor -ctrf raw-runner-temp",
+        document.get("command") == expected_command,
         "Focused result command identity drift",
     )
     require(
@@ -1152,14 +1160,13 @@ def validate_focused_document(document: Any) -> dict[str, Any]:
     return document
 
 
-def validate_support_document(document: Any) -> dict[str, Any]:
+def validate_support_document(document: Any, expected_command: str = SUPPORT_LEGACY_COMMAND) -> dict[str, Any]:
     require(isinstance(document, dict), "deterministic-support.json must be an object")
     require_exact_fields(document, {"schemaVersion", "runner", "command", "selectors", "summary", "methods", "classifications"}, "Deterministic support")
     require(document.get("schemaVersion") == 1, "Deterministic support schemaVersion drift")
     require(document.get("runner") == "xUnit.net v3", "Deterministic support runner drift")
     require(
-        document.get("command")
-        == "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -method (21 validator-pinned selectors) -noColor -ctrf raw-runner-temp",
+        document.get("command") == expected_command,
         "Deterministic support command identity drift",
     )
     require(document.get("selectors") == list(EXPECTED_SUPPORT_METHOD_CASES), "Deterministic support selectors drift")
@@ -1215,7 +1222,7 @@ def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
     portable = {
         "schemaVersion": 1,
         "runner": "xUnit.net v3",
-        "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll -method (21 validator-pinned selectors) -noColor -ctrf raw-runner-temp",
+        "command": SUPPORT_CURRENT_COMMAND,
         "selectors": list(EXPECTED_SUPPORT_METHOD_CASES),
         "summary": {
             "tests": SUPPORT_CASE_TOTAL,
@@ -1234,7 +1241,7 @@ def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
         ],
         "classifications": expected_support_classifications(),
     }
-    validate_support_document(portable)
+    validate_support_document(portable, SUPPORT_CURRENT_COMMAND)
     write_json(destination, portable)
     scan_support_safe(destination)
     return portable

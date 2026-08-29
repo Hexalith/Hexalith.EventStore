@@ -111,7 +111,7 @@ jobs:
           dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll \
             -method Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants \
             -noColor \
-            -ctrf "${RUNNER_TEMP}/oq8-results.json"
+            -result-ctrf "${RUNNER_TEMP}/oq8-results.json"
           dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj \
             --configuration Release \
             --no-restore \
@@ -140,7 +140,7 @@ jobs:
             -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionDirectoryActorTests.AdvanceAsync_PromotionOrder_KeepsSourceCanonicalUntilDirectoryFlip \
             -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.Coordinator_OrdinaryActivationResponseLossReprovesExactTargetBeforeAdvance \
             -noColor \
-            -ctrf "${RUNNER_TEMP}/oq8-support-results.json"
+            -result-ctrf "${RUNNER_TEMP}/oq8-support-results.json"
           python3 tools/validate-oq8-platform-evidence.py \
             --capture-directory "$HEXALITH_OQ8_EVIDENCE_DIRECTORY" \
             --ctrf "${RUNNER_TEMP}/oq8-results.json" \
