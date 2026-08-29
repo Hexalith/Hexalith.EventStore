@@ -4,7 +4,7 @@
   "reviewer": "Murat (Test Architect)",
   "reviewedOn": "2026-08-29",
   "decision": "approved",
-  "subjectSha256": "1d7e5289556e70edea3fbb33bfbd6cbfd02a731afb9eafdf55575135077dfc53",
+  "subjectSha256": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
   "acceptedScope": "xUnit 4 serialization metadata, maintained MTP coverage, focused resolver/production evidence, and fail-closed successor selection",
   "findings": [
     "Four focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.",

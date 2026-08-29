@@ -16,7 +16,7 @@
     "docs/ci.md": "7910a3799aca22d7a7116bda003c24174b474af082befc1ccd8f73e929d008f6",
     "global.json": "715a0895da9db82e2370e7445c371c39e3a2d032fdcf7dfbc95f9fcb27ddc7c2",
     "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed",
-    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "3c2173fe4dd73c99b396876e2c12c37e82181952372db4ca96e63a939c99c18b",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "eb3b1078478c1c7ae4ae409fc71804301108e57d0cced134f5943103212380dd",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "6f9093861889aa4a4d00549a6b86ba649952d3f90ee47ab33a73bbe21aa4a1e7",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs": "36891fd8689ec316ab925d1fb1114eeb54b50499fdfe683cd5ebaf4b7228668c",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "cc8494c446bb269a7f1cf6cd531d863e0c7704f797a8488e4ddedfb895c1ebaf",

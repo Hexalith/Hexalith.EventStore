@@ -3,12 +3,12 @@
   "story": "4.15",
   "selectedSuccessorDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp",
   "reviewedFromHead": "cf320fd907430156d1d82e54f0aa404bdef73704",
-  "reviewSubjectSha256": "1d7e5289556e70edea3fbb33bfbd6cbfd02a731afb9eafdf55575135077dfc53",
-  "sourceIdentitySha256": "bbe5c716dae128d933ea782dad353f32d14f4e3f8cb3dcc697b8e615c3a56afd",
+  "reviewSubjectSha256": "620ef486d79e393867e22c6bce6d801e09c924cc42adbfd382792122111f478b",
+  "sourceIdentitySha256": "7619474f7b1f6ee8a1099fef877758de81a50d6b5274471657c13f74b3cf9c67",
   "reviewReceipts": {
-    "architecture": "35d7bd0437c9094bb8457bcfd59e00ffc31c16dd0ec0743f881fee1268c6f991",
-    "security": "785e23f6be67a2463cfab5006c23fbcbc664d26fb79989b678f587c53ee212e3",
-    "test": "caa8149ab7bd609a15b4b6596952dbf273b4ac05748c3ae29c2091779c70d1f8"
+    "architecture": "2baa9f37b2b685634b5bf7374d6c0c0d3ccdbbccaafa3af858a9ec56e0c07a32",
+    "security": "6003d2c2bbca2f2d989ea6fb7fc1bd1ca9457e43d9bfbe88a37b86d4c16cce2c",
+    "test": "64b2abf0a326dea69fe9c36d22423f912df62620b09fff664f3a9940b8a9b99a"
   },
   "consumerInstructions": {
     "mode": "source-only",

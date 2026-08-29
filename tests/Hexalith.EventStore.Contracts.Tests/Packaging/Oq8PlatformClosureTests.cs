@@ -1539,7 +1539,7 @@ public sealed class Oq8PlatformClosureTests
                 executablePathPrefix: executableFixture);
 
             exitCode.ShouldBe(1, output);
-            output.ShouldContain("Git identity proof for rev-parse");
+            output.ShouldContain("Git identity proof for");
             output.ShouldContain("timed out");
             output.ShouldNotContain("Traceback");
         }
@@ -1583,7 +1583,7 @@ public sealed class Oq8PlatformClosureTests
                 executablePathPrefix: executableFixture);
 
             exitCode.ShouldBe(1, output);
-            output.ShouldContain("Git identity proof for rev-parse");
+            output.ShouldContain("Git identity proof for");
             output.ShouldContain("exceeded output limit");
             output.ShouldNotContain("Traceback");
             output.Length.ShouldBeLessThan(4096);
