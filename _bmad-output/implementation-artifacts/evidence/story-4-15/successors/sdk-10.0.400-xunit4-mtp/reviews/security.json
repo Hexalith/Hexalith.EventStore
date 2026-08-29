@@ -4,7 +4,7 @@
   "reviewer": "Security Reviewer",
   "reviewedOn": "2026-08-29",
   "decision": "approved",
-  "subjectSha256": "65f8e031a551b1e333fd0c48f59b1c4d085c238cbdf47d3d8dffe46cf1be0d03",
+  "subjectSha256": "8ea2a954387348134c34fd13d9a1bc574e8586d89bd6a66d982e128a8ecb0bae",
   "acceptedScope": "successor identity integrity, immutable prior evidence, bounded Docker port parsing, dependency probing, and external authority exclusions",
   "findings": [
     "Docker port discovery accepts one consistent published TCP port and fails closed on absent, malformed, or conflicting mappings.",

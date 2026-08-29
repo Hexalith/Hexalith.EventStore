@@ -10,7 +10,7 @@
   },
   "sourceIdentity": {
     "path": "source-artifact-identity.json",
-    "sha256": "bf2caea9c507034129d22959c2168d183257a865d58812ca41fbfa4213a2b970",
+    "sha256": "589a181fe7c705a433ab06fd8691df15a8c850fe27f90c2b0b1e8785cb865e60",
     "reviewedBaseCommit": "cf320fd907430156d1d82e54f0aa404bdef73704",
     "boundPathCount": 12
   },

@@ -16,13 +16,13 @@
     "docs/ci.md": "6f716c7086271974f933bc8732961711a1b54f048f8fc3d2a133b72123b76b38",
     "global.json": "715a0895da9db82e2370e7445c371c39e3a2d032fdcf7dfbc95f9fcb27ddc7c2",
     "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed",
-    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "aecbbfe4876af624504236b3f30329a50dcd28c1b1db992e034dd4327fc5781f",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "57d9c14b769997bfc00825836d19be15be75a47d78c1a04e6b8ecfae5d56adda",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "1a4a61b0b7f5109c1d1fa369fbdde6877a55750c353858c5eb80dfd0545b6611",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs": "36891fd8689ec316ab925d1fb1114eeb54b50499fdfe683cd5ebaf4b7228668c",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "76f45fa2102df293c5d28390383b8001cfa47610412262c9c3626c160694020d",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs": "cbc1be14c3a8c9c58c9951059803a706ab3a54e0ccf130db89f3609c245ed577",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "b4da837279e0730dfd3dfa93eb70c07bd02442981ac61f5ac2ee05d79c3e5376",
-    "tools/validate-oq8-platform-evidence.py": "4c7e60c3271ae56f66386e794034e5b51960fadc687b86220484795742d3f0c4"
+    "tools/validate-oq8-platform-evidence.py": "bd7bd51b780876141b37588e39fa3298cb9dcbc3bc060302ff723b7177167530"
   },
   "validation": {
     "sdk": "10.0.400",

@@ -501,6 +501,7 @@ The table is a dated rendering of the current planning baseline; the Builds cata
 | FluentValidation | 12.1.1 |
 | ASP.NET Core / SignalR packages | `10.0.11` (catalog and security baseline aligned) |
 | Microsoft.CodeAnalysis packages | 5.9.0 |
+| Microsoft.Testing.Extensions.CodeCoverage | 18.10.0 (Microsoft.Testing.Platform coverage provider) |
 | Microsoft.FluentUI.AspNetCore.Components | 5.0.0-rc.5-26219.1 |
 | Hexalith.FrontComposer packages | Catalog `HexalithFrontComposerVersion` `4.1.1`; matching root-declared source in Debug and centrally pinned NuGet packages in Release |
 | OpenTelemetry exporter/hosting/ASP.NET/HTTP packages | 1.18.0 |
@@ -509,6 +510,7 @@ The table is a dated rendering of the current planning baseline; the Builds cata
 | xUnit v3 | 4.0.0 |
 | Shouldly | 4.3.0 |
 | NSubstitute | 6.2.0 |
+| NBomber / NBomber.Http | 6.6.0 / 6.2.1 |
 
 ## Structural Seed
 

@@ -52,6 +52,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("reviewed-base-wording")]
     [InlineData("reviewed-resolver-count")]
     [InlineData("review-external-authority")]
+    [InlineData("selector-symlink")]
     [Trait("OQ8Phase", "FinalOnly")]
     public void SuccessorSealMutationsFailClosed(string mutation)
     {
@@ -125,6 +126,15 @@ public sealed class Oq8PlatformClosureTests
                     WriteObject(reviewPath, review);
                     ResealSuccessorArtifacts(artifacts);
                     expected = "External authority overstated: externalRepositoryAuthority";
+                    break;
+                }
+                case "selector-symlink":
+                {
+                    string selectorPath = Path.Combine(artifacts, "4-15-oq8-platform-closure-successor.json");
+                    string targetPath = selectorPath + ".target";
+                    File.Move(selectorPath, targetPath);
+                    File.CreateSymbolicLink(selectorPath, Path.GetFileName(targetPath));
+                    expected = "Story 4.15 successor selector must be a regular non-symlink file";
                     break;
                 }
                 default:
@@ -737,6 +747,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("candidate-story-status-done")]
     [InlineData("candidate-frontmatter-done")]
     [InlineData("candidate-focused-test-shape")]
+    [InlineData("candidate-focused-schema-boolean")]
     [InlineData("candidate-focused-duration-boolean")]
     [InlineData("candidate-focused-duration-negative")]
     [InlineData("candidate-focused-duration-nonfinite")]
@@ -774,6 +785,65 @@ public sealed class Oq8PlatformClosureTests
             output.ShouldContain("OQ8 evidence validation failed:");
             output.ShouldContain(ExpectedCandidateFailure(mutation));
             output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies raw xUnit CTRF sanitization rejects non-object records and boolean counts.
+    /// </summary>
+    /// <param name="mutation">The raw CTRF shape mutation.</param>
+    /// <param name="expected">The stable fail-closed diagnostic.</param>
+    [Theory]
+    [InlineData("focused-record", "Focused CTRF contains an invalid test record")]
+    [InlineData("focused-count", "Focused CTRF summary tests must be an exact integer")]
+    [InlineData("support-record", "Deterministic support CTRF contains an invalid test record")]
+    [InlineData("support-count", "Deterministic support CTRF summary tests must be an exact integer")]
+    public void RawCtrfShapeMutationsFailClosed(string mutation, string expected)
+    {
+        ArgumentNullException.ThrowIfNull(mutation);
+        ArgumentNullException.ThrowIfNull(expected);
+        string root = FindRepositoryRoot();
+        string fixture = Path.Combine(Path.GetTempPath(), "oq8-ctrf-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        try
+        {
+            bool support = mutation.StartsWith("support-", StringComparison.Ordinal);
+            int expectedCount = support ? 33 : 1;
+            JsonArray tests = [];
+            for (int index = 0; index < expectedCount; index++)
+            {
+                tests.Add(true);
+            }
+
+            JsonObject summary = new()
+            {
+                ["tests"] = mutation.EndsWith("-count", StringComparison.Ordinal) ? true : expectedCount,
+                ["passed"] = expectedCount,
+                ["failed"] = 0,
+                ["skipped"] = 0,
+            };
+            JsonObject ctrf = new()
+            {
+                ["results"] = new JsonObject
+                {
+                    ["summary"] = summary,
+                    ["tests"] = tests,
+                },
+            };
+            string input = Path.Combine(fixture, "input.json");
+            string output = Path.Combine(fixture, "output.json");
+            WriteObject(input, ctrf);
+
+            (int exitCode, string processOutput) = RunCtrfSanitizer(root, input, output, support);
+
+            exitCode.ShouldBe(1, processOutput);
+            processOutput.ShouldContain(expected);
+            processOutput.ShouldNotContain("Traceback");
+            File.Exists(output).ShouldBeFalse();
         }
         finally
         {
@@ -1880,6 +1950,20 @@ public sealed class Oq8PlatformClosureTests
                 ResealCandidateCapture(fixture, "test-results.json");
                 break;
             }
+            case "candidate-focused-schema-boolean":
+            {
+                string path = Path.Combine(
+                    artifacts,
+                    "evidence",
+                    "story-4-14",
+                    "e60a3777c581d70b62f67173ccc2372b5b64a425",
+                    "test-results.json");
+                JsonObject result = LoadObject(path);
+                result["schemaVersion"] = true;
+                WriteObject(path, result);
+                ResealCandidateCapture(fixture, "test-results.json");
+                break;
+            }
             case "candidate-focused-duration-boolean":
             case "candidate-focused-duration-negative":
             {
@@ -2097,6 +2181,7 @@ public sealed class Oq8PlatformClosureTests
         "candidate-story-status-done" => "Lifecycle status drift: 4-15-oq8-platform-closure-and-handoff",
         "candidate-frontmatter-done" => "Story 4.15 metadata status drift",
         "candidate-focused-test-shape" => "Focused result test must be an object",
+        "candidate-focused-schema-boolean" => "Focused result schemaVersion must be an exact integer",
         "candidate-focused-duration-boolean" or "candidate-focused-duration-negative" => "Focused result duration must be a finite non-negative number",
         "candidate-focused-duration-nonfinite" => "Non-finite JSON constant is forbidden",
         "candidate-commands-shape" => "Verification command 0 field set drift",
@@ -3537,6 +3622,39 @@ public sealed class Oq8PlatformClosureTests
 
         (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
         timedOut.ShouldBeFalse("OQ8 observation validator timed out.");
+        return (exitCode, output);
+    }
+
+    private static (int ExitCode, string Output) RunCtrfSanitizer(
+        string repositoryRoot,
+        string inputPath,
+        string outputPath,
+        bool support)
+    {
+        using Process process = CreatePythonProcess(
+            """
+            import importlib.util
+            import pathlib
+            import sys
+
+            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+            validator = importlib.util.module_from_spec(specification)
+            specification.loader.exec_module(validator)
+            try:
+                sanitizer = validator.sanitize_support_ctrf if sys.argv[4] == "support" else validator.sanitize_ctrf
+                sanitizer(pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3]))
+            except validator.EvidenceError as error:
+                print(str(error))
+                raise SystemExit(1)
+            """);
+        process.StartInfo.WorkingDirectory = repositoryRoot;
+        process.StartInfo.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "validate-oq8-platform-evidence.py"));
+        process.StartInfo.ArgumentList.Add(inputPath);
+        process.StartInfo.ArgumentList.Add(outputPath);
+        process.StartInfo.ArgumentList.Add(support ? "support" : "focused");
+
+        (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
+        timedOut.ShouldBeFalse("OQ8 CTRF sanitizer timed out.");
         return (exitCode, output);
     }
 

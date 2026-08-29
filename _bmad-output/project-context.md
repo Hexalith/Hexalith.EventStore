@@ -22,7 +22,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **MediatR 14.2.0** (CQRS), **FluentValidation 12.1.1**, JWT Bearer auth, OpenAPI/Swashbuckle
 - **OpenTelemetry 1.18.0**, `Microsoft.Extensions.*` 10.0.11, **SignalR** 10.0.11 (+ StackExchange.Redis backplane)
 - **Blazor FluentUI `5.0.0-rc.5-26219.1`** + matching Icons package (admin/sample UIs)
-- **Testing:** xUnit **v3** (`xunit.v3` 4.0.0), Shouldly 4.3.0, NSubstitute 6.2.0, bunit 2.9.0, Testcontainers 4.14.0, Playwright 1.62.0, coverlet 10.0.1; NBomber 6.6.0 (load)
+- **Testing:** xUnit **v3** (`xunit.v3` 4.0.0) on Microsoft.Testing.Platform, Shouldly 4.3.0, NSubstitute 6.2.0, bunit 2.9.0, Testcontainers 4.14.0, Playwright 1.62.0, Microsoft.Testing.Extensions.CodeCoverage 18.10.0, and coverlet 10.0.1; NBomber 6.6.0 (load)
 - **Identity helper:** `Hexalith.Commons.UniqueIds` 2.30.0 (ULID generation)
 - **All source-owned package versions centralized** in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper — `ManagePackageVersionsCentrally=true`
 

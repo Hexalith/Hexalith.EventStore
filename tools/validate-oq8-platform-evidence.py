@@ -1079,15 +1079,19 @@ def validate_observations(path: Path, expected_dapr_runtime_version: str) -> dic
 
 def sanitize_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
     ctrf = load_json(ctrf_path)
-    results = ctrf.get("results", {}) if isinstance(ctrf, dict) else {}
-    summary = results.get("summary", {})
-    tests = results.get("tests", [])
-    require(summary.get("tests") == 1, "Focused CTRF must contain exactly one test")
-    require(summary.get("passed") == 1, "Focused CTRF does not report one pass")
-    require(summary.get("failed") == 0, "Focused CTRF reports a failure")
-    require(summary.get("skipped") == 0, "Focused CTRF reports a skip")
+    require(isinstance(ctrf, dict), "Focused CTRF must be an object")
+    results = ctrf.get("results")
+    require(isinstance(results, dict), "Focused CTRF results must be an object")
+    summary = results.get("summary")
+    require(isinstance(summary, dict), "Focused CTRF summary must be an object")
+    tests = results.get("tests")
+    require_exact_integer(summary.get("tests"), 1, "Focused CTRF summary tests")
+    require_exact_integer(summary.get("passed"), 1, "Focused CTRF summary passed")
+    require_exact_integer(summary.get("failed"), 0, "Focused CTRF summary failed")
+    require_exact_integer(summary.get("skipped"), 0, "Focused CTRF summary skipped")
     require(isinstance(tests, list) and len(tests) == 1, "Focused CTRF test record is incomplete")
     test = tests[0]
+    require(isinstance(test, dict), "Focused CTRF contains an invalid test record")
     require(test.get("name") == FOCUSED_METHOD, "Focused CTRF test identity drift")
     require(test.get("labels") == FOCUSED_LABELS, "Focused CTRF xUnit 4 Category/Profile labels drift")
     require(test.get("tags") == ["LiveSidecar"], "Focused CTRF xUnit 4 Category tag drift")
@@ -1135,16 +1139,17 @@ def expected_support_classifications() -> dict[str, Any]:
 def validate_focused_document(document: Any, expected_command: str = FOCUSED_LEGACY_COMMAND) -> dict[str, Any]:
     require(isinstance(document, dict), "test-results.json must be an object")
     require_exact_fields(document, {"schemaVersion", "runner", "command", "summary", "test"}, "Focused result")
-    require(document.get("schemaVersion") == 1, "Focused result schemaVersion drift")
+    require_exact_integer(document.get("schemaVersion"), 1, "Focused result schemaVersion")
     require(document.get("runner") == "xUnit.net v3", "Focused result runner drift")
     require(
         document.get("command") == expected_command,
         "Focused result command identity drift",
     )
-    require(
-        document.get("summary") == {"tests": 1, "passed": 1, "failed": 0, "skipped": 0},
-        "Focused result is not exactly one green case",
-    )
+    summary = require_exact_fields(document.get("summary"), {"tests", "passed", "failed", "skipped"}, "Focused result summary")
+    require_exact_integer(summary.get("tests"), 1, "Focused result summary tests")
+    require_exact_integer(summary.get("passed"), 1, "Focused result summary passed")
+    require_exact_integer(summary.get("failed"), 0, "Focused result summary failed")
+    require_exact_integer(summary.get("skipped"), 0, "Focused result summary skipped")
     test = document.get("test", {})
     require(isinstance(test, dict), "Focused result test must be an object")
     require_exact_fields(test, {"name", "status", "durationMilliseconds", "traits"}, "Focused result test")
@@ -1163,17 +1168,18 @@ def validate_focused_document(document: Any, expected_command: str = FOCUSED_LEG
 def validate_support_document(document: Any, expected_command: str = SUPPORT_LEGACY_COMMAND) -> dict[str, Any]:
     require(isinstance(document, dict), "deterministic-support.json must be an object")
     require_exact_fields(document, {"schemaVersion", "runner", "command", "selectors", "summary", "methods", "classifications"}, "Deterministic support")
-    require(document.get("schemaVersion") == 1, "Deterministic support schemaVersion drift")
+    require_exact_integer(document.get("schemaVersion"), 1, "Deterministic support schemaVersion")
     require(document.get("runner") == "xUnit.net v3", "Deterministic support runner drift")
     require(
         document.get("command") == expected_command,
         "Deterministic support command identity drift",
     )
     require(document.get("selectors") == list(EXPECTED_SUPPORT_METHOD_CASES), "Deterministic support selectors drift")
-    require(
-        document.get("summary") == {"tests": SUPPORT_CASE_TOTAL, "passed": SUPPORT_CASE_TOTAL, "failed": 0, "skipped": 0},
-        f"Deterministic support summary is not exactly {SUPPORT_CASE_TOTAL}/{SUPPORT_CASE_TOTAL} green",
-    )
+    summary = require_exact_fields(document.get("summary"), {"tests", "passed", "failed", "skipped"}, "Deterministic support summary")
+    require_exact_integer(summary.get("tests"), SUPPORT_CASE_TOTAL, "Deterministic support summary tests")
+    require_exact_integer(summary.get("passed"), SUPPORT_CASE_TOTAL, "Deterministic support summary passed")
+    require_exact_integer(summary.get("failed"), 0, "Deterministic support summary failed")
+    require_exact_integer(summary.get("skipped"), 0, "Deterministic support summary skipped")
     expected_methods = [
         {
             "identity": identity,
@@ -1193,13 +1199,16 @@ def validate_support_document(document: Any, expected_command: str = SUPPORT_LEG
 
 def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
     ctrf = load_json(ctrf_path)
-    results = ctrf.get("results", {}) if isinstance(ctrf, dict) else {}
-    summary = results.get("summary", {})
-    tests = results.get("tests", [])
-    require(summary.get("tests") == SUPPORT_CASE_TOTAL, f"Deterministic support CTRF must contain exactly {SUPPORT_CASE_TOTAL} cases")
-    require(summary.get("passed") == SUPPORT_CASE_TOTAL, f"Deterministic support CTRF does not report {SUPPORT_CASE_TOTAL} passes")
-    require(summary.get("failed") == 0, "Deterministic support CTRF reports a failure")
-    require(summary.get("skipped") == 0, "Deterministic support CTRF reports a skip")
+    require(isinstance(ctrf, dict), "Deterministic support CTRF must be an object")
+    results = ctrf.get("results")
+    require(isinstance(results, dict), "Deterministic support CTRF results must be an object")
+    summary = results.get("summary")
+    require(isinstance(summary, dict), "Deterministic support CTRF summary must be an object")
+    tests = results.get("tests")
+    require_exact_integer(summary.get("tests"), SUPPORT_CASE_TOTAL, "Deterministic support CTRF summary tests")
+    require_exact_integer(summary.get("passed"), SUPPORT_CASE_TOTAL, "Deterministic support CTRF summary passed")
+    require_exact_integer(summary.get("failed"), 0, "Deterministic support CTRF summary failed")
+    require_exact_integer(summary.get("skipped"), 0, "Deterministic support CTRF summary skipped")
     require(isinstance(tests, list) and len(tests) == SUPPORT_CASE_TOTAL, "Deterministic support CTRF records are incomplete")
 
     observed = {identity: 0 for identity in EXPECTED_SUPPORT_METHOD_CASES}
@@ -1302,7 +1311,10 @@ def validate_manifest() -> dict[str, str]:
 
 
 def validate_successor_source_identity() -> dict[str, Any]:
-    require(SUCCESSOR_SELECTOR.is_file(), "Story 4.15 successor selector is missing")
+    require(
+        SUCCESSOR_SELECTOR.is_file() and not SUCCESSOR_SELECTOR.is_symlink(),
+        "Story 4.15 successor selector must be a regular non-symlink file",
+    )
     require(SUCCESSOR.is_dir(), "Story 4.15 successor directory is missing")
     selector = load_candidate_json(SUCCESSOR_SELECTOR)
     require(isinstance(selector, dict), "Story 4.15 successor selector must be an object")
