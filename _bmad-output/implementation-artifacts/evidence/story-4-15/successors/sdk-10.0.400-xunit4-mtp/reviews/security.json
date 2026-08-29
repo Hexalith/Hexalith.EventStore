@@ -1,0 +1,26 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v1",
+  "role": "security",
+  "reviewer": "Security Reviewer",
+  "reviewedOn": "2026-08-29",
+  "decision": "approved",
+  "subjectSha256": "1d7e5289556e70edea3fbb33bfbd6cbfd02a731afb9eafdf55575135077dfc53",
+  "acceptedScope": "successor identity integrity, immutable prior evidence, bounded Docker port parsing, dependency probing, and external authority exclusions",
+  "findings": [
+    "Docker port discovery accepts one consistent published TCP port and fails closed on absent, malformed, or conflicting mappings.",
+    "The additional NuGet package-cache probing path resolves the pinned coverage extension without expanding any release or external authority."
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

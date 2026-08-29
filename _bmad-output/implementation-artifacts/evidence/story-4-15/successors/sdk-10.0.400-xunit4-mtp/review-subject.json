@@ -1,0 +1,68 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-subject/v1",
+  "reviewedOn": "2026-08-29",
+  "reason": "SDK 10.0.400 requires Microsoft.Testing.Platform, xUnit 4 serialization metadata, and Linux-safe OQ8 control-plane discovery.",
+  "priorSeal": {
+    "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
+    "packetSha256": "ab6931160b1b9574f6f0e8c5698a0982e45978071cc311951d9604d27a5650a4",
+    "closureDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "closureManifestSha256": "da3994dfd687b4ecf7a150b0b8b2d9fa41e54d1ea8d57641163dc6532bfb9e47"
+  },
+  "sourceIdentity": {
+    "path": "source-artifact-identity.json",
+    "sha256": "bbe5c716dae128d933ea782dad353f32d14f4e3f8cb3dcc697b8e615c3a56afd",
+    "reviewedFromHead": "cf320fd907430156d1d82e54f0aa404bdef73704",
+    "boundPathCount": 12
+  },
+  "validation": {
+    "sdk": "10.0.400",
+    "xunitParallelization": "ParallelMode.None",
+    "dockerPublishedControlPlanePorts": true,
+    "nugetPackageCacheProbing": true,
+    "focusedPortResolverTests": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    "focusedProductionOq8": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "requiredReviews": [
+    {
+      "role": "architecture",
+      "reviewer": "Winston (System Architect)",
+      "scope": "SDK 10.0.400/MTP source rebinding, prior-seal retention, Linux control-plane discovery, and source-only authority boundaries",
+      "status": "required"
+    },
+    {
+      "role": "security",
+      "reviewer": "Security Reviewer",
+      "scope": "successor identity integrity, immutable prior evidence, bounded Docker port parsing, dependency probing, and external authority exclusions",
+      "status": "required"
+    },
+    {
+      "role": "test",
+      "reviewer": "Murat (Test Architect)",
+      "scope": "xUnit 4 serialization metadata, maintained MTP coverage, focused resolver/production evidence, and fail-closed successor selection",
+      "status": "required"
+    }
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

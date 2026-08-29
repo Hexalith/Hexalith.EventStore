@@ -151,9 +151,11 @@ the version from commit history. The ordinary path requires the successful `CI`
 push run described below. The explicitly selected bypass path instead requires
 the same source SHA to have a successful push run of `commitlint.yml` and can be
 requested only with
-`gh workflow run release.yml --ref main -f bypass-validation=true`. Before
-requesting environment approval, the manual workflow fails closed unless all
-of these are true:
+`gh workflow run release.yml --ref main -f bypass-validation=true`.
+The approved immutable shared release workflow and execution pin is
+`22a578b576a515d2af214fe81859447fffc97981`, matching `.github/workflows/release.yml`
+and `docs/ci-secrets-checklist.md`. Before requesting environment approval, the
+manual workflow fails closed unless all of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
 - the dispatch SHA still equals the live `main` ref returned by GitHub;

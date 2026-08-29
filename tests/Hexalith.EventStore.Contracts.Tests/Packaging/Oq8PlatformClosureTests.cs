@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 public sealed class Oq8PlatformClosureTests
 {
     private const string LandedSource = "5e8f175b2ced4715f7c6f765386812cc1001dbb4";
+    private const string SuccessorDirectory = "sdk-10.0.400-xunit4-mtp";
     private static readonly Regex EventStorePlatformCompleteTrue = new(
         "\"eventStorePlatformComplete\"\\s*:\\s*true",
         RegexOptions.CultureInvariant,
@@ -33,6 +34,70 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(0, output);
             output.ShouldContain("OQ8 platform evidence validation passed.");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies successor selection, current-source binding, and review receipts all fail closed.
+    /// </summary>
+    /// <param name="mutation">The successor contract mutation.</param>
+    [Theory]
+    [InlineData("current-source")]
+    [InlineData("prior-selection")]
+    [InlineData("review-receipt")]
+    [Trait("OQ8Phase", "FinalOnly")]
+    public void SuccessorSealMutationsFailClosed(string mutation)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            string artifacts = Path.Combine(fixture, "_bmad-output", "implementation-artifacts");
+            string expected;
+            switch (mutation)
+            {
+                case "current-source":
+                    File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nSuccessor source drift.\n");
+                    expected = "Story 4.15 successor current source identity drift: docs/ci.md";
+                    break;
+                case "prior-selection":
+                {
+                    string selectorPath = Path.Combine(artifacts, "4-15-oq8-platform-closure-successor.json");
+                    JsonObject selector = LoadObject(selectorPath);
+                    selector["prior"]!["packetSha256"] = new string('0', 64);
+                    WriteObject(selectorPath, selector);
+                    expected = "Story 4.15 successor prior selection drift";
+                    break;
+                }
+                case "review-receipt":
+                {
+                    string reviewPath = Path.Combine(
+                        artifacts,
+                        "evidence",
+                        "story-4-15",
+                        "successors",
+                        SuccessorDirectory,
+                        "reviews",
+                        "security.json");
+                    JsonObject review = LoadObject(reviewPath);
+                    review["decision"] = "rejected";
+                    WriteObject(reviewPath, review);
+                    expected = "Story 4.15 successor checksum mismatch: reviews/security.json";
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown successor mutation.");
+            }
+
+            (int exitCode, string output) = RunValidator(root, fixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(expected);
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -1974,7 +2039,7 @@ public sealed class Oq8PlatformClosureTests
         "candidate-subject-binding" => "Review subject binding drift: closureCrosswalk",
         "candidate-subject-test-binding" => "Review subject binding drift: closureTests",
         "candidate-subject-dependency-binding" => "Review subject binding drift: validatorRequirements",
-        "candidate-test-source-body" => "Pre-review execution test-source identity drift",
+        "candidate-test-source-body" => "Story 4.15 successor current source identity drift",
         "candidate-execution-validator" => "Pre-review execution validator identity drift",
         "candidate-execution-test-source" => "Pre-review execution test-source identity drift",
         "candidate-execution-summary-type" => "must be an exact integer",
@@ -3178,6 +3243,7 @@ public sealed class Oq8PlatformClosureTests
         string[] files =
         [
             "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
+            "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
             "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
             "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
             "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
@@ -3188,13 +3254,21 @@ public sealed class Oq8PlatformClosureTests
             "deploy/dapr/statestore-postgresql.yaml",
             "docs/concepts/architecture-overview.md",
             "docs/concepts/command-lifecycle.md",
+            "docs/ci.md",
             "docs/guides/configuration-reference.md",
             "docs/reference/command-api.md",
             ".github/workflows/ci.yml",
             ".github/workflows/integration.yml",
+            "global.json",
             "requirements-oq8.txt",
+            "tests/Directory.Build.props",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
+            "tools/validate-oq8-platform-evidence.py",
         ];
         foreach (string relative in files)
         {
@@ -3225,6 +3299,18 @@ public sealed class Oq8PlatformClosureTests
             CopyFile(root, fixture, Path.Combine(closureRelative, relative));
         }
 
+        CopyFile(
+            root,
+            fixture,
+            Path.Combine(
+                "_bmad-output",
+                "implementation-artifacts",
+                "evidence",
+                "story-4-15",
+                "successors",
+                SuccessorDirectory,
+                "source-artifact-identity.json"));
+
         SetCandidateLifecycle(fixture);
         return fixture;
     }
@@ -3237,6 +3323,7 @@ public sealed class Oq8PlatformClosureTests
         [
             "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
             "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
+            "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
             "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
             "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
             "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
@@ -3247,13 +3334,21 @@ public sealed class Oq8PlatformClosureTests
             "deploy/dapr/statestore-postgresql.yaml",
             "docs/concepts/architecture-overview.md",
             "docs/concepts/command-lifecycle.md",
+            "docs/ci.md",
             "docs/guides/configuration-reference.md",
             "docs/reference/command-api.md",
             ".github/workflows/ci.yml",
             ".github/workflows/integration.yml",
+            "global.json",
             "requirements-oq8.txt",
+            "tests/Directory.Build.props",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
+            "tools/validate-oq8-platform-evidence.py",
         ];
         foreach (string relative in files)
         {

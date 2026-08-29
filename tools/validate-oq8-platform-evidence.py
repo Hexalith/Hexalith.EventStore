@@ -29,6 +29,7 @@ ROOT = DEFAULT_ROOT
 GIT_ROOT = DEFAULT_ROOT
 GIT_TIMEOUT_SECONDS = 30.0
 GIT_OUTPUT_LIMIT_BYTES = 131072
+GIT_BLOB_LIMIT_BYTES = 8 * 1024 * 1024
 PACKET = ROOT / "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml"
 EVIDENCE = (
     ROOT
@@ -57,6 +58,8 @@ LANDED_TREE = "96fdfbba56df41b58889bf7f3b532a64d15314bd"
 PRIOR_CLOSURE_COMMIT = "9fbd8cbf2687a2cbb0172a14eaa68f9b276ee105"
 PRIOR_VALIDATOR_SHA256 = "9652019053810366ec3a7682490a5b85385880b63bb3bf2ca7023b0a49c18dde"
 SUCCESSOR_REVIEW_BASE = "cf320fd907430156d1d82e54f0aa404bdef73704"
+PRIOR_PACKET_SHA256 = "ab6931160b1b9574f6f0e8c5698a0982e45978071cc311951d9604d27a5650a4"
+PRIOR_CLOSURE_MANIFEST_SHA256 = "da3994dfd687b4ecf7a150b0b8b2d9fa41e54d1ea8d57641163dc6532bfb9e47"
 PROFILE = "oq8-postgresql-v1"
 POSTGRES_IMAGE = "postgres:18.4"
 COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"
@@ -166,6 +169,25 @@ REVIEW_SCOPES = {
     "architecture": "OQ8 design reference, invariant crosswalk, landed-source identity, architecture boundaries, and source-only handoff",
     "security": "protected-data leakage gates, current-fence evidence, sanitized-state limitation, and external authority exclusions",
     "test": "production/deterministic evidence coverage, commands and counts, negative validation, and matrix coverage",
+}
+SUCCESSOR_REVIEW_SCOPES = {
+    "architecture": "SDK 10.0.400/MTP source rebinding, prior-seal retention, Linux control-plane discovery, and source-only authority boundaries",
+    "security": "successor identity integrity, immutable prior evidence, bounded Docker port parsing, dependency probing, and external authority exclusions",
+    "test": "xUnit 4 serialization metadata, maintained MTP coverage, focused resolver/production evidence, and fail-closed successor selection",
+}
+SUCCESSOR_REVIEW_FINDINGS = {
+    "architecture": [
+        "The successor is additive and selects exact current source bytes without changing or deleting the original Story 4.15 packet, manifest, or artifacts.",
+        "The xUnit 4 assembly metadata and Linux-published control-plane port adaptation preserve serialized production evidence behavior under SDK 10.0.400.",
+    ],
+    "security": [
+        "Docker port discovery accepts one consistent published TCP port and fails closed on absent, malformed, or conflicting mappings.",
+        "The additional NuGet package-cache probing path resolves the pinned coverage extension without expanding any release or external authority.",
+    ],
+    "test": [
+        "Four focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.",
+        "The current MTP workflows, coverage provider wiring, and xUnit ParallelMode.None source are content-bound by the successor identity.",
+    ],
 }
 EXTERNAL_AUTHORITY_FIELDS = {
     "releaseApproved",
@@ -696,6 +718,11 @@ def run_subprocess_bounded(command: list[str], label: str) -> tuple[int, bytes, 
             process.kill()
             process.wait()
             fail(f"{label} timed out")
+    except EvidenceError:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
     except OSError:
         if process.poll() is None:
             process.kill()
@@ -737,6 +764,86 @@ def git_file(revision: str, relative: str) -> bytes:
         "Unsafe Git-bound path",
     )
     return run_git("show", f"{revision}:{relative}")
+
+
+def sha256_git_file(revision: str, relative: str) -> str:
+    require(
+        isinstance(relative, str)
+        and relative
+        and not Path(relative).is_absolute()
+        and ".." not in Path(relative).parts,
+        "Unsafe Git-bound path",
+    )
+    label = "Git historical-blob identity proof"
+    try:
+        process = subprocess.Popen(
+            ["git", "--no-replace-objects", "show", f"{revision}:{relative}"],
+            cwd=GIT_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError:
+        fail(f"{label} could not start")
+
+    require(process.stdout is not None and process.stderr is not None, f"{label} output capture failed")
+    selector = selectors.DefaultSelector()
+    digest = hashlib.sha256()
+    errors = bytearray()
+    blob_size = 0
+    deadline = time.monotonic() + GIT_TIMEOUT_SECONDS
+    try:
+        for stream, kind in ((process.stdout, "blob"), (process.stderr, "error")):
+            os.set_blocking(stream.fileno(), False)
+            selector.register(stream, selectors.EVENT_READ, kind)
+        while selector.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                process.kill()
+                process.wait()
+                fail(f"{label} timed out")
+            for key, _ in selector.select(min(remaining, 0.1)):
+                try:
+                    chunk = os.read(key.fileobj.fileno(), 8192)
+                except BlockingIOError:
+                    continue
+                if not chunk:
+                    selector.unregister(key.fileobj)
+                    continue
+                if key.data == "blob":
+                    blob_size += len(chunk)
+                    require(blob_size <= GIT_BLOB_LIMIT_BYTES, f"{label} exceeded blob limit")
+                    digest.update(chunk)
+                else:
+                    errors.extend(chunk)
+                    require(len(errors) <= GIT_OUTPUT_LIMIT_BYTES, f"{label} exceeded output limit")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            process.kill()
+            process.wait()
+            fail(f"{label} timed out")
+        try:
+            return_code = process.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            fail(f"{label} timed out")
+    except EvidenceError:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
+    except OSError:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        fail(f"{label} failed safely")
+    finally:
+        selector.close()
+        process.stdout.close()
+        process.stderr.close()
+
+    require(return_code == 0, f"{label} failed")
+    return digest.hexdigest()
 
 
 def configure_roots(root: Path, git_root: Path, git_timeout_seconds: float = 30.0) -> None:
@@ -1277,6 +1384,260 @@ def validate_successor_source_identity() -> dict[str, Any]:
     return identity
 
 
+def validate_successor_manifest() -> dict[str, str]:
+    manifest_path = SUCCESSOR / "successor-sha256.txt"
+    require(manifest_path.is_file(), "Story 4.15 successor manifest is missing")
+    scan_support_safe(manifest_path)
+    manifest: dict[str, str] = {}
+    lines = read_text(manifest_path).splitlines()
+    require(lines == sorted(lines, key=lambda line: line.split("  ", 1)[-1]), "Story 4.15 successor manifest is not path-sorted")
+    for line in lines:
+        parts = line.split("  ", 1)
+        require(len(parts) == 2 and SHA256_RE.fullmatch(parts[0]) is not None, "Malformed Story 4.15 successor manifest line")
+        digest, relative = parts
+        path = Path(relative)
+        require(
+            relative not in manifest
+            and not path.is_absolute()
+            and ".." not in path.parts
+            and path.as_posix() == relative,
+            "Unsafe or duplicate Story 4.15 successor manifest path",
+        )
+        manifest[relative] = digest
+    require(set(manifest) == SUCCESSOR_FILES, "Story 4.15 successor manifest file set drift")
+    for relative, expected in manifest.items():
+        artifact = SUCCESSOR / relative
+        require(artifact.is_file(), f"Story 4.15 successor artifact missing: {relative}")
+        require(not artifact.is_symlink(), f"Story 4.15 successor artifact cannot be a symlink: {relative}")
+        require(sha256_file(artifact) == expected, f"Story 4.15 successor checksum mismatch: {relative}")
+        scan_support_safe(artifact)
+    return manifest
+
+
+def validate_successor_review_subject(subject: Any, identity: dict[str, Any]) -> str:
+    require(isinstance(subject, dict), "Story 4.15 successor review subject must be an object")
+    require(
+        set(subject)
+        == {
+            "schema",
+            "reviewedOn",
+            "reason",
+            "priorSeal",
+            "sourceIdentity",
+            "validation",
+            "requiredReviews",
+            "authority",
+        },
+        "Story 4.15 successor review subject field set drift",
+    )
+    require(
+        subject.get("schema") == "hexalith.eventstore.story-4-15-successor-review-subject/v1",
+        "Story 4.15 successor review subject schema drift",
+    )
+    require(subject.get("reviewedOn") == "2026-08-29", "Story 4.15 successor review subject date drift")
+    require(subject.get("reason") == identity.get("reason"), "Story 4.15 successor review subject reason drift")
+    require(
+        subject.get("priorSeal")
+        == {
+            "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
+            "packetSha256": PRIOR_PACKET_SHA256,
+            "closureDirectory": CLOSURE_DIRECTORY,
+            "closureManifestSha256": PRIOR_CLOSURE_MANIFEST_SHA256,
+        },
+        "Story 4.15 successor prior-seal binding drift",
+    )
+    require(
+        subject.get("sourceIdentity")
+        == {
+            "path": "source-artifact-identity.json",
+            "sha256": sha256_file(SUCCESSOR / "source-artifact-identity.json"),
+            "reviewedFromHead": SUCCESSOR_REVIEW_BASE,
+            "boundPathCount": len(SUCCESSOR_SOURCE_PATHS),
+        },
+        "Story 4.15 successor review source identity drift",
+    )
+    require(subject.get("validation") == identity.get("validation"), "Story 4.15 successor reviewed validation drift")
+    require(
+        subject.get("requiredReviews")
+        == [
+            {
+                "role": role,
+                "reviewer": REVIEW_ROSTER[role],
+                "scope": SUCCESSOR_REVIEW_SCOPES[role],
+                "status": "required",
+            }
+            for role in ("architecture", "security", "test")
+        ],
+        "Story 4.15 successor required review roster or scope drift",
+    )
+    validate_authority(subject.get("authority"))
+    return sha256_file(SUCCESSOR / "review-subject.json")
+
+
+def validate_successor_reviews(subject_sha256: str) -> dict[str, str]:
+    receipts: dict[str, str] = {}
+    for role, reviewer in REVIEW_ROSTER.items():
+        path = SUCCESSOR / "reviews" / f"{role}.json"
+        document = load_candidate_json(path)
+        require(isinstance(document, dict), f"Story 4.15 successor {role} review must be an object")
+        require(
+            set(document)
+            == {
+                "schema",
+                "role",
+                "reviewer",
+                "reviewedOn",
+                "decision",
+                "subjectSha256",
+                "acceptedScope",
+                "findings",
+                "authority",
+            },
+            f"Story 4.15 successor {role} review field set drift",
+        )
+        require(
+            document.get("schema") == "hexalith.eventstore.story-4-15-successor-review-receipt/v1",
+            f"Story 4.15 successor {role} review schema drift",
+        )
+        require(document.get("role") == role, f"Story 4.15 successor {role} review role drift")
+        require(document.get("reviewer") == reviewer, f"Story 4.15 successor {role} reviewer identity drift")
+        require(document.get("reviewedOn") == "2026-08-29", f"Story 4.15 successor {role} review date drift")
+        require(document.get("decision") == "approved", f"Story 4.15 successor {role} review is not approved")
+        require(document.get("subjectSha256") == subject_sha256, f"Story 4.15 successor {role} review subject drift")
+        require(document.get("acceptedScope") == SUCCESSOR_REVIEW_SCOPES[role], f"Story 4.15 successor {role} review scope drift")
+        require(document.get("findings") == SUCCESSOR_REVIEW_FINDINGS[role], f"Story 4.15 successor {role} review findings drift")
+        validate_authority(document.get("authority"))
+        receipts[role] = sha256_file(path)
+    return receipts
+
+
+def validate_successor_handoff(
+    document: Any,
+    subject_sha256: str,
+    identity_sha256: str,
+    receipts: dict[str, str],
+) -> str:
+    require(isinstance(document, dict), "Story 4.15 successor handoff must be an object")
+    require(
+        set(document)
+        == {
+            "schema",
+            "story",
+            "selectedSuccessorDirectory",
+            "reviewedFromHead",
+            "reviewSubjectSha256",
+            "sourceIdentitySha256",
+            "reviewReceipts",
+            "consumerInstructions",
+            "priorSealRetained",
+            "authority",
+        },
+        "Story 4.15 successor handoff field set drift",
+    )
+    require(
+        document.get("schema") == "hexalith.eventstore.story-4-15-successor-source-only-handoff/v1",
+        "Story 4.15 successor handoff schema drift",
+    )
+    require(document.get("story") == "4.15", "Story 4.15 successor handoff story drift")
+    require(document.get("selectedSuccessorDirectory") == SUCCESSOR_DIRECTORY, "Story 4.15 successor handoff directory drift")
+    require(document.get("reviewedFromHead") == SUCCESSOR_REVIEW_BASE, "Story 4.15 successor handoff review base drift")
+    require(document.get("reviewSubjectSha256") == subject_sha256, "Story 4.15 successor handoff subject drift")
+    require(document.get("sourceIdentitySha256") == identity_sha256, "Story 4.15 successor handoff source identity drift")
+    require(document.get("reviewReceipts") == receipts, "Story 4.15 successor handoff receipt set drift")
+    require(
+        document.get("consumerInstructions")
+        == {
+            "mode": "source-only",
+            "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
+            "sourcePathRule": "Use only current files that match the selected successor source identity after the validator passes.",
+            "priorSealRule": "Retain the original Story 4.15 packet, closure manifest, and every sealed artifact byte unchanged.",
+        },
+        "Story 4.15 successor consumer instructions drift",
+    )
+    require(document.get("priorSealRetained") is True, "Story 4.15 prior seal retention is not recorded")
+    validate_authority(document.get("authority"))
+    return sha256_file(SUCCESSOR / "source-only-handoff.json")
+
+
+def validate_successor_selector(
+    selector: Any,
+    prior_manifest: dict[str, str],
+    successor_manifest: dict[str, str],
+    subject_sha256: str,
+    identity_sha256: str,
+    handoff_sha256: str,
+) -> None:
+    require(isinstance(selector, dict), "Story 4.15 successor selector must be an object")
+    require(
+        set(selector) == {"schema", "selectedOn", "reason", "prior", "successor", "authority"},
+        "Story 4.15 successor selector field set drift",
+    )
+    require(
+        selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v1",
+        "Story 4.15 successor selector schema drift",
+    )
+    require(selector.get("selectedOn") == "2026-08-29", "Story 4.15 successor selection date drift")
+    require(
+        selector.get("reason")
+        == "SDK 10.0.400 requires Microsoft.Testing.Platform, xUnit 4 serialization metadata, and Linux-safe OQ8 control-plane discovery.",
+        "Story 4.15 successor selection reason drift",
+    )
+    require(
+        selector.get("prior")
+        == {
+            "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
+            "packetSha256": PRIOR_PACKET_SHA256,
+            "closureDirectory": CLOSURE_DIRECTORY,
+            "closureManifestSha256": PRIOR_CLOSURE_MANIFEST_SHA256,
+            "closureFiles": prior_manifest,
+        },
+        "Story 4.15 successor prior selection drift",
+    )
+    require(
+        selector.get("successor")
+        == {
+            "directory": SUCCESSOR_DIRECTORY,
+            "manifestSha256": sha256_file(SUCCESSOR / "successor-sha256.txt"),
+            "files": successor_manifest,
+            "sourceIdentitySha256": identity_sha256,
+            "reviewSubjectSha256": subject_sha256,
+            "handoffSha256": handoff_sha256,
+        },
+        "Story 4.15 successor selection drift",
+    )
+    require(sha256_file(PACKET) == PRIOR_PACKET_SHA256, "Story 4.15 prior packet byte identity drift")
+    require(
+        sha256_file(CLOSURE / "closure-sha256.txt") == PRIOR_CLOSURE_MANIFEST_SHA256,
+        "Story 4.15 prior closure manifest byte identity drift",
+    )
+    validate_authority(selector.get("authority"))
+
+
+def validate_successor_closure(prior_manifest: dict[str, str]) -> None:
+    identity = validate_successor_source_identity()
+    identity_sha256 = sha256_file(SUCCESSOR / "source-artifact-identity.json")
+    successor_manifest = validate_successor_manifest()
+    subject_sha256 = validate_successor_review_subject(
+        load_candidate_json(SUCCESSOR / "review-subject.json"),
+        identity,
+    )
+    receipts = validate_successor_reviews(subject_sha256)
+    handoff_sha256 = validate_successor_handoff(
+        load_candidate_json(SUCCESSOR / "source-only-handoff.json"),
+        subject_sha256,
+        identity_sha256,
+        receipts,
+    )
+    validate_successor_selector(
+        load_candidate_json(SUCCESSOR_SELECTOR),
+        prior_manifest,
+        successor_manifest,
+        subject_sha256,
+        identity_sha256,
+        handoff_sha256,
+    )
+
+
 def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) -> None:
     validate_successor_source_identity()
     require(isinstance(document, dict), "Captured source-state must be an object")
@@ -1523,7 +1884,7 @@ def validate_validator_identity() -> str:
         "Closure validator identity drift",
     )
     require(
-        sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, validator_parts[1])) == PRIOR_VALIDATOR_SHA256,
+        sha256_git_file(PRIOR_CLOSURE_COMMIT, validator_parts[1]) == PRIOR_VALIDATOR_SHA256,
         "Closure validator historical identity drift",
     )
     return validator_parts[0]
@@ -1650,7 +2011,7 @@ def validate_review_subject(subject: dict[str, Any], crosswalk: dict[str, Any], 
         if relative in PRIOR_ROOT_BINDING_HASHES:
             expected_sha256 = PRIOR_ROOT_BINDING_HASHES[relative]
             require(
-                sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, relative)) == expected_sha256,
+                sha256_git_file(PRIOR_CLOSURE_COMMIT, relative) == expected_sha256,
                 f"Review subject historical binding drift: {name}",
             )
         else:
@@ -2038,6 +2399,7 @@ def validate_pre_review_candidate() -> None:
     validate_limitations(limitations)
     validate_pre_review_execution(execution)
     validate_review_subject(subject, crosswalk, identity, limitations)
+    validate_successor_source_identity()
     validate_status_and_documents(final=False)
 
 
@@ -2067,7 +2429,7 @@ def validate_pre_review_execution(document: Any) -> None:
         "Pre-review execution validator identity drift",
     )
     require(
-        sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, "tools/validate-oq8-platform-evidence.py"))
+        sha256_git_file(PRIOR_CLOSURE_COMMIT, "tools/validate-oq8-platform-evidence.py")
         == PRIOR_VALIDATOR_SHA256,
         "Pre-review execution historical validator identity drift",
     )
@@ -2079,7 +2441,7 @@ def validate_pre_review_execution(document: Any) -> None:
         "Pre-review execution test-source identity drift",
     )
     require(
-        sha256_bytes(git_file(PRIOR_CLOSURE_COMMIT, CLOSURE_TEST_SOURCE))
+        sha256_git_file(PRIOR_CLOSURE_COMMIT, CLOSURE_TEST_SOURCE)
         == PRIOR_ROOT_BINDING_HASHES[CLOSURE_TEST_SOURCE],
         "Pre-review execution historical test-source identity drift",
     )
@@ -2164,6 +2526,7 @@ def validate_platform_closure(platform: dict[str, Any]) -> None:
     require(platform.get("closureFiles") == manifest, "Platform closure file identities drift")
     require(platform.get("reviewSubjectSha256") == subject_sha256, "Platform closure subject drift")
     validate_authority(platform.get("authority"))
+    validate_successor_closure(manifest)
     validate_status_and_documents(final=True)
 
 

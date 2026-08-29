@@ -1,0 +1,52 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-selection/v1",
+  "selectedOn": "2026-08-29",
+  "reason": "SDK 10.0.400 requires Microsoft.Testing.Platform, xUnit 4 serialization metadata, and Linux-safe OQ8 control-plane discovery.",
+  "prior": {
+    "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
+    "packetSha256": "ab6931160b1b9574f6f0e8c5698a0982e45978071cc311951d9604d27a5650a4",
+    "closureDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "closureManifestSha256": "da3994dfd687b4ecf7a150b0b8b2d9fa41e54d1ea8d57641163dc6532bfb9e47",
+    "closureFiles": {
+      "capture-packet-v1.json": "63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba",
+      "closure-crosswalk.json": "b006c03612f63f6c003b55f3e1b1073f81b077bc9816bdfc7e488104af9da9c7",
+      "limitations.json": "914af77a8419e2fb75583886a103829b0aa460a8f61e6c46681f8f3c56ea62c9",
+      "pre-review-execution.json": "adce3e985737346844e2c1aff834edfe364de69fbb4e06e15d84ff07eb7fc628",
+      "review-subject.json": "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f",
+      "reviews/architecture.json": "814a5aaeefab987f97275d40f1ffe4c79c20eb0d1e5a26a08e562352fae5b933",
+      "reviews/security.json": "219384fde66cb58c5228f9470510f2f63c7ad593f0454905f8054b3ec35ce675",
+      "reviews/test.json": "5c30d136e938c3fd57c798abb8402e552fe89bde3e0a85441dc0fd9b665d1493",
+      "source-artifact-identity.json": "deed514352a86deedeb4e94ccb596af3540c0beeb1487b2adc5e74a65fa8c338",
+      "source-only-handoff.json": "6a88a6c005cebe23f2127ac86b6fc68ddbd12d706706aaa6989702fab70c845e",
+      "validator-sha256.txt": "9f7ecc4e7fb9fdf91c6774c21c201ad27f7395ff79e771a4cd8a0bf4055b070d"
+    }
+  },
+  "successor": {
+    "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp",
+    "manifestSha256": "166c7fb0d55f255683718d54c98c2de24ea9e687f72d7602d9ac0dc1e849987f",
+    "files": {
+      "review-subject.json": "1d7e5289556e70edea3fbb33bfbd6cbfd02a731afb9eafdf55575135077dfc53",
+      "reviews/architecture.json": "35d7bd0437c9094bb8457bcfd59e00ffc31c16dd0ec0743f881fee1268c6f991",
+      "reviews/security.json": "785e23f6be67a2463cfab5006c23fbcbc664d26fb79989b678f587c53ee212e3",
+      "reviews/test.json": "caa8149ab7bd609a15b4b6596952dbf273b4ac05748c3ae29c2091779c70d1f8",
+      "source-artifact-identity.json": "bbe5c716dae128d933ea782dad353f32d14f4e3f8cb3dcc697b8e615c3a56afd",
+      "source-only-handoff.json": "3e0a3c23efaa5d045888683dcfecf7ee7bd8966bacb0e31bdc275f46a154ac1a"
+    },
+    "sourceIdentitySha256": "bbe5c716dae128d933ea782dad353f32d14f4e3f8cb3dcc697b8e615c3a56afd",
+    "reviewSubjectSha256": "1d7e5289556e70edea3fbb33bfbd6cbfd02a731afb9eafdf55575135077dfc53",
+    "handoffSha256": "3e0a3c23efaa5d045888683dcfecf7ee7bd8966bacb0e31bdc275f46a154ac1a"
+  },
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

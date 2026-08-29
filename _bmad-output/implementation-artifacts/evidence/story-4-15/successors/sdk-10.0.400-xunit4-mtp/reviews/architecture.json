@@ -1,0 +1,26 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v1",
+  "role": "architecture",
+  "reviewer": "Winston (System Architect)",
+  "reviewedOn": "2026-08-29",
+  "decision": "approved",
+  "subjectSha256": "1d7e5289556e70edea3fbb33bfbd6cbfd02a731afb9eafdf55575135077dfc53",
+  "acceptedScope": "SDK 10.0.400/MTP source rebinding, prior-seal retention, Linux control-plane discovery, and source-only authority boundaries",
+  "findings": [
+    "The successor is additive and selects exact current source bytes without changing or deleting the original Story 4.15 packet, manifest, or artifacts.",
+    "The xUnit 4 assembly metadata and Linux-published control-plane port adaptation preserve serialized production evidence behavior under SDK 10.0.400."
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}
