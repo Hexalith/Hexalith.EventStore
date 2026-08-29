@@ -712,6 +712,10 @@ public sealed class ReleasePackageManifestTests
         string validator = File.ReadAllText(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
         validator.ShouldContain("PINNED_PYYAML_VERSION = \"6.0.3\"");
         validator.ShouldContain("PINNED_PYYAML_REQUIREMENT = f\"PyYAML=={PINNED_PYYAML_VERSION}\"");
+        validator.ShouldContain("test.get(\"labels\") == FOCUSED_LABELS");
+        validator.ShouldContain("test.get(\"tags\") == [\"LiveSidecar\"]");
+        validator.ShouldContain("-result-ctrf raw-runner-temp");
+        validator.ShouldNotContain("test.get(\"extra\", {}).get(\"traits\")");
 
         System.Reflection.MethodInfo? committedClosure = typeof(Oq8PlatformClosureTests).GetMethod(
             nameof(Oq8PlatformClosureTests.ApprovedSourceOnlyHandoffPasses));
