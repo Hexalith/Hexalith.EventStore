@@ -486,7 +486,9 @@ public sealed class ReleasePackageManifestTests
 
         ciJob.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
         ciJob.ShouldContain("build-timeout-minutes: 40");
+        ciJob.ShouldContain("test-platform: microsoft-testing-platform");
         ciJob.ShouldContain("run-consumer-validation: true");
+        ciJob.ShouldContain("tests/Hexalith.EventStore.LoadTests.Tests");
         ciJob.ShouldContain("tests/Hexalith.EventStore.Server.Tests");
         ciJob.ShouldNotContain("tests/Hexalith.EventStore.Server.LiveSidecar.Tests");
         ciJob.ShouldNotContain("run-coverage-gate:");
@@ -679,6 +681,10 @@ public sealed class ReleasePackageManifestTests
         contractsJob.ShouldContain(installDependency);
         contractsJob.ShouldContain(publishEnvironment);
         contractsJob.ShouldContain("dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj");
+        contractsJob.ShouldContain("--report-xunit-trx");
+        contractsJob.ShouldContain("--coverage-output-format cobertura");
+        contractsJob.ShouldNotContain("--collect:");
+        contractsJob.ShouldNotContain("--logger ");
         contractsJob.ShouldNotContain("continue-on-error");
         contractsJob.IndexOf(createEnvironment, StringComparison.Ordinal)
             .ShouldBeLessThan(contractsJob.IndexOf(installDependency, StringComparison.Ordinal));
@@ -1546,6 +1552,11 @@ public sealed class ReleasePackageManifestTests
         string daprInit)
     {
         integration.ShouldContain("dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/");
+        integration.ShouldContain("--report-xunit-trx");
+        integration.ShouldContain("--coverage-output-format cobertura");
+        integration.ShouldContain("--filter-class Hexalith.EventStore.IntegrationTests.AssemblyParallelizationTests");
+        integration.ShouldNotContain("--collect:");
+        integration.ShouldNotContain("--logger ");
 
         // Story 4.14 OQ8 support capture builds Server.Tests and invokes pinned -method
         // support oracles for --support-ctrf. Forbid any `dotnet test` of Server.Tests as
@@ -1652,7 +1663,8 @@ public sealed class ReleasePackageManifestTests
         trimmedLines.ShouldContain("--configuration Debug");
         trimmedLines.ShouldContain("-m:1");
         lines.ShouldContain("      - name: Verify Tenants source-mode topology guardrails");
-        trimmedLines.ShouldContain("--filter FullyQualifiedName~TenantsApiLaunchSettingsTests");
+        trimmedLines.ShouldContain("--filter-class Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests");
+        trimmedLines.ShouldContain("--report-xunit-trx");
         AssertWorkflowJobCannotBeSkippedOrTolerated(jobBlock, "Tenants source-mode");
     }
 
@@ -1731,7 +1743,8 @@ public sealed class ReleasePackageManifestTests
                 "      - name: Verify Tenants source-mode topology guardrails",
                 "        run: >-",
                 "          dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj",
-                "          --filter FullyQualifiedName~TenantsApiLaunchSettingsTests",
+                "          --filter-class Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests",
+                "          --report-xunit-trx",
             ]);
 
     private static string CreateValidSemanticReleaseGovernanceJobBlock()

@@ -93,6 +93,7 @@ TIER1_PROJECTS=(
   "tests/Hexalith.EventStore.DomainService.Tests"
   "tests/Hexalith.EventStore.QueryRouting.Tests"
   "tests/Hexalith.EventStore.RestApi.Generators.Tests"
+  "tests/Hexalith.EventStore.LoadTests.Tests"
   "tests/Hexalith.EventStore.Sample.Tests"
   "tests/Hexalith.EventStore.Testing.Integration.Tests"
   "tests/Hexalith.EventStore.Server.Tests"
@@ -102,12 +103,18 @@ TIER1_PROJECTS=(
 run_test_project() {
   local project="$1"
   local logger_name="$2"
+  local project_name
+  project_name="$(basename "${project}")"
   echo "  -> ${project}"
   dotnet test "${project}" \
     --no-build \
     --configuration Release \
-    --logger "trx;LogFileName=${logger_name}" \
-    --collect:"XPlat Code Coverage"
+    --results-directory "TestResults/${project_name}" \
+    --report-xunit-trx \
+    --report-xunit-trx-filename "${logger_name}" \
+    --coverage \
+    --coverage-output-format cobertura \
+    --coverage-output coverage.cobertura.xml
 }
 
 # --- Tier 1 ---
@@ -133,7 +140,11 @@ if want_tier 3; then
   echo ""
   echo "=== Tier 3 — Aspire Contract Tests ==="
   CURRENT_STAGE="Tier 3 Aspire contract tests"
-  dotnet test tests/Hexalith.EventStore.IntegrationTests/ --configuration Release
+  dotnet test tests/Hexalith.EventStore.IntegrationTests/ \
+    --configuration Release \
+    --results-directory TestResults/Hexalith.EventStore.IntegrationTests \
+    --report-xunit-trx \
+    --report-xunit-trx-filename integration-results.trx
 fi
 
 CURRENT_STAGE=""

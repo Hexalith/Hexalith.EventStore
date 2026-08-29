@@ -19,6 +19,7 @@ jobs:
     with:
       solution: Hexalith.EventStore.slnx
       build-timeout-minutes: 40
+      test-platform: microsoft-testing-platform
       run-consumer-validation: true
       unit-test-projects: |
         tests/Hexalith.EventStore.Client.Tests
@@ -35,6 +36,7 @@ jobs:
         tests/Hexalith.EventStore.DomainService.Tests
         tests/Hexalith.EventStore.QueryRouting.Tests
         tests/Hexalith.EventStore.RestApi.Generators.Tests
+        tests/Hexalith.EventStore.LoadTests.Tests
         tests/Hexalith.EventStore.Sample.Tests
         tests/Hexalith.EventStore.Testing.Integration.Tests
         tests/Hexalith.EventStore.Server.Tests
@@ -85,9 +87,12 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
           --no-build
           --configuration Release
-          --logger "trx;LogFileName=Hexalith.EventStore.Contracts.Tests.trx"
           --results-directory "TestResults/Hexalith.EventStore.Contracts.Tests"
-          --collect:"XPlat Code Coverage"
+          --report-xunit-trx
+          --report-xunit-trx-filename Hexalith.EventStore.Contracts.Tests.trx
+          --coverage
+          --coverage-output-format cobertura
+          --coverage-output coverage.cobertura.xml
           -p:UseHexalithProjectReferences=false
 
       - name: Upload Contracts test results
@@ -163,5 +168,8 @@ jobs:
           dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj
           --no-build
           --configuration Debug
-          --filter FullyQualifiedName~TenantsApiLaunchSettingsTests
+          --filter-class Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests
+          --results-directory TestResults/Hexalith.EventStore.AppHost.Tests
+          --report-xunit-trx
+          --report-xunit-trx-filename Hexalith.EventStore.AppHost.Tests.trx
           -p:UseHexalithProjectReferences=true

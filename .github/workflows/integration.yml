@@ -81,7 +81,27 @@ jobs:
 
       - name: Run Live-Sidecar Integration Tests
         run: |
-          dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ --configuration Release --no-restore -p:UseHexalithProjectReferences=false --logger "trx;LogFileName=live-sidecar-results.trx" --results-directory TestResults/live-sidecar --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ \
+            --configuration Release \
+            --no-restore \
+            --results-directory TestResults/live-sidecar \
+            --report-xunit-trx \
+            --report-xunit-trx-filename live-sidecar-results.trx \
+            --coverage \
+            --coverage-output-format cobertura \
+            --coverage-output coverage.cobertura.xml \
+            -p:UseHexalithProjectReferences=false
+
+      - name: Verify IntegrationTests serialized execution metadata
+        run: |
+          dotnet test tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj \
+            --configuration Release \
+            --no-restore \
+            --filter-class Hexalith.EventStore.IntegrationTests.AssemblyParallelizationTests \
+            --results-directory TestResults/integration-parallelization \
+            --report-xunit-trx \
+            --report-xunit-trx-filename integration-parallelization-results.trx \
+            -p:UseHexalithProjectReferences=false
 
       - name: Capture and validate OQ8 production evidence
         env:
