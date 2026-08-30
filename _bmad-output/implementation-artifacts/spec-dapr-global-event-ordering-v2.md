@@ -7,9 +7,14 @@ schema_version: 2
 predecessor_path: '_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md'
 predecessor_blob: '4c9edb37a8616aa373bd0054057c9e8eace6e0fa'
 predecessor_sha256: '4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9ef1893'
-normative_sha256: 'PENDING'
+normative_sha256: 'd49c34c8e58df1b3b7a1ffa1ac0de8dedf5ba2a8bd35ad291fc3b87a59d97604'
+superseded_normative_sha256: '2310f121dc48f59713a9c6bbc6ffe2e63be374d4d8ecc6e8d710a0d9cf3674de'
 approval_state: 'absent'
 implementation_authorized: false
+operator_actions:
+  - 'Approve the exact committed successor as every architecture_owner resolved from the candidate commit immutable allowlist, binding each approval to the candidate commit, successor blob, normative SHA-256, and reviewed content.'
+  - 'Commission and preserve every production-provider and topology evidence category required by successor section 7 against the approved successor identity.'
+  - 'Authorize a separately reviewed implementation story only after exact-content approval and every blocking evidence category are satisfied.'
 ---
 
 # DAPR Global Event Ordering v2: Composite Shard-Local Positions
@@ -38,10 +43,12 @@ The protected predecessor is exactly:
 | Complete file SHA-256 | `4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9ef1893` |
 | Frozen inner bytes SHA-256 | `90be324c35d1545fd7c4dd53393ef27b08d2e6a3891d1bc9c6f38c9145740c10` |
 | Complete frozen element SHA-256 | `c827761ba1f58aa6fde85ca8acedfdfdcc5097cbcbd470d2887a1e4d073d5d2c` |
-| Range convention | Strict UTF-8 LF bytes; lines are one-based; byte ranges are zero-based, start-inclusive, and end-exclusive within the line without LF |
 
 All five identities MUST reproduce before this successor is considered. Any
 predecessor drift requires a new renegotiation.
+
+Source ranges use strict UTF-8 LF bytes. Lines are one-based; byte ranges are
+zero-based, start-inclusive, and end-exclusive within the line without LF.
 
 Existing positive v1 `globalPosition` values remain immutable identities in
 scheme `global-v1`. Existing event `MessageId`, CloudEvent id, aggregate
@@ -98,14 +105,18 @@ the aggregate and every event. The selected strategy is
 | Provider dependency | Durable tenant-local allocation | Durable domain-local allocation | Durable pair-local allocation plus non-hot-path lifecycle authority |
 | Decision | Rejected: cross-domain coupling violates the isolation goal | Rejected: cross-tenant coupling violates the isolation goal | Selected only when production-path capacity and recovery evidence pass |
 
-Composite selection is measurable, not assumed. On the same representative
-production trace, topology, provider profile, and acceptance limits, its
-demonstrated sustainable reservation rate MUST exceed both alternatives by at
-least 20%, and the observed production peak MUST remain below 50% of the
-demonstrated composite rate. The evidence MUST include latency, error,
-backpressure, hot-pair, and lifecycle-control observations. The downstream
-evidence specification chooses and freezes the sampling and statistical method;
-this semantic contract does not prescribe a benchmark estimator.
+Composite selection is measurable, not assumed. Each option MUST be exercised
+through an equivalent implementation artifact that differs only where its
+shard strategy requires it, with the same optimization policy, representative
+production trace, provider profile, provider configuration, topology,
+equivalent resource budget, measurement method, and acceptance limits. The
+composite option's demonstrated sustainable reservation rate MUST exceed both
+alternatives by at least 20%, and the observed production peak MUST remain
+below 50% of the demonstrated composite rate. The evidence MUST include
+latency, error, backpressure, hot-pair, and lifecycle-control observations. The
+downstream evidence specification chooses and freezes the sampling and
+statistical method; this semantic contract does not prescribe a benchmark
+estimator.
 
 ## 3. Observable position contract
 
@@ -130,6 +141,7 @@ collision before allocation.
 Metadata v1 remains unchanged: `metadataVersion` is `1`, `globalPosition` is
 the existing signed Int64 member, and no `position` member exists. Positive
 values are valid v1 identities; zero retains its existing unknown meaning.
+Negative v1 values are invalid.
 
 Metadata v2 retains the v1 metadata members and their meanings except that
 `metadataVersion` is `2`, `globalPosition` MUST be absent, and the required
@@ -170,6 +182,10 @@ Counters are unique and strictly increasing only within an equal shard and
 generation. A reserved range MAY contain later gaps and is an allocation label
 only, not a committed-event cursor or timestamp. No counter or vector of
 counters proves commit order.
+
+Unknown outer metadata versions return `UnsupportedScheme`. Their raw identity
+MUST still be preserved. They MUST NOT be interpreted as metadata v1 or v2,
+and their position members MUST NOT be projected into a known tagged identity.
 
 ### 3.3 Validation, equality, and comparison
 
@@ -301,8 +317,30 @@ sharding when append behavior is unchanged.
 
 Every evidence row is blocking for implementation authorization. Evidence MUST
 be bound to this exact normative digest, candidate commit and successor blob,
-must exercise the proposed production provider and topology, and must inspect
-persisted end state rather than relying only on HTTP status, mocks, or logs.
+the tested implementation artifact identity, provider profile, provider
+configuration, and topology fingerprint. It MUST exercise the proposed
+production provider and topology and MUST inspect persisted end state rather
+than relying only on HTTP status, mocks, or logs. These bindings apply to every evidence row.
+Drift in any bound normative, candidate, blob, implementation
+artifact, provider, configuration, or topology identity invalidates every
+affected evidence row, which MUST be re-run before it can satisfy a gate.
+
+Option-capacity evidence MUST additionally bind the representative production
+trace identity, acceptance limits, measurement method identity, and the exact
+validity profile authority and derivation used to assign its exclusive UTC
+expiry. Capacity evidence is valid only strictly before that expiry; at or
+after the exclusive UTC expiry it is invalid and MUST be re-run. Drift in the
+trace, acceptance limits, measurement method identity, implementation artifact
+identity, validity profile authority or derivation, or expiry assignment also
+invalidates that evidence and requires a re-run.
+
+Before implementation authorization, a separately authorized isolated
+non-production evidence candidate MAY exist solely to produce the evidence in
+this section. That evidence-only authority MUST bind the exact normative
+digest, candidate commit, successor blob, tested implementation artifact, and
+test environment. It grants no production authority, deployment authority,
+migration authority, cutover authority, persisted-format authority, public
+contract authority, or permission to treat v2 positions as authoritative.
 
 | Evidence category | Minimum decision-grade proof |
 |---|---|
@@ -322,10 +360,13 @@ persisted end state rather than relying only on HTTP status, mocks, or logs.
 The accountable approval role is `architecture_owner`, resolved from the
 candidate commit's immutable
 `_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json`.
-Approval MUST come from every identity holding that role at approval time, bind
-the exact candidate commit, successor blob, normative digest, and reviewed
-content, and be verified against the then-current role membership. Agent output,
-story status, a digest alone, or editable text is not approval.
+The candidate owner set MUST be non-empty and contain unique authenticated
+stable identities; case-only duplicates are not unique. Approval MUST come
+from every identity in that candidate-commit owner set and bind the exact
+candidate commit, successor blob, normative digest, and reviewed content.
+Missing, empty, duplicate, mutable, unauthenticated, or non-candidate role
+membership invalidates approval. Agent output, story status, a digest alone,
+editable text, or a later owner roster is not approval.
 
 Exact-content architecture-owner approval authorizes downstream planning only.
 Runtime implementation, public-contract change, migration, deployment, topology
@@ -384,12 +425,22 @@ Validation MUST reproduce the predecessor identities in section 1 and all 19
 source-range digests in section 1.1 from predecessor bytes. It MUST reject a
 missing, duplicate, additional, or out-of-range disposition row.
 
-Relative to baseline `5ddda34f2ff0ffb0f72a60c44b265f2e4838a332`,
-the reviewed candidate commit MUST add exactly these two paths and no other
-tracked or untracked change:
+Historical normative digest
+`2310f121dc48f59713a9c6bbc6ffe2e63be374d4d8ecc6e8d710a0d9cf3674de`
+is explicitly superseded and non-authoritative. It MUST NOT be used as this
+candidate's content identity, approval subject, evidence subject, or source of
+implementation authority.
 
-- `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md`
-- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md`
+Relative to baseline `1194dfe59bcbc9b235390d1e46a7dfe4ee115d94`,
+the reviewed candidate commit MUST contain exactly these two path changes and
+no other path:
+
+- `A` `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md`
+- `M` `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md`
+
+Pre-existing unrelated work MAY remain in the index or worktree only when the
+explicit story commit excludes it and complete scope validation proves it did
+not enter the candidate commit.
 
 A successful content or scope check is verification evidence only; it does not
 constitute human approval.
@@ -399,7 +450,7 @@ constitute human approval.
 
 | Identity | Value |
 |---|---|
-| Normative content SHA-256 | `PENDING` |
+| Normative content SHA-256 | `d49c34c8e58df1b3b7a1ffa1ac0de8dedf5ba2a8bd35ad291fc3b87a59d97604` |
 | Normative byte range | Bytes after the unique begin marker LF through the byte before the unique end marker |
 | Encoding | Strict UTF-8, LF, no BOM |
 
