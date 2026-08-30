@@ -1,0 +1,36 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-source-only-handoff/v2",
+  "assembledAt": "2026-08-30T07:14:40Z",
+  "story": "4.15",
+  "predecessor": {
+    "landedSourceCommit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "reviewSubjectSha256": "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f",
+    "completedV1ClosureSnapshotCommit": "17e47a390fdfecafba84dce14779ad13b97be339"
+  },
+  "reviewSubjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
+  "limitationsSha256": "58cdaee9c0d76e271d448bffc11d8461c7793dd445e6593d962353d8aa1cb3a6",
+  "reviewReceipts": {
+    "architecture": "c1dc2c25d70421684d7c261161b5568fd8609f4dcf0248a7b13f767f0bc4208c",
+    "security": "7c9c2f697d86743ca45cd8d7726511195bb3ab27f2a26854f97dfdcaffd109e7",
+    "test": "fd256ad6c76d6bfc63f209fb3e8add179855915ddd03c761e11e9a64388a43a5"
+  },
+  "consumerInstructions": {
+    "mode": "source-only",
+    "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+    "historicalRule": "Validate Story 4.15 v1 only against its immutable historical artifacts and completed-v1 closure snapshot.",
+    "currentRule": "Treat current source as closed only when this complete v2 successor validates against the current candidate bytes."
+  },
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

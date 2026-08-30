@@ -26,7 +26,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
     private const string EventStoreAppId = "eventstore";
     private const string SampleAppId = "sample";
-    private const string PostgresImage = "postgres:18.4";
+    private const string PostgresImage = "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636";
     private const string AggregateActorTypeName = "Oq8AggregateActor";
     private const string ActiveVersionOne = "oq8-v1";
     private const string ActiveVersionTwo = "oq8-v2";

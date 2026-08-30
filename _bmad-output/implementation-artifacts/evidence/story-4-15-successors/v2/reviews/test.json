@@ -1,0 +1,59 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v2",
+  "role": "test",
+  "reviewer": "Murat (Test Architect)",
+  "issuedAt": "2026-08-30T07:14:35Z",
+  "decision": "approved",
+  "subjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
+  "limitationsSha256": "58cdaee9c0d76e271d448bffc11d8461c7793dd445e6593d962353d8aa1cb3a6",
+  "acceptedScope": "workflow and fixture agreement, negative image mutations, v1 historical validation, and complete v2 closure mutations",
+  "findings": [
+    "Governance coverage rejects tag-only, malformed, child-manifest, mismatched, missing, and duplicate declarations while requiring the exact reviewed index.",
+    "Closure coverage exercises v1 non-authorization plus missing, additional, reordered, malformed, symlinked, predecessor-drifted, source-drifted, gate-drifted, partially reviewed, and authority-overstating v2 states."
+  ],
+  "verification": [
+    {
+      "name": "postgres-image-governance",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.PostgreSqlImageGovernanceTests -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 18,
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "oq8-platform-closure",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 368,
+      "passed": 368,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "live-sidecar",
+      "command": "dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ --configuration Release -p:UseHexalithProjectReferences=false",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 115,
+      "passed": 115,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

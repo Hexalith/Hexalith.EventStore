@@ -1,0 +1,103 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-pre-review-execution/v2",
+  "executedAt": "2026-08-30T07:14:15Z",
+  "scope": "receipt-independent-candidate",
+  "candidateInputs": {
+    "sourceTransitions": {
+      ".github/workflows/integration.yml": {
+        "predecessorSha256": "343163fd164bb49252ad2ec67c7fbc90aa2f3aaecafa4d4d51640ccc39e7b777",
+        "predecessorImage": "postgres:18.4",
+        "successorSha256": "4bed16f86037c7eb8f5bcbfc370b5b3ae60fec3d40880605660eba6722974ca1",
+        "successorImage": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+      },
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": {
+        "predecessorSha256": "7f29993a470d179288a367c8d877e01b7f0f7be4206faf329f5d889b6171cae6",
+        "predecessorImage": "postgres:18.4",
+        "successorSha256": "d5ac6c48917787c9249fe4257a639bf7077b09b88b19d2f327dbf8093e45f936",
+        "successorImage": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+      }
+    },
+    "gateInputs": {
+      "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs": "d87abfcb82c7fc1b9dad1cbb26720f5c637a5dba6a1c4a2e8549d8c65e44a70b",
+      "tools/validate-oq8-platform-evidence.py": "8934e82022535a3f1d4855202e8008341f99f0abce0331ab5c59616ce3ea8767",
+      "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "434c1ad3ecb7d0bfe7390ce24b47919550b434c5f69db35d4e5b983d9b5864e0",
+      "docs/ci.md": "f37a5f0ef6058a339b7f5a47375ab9bed195fe548969523a6155e77765fea46c"
+    }
+  },
+  "commands": [
+    {
+      "name": "validator-syntax",
+      "command": "python3 -m py_compile tools/validate-oq8-platform-evidence.py",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "contracts-release-build",
+      "command": "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -p:UseHexalithProjectReferences=false -m:1",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "postgres-image-governance",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.PostgreSqlImageGovernanceTests -noColor",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 18,
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "workflow-actionlint",
+      "command": "actionlint .github/workflows/integration.yml",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "historical-v1-validation",
+      "command": "python3 tools/validate-oq8-platform-evidence.py --historical-v1-only",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "live-sidecar",
+      "command": "dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ --configuration Release -p:UseHexalithProjectReferences=false",
+      "exitCode": 0,
+      "result": "passed",
+      "tests": 115,
+      "passed": 115,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "summary": {
+    "commands": 6,
+    "successfulCommands": 6,
+    "tests": 133,
+    "passed": 133,
+    "failed": 0,
+    "skipped": 0
+  },
+  "authority": {
+    "reviewSubjectFrozen": false,
+    "reviewReceiptsValidated": false,
+    "finalHandoffValidated": false,
+    "externalAuthorityClaimed": false
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v2",
+  "role": "security",
+  "reviewer": "Security Reviewer",
+  "issuedAt": "2026-08-30T07:14:30Z",
+  "decision": "approved",
+  "subjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
+  "limitationsSha256": "58cdaee9c0d76e271d448bffc11d8461c7793dd445e6593d962353d8aa1cb3a6",
+  "acceptedScope": "reviewed multi-platform index identity, fail-closed drift detection, receipt binding, and every external-authority exclusion",
+  "findings": [
+    "The reviewed multi-platform index is distinguished from the amd64 child and historical Docker image/config identities, and current workflow, fixture, validator, and gate inputs are content-bound.",
+    "Every v1 external-authority exclusion remains false in the subject, receipts, and final source-only handoff."
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

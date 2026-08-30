@@ -8,6 +8,8 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class PostgreSqlImageGovernanceTests
 {
+    private const string ReviewedPostgresImage =
+        "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636";
     private const string WorkflowRelativePath = ".github/workflows/integration.yml";
     private const string FixtureRelativePath =
         "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs";
@@ -29,12 +31,16 @@ public sealed class PostgreSqlImageGovernanceTests
         """(?m)^[ \t]*POSTGRES_IMAGE[ \t]*=[ \t]*(?<quote>["'])(?<image>[^"'\r\n]+)\k<quote>[ \t]*(?:#[^\r\n]*)?\r?$""",
         RegexOptions.CultureInvariant,
         _regexTimeout);
+    private static readonly Regex _digestPinnedImagePattern = new(
+        """^postgres@sha256:[0-9a-f]{64}$""",
+        RegexOptions.CultureInvariant,
+        _regexTimeout);
 
     /// <summary>
-    /// Verifies all three authoritative repository surfaces declare the same PostgreSQL image.
+    /// Verifies all three authoritative repository surfaces declare the reviewed digest-pinned PostgreSQL index.
     /// </summary>
     [Fact]
-    public void PostgreSqlImageAuthoritiesRemainSynchronized()
+    public void PostgreSqlImageAuthoritiesRemainSynchronizedAndDigestPinned()
     {
         string root = FindRepositoryRoot();
         string workflowImage = ExtractWorkflowImage(File.ReadAllText(Path.Combine(root, WorkflowRelativePath)));
@@ -42,6 +48,25 @@ public sealed class PostgreSqlImageGovernanceTests
         string validatorImage = ExtractValidatorImage(File.ReadAllText(Path.Combine(root, ValidatorRelativePath)));
 
         AssertImagesSynchronized(workflowImage, fixtureImage, validatorImage);
+    }
+
+    /// <summary>
+    /// Verifies mutable, malformed, architecture-specific, and otherwise unreviewed identities fail closed.
+    /// </summary>
+    /// <param name="image">The invalid image identity.</param>
+    /// <param name="expected">The expected failure category.</param>
+    [Theory]
+    [InlineData("postgres:18.4", "postgres@sha256:<64 lowercase hex>")]
+    [InlineData("postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea3163", "postgres@sha256:<64 lowercase hex>")]
+    [InlineData("postgres@sha256:A02DB8CAC496F15B094798A38254F14D6E00741F709360E5E00BB6668EA31636", "postgres@sha256:<64 lowercase hex>")]
+    [InlineData("postgres@sha256:4cc13dede823cab4e05290c7fb3350fb4e599ecabd9b07e6706b5d5e8f5bc929", "reviewed PostgreSQL multi-platform index")]
+    public void MutableMalformedOrUnreviewedImagesFailClosed(string image, string expected)
+    {
+        Shouldly.ShouldAssertException exception = Should.Throw<Shouldly.ShouldAssertException>(
+            () => AssertImagesSynchronized(image, image, image));
+
+        exception.Message.ShouldContain(expected);
+        exception.Message.ShouldContain(image);
     }
 
     /// <summary>
@@ -141,11 +166,18 @@ public sealed class PostgreSqlImageGovernanceTests
     }
 
     private static void AssertImagesSynchronized(string workflowImage, string fixtureImage, string validatorImage)
-        => (workflowImage == fixtureImage && workflowImage == validatorImage).ShouldBeTrue(
+    {
+        (workflowImage == fixtureImage && workflowImage == validatorImage).ShouldBeTrue(
             "PostgreSQL image authorities differ: " +
             $"integration workflow='{workflowImage}', " +
             $"OQ8 fixture='{fixtureImage}', " +
             $"OQ8 evidence validator='{validatorImage}'.");
+        _digestPinnedImagePattern.IsMatch(workflowImage).ShouldBeTrue(
+            $"The PostgreSQL image must use postgres@sha256:<64 lowercase hex>; found '{workflowImage}'.");
+        workflowImage.ShouldBe(
+            ReviewedPostgresImage,
+            $"The PostgreSQL image must be the reviewed PostgreSQL multi-platform index; found '{workflowImage}'.");
+    }
 
     private static string CreateAuthoritySource(string authority, string mutation, string image)
     {

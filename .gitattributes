@@ -31,3 +31,5 @@ _bmad-output/implementation-artifacts/evidence/story-3-14/**/*.raw binary
 _bmad-output/implementation-artifacts/evidence/story-3-15/** text eol=lf
 _bmad-output/implementation-artifacts/evidence/story-3-15/**/*.nupkg binary
 _bmad-output/implementation-artifacts/evidence/story-3-15/**/*.raw binary
+# Story 4.15 v2 content-binds every successor artifact through closure-sha256.txt.
+_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2/** text eol=lf

@@ -1,0 +1,90 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-subject/v2",
+  "frozenAt": "2026-08-30T07:14:20Z",
+  "proposedDecision": "current-source-closure-complete",
+  "predecessor": {
+    "landedSourceCommit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "reviewSubjectSha256": "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f",
+    "completedV1ClosureSnapshotCommit": "17e47a390fdfecafba84dce14779ad13b97be339"
+  },
+  "reviewedImage": {
+    "upstreamTag": "postgres:18.4",
+    "reference": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+    "kind": "multi-platform-index",
+    "amd64ChildManifest": "postgres@sha256:4cc13dede823cab4e05290c7fb3350fb4e599ecabd9b07e6706b5d5e8f5bc929",
+    "amd64ChildIsAuthority": false
+  },
+  "sourceTransitions": {
+    ".github/workflows/integration.yml": {
+      "predecessorSha256": "343163fd164bb49252ad2ec67c7fbc90aa2f3aaecafa4d4d51640ccc39e7b777",
+      "predecessorImage": "postgres:18.4",
+      "successorSha256": "4bed16f86037c7eb8f5bcbfc370b5b3ae60fec3d40880605660eba6722974ca1",
+      "successorImage": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+    },
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": {
+      "predecessorSha256": "7f29993a470d179288a367c8d877e01b7f0f7be4206faf329f5d889b6171cae6",
+      "predecessorImage": "postgres:18.4",
+      "successorSha256": "d5ac6c48917787c9249fe4257a639bf7077b09b88b19d2f327dbf8093e45f936",
+      "successorImage": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+    }
+  },
+  "gateInputs": {
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs": "d87abfcb82c7fc1b9dad1cbb26720f5c637a5dba6a1c4a2e8549d8c65e44a70b",
+    "tools/validate-oq8-platform-evidence.py": "8934e82022535a3f1d4855202e8008341f99f0abce0331ab5c59616ce3ea8767",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "434c1ad3ecb7d0bfe7390ce24b47919550b434c5f69db35d4e5b983d9b5864e0",
+    "docs/ci.md": "f37a5f0ef6058a339b7f5a47375ab9bed195fe548969523a6155e77765fea46c"
+  },
+  "bindings": {
+    "sourceIdentity": {
+      "path": "source-artifact-identity.json",
+      "sha256": "1f908f95544767b3e89bab4157f3eb368b4882e911dddbca1a51cb89a488d097"
+    },
+    "limitations": {
+      "path": "limitations.json",
+      "sha256": "58cdaee9c0d76e271d448bffc11d8461c7793dd445e6593d962353d8aa1cb3a6"
+    },
+    "validatorRecord": {
+      "path": "validator-sha256.txt",
+      "sha256": "4c253e77e27e9358cb3c4ef2fb36b874322e79b414ec60859b3b4be470148895",
+      "validatorPath": "tools/validate-oq8-platform-evidence.py",
+      "validatorSha256": "8934e82022535a3f1d4855202e8008341f99f0abce0331ab5c59616ce3ea8767"
+    },
+    "preReviewExecution": {
+      "path": "pre-review-execution.json",
+      "sha256": "42e200a47242ed48695ccb1e63b1f96f5df2e41a0bf3327855f33f0796ca89f2"
+    }
+  },
+  "requiredReviews": [
+    {
+      "role": "architecture",
+      "reviewer": "Winston (System Architect)",
+      "scope": "phase-separated v2 source identity, immutable v1 lineage, gate-input closure, and source-only authority boundary",
+      "status": "required"
+    },
+    {
+      "role": "security",
+      "reviewer": "Security Reviewer",
+      "scope": "reviewed multi-platform index identity, fail-closed drift detection, receipt binding, and every external-authority exclusion",
+      "status": "required"
+    },
+    {
+      "role": "test",
+      "reviewer": "Murat (Test Architect)",
+      "scope": "workflow and fixture agreement, negative image mutations, v1 historical validation, and complete v2 closure mutations",
+      "status": "required"
+    }
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}
