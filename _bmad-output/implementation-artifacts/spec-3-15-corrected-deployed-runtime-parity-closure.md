@@ -908,3 +908,20 @@ Both owner receipts are independently constrained to the same positively allowli
 
 - The withdrawn gate, now withdrawn in every status and coverage field rather than in prose alone.
   [`gate-decision.json:1`](../../_bmad-output/test-artifacts/gate-decision.json#L1)
+
+### Review Findings (2026-08-30, Chunk 1 -- trusted verifier and packet producers)
+
+- [ ] [Review][Patch] **[HIGH] Establish a hermetic interpreter boundary before either verifier imports shadowable dependencies; the current isolation starts after top-level imports and preserves non-repository `PYTHONPATH`/import-hook sources.** [tools/validate-corrected-deployed-runtime-parity.py:4]
+- [ ] [Review][Patch] **[HIGH] Force the localhost Production-smoke request to bypass environment proxies so an unrelated proxy response cannot satisfy the `/alive` check.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:149]
+- [ ] [Review][Patch] **[HIGH] Reject symlinked or escaping producer inputs and outputs before the capture or assembler reads and writes packet files.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:244]
+- [ ] [Review][Patch] **[HIGH] Track whether this capture created the Docker container and never force-remove a same-named container after `docker run` failed.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:96]
+- [ ] [Review][Patch] **[MEDIUM] Convert smoke log and summary write failures into the documented support-safe failure plus rerun guidance instead of a traceback.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:220]
+- [ ] [Review][Patch] **[MEDIUM] Validate malformed retained registry, predecessor, and smoke structures before indexing them so assembler failures remain controlled.** [tools/assemble-corrected-deployed-runtime-parity.py:74]
+- [ ] [Review][Patch] **[MEDIUM] Bound the assembler's verifier subprocess and handle process-start/write failures without hanging or escaping after a partial packet rewrite.** [tools/assemble-corrected-deployed-runtime-parity.py:272]
+- [ ] [Review][Patch] **[MEDIUM] Require regular files and reject FIFOs, sockets, devices, and other unsupported entries instead of ignoring or blocking on them.** [tools/deployed_runtime_parity_handlers/v1.py:353]
+- [ ] [Review][Patch] **[MEDIUM] Require distinct GitHub comment identities for the roster authority and both owner receipts so contradictory snapshots cannot reuse one comment ID.** [tools/deployed_runtime_parity_handlers/v1.py:802]
+- [ ] [Review][Patch] **[MEDIUM] Add executable assembler tests for failed aggregate smokes, wrong child coverage, and failed platform outcomes before closure emission.** [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2841]
+- [ ] [Review][Patch] **[MEDIUM] Require exact JSON integers for dispatch version, workflow IDs, attempts, and package counts instead of accepting equal-valued booleans or floats.** [tools/deployed_runtime_parity_handlers/v1.py:455]
+- [ ] [Review][Patch] **[HIGH] Reject Production-smoke windows that lie in the future so impossible evidence cannot authorize parity.** [tools/deployed_runtime_parity_handlers/v1.py:727]
+- [ ] [Review][Patch] **[HIGH] Require `smoke-results.json` itself to use the selected canonical UTF-8 representation, as already required for each platform log.** [tools/deployed_runtime_parity_handlers/v1.py:689]
+- [ ] [Review][Patch] **[LOW] Include bounded timestamping/transition overhead in producer-verifier smoke windows so a legitimate near-budget capture cannot reject its own output.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:103]
