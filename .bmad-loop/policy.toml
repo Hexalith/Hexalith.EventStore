@@ -71,6 +71,10 @@ cleanup_session_on_finish = true  # kill the run's tmux session when it finishes
 # [adapter.triage]
 # model = "gpt-5.6-sol"
 
+[adapter.review]
+name = "claude"
+model = "opus"
+
 [sweep]
 # Deferred-work sweep: triage + execute open deferred-work.md entries.
 auto = "never"               # never | per-epic | run-end (auto-triggered sweeps never prompt)
