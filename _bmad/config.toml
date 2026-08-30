@@ -21,7 +21,7 @@ implementation_artifacts = "{project-root}/_bmad-output/implementation-artifacts
 project_knowledge = "{project-root}/docs"
 
 [modules.cis]
-visual_tools = ["mermaid", "excalidraw", "gemini-nano"]
+visual_tools = "[\"mermaid\", \"excalidraw\", \"gemini-nano\"]"
 
 [modules.tea]
 test_artifacts = "{project-root}/_bmad-output/test-artifacts"

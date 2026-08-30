@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
 """Validate retained Story 3.15 deployed-runtime parity closure evidence."""
 
+# Bootstrap into an isolated, no-site interpreter before importing any shadowable dependency.
+# Handler isolation later in this file is too late for top-level imports, while a plain -I still
+# permits system sitecustomize/import hooks. The bootstrap itself uses only the built-in sys module
+# and the already-loaded platform module, then replaces this non-authoritative process completely.
+import sys
+
+if __name__ == "__main__" and (not sys.flags.isolated or not sys.flags.no_site):
+    _platform = sys.modules["nt" if sys.platform == "win32" else "posix"]
+    _platform.execv(
+        sys.executable,
+        [sys.executable, "-I", "-S", "-B", __file__, *sys.argv[1:]],
+    )
+
 import argparse
 import hashlib
 import importlib.machinery
 import json
 import os
-import sys
 import types
 from pathlib import Path
 
@@ -17,7 +29,7 @@ RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
     "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "8e29fc6a5122c64e87146ca191df1ead177af9f1981985dbc51f935b415b3f5f"
+V1_HANDLER_SHA256 = "405dd1ac8c8872d9ced666c7420019462de0779386d804f227912ca5d749c3d5"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }

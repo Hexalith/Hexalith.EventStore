@@ -1,49 +1,50 @@
 installation:
-  version: 6.11.0
+  version: 6.11.1-next.33
   installDate: 2026-07-11T07:55:17.152Z
-  lastUpdated: 2026-08-14T06:06:12.032Z
+  lastUpdated: 2026-08-30T10:29:48.515Z
+  installShims: false
 modules:
   - name: core
-    version: 6.11.0
+    version: 6.11.1-next.33
     installDate: 2026-07-11T07:55:16.417Z
-    lastUpdated: 2026-08-14T06:06:12.020Z
+    lastUpdated: 2026-08-30T10:29:48.502Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
-    version: 6.11.0
+    version: 6.11.1-next.33
     installDate: 2026-07-11T07:55:16.362Z
-    lastUpdated: 2026-08-14T06:06:12.022Z
+    lastUpdated: 2026-08-30T10:29:48.505Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: cis
     version: main
     installDate: 2026-07-11T07:55:17.049Z
-    lastUpdated: 2026-08-14T06:06:12.024Z
+    lastUpdated: 2026-08-30T10:29:48.507Z
     source: external
     npmPackage: bmad-creative-intelligence-suite
     repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
     channel: next
-    sha: 00191c6eb6357f1045472905e971a5df0507f157
+    sha: 0e4ff9233a792db1a1cd00f22a482f338168cdc3
   - name: tea
     version: main
     installDate: 2026-07-11T07:55:17.009Z
-    lastUpdated: 2026-08-14T06:06:12.027Z
+    lastUpdated: 2026-08-30T10:29:48.510Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
     channel: next
-    sha: 538130ba6866af0469765c5fac17e8cde3182b30
+    sha: cee8ffa45678763f549e102d2d0531201b66aa35
   - name: bmad-loop
     version: main
     installDate: 2026-07-11T07:55:16.441Z
-    lastUpdated: 2026-08-14T06:06:12.032Z
+    lastUpdated: 2026-08-30T10:29:48.515Z
     source: external
     npmPackage: null
     repoUrl: https://github.com/bmad-code-org/bmad-loop
     channel: next
-    sha: dd65bb3ce4e6c872b8a827b2e0d5407bb4932944
+    sha: d489c422d4e1ec3c7b8c49d59e627c46f5dd89ec
 ides:
   - claude-code
   - codex

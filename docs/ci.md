@@ -526,15 +526,16 @@ the per-platform smoke window bound to the platform budget plus the cleanup allo
 tool can no longer emit records this verifier rejects, and bound the assembler to the bytes actually
 executing rather than the pristine repository file.
 
-The packet's current subject is
-`663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31`, and the packet **fails closed at
+The 2026-08-30 verifier and producer hardening re-minted the subject once more at zero receipts,
+where no acceptance was burned. The packet's current subject is
+`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`, and the packet **fails closed at
 zero of three receipts**: each re-mint rejected the receipts collected against the prior subject by
 the same rerun trigger, and collecting replacements on issue `#352` is an owner action outside this
 repository. Until that happens deployed-runtime parity is **unavailable** and **no identity is
 selected**. Reassembly reports `receipts=0 verifier_exit=1`. The `bb58d691...`, `dab64f5f...` and
 `a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit area, whose
 README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with its source.
-Three of the seven subjects never had receipts collected at all, so three retained sets against six
+Five of the eight subjects never had receipts collected at all, so three retained sets against seven
 re-mints is the expected shape, not a gap.
 
 `closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and

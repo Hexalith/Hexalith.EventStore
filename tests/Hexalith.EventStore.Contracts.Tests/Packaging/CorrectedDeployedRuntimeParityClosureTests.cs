@@ -47,7 +47,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// record that keeps naming a superseded subject cannot stay green.
     /// </summary>
     private const string CurrentSubjectSha256 =
-        "663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31";
+        "86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274";
 
     /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
     private const int FrozenStory314PacketFileCount = 66;
@@ -659,6 +659,54 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies equal-valued booleans and floats cannot satisfy the handler's workflow and package
+    /// integer contracts after the outer dispatch route has been selected.
+    /// </summary>
+    /// <param name="field">Integer field to mutate.</param>
+    /// <param name="jsonValue">Equal-valued non-integer JSON representation.</param>
+    /// <param name="expectedError">Focused fail-closed reason.</param>
+    [Theory]
+    [InlineData("workflow-run-attempt", "true", "workflow run attempt is invalid")]
+    [InlineData("workflow-run-id", "32361958618.0", "workflow run identifier is invalid")]
+    [InlineData("package-count", "14.0", "package manifest identity is invalid")]
+    public void WorkflowAndPackageCountsRequireExactJsonIntegers(
+        string field,
+        string jsonValue,
+        string expectedError)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonNode value = JsonNode.Parse(jsonValue).ShouldNotBeNull();
+            switch (field)
+            {
+                case "workflow-run-attempt":
+                    closure["lineage"]!["workflow"]!["run_attempt"] = value;
+                    break;
+                case "workflow-run-id":
+                    closure["lineage"]!["workflow"]!["run_id"] = value;
+                    break;
+                case "package-count":
+                    closure["packages"]!["count"] = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown integer field.");
+            }
+
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(RunValidator(root, temporary), expectedError);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies every acceptance field is mandatory and receipt mutations fail closed.
     /// </summary>
     /// <param name="field">Receipt field to remove.</param>
@@ -778,6 +826,44 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             RewriteReceipt(temporary, 0, receipt => receipt["accepted_at"] = "2099-01-01T00:00:00Z");
 
             ShouldFailClosed(RunValidator(root, temporary), "acceptance timestamp lies in the future");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the roster authority and both owner-role receipts are three distinct GitHub
+    /// comments. Consistently rebinding one snapshot to an already-used comment ID must not let a
+    /// single comment stand in for two independent role records.
+    /// </summary>
+    /// <param name="commentId">Already-used roster or EventStore-owner comment identifier.</param>
+    [Theory]
+    [InlineData(5407975180L)]
+    [InlineData(9000001L)]
+    public void RosterAndOwnerAcceptanceCommentsRequireDistinctIdentities(long commentId)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            int releaseOwner = ReceiptIndex(temporary, "release-owner");
+            RewriteReceiptSource(temporary, releaseOwner, source =>
+            {
+                source["id"] = commentId;
+                source["html_url"] = FormattableString.Invariant(
+                    $"https://github.com/Hexalith/Hexalith.EventStore/issues/{AcceptanceIssue}#issuecomment-{commentId}");
+                source["node_id"] = FormattableString.Invariant($"IC_kwDO{commentId}");
+                source["url"] = FormattableString.Invariant(
+                    $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/{commentId}");
+                source["reactions"]!["url"] = FormattableString.Invariant(
+                    $"https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/comments/{commentId}/reactions");
+            });
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "GitHub roster and acceptance comment identities must be distinct");
         }
         finally
         {
@@ -1430,6 +1516,72 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the aggregate smoke summary itself uses the selected canonical UTF-8 encoding, as
+    /// already required of both platform logs. Rebinding whitespace must not make two byte shapes
+    /// represent the same authorizing evidence.
+    /// </summary>
+    [Fact]
+    public void SmokeResultsRequireCanonicalUtf8Bytes()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject resultsBinding = closure["production_smokes"]!["results"]!.AsObject();
+            string resultsPath = Path.Combine(
+                temporary,
+                resultsBinding["file"]!.GetValue<string>());
+            File.AppendAllText(resultsPath, " ");
+            UpdateFileBinding(resultsBinding, resultsPath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "Production smoke results are not canonical UTF-8 JSON");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies Production-smoke windows cannot be retained from the future, even when their own
+    /// durations, logs, inventory, subject and fresh receipts all agree.
+    /// </summary>
+    [Fact]
+    public void ProductionSmokeWindowsInTheFutureFailClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            MutateSmokeResults(temporary, results =>
+            {
+                DateTimeOffset future = DateTimeOffset.UtcNow.AddYears(10);
+                results["started_at"] = Utc(future);
+                results["ended_at"] = Utc(future.AddMinutes(4));
+                JsonArray platforms = results["platforms"]!.AsArray();
+                platforms[0]!["started_at"] = Utc(future);
+                platforms[0]!["ended_at"] = Utc(future.AddMinutes(2));
+                platforms[1]!["started_at"] = Utc(future.AddMinutes(2));
+                platforms[1]!["ended_at"] = Utc(future.AddMinutes(4));
+            });
+            AttachThreeAcceptedReceipts(temporary);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "Production smoke window lies in the future");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies a GitHub receipt source whose author association is not a rostered level fails
     /// closed, even when the receipt's durable-source binding is correctly recomputed for it.
     /// </summary>
@@ -1905,6 +2057,101 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 Directory.Delete(temporary, recursive: true);
             }
 
+            Directory.Delete(packet, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies each verifier replaces its initial process with an isolated, no-site interpreter
+    /// before importing shadowable dependencies. A non-repository PYTHONPATH supplies both a
+    /// <c>hashlib</c> shadow and a sitecustomize meta-path hook; neither may participate in the
+    /// authoritative verifier process.
+    /// </summary>
+    /// <param name="verifier">Verifier entry point.</param>
+    [Theory]
+    [InlineData("parity")]
+    [InlineData("predecessor")]
+    public void VerifiersCrossAHermeticInterpreterBoundaryBeforeShadowableImports(string verifier)
+    {
+        string root = FindRepositoryRoot();
+        string packet = CreateIncompletePacket(root);
+        string hostile = Path.Combine(Path.GetTempPath(), $"eventstore-story315-pythonpath-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(hostile);
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(hostile, "sitecustomize.py"),
+                "import sys\n"
+                + "class Hook:\n"
+                + "    def find_spec(self, fullname, path=None, target=None):\n"
+                + "        if fullname == 'hashlib': print('untrusted-import-hook-executed')\n"
+                + "        return None\n"
+                + "sys.meta_path.insert(0, Hook())\n");
+            File.WriteAllText(
+                Path.Combine(hostile, "hashlib.py"),
+                "print('untrusted-pythonpath-shadow-executed')\n"
+                + "raise RuntimeError('hostile hashlib shadow loaded')\n");
+
+            string[] arguments;
+            string expectedError;
+            if (verifier == "parity")
+            {
+                arguments =
+                [
+                    "tools/validate-corrected-deployed-runtime-parity.py",
+                    Path.Combine(packet, "closure.json"),
+                    "--packet-root",
+                    packet,
+                ];
+                expectedError = "exactly three packet-bound receipts are required";
+            }
+            else
+            {
+                string predecessor = Path.Combine(
+                    root,
+                    "_bmad-output",
+                    "implementation-artifacts",
+                    "evidence",
+                    "story-3-14",
+                    SourceSha);
+                arguments =
+                [
+                    "tools/validate-corrective-release-evidence.py",
+                    Path.Combine(predecessor, "release-identity.json"),
+                    "--manifest",
+                    "tools/release-packages.json",
+                    "--packet-root",
+                    predecessor,
+                ];
+                expectedError = "pass:";
+            }
+
+            (int exitCode, string output, string error) = RunProcessWithEnvironment(
+                root,
+                "python3",
+                new Dictionary<string, string> { ["PYTHONPATH"] = hostile },
+                arguments);
+
+            if (verifier == "parity")
+            {
+                exitCode.ShouldBe(1, error);
+                error.ShouldContain(expectedError);
+            }
+            else
+            {
+                exitCode.ShouldBe(0, error);
+                output.ShouldContain(expectedError);
+            }
+
+            output.ShouldNotContain("untrusted-import-hook-executed");
+            output.ShouldNotContain("untrusted-pythonpath-shadow-executed");
+            error.ShouldNotContain("untrusted-import-hook-executed");
+            error.ShouldNotContain("untrusted-pythonpath-shadow-executed");
+            error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(hostile, recursive: true);
             Directory.Delete(packet, recursive: true);
         }
     }
@@ -2391,9 +2638,20 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
         Match allowance = Regex.Match(handler, @"^CLEANUP_ALLOWANCE_SECONDS = (\d+)$", RegexOptions.Multiline);
         Match budget = Regex.Match(capture, @"^CLEANUP_TIMEOUT_SECONDS = (\d+)$", RegexOptions.Multiline);
+        Match verifierOverhead = Regex.Match(
+            handler,
+            @"^TIMESTAMP_TRANSITION_ALLOWANCE_SECONDS = (\d+)$",
+            RegexOptions.Multiline);
+        Match producerOverhead = Regex.Match(
+            capture,
+            @"^TIMESTAMP_TRANSITION_ALLOWANCE_SECONDS = (\d+)$",
+            RegexOptions.Multiline);
         allowance.Success.ShouldBeTrue();
         budget.Success.ShouldBeTrue();
+        verifierOverhead.Success.ShouldBeTrue();
+        producerOverhead.Success.ShouldBeTrue();
         allowance.Groups[1].Value.ShouldBe(budget.Groups[1].Value);
+        verifierOverhead.Groups[1].Value.ShouldBe(producerOverhead.Groups[1].Value);
     }
 
     /// <summary>
@@ -2420,18 +2678,18 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                     CultureInfo.InvariantCulture);
                 if (mutation == "platform-window")
                 {
-                    // 211s > 180 + 30, while the aggregate stays inside 2 x 210.
+                    // 216s > 180 + 30 + 5, while the aggregate stays inside its bound.
                     JsonObject platform = results["platforms"]!.AsArray()[0]!.AsObject();
                     DateTimeOffset platformStart = DateTimeOffset.Parse(
                         platform["started_at"]!.GetValue<string>(),
                         CultureInfo.InvariantCulture);
-                    platform["ended_at"] = Utc(platformStart.AddSeconds(211));
+                    platform["ended_at"] = Utc(platformStart.AddSeconds(216));
                     results["ended_at"] = Utc(platformStart.AddSeconds(300));
                 }
                 else
                 {
-                    // 421s > 2 x (180 + 30), with both platform windows left untouched.
-                    results["ended_at"] = Utc(start.AddSeconds(421));
+                    // 436s > 2 x (180 + 30 + 5) + 5, with platform windows untouched.
+                    results["ended_at"] = Utc(start.AddSeconds(436));
                 }
             });
 
@@ -2467,7 +2725,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 DateTimeOffset platformStart = DateTimeOffset.Parse(
                     platform["started_at"]!.GetValue<string>(),
                     CultureInfo.InvariantCulture);
-                platform["ended_at"] = Utc(platformStart.AddSeconds(205));
+                platform["ended_at"] = Utc(platformStart.AddSeconds(214));
                 DateTimeOffset start = DateTimeOffset.Parse(
                     results["started_at"]!.GetValue<string>(),
                     CultureInfo.InvariantCulture);
@@ -2824,6 +3082,335 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             File.WriteAllBytes(indexPath, [.. original, (byte)'\n']);
 
             ShouldFailClosed(RunValidator(root, temporary), "retained file binding mismatch: oci/index.raw");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies packet bindings reject FIFOs before reading them. Treating unsupported entries as
+    /// "not a file" let a FIFO ride through inventory discovery and block indefinitely once a
+    /// declared binding tried to read it.
+    /// </summary>
+    [Fact]
+    public void PacketBindingsRequireRegularFiles()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string package = Path.Combine(
+                temporary,
+                "packages",
+                "Hexalith.EventStore.Contracts.3.96.2.nupkg");
+            File.Delete(package);
+            (int fifoExit, _, string fifoError) = RunProcess(temporary, "mkfifo", package);
+            fifoExit.ShouldBe(0, fifoError);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "retained packet entry is not a regular file");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a binding cannot follow a symlink merely because its target is another regular file
+    /// inside the packet. The lexical entry itself must be a retained regular file.
+    /// </summary>
+    [Fact]
+    public void PacketBindingsRejectInternalSymlinkTargetsBeforeReading()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string package = Path.Combine(
+                temporary,
+                "packages",
+                "Hexalith.EventStore.Contracts.3.96.2.nupkg");
+            string target = Path.Combine(temporary, "packages", "internal-target.nupkg");
+            File.Move(package, target);
+            File.CreateSymbolicLink(package, target);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "packet-relative evidence path traverses a symbolic link");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the assembler rejects a symlinked packet root before reading or rewriting any
+    /// retained input, even when the link resolves to an otherwise valid packet.
+    /// </summary>
+    [Fact]
+    public void AssemblerRejectsASymlinkedPacketRoot()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string packet = CopyPacket(root);
+        string link = Path.Combine(Path.GetTempPath(), $"eventstore-story315-packet-link-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateSymbolicLink(link, packet);
+
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "tools/assemble-corrected-deployed-runtime-parity.py",
+                link);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("packet root is not a regular directory");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            if (Directory.Exists(link))
+            {
+                Directory.Delete(link);
+            }
+
+            Directory.Delete(packet, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an existing output entry cannot redirect the assembler's closure write outside the
+    /// packet. The packet tree is rejected before the retained subject or any output is rewritten.
+    /// </summary>
+    [Fact]
+    public void AssemblerRejectsASymlinkedOutputBeforeAnyWrite()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string packet = CopyPacket(root);
+        string closurePath = Path.Combine(packet, "closure.json");
+        string outside = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-outside-closure-{Guid.NewGuid():N}.json");
+        try
+        {
+            byte[] sentinel = Encoding.UTF8.GetBytes("outside-sentinel\n");
+            File.WriteAllBytes(outside, sentinel);
+            File.Delete(closurePath);
+            File.CreateSymbolicLink(closurePath, outside);
+
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "tools/assemble-corrected-deployed-runtime-parity.py",
+                packet);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("packet contains a symbolic link");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            File.ReadAllBytes(outside).ShouldBe(sentinel);
+        }
+        finally
+        {
+            if (File.Exists(closurePath))
+            {
+                File.Delete(closurePath);
+            }
+
+            Directory.Delete(packet, recursive: true);
+            if (File.Exists(outside))
+            {
+                File.Delete(outside);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies the assembler validates a retained predecessor identity before indexing it. The
+    /// copied tool tree makes the malformed predecessor a repository-owned input for this
+    /// invocation without altering the immutable checked-in Story 3.14 packet.
+    /// </summary>
+    [Fact]
+    public void AssemblerValidatesTheRetainedPredecessorBeforeIndexing()
+    {
+        string root = FindRepositoryRoot();
+        string packet = CopyPacket(root);
+        string repository = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-assembler-repository-{Guid.NewGuid():N}");
+        try
+        {
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(repository, "tools"));
+            string predecessorRelative = Path.Combine(
+                "_bmad-output",
+                "implementation-artifacts",
+                "evidence",
+                "story-3-14",
+                SourceSha,
+                "release-identity.json");
+            string predecessorPath = Path.Combine(repository, predecessorRelative);
+            Directory.CreateDirectory(Path.GetDirectoryName(predecessorPath).ShouldNotBeNull());
+            WriteCanonical(predecessorPath, new JsonObject());
+
+            string closurePath = Path.Combine(packet, "closure.json");
+            string originalClosure = ComputeSha256(closurePath);
+            (int exitCode, string output, string error) = RunProcess(
+                repository,
+                "python3",
+                "tools/assemble-corrected-deployed-runtime-parity.py",
+                packet);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("corrective release identity field set drift");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            ComputeSha256(closurePath).ShouldBe(originalClosure);
+        }
+        finally
+        {
+            Directory.Delete(packet, recursive: true);
+            if (Directory.Exists(repository))
+            {
+                Directory.Delete(repository, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies malformed retained registry and smoke documents fail with controlled assembler
+    /// reasons before dictionary indexing can raise a traceback or emit a replacement closure.
+    /// </summary>
+    /// <param name="document">Retained document to corrupt.</param>
+    /// <param name="expectedError">Focused assembler failure.</param>
+    [Theory]
+    [InlineData("registry", "retained owner-role authority source structure is invalid")]
+    [InlineData("smokes", "retained Production smoke results structure is invalid")]
+    public void AssemblerValidatesRetainedStructuresBeforeIndexing(
+        string document,
+        string expectedError)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            string originalClosure = ComputeSha256(closurePath);
+            if (document == "registry")
+            {
+                WriteCanonical(
+                    Path.Combine(temporary, "registry", "role-registry-source.json"),
+                    new JsonObject());
+            }
+            else
+            {
+                JsonObject results = LoadJson(
+                    Path.Combine(temporary, "smokes", "smoke-results.json"));
+                results.Remove("platforms");
+                WriteCanonical(
+                    Path.Combine(temporary, "smokes", "smoke-results.json"),
+                    results);
+            }
+
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "tools/assemble-corrected-deployed-runtime-parity.py",
+                temporary);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain(expectedError);
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            ComputeSha256(closurePath).ShouldBe(originalClosure);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies each invalid Production-smoke state the assembler claims to reject stops before
+    /// closure emission: failed aggregate, wrong immutable-child coverage, and failed platform.
+    /// </summary>
+    /// <param name="mutation">Smoke state to invalidate.</param>
+    /// <param name="expectedError">Focused assembler failure.</param>
+    [Theory]
+    [InlineData("aggregate", "retained Production smokes did not pass")]
+    [InlineData("child-coverage", "retained Production smokes do not cover the selected children")]
+    [InlineData("platform-outcome", "a retained Production smoke platform did not pass")]
+    public void AssemblerRejectsInvalidSmokeStatesBeforeClosureEmission(
+        string mutation,
+        string expectedError)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            string originalClosure = ComputeSha256(closurePath);
+            string resultsPath = Path.Combine(temporary, "smokes", "smoke-results.json");
+            JsonObject results = LoadJson(resultsPath);
+            switch (mutation)
+            {
+                case "aggregate":
+                    results["result"] = "failure";
+                    results["exit_code"] = 1;
+                    break;
+                case "child-coverage":
+                    results["platforms"]![0]!["child_digest"] = "sha256:" + new string('0', 64);
+                    break;
+                case "platform-outcome":
+                    results["platforms"]![0]!["outcome"] = "failure";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown smoke mutation.");
+            }
+
+            WriteCanonical(resultsPath, results);
+
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "tools/assemble-corrected-deployed-runtime-parity.py",
+                temporary);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain(expectedError);
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            ComputeSha256(closurePath).ShouldBe(originalClosure);
         }
         finally
         {
@@ -3510,6 +4097,17 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string workingDirectory,
         string fileName,
         params string[] arguments)
+        => RunProcessWithEnvironment(
+            workingDirectory,
+            fileName,
+            new Dictionary<string, string>(),
+            arguments);
+
+    private static (int ExitCode, string Output, string Error) RunProcessWithEnvironment(
+        string workingDirectory,
+        string fileName,
+        IReadOnlyDictionary<string, string> environment,
+        params string[] arguments)
     {
         ProcessStartInfo startInfo = new(fileName)
         {
@@ -3521,6 +4119,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         foreach (string argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);
+        }
+
+        foreach ((string key, string value) in environment)
+        {
+            startInfo.Environment[key] = value;
         }
 
         using Process process = Process.Start(startInfo).ShouldNotBeNull();

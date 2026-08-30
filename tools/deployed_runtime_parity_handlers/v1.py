@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import stat
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -58,6 +59,9 @@ PLATFORMS = ("linux/amd64", "linux/arm64")
 # bytes are frozen evidence and must not be rewritten to satisfy a later schema; a focused test pins
 # it against the capture tool's CLEANUP_TIMEOUT_SECONDS so the two cannot drift.
 CLEANUP_ALLOWANCE_SECONDS = 30
+# The capture's timestamp calls and transitions into/out of the monotonic budgets sit just outside
+# those deadlines. Bound that legitimate producer overhead rather than rejecting a near-budget run.
+TIMESTAMP_TRANSITION_ALLOWANCE_SECONDS = 5
 REQUIRED_ROLES = ("eventstore-owner", "release-owner", "test-architect")
 OWNER_ROLES = ("eventstore-owner", "release-owner")
 OWNER_GITHUB_ACCOUNT = ("jpiquot", 6775094)
@@ -355,14 +359,31 @@ def _packet_file(packet_root, relative):
     path = Path(relative)
     if path.is_absolute() or ".." in path.parts:
         raise EvidenceError("packet-relative evidence path is unsafe")
-    resolved = (root / path).resolve()
+    candidate = root / path
+    cursor = root
+    for part in path.parts:
+        cursor /= part
+        try:
+            mode = cursor.lstat().st_mode
+        except OSError:
+            break
+        if stat.S_ISLNK(mode):
+            raise EvidenceError("packet-relative evidence path traverses a symbolic link")
+    resolved = candidate.resolve()
     if resolved != root and root not in resolved.parents:
         raise EvidenceError("packet-relative evidence path escapes the packet")
-    return resolved
+    return candidate
 
 
 def _verify_file(packet_root, binding):
-    content = _packet_file(packet_root, binding["file"]).read_bytes()
+    path = _packet_file(packet_root, binding["file"])
+    try:
+        mode = path.lstat().st_mode
+    except OSError as error:
+        raise EvidenceError(f"retained file is unavailable: {binding['file']}") from error
+    if path.is_symlink() or not stat.S_ISREG(mode):
+        raise EvidenceError(f"retained packet entry is not a regular file: {binding['file']}")
+    content = path.read_bytes()
     if len(content) != binding["size"] or hashlib.sha256(content).hexdigest() != binding["sha256"]:
         raise EvidenceError(f"retained file binding mismatch: {binding['file']}")
     return content
@@ -452,7 +473,11 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
         ),
         "dispatch schema is invalid",
     )
-    if dispatch["schema"] != SCHEMA or dispatch["version"] != CODEC_VERSION:
+    if (
+        dispatch["schema"] != SCHEMA
+        or type(dispatch["version"]) is not int
+        or dispatch["version"] != CODEC_VERSION
+    ):
         raise EvidenceError("dispatch identity is invalid")
     expected_dispatch_files = {
         "assembler": ASSEMBLER_FILE,
@@ -489,6 +514,8 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
         ("repository", "run_attempt", "run_id", "source_sha", "workflow_file", "workflow_sha"),
         "workflow schema is invalid",
     )
+    _positive_integer(workflow["run_attempt"], "workflow run attempt is invalid")
+    _positive_integer(workflow["run_id"], "workflow run identifier is invalid")
     if lineage != {
         "source_sha": SOURCE_SHA,
         "tag": TAG,
@@ -506,7 +533,11 @@ def validate_identity(document, expected_package_ids, expected_manifest_sha256, 
 
     packages = _exact_object(document["packages"], ("count", "items", "manifest_sha256"), "package-domain schema is invalid")
     items = _exact_list(packages["items"], 14, "exactly 14 package-domain mappings are required")
-    if packages["count"] != 14 or packages["manifest_sha256"] != expected_manifest_sha256:
+    if (
+        type(packages["count"]) is not int
+        or packages["count"] != len(items)
+        or packages["manifest_sha256"] != expected_manifest_sha256
+    ):
         raise EvidenceError("package manifest identity is invalid")
     if [item.get("id") for item in items if isinstance(item, dict)] != list(expected_package_ids):
         raise EvidenceError("package inventory does not match the release manifest order")
@@ -690,6 +721,8 @@ def _validate_smokes(document, packet_root):
     results_binding = document["production_smokes"]["results"]
     results_bytes = _verify_file(packet_root, results_binding)
     results = load_json_bytes(results_bytes)
+    if results_bytes != canonical_bytes(results):
+        raise EvidenceError("Production smoke results are not canonical UTF-8 JSON")
     _exact_object(
         results,
         (
@@ -726,10 +759,18 @@ def _validate_smokes(document, packet_root):
         raise EvidenceError("bounded Production smoke outcome is invalid")
     overall_start = _parse_time(results["started_at"], "Production smoke start is invalid")
     overall_end = _parse_time(results["ended_at"], "Production smoke end is invalid")
-    platform_bound = results["timeout_seconds"] + CLEANUP_ALLOWANCE_SECONDS
+    current_time = datetime.now().astimezone()
+    if overall_start > current_time or overall_end > current_time:
+        raise EvidenceError("Production smoke window lies in the future")
+    platform_bound = (
+        results["timeout_seconds"]
+        + CLEANUP_ALLOWANCE_SECONDS
+        + TIMESTAMP_TRANSITION_ALLOWANCE_SECONDS
+    )
     if (
         overall_end < overall_start
-        or (overall_end - overall_start).total_seconds() > len(PLATFORMS) * platform_bound
+        or (overall_end - overall_start).total_seconds()
+        > len(PLATFORMS) * platform_bound + TIMESTAMP_TRANSITION_ALLOWANCE_SECONDS
     ):
         raise EvidenceError("Production smoke aggregate bound is invalid")
     expected_children = {child["platform"]: child["manifest"]["digest"] for child in document["oci"]["children"]}
@@ -756,6 +797,8 @@ def _validate_smokes(document, packet_root):
         log_binding = _binding(item["log"])
         start = _parse_time(item["started_at"], "Production smoke platform start is invalid")
         end = _parse_time(item["ended_at"], "Production smoke platform end is invalid")
+        if start > current_time or end > current_time:
+            raise EvidenceError("Production smoke window lies in the future")
         if (
             item["child_digest"] != expected_children[item["platform"]]
             or item["observed_runtime_platform"] != item["platform"]
@@ -886,8 +929,14 @@ def _validate_inventory(document, packet_root):
     for path in packet_root.rglob("*"):
         if path.is_symlink():
             raise EvidenceError("packet contains a symbolic link outside the closed inventory")
-        if not path.is_file():
+        try:
+            mode = path.lstat().st_mode
+        except OSError as error:
+            raise EvidenceError("packet entry could not be inspected") from error
+        if stat.S_ISDIR(mode):
             continue
+        if not stat.S_ISREG(mode):
+            raise EvidenceError("packet contains an entry that is not a regular file")
         relative = path.relative_to(packet_root).as_posix()
         if relative.startswith(bound_acceptances):
             continue
@@ -922,6 +971,7 @@ def _validate_receipts(document, packet_root, subject_document):
         # disjunct here could never be the deciding term.
     ):
         raise EvidenceError("acceptance directory is not closed over exactly three receipts and sources")
+    github_comment_ids = {REGISTRY_AUTHORITY_COMMENT_ID}
     for binding in document["acceptances"]["receipts"]:
         receipt_bytes = _verify_file(packet_root, binding)
         receipt = load_json_bytes(receipt_bytes)
@@ -967,6 +1017,10 @@ def _validate_receipts(document, packet_root, subject_document):
             source_document = _github_comment_envelope(
                 source_bytes, "GitHub acceptance source schema is invalid"
             )
+            comment_id = source_document["id"]
+            if comment_id in github_comment_ids:
+                raise EvidenceError("GitHub roster and acceptance comment identities must be distinct")
+            github_comment_ids.add(comment_id)
             try:
                 source_body = load_json_bytes(source_document["body"].encode("utf-8"))
             except (AttributeError, EvidenceError) as error:

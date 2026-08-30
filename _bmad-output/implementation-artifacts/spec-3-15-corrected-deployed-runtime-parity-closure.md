@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -520,6 +520,21 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-08-30 (trusted verifier and packet producers):** Closed all 14 Chunk-1 review findings.
+  Both verifier entry points now cross an isolated, no-site interpreter boundary before shadowable
+  imports. The Production capture bypasses proxies, rejects unsafe output paths, owns cleanup only
+  after successful container creation, and reports write failures support-safely. The assembler
+  validates retained inputs before indexing, rejects unsupported packet entries, writes only inside
+  the packet, and bounds/support-safely handles its child verifier. The live handler requires exact
+  integer facts, distinct GitHub comment identities, regular packet files, canonical smoke-result
+  bytes, non-future smoke windows, and bounded timestamp-transition overhead. Executable tests cover
+  each new boundary, including all three assembler smoke rejection branches. Binding the updated
+  decision inputs re-minted subject `663747b1...` to
+  `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`; repeat assembly reports
+  `receipts=0 verifier_exit=1`. No receipts existed to reject, no replacement receipts were
+  collected, and no deployment, publication, registry mutation, consumer removal, predecessor
+  change, commit, or push was performed.
+
 - **2026-08-25 (loop 7 landed):** The complete loop-7 patch set landed in one re-mint at zero
   receipts, so nothing was burned. Two loop-6 fixes were regressions and both were reproduced with
   live controls before being closed: the nuspec prolog scan skipped entirely behind a residual
@@ -721,11 +736,15 @@ Both owner receipts are independently constrained to the same positively allowli
 **Commands:**
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: sha256:4d1a0c33...`, exit 0. The frozen predecessor packet is unchanged, and its whole 66-file tree is now digest-pinned by the focused suite, not just the identity file.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: <trigger>`, exit 1. This is the expected checked-in state: the loop-6 batch re-minted the subject and rejected the three `a8cc777e...` receipts, and the loop-7 landing re-minted it again -- at zero receipts, so nothing was burned -- to `663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31`. Collecting three receipts on issue `#352` is an Ask First owner action that this run did not perform. Deployed-runtime parity is therefore **unavailable** and nothing is granted; `deployed_runtime_parity` and `selected_deployed_identity` remain in the packet as the *claim* the three roles are asked to accept. The positive verdict -- `pass`, exactly three roster-bound role receipts, selected identity only `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`, exit 0 -- is proved on a synthesized fully accepted packet by `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:663747b1... receipts=0 verifier_exit=1`, exit 1, reproduced identically on repeat runs. The assembler now has an executable caller: `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` runs it over both a zero-receipt and a fully accepted copy and pins both exit rules.
-- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 170 passed, 0 failed, 0 skipped.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: <trigger>`, exit 1. This is the expected checked-in state: the loop-6 batch rejected the three `a8cc777e...` receipts, loop 7 re-minted at zero receipts to `663747b1...`, and the 2026-08-30 producer/verifier hardening re-minted at zero receipts to `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`. Collecting three receipts on issue `#352` is an Ask First owner action that this run did not perform. Deployed-runtime parity is therefore **unavailable** and nothing is granted; `deployed_runtime_parity` and `selected_deployed_identity` remain in the packet as the *claim* the three roles are asked to accept. The positive verdict -- `pass`, exactly three roster-bound role receipts, selected identity only `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`, exit 0 -- is proved on a synthesized fully accepted packet by `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:86c59c79... receipts=0 verifier_exit=1`, exit 1, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` runs it over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
+- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 193 passed, 0 failed, 0 skipped.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 37 passed, 0 failed, 0 skipped.
-- Complete Contracts suite -- **actual:** 1761 passed, 0 failed, 0 skipped.
+- Complete Contracts suite -- **actual:** 1846 passed, 29 failed, 0 skipped, 1875 total. All 29
+  failures are Story 4.15 OQ8 cases stopped by the same intentional downstream drift gate:
+  `Story 4.15 v2 gate-input identity drift: docs/ci.md`. Rebinding that separately reviewed
+  successor packet would invalidate its approvals and is outside this story; Story 3.15's 193
+  focused cases and the 37 predecessor/provenance cases remain green.
 - `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py tools/capture-corrected-deployed-runtime-parity-smokes.py tools/assemble-corrected-deployed-runtime-parity.py` -- **actual:** `text: set`, `eol: lf` for all six, so no SHA-256 pin can be broken by working-tree EOL drift. The two producers are included because their digests are now subject-bound.
 - `git diff --check` -- **actual:** no output, exit 0.
 
@@ -745,7 +764,7 @@ Both owner receipts are independently constrained to the same positively allowli
   owner action in one place.
   [`3-15-...-closure.md:3`](3-15-corrected-deployed-runtime-parity-closure.md#L3)
 
-- Seven subjects, six re-mints, and which three of them ever carried receipts.
+- Eight subjects, seven re-mints, and which three of them ever carried receipts.
   [`3-15-...-closure.md:61`](3-15-corrected-deployed-runtime-parity-closure.md#L61)
 
 - The loop-7 ledger entries, including the regression class loop 6 introduced.
@@ -911,17 +930,17 @@ Both owner receipts are independently constrained to the same positively allowli
 
 ### Review Findings (2026-08-30, Chunk 1 -- trusted verifier and packet producers)
 
-- [ ] [Review][Patch] **[HIGH] Establish a hermetic interpreter boundary before either verifier imports shadowable dependencies; the current isolation starts after top-level imports and preserves non-repository `PYTHONPATH`/import-hook sources.** [tools/validate-corrected-deployed-runtime-parity.py:4]
-- [ ] [Review][Patch] **[HIGH] Force the localhost Production-smoke request to bypass environment proxies so an unrelated proxy response cannot satisfy the `/alive` check.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:149]
-- [ ] [Review][Patch] **[HIGH] Reject symlinked or escaping producer inputs and outputs before the capture or assembler reads and writes packet files.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:244]
-- [ ] [Review][Patch] **[HIGH] Track whether this capture created the Docker container and never force-remove a same-named container after `docker run` failed.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:96]
-- [ ] [Review][Patch] **[MEDIUM] Convert smoke log and summary write failures into the documented support-safe failure plus rerun guidance instead of a traceback.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:220]
-- [ ] [Review][Patch] **[MEDIUM] Validate malformed retained registry, predecessor, and smoke structures before indexing them so assembler failures remain controlled.** [tools/assemble-corrected-deployed-runtime-parity.py:74]
-- [ ] [Review][Patch] **[MEDIUM] Bound the assembler's verifier subprocess and handle process-start/write failures without hanging or escaping after a partial packet rewrite.** [tools/assemble-corrected-deployed-runtime-parity.py:272]
-- [ ] [Review][Patch] **[MEDIUM] Require regular files and reject FIFOs, sockets, devices, and other unsupported entries instead of ignoring or blocking on them.** [tools/deployed_runtime_parity_handlers/v1.py:353]
-- [ ] [Review][Patch] **[MEDIUM] Require distinct GitHub comment identities for the roster authority and both owner receipts so contradictory snapshots cannot reuse one comment ID.** [tools/deployed_runtime_parity_handlers/v1.py:802]
-- [ ] [Review][Patch] **[MEDIUM] Add executable assembler tests for failed aggregate smokes, wrong child coverage, and failed platform outcomes before closure emission.** [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2841]
-- [ ] [Review][Patch] **[MEDIUM] Require exact JSON integers for dispatch version, workflow IDs, attempts, and package counts instead of accepting equal-valued booleans or floats.** [tools/deployed_runtime_parity_handlers/v1.py:455]
-- [ ] [Review][Patch] **[HIGH] Reject Production-smoke windows that lie in the future so impossible evidence cannot authorize parity.** [tools/deployed_runtime_parity_handlers/v1.py:727]
-- [ ] [Review][Patch] **[HIGH] Require `smoke-results.json` itself to use the selected canonical UTF-8 representation, as already required for each platform log.** [tools/deployed_runtime_parity_handlers/v1.py:689]
-- [ ] [Review][Patch] **[LOW] Include bounded timestamping/transition overhead in producer-verifier smoke windows so a legitimate near-budget capture cannot reject its own output.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:103]
+- [x] [Review][Patch] **[HIGH] Establish a hermetic interpreter boundary before either verifier imports shadowable dependencies; the current isolation starts after top-level imports and preserves non-repository `PYTHONPATH`/import-hook sources.** [tools/validate-corrected-deployed-runtime-parity.py:4]
+- [x] [Review][Patch] **[HIGH] Force the localhost Production-smoke request to bypass environment proxies so an unrelated proxy response cannot satisfy the `/alive` check.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:149]
+- [x] [Review][Patch] **[HIGH] Reject symlinked or escaping producer inputs and outputs before the capture or assembler reads and writes packet files.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:244]
+- [x] [Review][Patch] **[HIGH] Track whether this capture created the Docker container and never force-remove a same-named container after `docker run` failed.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:96]
+- [x] [Review][Patch] **[MEDIUM] Convert smoke log and summary write failures into the documented support-safe failure plus rerun guidance instead of a traceback.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:220]
+- [x] [Review][Patch] **[MEDIUM] Validate malformed retained registry, predecessor, and smoke structures before indexing them so assembler failures remain controlled.** [tools/assemble-corrected-deployed-runtime-parity.py:74]
+- [x] [Review][Patch] **[MEDIUM] Bound the assembler's verifier subprocess and handle process-start/write failures without hanging or escaping after a partial packet rewrite.** [tools/assemble-corrected-deployed-runtime-parity.py:272]
+- [x] [Review][Patch] **[MEDIUM] Require regular files and reject FIFOs, sockets, devices, and other unsupported entries instead of ignoring or blocking on them.** [tools/deployed_runtime_parity_handlers/v1.py:353]
+- [x] [Review][Patch] **[MEDIUM] Require distinct GitHub comment identities for the roster authority and both owner receipts so contradictory snapshots cannot reuse one comment ID.** [tools/deployed_runtime_parity_handlers/v1.py:802]
+- [x] [Review][Patch] **[MEDIUM] Add executable assembler tests for failed aggregate smokes, wrong child coverage, and failed platform outcomes before closure emission.** [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2841]
+- [x] [Review][Patch] **[MEDIUM] Require exact JSON integers for dispatch version, workflow IDs, attempts, and package counts instead of accepting equal-valued booleans or floats.** [tools/deployed_runtime_parity_handlers/v1.py:455]
+- [x] [Review][Patch] **[HIGH] Reject Production-smoke windows that lie in the future so impossible evidence cannot authorize parity.** [tools/deployed_runtime_parity_handlers/v1.py:727]
+- [x] [Review][Patch] **[HIGH] Require `smoke-results.json` itself to use the selected canonical UTF-8 representation, as already required for each platform log.** [tools/deployed_runtime_parity_handlers/v1.py:689]
+- [x] [Review][Patch] **[LOW] Include bounded timestamping/transition overhead in producer-verifier smoke windows so a legitimate near-budget capture cannot reject its own output.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:103]

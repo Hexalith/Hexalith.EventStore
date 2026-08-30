@@ -4,7 +4,7 @@
 
 The technical evidence passes and reproduces, but the acceptance gate is **not** complete. Current
 subject
-`sha256:663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31`
+`sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`
 has **zero of three roster-bound role receipts** (0 of 3), so the retained verifier **fails closed**,
 exit 1,
 deployed-runtime parity is unavailable and **no identity is selected**.
@@ -60,12 +60,12 @@ The current dispatch binds these verdict-bearing live files:
 
 | Role | File | SHA-256 |
 | --- | --- | --- |
-| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `8e29fc6a5122c64e87146ca191df1ead177af9f1981985dbc51f935b415b3f5f` |
-| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `f1ee3fe55b43a80b38cd502e823ef860da689b1a48f3a87b6ae5eaa5e13bdcbf` |
+| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `405dd1ac8c8872d9ced666c7420019462de0779386d804f227912ca5d749c3d5` |
+| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `10b41a5677a2a31b035dad515f676587531dd9cf2de90f1404ed95724a1bad08` |
 | Predecessor handler | `tools/release_evidence_handlers/v3.py` | `f212c784bb0b4b006d683f25248c40a14edf19198cbfaee61f520e07b3bb03d2` |
 | Predecessor package | `tools/release_evidence_handlers/__init__.py` | `a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625` |
-| Smoke capture producer | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `9543567ea42deaad66aeb93a6cb3977877d7c0e0ca3a9c84a9d7d2d21da77e4e` |
-| Packet assembler | `tools/assemble-corrected-deployed-runtime-parity.py` | `2c25dcf3811463bdd03253e7ad4fddfc65d77a487edcec668ff83089cf477838` |
+| Smoke capture producer | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `cd627d7ab35604ce3a7e07876a2a62342316e167cd1f9220a5b4091dc7904600` |
+| Packet assembler | `tools/assemble-corrected-deployed-runtime-parity.py` | `c0968ac9e0c26cbedcfaae479802634e97ef80a99c203fc40021628235e5b961` |
 
 The two producers are bound even though the verifier never executes them. Until they were bound, the
 capture tool could change what a passing Production smoke means -- as it did, from any 2xx to
@@ -94,7 +94,7 @@ therefore any complete 3/3 verdict.
 Three acceptance sets are retained byte-for-byte outside the packet under
 `evidence/story-3-15/superseded-acceptances/`: `bb58d691...`, `dab64f5f...`, and the three receipts
 collected against `a8cc777e...` that the loop-6 batch re-mint rejected. There are three sets against
-seven subjects because receipts were only ever collected for three of them; the other four re-mints
+eight subjects because receipts were only ever collected for three of them; the other five subjects
 happened before any receipt existed, so their absence is expected rather than a gap. They authorize nothing for
 the current subject. That directory's README carries the re-rooting rule an auditor needs, because
 each retained receipt still declares its source under the `acceptances/<subject>/sources/` path it
@@ -109,7 +109,7 @@ authenticated people. All three facts are subject-bound limitations every receip
 ## Current acceptances
 
 None. The packet has no `acceptances` directory. Collecting three receipts that bind
-`663747b1...` on dedicated Story 3.15 issue
+`86c59c79...` on dedicated Story 3.15 issue
 [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352) is a separately authorized owner
 action and was not performed.
 
@@ -127,10 +127,10 @@ $ echo $?
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31 receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 receipts=0 verifier_exit=1
 $ echo $?
 1
 ```
 
-Reassembly deterministically reproduces subject `663747b1...` and runs the pinned verifier over its
+Reassembly deterministically reproduces subject `86c59c79...` and runs the pinned verifier over its
 own output. It does not copy or rewrite any superseded receipt.

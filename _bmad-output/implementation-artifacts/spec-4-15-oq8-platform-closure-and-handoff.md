@@ -2,7 +2,7 @@
 title: 'Story 4.15: OQ8 Platform Closure And Handoff'
 type: 'feature'
 created: '2026-08-10'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 story_key: '4-15-oq8-platform-closure-and-handoff'
 baseline_commit: '699ca71206cd280dc6b770d83c338495bfe70fab'
@@ -59,13 +59,33 @@ context:
 
 **Acceptance Criteria:**
 - Given Stories 4.9-4.14 request closure, when the packet is validated, then every invariant, design-digest reference, command/count, limitation, named reviewer decision, and exact EventStore source/artifact identity has one reproducible crosswalk and any omission keeps Story 4.15 non-done.
-- Given a reviewed packet, when it is handed off, then it records EventStore platform completion against `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec` and unchanged bound paths while release approval, Folders closure, package/pin authority, and consumer migration remain false.
+- Given a reviewed packet, when it is handed off, then it records EventStore platform completion against `5e8f175b2ced4715f7c6f765386812cc1001dbb4` and unchanged bound paths while release approval, Folders closure, package/pin authority, and consumer migration remain false.
+
+### Review Findings
+
+_Chunked code review, Group A of 3 (`tools/validate-oq8-platform-evidence.py` only; `Oq8PlatformClosureTests.cs` and the evidence/docs/sprint-status group are reviewed in follow-up chunks — see spec Verification/Code Map). Baseline `699ca712` → HEAD `83b32fcf`._
+
+**⚠ Patch-application blocker discovered 2026-08-30:** `tools/validate-oq8-platform-evidence.py` is itself a sealed `gateInput` of the v2 successor evidence packet (`evidence/story-4-15-successors/v2/source-artifact-identity.json` and `review-subject.json` both pin its exact SHA-256, content-bound to three already-recorded reviewer approvals in `reviews/{architecture,security,test}.json`). Applying any of the four code-level patches below (F5–F8) and rebuilding confirmed this empirically: `dotnet ... -class Oq8PlatformClosureTests` went from a clean baseline to **31 failing tests**, all root-caused by the single changed gate-input hash cascading through the closure/lifecycle checks. Resealing correctly (recomputing the validator's hash, propagating it through `source-artifact-identity.json` → `review-subject.json` → `closure-sha256.txt`) would leave the three existing `reviews/*.json` receipts attesting to a subject that no longer matches — which needs fresh reviewer sign-off, not a mechanical hash update, per the frozen spec's "Never: ... fabricate ... reviewer approval." The 4 code patches were reverted (`git checkout -- tools/validate-oq8-platform-evidence.py`) pending the owner's direction; see thread for options.
+
+- [ ] [Review][Patch] "current HEAD Git tree" drift-detection claim in `validate_source_state` is asserted in JSON but never actually verified against real Git state — The evidence schema requires `current.source == "current HEAD Git tree"` and `current.headMustDescendFromLandedSource == True`, but the code only checks the JSON document literally contains those values; it never calls `git rev-parse HEAD` or diffs the real working tree, and hashes files via `git show LANDED_SOURCE:<path>` (a fixed historical commit) instead. The purpose-built helper `git_diff_is_clean` (lines 841-847) is defined but never called anywhere in the file. This fails the frozen spec's I/O matrix row "Later repository work → Verify the pinned OQ8 path set and current byte equivalence... Reject any changed or incomplete bound path." Concretely: editing or deleting any of the 22 non-evolved "current bound" capability paths at real HEAD after the landed commit still passes `python3 tools/validate-oq8-platform-evidence.py`. The existing test `NonDescendantCurrentHeadDoesNotReplaceHistoricalV1Snapshot` detaches `--git-root` HEAD to a non-descendant commit and asserts the validator still PASSES — demonstrating the gap rather than closing it. The v2 successor path has a parallel, opposite weakness: it explicitly reads live disk bytes (`capture_v2_snapshots`) rather than resolving through git at all, with no check that the working tree matches committed HEAD. **Resolution (2026-08-30):** owner elected to fix this in a future dedicated pass rather than patch it now — it touches `NonDescendantCurrentHeadDoesNotReplaceHistoricalV1Snapshot`'s expected behavior (Group B, not yet reviewed) and, like every code change to this file, requires resealing the v2 successor evidence packet with a fresh architecture/security/test review cycle (see blocker note above). Left as an action item. [tools/validate-oq8-platform-evidence.py:841-847,1893,1913,1946,2281-2286]
+- [x] [Review][Patch] Landed-source commit bound throughout the validator/evidence (`5e8f175b…`) did not match the spec's Acceptance Criteria commit (`e5fef514…`) — AC2 required the handoff to record completion "against `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec`," but `LANDED_SOURCE`, the evidence directory name, and every closure/handoff/identity check bind to `5e8f175b2ced4715f7c6f765386812cc1001dbb4` instead. Investigation traced two deliberate resealing commits: `f19f6d1e` (2026-08-11, documented: "reseal Story 4.15 after PublicationRecovery drift... retarget to 4b0a7b1d") and `e79f4672` (2026-08-27, titled "build(sweep): migrate legacy deferred-work entries to DW format" but its diff also retargeted `LANDED_SOURCE` to `5e8f175b` with no commit-message explanation). Diffing the 26 pinned capability paths between `4b0a7b1d` and `5e8f175b` shows exactly one legitimately changed (`DaprTestContainerFixture.cs`, Story 4.5 fixture hardening), and the validator's own `landed_overrides` dict already carries a self-documenting `reason` string for it — confirming `5e8f175b` is the correct, deliberately-chosen anchor, and AC2/the review-order links were simply never updated after the reseal. **Resolution (2026-08-30):** AC2 (line 62) and the four "Suggested Review Order" links (former lines 98,101,104,107) updated to `5e8f175b2ced4715f7c6f765386812cc1001dbb4`; see Spec Change Log. [tools/validate-oq8-platform-evidence.py:68; spec-4-15 AC2, review-order links]
+- [x] [Review][Patch] Spec Change Log has no entry for the actual 2026-08-27 receipt finalization date pinned in the validator — `CURRENT_REVIEW_DATE = "2026-08-27"` is asserted throughout, but the Spec Change Log's last entry is dated 2026-08-11. **Resolution (2026-08-30):** resolved as a side effect of the F2 fix above — the new Change Log entry for commit `e79f4672` records 2026-08-27 activity (the second reseal), closing the traceability gap. [tools/validate-oq8-platform-evidence.py:75; spec Change Log]
+- [ ] [Review][Patch] `run_subprocess_bounded` and `sha256_git_file` duplicate ~70 lines of selector-based bounded-subprocess-draining logic — any future timeout/drain/output-limit fix must be applied twice. [tools/validate-oq8-platform-evidence.py:761-828,861-925]
+- [ ] [Review][Patch] `validate_pyyaml_dependency`'s workflow-wiring check is an unscoped substring search over the whole YAML file — three bootstrap fragments must each appear *somewhere* in the file, not together/in-order/in the right step; matches this project's known "guards green by construction" failure pattern. [tools/validate-oq8-platform-evidence.py:2855-2865]
+- [ ] [Review][Patch] `scan_json_protected_content` recurses over arbitrary nested JSON with no depth bound — every other size-sensitive path added in this diff is explicitly bounded; this one can raise an undiagnostic `RecursionError` on hostile deeply-nested candidate JSON (the file's own tests already exercise hostile JSON fixtures). [tools/validate-oq8-platform-evidence.py:598-621]
+- [ ] [Review][Patch] `except Exception` catch-all in `main()` discards the original exception message and traceback — only `type(exception).__name__` is reported, with no verbose/debug option, making a genuine programming bug in this ~2000-line validator very hard to diagnose from CI output. [tools/validate-oq8-platform-evidence.py:3507-3510]
+- [ ] [Review][Patch] `retained_paths | REPLACED_PRIOR_BOUND_PATHS == capability_paths` is a roundabout way to assert a subset relationship — non-obviously just checking `REPLACED_PRIOR_BOUND_PATHS ⊆ capability_paths`. [tools/validate-oq8-platform-evidence.py:1939]
+- [x] [Review][Defer] TOCTOU gap between `require_no_symlink_components` and the later `stat()`/`open()` in `read_bounded_regular_snapshot` [tools/validate-oq8-platform-evidence.py:876-905] — deferred, low exploitability in this tool's single-writer CI trust boundary
+- [x] [Review][Defer] `REVIEW_ROSTER` names two reviewers as specific personas ("Winston", "Murat") but security is only a role label ("Security Reviewer") [tools/validate-oq8-platform-evidence.py:237-241] — deferred, cosmetic
 
 ## Spec Change Log
 
 - 2026-08-10: Implemented the checksummed source-only closure, exact landed-source proof, content-bound architecture/security/test approvals, fail-closed validator/tests, documentation reconciliation, and truthful lifecycle handoff.
 - 2026-08-10: Hardened review-found evidence-body bindings, exact invariant/path/object contracts, current HEAD/worktree/index proof, reviewed handoff and public-document semantics, unique lifecycle parsing, bounded failures, and adversarial fixture coverage; kept the story in review until fresh content-bound receipts could be recorded.
 - 2026-08-11: Recorded the fresh content-bound architecture, security, and test receipts, finalized and resealed the source-only handoff, and retained release and Folders-owned closure limitations.
+- 2026-08-11 (commit `f19f6d1e`): Resealed `LANDED_SOURCE` from `e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec` to `4b0a7b1d3628a857f131cfbff99030714aefc747` because commit `4b0a7b1d` (Story 4.4) intentionally modified a bound capability path, `PublicationRecoveryActivationTests.cs`. AC2's commit hash was not updated at the time.
+- 2026-08-27 (commit `e79f4672`): Resealed `LANDED_SOURCE` again to `5e8f175b2ced4715f7c6f765386812cc1001dbb4` because Story 4.5 fixture hardening intentionally modified `DaprTestContainerFixture.cs`, another bound capability path (see `landed_overrides` in the validator for the self-documented reason). This reseal's commit message did not mention the retarget.
+- 2026-08-30 (code review, Group A chunk): Corrected AC2 and the four "Suggested Review Order" evidence links, which still named `e5fef514`, to the actual bound commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4`, closing the traceability gap between the frozen-adjacent Acceptance Criteria and the twice-resealed implementation. No evidence artifacts were touched — this is a documentation-only correction confirming what the (already reviewed and checksummed) evidence packet already implements.
 
 ## Design Notes
 
@@ -95,16 +115,16 @@ The Story 4.14 directory is evidence input, not a mutable approval container. St
 **Frozen evidence and approvals**
 
 - Review the frozen subject that content-binds source, evidence, tests, and documentation.
-  [`review-subject.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/review-subject.json)
+  [`review-subject.json`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/review-subject.json)
 
 - Trace landed-tree identity and current unchanged-path verification.
-  [`source-artifact-identity.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-artifact-identity.json)
+  [`source-artifact-identity.json`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/source-artifact-identity.json)
 
 - Follow OQ8-1 through OQ8-8 into exact story evidence and counts.
-  [`closure-crosswalk.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/closure-crosswalk.json)
+  [`closure-crosswalk.json`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/closure-crosswalk.json)
 
 - Confirm consumer instructions retain Folders-owned final verification and decision authority.
-  [`source-only-handoff.json`](evidence/story-4-15/e5fef514e1fbbbc52c5b64dfe6e3de18410d49ec/source-only-handoff.json)
+  [`source-only-handoff.json`](evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/source-only-handoff.json)
 
 **Adversarial verification**
 

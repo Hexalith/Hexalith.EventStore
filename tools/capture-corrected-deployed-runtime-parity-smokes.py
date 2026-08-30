@@ -15,6 +15,7 @@ documented precondition rather than bound into the subject.
 import argparse
 import hashlib
 import json
+import stat
 import subprocess
 import sys
 import time
@@ -35,6 +36,9 @@ TIMEOUT_SECONDS = 180
 # called, leaking the container and its published host port while the record still claimed an
 # attempt had timed out. Cleanup gets its own small independent budget.
 CLEANUP_TIMEOUT_SECONDS = 30
+# Timestamp calls and the transitions into/out of monotonic budgets happen outside the two explicit
+# deadlines. Keep that legitimate overhead bounded and mirror the same allowance in the verifier.
+TIMESTAMP_TRANSITION_ALLOWANCE_SECONDS = 5
 RERUN_TRIGGER = (
     "Re-run the bounded two-platform Production smoke capture against the pinned index digest, "
     "then reassemble and revalidate the closure packet."
@@ -93,6 +97,31 @@ def parse_curl_write_out(value):
     return int(fields[0]), int(fields[1])
 
 
+def _validate_packet_output_directory(packet_root, output_root):
+    """Reject symlinked/special packet roots and smoke entries before any producer write."""
+    if packet_root.is_symlink() or (packet_root.exists() and not packet_root.is_dir()):
+        raise ValueError(f"{packet_root} is not a regular packet directory")
+    if output_root.is_symlink() or (output_root.exists() and not output_root.is_dir()):
+        raise ValueError(f"{output_root} is not a regular smoke output directory")
+    if output_root.exists():
+        for entry in output_root.iterdir():
+            mode = entry.lstat().st_mode
+            if entry.is_symlink() or not stat.S_ISREG(mode):
+                raise ValueError(f"{entry} is not a regular retained smoke file")
+
+
+def _write_output_bytes(output_root, path, content):
+    """Write one direct child without following a retained symlink or special file."""
+    root = output_root.resolve(strict=True)
+    if path.parent.resolve(strict=True) != root:
+        raise ValueError(f"smoke output path escapes the packet: {path}")
+    if path.is_symlink():
+        raise ValueError(f"smoke output path is a symbolic link: {path}")
+    if path.exists() and not stat.S_ISREG(path.lstat().st_mode):
+        raise ValueError(f"smoke output path is not a regular file: {path}")
+    path.write_bytes(content)
+
+
 def capture_platform(output_root, platform, child_digest):
     immutable_image = f"{IMAGE_REPOSITORY}@{child_digest}"
     container_name = f"hexalith-story315-{platform.split('/')[1]}-{uuid.uuid4().hex[:12]}"
@@ -107,6 +136,7 @@ def capture_platform(output_root, platform, child_digest):
     redirect_count = 0
     exit_code = 1
     cleanup = "failure"
+    container_created = False
     observed_platform = "unknown/unknown"
     try:
         run(deadline, "docker", "pull", "--platform", platform, immutable_image)
@@ -137,6 +167,7 @@ def capture_platform(output_root, platform, child_digest):
             "Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
             immutable_image,
         )
+        container_created = True
         port_output = run(deadline, "docker", "port", container_name, "8080/tcp").stdout.strip()
         if ":" not in port_output:
             raise RuntimeError(f"docker port produced no host mapping for {container_name}: {port_output!r}")
@@ -155,6 +186,8 @@ def capture_platform(output_root, platform, child_digest):
                 "/dev/null",
                 "--write-out",
                 "%{http_code} %{num_redirects}",
+                "--noproxy",
+                "*",
                 "--max-time",
                 format(min(5.0, curl_budget), ".6f"),
                 f"http://127.0.0.1:{port}/alive",
@@ -182,22 +215,27 @@ def capture_platform(output_root, platform, child_digest):
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, RuntimeError, OSError) as error:
         print(f"[corrected-deployed-runtime-parity-smokes] {platform} capture failed: {error}", file=sys.stderr)
     finally:
-        try:
-            cleanup_deadline = time.monotonic() + CLEANUP_TIMEOUT_SECONDS
-            run(
-                cleanup_deadline,
-                "docker",
-                "rm",
-                "--force",
-                container_name,
-                budget=CLEANUP_TIMEOUT_SECONDS,
-            )
+        if not container_created:
+            # A failed docker run did not create this capture's container. Treat cleanup as
+            # unnecessary and never force-remove a coincidentally same-named external container.
             cleanup = "pass"
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
-            print(
-                f"[corrected-deployed-runtime-parity-smokes] {platform} cleanup failed: {error}",
-                file=sys.stderr,
-            )
+        else:
+            try:
+                cleanup_deadline = time.monotonic() + CLEANUP_TIMEOUT_SECONDS
+                run(
+                    cleanup_deadline,
+                    "docker",
+                    "rm",
+                    "--force",
+                    container_name,
+                    budget=CLEANUP_TIMEOUT_SECONDS,
+                )
+                cleanup = "pass"
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
+                print(
+                    f"[corrected-deployed-runtime-parity-smokes] {platform} cleanup failed: {error}",
+                    file=sys.stderr,
+                )
     ended_at = now()
     outcome = "pass" if exit_code == 0 and cleanup == "pass" and observed_platform == platform else "failure"
     record = {
@@ -219,7 +257,7 @@ def capture_platform(output_root, platform, child_digest):
     }
     log_path = output_root / f"smoke-{platform.replace('/', '-')}.log"
     log_bytes = canonical_bytes(record)
-    log_path.write_bytes(log_bytes)
+    _write_output_bytes(output_root, log_path, log_bytes)
     summary = {key: value for key, value in record.items() if key not in ("health_path", "hosting_environment", "schema")}
     summary["log"] = {
         "file": f"smokes/{log_path.name}",
@@ -247,8 +285,9 @@ def main():
     # refusal exits 2, distinct from the exit 1 a genuine smoke failure produces, so a caller can
     # tell "I would have destroyed evidence" from "the runtime did not answer".
     try:
+        _validate_packet_output_directory(arguments.packet_root, output_root)
         populated = output_root.is_dir() and any(output_root.iterdir())
-    except OSError as error:
+    except (OSError, ValueError) as error:
         print(
             "[corrected-deployed-runtime-parity-smokes] fail: "
             f"{output_root} could not be inspected: {error}; rerun: {REFUSAL_RERUN_TRIGGER}",
@@ -265,7 +304,8 @@ def main():
         return 2
     try:
         output_root.mkdir(parents=True, exist_ok=True)
-    except (OSError, FileExistsError) as error:
+        _validate_packet_output_directory(arguments.packet_root, output_root)
+    except (OSError, FileExistsError, ValueError) as error:
         print(
             "[corrected-deployed-runtime-parity-smokes] fail: "
             f"{output_root} is not a usable output directory: {error}; "
@@ -273,24 +313,37 @@ def main():
             file=sys.stderr,
         )
         return 2
-    started_at = now()
-    platforms = [capture_platform(output_root, platform, digest) for platform, digest in PLATFORMS]
-    ended_at = now()
-    result = {
-        "ended_at": ended_at,
-        "endpoint": "/alive",
-        "environment": "Production",
-        "exit_code": 0 if all(item["outcome"] == "pass" for item in platforms) else 1,
-        "image_repository": IMAGE_REPOSITORY,
-        "index_digest": INDEX_DIGEST,
-        "platforms": platforms,
-        "repository": REPOSITORY,
-        "result": "pass" if all(item["outcome"] == "pass" for item in platforms) else "failure",
-        "schema": "hexalith.eventstore.production-smoke-results.v1",
-        "started_at": started_at,
-        "timeout_seconds": TIMEOUT_SECONDS,
-    }
-    (output_root / "smoke-results.json").write_bytes(canonical_bytes(result))
+    try:
+        started_at = now()
+        platforms = [capture_platform(output_root, platform, digest) for platform, digest in PLATFORMS]
+        ended_at = now()
+        result = {
+            "ended_at": ended_at,
+            "endpoint": "/alive",
+            "environment": "Production",
+            "exit_code": 0 if all(item["outcome"] == "pass" for item in platforms) else 1,
+            "image_repository": IMAGE_REPOSITORY,
+            "index_digest": INDEX_DIGEST,
+            "platforms": platforms,
+            "repository": REPOSITORY,
+            "result": "pass" if all(item["outcome"] == "pass" for item in platforms) else "failure",
+            "schema": "hexalith.eventstore.production-smoke-results.v1",
+            "started_at": started_at,
+            "timeout_seconds": TIMEOUT_SECONDS,
+        }
+        _write_output_bytes(
+            output_root,
+            output_root / "smoke-results.json",
+            canonical_bytes(result),
+        )
+    except (OSError, ValueError) as error:
+        print(
+            "[corrected-deployed-runtime-parity-smokes] fail: "
+            f"retained smoke evidence could not be written safely: {error}; "
+            f"rerun: {RERUN_TRIGGER}",
+            file=sys.stderr,
+        )
+        return 1
     if result["exit_code"] != 0:
         print(
             "[corrected-deployed-runtime-parity-smokes] fail: "

@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-08-25
+# last_updated: 2026-08-30
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '08-25-2026 18:30'
+last_updated: '08-30-2026 11:05'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -234,8 +234,8 @@ development_status:
   # guard bypass in both dispatchers -- each reproduced with a live control.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
-  # 663747b158387d00b55058b0a259a20655d509a32f60c298c02e2645b3aa4f31; binding both packet
-  # subject has now been re-minted six times across seven subjects; receipts existed for only three
+  # 86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274; the packet
+  # subject has now been re-minted seven times across eight subjects; receipts existed for only three
   # of them, and all three sets are retained byte-for-byte under
   # evidence/story-3-15/superseded-acceptances/.
   # closure.json's deployed_runtime_parity/selected_deployed_identity are the claim the three roles
@@ -243,7 +243,7 @@ development_status:
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
   # The row stays in-progress until three receipts bind the current subject.
-  3-15-corrected-deployed-runtime-parity-closure: review
+  3-15-corrected-deployed-runtime-parity-closure: in-progress
   epic-3-retrospective: optional
 
   epic-4: in-progress
@@ -263,7 +263,7 @@ development_status:
   4-12-expiry-compaction-and-tombstone-retention: done
   4-13-legacy-admission-migration-and-fail-closed-reconciliation: done
   4-14-oq8-multi-host-production-evidence: done
-  4-15-oq8-platform-closure-and-handoff: review
+  4-15-oq8-platform-closure-and-handoff: in-progress
   epic-4-retrospective: optional
 
   epic-5: backlog

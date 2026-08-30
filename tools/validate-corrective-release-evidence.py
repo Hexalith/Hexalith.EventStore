@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """Validate retained Story 3.14 evidence and print its canonical identity digest."""
 
+# Enter the same isolated, no-site interpreter boundary as the Story 3.15 verifier before any
+# shadowable dependency is imported. The first process is only a built-in-module bootstrap and
+# never evaluates evidence or emits a verdict.
+import sys
+
+if __name__ == "__main__" and (not sys.flags.isolated or not sys.flags.no_site):
+    _platform = sys.modules["nt" if sys.platform == "win32" else "posix"]
+    _platform.execv(
+        sys.executable,
+        [sys.executable, "-I", "-S", "-B", __file__, *sys.argv[1:]],
+    )
+
 import argparse
 import hashlib
 import importlib.machinery
 import json
 import os
-import sys
 import types
 from pathlib import Path
 

@@ -1837,3 +1837,17 @@ are left standing and cross-referenced rather than deleted.
   summary: The closed GitHub envelope schema has no recorded capture provenance and no tolerance path, so a future GitHub API field addition would block owner receipt re-collection with no documented remedy.
   evidence: `GITHUB_COMMENT_FIELDS`, `GITHUB_USER_FIELDS` and `GITHUB_REACTION_FIELDS` (`tools/deployed_runtime_parity_handlers/v1.py:143`) are exact key sets transcribed from the retained 2026-08 captures; `_exact_object` rejects any envelope carrying an unlisted key. The tuples already include fields GitHub added relatively recently (`user_view_type`, `minimized`, `pin`), which shows the payload shape does drift. Nothing records the capture command, the capture date, or the `X-GitHub-Api-Version` the tuples correspond to, and there is no remedy documented anywhere. Consequence for the one action gating this story: if GitHub adds a field before the three `#352` receipts are collected, every freshly captured source fails with `GitHub acceptance source schema is invalid`, and the operator's only path is to edit a subject-bound handler -- which re-mints and burns any receipt already collected in the same pass. Record the capture command and pin `X-GitHub-Api-Version` in the capture procedure, or split the tuples into required-plus-ignored sets.
   status: open — accepted for this packet; close before or during the next receipt collection.
+
+## Deferred from: code review of story-4-15-oq8-platform-closure-and-handoff (2026-08-30)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  severity: low
+  summary: TOCTOU gap between `require_no_symlink_components` and the later `stat()`/`open()` in `read_bounded_regular_snapshot`.
+  evidence: `require_no_symlink_components` checks each path component for `is_symlink()`, then `read_bounded_regular_snapshot` independently calls `path.stat()`/`path.open()` afterward — a component could be swapped to a symlink in between. `tools/validate-oq8-platform-evidence.py:876-905`.
+  status: open — deferred, low exploitability given this tool's single-writer CI trust boundary (it validates the project's own checked-out repo content, not attacker-controlled concurrent writers). Revisit by opening with `O_NOFOLLOW` or re-checking `st_mode` via `os.fstat` after opening.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  severity: low
+  summary: `REVIEW_ROSTER` names two reviewers as specific accountable personas but the security role is only a generic role label.
+  evidence: `REVIEW_ROSTER = {"architecture": "Winston (System Architect)", "security": "Security Reviewer", "test": "Murat (Test Architect)"}` — `tools/validate-oq8-platform-evidence.py:237-241`. The asymmetry recurs through both the v1 and v2 review schemas.
+  status: open — deferred, cosmetic; doesn't affect the evidentiary integrity of the check itself.

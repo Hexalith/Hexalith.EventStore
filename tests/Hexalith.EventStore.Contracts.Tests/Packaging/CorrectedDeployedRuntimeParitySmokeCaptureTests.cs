@@ -89,6 +89,7 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
                 double budget = double.Parse(maxTime.Groups[1].Value, CultureInfo.InvariantCulture);
                 budget.ShouldBeGreaterThan(0.0);
                 budget.ShouldBeLessThanOrEqualTo(5.0);
+                line.ShouldContain("--noproxy *");
                 line.ShouldContain("http://127.0.0.1:45678/alive");
                 line.ShouldNotContain("--location");
             }
@@ -290,6 +291,119 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     }
 
     /// <summary>
+    /// Verifies cleanup owns only containers successfully created by this capture. A failed
+    /// <c>docker run</c> may leave an unrelated same-named container in Docker's namespace; the
+    /// producer must not force-remove it merely because it chose that name.
+    /// </summary>
+    [Fact]
+    public void FailedDockerRunNeverRemovesAContainerTheCaptureDidNotCreate()
+    {
+        RequireUnixHost();
+        string root = FindRepositoryRoot();
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-run-failure-").FullName;
+        try
+        {
+            string fakeBin = Path.Combine(temporary, "bin");
+            Directory.CreateDirectory(fakeBin);
+            string dockerLog = Path.Combine(temporary, "docker-argv.log");
+            string curlLog = Path.Combine(temporary, "curl-argv.log");
+            WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("run-failure"));
+            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("200 0"));
+
+            ProcessResult result = RunCapture(root, temporary, fakeBin, dockerLog, curlLog);
+
+            result.ExitCode.ShouldBe(1, result.Error);
+            result.Error.ShouldNotContain("Traceback");
+            File.ReadAllLines(dockerLog)
+                .ShouldNotContain(line => line.StartsWith("rm --force ", StringComparison.Ordinal));
+            LoadSummary(temporary)["platforms"]!.AsArray().ShouldAllBe(item =>
+                item!["cleanup"]!.GetValue<string>() == "pass"
+                && item["outcome"]!.GetValue<string>() == "failure");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies log and aggregate-summary write failures use the documented support-safe failure
+    /// and rerun guidance instead of escaping as a traceback after runtime capture has completed.
+    /// </summary>
+    /// <param name="mode">Write failure injected by the Docker fake.</param>
+    [Theory]
+    [InlineData("log-write-failure")]
+    [InlineData("summary-write-failure")]
+    public void EvidenceWriteFailuresRemainSupportSafe(string mode)
+    {
+        RequireUnixHost();
+        string root = FindRepositoryRoot();
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-write-").FullName;
+        try
+        {
+            string fakeBin = Path.Combine(temporary, "bin");
+            Directory.CreateDirectory(fakeBin);
+            string dockerLog = Path.Combine(temporary, "docker-argv.log");
+            string curlLog = Path.Combine(temporary, "curl-argv.log");
+            WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake(mode));
+            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("200 0"));
+
+            ProcessResult result = RunCapture(root, temporary, fakeBin, dockerLog, curlLog);
+
+            result.ExitCode.ShouldBe(1, result.Error);
+            result.Error.ShouldContain("retained smoke evidence could not be written safely");
+            result.Error.ShouldContain("rerun: ");
+            result.Error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a symlinked smoke output directory is rejected even with <c>--force</c>, so producer
+    /// writes cannot escape the packet root through an operator-controlled link.
+    /// </summary>
+    [Fact]
+    public void SymlinkedSmokeOutputDirectoryFailsBeforeAnyExternalCommand()
+    {
+        RequireUnixHost();
+        string root = FindRepositoryRoot();
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-link-").FullName;
+        string outside = Directory.CreateTempSubdirectory("eventstore-story315-smoke-outside-").FullName;
+        try
+        {
+            string fakeBin = Path.Combine(temporary, "bin");
+            Directory.CreateDirectory(fakeBin);
+            string dockerLog = Path.Combine(temporary, "docker-argv.log");
+            string curlLog = Path.Combine(temporary, "curl-argv.log");
+            WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("success"));
+            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("200 0"));
+            Directory.CreateSymbolicLink(Path.Combine(temporary, "smokes"), outside);
+
+            ProcessResult result = RunCapture(
+                root,
+                temporary,
+                fakeBin,
+                dockerLog,
+                curlLog,
+                force: true);
+
+            result.ExitCode.ShouldBe(2, result.Error);
+            result.Error.ShouldContain("not a regular smoke output directory");
+            result.Error.ShouldNotContain("Traceback");
+            File.Exists(dockerLog).ShouldBeFalse();
+            Directory.EnumerateFileSystemEntries(outside).ShouldBeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies the capture refuses to overwrite an already populated packet <c>smokes/</c>
     /// directory unless the operator opts in. Running it against a live packet root previously
     /// replaced the three hash-bound smoke files with failure records, recoverable only through git.
@@ -402,6 +516,10 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             : fakeBin + Path.PathSeparator + (Environment.GetEnvironmentVariable("PATH") ?? string.Empty);
         startInfo.Environment["FAKE_DOCKER_LOG"] = dockerLog;
         startInfo.Environment["FAKE_CURL_LOG"] = curlLog;
+        startInfo.Environment["FAKE_BLOCKED_LOG"] = Path.Combine(
+            packetRoot, "smokes", "smoke-linux-amd64.log");
+        startInfo.Environment["FAKE_BLOCKED_SUMMARY"] = Path.Combine(
+            packetRoot, "smokes", "smoke-results.json");
 
         using Process process = Process.Start(startInfo).ShouldNotBeNull();
         Task<string> output = process.StandardOutput.ReadToEndAsync();
@@ -423,6 +541,7 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         #!/bin/sh
         printf '%s\n' "$*" >> "$FAKE_DOCKER_LOG"
         if [ "{{mode}}" = "pull-failure" ] && [ "$1" = "pull" ]; then exit 42; fi
+        if [ "{{mode}}" = "run-failure" ] && [ "$1" = "run" ]; then exit 44; fi
         if [ "$1" = "port" ]; then printf '%s\n' '127.0.0.1:45678'; exit 0; fi
         if [ "$1" = "inspect" ]; then
           case "$*" in *amd64*) printf '%s\n' 'sha256:amd64' ;; *) printf '%s\n' 'sha256:arm64' ;; esac
@@ -430,6 +549,10 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         fi
         if [ "$1" = "image" ]; then
           case "$*" in *amd64*) printf '%s\n' 'linux/amd64' ;; *) printf '%s\n' 'linux/arm64' ;; esac
+          if [ "{{mode}}" = "log-write-failure" ]; then mkdir -p "$FAKE_BLOCKED_LOG"; fi
+          if [ "{{mode}}" = "summary-write-failure" ]; then
+            case "$*" in *arm64*) mkdir -p "$FAKE_BLOCKED_SUMMARY" ;; esac
+          fi
           if [ "{{mode}}" = "cleanup-oserror" ]; then /bin/rm "$0"; fi
           exit 0
         fi
