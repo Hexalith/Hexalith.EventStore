@@ -1,0 +1,9 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-limitations/v2",
+  "limitations": [
+    "Story 4.15 v1 remains immutable historical evidence and does not authorize workflow, fixture, validator, test, or documentation bytes changed after completed-v1 closure snapshot 17e47a390fdfecafba84dce14779ad13b97be339.",
+    "The reviewed PostgreSQL identity is the multi-platform index postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636; the amd64 child manifest and historical Docker image/config identity are not registry pins.",
+    "The successor validates repository source identity only and does not grant runtime deployment or consumer acceptance of any external system.",
+    "The v2 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority."
+  ]
+}

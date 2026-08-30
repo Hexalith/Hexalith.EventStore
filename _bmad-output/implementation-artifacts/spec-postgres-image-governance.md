@@ -2,7 +2,8 @@
 title: 'Govern PostgreSQL image identity'
 type: 'bugfix'
 created: '2026-08-27'
-status: ready-for-dev
+status: done
+baseline_commit: '10051a68eb1db322a4f7fa91934d880ce1409687'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -92,11 +93,11 @@ V1 validation is historical: validate immutable v1 packet, subject, receipts, ha
 ## Tasks & Acceptance
 
 **Execution:**
-- `.github/workflows/integration.yml` and `Oq8PostgresqlFixture.cs` -- replace the mutable tag with the reviewed multi-platform index reference after the OQ8 successor/reseal decision is supplied.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs` -- add positive agreement/digest-shape coverage and negative tag-only, mismatch, missing, and duplicate-pull cases.
-- `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2/**` -- add the exact immutable v2 successor described above without modifying any v1 artifact; assemble it in the frozen subject → receipts → handoff → manifest order.
-- `tools/validate-oq8-platform-evidence.py` and `Oq8PlatformClosureTests.cs` -- replace v1's current-HEAD authority with the fail-closed v2 successor gate while retaining explicit historical v1 integrity validation and negative proof that v1 alone cannot authorize the changed source.
-- `docs/ci.md` -- document registry index inspection, upstream/version/platform review, coordinated literal rotation, and required validation.
+- [x] `.github/workflows/integration.yml` and `Oq8PostgresqlFixture.cs` -- replace the mutable tag with the reviewed multi-platform index reference after the OQ8 successor/reseal decision is supplied.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs` -- add positive agreement/digest-shape coverage and negative tag-only, mismatch, missing, and duplicate-pull cases.
+- [x] `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2/**` -- add the exact immutable v2 successor described above without modifying any v1 artifact; assemble it in the frozen subject → receipts → handoff → manifest order.
+- [x] `tools/validate-oq8-platform-evidence.py` and `Oq8PlatformClosureTests.cs` -- replace v1's current-HEAD authority with the fail-closed v2 successor gate while retaining explicit historical v1 integrity validation and negative proof that v1 alone cannot authorize the changed source.
+- [x] `docs/ci.md` -- document registry index inspection, upstream/version/platform review, coordinated literal rotation, and required validation.
 
 **Acceptance Criteria:**
 - Given the integration workflow and fixture source, when deterministic governance tests run, then they prove the named pull step and `PostgresImage` contain one identical `postgres@sha256:<64 lowercase hex>` reference.
@@ -110,8 +111,18 @@ V1 validation is historical: validate immutable v1 packet, subject, receipts, ha
 
 - 2026-08-28: Owner selected the versioned Story 4.15 successor resolution: preserve v1 byte-for-byte, bind the digest-pinned workflow/fixture and successor gate in v2, require fresh architecture/security/test receipts, and make v2 the only active current-source authority.
 - 2026-08-28: Owner refined the selected resolution to an exact phase-separated `v2/` contract: freeze receipt-independent candidate inputs and subject first, issue subject-bound receipts second, bind them in the handoff third, and close the fixed artifact set with a manifest last; validate v1 against its landed historical snapshot and v2 against current bytes.
+- 2026-08-30: Review hardening bound semantic PostgreSQL declarations, non-symlink ancestors, bounded single-read snapshots, canonical typed verification evidence, strict UTC phase ordering, the fresh digest observation path, the fourth rotation literal, and exact final test-receipt results; v2 was resealed in the approved phase order.
 
 ## Review Triage Log
+
+- [x] Required v2 to extract exactly one PostgreSQL declaration from each current workflow/fixture snapshot and reject a coherently resealed tag-only semantic source.
+- [x] Rejected symlinked v2, source-transition, and gate-input ancestors/components, including ancestor escape mutations.
+- [x] Added 64 KiB artifact and 512 KiB bound-source limits before reads, plus one cached snapshot for hashing and semantics with a deterministic post-snapshot drift probe.
+- [x] Fixed the pre-review command set and exact JSON integer/boolean types; added the receipt-independent live-sidecar result and kept the final closure command in the later test receipt.
+- [x] Rejected future timestamps and enforced pre-review execution before freeze, receipts after freeze, and handoff after every receipt with boundary/order/future mutations.
+- [x] Made fresh observation validation pass the reviewed digest explicitly and proved a runtime-only `postgres:18.4` drift is rejected while historical observations retain their explicit tag expectation.
+- [x] Added `PostgreSqlImageGovernanceTests.ReviewedPostgresImage` to the coordinated rotation literals in `docs/ci.md`.
+- [x] Bound and validated exact governance 18/18, closure 368/368, and live-sidecar 115/115 command results in the test receipt, including fail-closed name/command/count/failure/skip/type mutations.
 
 ## Design Notes
 
@@ -127,3 +138,46 @@ The registry inspection performed on 2026-08-27 returned index digest `sha256:a0
 - `python3 tools/validate-oq8-platform-evidence.py` -- expected: immutable v1 historical integrity and complete v2 current-source closure both pass; v1 alone cannot authorize the changed source.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor` -- expected: v1 preservation, v2 successor, missing/drifted receipt, predecessor mismatch, source drift, and authority-boundary cases all pass.
 - `dotnet test tests/Hexalith.EventStore.Server.LiveSidecar.Tests/ --configuration Release -p:UseHexalithProjectReferences=false` -- expected: the complete live-sidecar suite passes with the digest-pinned image already pulled.
+
+**Recorded results (2026-08-30):**
+- Upstream inspection returned OCI index `sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636`, including amd64 child `sha256:4cc13dede823cab4e05290c7fb3350fb4e599ecabd9b07e6706b5d5e8f5bc929` and the reviewed platform set.
+- Release Contracts build passed with 0 warnings and 0 errors; `actionlint` and Python syntax validation reported no findings.
+- PostgreSQL governance passed 18/18; final OQ8 closure passed 368/368 with 0 failures and 0 skips; live-sidecar passed 115/115 with 0 failures and 0 skips.
+- Full v1+v2 validation and explicit historical-v1-only validation passed; v1 remained non-authorizing for current source.
+
+## Suggested Review Order
+
+**Current-source closure**
+
+- Start with the fail-closed v2 authority, snapshot, chronology, and receipt validator.
+  [`validate-oq8-platform-evidence.py:2610`](../../tools/validate-oq8-platform-evidence.py#L2610)
+
+- Review the frozen subject that binds predecessor, sources, gates, and limitations.
+  [`review-subject.json:1`](evidence/story-4-15-successors/v2/review-subject.json#L1)
+
+- Confirm exact governance, closure, and live-sidecar results are content-bound.
+  [`test.json:14`](evidence/story-4-15-successors/v2/reviews/test.json#L14)
+
+**Runtime image authority**
+
+- Verify CI pulls the reviewed multi-platform index before live-sidecar execution.
+  [`integration.yml:74`](../../.github/workflows/integration.yml#L74)
+
+- Verify the runtime fixture uses the identical immutable image reference.
+  [`Oq8PostgresqlFixture.cs:29`](../../tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs#L29)
+
+**Fail-closed verification**
+
+- Check deterministic image agreement, shape, drift, and ambiguity guards.
+  [`PostgreSqlImageGovernanceTests.cs:43`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs#L43)
+
+- Inspect successor mutation coverage across identity, evidence, paths, and chronology.
+  [`Oq8PlatformClosureTests.cs:146`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs#L146)
+
+**Operations and portability**
+
+- Follow the coordinated four-literal digest rotation and validation procedure.
+  [`ci.md:79`](../../docs/ci.md#L79)
+
+- Preserve LF bytes for every hash-bound v2 successor artifact.
+  [`.gitattributes:34`](../../.gitattributes#L34)

@@ -76,6 +76,39 @@ deterministic. Live-sidecar coverage belongs in the live-sidecar project and
 workflow so the deterministic release gate can remain unfiltered. Do not run
 `dotnet test tests/Hexalith.EventStore.Server.Tests/` as the live lane.
 
+### PostgreSQL image rotation
+
+The live-sidecar workflow and `Oq8PostgresqlFixture` use the same reviewed
+multi-platform PostgreSQL index:
+`postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636`.
+The immutable index digest is the registry pin; a platform child manifest or
+the Docker image/config ID captured in historical OQ8 evidence is not a valid
+replacement.
+
+Rotate this identity only as one reviewed change:
+
+1. Inspect the upstream tag with
+   `docker buildx imagetools inspect postgres:<version> --format '{{json .Manifest}}'`.
+2. Confirm the returned object is the intended multi-platform index, review its
+   version and complete platform set, and record the index digest rather than an
+   `amd64` or `arm64` child digest.
+3. Replace the literal together in `.github/workflows/integration.yml`,
+   `Oq8PostgresqlFixture.PostgresImage`, and
+   `tools/validate-oq8-platform-evidence.py`, and
+   `PostgreSqlImageGovernanceTests.ReviewedPostgresImage`; then issue the
+   required additive, content-bound Story 4.15 successor evidence without
+   rewriting historical v1 bytes.
+4. Build the Contracts test project, run `PostgreSqlImageGovernanceTests`, run
+   `actionlint .github/workflows/integration.yml`, and run
+   `python3 tools/validate-oq8-platform-evidence.py`.
+5. Pull the digest-pinned index and run the complete live-sidecar project. The
+   fixture must retain its fail-closed `docker image inspect` prerequisite and
+   bounded readiness checks.
+
+Tag-only, malformed, architecture-specific, mismatched, missing, or duplicated
+image declarations fail governance and must not be hidden behind generated
+source, MSBuild properties, `PATH`, or local Docker tags.
+
 Story 4.5's append-durability race and generic ETag control remain in this
 dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence
 artifact, not a reason to add the project to `unit-test-projects` or the release
