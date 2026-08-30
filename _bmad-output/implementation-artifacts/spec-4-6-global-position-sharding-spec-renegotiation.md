@@ -3,8 +3,8 @@ title: 'Story 4.6: Global Position Sharding Spec Renegotiation'
 type: 'feature'
 created: '2026-08-30'
 status: 'awaiting-operator'
-review_loop_iteration: 4
-followup_review_recommended: false
+review_loop_iteration: 5
+followup_review_recommended: true
 baseline_commit: '1194dfe59bcbc9b235390d1e46a7dfe4ee115d94'
 baseline_revision: '1194dfe59bcbc9b235390d1e46a7dfe4ee115d94'
 predecessor_path: '_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md'
@@ -13,9 +13,9 @@ predecessor_sha256: '4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9e
 predecessor_frozen_inner_sha256: '90be324c35d1545fd7c4dd53393ef27b08d2e6a3891d1bc9c6f38c9145740c10'
 predecessor_frozen_element_sha256: 'c827761ba1f58aa6fde85ca8acedfdfdcc5097cbcbd470d2887a1e4d073d5d2c'
 successor_path: '_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md'
-successor_blob: '9157aa84c8f31d3292058e69234ea7bb2d9f53cb'
-successor_sha256: '33712b23cc7fadeacd9253ccfa13ff2c6ba0cd99708729c11775b521d26a3c2c'
-normative_sha256: 'd49c34c8e58df1b3b7a1ffa1ac0de8dedf5ba2a8bd35ad291fc3b87a59d97604'
+successor_blob: '160331d25451928ff3c3dea2300b65cab4f97c3b'
+successor_sha256: 'bbec7a16661995849891fae2617cf74c281d3da155086d0e22a39d5a2488f59a'
+normative_sha256: '995fcecd16b3421ec9ff666d0884bfb5e436932aa49529c152fb7c439172a1fd'
 superseded_normative_sha256: '2310f121dc48f59713a9c6bbc6ffe2e63be374d4d8ecc6e8d710a0d9cf3674de'
 approval_state: 'absent'
 implementation_authorized: false
@@ -23,7 +23,21 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-4-context.md'
 warnings:
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      Repair the concurrent deferred-work ledger migration and its governance
+      parser as one separately owned ledger-governance change.
+    evidence: >-
+      Review pass 5 reproduced 455 structured records that the bullet-only
+      checker reports as an all-zero success, conflicting ledger and
+      decision-journal identifiers, reopened accepted/resolved/closed work,
+      lost structured provenance and severity, missing owner/review/grouping
+      fields, malformed locations, and machine-local paths. These defects
+      belong to the concurrent deferred-work migration and must not be edited
+      or hidden by Story 4.6.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md
+    severity: high
 operator_actions:
   - 'Approve the exact committed successor as every architecture_owner resolved from the candidate commit immutable allowlist, binding each approval to the candidate commit, successor blob, normative SHA-256, and reviewed content.'
   - 'Commission and preserve every production-provider and topology evidence category required by successor section 7 against the approved successor identity.'
@@ -64,9 +78,9 @@ operator_actions:
 | Frozen v1 file SHA-256 | `4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9ef1893` |
 | Frozen v1 inner SHA-256 | `90be324c35d1545fd7c4dd53393ef27b08d2e6a3891d1bc9c6f38c9145740c10` |
 | Frozen v1 element SHA-256 | `c827761ba1f58aa6fde85ca8acedfdfdcc5097cbcbd470d2887a1e4d073d5d2c` |
-| Successor Git blob | `9157aa84c8f31d3292058e69234ea7bb2d9f53cb` |
-| Successor file SHA-256 | `33712b23cc7fadeacd9253ccfa13ff2c6ba0cd99708729c11775b521d26a3c2c` |
-| Successor normative SHA-256 | `d49c34c8e58df1b3b7a1ffa1ac0de8dedf5ba2a8bd35ad291fc3b87a59d97604` |
+| Successor Git blob | `160331d25451928ff3c3dea2300b65cab4f97c3b` |
+| Successor file SHA-256 | `bbec7a16661995849891fae2617cf74c281d3da155086d0e22a39d5a2488f59a` |
+| Successor normative SHA-256 | `995fcecd16b3421ec9ff666d0884bfb5e436932aa49529c152fb7c439172a1fd` |
 | Explicitly superseded historical digest | `2310f121dc48f59713a9c6bbc6ffe2e63be374d4d8ecc6e8d710a0d9cf3674de` (non-authoritative) |
 | Required committed scope | `A` this wrapper; `M` the successor; no other path |
 
@@ -79,8 +93,8 @@ unauthorized.
 
 ## Code Map
 
-- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md:28-415` -- writable normative successor; retain the simplified semantic direction, correct its content/scope and approval mechanics, then hash the final normative range.
-- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md:418-435` -- writable detached identity/status area; publish the final digest and explicit supersession without placing approval evidence inside approved bytes.
+- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md:28-516` -- writable normative successor; retain the simplified semantic direction, correct its content/scope and approval mechanics, then hash the final normative range.
+- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md:519-533` -- writable detached identity/status area; publish the final digest and explicit supersession without placing approval evidence inside approved bytes.
 - `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md:11-36,67-71` -- immutable v1 authority; verify complete and frozen byte identities without editing it.
 - `_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json` -- read-only immutable role source; `architecture_owner` currently resolves to `jpiquot`, but approval must use membership at the candidate commit.
 - `src/Hexalith.EventStore.Server/Events/DaprGlobalPositionAllocator.cs:8-20`, `Actors/GlobalPositionActor.cs:15-45`, and `Events/EventPersister.cs:51-142` -- read-only v1 single-actor, scalar counter, reservation-before-commit behavior; explains gaps and the absence of strict commit order.
@@ -94,8 +108,8 @@ unauthorized.
 
 **Execution:**
 
-- [x] `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md` -- preserve section 1's predecessor provenance baseline `5ddda34f2ff0ffb0f72a60c44b265f2e4838a332`; correct section 10 to the pre-work baseline and exact `A wrapper`/`M successor` commit scope; explicitly supersede the historical candidate; require a non-empty unique authenticated candidate-commit owner set; classify negative v1 scalars and unknown outer metadata versions; bind strategy comparisons to equivalent artifacts/configuration/resource budgets; authorize only an isolated non-production evidence candidate before implementation approval; bind every evidence row to the tested artifact/provider/configuration/topology and invalidate it on drift; retain the exact capacity validity profile and expiry rules; then replace both placeholder digest values with the SHA-256 of the final normative byte range.
-- [x] `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md` -- preserve this intent contract, record matching final identities and verification evidence, validate staged Git blobs with optimized execution rejected, canonical frontmatter openers, duplicate-key rejection, exact canonical 19 ID/range/digest tuples, provenance-baseline and normative predecessor-table reproduction, complete frontmatter cross-binding, candidate-tree allowlist loading, and normative-range-only semantic checks; require both index and worktree equality with the committed story paths, prove the eventual commit has exactly two paths, complete review records, and finalize frontmatter as `awaiting-operator` with the non-empty operator action list.
+- [x] `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md` -- preserve section 1's predecessor provenance baseline `5ddda34f2ff0ffb0f72a60c44b265f2e4838a332`; correct section 10 to the pre-work baseline and exact `A wrapper`/`M successor` commit scope; explicitly supersede the historical candidate; require a non-empty unique authenticated candidate-commit owner set; distinguish malformed recognized data from losslessly preserved unsupported identities; make invalid, unsupported, and unknown precedence explicit; bind equivalent strategy artifacts/configuration/resource budgets; require unanimous expiring evidence-only authority and teardown; require an exact unanimously approved Story 4.5 seam review for no-change applicability; fail closed when admitting a new post-cutover shard; require canonical second-precision UTC expiry; then replace both placeholder digest values with the SHA-256 of the final normative byte range.
+- [x] `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md` -- preserve this intent contract, record matching final identities and verification evidence, validate staged Git blobs with optimized execution rejected, canonical frontmatter openers, duplicate-key rejection, complete-line unique normative markers, exactly five predecessor identity rows, worktree-to-index predecessor equality, exact canonical 19 ID/range/digest tuples, provenance-baseline and normative predecessor-table reproduction, complete frontmatter cross-binding, candidate-tree allowlist loading, and normative-range-only semantic checks; require both index and worktree equality with committed story paths, prove the eventual commit has exactly two paths, complete review records, correct code-map ranges, and finalize frontmatter as `awaiting-operator` with the non-empty operator action list.
 
 **Acceptance Criteria:**
 
@@ -112,6 +126,8 @@ unauthorized.
 - **Review loop 2 (2026-08-30, `bad_spec`):** Review proved that the first executable verifier read mutable working-tree bytes instead of staged blobs, allowed duplicate YAML keys and under-specified clause rows, and that path-restricted diff checks could not prove the complete commit. It also exposed a vacuous empty owner-set approval and capacity evidence with no drift invalidation. The plan now verifies staged blobs, rejects duplicate keys, requires the exact 19 IDs and unique ranges with retained/amended/superseded vocabulary, asserts a non-empty unique authenticated candidate-commit owner set, binds capacity evidence to trace/provider/topology/limits/validity identity with mandatory revalidation, and requires exact whole-commit scope plus post-commit byte equality and revalidation. This avoids approving or committing bytes different from those reviewed, silently accepting malformed clause/frontmatter state, vacuous approval, and stale capacity evidence. **KEEP:** every loop-1 KEEP item; section 1's predecessor provenance baseline; the re-derived candidate-bound owner semantics; the semantic contract in sections 2-9 except the narrowly added evidence-validity rule; and the explicit preservation/exclusion of unrelated staged work.
 - **Review loop 3 (2026-08-30, `bad_spec`):** Review showed that Python optimization could disable every assertion while retaining green output, several wrapper identities were declared but not cross-checked, clause rows were not pinned to the canonical ID/range/digest mapping, and semantic checks searched detached prose as well as normative bytes. It also exposed unspecified negative-v1 handling and capacity evidence that did not bind its measurement method, implementation artifact, validity authority, or exact expiry boundary. The plan now rejects optimized execution, reproduces the predecessor from its provenance commit, pins every canonical clause tuple, cross-checks every staged identity and authorization field, searches normative bytes only, classifies negative v1 positions, and binds capacity evidence to measurement, implementation, validity-profile, and exclusive-expiry identity with drift revalidation. This avoids vacuous verification, mutable self-declared predecessor mappings, detached-prose substitutions, comparison divergence, and stale or indefinitely valid capacity evidence. **KEEP:** every loop-1 and loop-2 KEEP item; the third derivation's exact two-path candidate scope, candidate-commit owner semantics, explicit historical supersession, detached operator handoff, and final identity approach; all existing sections 2-9 semantics except the narrow negative-position and evidence-validity clarifications.
 - **Review loop 4 (2026-08-30, `bad_spec`):** Review found a circular evidence gate—production-path evidence required an implementation artifact before any implementation authority existed—and found that evidence outside capacity could survive artifact or provider drift. It also identified incomparable option benchmarks, an unspecified unknown outer metadata version, and verifier gaps for the frontmatter opener, normative predecessor-table declarations, candidate-tree allowlist, and post-commit index equality. The plan now permits a separately authorized isolated non-production evidence candidate without production/migration/cutover authority, binds every evidence row to artifact/provider/configuration/topology identity with drift invalidation, requires equivalent option artifacts and resource budgets, classifies unknown outer versions, and hardens every cited verifier seam. This avoids an impossible authorization cycle, stale cross-category evidence, biased strategy selection, divergent version handling, malformed frontmatter, drifted normative provenance claims, wrong approvers, and revalidation of uncommitted staged bytes. **KEEP:** every earlier KEEP item; negative-v1 handling; capacity method/artifact/validity/expiry binding; optimization rejection; canonical 19-clause tuples; complete wrapper identity cross-binding; normative-range-only checks; and the exact third-derivation successor identity approach, while treating its hashes as superseded diagnostics after normative amendment.
+- **Review loop 5 (2026-08-30, `bad_spec`):** Review found that unknown outer metadata had no lossless public variant, evidence-only authority still excluded the persisted/public formats its mandatory proof must exercise, one non-empirical dependency declaration was swept into universal production execution, expiry encoding was not canonical, and marker validation counted only already-perfect marker-plus-LF bytes. The plan now defines an opaque raw unsupported-position variant, makes invalid-over-unknown precedence explicit, authorizes v2 format/runtime/topology work only inside an isolated non-production evidence candidate, distinguishes empirical evidence rows from content-bound applicability declarations, freezes expiry as canonical UTC second precision, and validates unique bare marker tokens plus exact LF termination. This avoids lossy future-version handling, a residual evidence deadlock, impossible provider proof for a no-change declaration, validator time disagreement, and hidden near-duplicate markers. **KEEP:** every earlier KEEP item; the fifth derivation's non-production/no-deploy boundary, equivalent strategy budgets, all-category evidence drift binding, unknown-version `UnsupportedScheme` outcome, hardened staged verifier, exact two-path commit, validated commit message, and final operator-only handoff; no runtime, state, topology, tests, v1, ledger, or sprint-status changes.
+- **Review loop 6 (2026-08-31, `bad_spec`):** Review found ambiguous zero-v1 precedence, conflated malformed and unsupported identities, under-authorized evidence and no-change applicability paths, missing teardown, no fail-closed admission for post-cutover shards, and three verifier gaps around duplicate authority rows, predecessor worktree drift, and marker-line boundaries. The contract now orders invalid before unsupported before unknown, preserves only structurally valid unsupported identities, requires unanimous authenticated candidate-owner authority with expiry and teardown, binds no-change declarations to an exact unanimously approved seam review, and gates every new shard before reservation. The verifier now requires five authority rows before mapping, staged/worktree predecessor equality, and complete-line markers. **KEEP:** every earlier KEEP item; exact frozen-v1 and candidate identities; composite selection; immutable history; planning-only approval; exact two-path scope; and zero runtime, state, topology, test, v1, ledger, or sprint-status changes.
 
 ## Review Triage Log
 
@@ -276,6 +292,90 @@ unauthorized.
   - `[false]` `[reject]` Intent auditor: the complete review diff includes the concurrent ledger — full-diff review detects contamination while the story-only commit and whole-commit assertion exclude it without editing or reverting user work.
   - `[false]` `[reject]` Intent auditor: skill and subagent use are not visible in content — those are execution-process properties supplied by the workflow, not artifact defects.
 
+### 2026-08-30 — Review pass 5
+- verdicts: 32 findings — high 5, medium 16, low 2, false 9, maybe-false 0
+- findings:
+  - `[false]` `[reject]` Blind hunter: the concurrent ledger is necessarily part of the story change — commit `a823ef4a` contains exactly the wrapper and successor, while the unrelated staged ledger remains outside it.
+  - `[high]` `[defer]` Blind hunter: the concurrent ledger format remains invisible to the bullet-only checker — reproduced all-zero success for 455 structured records; external ledger/governance ownership.
+  - `[high]` `[defer]` Blind hunter: migrated ledger IDs conflict with `.bmad-loop/decisions.json` and leave decisions orphaned — verified cited identities; external orchestrator/ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: open migrated records lack owner, next-review, and grouping — verified; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: structured provenance and severity are flattened or missing — verified top-level field counts; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: DW-6 loses its accepted disposition under outer `open` — verified; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: reconciliation history becomes actionable open work — verified cited DW-24 through DW-26; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: resolved Story 2.6 and 2.11 defects are reopened — verified cited records; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: owner-ratified accepted debt is reopened — verified cited record; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: closed DW-450 is reopened — verified outer/inner status contradiction; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: generated ledger locations lose leading dots or closing braces — verified; external ledger ownership.
+  - `[medium]` `[defer]` Blind hunter: many generated ledger locations are symbols or truncated code rather than paths — verified cited examples; external ledger ownership.
+  - `[low]` `[defer]` Blind hunter: migrated reasons retain machine-local absolute paths — verified; low portability and disclosure harm in external ledger data.
+  - `[low]` `[bad_spec]` Blind hunter: wrapper Code Map line ranges were stale — the plan now requires derivation to calculate the final normative and detached ranges after all normative edits.
+  - `[medium]` `[defer]` Blind hunter: verified external ledger defects had no structured wrapper handoff — earlier `bad_spec` cascades made defers moot; after convergence they must be grouped into the wrapper's single `deferred` list without editing the ledger.
+  - `[high]` `[bad_spec]` Blind hunter: unknown outer metadata could not round-trip through a two-variant public union — the plan now requires an opaque raw unsupported-position variant that preserves the exact outer version and payload while remaining unordered.
+  - `[medium]` `[bad_spec]` Blind hunter: invalid-versus-unknown precedence could diverge — the plan now states that both operands are fully validated first and any invalid input wins before zero/unknown handling.
+  - `[high]` `[bad_spec]` Blind hunter: evidence-only authority still excluded the v2 formats its mandatory proof needs — the plan now expressly permits isolated v2 persisted/public formats, allocator behavior, and topology solely inside the non-production evidence candidate.
+  - `[medium]` `[bad_spec]` Blind hunter: a Story 4.5 no-change applicability declaration could not satisfy universal empirical production evidence — the plan now distinguishes content-bound applicability declarations from empirical rows and requires empirical evidence only when the declaration identifies an affected seam.
+  - `[medium]` `[bad_spec]` Blind hunter: near-duplicate marker tokens with trailing text evaded marker counting — the verifier now counts unique bare tokens and separately requires exact LF termination.
+  - `[high]` `[bad_spec]` Edge-case hunter: unknown metadata versions lacked a lossless public representation — same opaque-variant root cause and amendment as the blind finding.
+  - `[medium]` `[bad_spec]` Edge-case hunter: exclusive expiry had no canonical parse format — the plan now requires UTC `YYYY-MM-DDTHH:MM:SSZ` at second precision and rejects every other encoding.
+  - `[medium]` `[defer]` Edge-case hunter: migrated ledger records lack source severity — verified in concurrent external data.
+  - `[medium]` `[defer]` Edge-case hunter: closed legacy work is migrated as open — verified in concurrent external data.
+  - `[false]` `[reject]` Edge-case hunter: wrapper `in-review` contradicts the operator handoff — this is the mandatory transient review status and is finalized after convergence.
+  - `[false]` `[reject]` Edge-case hunter: committed story equality cannot be reproduced — the only difference is the transient review-status byte; exact post-commit equality passed before review and will be rerun after finalization.
+  - `[false]` `[reject]` Intent auditor: final lifecycle is not visible in the review snapshot — commit `a823ef4a` already proves agent-capable work was committed, while wrapper finalization intentionally follows review convergence.
+  - `[false]` `[reject]` Intent auditor: the transient wrapper status differs from final `awaiting-operator` — review status is an intermediate workflow property, not the final handoff.
+  - `[false]` `[reject]` Intent auditor: the supplied baseline diff includes unrelated ledger work — the committed candidate excludes it and leaves that staged user/orchestrator change untouched.
+  - `[false]` `[reject]` Intent auditor: static checks do not exercise runtime sharding — the selected defensible intent is specification-only and defers runtime work until approval and evidence.
+  - `[false]` `[reject]` Intent auditor: human approval and production evidence remain external — their absence is accurately recorded and drives `awaiting-operator`; repository checks do not claim otherwise.
+  - `[false]` `[reject]` Intent auditor: skill/subagent execution is not shown by file content — this is a process property, not an artifact defect.
+
+### 2026-08-31 — Review pass 6
+- verdicts: 44 findings — high 9, medium 20, low 1, false 14, maybe-false 0
+- findings:
+  - `[high]` `[defer]` Blind hunter: the concurrent structured ledger is invisible to the bullet-only checker — already captured by the wrapper's high-severity grouped ledger-governance deferral; Story 4.6 leaves the ledger untouched.
+  - `[medium]` `[defer]` Blind hunter: accepted and resolved ledger work is reopened — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Blind hunter: closed DW-450 becomes actionable — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Blind hunter: structured provenance, severity, disposition, and ownership are flattened — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Blind hunter: open migrated records lack canonical governance metadata — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Blind hunter: migrated repository paths lose dots and braces — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Blind hunter: many migrated locations are symbols rather than actionable files — verified and covered by the existing grouped external deferral.
+  - `[low]` `[defer]` Blind hunter: migrated reasons retain machine-local paths — verified low portability harm and covered by the existing grouped external deferral.
+  - `[high]` `[defer]` Blind hunter: ledger IDs conflict with the decision journal — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[patch]` Blind hunter: zero-v1 versus unsupported/invalid input precedence was difficult to read from list order — patched the ordered outcomes and prose so invalid wins, then unsupported, then otherwise-valid zero/unknown.
+  - `[medium]` `[patch]` Blind hunter: malformed recognized v2 data and structurally valid unsupported schemes were not sharply distinguished — patched structural/support classification and broadened the opaque raw identity variant only for valid unsupported identities.
+  - `[false]` `[reject]` Blind hunter: an ordinary public object cannot preserve unknown raw identity bytes — the opaque variant explicitly owns the exact raw buffer and forbids interpretation or normalized reserialization.
+  - `[false]` `[reject]` Blind hunter: the successor must define payload-size limits — transport and persisted-event size limits are existing implementation constraints outside this spec-only renegotiation; the raw variant creates no new accepted production authority.
+  - `[high]` `[patch]` Blind hunter: evidence-only authority had no named approver — patched it to require unanimous authenticated approval from the exact candidate-commit architecture-owner set, with expiry, fencing, and teardown.
+  - `[high]` `[patch]` Blind hunter: a no-change Story 4.5 declaration could be self-authored — patched it to require an exact seam diff/review and unanimous authenticated candidate-owner approval.
+  - `[false]` `[reject]` Blind hunter: capacity validity can be arbitrarily extended by the implementation author — the exact validity-profile authority and derivation are bound and owner-reviewed; this semantic spec intentionally leaves duration policy to that downstream evidence profile.
+  - `[high]` `[patch]` Blind hunter: newly admitted post-cutover pairs lacked a fail-closed first-reservation gate — patched lifecycle authority, collision-free identity, unused generation, readiness/recovery, and checkpoint staleness requirements.
+  - `[medium]` `[patch]` Blind hunter: duplicate predecessor authority rows could collapse through `dict` — patched the verifier to require exactly five parsed identity rows before mapping comparison.
+  - `[medium]` `[patch]` Blind hunter: marker tokens could be prefixed on a noncanonical line — patched both markers to require start-of-file or preceding LF as well as exact following LF.
+  - `[false]` `[reject]` Blind hunter: cumulative baseline scope fails to prove the story candidate — the story candidate is the complete run from captured baseline through final `HEAD`; exact A/M whole-tree equality intentionally permits the workflow's reviewed follow-up commit.
+  - `[high]` `[defer]` Edge-case hunter: structured ledger headings disappear from governance — independently verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Edge-case hunter: closed ledger work is reopened — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Edge-case hunter: source provenance is flattened — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Edge-case hunter: severity is lost from structured fields — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Edge-case hunter: open items lack owner/review/grouping — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Edge-case hunter: dot-prefixed paths are corrupted — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[defer]` Edge-case hunter: placeholder paths lose closing braces — verified and covered by the existing grouped external deferral.
+  - `[high]` `[defer]` Edge-case hunter: ledger IDs were allocated without reserving decision-journal IDs — verified and covered by the existing grouped external deferral.
+  - `[medium]` `[patch]` Edge-case hunter: zero-v1 versus unsupported input outcome was ambiguous — resolved by the same explicit invalid/unsupported/unknown ordering patch.
+  - `[high]` `[patch]` Edge-case hunter: evidence-only authority lacked the accountable role — resolved by unanimous authenticated candidate-owner approval and lifecycle controls.
+  - `[high]` `[patch]` Edge-case hunter: a false no-seam declaration could bypass Story 4.5 — resolved by required seam diff/review and unanimous candidate-owner approval.
+  - `[medium]` `[patch]` Edge-case hunter: duplicate or malformed predecessor authority rows could pass — resolved by exact five-row parsing plus canonical mapping equality.
+  - `[medium]` `[patch]` Edge-case hunter: the verifier could miss worktree drift in frozen v1 — patched each exact run to require worktree predecessor bytes equal the staged frozen blob.
+  - `[medium]` `[patch]` Edge-case hunter: marker validation omitted the preceding line boundary — resolved by complete-line anchoring for both bare tokens.
+  - `[false]` `[reject]` Intent auditor: the diff cannot prove use of the named skill — skill use is an execution-process property supplied by this run, not a content defect.
+  - `[false]` `[reject]` Intent auditor: orchestrator status ownership diverges — `sprint-status.yaml` is untouched and absent from candidate history.
+  - `[false]` `[reject]` Intent auditor: commit completion is not visible in a unified diff — commit `a823ef4a` and the final reviewed follow-up commit provide Git-history evidence independently of the review snapshot.
+  - `[false]` `[reject]` Intent auditor: the wrapper remains `in-review` — that byte is the mandatory transient review state and is finalized to `awaiting-operator` after this pass.
+  - `[false]` `[reject]` Intent auditor: imperative operator actions are missing — both artifacts contain the same three exact, non-empty imperative actions.
+  - `[false]` `[reject]` Intent auditor: cross-artifact lifecycle verification fails — it passed before review and is rerun after restoring the final wrapper status.
+  - `[false]` `[reject]` Intent auditor: the three-path review diff is the story commit — the ledger is concurrent staged work; exact candidate history contains only A wrapper and M successor.
+  - `[false]` `[reject]` Intent auditor: the review fails to preserve unrelated ledger work — that change remains staged, byte-preserved, and excluded from both story commits.
+  - `[false]` `[reject]` Intent auditor: no runtime sharding implementation exists — the defensible selected story is explicitly a specification renegotiation and keeps implementation unauthorized.
+  - `[false]` `[reject]` Intent auditor: repository checks do not perform human approval or production evidence — those external actions are intentionally absent and enumerated for the operator.
+
 ## Design Notes
 
 The current simplified successor is the active semantic draft. Historical digest `2310f121dc48f59713a9c6bbc6ffe2e63be374d4d8ecc6e8d710a0d9cf3674de` and blob `e12fc28b2aed3b1609a4d9b86935dd950357b6d9` identify a larger candidate whose final recorded review still contained unresolved `bad_spec` findings; they are recovery context, not authority. The pre-edit diagnostic digest `bf1a1e8651261de1bcc75bb6f75046d8f7fc93b8824482778da31b0b29aa03c8` is also non-authoritative because correcting the normative scope changes the hashed bytes. Hash only after normative review is complete.
@@ -312,6 +412,7 @@ The current simplified successor is the active semantic draft. Historical digest
   python3 - <<'PY'
   import hashlib
   import json
+  from pathlib import Path
   import re
   import subprocess
   import sys
@@ -357,6 +458,7 @@ The current simplified successor is the active semantic draft. Historical digest
       return mapping
 
   v1, v2, wrapper = staged(v1_path), staged(v2_path), staged(wrapper_path)
+  assert Path(v1_path).read_bytes() == v1, 'worktree predecessor differs from staged predecessor'
   for path, payload in ((v1_path, v1), (v2_path, v2), (wrapper_path, wrapper)):
       payload.decode('utf-8', errors='strict')
       assert not payload.startswith(b'\xef\xbb\xbf') and b'\r' not in payload and payload.endswith(b'\n'), path
@@ -402,13 +504,21 @@ The current simplified successor is the active semantic draft. Historical digest
       assert disposition.strip().startswith(('Retained', 'Amended', 'Superseded')), clause_id
   print('matrix/predecessor-binding: PASS')
 
-  begin = b'<!-- HX-GPOS-V2-NORMATIVE-BEGIN -->\n'
-  end = b'<!-- HX-GPOS-V2-NORMATIVE-END -->\n'
-  assert v2.count(begin) == v2.count(end) == 1 and v2.index(begin) < v2.index(end)
-  normative = v2[v2.index(begin) + len(begin):v2.index(end)]
+  begin_token = b'<!-- HX-GPOS-V2-NORMATIVE-BEGIN -->'
+  end_token = b'<!-- HX-GPOS-V2-NORMATIVE-END -->'
+  assert v2.count(begin_token) == v2.count(end_token) == 1
+  begin_at, end_at = v2.index(begin_token), v2.index(end_token)
+  assert begin_at < end_at
+  assert begin_at == 0 or v2[begin_at - 1:begin_at] == b'\n'
+  assert end_at == 0 or v2[end_at - 1:end_at] == b'\n'
+  assert v2[begin_at:begin_at + len(begin_token) + 1] == begin_token + b'\n'
+  assert v2[end_at:end_at + len(end_token) + 1] == end_token + b'\n'
+  normative = v2[begin_at + len(begin_token) + 1:end_at]
   normative_text = normative.decode('utf-8')
   authority_section = normative_text[normative_text.index('## 1. Authority'):normative_text.index('### 1.1 Exact disposition')]
-  authority_rows = dict(re.findall(r'^\| ([^|]+?) \| `([^`]+)` \|$', authority_section, re.MULTILINE))
+  authority_matches = re.findall(r'^\| ([^|]+?) \| `([^`]+)` \|$', authority_section, re.MULTILINE)
+  assert len(authority_matches) == 5
+  authority_rows = dict(authority_matches)
   assert authority_rows == {
       'Baseline commit': provenance_commit,
       'Git blob': '4c9edb37a8616aa373bd0054057c9e8eace6e0fa',
@@ -461,14 +571,19 @@ The current simplified successor is the active semantic draft. Historical digest
   assert 'non-empty' in normative_text and 'unique' in normative_text and 'candidate commit' in normative_text
   print('approval-owner-set: PASS')
 
-  outcomes = ['UnknownPosition', 'InvalidPosition', 'UnsupportedScheme', 'UnsupportedCrossScheme', 'UnsupportedCrossCanonicalization', 'UnsupportedCrossShard', 'UnsupportedCrossGeneration', 'Less', 'Equal', 'Greater']
+  outcomes = ['InvalidPosition', 'UnsupportedScheme', 'UnsupportedCrossScheme', 'UnsupportedCrossCanonicalization', 'UnsupportedCrossShard', 'UnsupportedCrossGeneration', 'UnknownPosition', 'Less', 'Equal', 'Greater']
   positions = [normative_text.index(f'`{outcome}`', normative_text.index('### 3.3 Validation')) for outcome in outcomes]
   assert positions == sorted(positions)
-  for scenario, outcome in {'Same shard, different generation': 'UnsupportedCrossGeneration', 'Different tenant or domain': 'UnsupportedCrossShard', 'V1 versus v2': 'UnsupportedCrossScheme', 'Unknown or invalid data': 'InvalidPosition', 'Mixed-history cursor': 'no counter maximum is accepted as progress'}.items():
+  for scenario, outcome in {'Same shard, different generation': 'UnsupportedCrossGeneration', 'Different tenant or domain': 'UnsupportedCrossShard', 'V1 versus v2': 'UnsupportedCrossScheme', 'Unknown or invalid data': 'InvalidPosition', 'Zero v1 with unsupported peer': 'UnsupportedCrossScheme', 'Unsupported versus malformed identity': 'InvalidPosition', 'Mixed-history cursor': 'no counter maximum is accepted as progress', 'Post-cutover new shard': 'cannot reserve'}.items():
       matches = [line for line in normative_text.splitlines() if line.startswith(f'| {scenario} |')]
       assert len(matches) == 1 and outcome in matches[0]
   assert 'Negative v1 values are invalid.' in normative_text
   assert 'Unknown outer metadata versions return `UnsupportedScheme`.' in normative_text
+  assert 'opaque raw unsupported-position variant' in normative_text
+  assert 'Unsupported outcomes take precedence over `UnknownPosition`.' in normative_text
+  assert '`UnknownPosition` applies only when both operands are recognized, supported,' in normative_text
+  assert 'the opaque\nvariant MUST NOT sanitize or preserve them as merely unsupported' in normative_text
+  assert 'not malformed solely because its scheme\nor canonicalization discriminator is unrecognized' in normative_text
   assert 'Allocation positions MUST NOT be used as lossless committed-event cursors.' in normative_text
   print('matrix/mixed-position-comparison: PASS')
 
@@ -476,7 +591,7 @@ The current simplified successor is the active semantic draft. Historical digest
   assert '- `A` `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md`' in normative_text
   assert '- `M` `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md`' in normative_text
   assert 'Exact-content architecture-owner approval authorizes downstream planning only.' in normative_text
-  for phrase in ('equivalent resource budget', 'non-production evidence candidate', 'evidence-only authority', 'every evidence row', 'trace identity', 'provider profile', 'provider configuration', 'topology fingerprint', 'acceptance limits', 'measurement method identity', 'implementation artifact identity', 'validity profile authority', 'exclusive UTC expiry', 'MUST be re-run'):
+  for phrase in ('equivalent resource budget', 'non-production evidence candidate', 'evidence-only authority', 'authenticated unanimous approval', 'exact candidate-commit', 'isolated v2 persisted and public formats', 'MUST be fenced and drained', 'MUST be torn down', 'every empirical evidence row', 'applicability declaration', 'exact candidate diff', 'Author self-declaration is not approval', 'fail-closed shard admission', 'checkpoint whose exact shard set', 'trace identity', 'provider profile', 'provider configuration', 'topology fingerprint', 'acceptance limits', 'measurement method identity', 'implementation artifact identity', 'validity profile authority', 'exclusive UTC expiry', 'canonical UTC second precision', 'MUST be re-run'):
       assert phrase in normative_text, phrase
   print('matrix/scope-and-authority: PASS')
   print('frontmatter/operator-actions: PASS')
@@ -491,3 +606,62 @@ The current simplified successor is the active semantic draft. Historical digest
 **Manual checks (if no CLI):**
 
 - Confirm every normative section observes the outer semantic surface, human approval authorizes planning only, all blocking evidence remains owed, and no historical digest/status is presented as current approval.
+
+## Auto Run Result
+
+### Summary
+
+Story 4.6 adds an auditable wrapper and content-binds the simplified v2
+composite tenant+domain global-position successor. The successor now defines
+lossless known and unsupported position identities, fail-closed comparison and
+shard admission, comparable evidence, evidence-only non-production authority,
+candidate-bound ownership, and exact scope without changing runtime behavior.
+
+### Files changed
+
+- `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md` — records intent, identities, five repair iterations, six review passes, verification, deferral, and operator handoff.
+- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md` — publishes the exact normative successor and detached awaiting-operator status.
+
+### Review findings
+
+- Review passes 1 through 5 re-derived the candidate after verified planning
+  gaps; each finding and KEEP constraint is recorded one-per-row above.
+- Review pass 6 converged with eight patch groups: outcome precedence,
+  unsupported identity classification, evidence-only approval, Story 4.5
+  declaration approval, post-cutover shard admission, exact authority-row
+  count, frozen-v1 worktree equality, and complete-line marker validation.
+- The concurrent ledger/governance defects are represented by one high-severity
+  structured deferral in frontmatter; the ledger itself remains untouched by
+  this story.
+- Every rejected finding and its evidence-backed reason is recorded one-per-row
+  in the six `Review Triage Log` entries. Rejections cover transient review
+  lifecycle observations, the intentionally external ledger diff, the selected
+  spec-only scope, human-only evidence, and claims disproved by the exact
+  contract or verifier.
+
+### Follow-up review recommendation
+
+`true` — review pass 6 applied three high-severity and five medium-severity
+patch groups. Deferred and rejected findings are excluded from this count.
+
+### Verification
+
+- Exact staged-blob verifier: six `PASS` groups.
+- Optimized Python guard: non-zero exit before assertions can be disabled.
+- Frozen v1: Git blob, complete SHA-256, frozen ranges, provenance commit, and
+  all 19 canonical clause tuples reproduced.
+- Candidate identity: normative SHA-256
+  `995fcecd16b3421ec9ff666d0884bfb5e436932aa49529c152fb7c439172a1fd`,
+  successor blob `160331d25451928ff3c3dea2300b65cab4f97c3b`, and successor file SHA-256
+  `bbec7a16661995849891fae2617cf74c281d3da155086d0e22a39d5a2488f59a`.
+- Scope and whitespace: exactly `A` wrapper and `M` successor from captured
+  baseline, with no story-path whitespace errors.
+- Post-commit whole-scope, index/worktree equality, staged-blob revalidation,
+  and commitlint are mandatory finalization checks immediately after commit.
+
+### Residual risks
+
+Exact-content architecture-owner approval, production-provider/topology
+evidence, and separate implementation authorization remain absent and
+operator-owned. Frozen v1 remains authoritative. The unrelated staged ledger
+migration has verified governance defects and remains outside this story.

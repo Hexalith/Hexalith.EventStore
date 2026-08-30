@@ -7,7 +7,7 @@ schema_version: 2
 predecessor_path: '_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md'
 predecessor_blob: '4c9edb37a8616aa373bd0054057c9e8eace6e0fa'
 predecessor_sha256: '4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9ef1893'
-normative_sha256: 'd49c34c8e58df1b3b7a1ffa1ac0de8dedf5ba2a8bd35ad291fc3b87a59d97604'
+normative_sha256: '995fcecd16b3421ec9ff666d0884bfb5e436932aa49529c152fb7c439172a1fd'
 superseded_normative_sha256: '2310f121dc48f59713a9c6bbc6ffe2e63be374d4d8ecc6e8d710a0d9cf3674de'
 approval_state: 'absent'
 implementation_authorized: false
@@ -43,12 +43,10 @@ The protected predecessor is exactly:
 | Complete file SHA-256 | `4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9ef1893` |
 | Frozen inner bytes SHA-256 | `90be324c35d1545fd7c4dd53393ef27b08d2e6a3891d1bc9c6f38c9145740c10` |
 | Complete frozen element SHA-256 | `c827761ba1f58aa6fde85ca8acedfdfdcc5097cbcbd470d2887a1e4d073d5d2c` |
+| Range convention | Strict UTF-8 LF bytes; lines are one-based; byte ranges are zero-based, start-inclusive, and end-exclusive within the line without LF |
 
 All five identities MUST reproduce before this successor is considered. Any
 predecessor drift requires a new renegotiation.
-
-Source ranges use strict UTF-8 LF bytes. Lines are one-based; byte ranges are
-zero-based, start-inclusive, and end-exclusive within the line without LF.
 
 Existing positive v1 `globalPosition` values remain immutable identities in
 scheme `global-v1`. Existing event `MessageId`, CloudEvent id, aggregate
@@ -165,10 +163,13 @@ positive base-10 Int64 strings matching `[1-9][0-9]{0,18}` and not exceeding
 `9223372036854775807`.
 
 The public position model MUST be a versioned tagged union capable of
-losslessly representing either:
+losslessly representing:
 
 - `global-v1` plus its signed Int64 scalar; or
-- the complete six-member v2 object above.
+- the complete six-member v2 object above; or
+- an opaque raw unsupported-position variant that preserves every exact
+  unrecognized outer-version, scheme, or canonicalization discriminator and
+  the complete raw identity payload bytes needed to round-trip it.
 
 A v2 event MUST NOT expose its counter through the legacy scalar
 `GlobalPosition` as though it were globally comparable. A compatibility API
@@ -183,29 +184,51 @@ generation. A reserved range MAY contain later gaps and is an allocation label
 only, not a committed-event cursor or timestamp. No counter or vector of
 counters proves commit order.
 
-Unknown outer metadata versions return `UnsupportedScheme`. Their raw identity
-MUST still be preserved. They MUST NOT be interpreted as metadata v1 or v2,
-and their position members MUST NOT be projected into a known tagged identity.
+A recognized metadata v1 or v2 value that violates its applicable structural
+rules is malformed and returns `InvalidPosition`. Missing required members,
+duplicate or null members, invalid JSON or object shape, noncanonical or
+overflowed numeric values, and routing-copy mismatch remain invalid; the opaque
+variant MUST NOT sanitize or preserve them as merely unsupported.
+An otherwise-well-formed v2 object is not malformed solely because its scheme
+or canonicalization discriminator is unrecognized.
+
+Once the applicable outer envelope is structurally valid, an unrecognized
+outer metadata version, scheme, or canonicalization version is unsupported and
+MUST round-trip its exact discriminator and raw identity payload bytes through
+the opaque raw unsupported-position variant without interpretation or
+normalization. Unknown outer metadata versions return `UnsupportedScheme`.
+An unrecognized scheme or canonicalization version also returns
+`UnsupportedScheme`; recognized supported but unequal canonicalization versions
+return `UnsupportedCrossCanonicalization`. Unsupported identities MUST NOT be
+projected into a known tagged identity or ordered.
 
 ### 3.3 Validation, equality, and comparison
 
-Structural validation precedes comparison. The complete ordered result set is:
+Both operands MUST be fully structurally validated before comparison.
+Invalid input takes precedence over unknown input and every other outcome.
+Unsupported outcomes take precedence over unknown-position results. The
+complete ordered result set and precedence is:
 
-1. `UnknownPosition` when either otherwise-valid v1 position is zero;
-2. `InvalidPosition` for malformed, noncanonical, overflowed, duplicate-member,
+1. `InvalidPosition` for malformed, noncanonical, overflowed, duplicate-member,
    or routing-copy-mismatched data;
-3. `UnsupportedScheme` when a position scheme or canonicalization version is
-   not recognized;
-4. `UnsupportedCrossScheme` for valid v1 versus valid v2;
-5. `UnsupportedCrossCanonicalization` for recognized unequal canonicalization
-   versions;
-6. `UnsupportedCrossShard` for unequal tenant or domain bytes;
-7. `UnsupportedCrossGeneration` for unequal generations in the same shard;
+2. `UnsupportedScheme` when an outer metadata version, position scheme, or
+   canonicalization version is not recognized;
+3. `UnsupportedCrossScheme` for otherwise-valid v1 versus valid v2;
+4. `UnsupportedCrossCanonicalization` for recognized supported unequal
+   canonicalization versions;
+5. `UnsupportedCrossShard` for unequal tenant or domain bytes;
+6. `UnsupportedCrossGeneration` for unequal generations in the same shard;
+7. `UnknownPosition` only after every invalid and unsupported condition above
+   is excluded, both operands are recognized, supported, and otherwise valid,
+   and at least one v1 scalar is zero; and
 8. `Less`, `Equal`, or `Greater` by scalar for two positive v1 positions, or by
    counter for two v2 positions whose scheme, canonicalization, shard, and
    generation are equal.
 
-`InvalidPosition` takes precedence over unsupported outcomes. Equality is full
+`InvalidPosition` takes precedence over unsupported and unknown outcomes.
+Unsupported outcomes take precedence over `UnknownPosition`.
+`UnknownPosition` applies only when both operands are recognized, supported,
+and otherwise valid and no unsupported relationship exists. Equality is full
 tagged identity equality, never counter equality alone. Cross-shard,
 cross-generation, and cross-scheme positions are unordered: there is no scalar
 fallback, tuple sort, `Max`, timestamp tie-break, or trustworthy global order.
@@ -265,6 +288,19 @@ conflicting, concurrently changing, or unverifiable inventory blocks cutover.
 The discovery source, physical identity, lifecycle storage, and recovery
 algorithm belong to a separately approved implementation specification.
 
+After cutover, a newly admissible tenant+domain pair MUST pass fail-closed shard
+admission before its first reservation. The lifecycle authority MUST serialize
+and durably record collision-free physical identity, a never-before-used
+positive generation, allocator readiness, and the recovery path before
+enabling the pair. It MUST also make every checkpoint whose exact shard set
+omits the pair detectably stale and require the affected model to rebuild or
+rebase at an immutable source boundary before progress resumes. Missing,
+ambiguous, concurrent, partially persisted, or unrecoverable admission state
+MUST reject the first and every later reservation until the transition is
+completed; event or allocation maxima MUST NOT manufacture readiness.
+This fail-closed shard admission applies before every new pair's first
+reservation.
+
 Existing scalar checkpoints MUST NOT be translated by copying their value into
 a v2 counter or vector. Each consumer MUST either use a source-specific,
 evidenced mapping that preserves its exact committed boundary or rebuild from
@@ -315,32 +351,62 @@ sharding when append behavior is unchanged.
 
 ## 7. Blocking evidence, ownership, and authorization
 
-Every evidence row is blocking for implementation authorization. Evidence MUST
-be bound to this exact normative digest, candidate commit and successor blob,
-the tested implementation artifact identity, provider profile, provider
-configuration, and topology fingerprint. It MUST exercise the proposed
-production provider and topology and MUST inspect persisted end state rather
-than relying only on HTTP status, mocks, or logs. These bindings apply to every evidence row.
-Drift in any bound normative, candidate, blob, implementation
-artifact, provider, configuration, or topology identity invalidates every
-affected evidence row, which MUST be re-run before it can satisfy a gate.
+Every empirical evidence row is blocking for implementation authorization.
+Every empirical evidence row MUST be bound to this exact normative digest,
+candidate commit and successor blob. It MUST also bind the tested
+implementation artifact identity, provider profile, provider configuration,
+and topology fingerprint.
+It MUST exercise the proposed production provider and topology and MUST inspect
+persisted end state rather than relying only on HTTP status, mocks, or logs.
+These bindings apply to every empirical evidence row.
+Drift in any bound normative, candidate, blob, implementation artifact,
+provider, configuration, or topology identity invalidates every affected
+empirical evidence row, which MUST be re-run before it can satisfy a gate.
 
 Option-capacity evidence MUST additionally bind the representative production
 trace identity, acceptance limits, measurement method identity, and the exact
 validity profile authority and derivation used to assign its exclusive UTC
-expiry. Capacity evidence is valid only strictly before that expiry; at or
-after the exclusive UTC expiry it is invalid and MUST be re-run. Drift in the
-trace, acceptance limits, measurement method identity, implementation artifact
+expiry. The exclusive UTC expiry MUST use canonical UTC second precision in
+the exact `YYYY-MM-DDTHH:MM:SSZ` form; every other encoding is invalid.
+Capacity evidence is valid only strictly before that expiry; at or after the
+exclusive UTC expiry it is invalid and MUST be re-run. Drift in the trace,
+acceptance limits, measurement method identity, implementation artifact
 identity, validity profile authority or derivation, or expiry assignment also
 invalidates that evidence and requires a re-run.
 
 Before implementation authorization, a separately authorized isolated
-non-production evidence candidate MAY exist solely to produce the evidence in
-this section. That evidence-only authority MUST bind the exact normative
-digest, candidate commit, successor blob, tested implementation artifact, and
-test environment. It grants no production authority, deployment authority,
-migration authority, cutover authority, persisted-format authority, public
-contract authority, or permission to treat v2 positions as authoritative.
+non-production evidence candidate MAY exist solely to produce the empirical
+evidence in this section. That evidence-only authority MUST carry
+authenticated unanimous approval from every identity in the exact
+candidate-commit `architecture_owner` set. It MUST bind the exact normative
+digest, candidate commit, successor blob, tested implementation artifact, test
+environment, and an exclusive canonical UTC second-precision expiry. Solely
+inside that isolated
+non-production evidence candidate, the authority MAY allow
+isolated v2 persisted and public formats. It MAY also allow allocator behavior
+and topology required to exercise the evidence.
+At evidence collection completion or the authority expiry, whichever occurs
+first, every writer, route, credential,
+allocator, and lifecycle authority MUST be fenced and drained.
+The isolated environment MUST be torn down. Missing or ambiguous approval,
+expiry, teardown, or fencing blocks the evidence gate. Evidence-only authority
+grants no production, deployment,
+migration, cutover, or general persisted-format or public-contract authority,
+and no permission to treat v2 positions as authoritative outside that
+candidate.
+
+The Story 4.5 applicability declaration is content-bound rather than empirical.
+It MUST bind this normative digest, candidate commit, successor blob, and tested
+implementation artifact. A declaration that identifies an affected append-
+fencing or provider-write seam makes the corresponding approved Story 4.5
+empirical evidence mandatory; a declaration of no affected seam requires no
+production execution for that row only when it satisfies every rule below.
+A no-affected-seam declaration MUST include the exact candidate diff and review
+of every append-fencing and provider-write seam. It MUST have authenticated
+unanimous approval from every identity in the exact candidate-commit
+`architecture_owner` set. Author self-declaration is not approval. It grants no
+waiver. The applicability declaration grants no
+implementation authority and waives no other evidence row.
 
 | Evidence category | Minimum decision-grade proof |
 |---|---|
@@ -355,7 +421,7 @@ contract authority, or permission to treat v2 positions as authoritative.
 | Overflow and limits | Counter, generation, batch, provider key/value, cursor, and page limits are measured and fail closed before mutation or checkpoint advance. |
 | Hot shard and recovery | Sustained hot-pair load remains isolated; lifecycle control does not become the reservation bottleneck; backup/restore preserves all authority and resumes strictly above prior ceilings. |
 | Rollout and rollback | Old writers are actually fenced; rollback succeeds only before any durable v2 allocation; every post-boundary downgrade is rejected and recovered forward. |
-| Story 4.5 dependency | The implementation declares whether append fencing or provider write semantics change; any such change carries exact approved Story 4.5 evidence before execution. |
+| Story 4.5 dependency | A content-bound applicability declaration states whether append fencing or provider write semantics change; when either seam is affected, the implementation carries exact approved Story 4.5 empirical evidence before execution. A no-change declaration is not an empirical production execution claim. |
 
 The accountable approval role is `architecture_owner`, resolved from the
 candidate commit's immutable
@@ -406,8 +472,12 @@ renegotiation, not an implementation detail.
 | Same shard, different generation | Equality is false and ordering returns `UnsupportedCrossGeneration`. |
 | Different tenant or domain | Equality is false and ordering returns `UnsupportedCrossShard`; no scalar fallback exists. |
 | V1 versus v2 | Both identities remain readable; ordering returns `UnsupportedCrossScheme`. |
-| Unknown or invalid data | V1 zero returns `UnknownPosition`; malformed or mismatched data returns `InvalidPosition` before unsupported outcomes. |
+| Unknown or invalid data | A zero v1 value compared with an otherwise-valid positive v1 value returns `UnknownPosition`; malformed or mismatched recognized data returns `InvalidPosition` before every other outcome. |
+| Zero v1 with unsupported peer | A valid zero v1 value compared with v2 returns `UnsupportedCrossScheme`; compared with a structurally valid unsupported identity it returns the applicable unsupported outcome, never `UnknownPosition`. |
+| Unsupported versus malformed identity | A structurally valid unrecognized outer version, scheme, or canonicalization round-trips through the opaque variant and returns the applicable unsupported outcome; malformed recognized v2 data returns `InvalidPosition`. |
+| Unknown outer metadata version | The public model preserves the exact outer version and raw payload in its opaque variant; ordering returns `UnsupportedScheme` unless either operand is invalid. |
 | Mixed-history cursor | Continuation is committed-source-owned and version-aware; no counter maximum is accepted as progress. |
+| Post-cutover new shard | A newly admissible tenant+domain pair cannot reserve until lifecycle identity, generation, readiness, recovery, and stale-checkpoint handling are durably complete. |
 | Partial fleet | An old writer cannot allocate or commit after v2 cutover starts. |
 | Pre-allocation rollback | V1 may resume only after positive no-v2-allocation proof and strictly above its prior ceiling. |
 | Any durable v2 allocation | V1 rollback and downgrade are forbidden; recovery proceeds forward with v2-capable components. |
@@ -450,7 +520,7 @@ constitute human approval.
 
 | Identity | Value |
 |---|---|
-| Normative content SHA-256 | `d49c34c8e58df1b3b7a1ffa1ac0de8dedf5ba2a8bd35ad291fc3b87a59d97604` |
+| Normative content SHA-256 | `995fcecd16b3421ec9ff666d0884bfb5e436932aa49529c152fb7c439172a1fd` |
 | Normative byte range | Bytes after the unique begin marker LF through the byte before the unique end marker |
 | Encoding | Strict UTF-8, LF, no BOM |
 
