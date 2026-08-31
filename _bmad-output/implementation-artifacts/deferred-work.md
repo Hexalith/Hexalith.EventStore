@@ -3370,3 +3370,12 @@ source_spec: `spec-4-6-global-position-sharding-spec-renegotiation.md`
 severity: high
 reason: Review pass 5 reproduced 455 structured records that the bullet-only checker reports as an all-zero success, conflicting ledger and decision-journal identifiers, reopened accepted/resolved/closed work, lost structured provenance and severity, missing owner/review/grouping fields, malformed locations, and machine-local paths. These defects belong to the concurrent deferred-work migration and must not be edited or hidden by Story 4.6.
 status: open
+
+### DW-457: Story 4.15 v2 evidence packet's `docs/ci.md` gate-input pin drifted from an unrelated Story 3.15 doc update, blocking the closure validator.
+
+origin: implement-step verification of story-4-15-oq8-platform-closure-and-handoff (2026-08-31)
+location: tools/validate-oq8-platform-evidence.py (v2 gate-input check); docs/ci.md
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: high
+reason: `python3 tools/validate-oq8-platform-evidence.py` fails with `Story 4.15 v2 gate-input identity drift: docs/ci.md`. The v2 successor packet sealed a byte-hash pin on `docs/ci.md` at commit `83b32fcf` (2026-08-30 09:47+02:00), content-bound to the three recorded `reviews/{architecture,security,test}.json` receipts. Commit `75dc59aa` ("fix: update BMAD 6.11.1-next.33", 2026-08-30 12:36+02:00) then legitimately updated `docs/ci.md` — it is Story 3.15's own narration of its deployed-runtime-parity re-mint state (subject hash, receipt counts), unrelated to OQ8/Story 4.15. This is the same "sealed gate-input drift" class already tracked for `tools/validate-oq8-platform-evidence.py` itself (see the story's Review Findings blocker note, 2026-08-30), now hitting a second pinned path that another story continuously re-narrates. Fixing it means recomputing `docs/ci.md`'s hash and repropagating it through `source-artifact-identity.json` → `review-subject.json`, which invalidates the three existing reviewer receipts and needs fresh architecture/security/test sign-off — not a mechanical patch, and out of scope for an implementation pass per the frozen spec's "never fabricate reviewer approval." No code or evidence file was changed while investigating this.
+status: open
