@@ -14,6 +14,7 @@ using Hexalith.EventStore.OpenApi;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.ServiceDefaults;
 using Hexalith.EventStore.SignalRHub;
@@ -226,6 +227,10 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
 
         services.RemoveAll<ICommandRouter>();
         services.AddSingleton<ICommandRouter, StatefulCommandRouter>();
+        services.RemoveAll<IProjectionActivationOutbox>();
+        services.AddSingleton<IProjectionActivationOutbox, NoOpProjectionActivationOutbox>();
+        services.RemoveAll<IProjectionUpdateOrchestrator>();
+        services.AddSingleton<IProjectionUpdateOrchestrator, NoOpProjectionUpdateOrchestrator>();
         services.RemoveAll<IQueryRouter>();
         services.AddSingleton<IQueryRouter, StatefulQueryRouter>();
         services.RemoveAll<IETagService>();

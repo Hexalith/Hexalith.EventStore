@@ -24,7 +24,7 @@ internal sealed class StatefulCommandRouter(ProviderStateCoordinator coordinator
                 BackpressureThreshold: 1),
             "command-unexpected-5xx" => throw new InvalidOperationException("provider-verification-synthetic-failure"),
             "command-accepted" or "command-validation-failure" or "command-unauthorized"
-                or "command-forbidden" or "tenant-mismatch" => new(true, CorrelationId: command.CorrelationId),
+                or "command-forbidden" or "command-auth-tenant" => new(true, CorrelationId: command.CorrelationId),
             _ => throw new InvalidOperationException("provider-command-state-unsupported"),
         };
         return Task.FromResult(result);

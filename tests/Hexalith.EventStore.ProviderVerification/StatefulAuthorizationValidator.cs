@@ -16,8 +16,8 @@ internal sealed class StatefulAuthorizationValidator(ProviderStateCoordinator co
         cancellationToken.ThrowIfCancellationRequested();
         string state = SupportedProviderStates.RequireActive(coordinator);
         bool forbidden = state is "command-forbidden" or "query-forbidden";
-        string expectedTenant = state is "tenant-mismatch" or "query-auth-tenant"
-            ? "Tenant_Contract_Case"
+        string expectedTenant = state is "command-auth-tenant" or "query-auth-tenant"
+            ? "tenant-contract-case"
             : "tenant-contract-a";
         bool claimsMatch = user.HasClaim("sub", "user-contract-a")
             && user.HasClaim("eventstore:tenant", expectedTenant)
@@ -40,8 +40,8 @@ internal sealed class StatefulAuthorizationValidator(ProviderStateCoordinator co
         cancellationToken.ThrowIfCancellationRequested();
         string state = SupportedProviderStates.RequireActive(coordinator);
         bool forbidden = state is "command-forbidden" or "query-forbidden";
-        string expectedTenant = state is "tenant-mismatch" or "query-auth-tenant"
-            ? "Tenant_Contract_Case"
+        string expectedTenant = state is "command-auth-tenant" or "query-auth-tenant"
+            ? "tenant-contract-case"
             : "tenant-contract-a";
         string permission = messageCategory switch
         {

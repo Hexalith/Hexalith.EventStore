@@ -12,7 +12,7 @@ internal static class SupportedProviderStates
         "command-conflict",
         "command-rate-limited",
         "command-unexpected-5xx",
-        "tenant-mismatch",
+        "command-auth-tenant",
         "query-fresh-data",
         "query-empty-result",
         "query-malformed-payload",

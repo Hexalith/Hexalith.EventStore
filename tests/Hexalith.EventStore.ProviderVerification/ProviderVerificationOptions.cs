@@ -1,6 +1,7 @@
 namespace Hexalith.EventStore.ProviderVerification;
 
 internal sealed record ProviderVerificationOptions(
+    ProviderVerificationMode Mode,
     string PactDirectory,
     string ManifestPath,
     string StateCatalogPath,
@@ -28,6 +29,11 @@ internal sealed record ProviderVerificationOptions(
         "--cleanup-timeout-seconds",
     };
 
+    private static readonly HashSet<string> _valueOptions = new(StringComparer.Ordinal)
+    {
+        "--verification-mode",
+    };
+
     public static bool TryParse(string[] args, out ProviderVerificationOptions? options, out string failureCode)
     {
         options = null;
@@ -42,7 +48,7 @@ internal sealed record ProviderVerificationOptions(
         {
             string key = args[index];
             string value = args[index + 1];
-            if ((!_pathOptions.Contains(key) && !_timeoutOptions.Contains(key))
+            if ((!_pathOptions.Contains(key) && !_timeoutOptions.Contains(key) && !_valueOptions.Contains(key))
                 || !values.TryAdd(key, value)
                 || string.IsNullOrWhiteSpace(value))
             {
@@ -50,7 +56,26 @@ internal sealed record ProviderVerificationOptions(
             }
         }
 
-        if (_pathOptions.Any(key => !values.ContainsKey(key)))
+        ProviderVerificationMode mode = ProviderVerificationMode.HistoricalAuthorization;
+        if (values.TryGetValue("--verification-mode", out string? modeValue))
+        {
+            mode = modeValue switch
+            {
+                "historical-authorization" => ProviderVerificationMode.HistoricalAuthorization,
+                "live-compatibility" => ProviderVerificationMode.LiveCompatibility,
+                _ => (ProviderVerificationMode)(-1),
+            };
+            if (!Enum.IsDefined(mode))
+            {
+                failureCode = "input.cli.mode-invalid";
+                return false;
+            }
+        }
+
+        string[] requiredPaths = mode == ProviderVerificationMode.LiveCompatibility
+            ? ["--pact-directory", "--manifest", "--provider-state-catalog", "--report-output"]
+            : [.. _pathOptions];
+        if (requiredPaths.Any(key => !values.ContainsKey(key)))
         {
             failureCode = "input.cli.missing-required";
             return false;
@@ -65,11 +90,12 @@ internal sealed record ProviderVerificationOptions(
         }
 
         options = new ProviderVerificationOptions(
+            mode,
             values["--pact-directory"],
             values["--manifest"],
             values["--provider-state-catalog"],
-            values["--identity-record"],
-            values["--identity-evidence-directory"],
+            values.GetValueOrDefault("--identity-record", string.Empty),
+            values.GetValueOrDefault("--identity-evidence-directory", string.Empty),
             values["--report-output"],
             startupTimeout,
             requestTimeout,

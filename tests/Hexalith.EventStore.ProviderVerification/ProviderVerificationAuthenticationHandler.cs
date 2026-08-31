@@ -31,8 +31,8 @@ internal sealed class ProviderVerificationAuthenticationHandler(
             return Task.FromResult(AuthenticateResult.Fail("provider-state-authentication-denied"));
         }
 
-        string tenant = state is "tenant-mismatch" or "query-auth-tenant"
-            ? "Tenant_Contract_Case"
+        string tenant = state is "command-auth-tenant" or "query-auth-tenant"
+            ? "tenant-contract-case"
             : "tenant-contract-a";
         var claims = new[]
         {

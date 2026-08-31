@@ -1,6 +1,7 @@
 namespace Hexalith.EventStore.ProviderVerification;
 
 internal sealed record IdentityEvidence(
+    string VerificationMode,
     string ExpectedSourceSha,
     string ObservedSourceSha,
     string ExpectedVersion,

@@ -13,6 +13,20 @@ public sealed class RuntimeIdentityValidatorTests
     private const string ExpectedSource = "bb94d93e9b84132cff83a38fba84f25455820d31";
 
     [Fact]
+    public void ObserveLive_RecordsCurrentProvenanceWithoutInventingApproval()
+    {
+        IdentityEvidence result = RuntimeIdentityValidator.ObserveLive(FindRepositoryRoot());
+
+        result.VerificationMode.ShouldBe("live-compatibility");
+        result.ObservedSourceSha.ShouldBe(result.ExpectedSourceSha);
+        result.ObservedBuildsSha.ShouldBe(result.ExpectedBuildsSha);
+        result.ObservedReleaseInventorySha256.ShouldBe(result.ReleaseInventorySha256);
+        result.ApprovalAuthorized.ShouldBeFalse();
+        result.ApprovalCount.ShouldBe(0);
+        result.RuntimeMatches.ShouldBeTrue();
+    }
+
+    [Fact]
     public void Validate_AuthorizingSuccessor_RecordsApprovalsAndRuntimeDrift()
     {
         string root = FindRepositoryRoot();

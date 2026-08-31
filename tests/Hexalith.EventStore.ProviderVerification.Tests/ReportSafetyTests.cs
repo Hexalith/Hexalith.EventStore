@@ -161,6 +161,7 @@ public sealed class ReportSafetyTests
         timeline.CompleteCleanup("cleanup.succeeded");
         return new ProviderVerificationReport(
             "hexalith.eventstore.provider-verification.v1",
+            "live-compatibility",
             "passed",
             [],
             1,

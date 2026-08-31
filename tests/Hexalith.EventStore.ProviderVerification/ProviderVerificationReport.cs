@@ -2,6 +2,7 @@ namespace Hexalith.EventStore.ProviderVerification;
 
 internal sealed record ProviderVerificationReport(
     string Schema,
+    string VerificationMode,
     string FinalVerdict,
     IReadOnlyList<string> ReasonCodes,
     int RequestedInteractionCount,

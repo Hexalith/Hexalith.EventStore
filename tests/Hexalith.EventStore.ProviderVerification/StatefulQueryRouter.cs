@@ -22,7 +22,7 @@ internal sealed class StatefulQueryRouter(ProviderStateCoordinator coordinator) 
         cancellationToken.ThrowIfCancellationRequested();
         QueryRouterResult result = SupportedProviderStates.RequireActive(coordinator) switch
         {
-            "query-empty-result" => Success(_emptyPayload),
+            "query-empty-result" => Success(_emptyPayload, 0),
             "query-malformed-payload" => new(false, null, false, QueryAdapterFailureReason.InvalidEnvelope),
             "query-forbidden" => new(false, null, false, QueryAdapterFailureReason.Forbidden),
             "query-not-found" => new(false, null, true),
@@ -34,19 +34,24 @@ internal sealed class StatefulQueryRouter(ProviderStateCoordinator coordinator) 
                 2,
                 1),
             "query-fresh-data" or "query-etag-match" or "query-etag-no-cache"
-                or "query-large-valid-metadata" or "query-auth-tenant" => Success(_rowPayload),
+                or "query-auth-tenant" => Success(_rowPayload, 1),
+            "query-large-valid-metadata" => Success(_rowPayload, 73),
             _ => throw new InvalidOperationException("provider-query-state-unsupported"),
         };
         return Task.FromResult(result);
     }
 
-    private static QueryRouterResult Success(JsonElement payload)
+    private static QueryRouterResult Success(JsonElement payload, long totalCount)
         => new(
             true,
             payload,
             false,
             ProjectionType: "orders",
-            Metadata: new QueryResponseMetadata
+            Metadata: new QueryResponseMetadata(Paging: new QueryPagingMetadata(
+                PageSize: 25,
+                Offset: 0,
+                TotalCount: totalCount,
+                HasMore: totalCount > 25))
             {
                 Provenance = QueryResponseProvenance.ProjectionBacked,
                 Lifecycle = ProjectionLifecycleState.Current,

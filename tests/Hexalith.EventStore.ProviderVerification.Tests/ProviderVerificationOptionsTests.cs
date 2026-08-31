@@ -44,4 +44,36 @@ public sealed class ProviderVerificationOptionsTests
 
         code.ShouldBe("input.cli.timeout-invalid");
     }
+
+    [Fact]
+    public void TryParse_LiveCompatibility_DoesNotRequireHistoricalApprovalInputs()
+    {
+        string[] arguments =
+        [
+            "--verification-mode", "live-compatibility",
+            "--pact-directory", "/tmp/pacts",
+            "--manifest", "/tmp/manifest.json",
+            "--provider-state-catalog", "/tmp/catalog.json",
+            "--report-output", "/tmp/report.json",
+        ];
+
+        ProviderVerificationOptions.TryParse(arguments, out ProviderVerificationOptions? options, out string code)
+            .ShouldBeTrue();
+
+        code.ShouldBeEmpty();
+        options.ShouldNotBeNull();
+        options.Mode.ShouldBe(ProviderVerificationMode.LiveCompatibility);
+        options.IdentityRecordPath.ShouldBeEmpty();
+        options.IdentityEvidenceDirectory.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TryParse_UnknownMode_FailsClosed()
+    {
+        string[] arguments = [.. _validArguments, "--verification-mode", "approval-bypass"];
+
+        ProviderVerificationOptions.TryParse(arguments, out _, out string code).ShouldBeFalse();
+
+        code.ShouldBe("input.cli.mode-invalid");
+    }
 }

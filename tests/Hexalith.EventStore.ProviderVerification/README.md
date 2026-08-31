@@ -10,20 +10,21 @@ dotnet build tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.Event
 dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
 ```
 
-The focused built-DLL suite currently contains 74 tests, including a self-contained one-interaction Pact run through real Kestrel and the production controller/middleware pipeline followed by verified port closure.
+The focused built-DLL suite currently contains 77 tests, including a self-contained one-interaction Pact run through real Kestrel and the production controller/middleware pipeline followed by verified port closure.
 
-Run the committed FrontComposer inputs from the EventStore repository root:
+Run the committed FrontComposer inputs in live compatibility mode from the EventStore repository root:
 
 ```bash
 eventstore_root="$(pwd)"
 frontcomposer_root="$eventstore_root/references/Hexalith.FrontComposer"
 dotnet run --project tests/Hexalith.EventStore.ProviderVerification/Hexalith.EventStore.ProviderVerification.csproj --configuration Release --no-build -- \
+  --verification-mode live-compatibility \
   --pact-directory "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
   --manifest "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \
   --provider-state-catalog "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
-  --identity-record "$eventstore_root/_bmad-output/implementation-artifacts/frontcomposer-11-24-runtime-identity-successor.md" \
-  --identity-evidence-directory "$eventstore_root/_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31" \
-  --report-output "$eventstore_root/_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json"
+  --report-output "$frontcomposer_root/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 ```
 
-The current command is expected to return nonzero even though the decision record now authorizes the exact bound scope with two captured approvals: this checkout is a different runtime and Builds identity, and contract failures may remain. Playback still covers all 19 interactions so the report records the actual provider-wire differences.
+Live compatibility records the current EventStore source SHA, Release package version, Builds SHA, and release-inventory hash without claiming migration approval. It succeeds only when provenance is internally consistent, all interactions pass, and Kestrel is stopped with its port closed.
+
+Omit `--verification-mode` (or pass `historical-authorization`) and provide `--identity-record` plus `--identity-evidence-directory` to replay the immutable Story 11.24 authorization lane. That historical mode retains its exact approval, hash, and runtime-drift checks independently of current Pact compatibility.

@@ -61,7 +61,9 @@ internal static class ProviderVerificationApplication
             }
 
             inputs = VerificationInputLoader.Load(options, repositoryRoot);
-            if (!inputs.Identity.ApprovalAuthorized || !inputs.Identity.RuntimeMatches)
+            bool identityAccepted = inputs.Identity.RuntimeMatches
+                && (options.Mode == ProviderVerificationMode.LiveCompatibility || inputs.Identity.ApprovalAuthorized);
+            if (!identityAccepted)
             {
                 reasons.AddRange(inputs.Identity.ReasonCodes);
                 exitCode = IdentityFailureExitCode;
@@ -196,12 +198,15 @@ internal static class ProviderVerificationApplication
                 && complete
                 && hostStopped
                 && portClosed
-                && inputs?.Identity.ApprovalAuthorized == true
-                && inputs.Identity.RuntimeMatches;
+                && inputs?.Identity.RuntimeMatches == true
+                && (options.Mode == ProviderVerificationMode.LiveCompatibility || inputs.Identity.ApprovalAuthorized);
             ProviderVerificationTiming timing = timeline.CompleteRun(
                 passed ? "run.succeeded" : "run.failed");
             var report = new ProviderVerificationReport(
                 "hexalith.eventstore.provider-verification.v1",
+                options.Mode == ProviderVerificationMode.LiveCompatibility
+                    ? "live-compatibility"
+                    : "historical-approval",
                 passed ? "passed" : "failed",
                 reasons.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
                 requested,
@@ -272,6 +277,7 @@ internal static class ProviderVerificationApplication
         timeline.CompleteCleanup("cleanup.not-required");
         var report = new ProviderVerificationReport(
             "hexalith.eventstore.provider-verification.v1",
+            "unknown",
             "failed",
             [reasonCode],
             0,

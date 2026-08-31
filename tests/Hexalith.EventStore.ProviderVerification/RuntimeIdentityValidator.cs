@@ -201,6 +201,7 @@ internal static class RuntimeIdentityValidator
         }
 
         return new IdentityEvidence(
+            "historical-approval",
             expectedSource,
             observedSource,
             expectedVersion,
@@ -214,6 +215,63 @@ internal static class RuntimeIdentityValidator
             subjectHash,
             approvalCount,
             approvalAuthorized,
+            runtimeMatches,
+            reasons);
+    }
+
+    public static IdentityEvidence ObserveLive(string repositoryRoot)
+    {
+        string observedSource = RunGit(repositoryRoot, "rev-parse", "HEAD");
+        string observedVersion = ReadRuntimeVersion();
+        string releaseVersion = observedVersion.Split('+', 2)[0];
+        bool providerWorktreeClean = IsProviderWorktreeClean(repositoryRoot);
+        (string observedBuilds, bool buildsWorktreeClean) = FindBuildsIdentity(repositoryRoot);
+        string inventoryPath = Path.Combine(repositoryRoot, "tools", "release-packages.json");
+        string inventoryHash = File.Exists(inventoryPath)
+            ? VerificationInputLoader.ComputeSha256(inventoryPath)
+            : string.Empty;
+        var reasons = new List<string>();
+        if (observedSource.Length != 40)
+        {
+            reasons.Add("identity.source.invalid");
+        }
+
+        if (string.IsNullOrWhiteSpace(releaseVersion))
+        {
+            reasons.Add("identity.version.invalid");
+        }
+
+        if (observedBuilds.Length != 40 || !buildsWorktreeClean)
+        {
+            reasons.Add("identity.builds.invalid");
+        }
+
+        if (!providerWorktreeClean)
+        {
+            reasons.Add("identity.runtime-worktree.dirty");
+        }
+
+        if (string.IsNullOrWhiteSpace(inventoryHash))
+        {
+            reasons.Add("identity.release-inventory.missing");
+        }
+
+        bool runtimeMatches = reasons.Count == 0;
+        return new IdentityEvidence(
+            "live-compatibility",
+            observedSource,
+            observedSource,
+            releaseVersion,
+            observedVersion,
+            observedBuilds,
+            observedBuilds,
+            inventoryHash,
+            inventoryHash,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            0,
+            false,
             runtimeMatches,
             reasons);
     }

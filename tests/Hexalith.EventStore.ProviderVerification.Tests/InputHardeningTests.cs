@@ -221,14 +221,26 @@ public sealed class InputHardeningTests
     [Fact]
     public void LoadStateCatalog_UnsupportedStateAndChangedSeam_AreRejected()
     {
+        string eventStoreRoot = FindRepositoryRoot();
         string source = Path.Combine(
-            FindRepositoryRoot(),
+            eventStoreRoot,
             "references",
             "Hexalith.FrontComposer",
             "tests",
             "Hexalith.FrontComposer.Shell.Tests",
             "Pact",
             "provider-state-catalog.json");
+        if (!File.Exists(source))
+        {
+            source = Path.GetFullPath(Path.Combine(
+                eventStoreRoot,
+                "..",
+                "..",
+                "tests",
+                "Hexalith.FrontComposer.Shell.Tests",
+                "Pact",
+                "provider-state-catalog.json"));
+        }
         string directory = CreateTemporaryDirectory();
         try
         {

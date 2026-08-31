@@ -17,9 +17,7 @@ internal static class VerificationInputLoader
     {
         if (!SafePath.TryResolveExistingDirectory(options.PactDirectory, out string pactDirectory, out string code)
             || !SafePath.TryResolveExistingFile(options.ManifestPath, MaxManifestBytes, out string manifestPath, out code)
-            || !SafePath.TryResolveExistingFile(options.StateCatalogPath, MaxCatalogBytes, out string catalogPath, out code)
-            || !SafePath.TryResolveExistingFile(options.IdentityRecordPath, 128 * 1024, out string identityPath, out code)
-            || !SafePath.TryResolveExistingDirectory(options.IdentityEvidenceDirectory, out string evidenceDirectory, out code))
+            || !SafePath.TryResolveExistingFile(options.StateCatalogPath, MaxCatalogBytes, out string catalogPath, out code))
         {
             throw new ProviderVerificationInputException(code);
         }
@@ -94,12 +92,27 @@ internal static class VerificationInputLoader
             throw new ProviderVerificationInputException("input.interaction.reconciliation-failed");
         }
 
-        IdentityEvidence identity = RuntimeIdentityValidator.Validate(
-            identityPath,
-            evidenceDirectory,
-            repositoryRoot,
-            hashes);
-        hashes.Add(Hash("identity-decision", Path.GetFileName(identityPath), identityPath));
+        IdentityEvidence identity;
+        if (options.Mode == ProviderVerificationMode.LiveCompatibility)
+        {
+            identity = RuntimeIdentityValidator.ObserveLive(repositoryRoot);
+        }
+        else
+        {
+            if (!SafePath.TryResolveExistingFile(options.IdentityRecordPath, 128 * 1024, out string identityPath, out code)
+                || !SafePath.TryResolveExistingDirectory(options.IdentityEvidenceDirectory, out string evidenceDirectory, out code))
+            {
+                throw new ProviderVerificationInputException(code);
+            }
+
+            identity = RuntimeIdentityValidator.Validate(
+                identityPath,
+                evidenceDirectory,
+                repositoryRoot,
+                hashes);
+            hashes.Add(Hash("identity-decision", Path.GetFileName(identityPath), identityPath));
+        }
+
         return new VerificationInputs(pactDirectory, interactions, states, hashes, identity);
     }
 

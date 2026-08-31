@@ -19,7 +19,7 @@ public sealed class StatefulProviderDependenciesTests
         foreach (string state in SupportedProviderStates.All.Order(StringComparer.Ordinal))
         {
             ProviderStateCoordinator coordinator = await ActiveCoordinatorAsync(state);
-            if (state.StartsWith("command-", StringComparison.Ordinal) || state == "tenant-mismatch")
+            if (state.StartsWith("command-", StringComparison.Ordinal))
             {
                 var router = new StatefulCommandRouter(coordinator);
                 if (state == "command-unexpected-5xx")

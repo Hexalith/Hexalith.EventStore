@@ -29,6 +29,7 @@ public sealed class ProviderVerificationApplicationTests
             JsonElement root = report.RootElement;
             root.GetProperty("reasonCodes").EnumerateArray().Single().GetString()
                 .ShouldBe("input.repository-root.unavailable");
+            root.GetProperty("verificationMode").GetString().ShouldBe("historical-approval");
             root.GetProperty("requestedInteractionCount").GetInt32().ShouldBe(0);
             root.GetProperty("hostStarted").GetBoolean().ShouldBeFalse();
         }
@@ -66,6 +67,15 @@ public sealed class ProviderVerificationApplicationTests
     {
         string eventStoreRoot = FindRepositoryRoot();
         string frontComposerRoot = Path.Combine(eventStoreRoot, "references", "Hexalith.FrontComposer");
+        if (!File.Exists(Path.Combine(
+            frontComposerRoot,
+            "tests",
+            "Hexalith.FrontComposer.Shell.Tests",
+            "Pact",
+            "interaction-manifest.json")))
+        {
+            frontComposerRoot = Path.GetFullPath(Path.Combine(eventStoreRoot, "..", ".."));
+        }
         string pactDirectory = Path.Combine(
             frontComposerRoot,
             "tests",
@@ -77,21 +87,12 @@ public sealed class ProviderVerificationApplicationTests
         try
         {
             var options = new ProviderVerificationOptions(
+                ProviderVerificationMode.LiveCompatibility,
                 pactDirectory,
                 Path.Combine(pactDirectory, "interaction-manifest.json"),
                 Path.Combine(pactDirectory, "provider-state-catalog.json"),
-                Path.Combine(
-                    eventStoreRoot,
-                    "_bmad-output",
-                    "implementation-artifacts",
-                    "frontcomposer-11-24-runtime-identity-successor.md"),
-                Path.Combine(
-                    eventStoreRoot,
-                    "_bmad-output",
-                    "implementation-artifacts",
-                    "evidence",
-                    "frontcomposer-story-11-24",
-                    "bb94d93e9b84132cff83a38fba84f25455820d31"),
+                string.Empty,
+                string.Empty,
                 reportPath,
                 TimeSpan.FromSeconds(5),
                 TimeSpan.FromSeconds(5),
@@ -143,6 +144,7 @@ public sealed class ProviderVerificationApplicationTests
 
     private static ProviderVerificationOptions PlaceholderOptions(string reportPath)
         => new(
+            ProviderVerificationMode.HistoricalAuthorization,
             "missing-pacts",
             "missing-manifest.json",
             "missing-catalog.json",
