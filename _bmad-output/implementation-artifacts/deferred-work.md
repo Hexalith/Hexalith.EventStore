@@ -122,6 +122,7 @@ origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: QueryType
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p2-dual-principal-query-envelope-safe-denial.md` summary: Make a safe-denial route registration's `Domain`/`QueryType` casing mismatch against real wire values operator-visible (today only the registered-route list itself is logged, not whether any entry actually matches a query type that ever occurs). evidence: Round-2 blind-hunter review of 6.1-P2 -- ordinal case-sensitive route matching means a typo'd-casing registration silently gets no safe-denial protection, same failure mode the round-1 startup-logging fix targeted, but closing it needs a canonical registry of valid domain/queryType pairs to cross-check against, which doesn't exist anywhere in this codebase today -- out of proportion for a patch-level fix.
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-16, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-17: Add an end-to-end test tying `DualPrincipalClaimsHelper`'s claim-type assumptions (`azp`/`act`/`scope`/`aud`/`client_id`, dependent on `MapInboundClaims=false`) to the real `JwtBearerHandler`/Keycloak token-issuance pipeline, not just hand-constructed `ClaimsPrincipal` unit tests.
 
@@ -706,6 +707,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-1.9 (2
 location: ProjectionUpdateOrchestrator
 reason: `ProjectionUpdateOrchestrator` narrowed `public`→`internal` and dead erase surface. The visibility narrowing is disclosed/justified (verified no external consumer; DI via interfaces; no PublicAPI baseline). `IProjectionReadModelAddressFactory.CreateAggregateOwnedManifest` and `ProjectionEraseOutcomeKind.Denied` are currently unused; they become live only if the slot-completeness decision (Review Finding) adopts manifest-based erasure. Remove or wire per that decision.
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-96, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-97: DAPR batch accessor infers key existence from ETag presence (`DaprReadModelBatchStateAccessor.cs:23`): `string.IsNullOrEmpty(etag) ? absent : present`. An ETag-less store or value reads as absent even when a value is returned. Masked on Redis (always returns ETags), and the resumable CAS protocol fundamentally requires ETags, so no impact on the supported backend. Revisit only if a non-ETag state store is ever qualified; existence should then key off value presence, not the ETag.
 
@@ -813,13 +815,16 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-12-asynchr
 location: /project/v2
 reason: Retry taxonomy remainder (from code-review decision D2) — poison retry ceiling / dead-letter, catalog fingerprint/version re-bind, permanent-`4xx` handling, and terminal-only ledger cleanup for the named-projection delivery retry subsystem. Drift-ahead was made terminal in Story 1.12; the rest is deferred to Story 1.13 (poison/duplicate/dedup horizon) plus a dedicated retry-cleanup-policy story. Note a `/project/v2` `4xx` can be a transient metadata-refresh race, so terminal-`4xx` classification must be designed alongside the dedup horizon, not assumed permanent. [src/Hexalith.EventStore.Server/Projections/NamedProjectionDispatchCoordinator.cs:227] [blind-hunter+edge-case-hunter]
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-111, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-112: The active-rebuild gate remains a pre-existing check-then-act race: `ProjectionEraseCoordinator` snapshots `HasActiveOperatorRebuildForDomainAsync` before lifecycle admission, so a rebuild can become active between the check and the actor call while `allowFreshBegin` remains true. Closing this requires rebuild admission to share a persisted lifecycle fence rather than relying on the existing point-in-time store query.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 1-9-read-model-and-projection-checkpoint-erasure (2026-07-14)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Projections/ProjectionEraseCoordinator.cs:143
 reason: The active-rebuild gate remains a pre-existing check-then-act race: `ProjectionEraseCoordinator` snapshots `HasActiveOperatorRebuildForDomainAsync` before lifecycle admission, so a rebuild can become active between the check and the actor call while `allowFreshBegin` remains true. Closing this requires rebuild admission to share a persisted lifecycle fence rather than relying on the existing point-in-time store query. [`src/Hexalith.EventStore.Server/Projections/ProjectionEraseCoordinator.cs:143`]
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-112 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-112 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-113: HTTP 200 with a literal `null` metadata body is treated as a successful empty load (`AdminOperationalIndexHostedService.cs:96`), so existing admin indexes can be rewritten from an incomplete response. This behavior predates Story 1.12; harden the legacy metadata loader to classify a null success body as a failed load before any index write or catalog replacement.
 
@@ -950,6 +955,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-ad
 location: CLAUDE.md
 reason: The shared AI-instruction baseline rewrite (`CLAUDE.md`/`AGENTS.md`/`.github/copilot-instructions.md`, commit `4ee739d6`) dropped two safeguards the previous text carried: the Agent Skills clause banning skills whose *resolved canonical path* (symlink target) lies inside `references/`, and the standalone-clone rule authorizing initialization of root-declared `references/` submodules — a fresh standalone EventStore clone now has no permitted path to the mandatory `hexalith-llm-instructions.md` baseline while being ordered to stop without it (bootstrap deadlock). The baseline is shared normalized text owned upstream in Hexalith.AI.Tools; route the fix there and re-propagate, do not edit the three entry points unilaterally.
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-130, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-131: `tests/Hexalith.EventStore.DomainService.Tests/DomainModuleAuthoringGuardrailTests.cs:21,208` attributes the domain-centric rule to a CLAUDE.md "Domain-Module Authoring" section that does not exist (the rule lives in `references/Hexalith.AI.Tools/hexalith-llm-instructions.md`); pre-existing at baseline `a9718a21`, the guardrail itself enforces the rule on code and is unaffected — fix the citation next time the test file is opened.
 
@@ -986,6 +992,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-ad
 location: _bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md
 reason: Story 3.5's contract does not define precedence when explicit `UseNuGetDeps` and explicit `UseHexalithProjectReferences` conflict ("preserve its existing mapping" vs "normalize … one authoritative boolean" with no truth-table row, AC, or test naming the winner) — contradictory caller properties could activate both or neither reference edge. Owned by Story 3.5's active cycle. [`_bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md`]
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-135, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-136: The seven root-submodule source bumps ratified into `ea6ce49b` are compile-verified only: the per-project unit-test CI runs in package mode (`UseHexalithProjectReferences` defaults false), and the only source-mode lane is the filtered `tenants-source-mode` launch-settings job — a behavioral regression in bumped Commons/FrontComposer/PolymorphicSerializations/Tenants source that still compiles leaves all CI green. Consider a periodic/advisory source-mode lane running a representative unit-test subset, or record source-mode validation evidence in the ratifying artifact; CI-lane design belongs with Story 3.5's dual-mode validation scope.
 
@@ -2307,6 +2314,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-app
 location: evidence/story-4-5/0776785f.../validate-evidence.py:178
 reason: Sealed evidence packet no longer validates at HEAD — validate_source_binding hashes worktree files, and docs/ci.md plus docs/concepts/architecture-overview.md drifted via later commits; exits 1 with AssertionError: docs/ci.md, while all 17 rows were OK at 2321205b. Duplicates and confirms the pre-existing entry above. [`evidence/story-4-5/0776785f.../validate-evidence.py:178`]
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-318, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-319: No test or CI step ever executes validate-evidence.py, unlike every sibling evidence directory which is pinned by a blocking Contracts.Tests/Packaging fact; the hash binding can decouple with all required checks green. Blocked on the item above.
 
@@ -2321,6 +2329,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-app
 location: evidence/story-4-5/0776785f.../commands.md:71
 reason: No binding between a committed capture and the receipt of the run that produced it — append-durability-race.json armedAtUtc falls inside the post-mutation window, not the race-test-results.json window; disclosed in prose but not machine-checked. [`evidence/story-4-5/0776785f.../commands.md:71`]
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-320, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-321: retryCount derives from unfiltered AllocationAttempts while AppendDurabilityRaceControl is a singleton registered into both the primary and replica hosts; mitigated by serial collection execution and disclosed in allocatorIdentityLimitation.
 
@@ -2363,6 +2372,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-app
 location: _bmad-output/planning-artifacts/architecture.md:558
 reason: The ADD-fencing decision recorded as Deferred has no tracked owner or trigger — no append-fencing story exists in epics.md or sprint-status.yaml. [`_bmad-output/planning-artifacts/architecture.md:558`]
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-326, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-327: Story 4.5 provider profile is a source literal validated against itself (daprRuntime "1.18.1", redisImage "redis:6") and the two deterministic classes lack Collection/Trait attributes — deferred to the approved append-fencing follow-up, which must re-capture across multiple provider profiles anyway, so fixing runtime attribution and test placement is cheapest as part of that multi-profile capture.
 
@@ -2468,13 +2478,16 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: acceptances/{subject_sha256
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Anchor and scaffold the AC4 acceptance-receipt location. evidence: `approval_contract.external_receipt_location` is the relative string `acceptances/{subject_sha256}` with no stated root, `required_receipt_fields` binds to no roster version, and the directory does not exist, so AC4 receipt collection cannot begin.
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-341, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-342: Bind the outer evidence manifest's own bytes to a hash.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: review-subject.json
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Bind the outer evidence manifest's own bytes to a hash. evidence: `evidence-sha256.txt` is absent from `evidence-core-sha256.txt` and unbound in `review-subject.json`. Mitigated because its entry set is structurally pinned by `ExpectedOuterFiles` and its listed hashes are recomputed against live bytes, so the practical exposure is narrow.
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-342 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-342 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-343: Disclose concurrent Epic 4 and docs changes carried inside the Story 3.13 review range.
 
@@ -2495,7 +2508,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: package-availability.json
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Refresh retained evidence `checked_at` timestamps after byte rewrites. evidence: `package-availability.json` declares `checked_at: 2026-08-04T11:17:05Z` and `registry-readback.json` declares `2026-08-04T11:48:07Z`, but both files were rewritten on 2026-08-09 for host-path redaction and the `cli_candidate_consequence` string.
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-345 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-345 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-346: HIGH - Story 1.21 must repair Epic 1 frozen evidence corrupted by the SDK-token sweep in `089369bb`, under its own authority record.
 
@@ -2594,7 +2609,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Decide whether the OCI image index should carry provenance annotations. evidence: `_PublishMultiArchContainers` passes no labels to `CreateImageIndex`, and `validate_packet_files` checks the index only for `schemaVersion`, `mediaType` and two descriptors. The multi-arch tag — the artifact a registry UI surfaces — has no `org.opencontainers.image.*` metadata, and no test asserts either way. The spec requires labels on the child configs only, so this is out of the current contract.
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-359 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-359 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-360: Cross-check the three JSON canonicalisers against one shared fixture.
 
@@ -2684,7 +2701,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: DeployedRuntimeParityClosureTests.cs:4910-4912
 severity: medium
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Receipt `source_url` requires a GitHub commit anchor that cannot exist; the existing deferral's "pre-existing pattern inherited" rationale is false and is corrected here. evidence: `DeployedRuntimeParityClosureTests.cs:4910-4912` requires `…/commit/<SelectedSourceSha>#story-3-13-disposition-<envelopeHash>-<role>`. GitHub mints `#commitcomment-<id>`, so the 3/3 story-completable path is reachable only from `CreateDispositionReceipts` fixtures. The spec Defer list attributes this to a pattern "inherited from `ValidateAcceptances`", but that helper uses a different, subject-keyed anchor `#story-3-13-<subjectHash>-<role>` (`:6613`) — the disposition anchor format is newly authored by commit `56aa0fec`. The durable source record lives in `sources/` inside the same directory as the receipt, so anyone who can author the receipt can author its source: the cross-check proves consistency, not independence. Contrast `LoadReviewerRoster:7010-7024`, which constrains `authority_source` to an https github.com issue-comment URL. Owner decision 2026-08-21: keep the deferral, correct the rationale; non-blocking while 3/3 receipts remain uncollected. severity: medium
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-371 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-371 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-372: Mark or re-tier the heavyweight container-publish theories so the CI-gating Contracts lane is not paying for real `dotnet publish` cycles.
 
@@ -2880,7 +2899,9 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.13 acceptance colle
 location: evidence/story-3-13/disposition/6cee8dad.../acceptances/a7ecd455.../
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 3.13's three role-bound acceptances are a self-attestation, not independent three-party review. evidence: The packet-bound roster maps `eventstore-owner` and `release-owner` to the same account (`github:jpiquot`), and `test-architect` to `bmad:murat`, a tooling-attested record with no external anchor. The 3/3 gate at `evidence/story-3-13/disposition/6cee8dad.../acceptances/a7ecd455.../` is therefore satisfied by one human plus a bmad record. The two owner receipts are genuinely GitHub-minted and independently re-fetchable (comments 5395155800 / 5395155988 on issue 351), so the evidence is authentic; what is absent is reviewer independence. Same pattern already tracked for Story 3.15's `bmad:murat` receipt. severity: medium
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-395 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-395 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-396: The development-gitlink guard encodes "deliberately independent of the release pin" as a permanent inequality, so a legitimate submodule bump onto the release pin fails a test with no failure meaning.
 
@@ -2904,7 +2925,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-08-25, loop 2)"), 2026-08-30
 location: DeployedRuntimeParityClosureTests.cs:7378
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: The Story 3.13 closure-packet gate `ValidateAcceptances` still enforces the unmintable `#story-3-13-<hash>-<role>` commit anchor that only a fixture can satisfy. evidence: `DeployedRuntimeParityClosureTests.cs:7378` builds `ApprovedSourceSha + "#story-3-13-" + subjectHash + "-" + role` and `:7405,:7409` require `retained-immutable-external-record` and `acceptance-source/v1`, while the disposition path moved to `/v2` and `github-issue-comment` (`:74,:5400-5412`). Live at `:1011` and at `:6144` inside the `story_may_be_done` gate. A genuine GitHub-collected receipt is rejected by it; the synthetic `CreateAcceptanceReceipts` fixture is its only witness. Same defect class Story 3.13 was reopened to remove.
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-398 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-398 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-399: `author_association` requirements diverge between the registry authority source and acceptance receipts, and the divergence was resolved downward to keep real evidence passing.
 
@@ -3217,6 +3240,7 @@ location: 3-15-corrected-deployed-runtime-parity-closure.md:70-76
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: The two timestamp-rejected owner comments are named in three documents but retained nowhere, and the `dab64f5f` pair was never annotated. evidence: `3-15-corrected-deployed-runtime-parity-closure.md:70-76`, the proof packet and `docs/ci.md` all state that comments `5409140199` and `5409147909` were marked `SUPERSEDED -- INVALID TIMESTAMP-MISMATCH ATTEMPT`, but no bytes for either are retained under `evidence/story-3-15/`, so the claim is unverifiable from the repository. The `dab64f5f` owner comments `5408186984`/`5408189299` received no equivalent annotation and remain acceptance-shaped JSON on the now-allowlisted `#352` thread; their rejection rests solely on `subject_sha256` inequality.
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-437, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-438: The Code Map's frozen fence was extended and its line anchors were not refreshed.
 
@@ -3257,6 +3281,7 @@ location: n/a
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: SUPERSEDES the loop-3 entry stating that opening a dedicated Story 3.15 acceptance issue and requesting acceptances "is an Ask First action and was not performed" -- it was subsequently performed. evidence: Dedicated issue [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352) was opened, its MEMBER-authenticated roster comment `5407975180` was retained as the registry `authority_source`, and two complete acceptance rounds were collected on that thread: `5408186984`/`5408189299` against subject `dab64f5f...`, then `5409145568`/`5409148235` against `a8cc777e...`, plus two timestamp-mismatched attempts `5409140199`/`5409147909` marked superseded. The earlier ledger and spec wording is stale at HEAD and is corrected by this entry rather than edited in place, because the ledger is append-only. What remains genuinely unperformed is collecting a *third* round against the current subject `663747b1...`, which this landing did not do. status: open — recorded correction; the outstanding owner action is the new receipt round.
 status: open
+decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-442, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-443: Ledger-format repair notice for the trusted-verifier hardening block filed under the loop-4 heading.
 
@@ -3280,7 +3305,9 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-6 authorize
 location: reviewer-roster.json
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The retained roster comment names the ratified artifact `reviewer-roster.json` while the packet retains `registry/owner-role-registry.json`. evidence: `EXPECTED_REGISTRY_AUTHORITY_BODY` requires the retained comment body verbatim, and that body's wording was copy-carried from Story 3.13. The reference is understood to mean the retained registry file. Correcting it requires a new owner comment on `#352` (an external write) plus another subject re-mint, so the mismatch is recorded in the verifier source, the story record and `docs/ci.md` instead. status: open — recorded as a known mismatch by owner decision (loop 6).
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-445 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-445 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-446: The `linux/arm64` Production smoke depends on a QEMU emulation registration that the packet cannot hash.
 
@@ -3296,7 +3323,9 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-6 authorize
 location: n/a
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: The retained Production smoke bytes were produced by the pre-loop-6 capture tool, so the bound tool of record can no longer reproduce the bytes it certifies. evidence: The smokes are timestamped `2026-08-21T19:24-19:26`. The loop-6 batch bound both producers into the closure `dispatch` block and simultaneously changed the capture tool (bounded cleanup budget, populated-directory refusal, prerequisite docstring), so the currently bound capture digest is not the digest of the tool that produced the retained logs. Re-capturing was deliberately not done: it would replace evidence rather than bind it, and needs Docker plus arm64 binfmt emulation. Every *future* producer edit now re-mints the subject. status: open — accepted for this packet; re-capture belongs to a separately authorized evidence pass.
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-447 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-447 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-448: No drift guard fails loudly when a bUnit upgrade adds or re-signs a render entry point that `AdminUITestContext` no longer intercepts.
 
@@ -3361,7 +3390,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-4-15-o
 location: tools/validate-oq8-platform-evidence.py:237-241
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md` severity: low summary: `REVIEW_ROSTER` names two reviewers as specific accountable personas but the security role is only a generic role label. evidence: `REVIEW_ROSTER = {"architecture": "Winston (System Architect)", "security": "Security Reviewer", "test": "Murat (Test Architect)"}` — `tools/validate-oq8-platform-evidence.py:237-241`. The asymmetry recurs through both the v1 and v2 review schemas. status: open — deferred, cosmetic; doesn't affect the evidentiary integrity of the check itself.
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Record the current DW-455 behavior and its verified limitation as an intentional, human-approved disposition.
+decision: 2026-08-31 Accept current contract — Record the current DW-455 behavior and its verified limitation as an intentional, human-approved disposition.
 
 ### DW-456: Repair the concurrent deferred-work ledger migration and its governance parser as one separately owned ledger-governance change.
 origin: spec-deferred 5777fb182a87
