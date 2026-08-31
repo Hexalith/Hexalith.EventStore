@@ -53,14 +53,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: release-skip race diagnosis (2026-07-21, run 29799288142)"), 2026-08-30
 location: actions/checkout
 reason: source_spec: none owner_repo: `Hexalith.Builds` — reusable `.github/workflows/domain-release.yml` (currently pinned in this repo as `builds-execution-sha: cf04c419378dfe1bd3c41a9244b5e3283092056e`). NOT owned by `Hexalith.EventStore`; the EventStore `release.yml` only calls the reusable workflow, so this fix cannot land here. summary: The reusable release workflow silently produces a **green run that publishes nothing** when `main` advances between release dispatch and the `Semantic Release` step. `actions/checkout` pins the dispatched `github.sha`; semantic-release then does its own `git fetch`, sees the live `origin/main` is ahead, prints `ℹ The local branch main is behind the remote one, therefore a new version won't be published.`, and exits 0. The operator sees a successful Release run and reasonably assumes a release was cut. Harden `domain-release.yml` to **fail loudly** (or emit an unmissable error annotation + non-success outcome) when the checked-out release SHA is no longer the live `main` tip at semantic-release time, instead of a silent no-op green. evidence: Run https://github.com/Hexalith/Hexalith.EventStore/actions/runs/29799288142 — dispatched 03:43:45Z on `41f5ed0f` (then the live tip; `verify-source` passed). At 03:52:04Z an automated submodule-bump commit `4245f0f8` ("fix: update submodule references…") landed on `main` (the concurrent bmad-loop auto-push hazard — see project memory `concurrent-bmad-loop-git`). At 04:04:06Z the release job checked out the pinned `41f5ed0f`; at 04:06:33Z semantic-release aborted with the "branch is behind remote" message. Job conclusion: success. No `v3.79.0` tag/release/packages were produced despite releasable `feat:`/`fix:` commits since `v3.78.0`. EventStore's own `verify-source` gate only re-checks the tip at run *start*, leaving a ~20-min window; closing the race durably requires a re-assert-tip-then-fail step inside the reusable workflow (Builds), or preventing pushes to `main` during a release. Immediate remediation for this incident was an operator re-dispatch once `main` was quiescent (run 29800856877).
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Builds/Github/publish-containers/tests/test_publish_script_contract.py:387 proves stale source now fails before semantic-release
 
 ### DW-8: Add a guardrail test asserting the `postgres:18.4` tag in `.github/workflows/integration.yml`'s "Pull PostgreSQL container image" step matches `Oq8PostgresqlFixture.PostgresImage`, so the two literals cannot silently drift.
 
 origin: migrated from legacy ledger ("Deferred from: live-sidecar PostgreSQL image pull CI fix (2026-07-20)"), 2026-08-30
 location: github/workflows/integration.yml
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md` summary: Add a guardrail test asserting the `postgres:18.4` tag in `.github/workflows/integration.yml`'s "Pull PostgreSQL container image" step matches `Oq8PostgresqlFixture.PostgresImage`, so the two literals cannot silently drift. evidence: Blind-hunter review of the CI fix -- the workflow comment asks a human to keep the tag in sync but nothing enforces it; the repo already has this pattern for release authority (`ContainerPublishingGovernanceTests.cs`) but not for this image tag.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs:11 pins and compares the workflow and fixture image identities
 
 ### DW-9: Add a `docker` ecosystem entry to `.github/dependabot.yml` so `postgres:18.4` bumps get automated PRs like the existing `nuget`/`npm`/`github-actions` ecosystems.
 
@@ -74,7 +76,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: live-sidecar PostgreSQL image pull CI fix (2026-07-20)"), 2026-08-30
 location: Oq8PostgresqlFixture.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29738838856-fix-ci-cd.md` summary: Pin the live-sidecar PostgreSQL image by digest (`postgres@sha256:...`) instead of the mutable `18.4` tag, with a documented rotation process. evidence: Blind-hunter review of the CI fix -- a mutable tag gives no guarantee the bits pulled today match the bits validated previously; digest pinning needs coordinated changes to both the workflow and `Oq8PostgresqlFixture.cs`, out of scope for the minimal unblock-CI fix.
-status: open
+status: done 2026-08-31
+resolution: already resolved: .github/workflows/integration.yml:80 pulls PostgreSQL by immutable sha256 digest
 
 ### DW-11: Cache the pulled `postgres:18.4` image (or layer) across `integration.yml` runs instead of re-pulling on every push/PR to `main`.
 
@@ -95,14 +98,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: immutable manual release hardening (2026-07-20)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-simplify-release-architecture.md` summary: Generalize the reusable publication preflight's hard-coded EventStore package count of exactly 14 so other callers can supply their own immutable expected inventory size without weakening EventStore's manifest contract. evidence: The shared validator currently enforces `len(package_ids) == 14`; that is correct for EventStore but makes the otherwise reusable release workflow product-specific.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Builds/.github/workflows/domain-release.yml:86 exposes caller-supplied expected-package-count
 
 ### DW-14: Give each container mapping its own frozen repository identity and phase evidence when multiple container mappings share one release invocation.
 
 origin: migrated from legacy ledger ("Deferred from: immutable manual release hardening (2026-07-20)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-simplify-release-architecture.md` summary: Give each container mapping its own frozen repository identity and phase evidence when multiple container mappings share one release invocation. evidence: The current EventStore caller has one approved mapping, while the shared publisher reuses one preflight evidence directory and frozen identity; a second mapping would collide with the first mapping's repository identity.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Builds/Github/publish-containers/publish-containers.sh:167 freezes all repositories and line 187 creates per-mapping evidence
 
 ### DW-15: Close the non-atomic gap between the final Zot tag-absence proof and the subsequent registry write.
 
@@ -137,7 +142,8 @@ status: open
 origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: EventEnvelopeAssertions.cs
 reason: source_spec: none summary: Expose an authoritative persisted global-position/watermark to projections and `QueryCursorScope`, consumed by Hexalith.Projects Story 6.1-P2's watermark-replay/restart requirement. evidence: Split from the 6.1-P2 dual-principal query envelope + safe-denial boundary work at Jerome's direction 2026-07-18 — the watermark is largely independent of the identity/envelope and safe-denial work (which are coupled to each other) and can ship separately; a `GlobalPosition` already exists per-event at persistence time (`EventEnvelopeAssertions.cs`, `EventEnvelopeBuilder.cs`) but nothing today exposes it as an authoritative watermark.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Client/Queries/QueryCursorScope.cs:71 exposes AddProjectionWatermark for a positive persisted global position
 
 ### DW-20: Epic D retrospective follow-through requires a dedicated REST generator hardening story or backlog item. Scope it from the D5/D7 deferred items below rather than scattering generator diagnostics into unrelated security, correctness, or UI stories. Minimum scope: unsupported contract-shape diagnostics, duplicate command JSON-name diagnostics, invalid `RestQueryBinding` source diagnostics, empty constant binding diagnostics, route-template constraint behavior, case-insensitive route/JSON-name matching, referenced-contract incrementality, and generated external API error-semantics coverage.
 
@@ -174,21 +180,24 @@ status: open
 origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-1-2-domain-query-handler-routing.md` summary: Handler-backed query routes need explicit provenance so the gateway can decide whether projection ETags are valid for the response. evidence: `HandlerAwareQueryRouter` already used the same `QueryRouterResult` shape as projection routes before this story, and `QueriesController` falls back to request/domain projection ETag lookup when no projection type is supplied; changing that safely needs a separate route-provenance contract rather than metadata passthrough alone. status: reconciled 2026-07-11 — see the reconciliation section below.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore/Queries/HandlerAwareQueryRouter.cs:81 stamps handler route metadata explicitly
 
 ### DW-25: The EventStore platform portion of AD-15 is owned and implemented by Story 2.8: additive provenance contract, authoritative router stamping, route-first conditional evaluation, projection-only freshness/ETag evidence, and fail-safe client/generated REST behavior.
 
 origin: migrated from legacy ledger ("Route-provenance contract reconciliation (updated 2026-07-11)"), 2026-08-30
 location: n/a
 reason: The EventStore platform portion of AD-15 is owned and implemented by **Story 2.8**: additive provenance contract, authoritative router stamping, route-first conditional evaluation, projection-only freshness/ETag evidence, and fail-safe client/generated REST behavior.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore/Queries/HandlerAwareQueryRouter.cs:94 stamps HandlerComputed provenance authoritatively
 
 ### DW-26: The 2026-07-05 gateway-contract prerequisite is superseded for metadata propagation by AD-14 + Stories 1.2/1.3/2.2, and for EventStore route provenance enforcement by AD-15 + Story 2.8.
 
 origin: migrated from legacy ledger ("Route-provenance contract reconciliation (updated 2026-07-11)"), 2026-08-30
 location: n/a
 reason: The 2026-07-05 gateway-contract prerequisite is superseded for metadata propagation by **AD-14** + Stories 1.2/1.3/2.2, and for EventStore route provenance enforcement by **AD-15** + Story 2.8.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:212 stamps ProjectionBacked provenance, superseding the old prerequisite
 
 ### DW-27: Story 4.7 is now Tenants-only follow-up.
 
@@ -314,7 +323,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-03, re-review)"), 2026-08-30
 location: DAPR_HTTP_PORT
 reason: Empty (as opposed to absent) `DAPR_HTTP_PORT` yields the base address `http://localhost:` and `new Uri(...)` throws `UriFormatException` at startup with an opaque message, in both `Sample.Api` and `Sample.BlazorUI`. The `?? "3500"` fallback only guards null. Minor robustness.
-status: open
+status: done 2026-08-31
+resolution: already resolved: samples/Hexalith.EventStore.Sample.Api/Services/DaprHttpEndpointResolver.cs:41 handles blank ports and validates the numeric range
 
 ### DW-45: `InboundBearerForwardingHandler` forwards a multi-valued inbound `Authorization` header comma-joined (via the `StringValues`→`string` implicit conversion), producing a malformed bearer that is rejected opaquely by the gateway rather than up front. Adversarial/rare.
 
@@ -372,14 +382,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of D-7-proof-tenants-ui-host-submodule (2026-07-04, re-review round 2)"), 2026-08-30
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:482-488
 reason: MEDIUM — `ListByCursorAsync` (`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:482-488`) lets a `StatusCode = 200` `EventStoreGatewayException` (null/JSON-`null`/shape-mismatch payload from the generic `SubmitQueryAsync<T>`) escape into the Blazor circuit — it catches only `IsUnauthorized` and `IsUnavailableOrInvalid` (`>= 400`), unlike the sibling methods' unfiltered catch-all. Undermines AC7 fail-closed. Pre-existing pattern carried through the migration (filters unchanged by D7); trivially patchable by mirroring the sibling catch-all. Low likelihood — needs a malformed 200 (projection/contract bug).
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1932 now catches every EventStoreGatewayException on the list path
 
 ### DW-53: LOW — Tenant-list path has no invalid-cursor recovery (`TenantQueryGateway.cs:485-487, 936`): `IsUnavailableOrInvalid` treats every `>= 400` alike, so a 400 invalid/expired list cursor surfaces as "gateway unavailable" instead of resetting to page 1 (as `GetTenantAuditAsync` does via `IsInvalidAuditCursor`). Low likelihood — list cursors are server-issued protected cursors.
 
 origin: migrated from legacy ledger ("Deferred from: code review of D-7-proof-tenants-ui-host-submodule (2026-07-04, re-review round 2)"), 2026-08-30
 location: TenantQueryGateway.cs:485-487
 reason: LOW — Tenant-list path has no invalid-cursor recovery (`TenantQueryGateway.cs:485-487, 936`): `IsUnavailableOrInvalid` treats every `>= 400` alike, so a 400 invalid/expired list cursor surfaces as "gateway unavailable" instead of resetting to page 1 (as `GetTenantAuditAsync` does via `IsInvalidAuditCursor`). Low likelihood — list cursors are server-issued protected cursors.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1900 implements invalid-list-cursor page-one recovery
 
 ### DW-54: (re-confirms existing D7 entry) LOW — empty `Constant` `[RestQueryBinding]` value emits an empty aggregate id with no HESREST diagnostic (`RestApiControllerEmitter.cs:376`). Same silent-drop class as the already-listed generator-diagnostic hardening item; the GetHashCode-NRE sub-claim was refuted (`GetString` never returns null).
 
@@ -506,7 +518,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: /api/v1/commands/status/{id
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-2-rest-api-generator-discovery-and-controller-emission.md` summary: Generated command success responses hard-code `/api/v1/commands/status/{id}` as a relative status `Location`. evidence: `RestApiControllerEmitter.AppendCommandAction` writes `Response.Headers["Location"] = "/api/v1/commands/status/" + Uri.EscapeDataString(...)`, while the platform `CommandsController.Submit` builds an absolute URI from the current request host. Dedicated generated API hosts may not expose that relative status route, so status-location policy needs a focused generated-host design. resolution: Policy defined as architecture invariant AD-17 (absolute-to-gateway, fail-closed when unconfigured, single-sourced gateway status key) via `sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md`. status: **RESOLVED 2026-07-07 by Story 2.6** — `RestApiControllerEmitter.AppendCommandAction` no longer emits any hard-coded relative `/api/v1/commands/status/` literal; the generated command 202 resolves an **absolute** `Location` at request time through the injected `ICommandStatusLocationBuilder` (`Hexalith.EventStore.Client.Gateway`), and emits **no** `Location` header when the gateway status base is unconfigured (fail-closed per AD-10). Absorbs rest-generator-hardening Second-Wave item **S2**. Evidence: `RestApiControllerGenerationTests` + `RestApiGeneratedControllerErrorSemanticsTests` (110/110).
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:282 uses ICommandStatusLocationBuilder instead of a relative literal
 
 ### DW-72: Generated query actions map caught `ArgumentException` messages directly into client-facing ProblemDetails.
 
@@ -520,21 +533,24 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: /api/v1/commands/status/{id
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-3-sample-external-api-host-proof.md` summary: Generated Sample API command success responses expose the generator's relative `/api/v1/commands/status/{id}` status location even though the external API host does not itself map that status route. evidence: `SampleApiGeneratedControllerRuntimeTests` proves the compiled Sample API generated command action emits the existing generated `Location` header; `Sample.Api` maps only generated controllers and default endpoints, so polling that relative status URL depends on an external routing/proxy policy not owned by this proof story. resolution: Policy defined as architecture invariant AD-17 (absolute-to-gateway, fail-closed when unconfigured, single-sourced gateway status key) via `sprint-change-proposal-2026-07-07-generated-api-command-status-location-policy.md`. status: **RESOLVED 2026-07-07 by Story 2.6** — `Sample.Api` opts into the absolute status base via `AddEventStoreCommandStatusLocation` (config `EventStore:GatewayStatusBase`) and defaults fail-closed; `SampleApiGeneratedControllerRuntimeTests` now proves **both** absolute-when-configured (`https://gateway.example/api/v1/commands/status/{statusId}`, never relative) and no-`Location`-when-unconfigured against the real compiled `CounterRestController` (Sample.Tests 116/116).
-status: open
+status: done 2026-08-31
+resolution: already resolved: samples/Hexalith.EventStore.Sample.Api/Program.cs:84 configures the absolute gateway status base and fails closed when absent
 
 ### DW-74: Sample DAPR app-id handlers append `dapr-app-id` and `dapr-api-token` headers without replacing preexisting values.
 
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: samples/Hexalith.EventStore.Sample.Api/Services/DaprAppIdHandler.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-3-sample-external-api-host-proof.md` summary: Sample DAPR app-id handlers append `dapr-app-id` and `dapr-api-token` headers without replacing preexisting values. evidence: `samples/Hexalith.EventStore.Sample.Api/Services/DaprAppIdHandler.cs` and `samples/Hexalith.EventStore.Sample.BlazorUI/Services/DaprAppIdHandler.cs` call `TryAddWithoutValidation` for DAPR routing headers, so a caller-provided conflicting value could produce duplicate sidecar routing/token headers; this handler behavior predates the generated Sample API host proof and needs a focused outbound-DAPR-header policy fix. status: reconciled 2026-07-07 (sprint-change-proposal-2026-07-07-outbound-dapr-routing-header-policy). Policy decided and formalized as architecture invariant **AD-18** (Outbound Sidecar Control-Plane Headers Are Handler-Owned): replace-not-append, handler-owned, innermost handler, caller/inbound values never routed. Scope is wider than the two files named here — the byte-identical defect also lives in `src/Hexalith.EventStore.Admin.UI/Services/DaprAppIdHandler.cs`. Enforcement owned by **Story 2.7** (centralize a single handler in `Hexalith.EventStore.Client` via `AddEventStoreGatewayClient(appId, apiToken?)`, delete the 3 in-repo copies, add pre-existing-header replacement test + a guardrail structural test). The identical `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Services/DaprAppIdHandler.cs` copy is a **coordinated submodule follow-up requiring maintainer approval** (Story 2.4 lineage), not modified under Story 2.7.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Client/Handlers/DaprServiceInvocationHandler.cs:12 removes and replaces handler-owned DAPR headers
 
 ### DW-75: Raw SignalR hub leave calls do not validate projection type or tenant id before building and removing malformed group names.
 
 origin: migrated from legacy ledger ("Deferred from: follow-up review of spec-1-5-domain-module-hosting-observability (2026-07-06)"), 2026-08-30
 location: ArgumentException.ThrowIfNullOrWhiteSpace(projectionType/tenantId
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-2-5-scoped-metadata-rich-projection-notifications.md` summary: Raw SignalR hub leave calls do not validate projection type or tenant id before building and removing malformed group names. evidence: `ProjectionChangedHub.LeaveGroupCoreAsync` validates scoped suffixes added by Story 2.5 but still lacks the projection/tenant null, blank, and colon guards that `JoinGroupCoreAsync` applies; malformed raw `LeaveGroup` or `LeaveGroupScoped` calls can reach `RemoveFromGroupAsync` and debug logs with invalid group names. The leave path and its projection/tenant validation gap pre-date this story, while the scoped-suffix validation was the only changed behavior here. status: **RESOLVED 2026-07-07 by sprint-change-proposal-2026-07-07-signalr-hub-leave-validation** — `LeaveGroupCoreAsync` now applies the same `ArgumentException.ThrowIfNullOrWhiteSpace(projectionType/tenantId)` + colon guards as `JoinGroupCoreAsync` (leave stays authorization-free by design). Covered by 5 new `ProjectionChangedHubTests` (leave/scoped-leave projection+tenant colon and null/blank), Server.Tests green (34/34). Satisfies Epic 2 retro Action #6 completion gate (same safe group rules as join).
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:161 validates blank projection and tenant identifiers on leave
 
 ### DW-76: `projectionType`/`tenantId` have no length bound and no control-character/newline rejection on either the SignalR join or leave path — only `scope` is capped (`MaxGroupScopeLength = 64`) and only colons + whitespace-only are rejected.
 
@@ -590,42 +606,48 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 1-9-read-model-and-projection-checkpoint-erasure (2026-07-11)"), 2026-08-30
 location: ServiceCollectionExtensions.cs:56
 reason: No production code calls `IProjectionStateEraser` — only the DI registration in `ServiceCollectionExtensions.cs:56`. The end-to-end read-model/checkpoint drift fix is unreachable from any wired in-tree path; it depends on a future Admin/GDPR-1 erasure trigger. Deferred as expected — the caller is exactly what the governing-contract decision (see Story 1.9 Review Findings) resolves. Do not add a caller in isolation before that decision.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:245 wires the production projection-erasure trigger through the authenticated admin boundary
 
 ### DW-84: Complete the in-progress Story 1.9 erasure refactor so the Server and Server.Tests projects compile again.
 
 origin: migrated from legacy ledger ("Deferred from: review of spec-gh-29184319584-fix-live-sidecar-ci (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md` summary: Complete the in-progress Story 1.9 erasure refactor so the Server and Server.Tests projects compile again. evidence: Pre-existing Story 1.9 working-tree changes delete `IProjectionStateEraser`, `ProjectionStateEraser`, and `ReadModelEraseTarget` while production registration and `StorageKeyIsolationTests` still reference them; `ProjectionCheckpointTracker` also exposes an internal capability through a public class.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:102 registers the completed projection erase coordinator graph
 
 ### DW-85: Preserve or explicitly version the released erasure API surface being removed by Story 1.9.
 
 origin: migrated from legacy ledger ("Deferred from: review of spec-gh-29184319584-fix-live-sidecar-ci (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md` summary: Preserve or explicitly version the released erasure API surface being removed by Story 1.9. evidence: The pre-existing Story 1.9 diff removes released interface members and public erasure types without an API-compatibility gate, creating source and binary breaks that the current concrete-class tests cannot detect.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelStoreReleasedShapeTests.cs:34 preserves the released interface and tests additive erasure seams
 
 ### DW-86: Make Story 1.9 erasure capability DI fail closed for custom stores and checkpoint trackers.
 
 origin: migrated from legacy ledger ("Deferred from: review of spec-gh-29184319584-fix-live-sidecar-ci (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md` summary: Make Story 1.9 erasure capability DI fail closed for custom stores and checkpoint trackers. evidence: The pre-existing registrations can bind a default DAPR eraser behind a custom non-capable `IReadModelStore` or unconditionally cast a custom `IProjectionCheckpointTracker`, risking wrong-backend mutation or resolution-time failure instead of `Unsupported`.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Server.Tests/Configuration/ProjectionEraseRegistrationTests.cs:55 proves the eraser shares the configured read-model store singleton
 
 ### DW-87: Wire and verify Story 1.9 projection slot discovery and canonical read-model address ownership end to end.
 
 origin: migrated from legacy ledger ("Deferred from: review of spec-gh-29184319584-fix-live-sidecar-ci (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md` summary: Wire and verify Story 1.9 projection slot discovery and canonical read-model address ownership end to end. evidence: The pre-existing slot/address types lack reliable registration and contract coverage, declarations can be skipped by handler-registration early returns, and no production writer currently proves it uses the same canonical key factory as erasure.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Server/Projections/ProjectionReadModelAddressFactory.cs:48 wires aggregate-owned manifest discovery through the canonical address factory
 
 ### DW-88: Finish the Story 1.9 persisted erasure coordinator and lifecycle/admin boundary before exposing partial seams.
 
 origin: migrated from legacy ledger ("Deferred from: review of spec-gh-29184319584-fix-live-sidecar-ci (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29184319584-fix-live-sidecar-ci.md` summary: Finish the Story 1.9 persisted erasure coordinator and lifecycle/admin boundary before exposing partial seams. evidence: The active story requires resumable coordination, rebuild-checkpoint deletion, delivery-last ordering, lifecycle serialization, active-rebuild refusal, structured outcomes, and an authenticated boundary, but the reviewed pre-existing diff does not yet provide those runtime components.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Server/Projections/ProjectionEraseCoordinator.cs:345 returns success only after the persisted resumable coordinator completes
 
 ### DW-89: Make in-memory read-model writes atomic with batch accessor ETag compare-and-set operations.
 
@@ -660,14 +682,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-2-resume-and-idempotency-integrity (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md` summary: (Story 4.4) Prevent domain re-execution when a Recoverable (stored-but-unpublished) idempotency record expires after the retention window. evidence: IdempotencyChecker.ClassifyAsync applies the bounded ExpiresAt to Recoverable records too (expiry check precedes the disposition branch), so a retry after 24h is treated as a miss and could re-execute the domain. Broader recovery is owned by Story 4.4.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Server/Actors/IdempotencyChecker.cs:348 exempts Recoverable records from ordinary expiry until publication recovery completes
 
 ### DW-94: Correct the drain activity message-id telemetry tag for legacy correlation-keyed drain records.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 4-2-resume-and-idempotency-integrity (2026-07-12)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md` summary: Correct the drain activity message-id telemetry tag for legacy correlation-keyed drain records. evidence: DrainUnpublishedEventsAsync sets eventstore.message_id to the tracking id (a correlationId for legacy records) before the real message id is added, undermining message-id-primary telemetry.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1377 keeps tracking identity separate and line 1428 tags the proven message id
 
 ### DW-95: Retained legacy aggregate-wide checkpoint feeds the empty-stream drift branch (`ProjectionUpdateOrchestrator.cs:129`). An erased/recreated identity that had a legacy checkpoint and later reads an empty stream logs spurious `CheckpointDriftDetected` (diagnostic noise only — no mutation, no suppressed delivery). Direct consequence of the human-approved Option A retained-legacy-key relaxation; revisit if diagnostic noise is a problem or if a bounded legacy-key cleanup is added.
 
@@ -709,7 +733,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 1-10-coordinated-read-model-batch-writes (2026-07-13, decision follow-up)"), 2026-08-30
 location: ReadModelBatchLiveSidecarTests.cs
 reason: source_spec: `_bmad-output/implementation-artifacts/1-10-coordinated-read-model-batch-writes.md` summary: (HARD GATE for Story 1.12/1.13) Run the `ReadModelBatchLiveSidecarTests` lane in a working Tier-3 (real Redis/DAPR) environment before wiring the coordinated batch into production projection dispatch, and add the omitted Task-8 scenarios. evidence: The live lane is the ONLY real-backend evidence for AC2/AC3/AC7/AC8 and for the story's founding premise (a void DAPR/Redis transaction can partially commit), but it never executed here (VSTest host exit 144 during collection-fixture startup; pre-existing `DaprETagServiceLiveSidecarTests` fails identically). Deterministic fakes/recorder are "request-shape evidence only, never completion proof." The authored `ReadModelBatchLiveSidecarTests.cs` also currently omits injected partial-prefix old-view visibility, conflict/abort restoration, and post-dispatch cancellation reconciliation despite Task 8 being checked. Decision 2026-07-13: deterministic evidence accepted to advance Story 1.10; the live run + missing-scenario authoring HARD-GATE the Story 1.12/1.13 production wiring. Also add deterministic transaction partial-commit coverage (see the [Review][Patch] item on `VerifyTransactionAsync`), which does NOT need the live env.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReadModelBatchLiveSidecarTests.cs:123 covers partial-prefix visibility, with conflict and cancellation cases at lines 164 and 205
 gate: 1-12, 1-13
 
 ### DW-101: Body-ETag fallback can surface a non-gateway validator on a `ProjectionBacked` route with no gateway ETag (`QueriesController.cs:210` `ETag: gatewayETag ?? producerMetadata?.ETag`; `EventStoreGatewayClient.cs:343` `ETag = eTag ?? normalized.ETag`). Reachable only when a non-conformant producer claims `ProjectionBacked`, omits `ProjectionType` (skipping the gateway ETag fetch) AND fabricates an ETag; the platform projection actor never sets `metadata.ETag`, and the leaked value cannot drive a false 304 (that needs the gateway-computed `currentETag`). Hardening: only surface the gateway-issued ETag as the opaque validator; do not fall back to producer body ETag.
@@ -864,21 +889,24 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-16)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` status: implementation-complete/evidence-confirmed summary: Repair or explicitly disposition the named-projection lifecycle cleanup defect before selecting an approved parity runtime. historical_evidence: Clean detached candidate `85877902f8d60a466ab90cd8b68b53838863db1c` built Release with 0 warnings/errors and passed the broad unit lanes, but `Hexalith.EventStore.Server.LiveSidecar.Tests.dll` finished 42 passed / 2 failed. The isolated `NamedProjectionDispatchLiveSidecarTests` run finished 5 passed / 1 failed, and `NormalDelivery_PersistsIndependentDetailIndexCheckpointsAndConvergedRetryLedger` reproduced alone at 0 passed / 1 failed because the Redis lifecycle hash remained present instead of returning to the idle/absent baseline. The initial full lane also reported an unreleased lifecycle lease in `ConcurrentDuplicateReverseAndConflict_StayEquivalentToOneInOrderDelivery`. closure_evidence: Corrective commit `7b73a2f5cde990b0a026ec280f7620d067b3d110` is present in exact clean detached commit `772cdfefa8163704de0f57042af5b0507c1ac771`. At that commit the exact formerly failing normal-delivery method passed 1/1, `NamedProjectionDispatchLiveSidecarTests` passed 6/6, and the complete live-sidecar lane passed 44/44. Story 1.16's separate named durable follow-up-review disposition remains open; it is not an implementation failure.
-status: open
+status: done 2026-08-31
+resolution: already resolved: commit 7b73a2f5cde990b0a026ec280f7620d067b3d110 corrected lifecycle cleanup and passed the formerly failing live-sidecar lane
 
 ### DW-123: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20's tested runtime SHA.
 
 origin: migrated from legacy ledger ("Deferred from: Story 1.20 correct-course readiness audit (2026-07-16)"), 2026-08-30
 location: global.json
 reason: source_spec: `_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-and-runtime-pin.md` status: implementation-complete/evidence-confirmed owner: EventStore build/release maintainer summary: Land the architecture AD-11 .NET/ASP.NET security baseline before selecting Story 1.20's tested runtime SHA. historical_evidence: - `global.json` formerly pinned SDK `10.0.299` (pre-baseline seed); - the installed SDK and host/runtime were later observed as `10.0.302` / `10.0.9` before ASP.NET caught up; - effective central ASP.NET pins were `10.0.9`. closure_evidence: - SDK correction `d6c849aaf8f77f967377f72b763bd44b3131a713`, ASP.NET correction `3a43d5e6151ebc51e945bf1b6cecda92fd198a09`, and validation hardening `8c70efb08b1bf2fcd077ad930c5827d1ab1594da` are present in commit `772cdfefa8163704de0f57042af5b0507c1ac771`; - the exact executable preflight observed repository and installed SDK `10.0.302`, effective ASP.NET `10.0.10`, and installed `Microsoft.NETCore.App` `10.0.10`. consequence: The baseline mismatch no longer blocks the current readiness audit. A later candidate, package build, or publication must repeat the executable preflight and fails closed if the baseline regresses. closure: 1. Update the repository seed and central ASP.NET pins to the AD-11 baseline, or record named architecture-owner approval for a newer replacement. 2. Install and capture the matching SDK/runtime. 3. Restore and build `Hexalith.EventStore.slnx` in Release. 4. Run the focused package/runtime validation owned by the correction. 5. Commit the correction independently. 6. Use that resulting commit, or a reviewed descendant, as the Story 1.20 candidate runtime. reopen_trigger: Any Story 1.20 packet update, package build, container publication, or owner-approval request that names a runtime without satisfying this baseline.
-status: open
+status: done 2026-08-31
+resolution: already resolved: global.json:3 and references/Hexalith.Builds/Props/Directory.Packages.props:172 carry a newer approved SDK/ASP.NET baseline
 
 ### DW-124: Reconcile stale sample domain registrations and prove Tenants handler routing in the real source topology before selecting the Story 1.20 runtime.
 
 origin: migrated from legacy ledger ("Deferred from: Story 1.20 current-HEAD source-topology gate (2026-07-17)"), 2026-08-30
 location: src/Hexalith.EventStore/appsettings.Development.json
 reason: source_spec: `_bmad-output/implementation-artifacts/2-7-tenants-compatibility-and-package-mode-validation.md` status: implementation-complete/evidence-confirmed owner: EventStore Story 2.7 summary: Reconcile stale sample domain registrations and prove Tenants handler routing in the real source topology before selecting the Story 1.20 runtime. evidence: - the original packet harness forced `UseHexalithProjectReferences=false`, compiled no `tenants` AppHost resource, and then timed out waiting for it; - the corrected exact-source run at `772cdfefa8163704de0f57042af5b0507c1ac771` compiled the Tenants resource and reproduced twice as 0/1 with HTTP 404 / `query_projection_missing`; - Tenants operational-metadata calls returned HTTP 200, but merged base configuration still registers `orders` and `inventory` against the sample service while the current sample discovers only `counter` and `greeting`; - an absent configured binding makes `AdminOperationalIndexHostedService` log Event 6101 and skip every derived index write, including `admin:query-types:tenants`, so `list-tenants` falls back to a nonexistent projection. closure_evidence: - root cause fixed on `main` by commit `fd8ab24da230058f2f239765b68d5e0a135b4b76`, which removed the stale `tenant-a|orders|v1` and `tenant-b|inventory|v1` registrations from `src/Hexalith.EventStore/appsettings.Development.json` (no `orders`/`inventory` remain in the EventStore host `DomainServices:Registrations`; the residual `orders`/`inventory` in `KeycloakRealms/hexalith-realm.json` are unrelated JWT auth attributes); - proved 2026-07-20 on clean source SHA `4f4906b3f30a3d4ed2658effc1c4f189f2f647c0` (contains `fd8ab24d`) in Debug/project-reference mode with only root-declared submodules initialized; - command: `dotnet test tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj -p:UseHexalithProjectReferences=true -p:UseSharedCompilation=false --filter "FullyQualifiedName~QueryResponseProvenanceE2ETests"`; - build compiled `Hexalith.Tenants` and the `tenants` AppHost resource from source (project references, not package mode); topology started on a placement freed of the concurrent Tenants Aspire session; - result: `QueryResponseProvenanceE2ETests.LiveHandlerRoute_WithCurrentProjectionValidator_NeutralizesProjectionEvidence` PASSED (Total 1, Passed 1, Failed 0, Skipped 0); the test restarts EventStore with `admin:query-types:tenants` cleared, waits for the `tenants` resource healthy, then asserts `list-tenants` returns HTTP 200 with `HandlerComputed` provenance and no ETag/projection-version/is-stale evidence, and that persisted Redis `admin:query-types:tenants` rebuilt from live metadata contains `list-tenants`; - raw artifacts captured this session as `source-topology-provenance.trx` / `source-topology-provenance.2.log` (ephemeral scratchpad); re-capture durably if `4f4906b3` (or a descendant preserving this behavior) is the selected Story 1.20 runtime. consequence: The stale-registration / `query_projection_missing` blocker no longer prevents crediting the handler-provenance lane at source SHA `4f4906b3`. This closure records prerequisite evidence only; it does NOT authorize Story 1.20 consumer migration, and all Tenants/EventStore/Builds identity changes remain blocked per closure step 4. Per reopen_trigger, any Story 1.20 runtime selection of a different SHA must re-run this exact-source proof against that SHA. closure: 1. Compile the query-provenance E2E with `UseHexalithProjectReferences=true` and only root-declared submodules initialized. 2. Remove or correctly environment-scope stale sample registrations, or otherwise reconcile absent configured bindings without weakening fail-closed handling for genuine metadata failures. 3. Prove `admin:query-types:tenants` contains `list-tenants` and the exact live E2E returns 200 with `HandlerComputed` provenance and no projection evidence. 4. Keep all Tenants/EventStore/Builds identity changes blocked until Story 1.20 separately authorizes migration. reopen_trigger: Any selected runtime or parity packet that credits the handler-provenance lane without a healthy compiled Tenants resource and a positive exact-source result.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore/appsettings.Development.json:15 contains only live counter, greeting, tenants, and global-administrators registrations
 
 ### DW-125: Reconcile the stale `Hexalith.EventStore.Server.Tests` CA2007 baseline exception in `_bmad-output/project-context.md:65`. The exception predates this review, while Story 3.1 now records an unfiltered Release run with 2,626 passed, 25 skipped, and no failure; leaving the old statement active can cause future agents to exclude a blocking deterministic lane from baseline validation.
 
@@ -949,7 +977,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: _bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md
 reason: Story 3.5's dependency-mode truth table has no row for build configurations other than Debug/Release (e.g. `Staging`, case variants) with `UseHexalithProjectReferences` unset, and its required test list omits the case — implementers may choose either reference-graph edge with no specified expectation. Owned by Story 3.5's active cycle; route into its review, do not patch from a 1.20 review. [`_bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md`]
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/DependencyModeEvaluationTests.cs:17 explicitly covers Staging with unset dependency-mode properties
 
 ### DW-135: Story 3.5's contract does not define precedence when explicit `UseNuGetDeps` and explicit `UseHexalithProjectReferences` conflict ("preserve its existing mapping" vs "normalize … one authoritative boolean" with no truth-table row, AC, or test naming the winner) — contradictory caller properties could activate both or neither reference edge. Owned by Story 3.5's active cycle.
 
@@ -970,7 +999,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: commitlint.config.mjs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md` summary: Pin `commitlint.config.mjs` to LF in `.gitattributes` or make its exact-content contract line-ending agnostic. evidence: The existing contract compares LF bytes while `.gitattributes` leaves the config under `text=auto`; a Windows or `core.autocrlf=true` checkout can materialize CRLF and fail independently of policy content.
-status: open
+status: done 2026-08-31
+resolution: already resolved: .gitattributes:12 pins commitlint.config.mjs to LF and CommitMessagePolicyTests.cs:477 guards it
 
 ### DW-138: Add durable process-level commitlint behavior fixtures for valid, subject-case, header-length, and body-line policies.
 
@@ -991,7 +1021,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: commitlint.config.mjs
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29682903822-fix-ci-cd.md` summary: RESOLVED 2026-07-20 — the repository excludes `chore` and uses specific non-release types, including `build(deps)` for automated dependency maintenance. evidence: `commitlint.config.mjs`, `CONTRIBUTING.md`, project context, and Dependabot prefixes now agree with the shared Git instruction that prohibits `chore`.
-status: open
+status: done 2026-08-31
+resolution: already resolved: commitlint.config.mjs:7 excludes chore and admits build for dependency maintenance
 
 ### DW-141: Add an unoverridden Release property test that binds `Version` and `PackageVersion` to the repository release version.
 
@@ -1047,14 +1078,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-gh-29740868410-fix-ci-cd.md (2026-07-20)"), 2026-08-30
 location: src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs:538
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29740868410-fix-ci-cd.md` summary: `SubmitCommandHandler.Log.ResultPayloadDropped`'s message text ("...because final command status was not Completed...") is stale under the flag-driven withholding logic and can be logged even when the reported `FinalStatus` is `Completed`. evidence: PR #319 (`6945714b`) changed the drop decision from `finalStatus?.Status == CommandStatus.Completed` to `!processingResult.ResultPayloadWithheld` (`src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs:538`) but left the EventId=1107 log message template (line 777) referencing the old status-based reasoning, so the warning can misstate why the payload was withheld. NOTE: superseded 2026-07-20 by the idempotency result-payload gating fix above, which reverted the drop decision back to the durable status-store read -- this item no longer applies to current code but is kept for historical trace.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.EventStore.Server/Pipeline/SubmitCommandHandler.cs:543 again gates payload delivery on durable Completed status, matching the log text
 
 ### DW-149: [MEDIUM] Fail-closed publisher/validator/authority/smoke suite is not a PR/required check -- `Tools/test-publish-containers.ps1` runs only in Hexalith.Builds `build-release.yml` (push-to-main at reviewed SHA `9ec0a032`; `workflow_dispatch`-only, i.e. worse, at current HEAD); no `pull_request`-triggered Builds workflow runs it.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 3-12-multi-platform-eventstore-container-publishing-correction (2026-07-21)"), 2026-08-30
 location: Tools/test-publish-containers.ps1
 reason: source_spec: `_bmad-output/implementation-artifacts/3-12-multi-platform-eventstore-container-publishing-correction.md` summary: [MEDIUM] Fail-closed publisher/validator/authority/smoke suite is not a PR/required check -- `Tools/test-publish-containers.ps1` runs only in Hexalith.Builds `build-release.yml` (push-to-main at reviewed SHA `9ec0a032`; `workflow_dispatch`-only, i.e. worse, at current HEAD); no `pull_request`-triggered Builds workflow runs it. evidence: Story 3.12 code review (verification-gap layer) -- a PR to Hexalith.Builds that inverts `_validate_platforms`, drops the expiry check, or loosens owner-role validation merges green because the suite is not in PR CI; the regression surfaces only on a later push/dispatch, after merge. Owned by the Hexalith.Builds maintainer. Persists at live HEAD.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Builds/.github/workflows/ci.yml:12 runs on pull_request and line 153 executes test-publish-containers.ps1
 
 ### DW-150: [MEDIUM] Unbounded registry response read in `RegistryClient._get` (`oci_registry_validator.py:420 response.read()`) has no size cap, unlike the 256/128 KiB caps in the authority-URL fetch -- memory-exhaustion vector from a hostile/malfunctioning registry response or config blob.
 
@@ -1159,7 +1192,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-5-dedicated-external-tenants-api-host (2026-07-26)"), 2026-08-30
 location: ";\n\nif (security is not null)"
 reason: source_spec: `_bmad-output/implementation-artifacts/2-5-dedicated-external-tenants-api-host.md` summary: [LOW] `SampleApiLaunchSettingsTests.ExtractBlock` matches an LF-only marker (`";\n\nif (security is not null)"`) against `src/Hexalith.EventStore.AppHost/Program.cs`, so the test fails on any working tree where that file is checked out or rewritten with CRLF line endings. Make the marker line-ending agnostic (normalize the text, or match on a CRLF-tolerant pattern) the way the sibling `TenantsApiLaunchSettingsTests` does with its `#endif` marker. evidence: Discovered during Story 2.5 review-loop verification (2026-07-26), NOT caused by that story — it concerns sample-api, not tenants-api. `dotnet test tests/Hexalith.EventStore.AppHost.Tests/...` = 50/51, the single failure being `AppHost_RegistersSampleApiAsExternalServiceInvocationOnlyHost` at `SampleApiLaunchSettingsTests.cs:41` via `ExtractBlock` at `:93` ("Expected sample-api resource registration assignment before the security block"). Root cause confirmed: `file src/Hexalith.EventStore.AppHost/Program.cs` reports CRLF terminators on disk while `git show HEAD:...` is LF, so `git status` reads clean (`* text=auto` normalizes on compare) and `IndexOf` returns -1. A fresh LF checkout (CI) passes; a CRLF working tree fails. The Tenants-specific lane in the same project passes 4/4. Owned by Hexalith.EventStore.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs:71-106 tests both LF and CRLF policy parsing.
 
 ### DW-165: [MEDIUM] A `304` carrying `Lifecycle: Degraded` renders a normal `Ready` surface, while the identical evidence on a `200` renders `Degraded` — the same authoritative "projection degraded" claim produces two different user-visible surfaces depending only on cache validation.
 
@@ -1194,42 +1228,48 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, D3 owner decision)"), 2026-08-30
 location: ReadModelFreshnessState
 reason: source_spec: `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md` summary: [RESOLVED 2026-07-27] Platform prerequisite — preserve `ReadModelFreshnessState` as the independent threshold/age view and introduce the existing `ProjectionLifecycleState` alongside it in consumer UI snapshots/rows, so `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` receive distinct canonical treatment without corrupting freshness semantics. evidence: The 2026-07-27 Story 2.6 owner decision superseded D3 and kept AC3 unchanged. The Tenants working-tree patch threads `ProjectionLifecycleState` through all five gateway/UI surfaces, localizes and renders the four operational states in `TruthStateBadge`, and pins their icon/label/color semantics plus fail-closed lifecycle-action remediation. Focused badge/action tests pass 31/31 and the full UI suite passes 1090/1090. The separate D6 `Aging` reachability and mutation-gate item remains open below; this resolved entry covers only operational lifecycle representation.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants commit 55e6000a implements the lifecycle revalidation recorded by the entry.
 
 ### DW-170: [MEDIUM] Active CI operator documentation still names the superseded Hexalith.Builds release SHA and is not guarded against drifting from the immutable release pin.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, D3 owner decision)"), 2026-08-30
 location: docs/ci.md:158
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-30204107907-fix-ci-cd.md` summary: [MEDIUM] Active CI operator documentation still names the superseded Hexalith.Builds release SHA and is not guarded against drifting from the immutable release pin. evidence: Verification-gap review found `docs/ci.md:158` and `docs/ci-secrets-checklist.md:54` still name `cf04c419378dfe1bd3c41a9244b5e3283092056e`, while `.github/workflows/release.yml` and the repaired governance test authorize `f75daebd4c522c081a6f62e274cf25e07971de69`. `DocumentationAndContainerDefaultsDescribeTheExactReleaseContract` reads both documents but does not bind either to the approved SHA. Updating those documents is real follow-up work but outside this spec's frozen two-test-file boundary.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:958-959 guards the release SHA in both docs/ci-secrets-checklist.md and docs/ci.md.
 
 ### DW-171: [HIGH] `EnrichRowsAsync` publishes member/owner counts as `TenantCountValue.Known(...)` from a detail payload that `LoadTenantDetailAsync` returns raw — no tenant-identity check, no `Members` null guard, no `IsDegraded` check. A detail projection returning the wrong tenant attributes another tenant's member and owner counts to the row; a payload omitting `members` throws `NullReferenceException` that escapes the gateway into the Blazor render.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, second pass)"), 2026-08-30
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1009-1022
 reason: source_spec: `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md` summary: [HIGH] `EnrichRowsAsync` publishes member/owner counts as `TenantCountValue.Known(...)` from a detail payload that `LoadTenantDetailAsync` returns raw — no tenant-identity check, no `Members` null guard, no `IsDegraded` check. A detail projection returning the wrong tenant attributes another tenant's member and owner counts to the row; a payload omitting `members` throws `NullReferenceException` that escapes the gateway into the Blazor render. evidence: Story 2.6 second-pass code review (blind-hunter + edge-case-hunter + verification-gap, independently) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1009-1022` and `:1028-1034`]. The sibling search path guards all three cases at `:715-722` (`!string.Equals(detail.TenantId, candidate.TenantId, StringComparison.Ordinal) || detail.Name is null || detail.Members is null`), which is direct evidence the guards are considered necessary. `TenantDetail.Members` is a positional `IReadOnlyList<TenantMember>` with no null validation (`src/Hexalith.Tenants.Contracts/Queries/TenantDetail.cs:13`), so `{"members": null}` deserializes to null. The NRE escape path is confirmed: `EnrichRowsAsync` catches only `EventStoreGatewayException` (`:1018`), `ListByCursorAsync` likewise (`:849`), and `ListTenantsAsync` returns from the non-search path at `:500` outside its `try`. No test feeds a mismatched or null-member detail into the enrichment loop.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:2134-2153 validates identity and usable members.
 
 ### DW-172: [HIGH] A single row's detail-enrichment failure with any status outside `{403,404,503}` unwinds past the already-successful list fetch and maps the whole page to `TenantListSurfaceKind.Error`. The most reachable trigger is the client's own `EventStoreGatewayException(200, "Query response did not contain a payload.")`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, second pass)"), 2026-08-30
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1024-1026
 reason: source_spec: `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md` summary: [HIGH] A single row's detail-enrichment failure with any status outside `{403,404,503}` unwinds past the already-successful list fetch and maps the whole page to `TenantListSurfaceKind.Error`. The most reachable trigger is the client's own `EventStoreGatewayException(200, "Query response did not contain a payload.")`. evidence: Story 2.6 second-pass code review (edge-case-hunter + blind-hunter + verification-gap) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1024-1026`]. `EventStoreGatewayClient.SubmitQueryAsync<T>` throws status-200 gateway exceptions at `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs:223-247` and `:186-192`, and a malformed 304 raises 502 at `:148-152` — none match the `when` filter. The parallel search path degrades correctly instead, accepting any `EventStoreGatewayException` via `IsHydrationAvailabilityFailure` (`:812`). Related: even within the filter, one routine `404` (tenant deleted between the index and detail projections) forces the whole surface to `Freshness = Unknown`, which `TenantLifecycleAvailabilityInput.Evaluate` (`State/TenantDetail/TenantLifecycleAvailability.cs:42`) treats as blocking for every lifecycle operation. Only `403` is tested (`TenantQueryGatewayTests.cs:1373`).
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:2162-2177 degrades malformed rows independently instead of unwinding the list.
 
 ### DW-173: [MEDIUM] Non-`EventStoreGatewayException` failures escape four of the six public read methods. `GetTenantAsync` and `GetConfigurationProjectionProofAsync` have a generic `catch (Exception)`; the user-tenants, global-admins, audit and list paths do not, so an unhandled exception crashes the interactive Blazor circuit instead of degrading.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, second pass)"), 2026-08-30
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:283
 reason: source_spec: `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md` summary: [MEDIUM] Non-`EventStoreGatewayException` failures escape four of the six public read methods. `GetTenantAsync` and `GetConfigurationProjectionProofAsync` have a generic `catch (Exception)`; the user-tenants, global-admins, audit and list paths do not, so an unhandled exception crashes the interactive Blazor circuit instead of degrading. evidence: Story 2.6 second-pass code review (blind-hunter + edge-case-hunter + verification-gap) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:283`, `:368`, `:391`, `:405`, `:849` versus `:118`+`:134`]. Two concrete reachable triggers: (1) `HttpContent.ReadFromJsonAsync` throws `NotSupportedException` on a non-JSON `Content-Type` — the common shape when an auth redirect or reverse proxy answers `200 text/html` — and `EventStoreGatewayClient.ReadQueryResponseAsync` wraps only `JsonException` (`:455-470`) while `SendTranslatingAsync` translates only `HttpRequestException`/`TaskCanceledException` (`:291-303`); (2) `PaginatedResult<T>` is a positional record with no null validation (`PaginatedResult.cs:6`), so a `{"items": null}` body dereferences null at `:244`, `:338`, `:451`. `GlobalAdministratorsPage.LoadAsync` (`:674-687`) and `MyTenantsPanel.LoadAsync` have no try/catch of their own.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants commit 08918975 hardens direct tenant read gateways.
 
 ### DW-174: [MEDIUM] Three further 304 evidence asymmetries beyond the `Degraded` one already on record: a 304 carrying no lifecycle evidence re-affirms the previous claim (so `Current` survives indefinitely where the identical 200 yields `Unknown`); per-row `Freshness` is never rewritten on any 304 branch, so row badges contradict the surface banner; and a `Degraded` surface cannot be cleared by refreshing because the server ETag is content-derived and does not change when only lifecycle recovers.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, second pass)"), 2026-08-30
 location: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1163-1173
 reason: source_spec: `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md` summary: [MEDIUM] Three further 304 evidence asymmetries beyond the `Degraded` one already on record: a 304 carrying no lifecycle evidence re-affirms the previous claim (so `Current` survives indefinitely where the identical 200 yields `Unknown`); per-row `Freshness` is never rewritten on any 304 branch, so row badges contradict the surface banner; and a `Degraded` surface cannot be cleared by refreshing because the server ETag is content-derived and does not change when only lifecycle recovers. evidence: Story 2.6 second-pass code review (edge-case-hunter + blind-hunter) [`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1163-1173`, the four 304 branches at `:232-244`, `:313-325`, `:429-435`, `:872-886`, and `:1270-1272`]. Confirmed pre-existing: the pre-2.6 predicate `metadata?.IsDegraded == true || metadata?.IsStale is not null ? ResolveFreshness(metadata) : previous` produced the same carry-forward and the same 200/304 divergence; Story 2.6 widened the trigger set with the lifecycle clause but did not introduce the shape. The 200 paths rewrite rows explicitly (`:262`, `:353`, `:467`) while the 304 branches use `previous with { ... }`, which copies `Rows` by reference; both `TenantDataGrid.razor:76` and `GlobalAdministratorsPage.razor:346` bind the per-row value. Server ETag is per-projection, not per-response-state (`QueriesController.cs:113-115`). status: RESOLVED 2026-07-30 by the Story 2.6 fourth-pass review. Retained rows were already rewritten in the 2026-07-27 patch; all retained-snapshot lifecycle resolution now consumes only explicit, valid `304` lifecycle evidence and otherwise fails closed to `Unknown`, so neither `Current` nor `Degraded` is sticky. A gateway regression proves a projection-backed lifecycle-less `304` cannot inherit the previous value.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:2002-2013 rewrites list rows through the lifecycle resolver.
 
 ### DW-175: [MEDIUM] `ResolveTenantListKindForFreshness` lacks the surface-kind whitelist its three siblings open with, so an `Error`, `Unauthorized` or `Loading` previous falls through to `previous.Rows.Count == 0 ? Empty : Ready` — the surface would assert "you have no tenants" on top of a failed or denied read.
 
@@ -1264,7 +1304,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, second pass — routed to Story 2.11)"), 2026-08-30
 location: src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecyclePolicy.cs:83
 reason: source_spec: `_bmad-output/implementation-artifacts/2-11-query-provenance-consumption-in-generated-rest-and-tenants.md` summary: [HIGH] Mutation-gate fail-open in the ratified 2.11 consumer logic — the tenant correction surface enables a mutation that `ProjectionLifecyclePolicy.CanMutate` denies. `CanMutate` requires `provenance == ProjectionBacked && lifecycle == Current`, but `ResolveFreshness` also returns `Current` on the legacy fall-through (`Lifecycle == Unknown` with `IsStale == false`). `TenantCorrectionStartIntent` gates only on `Freshness is Current`, so a producer emitting no lifecycle header but legacy `IsStale: false` unlocks a correction the platform policy forbids. evidence: Story 2.6 second-pass code review (blind-hunter + edge-case-hunter), mechanism verified against source 2026-07-26. `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecyclePolicy.cs:83` (`CanMutate` = `isAuthorized && IsProjectionConfirmed(provenance, lifecycle)`, and `IsProjectionConfirmed` requires `lifecycle == Current`); `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:1156-1160` (legacy `IsStale switch { false => Current }`); `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/State/TenantAudit/TenantCorrectionStartIntent.cs:88`. Reachable through the shipped producer: `QueriesController.cs:136-139` omits the lifecycle header entirely when `Lifecycle == Unknown`. NOT fixable as a mechanical patch — `TenantAuditRow` carries neither `Provenance` nor `Lifecycle`, so the intent cannot call `CanMutate`; closing it needs a design choice (widen the row, add a gateway-computed `CanMutate` flag, or stop deriving `Current` from legacy evidence). Story 2.6's ratified-overlap section assigns this defect to Story 2.11 and requires resolution before 2.11 leaves `review`. Owned by Story 2.11 / the Hexalith.Tenants maintainer. status: RESOLVED 2026-07-27 by Story 2.11, Tenants `5eed7a97b87988e2f1e286a0483490ca7ef75d2b`, contained by the maintainer-authored and published merge `d2e5a1211f469041fdc593fd4e4678755f6863c8`; the EventStore gitlink pinned that merge at acceptance. The "not fixable as a mechanical patch" note was superseded by Tenants `55e6000`, which added `Lifecycle` to `TenantAuditRow`; the chosen option was widening the row. `TenantAuditRow` now also carries `Provenance` (failing closed to `Unknown` for absent or out-of-range values), set on the 200, `304`, and missing-payload audit paths, and `TenantCorrectionStartIntent.Evaluate:88` requires `ProjectionLifecyclePolicy.IsProjectionConfirmed(Provenance, Lifecycle)` in addition to `Freshness is Current`. The exhaustive one-way invariant proves that an available intent always satisfies `CanMutate`; correction-specific checks may still deny a platform-eligible mutation. Evidence: fail-closed cases for the legacy `IsStale == false` fall-through, missing/`HandlerComputed`/`Unknown`/invalid provenance, all five non-`Current` lifecycles, complete 200/304 row transport, missing-payload reset, and an untrusted-evidence component regression. Review-patch UI evidence is 292/292 focused and 1226/1226 full-suite, with Release UI/integration builds clean and the Tier-3 persisted consumer path 1/1. The broader mutation-gate follow-up was resolved on 2026-07-30 by the owner-approved Story 2.6 scope expansion.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants commit 5eed7a97b87988e2f1e286a0483490ca7ef75d2b implements the correction-start intent guard.
 
 ### DW-180: [MEDIUM] Local build environment hazard, not a code defect — package-mode builds on this workstation block indefinitely on an interactive NuGet credential prompt, and orphaned MSBuild worker nodes accumulate until new builds wedge on reuse. Any unattended run that reaches package mode (bmad-loop dev session, local CI, release rehearsal) hangs silently and presents as "still running" rather than failing.
 
@@ -1285,7 +1326,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-11-query-provenance-consumption-in-generated-rest-and-tenants (2026-07-27)"), 2026-08-30
 location: MemberAccessReview.razor:391
 reason: source_spec: `_bmad-output/implementation-artifacts/2-11-query-provenance-consumption-in-generated-rest-and-tenants.md` summary: [HIGH] Member, configuration, metadata, tenant-lifecycle, and global-administrator projection gates still accept `Freshness == Current` without requiring projection-confirmed lifecycle/provenance, so legacy-current/unknown-lifecycle responses can arm mutations outside the correction-start surface. evidence: Story 2.11 code review (verification-gap), confirmed against `MemberAccessReview.razor:391`, `EditTenantMetadataFlow.razor:233`, `TenantLifecycleCommandFlow.razor:200`, and `GlobalAdministratorCorrectionSnapshot.cs:293,369-371`. Pre-existing and explicitly outside the owner-confirmed correction-start scope; the story records the affected surfaces and says a separate scope decision is required. status: RESOLVED 2026-07-30 by the owner-approved Story 2.6 scope expansion. Existing member and global-administrator lifecycle gates remain fail-closed; configuration set/remove and metadata edit now consume lifecycle directly; lifecycle availability rejects `Unknown` and every other non-`Current` value and re-evaluates open flows. The full Tenants UI suite passes 1583/1583.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Components/RemoveTenantConfigurationFlowTests.cs:284-290 rejects non-current lifecycle removal.
 
 ### DW-183: [MEDIUM] No blocking CI job restores, builds, or tests the Debug/source dependency lane, so the source half of Story 2.12's new Gateway conditional is never evaluated by an automated gate. A broken or renamed EventStore source path in the conditional `ProjectReference` surfaces only when a developer runs source mode locally.
 
@@ -1376,7 +1418,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 3-1-re-tier-live-sidecar-tests-from-release-gate (2026-07-28)"), 2026-08-30
 location: references/Hexalith.Builds
 reason: source_spec: `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` summary: [MEDIUM] EventStore and FrontComposer enforce opposite invariants on the release pin. EventStore asserts the pinned Builds release SHA must **differ** from its `references/Hexalith.Builds` gitlink; FrontComposer asserts they must be **equal**. Applying the Story 3.1 fix pattern to EventStore would break EventStore's guard. evidence: Story 3.1 closure code review (edge-case-hunter), verified 2026-07-28 against `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:310` (`gitlinkEntry.Groups["sha"].Value.ShouldNotBe(ApprovedBuildsReleaseSha)`) versus `references/Hexalith.FrontComposer/tests/.../CiGovernanceTests.cs:474-482` (three-way equality). Both are defensible in isolation — EventStore decouples release authority from the dev-time gitlink, FrontComposer locks them together — but no workspace-level document states which rule applies where. Suggested durable fix: document one workspace-wide rule in Hexalith.Builds and have each guard cite it.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:634-647 now permits the release pin to be equal to or an ancestor of the validated Builds source.
 
 ### DW-196: [LOW, FrontComposer-owned] Asymmetric supply-chain pinning: `release.yml` pins Builds to an exact SHA under the REL-6 identity rationale, while `ci.yml` and `quality.yml` both consume Builds at `@main` — the lanes that authorize the release run unpinned Builds code.
 
@@ -1397,7 +1440,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 3-1-re-tier-live-sidecar-tests-from-release-gate (2026-07-28)"), 2026-08-30
 location: references/Hexalith.FrontComposer/tests/.../AnalyzerPolicyGovernanceTests.cs:552-597,793-808
 reason: source_spec: `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` summary: [MEDIUM, FrontComposer-owned] Analyzer-ledger hardening bundle — the CA1707 fail-closed gate compares only an aggregate count and one hash, so re-attestation is indistinguishable from laundering a violation. evidence: Story 3.1 closure code review (edge-case-hunter + verification-gap), verified 2026-07-28 against `references/Hexalith.FrontComposer/tests/.../AnalyzerPolicyGovernanceTests.cs:552-597,793-808` and `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json:26,37,74-75,105`. Five distinct gaps: (1) the failure message prints only the new count and hash, never the added/removed `path:line:token` set, so offsetting additions and removals are invisible; (2) the inventory is computed from `git ls-files --cached` plus working-tree bytes, so an attested hash can encode uncommitted content and untracked test files go uncounted; (3) a new test project under `tests/` silently expands the CA1707 exemption with no `testProjectRoots` assertion; (4) this re-attestation refreshed only `identifierInventory`, leaving the census `sourceCommit` and `implementationCount` stale so the ledger self-contradicts; (5) the linked `naming-ca1707-test-convention` disposition names "test source inventory drifts" as its revalidation trigger, but its `decisionDate`/evidence were not bumped, so an owner revalidation obligation was discharged by a hash paste. Owned by the Hexalith.FrontComposer maintainer (Story 11.19+). Suggested durable fix, smallest first: emit the token delta in the failure message; assert every added token is a method-declaration identifier on a `[Fact]`/`[Theory]` member (the ledger already carries the Roslyn machinery); compute the inventory from `git show HEAD:<path>` and fail on a dirty tree.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.FrontComposer commit d0dbc2ce closes analyzer-evidence fail-opens and anchors the inventory.
 
 ### DW-199: [MEDIUM] The live-sidecar lane has no placement isolation from other local EventStore hosts. Its actor type names are fixed, non-namespaced constants, so any concurrently running EventStore-derived app joins the same DAPR placement ring and a random subset of test actor IDs hash-routes to a foreign — possibly dead — host, failing the run with `connection refused` on an app port the fixture does not own.
 
@@ -1411,7 +1455,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: post-merge code review of 3-1-re-tier-live-sidecar-tests-from-release-gate (2026-07-28)"), 2026-08-30
 location: docs/ci.md
 reason: source_spec: `_bmad-output/implementation-artifacts/3-1-re-tier-live-sidecar-tests-from-release-gate.md` summary: [LOW] The `docs/ci.md` publication-pin literal is unguarded, so the exact drift the Story 3.1 closure fixed (`cf04c419…` → `f75daebd…`) will recur silently at the next Builds pin advance. evidence: Story 3.1 post-merge code review (edge-case-hunter + verification-gap), verified 2026-07-28. No test references `docs/ci.md` (`grep -rn 'docs/ci.md' tests/ --include='*.cs'` returns nothing); the only enforced copy of the pin is `ApprovedBuildsReleaseSha` at `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:13`, asserted against `.github/workflows/release.yml` only. The document is cited by Story 3.1 as a `source_files` release-flow authority and already went stale once this way. Suggested durable fix: extend `ContainerPublishingGovernanceTests` to assert the 40-hex pin quoted in `docs/ci.md` equals `ApprovedBuildsReleaseSha`, so the doc participates in the same lockstep the workflow already has.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:958-959 now checks the docs/ci.md publication pin.
 
 ### DW-201: [MEDIUM] The `RequestTimeout` *behavioral* contract is unverified in every lane. Story 3.2 closed the "the value is plumbed" half; the "the value takes effect" half — a slow or unreachable actor actually failing open at the configured window — is asserted by no test anywhere.
 
@@ -1568,7 +1613,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story-3.13 (2026-08-04)"), 2026-08-30
 location: spec-3-13-deployed-runtime-parity-closure.md:7
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: [LOW] `review_loop_iteration: 1` was not incremented despite two documented hardening passes recorded in the same file's Spec Change Log. evidence: `spec-3-13-deployed-runtime-parity-closure.md:7` frontmatter still reads `review_loop_iteration: 1`, while the Spec Change Log records "Applied all 15 code-review patches" and, separately, "Applied the second review-hardening pass ... 115 focused mutation cases," both dated 2026-08-04. Cosmetic drift, not blocking.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:562 records the human-authorized issue-attempt reset rationale.
 
 ### DW-223: [LOW] The story's File List omits several evidence files the tests and crosswalk already depend on and validate.
 
@@ -1715,7 +1761,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-4-committed-event-publication-recovery (2026-08-07)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md` summary: [LOW] Log EventId allocation across the partial `Log` classes is unguarded, so a duplicate EventId can be introduced silently. evidence: Story 4.4 adds EventIds 2010-2019 in `AggregateActor` (with `2019` declared out of order between `2015` and `2016`) and `5006` in `IdempotencyChecker`, but `AggregateActor` is a partial class whose `Log` block is one of several and nothing in the repo asserts uniqueness of EventIds within a category. A cheap reflection test over the `LoggerMessage` attributes would pin the ranges.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionLogEventIdUniquenessTests.cs, added by commit 64a21632, guards log EventId uniqueness.
 
 ### DW-244: Forensic note for orphan commits `f3e036bf0cae72b50508a3e729f24a052a7c4e95` / `026b039b237372774d998af8f5b77c58db00d348` that a July draft assumed were unpushed on local `main`. They are not tip ancestors; winning sibling `f6db558c768ae413712560019beab488d9974d66` (same subject/parent) is already on `origin/main`. Closed as obsolete without rebase or cherry-pick — replaying the orphans would regress resilience, fixtures, Story 1.20 status, and submodule pins. Preserve the SHAs if reflog GC later drops tip reachability.
 
@@ -1729,7 +1776,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 3.13 review (2026-08-08)"), 2026-08-30
 location: package-availability.json
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: `package-availability.json` embeds machine-local absolute search roots under `/home/administrator/...`, which are non-portable durable evidence. evidence: Blind-hunter review of the Story 3.13 packet; fail-closed package recovery already records 404/unavailable, but retained search roots remain host-specific.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:332 records that durable search sources are named without reintroducing absolute host paths.
 
 ### DW-246: Epic 3 context rewrite thins earlier concrete cross-story constraints without an explicit supersession note.
 
@@ -1743,7 +1791,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 3.13 review (2026-08-08)"), 2026-08-30
 location: acceptances/{subject_sha256
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Expected AC4 acceptance scaffolding (`acceptances/{subject_sha256}` layout / receipt schema example) is narrative-only and not checked into hashed manifests. evidence: Blind-hunter review; 0/3 acceptances are intentional while fail-closed, but reopen tooling has no committed empty convention.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:820-825 records and validates all three content-bound acceptance receipts.
 
 ### DW-248: Support-safety hostname privacy only special-cases `.internal`/`.local`, so other private DNS names can bypass the literal-IP private check.
 
@@ -1757,14 +1806,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 3.13 review (2026-08-08)"), 2026-08-30
 location: smoke-results.json
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Retained `smoke-results.json` can declare top-level `"result": "pass"` while runtime-verification/crosswalk mark execution unverified/fail. evidence: Blind-hunter review; product gate is already fail-closed via runtime-verification, but the smoke summary over-claims relative to that gate. Fixing requires hash-bound evidence edits beyond this patch pass.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/runtime-verification.json:2-5 consistently records v2/pass execution.
 
 ### DW-250: Crosswalk `approval_contract.required_receipt_fields` omits `schema` while the verifier’s `RequiredReceiptFields` requires it.
 
 origin: migrated from legacy ledger ("Deferred from: Story 3.13 review (2026-08-08)"), 2026-08-30
 location: approval_contract.required_receipt_fields
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Crosswalk `approval_contract.required_receipt_fields` omits `schema` while the verifier’s `RequiredReceiptFields` requires it. evidence: Blind-hunter review; correcting the crosswalk would rehash core evidence and was deferred to avoid churn while 0/3 acceptances remain.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/identity-crosswalk.json:555-563 includes schema in required_receipt_fields.
 
 ### DW-251: Review-subject blocker text still claims smoke logs lack cleanup facts after cleanup=pass appears in retained logs/runtime-verification.
 
@@ -1778,7 +1829,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md` summary: Governed inline CI checkouts (`semantic-release-governance`, `tenants-source-mode`) set `persist-credentials: false`, but Contracts helpers never assert it and valid fixtures omit it. evidence: Verification-gap/edge-case review — deleting those lines leaves Shared_ci / Semantic_release_governance / mutation tests green; out of scope for the mixed-job false-positive fix.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:1704 and :1768 assert persist-credentials: false in both governed checkout fixtures.
 
 ### DW-253: `Non_manifest_src_projects_cannot_produce_release_packages` only substring-matches `<IsPackable>false</IsPackable>` instead of evaluating MSBuild packability like the manifest-side check.
 
@@ -1792,7 +1844,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-29567058321-fix-ci-cd.md` summary: Release `verify-source` job body and fail-closed release inputs (`expected-package-count`, `timeout-minutes`) lack Contracts assertions comparable to the CI job-scoped guards. evidence: Edge-case review of post-baseline release topology changes — not caused by this mixed-job guardrail story.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:597-662 guards the verify-source body, timeout, and source verification contract.
 
 ### DW-255: CommitMessagePolicy markdown helpers can throw on malformed percent-encoding (`Uri.UnescapeDataString`) and can treat tab-indented fences as operative preflight blocks.
 
@@ -1806,7 +1859,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: package-availability.json
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Redact absolute local_search_roots from retained package-availability.json (and refresh checksums/bindings) so support-safe evidence does not embed host filesystem paths. evidence: Blind-hunter review of Story 3.13; package-availability.json lists /home/administrator/... roots while JsonEvidenceIsSupportSafe currently accepts them.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:332 records the support-safe redaction of absolute package search roots.
 
 ### DW-257: Add missing-key removal mutations for validators whose NullReferenceException catch filters are only exercised by value mutations today.
 
@@ -1848,14 +1902,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Dev Agent Debug Log still cites stale focused/suite test totals that no longer match the 140-test verifier count. evidence: Blind-hunter review of the Story 3.13 record found 115/117 and suite 999/1001 figures while the proof packet and latest hardening pass report 140 focused tests; documentation-only drift, not a verifier defect.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:775-777 records refreshed focused 240/240 and complete 1494/1494 totals.
 
 ### DW-263: Several Task parent checkboxes remain unchecked while child boxes and later tasks are marked complete.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Several Task parent checkboxes remain unchecked while child boxes and later tasks are marked complete. evidence: Blind-hunter review showed Tasks 4–7 and 9 parents unchecked despite checked children; AC2/AC4 intentionally remain open, so this is progress-tracking hygiene rather than a functional gap.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:197-284 marks the task parents complete consistently.
 
 ### DW-264: Story 4.5 LiveSidecar ownership prose was added in docs/ci.md within the same baseline range as Story 3.13's ownership rewrite.
 
@@ -1869,14 +1925,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: acceptances/{subject_sha256}/
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Add an `acceptances/{subject_sha256}/` scaffold or receipt template beside the roster before AC4 collection. evidence: Blind-hunter review on 2026-08-09; AC4 still requires three content-bound receipts and 0/3 remain missing, but fail-closed review does not need the scaffold to stay non-done.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:820-825 records the completed acceptance layout and three validated receipts.
 
 ### DW-266: Re-measure the full Contracts.Tests suite after the ninth hardening pass and refresh Dev Agent / proof-packet totals if they drift.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Re-measure the full Contracts.Tests suite after the ninth hardening pass and refresh Dev Agent / proof-packet totals if they drift. evidence: Blind-hunter review on 2026-08-09; last recorded full-suite measurement was 1001 on 2026-08-05 while focused coverage continued to grow.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:775-777 contains the post-hardening full-suite remeasurement.
 
 ### DW-267: Reviewer roster maps both eventstore-owner and release-owner to the same github:jpiquot identity.
 
@@ -1897,7 +1955,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: runtime-verification.json
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Retained fail-closed runtime-verification.json remains schema v1 without pass-path v2 command/smoke_results shape. evidence: ValidateRuntimeExecution now requires hexalith.eventstore.story-3-13-runtime-verification/v2 with command and smoke_results, while the live fail-closed citation is still v1; reopen owners lack a documented migration to a closable pass packet.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/runtime-verification.json:2-11 implements the v2 pass-path shape.
 
 ### DW-270: release_authority.verification reports fail under a hash-check method without separating scope failure.
 
@@ -2058,21 +2117,24 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: validate-evidence.py
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator can report success when Python assertions are disabled. evidence: Validation is implemented with `assert` statements and has no `__debug__` guard, so `python -O validate-evidence.py` removes the checks.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py:13 fails closed when Python assertions are disabled.
 
 ### DW-293: The Story 4.5 evidence validator accepts truthy non-boolean invariant values.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 evidence validator accepts truthy non-boolean invariant values. evidence: `assert all(race["invariants"].values())` accepts strings such as `"false"` instead of requiring every value to be exactly `True`.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py:530-532 requires every invariant value to be exactly true.
 
 ### DW-294: The Story 4.5 source-binding validator does not fail when an evidence-relevant source path is omitted.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: source-state.md
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The Story 4.5 source-binding validator does not fail when an evidence-relevant source path is omitted. evidence: `validate_source_binding` verifies only the rows present in `source-state.md` and has no exact expected-path set.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-5/0776785f494fcefc8ad933b5b17b9c8d5cbe0513/validate-evidence.py:685-696 enforces REQUIRED_SOURCE_ROWS before validating hashes.
 
 ### DW-295: Live-lane packaging guardrail still matches only the exact `dotnet test tests/Hexalith.EventStore.Server.Tests/` substring and does not cover `.csproj`, unquoted alternate path, or `--project` equivalents.
 
@@ -2086,14 +2148,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-gh-31400593510-fix-ci-cd.md` summary: Builds `dapr-init` still uses one shared version for CLI install and runtime init, so EventStore cannot pin CLI 1.18.0 with runtime 1.18.1 without a submodule change. evidence: Integration failure 31413307050 and Ask First in the approved spec; restoring shared 1.18.0 unblocks CI but leaves CLI/runtime decoupling as a Builds enhancement. status: resolved 2026-08-11 — `runtime-version` now independently selects the Dapr runtime while omitted callers retain `version` as the legacy fallback.
-status: open
+status: done 2026-08-31
+resolution: already resolved: references/Hexalith.Builds/Github/dapr-init/action.yml:9-38 defines runtime-version independently with a legacy version fallback.
 
 ### DW-297: The concurrent integration workflow's Dapr 1.18.0 runtime pin cannot reproduce the OQ8 packet's validator-pinned Dapr 1.18.1 fresh capture.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md` summary: The concurrent integration workflow's Dapr 1.18.0 runtime pin cannot reproduce the OQ8 packet's validator-pinned Dapr 1.18.1 fresh capture. evidence: The live fixture records the actual `daprd --version`, while the OQ8 validator requires 1.18.1 and the current workflow passes the shared 1.18.0 pin to `dapr-init`; resolving it requires the separately owned Builds CLI/runtime decoupling change. status: resolved 2026-08-11 — Integration now passes runtime 1.18.2 independently from CLI 1.18.0, fresh validation requires that explicit runtime, and immutable Story 4.14 remains pinned to observed runtime 1.18.1.
-status: open
+status: done 2026-08-31
+resolution: already resolved: .github/workflows/integration.yml:25 and :68 pin and pass DAPR_RUNTIME_VERSION independently from the CLI version.
 
 ### DW-298: The concurrent live-lane guardrail can miss equivalent full Server.Tests invocations.
 
@@ -2142,7 +2206,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 4.15 Step 4 review (2026-08-11)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md` summary: Write sanitized fresh-capture outputs atomically. evidence: A process interruption can currently leave a partial test, support, or validation document in the capture directory.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tools/validate-oq8-platform-evidence.py:737-743 writes JSON through a temporary file and atomically replaces the destination.
 
 ### DW-305: Reject symlinks throughout fresh capture inputs and output directories.
 
@@ -2170,7 +2235,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 4.15 Step 4 review (2026-08-11)"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md` summary: Bind the closure-assembly commit identity after the Story 4.15 artifacts land. evidence: The packet binds the landed OQ8 capability commit and current path equivalence, but not the later commit that contains the closure layer itself.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2/review-subject.json:13 binds completedV1ClosureSnapshotCommit.
 
 ### DW-309: [HIGH] Dead-letter republish if mark-save fails after broker accept (reconfirmed, group-1 review).
 
@@ -2436,7 +2502,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: HIGH - Story 1.21 must repair Epic 1 frozen evidence corrupted by the SDK-token sweep in `089369bb`, under its own authority record. evidence: `089369bb` ("docs: clear remaining root predecessor SDK patch tokens", 25 files) rewrote `10.0.301` to `10.0.302` inside owner-approved Story 1.20 evidence. Story 3.13 restored only its own `fa2d1c99...` tree at `3d6dea69`. Genuine content mismatches remain at HEAD in `critical-evidence-sha256.txt` for `38f85086fc25...`, `4983299103bf...`, and `ec0d35a082bc...` (one `environment.txt` each). Story 3.13 must not write predecessor bytes again, so this needs a separate scoped story. Verified not affected: Story 3.13's `predecessor-tree-sha256.txt` passes 40/40, and the `nuget-sha256.txt` failures are missing proof packages, not corruption. status: resolved 2026-08-20 by Story 1.21. Durable evidence-owner receipt `25a01f60f8f231babb3db860dc8a59d2d46264f6cefe6db7f461fa615316d732` records the observed interactive approval and binds subject `ee5fb076bac380faa0b01ccd7aa96ec9f77955faa96f45c34aafc75d7bc8d26e` plus frozen-block digest `26c7a378bffb3a90eee0fe037aeeeec2e16a290ed91fadd5b4a4db6219db7e92`. The subject restored exactly the three pinned parent blobs; all critical manifests pass 33/33, packages remain independently unavailable at 0/14 per tree, broader Story 1.20 drift is zero, and `bmad:murat` verification binds result `e22e1aef2d24fea81d49ce5e9f495d4ff8d02e989da8b37c1937b517a477e3ab`.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-1-21/evidence-owner-authorization-sha256.txt:1 retains the Story 1.21 evidence-owner authorization.
 
 ### DW-347: Reseal or revert Story 4.5's self-invalidating evidence packet.
 
@@ -2704,7 +2771,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: closure.json
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: `closure.json` declares `deployed_runtime_parity: "available"` and a non-null `selected_deployed_identity` even when `acceptances.receipts` is empty. evidence: Confirmed unchanged from `HEAD` (pre-existing, not introduced by the 2026-08-22 loop-3 diff) via `git show HEAD:.../closure.json`. The real gate is `_exact_list(receipts, 3, ...)` in `tools/deployed_runtime_parity_handlers/v1.py:360`, which fails closed regardless of those two fields' declared values, so there is no functional hole — but a consumer reading the JSON file directly instead of running `validate-corrected-deployed-runtime-parity.py` would misread pre-acceptance state as already authorized. severity: low
-status: open
+status: done 2026-08-31
+resolution: already resolved: docs/ci.md:541-545 explicitly defines the available identity fields as an ungranted claim until all three receipts validate.
 
 ### DW-383: `RejectDispositionManifest`'s new directory allow-list branch (`actualDirectories.All(allowedDirectories.Contains)`) has no negative test planting an unlisted stray directory.
 
@@ -2744,7 +2812,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: 3-13-deployed-runtime-parity-closure.md:802
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The "Suggested Review Order" section's absolute line-number anchors into four sibling files have no re-derivation task tied to them. evidence: Anchors into `3-13-deployed-runtime-parity-closure.md:802`, `docs/ci.md:357`, `sprint-status.yaml:225`, and `deferred-work.md:1410` (this file) will rot on the next edit to any of those files, the same anchor-rot bug class this spec elsewhere treats as requiring an explicit "re-derive Code Map anchors" checklist item. `spec-3-13-deployed-runtime-parity-closure.md#suggested-review-order` (cited by heading, not by line: the original `:331-354` citation had already rotted at authoring time, and the section moved again during loop 5). severity: low
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:384 records replacement of the rotting line citation with a heading citation.
 
 ### DW-388: Story 3.15's lifecycle surfaces disagree as committed and no test cross-checks them.
 
@@ -2752,7 +2821,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: sprint-status.yaml:227
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 3.15's lifecycle surfaces disagree as committed and no test cross-checks them. evidence: `sprint-status.yaml:227` moved `backlog` -> `in-progress` while `spec-3-15-corrected-deployed-runtime-parity-closure.md:5` carries the in-review token and `docs/ci.md` declares 3.15 validation passing with a selected identity. No Story 3.15 story record carries a `Status:` line, and `CorrectedDeployedRuntimeParityClosureTests.cs` contains no sprint/spec cross-check. Already tracked as loop 3's open patch at `spec-3-13-deployed-runtime-parity-closure.md:249`; owned by Story 3.15. severity: medium
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md:5 and _bmad-output/implementation-artifacts/sprint-status.yaml:246 now both say in-progress.
 
 ### DW-389: One of the three Story 3.15 digests published in `docs/ci.md` is bound by no test.
 
@@ -2760,7 +2830,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: docs/ci.md
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: One of the three Story 3.15 digests published in `docs/ci.md` is bound by no test. evidence: `CiDocDescribesTheCurrentSubjectAndSelectedIdentityDigests` asserts the subject `bb58d691...` and selected identity `4b141085...`, but the predecessor digest `4d1a0c33...` at `docs/ci.md:382-383` is asserted nowhere against ci.md — it appears only as a test constant, in validator stdout assertions, and as `PREDECESSOR_SHA256` in `tools/deployed_runtime_parity_handlers/v1.py:27`. A stale copy leaves the suite green while naming a predecessor the verifier would reject. severity: low
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:1138-1171 asserts the exact predecessor digest in the bounded docs/ci.md Story 3.15 section.
 
 ### DW-390: The date-rollover fix uses an optional `validationTime` parameter, preserving the silence that caused the original defect.
 
@@ -2800,7 +2871,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: docs/ci.md
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: `docs/ci.md` flattens the known receipt-authenticity asymmetry for Story 3.15. evidence: `docs/ci.md:397-399` states the EventStore owner, Release owner and Test Architect "have provided real authenticated receipts". The two owner receipts are GitHub-issue-comment backed and independently checkable via `gh api`; the `bmad:murat` Test Architect receipt is sourced from a `bmad-test-architect-record`, i.e. self-attested by the same tooling that assembled the packet — an asymmetry this same ledger already records for Story 3.13's disposition receipts. severity: low
-status: open
+status: done 2026-08-31
+resolution: already resolved: docs/ci.md:547-550 explicitly discloses the self-attested Test Architect record and lack of independent external authentication.
 
 ### DW-395: Story 3.13's three role-bound acceptances are a self-attestation, not independent three-party review.
 
@@ -2816,7 +2888,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: ContainerPublishingGovernanceTests.cs:539
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: The development-gitlink guard encodes "deliberately independent of the release pin" as a permanent inequality, so a legitimate submodule bump onto the release pin fails a test with no failure meaning. evidence: `ContainerPublishingGovernanceTests.cs:539` asserts `gitlinkEntry.Groups["sha"].Value.ShouldNotBe(ApprovedBuildsReleaseSha)`. The documented property is that the `uses:` ref and `builds-execution-sha` agree with each other and that the gitlink is read independently (`git ls-tree`), not that the gitlink may never equal `a07078ad…`. The current gitlink is `2f46aaee…`, so the assertion cannot fire today; it becomes a false red the first time an ordinary `build(deps)` bump happens to land on the pinned revision. Pre-existing — introduced before the chunk-3 range (`94591f35`..`da52e2c8`) and untouched by it. severity: low
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:644-647 now enforces ancestor-or-equal instead of pin/gitlink inequality.
 
 ### DW-397: No executable guard asserts that the release caller's pinned reusable-workflow SHA is reachable on the Hexalith.Builds remote rather than only in a local object store.
 
@@ -2838,7 +2911,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-08-25, loop 2)"), 2026-08-30
 location: registry/role-registry-source.json
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: `author_association` requirements diverge between the registry authority source and acceptance receipts, and the divergence was resolved downward to keep real evidence passing. evidence: `_validate_receipts` requires MEMBER/OWNER/COLLABORATOR (`v1.py:794,:809`); the retained roster comment `registry/role-registry-source.json` is CONTRIBUTOR, so `_validate_registry` admits CONTRIBUTOR too. Owner decision needed: tighten the registry to match the receipts (requires a new roster comment) or record the weaker bar as intended.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tools/deployed_runtime_parity_handlers/v1.py:898 and :1032 apply the same EXPECTED_AUTHOR_ASSOCIATIONS set to registry and receipt sources.
 
 ### DW-400: The OCI `created` provenance labels are self-comparing in tests and unchecked by the codec, and the retained child configs carry a malformed truncated value.
 
@@ -2866,14 +2940,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-08-25, loop 2)"), 2026-08-30
 location: _bmad-output/test-artifacts/
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: The `_bmad-output/test-artifacts/` gate artifacts backing the Test Architect receipt disagree with the matrix they summarize and cite a nonexistent test method. evidence: `traceability-matrix.md` lists S315-UNIT-001 as `CheckedInTechnicalPacketFailsClosedUntilThreeReceiptsExist`, which exists nowhere; every listed line number is 1-3 low, indicating the matrix was generated before the final edits. `e2e-trace-summary.json` reports `cases: 19` against the matrix's 48, `pct: 100` on zero P1/P2/P3 totals, and `evaluator: Administrator` while the matrix signs off as `bmad:murat`. The files also sit outside the hash-closed packet and are bound by nothing.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/test-artifacts/gate-decision.json:8-13 marks every former PASS-shaped status SUPERSEDED and explains why the artifact is unusable.
 
 ### DW-404: The Hexalith.Builds gitlink was rotated to the tip of origin/main while the release workflow pin was left behind.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-08-25, loop 2)"), 2026-08-30
 location: origin/main
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: The Hexalith.Builds gitlink was rotated to the tip of origin/main while the release workflow pin was left behind. evidence: The gitlink moved to `22a578b5` (== `origin/main`), which changes `Github/publish-containers/publication_preflight.py` and `publish-containers.sh` -- the executed release helpers -- but `.github/workflows/release.yml` still pins `a07078ad`. The Builds-side counterpart of this diff's preflight tightening is therefore not in the executed release path, and rotation is supposed to happen from the pin rather than from main.
-status: open
+status: done 2026-08-31
+resolution: already resolved: .github/workflows/release.yml:115 and :122 align the reusable-workflow ref and executed Builds SHA at 22a578b576a515d2af214fe81859447fffc97981.
 
 ### DW-405: BLOCKING, OWNER DECISION -- the next Release run fails at container publish, after NuGet packages are already pushed, because the mandatory `ContainerProvenanceCreated` input is not supplied by the pinned Builds publisher.
 
@@ -2881,7 +2957,8 @@ origin: migrated from legacy ledger ("bmad-build code review of spec-3-15-correc
 location: Directory.Build.targets
 severity: high
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: high summary: BLOCKING, OWNER DECISION -- the next Release run fails at container publish, after NuGet packages are already pushed, because the mandatory `ContainerProvenanceCreated` input is not supplied by the pinned Builds publisher. evidence: This change removed the `ContainerProvenanceCreated` fallback from `Directory.Build.targets` and added a hard `<Error>` at `Directory.Build.targets:67` requiring an exact UTC RFC 3339 second. `.github/workflows/release.yml:91` pins `Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@a07078ad74d3727bc5a6b6d85d47d56a6e5c9fec`, and at that SHA `Github/publish-containers/publish-containers.sh:181-182` passes only `ContainerProvenanceSourceSha` and `ContainerProvenanceReleaseVersion`. The flag is passed only from Builds `22a578b5`, which is the submodule gitlink -- and a reusable workflow resolves from its `uses:` ref, not from the gitlink, so bumping the gitlink does not change what CI executes. Reproduced directly: `dotnet msbuild src/Hexalith.EventStore/Hexalith.EventStore.csproj -t:ValidateContainerProvenanceInputs -p:ContainerProvenanceSourceSha=... -p:ContainerProvenanceReleaseVersion=3.96.2` emits `Directory.Build.targets(67,5): error : ContainerProvenanceCreated must be an exact UTC RFC 3339 second.` Both SHAs are reachable on Builds `origin/main` (the reachability concern is separate, below). Resolution requires an owner decision between rotating the release pin (which also forces the gitlink further ahead, because `ContainerPublishingGovernanceTests` asserts gitlink != `ApprovedBuildsReleaseSha`) and restoring the fallback until the pin rotates. Deliberately not actioned in this loop: rotating a CI pin is outward-facing and belongs to the Story 3.14 lane.
-status: open
+status: done 2026-08-31
+resolution: already resolved: .github/workflows/release.yml:115-122 selects Builds 22a578b576a515d2af214fe81859447fffc97981, whose publisher supplies the mandatory provenance creation instant.
 
 ### DW-406: OWNER ACTION -- Story 3.15 has no dedicated acceptance issue, and the three superseded receipts were spliced onto Story 3.14's thread.
 
@@ -2889,7 +2966,8 @@ origin: migrated from legacy ledger ("bmad-build code review of spec-3-15-correc
 location: evidence/story-3-15/superseded-acceptances/bb58d691.../sources/
 severity: high
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: high summary: OWNER ACTION -- Story 3.15 has no dedicated acceptance issue, and the three superseded receipts were spliced onto Story 3.14's thread. evidence: Both superseded owner sources under `evidence/story-3-15/superseded-acceptances/bb58d691.../sources/` are anchored on `https://github.com/Hexalith/Hexalith.EventStore/issues/346#issuecomment-...`, i.e. Story 3.14's acceptance thread -- the cross-lineage reuse Story 3.13 was reopened to prevent. The verifier now rejects issues 324 and 346 by number, so re-collection requires a dedicated Story 3.15 issue. Opening it and requesting acceptances is an Ask First action and was not performed.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/registry/role-registry-source.json:3 anchors the roster on dedicated issue #352.
 
 ### DW-407: No guard asserts the pinned Builds release SHA is reachable on the Builds remote; the only availability check reads the local clone.
 
@@ -2993,7 +3071,8 @@ origin: migrated from legacy ledger ("Trusted-verifier hardening pass (2026-08-2
 location: github/workflows/release.yml
 severity: high
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: high summary: The pinned release publisher cannot supply the newly mandatory container creation timestamp, while a governance test encodes release-pin/gitlink inequality as policy. evidence: `.github/workflows/release.yml` pins Builds `a07078ad...`, whose publisher omits `ContainerProvenanceCreated`; `Directory.Build.targets` rejects that omission, and NuGet publication precedes container publication. `ContainerPublishingGovernanceTests.cs` separately requires the release pin to differ from the development gitlink, obstructing the straightforward alignment fix. This belongs to the Story 3.14 release lane.
-status: open
+status: done 2026-08-31
+resolution: already resolved: .github/workflows/release.yml:115-122 now pins both the reusable workflow and builds-execution-sha to the timestamp-capable Builds revision.
 
 ### DW-420: The legacy release job retains unused `attestations: write` and `id-token: write` permissions.
 
@@ -3241,7 +3320,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-7 landing (
 location: n/a
 severity: high
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: high summary: SUPERSEDES the loop-6 landing note in the sense that two loop-6 fixes were themselves regressions, both reproduced with live controls and closed in loop 7. evidence: (1) Narrowing the nuspec DTD scan to the XML prolog also made `_reject_prolog_declarations` return silently when the prolog did not begin with `<`. `utf-8-sig` strips exactly one BOM, so a doubled `EF BB BF` left a residual `U+FEFF` and the scan was skipped; with the fix reverted in a scratch copy a nuspec carrying `<!DOCTYPE package [<!ENTITY smuggle "Hexalith.Evil">]>` is ACCEPTED and returns id `Hexalith.Evil`. (2) Adding `TypeError` to `_is_repository_path`'s catch in both dispatchers made a bytes repository path answer False, so such a module escaped displacement and the post-execution shadow check; verified `str -> True, bytes -> False` before the fix and `bytes -> True` after. The lesson recorded here: a narrowing fix needs a control proving the *old* behaviour is still covered on the path it narrowed. status: closed 2026-08-25 (loop 7) — retained as a recorded regression class, not as open work.
-status: open
+status: done 2026-08-31
+resolution: already resolved: commit 31683502 closes the doubled-BOM prolog and bytes-path fail-open regressions with live controls.
 
 ### DW-451: The per-platform Production-smoke cleanup allowance is a verifier-side constant rather than a field in `smoke-results.json`, kept in step only by a focused test.
 
