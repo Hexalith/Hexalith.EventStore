@@ -111,7 +111,7 @@ failed_diff_max_mb = 5       # per-file size cap (MB) for untracked files in a k
 failed_diff_unlimited = false # true = capture the failed-unit diff with no size cap (may produce very large patches; warns when active)
 # commit_message_template: when set, the commit message dev sessions use for a
 # story's commit. {story_key} and {run_id} are substituted. Empty = built-in default.
-commit_message_template = ""
+commit_message_template = "build(bmad-loop): park story 4.6"
 max_parallel = 1             # units in flight at once (parallel fan-out unbuilt; values > 1 clamp to 1)
 # A git worktree checks out tracked files only, so gitignored MCP/CLI configs are
 # absent from every fresh worktree and isolated sessions can't reach their MCP
