@@ -4,9 +4,9 @@ type: 'feature'
 created: '2026-08-30'
 status: 'awaiting-operator'
 review_loop_iteration: 5
-followup_review_recommended: true
+followup_review_recommended: false
 baseline_commit: '1194dfe59bcbc9b235390d1e46a7dfe4ee115d94'
-baseline_revision: '1194dfe59bcbc9b235390d1e46a7dfe4ee115d94'
+baseline_revision: 924ddcca14af3efd44d8c0f8bd5bc98fc1ff3d89
 predecessor_path: '_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering.md'
 predecessor_blob: '4c9edb37a8616aa373bd0054057c9e8eace6e0fa'
 predecessor_sha256: '4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9ef1893'
@@ -35,6 +35,21 @@ deferred:
       fields, malformed locations, and machine-local paths. These defects
       belong to the concurrent deferred-work migration and must not be edited
       or hidden by Story 4.6.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md
+    severity: high
+  - summary: >-
+      Confirm that the Story 4.6 loop commit-message override is temporary or
+      replace it with a reusable story-bound template before another story runs.
+    evidence: |-
+      `.bmad-loop/policy.toml` currently contains the fixed literal `build(bmad-loop): park story 4.6`. It would mislabel a later story only if the orchestrator leaves this run-local override in place; the orchestrator's reset lifecycle is not represented in the reviewed diff. This file is unrelated orchestrator state and remains untouched by Story 4.6.
+    location: >-
+      .bmad-loop/policy.toml:114
+  - summary: >-
+      Repair the concurrent structured-ledger migration, checker compatibility,
+      disposition preservation, and decision-journal identity mapping together.
+    evidence: |-
+      Review pass 7 independently reproduced 456 heading records while the bullet-only checker returned an all-zero success; 447 records are outer `open`, only 6 retain top-level `source_spec`, only 92 retain top-level `severity`, none retain owner/review/grouping fields, 78 retain machine-local paths, terminal dispositions are reopened, locations are malformed, and ledger IDs conflict with the decision journal. These are concurrent ledger-governance defects outside Story 4.6; the ledger remains byte-preserved and excluded from story commits.
     location: >-
       _bmad-output/implementation-artifacts/deferred-work.md
     severity: high
@@ -376,6 +391,45 @@ unauthorized.
   - `[false]` `[reject]` Intent auditor: no runtime sharding implementation exists — the defensible selected story is explicitly a specification renegotiation and keeps implementation unauthorized.
   - `[false]` `[reject]` Intent auditor: repository checks do not perform human approval or production evidence — those external actions are intentionally absent and enumerated for the operator.
 
+### 2026-08-31 — Review pass 7
+- verdicts: 35 findings — high 14, medium 5, low 0, false 13, maybe-false 3
+- findings:
+  - `[maybe-false]` `[defer]` Blind hunter: the fixed Story 4.6 commit template could mislabel future loop commits — the literal is verified, but harm depends on whether the orchestrator resets this run-local unstaged override; the orchestrator lifecycle contract or a subsequent-run observation would settle it.
+  - `[false]` `[reject]` Blind hunter: the reviewed Story 4.6 candidate changes four paths and omits the successor — the review snapshot includes preserved concurrent state, while `git diff --name-status 1194dfe5..HEAD` proves the committed candidate is exactly `A` wrapper and `M` successor.
+  - `[false]` `[reject]` Blind hunter: wrapper `in-review` conflicts with final `awaiting-operator` — `in-review` is the mandatory transient review state; finalization restores both artifacts to `awaiting-operator` before verification and commit.
+  - `[false]` `[reject]` Blind hunter: the path-restricted pre-commit check can silently include unrelated staged paths — the story uses an explicit pathspec commit, separately inspects full status, and follows with an unfiltered exact committed-range assertion.
+  - `[high]` `[defer]` Blind hunter: the structured ledger is invisible to the bullet-only checker — independently reproduced as 456 headings with an all-zero successful report; routed to the grouped concurrent ledger-governance deferral without editing the ledger.
+  - `[high]` `[defer]` Blind hunter: 447 open migrated records lack owner, review-date, and grouping fields — field counts verify the loss; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Blind hunter: structured source provenance is lost — only 6 of 456 records retain top-level `source_spec`; routed to the grouped concurrent ledger-governance deferral.
+  - `[medium]` `[defer]` Blind hunter: structured severity is lost — only 92 of 456 records retain top-level `severity`; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Blind hunter: accepted DW-6 is reopened as `open` — the outer status conflicts with its preserved accepted disposition; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Blind hunter: reconciled or superseded DW-24 through DW-26 become open work — the migrated outer states conflict with their retained resolution text; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Blind hunter: multiple completed fixes are reopened — sampled DW-62, DW-71, DW-73, DW-75, DW-296, and DW-297 reproduce the conflict; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Blind hunter: closed historical DW-450 becomes actionable — its retained text says closed and history-only while the migrated outer state is `open`; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Blind hunter: migrated DW identifiers conflict with the decision journal — ledger DW-450 names different work and decision IDs above DW-456 are orphaned; routed to the grouped concurrent ledger-governance deferral.
+  - `[medium]` `[defer]` Blind hunter: migrated locations lose syntax or are symbols rather than paths — malformed brace and symbol examples are present; routed to the grouped concurrent ledger-governance deferral.
+  - `[medium]` `[defer]` Blind hunter: migrated records retain machine-local paths — 78 occurrences were reproduced; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Blind hunter: external repository ownership is flattened into prose — sampled Builds-owned records lack a structured owner-repository field; routed to the grouped concurrent ledger-governance deferral.
+  - `[false]` `[reject]` Blind hunter: DW-456 contradicts itself by naming Story 4.6 as `source_spec` — `source_spec` records provenance, not ownership; the item explicitly assigns the separately owned ledger-governance surface and does not authorize Story 4.6 to edit it.
+  - `[maybe-false]` `[defer]` Edge-case hunter: the fixed Story 4.6 template will affect another story — the outcome requires the orchestrator to retain a temporary override beyond this run; its reset behavior must be observed or documented.
+  - `[high]` `[defer]` Edge-case hunter: heading-based ledger records disappear from governance — the checker parses bullets only and returned zero records; routed to the grouped concurrent ledger-governance deferral.
+  - `[medium]` `[defer]` Edge-case hunter: migrated locations have unmatched braces or parentheses — representative malformed locations were verified; routed to the grouped concurrent ledger-governance deferral.
+  - `[medium]` `[defer]` Edge-case hunter: machine-local source paths fail outside this workspace — 78 absolute workspace paths were verified; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Edge-case hunter: terminal legacy records are migrated as open — accepted, resolved, and closed examples were reproduced; routed to the grouped concurrent ledger-governance deferral.
+  - `[high]` `[defer]` Edge-case hunter: structured ownership, provenance, and severity are flattened — top-level field counts reproduce the loss; routed to the grouped concurrent ledger-governance deferral.
+  - `[false]` `[reject]` Edge-case hunter: the wrapper denies the claimed operator handoff — the observed `in-review` byte is a required transient and is replaced with final `awaiting-operator` before handoff.
+  - `[false]` `[reject]` Edge-case hunter: the supplied change cannot satisfy exact candidate scope — the supplied review diff is based on the follow-up revision, while the authoritative candidate range from `1194dfe5` is exactly the required two paths.
+  - `[high]` `[defer]` Verification-gap reviewer: normal documentation checks pass without parsing the migrated ledger — the all-zero successful checker output and skipped governance tests reproduce the gap; routed to the grouped concurrent ledger-governance deferral.
+  - `[false]` `[reject]` Verification-gap reviewer: the orchestrator's `awaiting-operator` sprint row invalidates Story 4.6 — that row is explicitly orchestrator-owned bookkeeping, not a story artifact or defect, and an auxiliary sprint-planning parser does not own this handoff state.
+  - `[high]` `[defer]` Verification-gap reviewer: ledger IDs are not checked against the decision journal — conflicting and orphaned keys were reproduced; routed to the grouped concurrent ledger-governance deferral.
+  - `[maybe-false]` `[defer]` Verification-gap reviewer: the fixed commit template will suppress later semantic-release impact — this occurs only if the run-local override survives into later stories; orchestrator reset evidence is required.
+  - `[false]` `[reject]` Intent auditor: the final Git candidate is a four-file modification rather than `A` wrapper and `M` successor — the auditor reviewed the whole dirty-tree follow-up snapshot, while candidate history independently proves the exact required scope.
+  - `[false]` `[reject]` Intent auditor: no successor hunk means normative v2 was not implemented — the successor was implemented and committed before this resumed review; the current baseline intentionally captures only follow-up lifecycle changes.
+  - `[false]` `[reject]` Intent auditor: final handoff state was moved from the wrapper to the sprint tracker — wrapper `in-review` is transient, finalization restores `awaiting-operator`, and the sprint row remains independently owned bookkeeping.
+  - `[false]` `[reject]` Intent auditor: `baseline_commit` and `baseline_revision` are conflicting identities — the first binds candidate scope while the second records this resumed workflow's current `HEAD`, as required by the implementation workflow.
+  - `[false]` `[reject]` Intent auditor: verification is removed and no runtime tests exercise the contract — Auto Run Result is regenerated after review, all four embedded matrix surfaces ran green, and the intent expressly forbids runtime implementation or test changes.
+  - `[false]` `[reject]` Intent auditor: Story 4.6 modifies protected bookkeeping — those bytes are preserved concurrent changes captured by whole-tree review, absent from candidate history and excluded from the story-only commit.
+
 ## Design Notes
 
 The current simplified successor is the active semantic draft. Historical digest `2310f121dc48f59713a9c6bbc6ffe2e63be374d4d8ecc6e8d710a0d9cf3674de` and blob `e12fc28b2aed3b1609a4d9b86935dd950357b6d9` identify a larger candidate whose final recorded review still contained unresolved `bad_spec` findings; they are recovery context, not authority. The pre-edit diagnostic digest `bf1a1e8651261de1bcc75bb6f75046d8f7fc93b8824482778da31b0b29aa03c8` is also non-authoritative because correcting the normative scope changes the hashed bytes. Hash only after normative review is complete.
@@ -536,7 +590,7 @@ The current simplified successor is the active semantic draft. Historical digest
   assert hashlib.sha256(v2).hexdigest() == wrapper_fm['successor_sha256']
   expected_wrapper = {
       'baseline_commit': '1194dfe59bcbc9b235390d1e46a7dfe4ee115d94',
-      'baseline_revision': '1194dfe59bcbc9b235390d1e46a7dfe4ee115d94',
+      'baseline_revision': '924ddcca14af3efd44d8c0f8bd5bc98fc1ff3d89',
       'predecessor_path': v1_path,
       'predecessor_blob': '4c9edb37a8616aa373bd0054057c9e8eace6e0fa',
       'predecessor_sha256': '4bcff794a3c926f45e790ce462d562799db998feeab24aab1527ac6cf9ef1893',
@@ -611,57 +665,63 @@ The current simplified successor is the active semantic draft. Historical digest
 
 ### Summary
 
-Story 4.6 adds an auditable wrapper and content-binds the simplified v2
-composite tenant+domain global-position successor. The successor now defines
-lossless known and unsupported position identities, fail-closed comparison and
-shard admission, comparable evidence, evidence-only non-production authority,
-candidate-bound ownership, and exact scope without changing runtime behavior.
+The resumed autonomous pass confirmed that the agent-capable Story 4.6
+candidate was already committed in `a823ef4a` and hardened in `924ddcca`.
+This follow-up revalidated the frozen predecessor, content-bound successor,
+four edge-case matrix surfaces, exact candidate scope, and operator handoff;
+it added review pass 7 without changing runtime behavior or any owned
+orchestrator/ledger artifact.
 
 ### Files changed
 
-- `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md` — records intent, identities, five repair iterations, six review passes, verification, deferral, and operator handoff.
-- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md` — publishes the exact normative successor and detached awaiting-operator status.
+- `_bmad-output/implementation-artifacts/spec-4-6-global-position-sharding-spec-renegotiation.md` — captures the resumed-run baseline, pass-7 triage, fresh verification evidence, grouped external deferrals, and final operator handoff.
+- `_bmad-output/implementation-artifacts/spec-dapr-global-event-ordering-v2.md` — remains the previously committed content-bound normative successor; no bytes changed in this resumed pass.
 
 ### Review findings
 
-- Review passes 1 through 5 re-derived the candidate after verified planning
-  gaps; each finding and KEEP constraint is recorded one-per-row above.
-- Review pass 6 converged with eight patch groups: outcome precedence,
-  unsupported identity classification, evidence-only approval, Story 4.5
-  declaration approval, post-cutover shard admission, exact authority-row
-  count, frozen-v1 worktree equality, and complete-line marker validation.
-- The concurrent ledger/governance defects are represented by one high-severity
-  structured deferral in frontmatter; the ledger itself remains untouched by
-  this story.
-- Every rejected finding and its evidence-backed reason is recorded one-per-row
-  in the six `Review Triage Log` entries. Rejections cover transient review
-  lifecycle observations, the intentionally external ledger diff, the selected
-  spec-only scope, human-only evidence, and claims disproved by the exact
-  contract or verifier.
+- Patches applied: none.
+- Deferred: 22 findings grouped into two separately owned entries — the
+  potentially temporary BMad loop commit-template override, and the concurrent
+  deferred-ledger migration/checker/decision-journal defects. Story 4.6 did
+  not edit either owned surface.
+- Rejected: 13 findings, each recorded in the pass-7 triage log:
+  - The four-path review snapshot is not the Story 4.6 candidate; exact Git history proves the required two-path range.
+  - The wrapper's `in-review` value was a mandatory transient, not a final lifecycle conflict.
+  - The path-restricted pre-commit check is paired with explicit pathspec commit isolation and an unfiltered committed-range assertion.
+  - DW-456's `source_spec` is provenance, not an assignment of ledger ownership to Story 4.6.
+  - The edge-case lifecycle claim observed the same transient review byte rather than final handoff state.
+  - The edge-case scope claim compared the follow-up dirty-tree snapshot instead of candidate history.
+  - The `awaiting-operator` sprint row is orchestrator-owned bookkeeping, not a story defect or authority surface.
+  - The intent audit's four-file scope claim is disproved by the exact `1194dfe5..HEAD` candidate range.
+  - The missing successor hunk reflects the resumed baseline after successor implementation, not missing normative work.
+  - Final handoff remains in both normative artifacts; the sprint tracker is independent bookkeeping.
+  - `baseline_commit` binds candidate scope while `baseline_revision` identifies this resumed workflow's start revision.
+  - Verification was rerun through the embedded staged-blob matrix; runtime tests are forbidden by the selected spec-only intent.
+  - Protected bookkeeping changes are concurrent, preserved, and excluded from every Story 4.6 commit.
 
 ### Follow-up review recommendation
 
-`true` — review pass 6 applied three high-severity and five medium-severity
-patch groups. Deferred and rejected findings are excluded from this count.
+`false` — pass 7 patched high 0, medium 0, low 0. Deferred and rejected
+findings do not count toward the recommendation.
 
 ### Verification
 
-- Exact staged-blob verifier: six `PASS` groups.
-- Optimized Python guard: non-zero exit before assertions can be disabled.
-- Frozen v1: Git blob, complete SHA-256, frozen ranges, provenance commit, and
-  all 19 canonical clause tuples reproduced.
-- Candidate identity: normative SHA-256
-  `995fcecd16b3421ec9ff666d0884bfb5e436932aa49529c152fb7c439172a1fd`,
-  successor blob `160331d25451928ff3c3dea2300b65cab4f97c3b`, and successor file SHA-256
-  `bbec7a16661995849891fae2617cf74c281d3da155086d0e22a39d5a2488f59a`.
-- Scope and whitespace: exactly `A` wrapper and `M` successor from captured
-  baseline, with no story-path whitespace errors.
-- Post-commit whole-scope, index/worktree equality, staged-blob revalidation,
-  and commitlint are mandatory finalization checks immediately after commit.
+- Frozen-v1 Git blob and file SHA-256 reproduced exactly.
+- The staged-blob verifier printed six `PASS` groups, covering predecessor
+  binding, candidate identity, owner resolution, mixed-position behavior,
+  scope/authority, and operator actions.
+- `PYTHONOPTIMIZE=1` exited `1` with
+  `optimized Python disables verification assertions` before any assertion
+  could be disabled.
+- Candidate history from `1194dfe5` reported exactly `A` wrapper and `M`
+  successor; story-path whitespace validation passed.
+- Frontmatter parsed as one YAML document with one `deferred` list and three
+  non-empty imperative `operator_actions`.
 
 ### Residual risks
 
-Exact-content architecture-owner approval, production-provider/topology
-evidence, and separate implementation authorization remain absent and
-operator-owned. Frozen v1 remains authoritative. The unrelated staged ledger
-migration has verified governance defects and remains outside this story.
+Exact-content architecture-owner approval, every required production-provider
+and topology evidence category, and separate implementation authorization
+remain absent and human-owned. Frozen v1 remains authoritative. Concurrent
+ledger migration defects and the possibly temporary loop commit-template
+override remain outside Story 4.6 and are preserved for their owners.
