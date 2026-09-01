@@ -303,7 +303,7 @@ public sealed class ReleasePackageManifestTests
         string publishCommand = GetSemanticReleasePublishCommand(releaseConfig);
 
         publishCommand.ShouldContain("scripts/validate-release-secrets.sh");
-        FindNuGetPublicationViolations(publishCommand).ShouldBeEmpty();
+        FindNuGetPublicationViolations(GetSemanticReleaseExecCommands(releaseConfig)).ShouldBeEmpty();
         publishCommand.ShouldContain("./.hexalith/release/publish-containers.sh ${nextRelease.version}");
         publishCommand.IndexOf("scripts/validate-release-secrets.sh", StringComparison.Ordinal).ShouldBeLessThan(
             publishCommand.IndexOf("dotnet nuget push", StringComparison.Ordinal),
@@ -313,6 +313,7 @@ public sealed class ReleasePackageManifestTests
     [Theory]
     [InlineData("foreign-push")]
     [InlineData("foreign-operand")]
+    [InlineData("foreign-other-command")]
     public void Semantic_release_NuGet_publication_guard_rejects_additional_commands_and_operands(
         string mutation)
     {
@@ -320,7 +321,8 @@ public sealed class ReleasePackageManifestTests
         string root = FindRepositoryRoot();
         using JsonDocument releaseConfig = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".releaserc.json")));
         string publishCommand = GetSemanticReleasePublishCommand(releaseConfig);
-        string mutatedCommand = mutation switch
+        KeyValuePair<string, string>[] mutatedCommands = [.. GetSemanticReleaseExecCommands(releaseConfig)];
+        string mutatedPublishCommand = mutation switch
         {
             "foreign-push" => publishCommand
                 + " && dotnet nuget push \"./nupkgs/Foreign.Package.*.nupkg\" --source https://api.nuget.org/v3/index.json",
@@ -331,10 +333,27 @@ public sealed class ReleasePackageManifestTests
                     " \"./nupkgs/Foreign.Package.*.nupkg\" --source",
                     StringComparison.Ordinal),
                 StringComparison.Ordinal),
+            "foreign-other-command" => publishCommand,
             _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown publication mutation."),
         };
+        int publishIndex = Array.FindIndex(
+            mutatedCommands,
+            static command => string.Equals(command.Key, "publishCmd", StringComparison.Ordinal));
+        publishIndex.ShouldBeGreaterThanOrEqualTo(0);
+        mutatedCommands[publishIndex] = new KeyValuePair<string, string>("publishCmd", mutatedPublishCommand);
+        if (mutation == "foreign-other-command")
+        {
+            int prepareIndex = Array.FindIndex(
+                mutatedCommands,
+                static command => string.Equals(command.Key, "prepareCmd", StringComparison.Ordinal));
+            prepareIndex.ShouldBeGreaterThanOrEqualTo(0);
+            mutatedCommands[prepareIndex] = new KeyValuePair<string, string>(
+                "prepareCmd",
+                mutatedCommands[prepareIndex].Value
+                    + " && dotnet nuget push \"./nupkgs/Foreign.Package.*.nupkg\" --source https://api.nuget.org/v3/index.json");
+        }
 
-        FindNuGetPublicationViolations(mutatedCommand).ShouldNotBeEmpty();
+        FindNuGetPublicationViolations(mutatedCommands).ShouldNotBeEmpty();
     }
 
     [Fact]
@@ -371,15 +390,18 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Theory]
-    [InlineData("tools/validate-release-packages.py")]
-    [InlineData("scripts/validate-nuget-packages.py")]
-    public void ArchiveValidatorsAcceptExactEmbeddedInventory(string validator)
+    [InlineData("tools/validate-release-packages.py", "valid")]
+    [InlineData("scripts/validate-nuget-packages.py", "valid")]
+    [InlineData("tools/validate-release-packages.py", "distinct-complete-dependency-groups")]
+    [InlineData("scripts/validate-nuget-packages.py", "distinct-complete-dependency-groups")]
+    public void ArchiveValidatorsAcceptValidGroupedDependencyShapes(string validator, string mutation)
     {
         ArgumentNullException.ThrowIfNull(validator);
+        ArgumentNullException.ThrowIfNull(mutation);
         string packageDirectory = Directory.CreateTempSubdirectory("eventstore-valid-packages-").FullName;
         try
         {
-            CreateSyntheticReleaseOutput(packageDirectory, "valid");
+            CreateSyntheticReleaseOutput(packageDirectory, mutation);
 
             (int exitCode, _, string error) = RunPackageValidator(validator, packageDirectory);
 
@@ -467,6 +489,10 @@ public sealed class ReleasePackageManifestTests
     [InlineData("scripts/validate-nuget-packages.py", "repeated-partial-dependency-groups", "Hexalith.EventStore.Gateway.999.3.6-fixture.nupkg declares repeated dependency group for target framework net10.0")]
     [InlineData("tools/validate-release-packages.py", "case-variant-repeated-partial-dependency-groups", "Hexalith.EventStore.Gateway.999.3.6-fixture.nupkg declares repeated dependency group for target framework NET10.0")]
     [InlineData("scripts/validate-nuget-packages.py", "case-variant-repeated-partial-dependency-groups", "Hexalith.EventStore.Gateway.999.3.6-fixture.nupkg declares repeated dependency group for target framework NET10.0")]
+    [InlineData("tools/validate-release-packages.py", "mixed-direct-blank-group", "Hexalith.EventStore.Gateway.999.3.6-fixture.nupkg mixes direct ungrouped dependencies with a dependency group whose target framework is blank")]
+    [InlineData("scripts/validate-nuget-packages.py", "mixed-direct-blank-group", "Hexalith.EventStore.Gateway.999.3.6-fixture.nupkg mixes direct ungrouped dependencies with a dependency group whose target framework is blank")]
+    [InlineData("tools/validate-release-packages.py", "blank-group-before-direct", "Hexalith.EventStore.Gateway.999.3.6-fixture.nupkg mixes direct ungrouped dependencies with a dependency group whose target framework is blank")]
+    [InlineData("scripts/validate-nuget-packages.py", "blank-group-before-direct", "Hexalith.EventStore.Gateway.999.3.6-fixture.nupkg mixes direct ungrouped dependencies with a dependency group whose target framework is blank")]
     public void ArchiveValidatorsRejectSourceMetadataAndGatewayDependencyLoss(
         string validator,
         string mutation,
@@ -1161,6 +1187,13 @@ public sealed class ReleasePackageManifestTests
                     RepeatTargetFrameworkWithDifferentCasing =
                         mutation == "case-variant-repeated-partial-dependency-groups"
                         && package.Id == GatewayPackageId,
+                    MixedDirectAndBlankGroupDependencies =
+                        mutation is "mixed-direct-blank-group" or "blank-group-before-direct"
+                        && package.Id == GatewayPackageId,
+                    BlankGroupBeforeDirectDependencies =
+                        mutation == "blank-group-before-direct" && package.Id == GatewayPackageId,
+                    DistinctCompleteDependencyGroups =
+                        mutation == "distinct-complete-dependency-groups" && package.Id == GatewayPackageId,
                     ExtraArchiveEntries = index != 0
                         ? []
                         : mutation switch
@@ -1222,27 +1255,66 @@ public sealed class ReleasePackageManifestTests
 
         // Real `dotnet pack` output always groups dependencies by target framework;
         // the ungrouped shape is a nuspec-legal alternative the parser must also police.
-        XElement dependenciesElement = fixture.UngroupedDependencies
-            ? new XElement(NuspecNamespace + "dependencies", CreateDependencyElements(declaredDependencies))
-            : fixture.RepeatedPartialDependencyGroups
-                ? new XElement(
-                    NuspecNamespace + "dependencies",
-                    new XElement(
-                        NuspecNamespace + "group",
-                        new XAttribute("targetFramework", "net10.0"),
-                        CreateDependencyElements(declaredDependencies[..(declaredDependencies.Length / 2)])),
-                    new XElement(
-                        NuspecNamespace + "group",
-                        new XAttribute(
-                            "targetFramework",
-                            fixture.RepeatTargetFrameworkWithDifferentCasing ? "NET10.0" : "net10.0"),
-                        CreateDependencyElements(declaredDependencies[(declaredDependencies.Length / 2)..])))
-                : new XElement(
+        XElement dependenciesElement;
+        if (fixture.UngroupedDependencies)
+        {
+            dependenciesElement = new XElement(
+                NuspecNamespace + "dependencies",
+                CreateDependencyElements(declaredDependencies));
+        }
+        else if (fixture.MixedDirectAndBlankGroupDependencies)
+        {
+            int midpoint = declaredDependencies.Length / 2;
+            XElement blankGroup = new(
+                NuspecNamespace + "group",
+                new XAttribute("targetFramework", ""),
+                CreateDependencyElements(declaredDependencies[midpoint..]));
+            XElement[] directDependencies =
+            [
+                .. CreateDependencyElements(declaredDependencies[..midpoint]),
+            ];
+            dependenciesElement = fixture.BlankGroupBeforeDirectDependencies
+                ? new XElement(NuspecNamespace + "dependencies", blankGroup, directDependencies)
+                : new XElement(NuspecNamespace + "dependencies", directDependencies, blankGroup);
+        }
+        else if (fixture.RepeatedPartialDependencyGroups)
+        {
+            int midpoint = declaredDependencies.Length / 2;
+            dependenciesElement = new XElement(
+                NuspecNamespace + "dependencies",
+                new XElement(
+                    NuspecNamespace + "group",
+                    new XAttribute("targetFramework", "net10.0"),
+                    CreateDependencyElements(declaredDependencies[..midpoint])),
+                new XElement(
+                    NuspecNamespace + "group",
+                    new XAttribute(
+                        "targetFramework",
+                        fixture.RepeatTargetFrameworkWithDifferentCasing ? "NET10.0" : "net10.0"),
+                    CreateDependencyElements(declaredDependencies[midpoint..])));
+        }
+        else if (fixture.DistinctCompleteDependencyGroups)
+        {
+            dependenciesElement = new XElement(
+                NuspecNamespace + "dependencies",
+                new XElement(
+                    NuspecNamespace + "group",
+                    new XAttribute("targetFramework", "net9.0"),
+                    CreateDependencyElements(declaredDependencies)),
+                new XElement(
+                    NuspecNamespace + "group",
+                    new XAttribute("targetFramework", "net10.0"),
+                    CreateDependencyElements(declaredDependencies)));
+        }
+        else
+        {
+            dependenciesElement = new XElement(
                 NuspecNamespace + "dependencies",
                 new XElement(
                     NuspecNamespace + "group",
                     new XAttribute("targetFramework", "net10.0"),
                     CreateDependencyElements(declaredDependencies)));
+        }
 
         XElement metadata = new(
             NuspecNamespace + "metadata",
@@ -1329,6 +1401,12 @@ public sealed class ReleasePackageManifestTests
 
         public bool RepeatTargetFrameworkWithDifferentCasing { get; init; }
 
+        public bool MixedDirectAndBlankGroupDependencies { get; init; }
+
+        public bool BlankGroupBeforeDirectDependencies { get; init; }
+
+        public bool DistinctCompleteDependencyGroups { get; init; }
+
         public bool DuplicateDependencies { get; init; }
 
         public bool UngroupedDependencies { get; init; }
@@ -1411,39 +1489,83 @@ public sealed class ReleasePackageManifestTests
         };
 
     private static string GetSemanticReleasePublishCommand(JsonDocument releaseConfig)
-        => releaseConfig
-            .RootElement
-            .GetProperty("plugins")
-            .EnumerateArray()
-            .Where(plugin => plugin.ValueKind == JsonValueKind.Array)
-            .Select(plugin => plugin[1])
-            .Where(pluginConfig => pluginConfig.TryGetProperty("publishCmd", out _))
-            .Select(pluginConfig => pluginConfig.GetProperty("publishCmd").GetString())
+        => GetSemanticReleaseExecCommands(releaseConfig)
+            .Where(static command => string.Equals(command.Key, "publishCmd", StringComparison.Ordinal))
+            .Select(static command => command.Value)
             .Single()
             .ShouldNotBeNull();
 
-    private static string[] FindNuGetPublicationViolations(string publishCommand)
+    private static KeyValuePair<string, string>[] GetSemanticReleaseExecCommands(JsonDocument releaseConfig)
+        =>
+        [
+            .. releaseConfig
+                .RootElement
+                .GetProperty("plugins")
+                .EnumerateArray()
+                .Where(static plugin => plugin.ValueKind == JsonValueKind.Array
+                    && plugin.GetArrayLength() >= 2
+                    && plugin[0].ValueKind == JsonValueKind.String
+                    && string.Equals(
+                        plugin[0].GetString(),
+                        "@semantic-release/exec",
+                        StringComparison.Ordinal)
+                    && plugin[1].ValueKind == JsonValueKind.Object)
+                .SelectMany(static plugin => plugin[1].EnumerateObject())
+                .Where(static property => property.Name.EndsWith("Cmd", StringComparison.Ordinal)
+                    && property.Value.ValueKind == JsonValueKind.String)
+                .Select(static property => new KeyValuePair<string, string>(
+                    property.Name,
+                    property.Value.GetString()!)),
+        ];
+
+    private static string[] FindNuGetPublicationViolations(
+        IEnumerable<KeyValuePair<string, string>> semanticReleaseCommands)
     {
         const string invocationPattern = @"\bdotnet\s+nuget\s+push\b";
         List<string> violations = [];
-        int invocationCount = Regex.Matches(
-            publishCommand,
-            invocationPattern,
-            RegexOptions.CultureInvariant).Count;
+        KeyValuePair<string, string>[] commands = [.. semanticReleaseCommands];
+        int invocationCount = commands.Sum(command => Regex.Matches(
+                command.Value,
+                invocationPattern,
+                RegexOptions.CultureInvariant)
+            .Count);
         if (invocationCount != 1)
         {
             violations.Add(
                 $"Semantic-release must declare exactly one NuGet push command; found {invocationCount}.");
         }
 
-        string[] publicationSegments = publishCommand
-            .Split("&&", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(segment => Regex.IsMatch(
-                segment,
+        KeyValuePair<string, string>[] commandsContainingPush =
+        [
+            .. commands.Where(command => Regex.IsMatch(
+                command.Value,
                 invocationPattern,
-                RegexOptions.CultureInvariant))
-            .ToArray();
-        if (publicationSegments.Length != 1
+                RegexOptions.CultureInvariant)),
+        ];
+        if (commandsContainingPush.Length != 1
+            || !string.Equals(commandsContainingPush[0].Key, "publishCmd", StringComparison.Ordinal))
+        {
+            violations.Add(
+                "The sole semantic-release NuGet push must be declared in @semantic-release/exec publishCmd.");
+        }
+
+        string[] publishCommands =
+        [
+            .. commands
+                .Where(static command => string.Equals(command.Key, "publishCmd", StringComparison.Ordinal))
+                .Select(static command => command.Value),
+        ];
+        string[] publicationSegments = publishCommands.Length == 1
+            ? publishCommands[0]
+                .Split("&&", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(segment => Regex.IsMatch(
+                    segment,
+                    invocationPattern,
+                    RegexOptions.CultureInvariant))
+                .ToArray()
+            : [];
+        if (publishCommands.Length != 1
+            || publicationSegments.Length != 1
             || !string.Equals(
                 publicationSegments.SingleOrDefault(),
                 ExpectedNuGetPublicationCommand,

@@ -72,7 +72,8 @@ public class HexalithEventStoreSecurityExtensionsTests {
     }
 
     [Fact]
-    public async Task AddHexalithEventStoreSecurity_WhenRealmOptionsDefault_PreservesRealmUrlAndImportAnnotation() {
+    public async Task AddHexalithEventStoreSecurity_WhenRealmOptionsDefault_PreservesRealmUrlAndImportAnnotation()
+    {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
         builder.Configuration[HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey] = "false";
@@ -88,9 +89,11 @@ public class HexalithEventStoreSecurityExtensionsTests {
     }
 
     [Fact]
-    public async Task AddHexalithEventStoreSecurity_WhenRealmOptionsOverridden_PreservesRealmUrlAndImportAnnotation() {
+    public async Task AddHexalithEventStoreSecurity_WhenRealmOptionsOverridden_PreservesRealmUrlAndImportAnnotation()
+    {
         string realmImportPath = Directory.CreateTempSubdirectory("eventstore-realm-import-").FullName;
-        try {
+        try
+        {
             await File.WriteAllTextAsync(
                 Path.Combine(realmImportPath, "override-realm.json"),
                 "{}",
@@ -98,7 +101,8 @@ public class HexalithEventStoreSecurityExtensionsTests {
             IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
             builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
             builder.Configuration[HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey] = "false";
-            var options = new HexalithEventStoreSecurityOptions {
+            var options = new HexalithEventStoreSecurityOptions
+            {
                 RealmName = "review-realm",
                 RealmImportPath = realmImportPath,
             };
@@ -107,9 +111,14 @@ public class HexalithEventStoreSecurityExtensionsTests {
 
             security.Keycloak.Resource.Name.ShouldBe(SecurityResourceName);
             AssertRealmUrl(security, options.RealmName);
-            await AssertRealmImportAsync(builder, security, realmImportPath).ConfigureAwait(true);
+            await AssertRealmImportAsync(
+                builder,
+                security,
+                realmImportPath,
+                "override-realm.json").ConfigureAwait(true);
         }
-        finally {
+        finally
+        {
             Directory.Delete(realmImportPath, recursive: true);
         }
     }
@@ -197,14 +206,17 @@ public class HexalithEventStoreSecurityExtensionsTests {
     private static async Task AssertRealmImportAsync(
         IDistributedApplicationBuilder builder,
         HexalithEventStoreSecurityResources security,
-        string expectedImportPath) {
+        string expectedImportPath,
+        string? expectedImportedFileName = null)
+    {
         ContainerFileSystemCallbackAnnotation annotation = security.Keycloak.Resource.Annotations
             .OfType<ContainerFileSystemCallbackAnnotation>()
             .Single();
         annotation.DestinationPath.ShouldBe("/opt/keycloak/data/import");
 
         IEnumerable<ContainerFileSystemItem> importedItems = await annotation.Callback(
-            new ContainerFileSystemCallbackContext {
+            new ContainerFileSystemCallbackContext
+            {
                 Model = security.Keycloak.Resource,
                 ServiceProvider = null!,
                 Services = null!,
@@ -226,10 +238,17 @@ public class HexalithEventStoreSecurityExtensionsTests {
         sourcePaths.ShouldAllBe(
             path => path.StartsWith(expectedPrefix, StringComparison.Ordinal),
             $"Expected every imported realm file to originate under {expectedFullPath}.");
+        if (expectedImportedFileName is not null)
+        {
+            sourcePaths.ShouldContain(Path.Combine(expectedFullPath, expectedImportedFileName));
+        }
     }
 
-    private static void AssertRealmUrl(HexalithEventStoreSecurityResources security, string expectedRealmName) {
-        security.RealmUrl.ValueExpression.ShouldEndWith($"/realms/{expectedRealmName}");
+    private static void AssertRealmUrl(HexalithEventStoreSecurityResources security, string expectedRealmName)
+    {
+        ReferenceExpression expectedRealmUrl = ReferenceExpression.Create(
+            $"{security.Keycloak.GetEndpoint("http")}/realms/{expectedRealmName}");
+        security.RealmUrl.ValueExpression.ShouldBe(expectedRealmUrl.ValueExpression);
         EndpointReference realmEndpoint = security.RealmUrl.ValueProviders
             .OfType<EndpointReference>()
             .Single();

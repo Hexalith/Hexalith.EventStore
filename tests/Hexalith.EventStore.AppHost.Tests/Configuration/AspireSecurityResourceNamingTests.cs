@@ -48,6 +48,7 @@ public sealed class AspireSecurityResourceNamingTests
         "src",
         "tests",
         "tools",
+        "aspire.config.json",
         ":(glob,top)*.md",
         ":(exclude)docs/api/**",
         ":(exclude,glob,top)CHANGELOG.md",
@@ -228,6 +229,9 @@ public sealed class AspireSecurityResourceNamingTests
             static path => !path.Contains('/', StringComparison.Ordinal)
                 && path.EndsWith(".md", StringComparison.OrdinalIgnoreCase),
             "The stale-identity audit no longer reaches root-level Markdown.");
+        trackedPaths.ShouldContain(
+            "aspire.config.json",
+            "The stale-identity audit no longer reaches the root Aspire operator configuration.");
 
         string[] staleMatches = await FindTrackedMatchesAsync(repositoryRoot, staleIdentityPatterns)
             .ConfigureAwait(true);
@@ -255,6 +259,12 @@ public sealed class AspireSecurityResourceNamingTests
             $@"aspire wait {implementationName}",
             $@"aspire wait {implementationName} --non-interactive",
             $@"aspire wait --timeout 30 {implementationName}",
+            $@"aspire wait --status Healthy {implementationName}",
+            $@"aspire wait --apphost src/AppHost.csproj {implementationName}",
+            $@"aspire wait ""{implementationName}"" --non-interactive",
+            $@"aspire wait '{implementationName}';",
+            $@"aspire wait {implementationName}; echo ready",
+            $@"aspire wait {implementationName}.",
         ];
         string repositoryRoot = Directory.CreateTempSubdirectory("eventstore-stale-identity-audit-").FullName;
         try
@@ -289,6 +299,60 @@ public sealed class AspireSecurityResourceNamingTests
         finally
         {
             Directory.Delete(repositoryRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AppHostModel_WhenHostileCallerEnvironmentIsSeeded_RestoresEveryExactValue()
+    {
+        IReadOnlyDictionary<string, string?> callerEnvironment = CaptureAppHostEnvironment();
+        IReadOnlyDictionary<string, string?> seededEnvironment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["SKIP_PREREQUISITE_CHECK"] = null,
+            [HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "hostile-caller-value",
+            [HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey] = "true",
+            [HexalithEventStoreSecurityOptions.DefaultHttpPortConfigurationKey] = "invalid-hostile-http-port",
+            [HexalithEventStoreSecurityOptions.DefaultManagementPortConfigurationKey] = "invalid-hostile-management-port",
+        };
+
+        try
+        {
+            RestoreAppHostEnvironment(seededEnvironment);
+            IReadOnlyDictionary<string, string?> seededSnapshot = CaptureAppHostEnvironment();
+            try
+            {
+                ConfigureDeterministicAppHostEnvironment(enableKeycloak: true);
+
+                await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
+                    .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
+                    .ConfigureAwait(true);
+
+                KeycloakResource security = builder.Resources
+                    .OfType<KeycloakResource>()
+                    .Single(static resource => string.Equals(
+                        resource.Name,
+                        SecurityResourceName,
+                        StringComparison.Ordinal));
+                security.Annotations
+                    .OfType<ContainerLifetimeAnnotation>()
+                    .Select(static annotation => annotation.Lifetime)
+                    .ShouldNotContain(ContainerLifetime.Persistent);
+            }
+            finally
+            {
+                RestoreAppHostEnvironment(seededSnapshot);
+            }
+
+            foreach (KeyValuePair<string, string?> seededValue in seededEnvironment)
+            {
+                Environment.GetEnvironmentVariable(seededValue.Key).ShouldBe(
+                    seededValue.Value,
+                    $"Expected exact restoration of {seededValue.Key}, including null values.");
+            }
+        }
+        finally
+        {
+            RestoreAppHostEnvironment(callerEnvironment);
         }
     }
 
@@ -340,7 +404,7 @@ public sealed class AspireSecurityResourceNamingTests
             $@"""to""\s*:\s*""{implementationName}""",
             $@"SecurityResourceName\s*=\s*""{implementationName}""",
             $@"^\s*\|\s*All\s+services\s*\|\s*{implementationName}\s*\|",
-            $@"\baspire\s+wait\s+(?:(?:--non-interactive\s+)|(?:--timeout(?:=|\s+)\S+\s+))*{implementationName}(?=\s|$)",
+            $@"\baspire[^\S\r\n]+wait[^\r\n]*?(?<![\w-])(?:""{implementationName}""|'{implementationName}'|{implementationName})(?=$|[^\w-])",
         ];
     }
 

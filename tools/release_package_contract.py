@@ -302,6 +302,20 @@ def read_package_metadata(package_path: pathlib.Path) -> PackageMetadata:
     dependency_groups: list[str | None] = []
     dependencies_element = metadata.find(_qualified("dependencies", namespace))
     if dependencies_element is not None:
+        has_direct_dependencies = any(
+            child.tag == _qualified("dependency", namespace) for child in dependencies_element
+        )
+        has_blank_target_group = any(
+            child.tag == _qualified("group", namespace)
+            and not (child.attrib.get("targetFramework") or "").strip()
+            for child in dependencies_element
+        )
+        if has_direct_dependencies and has_blank_target_group:
+            raise ValueError(
+                f"{package_path.name} mixes direct ungrouped dependencies with a dependency "
+                "group whose target framework is blank."
+            )
+
         seen_group_frameworks: set[str] = set()
         # Keyed by target framework so duplicate dependency IDs are caught across
         # ungrouped <dependency> children. Repeated groups are rejected separately
