@@ -14,6 +14,15 @@ public sealed class AspireSecurityResourceNamingTests
     private const string ReferenceRelationshipType = "Reference";
     private const string SecurityResourceName = "security";
 
+    private static readonly string[] _appHostEnvironmentKeys =
+    [
+        "SKIP_PREREQUISITE_CHECK",
+        HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+        HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey,
+        HexalithEventStoreSecurityOptions.DefaultHttpPortConfigurationKey,
+        HexalithEventStoreSecurityOptions.DefaultManagementPortConfigurationKey,
+    ];
+
     // A pattern guaranteed to match tracked text inside the audited pathspec. Without it, a
     // mis-resolved repository root or a pathspec that no longer matches any file would make
     // `git grep` exit 1 (no match) and the negative audit would pass vacuously.
@@ -74,16 +83,11 @@ public sealed class AspireSecurityResourceNamingTests
     [Fact]
     public async Task AppHostModel_WhenSecurityEnabled_UsesSecurityResourceAndDependencyEdges()
     {
-        string? originalSkipPrerequisiteCheck = Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK");
-        string? originalEnableKeycloak = Environment.GetEnvironmentVariable(
-            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey);
+        IReadOnlyDictionary<string, string?> originalEnvironment = CaptureAppHostEnvironment();
 
         try
         {
-            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
-            Environment.SetEnvironmentVariable(
-                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
-                "true");
+            ConfigureDeterministicAppHostEnvironment(enableKeycloak: true);
 
             await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
                 .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
@@ -154,26 +158,18 @@ public sealed class AspireSecurityResourceNamingTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", originalSkipPrerequisiteCheck);
-            Environment.SetEnvironmentVariable(
-                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
-                originalEnableKeycloak);
+            RestoreAppHostEnvironment(originalEnvironment);
         }
     }
 
     [Fact]
     public async Task AppHostModel_WhenSecurityDisabled_HasNoSecurityResourceOrDependencyEdges()
     {
-        string? originalSkipPrerequisiteCheck = Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK");
-        string? originalEnableKeycloak = Environment.GetEnvironmentVariable(
-            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey);
+        IReadOnlyDictionary<string, string?> originalEnvironment = CaptureAppHostEnvironment();
 
         try
         {
-            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
-            Environment.SetEnvironmentVariable(
-                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
-                "false");
+            ConfigureDeterministicAppHostEnvironment(enableKeycloak: false);
 
             await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
                 .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
@@ -199,10 +195,7 @@ public sealed class AspireSecurityResourceNamingTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", originalSkipPrerequisiteCheck);
-            Environment.SetEnvironmentVariable(
-                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
-                originalEnableKeycloak);
+            RestoreAppHostEnvironment(originalEnvironment);
         }
     }
 
@@ -210,22 +203,7 @@ public sealed class AspireSecurityResourceNamingTests
     public async Task RootOwnedSources_WhenScanned_ContainNoStaleSecurityRoleIdentities()
     {
         string repositoryRoot = RepositoryProjectPaths.GetRepositoryRoot();
-        string implementationName = ObsoleteRoleName();
-        string optionalNamedArgument = @"(?:[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?";
-        string[] staleIdentityPatterns =
-        [
-            $@"AddKeycloak\s*\(\s*{optionalNamedArgument}""{implementationName}""",
-            $@"(?:GetEndpoint|CreateHttpClient|WaitForResourceHealthyAsync)\s*\(\s*{optionalNamedArgument}""{implementationName}""",
-            $@"https?://{implementationName}(?=[:/""'\s]|$)",
-            $@"`{implementationName}`",
-            $@"^\s*{implementationName}\s*:",
-            $@"compose\s+(?:ps|logs)\s+{implementationName}(?=\s|$)",
-            $@"name\s*=\s*{implementationName}(?=[""'\s)]|$)",
-            $@"WaitFor\s*\(\s*{implementationName}\s*\)",
-            $@"""to""\s*:\s*""{implementationName}""",
-            $@"SecurityResourceName\s*=\s*""{implementationName}""",
-            $@"^\s*\|\s*All\s+services\s*\|\s*{implementationName}\s*\|",
-        ];
+        string[] staleIdentityPatterns = CreateStaleIdentityPatterns();
 
         // Positive control first: prove the scan actually reaches tracked repository text, so a
         // clean negative result cannot be produced by a scan that inspected nothing.
@@ -255,6 +233,115 @@ public sealed class AspireSecurityResourceNamingTests
             .ConfigureAwait(true);
 
         staleMatches.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task StaleIdentityPatterns_WhenForbiddenFormsAreTracked_ReportEveryPathAndLine()
+    {
+        string implementationName = ObsoleteRoleName();
+        string[] forbiddenForms =
+        [
+            $@"builder.AddKeycloak(""{implementationName}"")",
+            $@"fixture.CreateHttpClient(""{implementationName}"")",
+            $@"https://{implementationName}:8080/realms/hexalith",
+            $@"`{implementationName}`",
+            $@"{implementationName}:",
+            $@"docker compose logs {implementationName}",
+            $@"name={implementationName}",
+            $@"WaitFor({implementationName})",
+            $$"""{"to":"{{implementationName}}"}""",
+            $@"SecurityResourceName = ""{implementationName}""",
+            $@"| All services | {implementationName} |",
+            $@"aspire wait {implementationName}",
+            $@"aspire wait {implementationName} --non-interactive",
+            $@"aspire wait --timeout 30 {implementationName}",
+        ];
+        string repositoryRoot = Directory.CreateTempSubdirectory("eventstore-stale-identity-audit-").FullName;
+        try
+        {
+            string documentationDirectory = Path.Combine(repositoryRoot, "docs");
+            Directory.CreateDirectory(documentationDirectory);
+            string operatorSurface = Path.Combine(documentationDirectory, "operator.md");
+            await File.WriteAllLinesAsync(operatorSurface, forbiddenForms).ConfigureAwait(true);
+
+            (int initExitCode, _, string initError) = await RunGitAsync(
+                repositoryRoot,
+                ["init", "--quiet"],
+                includeAuditPathspec: false).ConfigureAwait(true);
+            initExitCode.ShouldBe(0, initError);
+            (int addExitCode, _, string addError) = await RunGitAsync(
+                repositoryRoot,
+                ["add", "docs/operator.md"],
+                includeAuditPathspec: false).ConfigureAwait(true);
+            addExitCode.ShouldBe(0, addError);
+
+            string[] matches = await FindTrackedMatchesAsync(repositoryRoot, CreateStaleIdentityPatterns())
+                .ConfigureAwait(true);
+
+            matches.Length.ShouldBe(forbiddenForms.Length);
+            for (int index = 0; index < forbiddenForms.Length; index++)
+            {
+                matches.ShouldContain(
+                    match => match.StartsWith($"docs/operator.md:{index + 1}:", StringComparison.Ordinal),
+                    $"Expected the audit to report docs/operator.md line {index + 1}: {forbiddenForms[index]}");
+            }
+        }
+        finally
+        {
+            Directory.Delete(repositoryRoot, recursive: true);
+        }
+    }
+
+    private static IReadOnlyDictionary<string, string?> CaptureAppHostEnvironment()
+        => _appHostEnvironmentKeys.ToDictionary(
+            static key => key,
+            static key => Environment.GetEnvironmentVariable(key),
+            StringComparer.Ordinal);
+
+    private static void ConfigureDeterministicAppHostEnvironment(bool enableKeycloak)
+    {
+        Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
+        Environment.SetEnvironmentVariable(
+            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+            enableKeycloak ? "true" : "false");
+        Environment.SetEnvironmentVariable(
+            HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey,
+            "false");
+        Environment.SetEnvironmentVariable(
+            HexalithEventStoreSecurityOptions.DefaultHttpPortConfigurationKey,
+            "hostile-not-a-port");
+        Environment.SetEnvironmentVariable(
+            HexalithEventStoreSecurityOptions.DefaultManagementPortConfigurationKey,
+            "hostile-not-a-port");
+    }
+
+    private static void RestoreAppHostEnvironment(IReadOnlyDictionary<string, string?> originalEnvironment)
+    {
+        foreach (KeyValuePair<string, string?> variable in originalEnvironment)
+        {
+            Environment.SetEnvironmentVariable(variable.Key, variable.Value);
+        }
+    }
+
+    private static string[] CreateStaleIdentityPatterns()
+    {
+        string implementationName = ObsoleteRoleName();
+        string optionalNamedArgument = @"(?:[A-Za-z_][A-Za-z0-9_]*\s*:\s*)?";
+        return
+        [
+            $@"AddKeycloak\s*\(\s*{optionalNamedArgument}""{implementationName}""",
+            $@"(?:GetEndpoint|CreateHttpClient|WaitForResourceHealthyAsync)\s*\(\s*{optionalNamedArgument}""{implementationName}""",
+            $@"https?://{implementationName}(?=[:/""'\s]|$)",
+            $@"`{implementationName}`",
+            $@"^\s*{implementationName}\s*:",
+            $@"compose\s+(?:ps|logs)\s+{implementationName}(?=\s|$)",
+            $@"name\s*=\s*{implementationName}(?=[""'\s)]|$)",
+            $@"WaitFor\s*\(\s*{implementationName}\s*\)",
+            $@"""to""\s*:\s*""{implementationName}""",
+            $@"SecurityResourceName\s*=\s*""{implementationName}""",
+            $@"^\s*\|\s*All\s+services\s*\|\s*{implementationName}\s*\|",
+            $@"\baspire\s+wait\s+(?:(?:--non-interactive\s+)|(?:--timeout(?:=|\s+)\S+\s+))*{implementationName}(?=\s|$)",
+        ];
     }
 
     /// <summary>
@@ -309,7 +396,8 @@ public sealed class AspireSecurityResourceNamingTests
     /// <returns>The exit code, standard output and standard error of the git process.</returns>
     private static async Task<(int ExitCode, string StandardOutput, string StandardError)> RunGitAsync(
         string repositoryRoot,
-        IEnumerable<string> arguments)
+        IEnumerable<string> arguments,
+        bool includeAuditPathspec = true)
     {
         var startInfo = new ProcessStartInfo("git")
         {
@@ -324,10 +412,13 @@ public sealed class AspireSecurityResourceNamingTests
             startInfo.ArgumentList.Add(argument);
         }
 
-        startInfo.ArgumentList.Add("--");
-        foreach (string pathspec in _auditPathspec)
+        if (includeAuditPathspec)
         {
-            startInfo.ArgumentList.Add(pathspec);
+            startInfo.ArgumentList.Add("--");
+            foreach (string pathspec in _auditPathspec)
+            {
+                startInfo.ArgumentList.Add(pathspec);
+            }
         }
 
         Process process;

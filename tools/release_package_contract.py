@@ -302,9 +302,10 @@ def read_package_metadata(package_path: pathlib.Path) -> PackageMetadata:
     dependency_groups: list[str | None] = []
     dependencies_element = metadata.find(_qualified("dependencies", namespace))
     if dependencies_element is not None:
-        # Keyed by target framework so duplicates are caught across repeated groups
-        # and across ungrouped <dependency> children, which each arrive as their
-        # own child element.
+        seen_group_frameworks: set[str] = set()
+        # Keyed by target framework so duplicate dependency IDs are caught across
+        # ungrouped <dependency> children. Repeated groups are rejected separately
+        # before their dependency sets can be unioned into a false contract pass.
         seen_ids_by_framework: dict[str | None, set[str]] = {}
         for child in dependencies_element:
             if child.tag == _qualified("dependency", namespace):
@@ -313,6 +314,14 @@ def read_package_metadata(package_path: pathlib.Path) -> PackageMetadata:
             elif child.tag == _qualified("group", namespace):
                 dependency_elements = child.findall(_qualified("dependency", namespace))
                 target_framework = (child.attrib.get("targetFramework") or "").strip() or None
+                framework_key = (target_framework or "").casefold()
+                if framework_key in seen_group_frameworks:
+                    framework = target_framework or "ungrouped"
+                    raise ValueError(
+                        f"{package_path.name} declares repeated dependency group for "
+                        f"target framework {framework}."
+                    )
+                seen_group_frameworks.add(framework_key)
             else:
                 continue
 
