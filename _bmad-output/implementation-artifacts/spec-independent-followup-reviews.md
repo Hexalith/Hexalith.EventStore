@@ -4,7 +4,7 @@ type: 'bugfix'
 created: '2026-09-01'
 baseline_revision: '28cd5935a156600b52f95b378f9c45ab57ba46cb'
 baseline_commit: '28cd5935a156600b52f95b378f9c45ab57ba46cb'
-status: 'done'
+status: 'blocked'
 review_loop_iteration: 0
 followup_review_recommended: true
 context: []
@@ -140,10 +140,10 @@ The package parser should reject structurally ambiguous repeated groups rather t
 
 ## Auto Run Result
 
-Status: done
-Blocking condition: none
+Status: blocked
+Blocking condition: finalization left repository dirty because unrelated concurrent OQ8 edits remain in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs` and `tools/validate-oq8-platform-evidence.py`.
 
-Summary: Independent follow-up reviews completed for Stories 3.4 and 3.6. The Aspire role remains `security`, the 14-package release inventory and live publication configuration remain unchanged, and five reproduced verification defects plus the review pass's direct bypasses are now fail-closed. Already-verified and already-ledgered work was not reopened.
+Summary: Independent follow-up reviews and implementation completed for Stories 3.4 and 3.6, but build-auto finalization is blocked by unrelated concurrent OQ8 working-tree edits. The Aspire role remains `security`, the 14-package release inventory and live publication configuration remain unchanged, and five reproduced verification defects plus the review pass's direct bypasses are now fail-closed. Already-verified and already-ledgered work was not reopened.
 
 Files changed:
 - `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` — widened tracked/operator identity coverage and made hostile environment isolation/restoration self-proving.

@@ -2077,7 +2077,7 @@ def validate_authority(authority: Any) -> None:
 def validate_v2_timestamp(value: Any, field: str, now: datetime) -> datetime:
     require(
         isinstance(value, str)
-        and re.fullmatch(r"2026-08-30T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z", value) is not None,
+        and re.fullmatch(r"2026-09-01T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z", value) is not None,
         f"Story 4.15 v2 {field} timestamp is not a fresh exact UTC second",
     )
     parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
@@ -2244,7 +2244,7 @@ def validate_v2_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
         identity.get("schema") == "hexalith.eventstore.story-4-15-successor-source-identity/v2",
         "Story 4.15 v2 source identity schema drift",
     )
-    require(identity.get("reviewedOn") == "2026-08-30", "Story 4.15 v2 source identity review date drift")
+    require(identity.get("reviewedOn") == "2026-09-01", "Story 4.15 v2 source identity review date drift")
     require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Story 4.15 v2 source identity repository drift")
     require(identity.get("predecessor") == expected_v2_predecessor(), "Story 4.15 v2 predecessor link drift")
     reviewed_image = identity.get("reviewedImage")

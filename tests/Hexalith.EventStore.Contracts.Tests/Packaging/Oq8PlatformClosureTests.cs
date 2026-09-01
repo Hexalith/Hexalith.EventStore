@@ -3151,10 +3151,10 @@ public sealed class Oq8PlatformClosureTests
                 break;
             }
             case "pre-review-future":
-                MutateV2Timestamp(successor, "pre-review-execution.json", "executedAt", "2026-08-30T23:59:59Z", ResealV2AfterPreReviewChange);
+                MutateV2Timestamp(successor, "pre-review-execution.json", "executedAt", "2026-09-01T23:59:59Z", ResealV2AfterPreReviewChange);
                 break;
             case "subject-future":
-                MutateV2Timestamp(successor, "review-subject.json", "frozenAt", "2026-08-30T23:59:59Z", ResealV2AfterSubjectChange);
+                MutateV2Timestamp(successor, "review-subject.json", "frozenAt", "2026-09-01T23:59:59Z", ResealV2AfterSubjectChange);
                 break;
             case "receipt-drift":
             {
@@ -3187,7 +3187,7 @@ public sealed class Oq8PlatformClosureTests
             {
                 string receiptPath = Path.Combine(successor, "reviews", "security.json");
                 JsonObject receipt = LoadObject(receiptPath);
-                receipt["issuedAt"] = "2026-08-30T23:59:59Z";
+                receipt["issuedAt"] = "2026-09-01T23:59:59Z";
                 WriteObject(receiptPath, receipt);
                 ResealV2Receipt(successor, "security");
                 break;
@@ -3202,7 +3202,7 @@ public sealed class Oq8PlatformClosureTests
                 break;
             }
             case "handoff-future":
-                MutateV2Timestamp(successor, "source-only-handoff.json", "assembledAt", "2026-08-30T23:59:59Z", ResealV2Manifest);
+                MutateV2Timestamp(successor, "source-only-handoff.json", "assembledAt", "2026-09-01T23:59:59Z", ResealV2Manifest);
                 break;
             case "test-verification-missing":
             {
