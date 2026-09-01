@@ -137,6 +137,7 @@ origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p2-dual-principal-query-envelope-safe-denial.md` summary: Close the timing side-channel for the safe-denial adapter (Forbidden vs. genuine not-found currently have different latency profiles -- actor-activation-then-403 vs. actor-lookup-failure -- with no constant-time/padding normalization). evidence: Blind-hunter review of 6.1-P2 found no timing normalization despite the story's original AC naming "timing-observable behavior" indistinguishability; full closure requires platform-level work (DAPR actor activation, network jitter) beyond what a query-router decorator controls, so the AC was narrowed to shape/status indistinguishability only and this was split out as separate future hardening.
 status: open
+decision: 2026-09-01 Keep deferred
 
 ### DW-19: Expose an authoritative persisted global-position/watermark to projections and `QueryCursorScope`, consumed by Hexalith.Projects Story 6.1-P2's watermark-replay/restart requirement.
 
@@ -708,7 +709,9 @@ resolution: already resolved: src/Hexalith.EventStore.Server/Actors/AggregateAct
 origin: migrated from legacy ledger ("Deferred from: code review of story-1.9 (2026-07-13)"), 2026-08-30
 location: ProjectionUpdateOrchestrator.cs:129
 reason: Retained legacy aggregate-wide checkpoint feeds the empty-stream drift branch (`ProjectionUpdateOrchestrator.cs:129`). An erased/recreated identity that had a legacy checkpoint and later reads an empty stream logs spurious `CheckpointDriftDetected` (diagnostic noise only — no mutation, no suppressed delivery). Direct consequence of the human-approved Option A retained-legacy-key relaxation; revisit if diagnostic noise is a problem or if a bounded legacy-key cleanup is added.
-status: open
+status: done 2026-09-01
+resolution: closed by human decision: Retain the approved compatibility behavior because the extra diagnostic has no state or delivery impact.
+decision: 2026-09-01 Accept diagnostic noise — Retain the approved compatibility behavior because the extra diagnostic has no state or delivery impact.
 
 ### DW-96: `ProjectionUpdateOrchestrator` narrowed `public`→`internal` and dead erase surface. The visibility narrowing is disclosed/justified (verified no external consumer; DI via interfaces; no PublicAPI baseline). `IProjectionReadModelAddressFactory.CreateAggregateOwnedManifest` and `ProjectionEraseOutcomeKind.Denied` are currently unused; they become live only if the slot-completeness decision (Review Finding) adopts manifest-based erasure. Remove or wire per that decision.
 
@@ -2803,7 +2806,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-de
 location: evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/acceptances/bb58d691.../test-architect.json
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: The Story 3.15 Test Architect receipt (`bmad:murat`) has no externally-checkable anchor comparable to the two GitHub-issue-comment-backed owner receipts. evidence: `evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/acceptances/bb58d691.../test-architect.json` is sourced from a `bmad-test-architect-record` (self-attested by the assembling tooling), unlike the `eventstore-owner`/`release-owner` receipts, which are independently verifiable via `gh api repos/Hexalith/Hexalith.EventStore/issues/comments/<id>`. Reproduces the same durable-receipt-anchor gap already tracked above for Story 3.13's disposition receipts, now recurring for Story 3.15; this is the project's established pattern for `bmad:`-role receipts generally, not a defect unique to this diff. severity: low
-status: open
+status: done 2026-09-01
+resolution: closed by human decision: Record bmad-role self-attestation as the accepted assurance boundary.
+decision: 2026-09-01 Accept established pattern — Record bmad-role self-attestation as the accepted assurance boundary.
 
 ### DW-382: `closure.json` declares `deployed_runtime_parity: "available"` and a non-null `selected_deployed_identity` even when `acceptances.receipts` is empty.
 
@@ -2940,6 +2945,7 @@ location: github/workflows/release.yml:103,110
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: No executable guard asserts that the release caller's pinned reusable-workflow SHA is reachable on the Hexalith.Builds remote rather than only in a local object store. evidence: `.github/workflows/release.yml:103,110` pin `builds-execution-sha`, and the story record's warning that a rotation target must exist on the remote was deleted in `f2d2575c` with nothing replacing it. This is the defect that produced the chunk-A+B blocking Decision, when `63409393…` was pinned while it existed only on an unpushed branch (it has since been merged to Builds `main` and superseded by `a07078ad…`). Deferred 2026-08-24 by owner decision: an unresolvable `uses:` SHA already fails the Release dispatch at startup — the quarantined run `32347773728` failure mode — so nothing publishes silently, and every candidate guard costs either network plus auth inside the Tier-1 CI-gating Contracts lane or a `origin/main` remote-tracking ref that a CI submodule checkout may not populate (and which reds on force-pushes it should not judge). The recurring drift class is closed separately by binding the `docs/ci.md` pin prose to `ApprovedBuildsReleaseSha`. severity: low
 status: open
+decision: 2026-09-01 Keep open
 
 ### DW-398: The Story 3.13 closure-packet gate `ValidateAcceptances` still enforces the unmintable `#story-3-13-<hash>-<role>` commit anchor that only a fixture can satisfy.
 
@@ -2964,6 +2970,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: CorrectiveOciProvenanceReleaseTests.cs:118
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: The OCI `created` provenance labels are self-comparing in tests and unchecked by the codec, and the retained child configs carry a malformed truncated value. evidence: `CorrectiveOciProvenanceReleaseTests.cs:118` sets `expected ??= ExpectedLabels(observedCreated)` where `observedCreated` is read from the first child config, so child 1 compares to itself; `v3.py:134 _expected_labels` omits `created` from the five enforced keys. Both retained configs carry `org.opencontainers.image.created = "2026-08-20T11"`, truncated at the first colon, inside the selected identity.
 status: open
+decision: 2026-09-01 Build successor packet — Enforce a canonical OCI creation timestamp, produce corrected child configs, reseal the successor packet, and collect required authorization.
 
 ### DW-401: Two Production-smoke guards are green by construction -- `redirect_count` and `observed_runtime_platform` can never disagree with what they are checked against.
 
@@ -3432,3 +3439,4 @@ source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: high
 reason: `python3 tools/validate-oq8-platform-evidence.py` fails with `Story 4.15 v2 gate-input identity drift: docs/ci.md`. The v2 successor packet sealed a byte-hash pin on `docs/ci.md` at commit `83b32fcf` (2026-08-30 09:47+02:00), content-bound to the three recorded `reviews/{architecture,security,test}.json` receipts. Commit `75dc59aa` ("fix: update BMAD 6.11.1-next.33", 2026-08-30 12:36+02:00) then legitimately updated `docs/ci.md` — it is Story 3.15's own narration of its deployed-runtime-parity re-mint state (subject hash, receipt counts), unrelated to OQ8/Story 4.15. This is the same "sealed gate-input drift" class already tracked for `tools/validate-oq8-platform-evidence.py` itself (see the story's Review Findings blocker note, 2026-08-30), now hitting a second pinned path that another story continuously re-narrates. Fixing it means recomputing `docs/ci.md`'s hash and repropagating it through `source-artifact-identity.json` → `review-subject.json`, which invalidates the three existing reviewer receipts and needs fresh architecture/security/test sign-off — not a mechanical patch, and out of scope for an implementation pass per the frozen spec's "never fabricate reviewer approval." No code or evidence file was changed while investigating this.
 status: open
+decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, propagate the new subject, and collect fresh architecture, security, and test reviewer sign-off.
