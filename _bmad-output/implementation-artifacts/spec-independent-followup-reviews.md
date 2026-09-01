@@ -4,12 +4,26 @@ type: 'bugfix'
 created: '2026-09-01'
 baseline_revision: '28cd5935a156600b52f95b378f9c45ab57ba46cb'
 baseline_commit: '28cd5935a156600b52f95b378f9c45ab57ba46cb'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Reject nuspec metadata containing more than one dependencies element instead of silently validating only the first.
+    evidence: |-
+      tools/release_package_contract.py resolves metadata dependencies with ElementTree.find, so a malformed archive can append a second dependencies element that is never inspected. Current dotnet pack output emits one element, making this a pre-existing fail-closed hardening item rather than a defect caused by this review patch.
+    location: >-
+      tools/release_package_contract.py:303
+    severity: medium
+  - summary: >-
+      Pin publication-preflight execution before the irreversible NuGet push in semantic-release governance tests.
+    evidence: |-
+      .releaserc.json currently runs validate-publication-preflight.sh in publish mode before dotnet nuget push, but ReleasePackageManifestTests asserts only that secret validation precedes the push. Moving the publish-mode preflight after the push would leave the governance test green; verifyReleaseCmd remains an earlier mitigation, so this is pre-existing test hardening.
+    location: >-
+      tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:303
+    severity: medium
 ---
 
 <intent-contract>
@@ -68,8 +82,44 @@ deferred: []
 ## Spec Change Log
 
 - 2026-09-01 -- Implemented all five independent follow-up review guards without changing production topology, release inventory, or publication configuration; added focused mutation coverage and reproduced every verification command at baseline `28cd5935a156600b52f95b378f9c45ab57ba46cb`.
+- 2026-09-01 -- Applied the first review pass: widened the tracked audit and wait mutations, independently proved hostile environment restoration, strengthened realm/import assertions, rejected mixed ungrouped dependency shapes, preserved distinct grouped metadata, and scanned every semantic-release exec command field for foreign NuGet pushes.
 
 ## Review Triage Log
+
+### 2026-09-01 — Review pass
+- verdicts: 31 findings — high 0, medium 13, low 11, false 7, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The tracked naming audit excluded root `aspire.config.json` — added the exact path plus a tracked-file coverage assertion; the current file is clean, but it is a root-owned operator surface.
+  - `[medium]` `[patch]` The `aspire wait` pattern missed quoted names and shell/Markdown delimiters — broadened the shared same-line pattern and added quoted, semicolon, and punctuation mutations.
+  - `[low]` `[reject]` A backslash-newline shell continuation can evade the line-oriented audit — valid but uncommon operator prose, and multiline shell parsing would add disproportionate complexity to a tracked-text identity guard.
+  - `[low]` `[patch]` Two wait mutations emphasized pre-resource options rather than the documented positional form — the broadened guard now accepts arbitrary same-line option text and the mutations cover status/apphost plus normal post-resource options.
+  - `[medium]` `[patch]` Environment restoration was not independently asserted — added a deterministic actual-AppHost test that seeds, overrides, restores, and checks every exact value.
+  - `[medium]` `[patch]` The hostile caller scenario depended on external test-process setup — moved hostile persistent and invalid-port seeding inside the test while preserving the real caller environment in an outer finally.
+  - `[low]` `[patch]` Realm URL coverage checked only a suffix/provider — it now compares the complete expected ReferenceExpression.
+  - `[false]` `[reject]` The override import test could pass on unrelated files — disproved because its unique temporary directory contains only the sentinel file, and the final assertion now names that exact file as additional defense.
+  - `[low]` `[reject]` The annotation callback receives null service contexts — the production callback under test currently consumes only its model and file data; building a full service-provider harness for hypothetical future framework behavior is not warranted.
+  - `[medium]` `[defer]` A second dependencies element is ignored — verified pre-existing ElementTree.find behavior; recorded in frontmatter because this patch did not introduce it.
+  - `[medium]` `[patch]` Direct dependencies plus a blank-framework group could still union in the None bucket — rejected the mixed shape before parsing and added both element orders through both validators.
+  - `[false]` `[reject]` NuGet-equivalent but textually different TFM spellings bypass repeated-group rejection — they do not union because downstream validation keys groups by the exact TFM string and requires each group independently complete.
+  - `[medium]` `[patch]` No positive control preserved valid multiple distinct TFM groups — added complete net9.0/net10.0 fixtures through both validators.
+  - `[medium]` `[patch]` Publication governance inspected only publishCmd — it now scans every string *Cmd field of every semantic-release exec plugin and pins the sole push to publishCmd.
+  - `[low]` `[reject]` Variable-expanded, quoted-token, or delegated-script pushes can evade the literal command guard — no such indirection exists in the reviewed configuration, and a general shell interpreter is disproportionate to this exact tracked command contract.
+  - `[medium]` `[defer]` Publish-mode preflight ordering is not independently pinned — the live configuration is correct and verifyReleaseCmd mitigates it; recorded as pre-existing governance hardening.
+  - `[false]` `[reject]` Exact canonical-command comparison is unnecessarily brittle — exact command and operand shape is an intentional governance contract, so equivalent rewrites should require deliberate test updates.
+  - `[low]` `[patch]` Newly added security tests used same-line braces — reformatted all new additions to the repository's Allman style.
+  - `[medium]` `[patch]` Other valid pre-resource wait options escaped the enumerated regex — the shared same-line guard now permits arbitrary option text and includes status/apphost mutations.
+  - `[medium]` `[patch]` Quoted or punctuation-terminated wait resources escaped — fixed by the same optional-quote and non-word-boundary guard.
+  - `[low]` `[reject]` Differently cased duplicate environment keys can coexist on case-sensitive hosts — possible but atypical, and case-insensitive enumeration/restoration would add complexity beyond the demonstrated exact-key configuration contract.
+  - `[medium]` `[patch]` Mixed direct and blank dependency groups could falsely satisfy the contract — fixed and mutation-tested with both orders and validator entry points.
+  - `[low]` `[reject]` Escaped or quoted NuGet command tokens can evade literal counting — same rejected shell-obfuscation case; the repository uses one explicit canonical command.
+  - `[low]` `[reject]` A harmless command that prints `dotnet nuget push` can trigger a false positive — no such command exists, and conservative failure is acceptable for irreversible publication governance.
+  - `[medium]` `[patch]` The claim that tracked inline wait identities fail was too broad for quotes/punctuation — the generalized guard and mutations now prove those forms.
+  - `[low]` `[reject]` A quoted foreign publication can evade the literal guard — duplicate of the unsupported shell-obfuscation case; the exact canonical command contract remains intentional.
+  - `[medium]` `[patch]` Ambient AppHost isolation was not exercised end-to-end — the new hostile-caller actual-AppHost test proves forced nonpersistent behavior and exact null/non-null restoration.
+  - `[false]` `[reject]` The diff improperly chose remediation over review-only closure — the user asked to implement the bundle through build-auto, so finding-driven remediation is a defensible and completed reading.
+  - `[false]` `[reject]` An empty triage log failed to record the independent process — the reviewer inspected an in-review artifact before this mandatory triage entry was written.
+  - `[false]` `[reject]` Story 3.4 received only narrow test review — the independent pass also ran the full AppHost assembly, scratch Compose proof, and a live Aspire security baseline; code changed only where findings reproduced.
+  - `[false]` `[reject]` Story 3.6 received only synthetic review — the independent pass also ran a real 14-package pack, both validators, and all isolated consumers; the patch targets the reproducible gaps it found.
 
 ## Design Notes
 
@@ -86,4 +136,32 @@ The package parser should reject structurally ambiguous repeated groups rather t
 - `python3 tools/pack-release-packages.py /tmp/eventstore-independent-review-dry 999.9.1-review --dry-run` -- expected: exactly 14 Release/package-mode commands and no package output.
 - `git diff --check` -- expected: no whitespace errors; `git diff -- _bmad-output/implementation-artifacts/deferred-work.md` is empty.
 
-**Results:** Both focused Release builds passed with zero warnings/errors. `AspireSecurityResourceNamingTests` passed 4/4 under hostile persistent/invalid-port environment values, `HexalithEventStoreSecurityExtensionsTests` passed 10/10, and `ReleasePackageManifestTests` passed 107/107 through both validator entry points. The package dry run emitted exactly 14 commands and created no output directory. `git diff --check` passed and `deferred-work.md` remains unchanged.
+**Results:** Both focused Release builds passed with zero warnings/errors. `AspireSecurityResourceNamingTests` passed 5/5 under hostile persistent/invalid-port environment values, `HexalithEventStoreSecurityExtensionsTests` passed 10/10, and `ReleasePackageManifestTests` passed 114/114 through both validator entry points. The package dry run emitted exactly 14 commands and created no output directory. `git diff --check` passed and `deferred-work.md` remains unchanged.
+
+## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+Summary: Independent follow-up reviews completed for Stories 3.4 and 3.6. The Aspire role remains `security`, the 14-package release inventory and live publication configuration remain unchanged, and five reproduced verification defects plus the review pass's direct bypasses are now fail-closed. Already-verified and already-ledgered work was not reopened.
+
+Files changed:
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` — widened tracked/operator identity coverage and made hostile environment isolation/restoration self-proving.
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs` — pinned complete realm URLs and exact realm-import sources.
+- `tools/release_package_contract.py` — rejected repeated dependency groups and ambiguous direct/blank-group mixtures before union.
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` — added negative and positive dependency-group matrices and exact cross-command NuGet publication governance.
+- `_bmad-output/implementation-artifacts/spec-independent-followup-reviews.md` — recorded intent, independent review evidence, all verdicts, deferrals, and final disposition.
+
+Review findings: 8 grouped patches applied (medium 5, low 3; 15 reviewer rows), 2 pre-existing medium items deferred in this spec, and 14 rows rejected. Rejections were: multiline shell continuation (rare and parser-heavy); null callback services (hypothetical framework evolution); case-colliding environment variables (rare and complex); three literal-shell obfuscation variants and one harmless-echo variant (outside the explicit canonical command contract); exact-command brittleness (intentional governance); the unrelated-file import claim (disproved by the one-file fixture); TFM-alias union (disproved by exact per-group validation); remediation-vs-review divergence (authorized by build-auto); premature empty-triage observation (workflow timing); and the two claims of narrow Story 3.4/3.6 review (disproved by full AppHost/Compose/live and real pack/consumer evidence).
+
+Follow-up review recommendation: `true`. Five medium and three low grouped entries were patched; two or more medium patches meet the damping recommendation threshold.
+
+Verification performed:
+- Live Aspire baseline: `security` reached Healthy and expected EventStore/Admin/Sample resources exposed WaitFor relationships to it; no `keycloak` resource identity appeared.
+- Independent Story 3.4 evidence: full AppHost assembly 96/96, focused naming/helper/port classes green, valid brownfield JSON, and scratch Compose proof of one `security` service, five dependents, `security:8080`, and `OTEL_SERVICE_NAME=security`.
+- Independent Story 3.6 evidence: 14-command dry run, focused package tests, real 14-package pack, both validators, and all 13 library plus one tool isolated consumers green.
+- Final patched gates: AppHost and Contracts Release builds each completed with 0 warnings/0 errors; naming 5/5, security helper 10/10, package manifest 114/114, Python compilation, 14-command dry run with no output directory, and whitespace checks all passed.
+- Git policy: all three implementation commits after baseline passed the repository's pinned commitlint range validation.
+- `_bmad-output/implementation-artifacts/deferred-work.md` has no diff from baseline.
+
+Residual risks: the two pre-existing deferred items above remain for later orchestration. Realm-import coverage intentionally observes Aspire 13.5's current container-file annotation callback model. Concurrent unrelated OQ8 working-tree edits were not read into, staged with, or modified by this run.
