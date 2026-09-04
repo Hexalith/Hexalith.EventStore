@@ -55,12 +55,17 @@ V2_SUCCESSOR = (
     ROOT
     / "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2"
 )
+V3_SUCCESSOR = (
+    ROOT
+    / "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3"
+)
 DESIGN_VERSION = "1.0.0"
 DESIGN_SHA256 = "1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8"
 BASELINE = "e60a3777c581d70b62f67173ccc2372b5b64a425"
 LANDED_SOURCE = "5e8f175b2ced4715f7c6f765386812cc1001dbb4"
 LANDED_TREE = "96fdfbba56df41b58889bf7f3b532a64d15314bd"
 COMPLETED_V1_CLOSURE_COMMIT = "17e47a390fdfecafba84dce14779ad13b97be339"
+COMPLETED_V2_CLOSURE_COMMIT = "83b32fcfad7bb608098aebccdc15002636ffb431"
 LEGACY_SUCCESSOR_SNAPSHOT_COMMIT = "10051a68eb1db322a4f7fa91934d880ce1409687"
 V1_REVIEW_SUBJECT_SHA256 = "26a0afd67c14befc3d7b5045c13c1532b27663e3409026d6f5d5e8fc5b3b5e6f"
 PRIOR_VALIDATOR_SHA256 = "9652019053810366ec3a7682490a5b85385880b63bb3bf2ca7023b0a49c18dde"
@@ -83,6 +88,7 @@ CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/5
 SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp"
 SUCCESSOR_SELECTOR_PATH = "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json"
 V2_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2"
+V3_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
 FOCUSED_TRAITS = {
     "Category": ["LiveSidecar"],
@@ -234,6 +240,52 @@ V2_TEST_RECEIPT_VERIFICATION = [
     ("postgres-image-governance", V2_GOVERNANCE_COMMAND, 18),
     ("oq8-platform-closure", V2_CLOSURE_COMMAND, V2_FINAL_CLOSURE_TEST_COUNT),
     ("live-sidecar", V2_LIVE_SIDECAR_COMMAND, 115),
+]
+V2_REVIEW_SUBJECT_SHA256 = "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107"
+V2_CLOSURE_MANIFEST_SHA256 = "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
+V3_SUCCESSOR_FILES = {
+    "limitations.json",
+    "pre-review-execution.json",
+    "review-subject.json",
+    "reviews/architecture.json",
+    "reviews/security.json",
+    "reviews/test.json",
+    "source-artifact-identity.json",
+    "source-only-handoff.json",
+    "validator-sha256.txt",
+}
+V3_SOURCE_PATHS = {
+    "tools/validate-oq8-platform-evidence.py",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+    "docs/ci.md",
+}
+V3_GATE_INPUT_PATHS = set(V2_SOURCE_PATHS) | V2_GATE_INPUT_PATHS
+V3_REVIEW_SCOPES = {
+    "architecture": "v2 historical preservation, v3 current-source succession, deterministic UTC validation, and source-only authority boundaries",
+    "security": "immutable predecessor lineage, fail-closed source and timestamp drift detection, receipt binding, and external-authority exclusions",
+    "test": "historical v2 validation, active v3 success and drift coverage, runtime-relative future mutations, and the full Contracts lane",
+}
+V3_LIMITATIONS = [
+    "Story 4.15 v1 and v2 remain immutable historical evidence and do not authorize source bytes changed after completed-v2 closure commit 83b32fcfad7bb608098aebccdc15002636ffb431.",
+    "The active v3 successor validates exact current repository source bytes while preserving the reviewed PostgreSQL multi-platform index authority recorded by v2.",
+    "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
+    "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority.",
+]
+V3_CONTRACTS_RESTORE_COMMAND = "dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false"
+V3_CONTRACTS_BUILD_COMMAND = "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false"
+V3_CONTRACTS_TEST_COMMAND = "dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --results-directory TestResults/Hexalith.EventStore.Contracts.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.Contracts.Tests.trx --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml -p:UseHexalithProjectReferences=false"
+V3_PRE_REVIEW_COMMANDS = [
+    ("validator-syntax", "python3 -m py_compile tools/validate-oq8-platform-evidence.py", 0),
+    ("historical-v1-validation", "python3 tools/validate-oq8-platform-evidence.py --historical-v1-only", 0),
+    ("historical-v2-validation", "python3 tools/validate-oq8-platform-evidence.py --historical-v2-only", 0),
+    ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
+    ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
+]
+V3_FINAL_CLOSURE_TEST_COUNT = 375
+V3_FULL_CONTRACTS_TEST_COUNT = 1896
+V3_TEST_RECEIPT_VERIFICATION = [
+    ("oq8-platform-closure", V2_CLOSURE_COMMAND, V3_FINAL_CLOSURE_TEST_COUNT),
+    ("contracts-full", V3_CONTRACTS_TEST_COMMAND, V3_FULL_CONTRACTS_TEST_COUNT),
 ]
 REVIEW_ROSTER = {
     "architecture": "Winston (System Architect)",
@@ -939,7 +991,7 @@ def sha256_git_file(revision: str, relative: str) -> str:
 
 
 def configure_roots(root: Path, git_root: Path, git_timeout_seconds: float = 30.0) -> None:
-    global ROOT, GIT_ROOT, GIT_TIMEOUT_SECONDS, PACKET, EVIDENCE, CLOSURE, SUCCESSOR_SELECTOR, SUCCESSOR, V2_SUCCESSOR
+    global ROOT, GIT_ROOT, GIT_TIMEOUT_SECONDS, PACKET, EVIDENCE, CLOSURE, SUCCESSOR_SELECTOR, SUCCESSOR, V2_SUCCESSOR, V3_SUCCESSOR
     require(0 < git_timeout_seconds <= 30, "Git timeout must be greater than zero and no more than 30 seconds")
     ROOT = root.resolve()
     GIT_ROOT = git_root.resolve()
@@ -958,6 +1010,7 @@ def configure_roots(root: Path, git_root: Path, git_timeout_seconds: float = 30.
     SUCCESSOR_SELECTOR = ROOT / SUCCESSOR_SELECTOR_PATH
     SUCCESSOR = ROOT / SUCCESSOR_DIRECTORY
     V2_SUCCESSOR = ROOT / V2_SUCCESSOR_DIRECTORY
+    V3_SUCCESSOR = ROOT / V3_SUCCESSOR_DIRECTORY
 
 
 def require(condition: bool, message: str) -> None:
@@ -2074,15 +2127,22 @@ def validate_authority(authority: Any) -> None:
         require(authority.get(field) is False, f"External authority overstated: {field}")
 
 
-def validate_v2_timestamp(value: Any, field: str, now: datetime) -> datetime:
+def validate_successor_timestamp(value: Any, field: str, now: datetime, version: str) -> datetime:
     require(
         isinstance(value, str)
-        and re.fullmatch(r"2026-09-01T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z", value) is not None,
-        f"Story 4.15 v2 {field} timestamp is not a fresh exact UTC second",
+        and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z", value) is not None,
+        f"Story 4.15 {version} {field} timestamp is not an exact UTC second",
     )
-    parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-    require(parsed <= now, f"Story 4.15 v2 {field} timestamp is later than current UTC")
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        fail(f"Story 4.15 {version} {field} timestamp is not an exact UTC second")
+    require(parsed <= now, f"Story 4.15 {version} {field} timestamp is later than current UTC")
     return parsed
+
+
+def validate_v2_timestamp(value: Any, field: str, now: datetime) -> datetime:
+    return validate_successor_timestamp(value, field, now, "v2")
 
 
 def expected_v2_predecessor() -> dict[str, str]:
@@ -2156,13 +2216,6 @@ def capture_v2_snapshots() -> dict[str, bytes]:
             path,
             MAX_V2_ARTIFACT_BYTES,
             f"Story 4.15 v2 artifact {relative}",
-        )
-    for relative in set(V2_SOURCE_PATHS) | V2_GATE_INPUT_PATHS:
-        path = ROOT / relative
-        snapshots[v2_snapshot_key(path)] = read_bounded_regular_snapshot(
-            path,
-            MAX_V2_BOUND_SOURCE_BYTES,
-            f"Story 4.15 v2 bound source {relative}",
         )
     return snapshots
 
@@ -2244,7 +2297,7 @@ def validate_v2_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
         identity.get("schema") == "hexalith.eventstore.story-4-15-successor-source-identity/v2",
         "Story 4.15 v2 source identity schema drift",
     )
-    require(identity.get("reviewedOn") == "2026-09-01", "Story 4.15 v2 source identity review date drift")
+    require(identity.get("reviewedOn") == "2026-08-30", "Story 4.15 v2 source identity review date drift")
     require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Story 4.15 v2 source identity repository drift")
     require(identity.get("predecessor") == expected_v2_predecessor(), "Story 4.15 v2 predecessor link drift")
     reviewed_image = identity.get("reviewedImage")
@@ -2278,36 +2331,37 @@ def validate_v2_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
             sha256_git_file(COMPLETED_V1_CLOSURE_COMMIT, relative) == historical["predecessorSha256"],
             f"Story 4.15 v1 snapshot source identity drift: {relative}",
         )
-        current_path = ROOT / relative
-        current_bytes = v2_snapshot(snapshots, current_path)
+        successor_bytes = git_file(COMPLETED_V2_CLOSURE_COMMIT, relative)
         require(
-            transition.get("successorSha256") == sha256_bytes(current_bytes),
-            f"Story 4.15 v2 current source identity drift: {relative}",
+            transition.get("successorSha256") == sha256_bytes(successor_bytes),
+            f"Story 4.15 v2 historical source identity drift: {relative}",
         )
         require(
             transition.get("successorImage") == POSTGRES_IMAGE,
             f"Story 4.15 v2 current source image drift: {relative}",
         )
         try:
-            current_text = current_bytes.decode("utf-8")
+            successor_text = successor_bytes.decode("utf-8")
         except UnicodeError:
-            fail(f"Story 4.15 v2 current source is not UTF-8: {relative}")
+            fail(f"Story 4.15 v2 historical source is not UTF-8: {relative}")
         declared_image = (
-            extract_v2_workflow_image(current_text)
+            extract_v2_workflow_image(successor_text)
             if relative == ".github/workflows/integration.yml"
-            else extract_v2_fixture_image(current_text)
+            else extract_v2_fixture_image(successor_text)
         )
         require(
             declared_image == POSTGRES_IMAGE,
-            f"Story 4.15 v2 current source PostgreSQL image drift: {relative}; found {declared_image}",
+            f"Story 4.15 v2 historical source PostgreSQL image drift: {relative}; found {declared_image}",
         )
 
     gate_inputs = identity.get("gateInputs")
     require(isinstance(gate_inputs, dict) and set(gate_inputs) == V2_GATE_INPUT_PATHS, "Story 4.15 v2 gate-input path set drift")
     for relative, expected in gate_inputs.items():
         require_sha256(expected, f"Story 4.15 v2 gate input:{relative}")
-        current_path = ROOT / relative
-        require(sha256_bytes(v2_snapshot(snapshots, current_path)) == expected, f"Story 4.15 v2 gate-input identity drift: {relative}")
+        require(
+            sha256_git_file(COMPLETED_V2_CLOSURE_COMMIT, relative) == expected,
+            f"Story 4.15 v2 historical gate-input identity drift: {relative}",
+        )
     return identity
 
 
@@ -2337,27 +2391,36 @@ def validate_v2_validator_identity(snapshots: dict[str, bytes]) -> str:
         "Story 4.15 v2 validator identity record is malformed",
     )
     require(
-        parts[0] == sha256_bytes(v2_snapshot(snapshots, ROOT / parts[1])),
-        "Story 4.15 v2 current validator identity drift",
+        parts[0] == sha256_git_file(COMPLETED_V2_CLOSURE_COMMIT, parts[1]),
+        "Story 4.15 v2 historical validator identity drift",
     )
     return parts[0]
 
 
 def validate_v2_passed_command(command: Any, expected: tuple[str, str, int], label: str) -> None:
+    validate_successor_passed_command(command, expected, label, "v2")
+
+
+def validate_successor_passed_command(
+    command: Any,
+    expected: tuple[str, str, int],
+    label: str,
+    version: str,
+) -> None:
     name, invocation, expected_tests = expected
     require(
         isinstance(command, dict)
         and set(command) == {"name", "command", "exitCode", "result", "tests", "passed", "failed", "skipped"},
-        f"Story 4.15 v2 {label} command field set drift: {name}",
+        f"Story 4.15 {version} {label} command field set drift: {name}",
     )
-    require(command.get("name") == name, f"Story 4.15 v2 {label} command name drift: {name}")
-    require(command.get("command") == invocation, f"Story 4.15 v2 {label} command identity drift: {name}")
-    require_exact_integer(command.get("exitCode"), 0, f"Story 4.15 v2 {label} {name}:exitCode")
-    require(command.get("result") == "passed", f"Story 4.15 v2 {label} command did not pass: {name}")
-    require_exact_integer(command.get("tests"), expected_tests, f"Story 4.15 v2 {label} {name}:tests")
-    require_exact_integer(command.get("passed"), expected_tests, f"Story 4.15 v2 {label} {name}:passed")
-    require_exact_integer(command.get("failed"), 0, f"Story 4.15 v2 {label} {name}:failed")
-    require_exact_integer(command.get("skipped"), 0, f"Story 4.15 v2 {label} {name}:skipped")
+    require(command.get("name") == name, f"Story 4.15 {version} {label} command name drift: {name}")
+    require(command.get("command") == invocation, f"Story 4.15 {version} {label} command identity drift: {name}")
+    require_exact_integer(command.get("exitCode"), 0, f"Story 4.15 {version} {label} {name}:exitCode")
+    require(command.get("result") == "passed", f"Story 4.15 {version} {label} command did not pass: {name}")
+    require_exact_integer(command.get("tests"), expected_tests, f"Story 4.15 {version} {label} {name}:tests")
+    require_exact_integer(command.get("passed"), expected_tests, f"Story 4.15 {version} {label} {name}:passed")
+    require_exact_integer(command.get("failed"), 0, f"Story 4.15 {version} {label} {name}:failed")
+    require_exact_integer(command.get("skipped"), 0, f"Story 4.15 {version} {label} {name}:skipped")
 
 
 def validate_v2_pre_review_execution(
@@ -2643,6 +2706,412 @@ def validate_v2_successor(
     )
     validate_v2_handoff(
         v2_snapshot_json(current_snapshots, "source-only-handoff.json"),
+        subject_sha256,
+        limitations_sha256,
+        receipts,
+        receipt_times,
+        current_utc,
+    )
+    require(
+        sha256_bytes(v2_snapshot(current_snapshots, V2_SUCCESSOR / "closure-sha256.txt"))
+        == V2_CLOSURE_MANIFEST_SHA256,
+        "Story 4.15 v2 historical closure manifest identity drift",
+    )
+
+
+def expected_v3_predecessor() -> dict[str, str]:
+    return {
+        "completedV2ClosureCommit": COMPLETED_V2_CLOSURE_COMMIT,
+        "reviewSubjectSha256": V2_REVIEW_SUBJECT_SHA256,
+        "closureManifestSha256": V2_CLOSURE_MANIFEST_SHA256,
+    }
+
+
+def v3_snapshot_key(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        fail("Story 4.15 v3 snapshot path is outside the repository root")
+
+
+def v3_snapshot(snapshots: dict[str, bytes], path: Path) -> bytes:
+    key = v3_snapshot_key(path)
+    require(key in snapshots, f"Story 4.15 v3 snapshot is missing: {key}")
+    return snapshots[key]
+
+
+def v3_snapshot_text(snapshots: dict[str, bytes], path: Path) -> str:
+    try:
+        return v3_snapshot(snapshots, path).decode("utf-8")
+    except UnicodeError:
+        fail(f"Story 4.15 v3 snapshot is not UTF-8: {v3_snapshot_key(path)}")
+
+
+def v3_snapshot_json(snapshots: dict[str, bytes], relative: str) -> Any:
+    return load_candidate_json_bytes(v3_snapshot(snapshots, V3_SUCCESSOR / relative), relative)
+
+
+def capture_v3_snapshots() -> dict[str, bytes]:
+    require(V3_SUCCESSOR.exists(), "Story 4.15 v3 successor directory is missing or symlinked")
+    require_no_symlink_components(V3_SUCCESSOR, "Story 4.15 v3 successor directory")
+    require(V3_SUCCESSOR.is_dir(), "Story 4.15 v3 successor directory is missing or symlinked")
+    expected_entries = V3_SUCCESSOR_FILES | {"closure-sha256.txt", "reviews"}
+    actual_entries = {path.relative_to(V3_SUCCESSOR).as_posix() for path in V3_SUCCESSOR.rglob("*")}
+    require(actual_entries == expected_entries, "Story 4.15 v3 successor file set drift")
+    for relative in actual_entries:
+        path = V3_SUCCESSOR / relative
+        require_no_symlink_components(path, f"Story 4.15 v3 artifact {relative}")
+        if relative == "reviews":
+            require(path.is_dir(), "Story 4.15 v3 reviews path is not a directory")
+        else:
+            require(path.is_file(), f"Story 4.15 v3 artifact missing: {relative}")
+
+    snapshots: dict[str, bytes] = {}
+    for relative in V3_SUCCESSOR_FILES | {"closure-sha256.txt"}:
+        path = V3_SUCCESSOR / relative
+        snapshots[v3_snapshot_key(path)] = read_bounded_regular_snapshot(
+            path,
+            MAX_V2_ARTIFACT_BYTES,
+            f"Story 4.15 v3 artifact {relative}",
+        )
+    for relative in V3_GATE_INPUT_PATHS:
+        path = ROOT / relative
+        snapshots[v3_snapshot_key(path)] = read_bounded_regular_snapshot(
+            path,
+            MAX_V2_BOUND_SOURCE_BYTES,
+            f"Story 4.15 v3 bound source {relative}",
+        )
+    return snapshots
+
+
+def validate_v3_manifest(snapshots: dict[str, bytes]) -> dict[str, str]:
+    manifest_path = V3_SUCCESSOR / "closure-sha256.txt"
+    lines = v3_snapshot_text(snapshots, manifest_path).splitlines()
+    require(lines == sorted(lines, key=lambda line: line.split("  ", 1)[-1]), "Story 4.15 v3 closure manifest is not path-sorted")
+    manifest: dict[str, str] = {}
+    for line in lines:
+        parts = line.split("  ", 1)
+        require(len(parts) == 2 and SHA256_RE.fullmatch(parts[0]) is not None, "Malformed Story 4.15 v3 closure manifest line")
+        digest, relative = parts
+        path = Path(relative)
+        require(
+            relative not in manifest
+            and not path.is_absolute()
+            and ".." not in path.parts
+            and path.as_posix() == relative,
+            "Unsafe or duplicate Story 4.15 v3 closure manifest path",
+        )
+        manifest[relative] = digest
+    require(set(manifest) == V3_SUCCESSOR_FILES, "Story 4.15 v3 closure manifest file set drift")
+    for relative, expected in manifest.items():
+        artifact_bytes = v3_snapshot(snapshots, V3_SUCCESSOR / relative)
+        require(sha256_bytes(artifact_bytes) == expected, f"Story 4.15 v3 checksum mismatch: {relative}")
+        try:
+            artifact_text = artifact_bytes.decode("utf-8")
+        except UnicodeError:
+            fail(f"Story 4.15 v3 artifact is not UTF-8: {relative}")
+        scan_support_safe_text(artifact_text, relative)
+    return manifest
+
+
+def validate_v3_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
+    identity = v3_snapshot_json(snapshots, "source-artifact-identity.json")
+    require(isinstance(identity, dict), "Story 4.15 v3 source identity must be an object")
+    require(
+        set(identity) == {"schema", "reviewedOn", "repository", "predecessor", "sourceTransitions", "gateInputs", "bindingRule"},
+        "Story 4.15 v3 source identity field set drift",
+    )
+    require(
+        identity.get("schema") == "hexalith.eventstore.story-4-15-successor-source-identity/v3",
+        "Story 4.15 v3 source identity schema drift",
+    )
+    require(identity.get("reviewedOn") == "2026-09-04", "Story 4.15 v3 source identity review date drift")
+    require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Story 4.15 v3 source identity repository drift")
+    require(identity.get("predecessor") == expected_v3_predecessor(), "Story 4.15 v3 predecessor link drift")
+    require(
+        identity.get("bindingRule")
+        == "V1 and v2 source, validator, test, documentation, and evidence bytes resolve only against immutable historical Git snapshots and manifests; v3 gate inputs resolve only against current regular non-symlink candidate files.",
+        "Story 4.15 v3 source binding rule drift",
+    )
+
+    transitions = identity.get("sourceTransitions")
+    require(isinstance(transitions, dict) and set(transitions) == V3_SOURCE_PATHS, "Story 4.15 v3 source transition path set drift")
+    for relative in V3_SOURCE_PATHS:
+        transition = transitions.get(relative)
+        require(
+            isinstance(transition, dict) and set(transition) == {"predecessorSha256", "successorSha256"},
+            f"Story 4.15 v3 source transition field set drift: {relative}",
+        )
+        require(
+            transition.get("predecessorSha256") == sha256_git_file(COMPLETED_V2_CLOSURE_COMMIT, relative),
+            f"Story 4.15 v3 predecessor source identity drift: {relative}",
+        )
+        require(
+            transition.get("successorSha256") == sha256_bytes(v3_snapshot(snapshots, ROOT / relative)),
+            f"Story 4.15 v3 current source identity drift: {relative}",
+        )
+
+    gate_inputs = identity.get("gateInputs")
+    require(isinstance(gate_inputs, dict) and set(gate_inputs) == V3_GATE_INPUT_PATHS, "Story 4.15 v3 gate-input path set drift")
+    for relative, expected in gate_inputs.items():
+        require_sha256(expected, f"Story 4.15 v3 gate input:{relative}")
+        current_bytes = v3_snapshot(snapshots, ROOT / relative)
+        require(sha256_bytes(current_bytes) == expected, f"Story 4.15 v3 gate-input identity drift: {relative}")
+        if relative == ".github/workflows/integration.yml":
+            try:
+                source = current_bytes.decode("utf-8")
+            except UnicodeError:
+                fail(f"Story 4.15 v3 current source is not UTF-8: {relative}")
+            require(extract_v2_workflow_image(source) == POSTGRES_IMAGE, f"Story 4.15 v3 current source PostgreSQL image drift: {relative}")
+        elif relative == "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs":
+            try:
+                source = current_bytes.decode("utf-8")
+            except UnicodeError:
+                fail(f"Story 4.15 v3 current source is not UTF-8: {relative}")
+            require(extract_v2_fixture_image(source) == POSTGRES_IMAGE, f"Story 4.15 v3 current source PostgreSQL image drift: {relative}")
+    return identity
+
+
+def validate_v3_limitations(snapshots: dict[str, bytes]) -> str:
+    document = v3_snapshot_json(snapshots, "limitations.json")
+    require(
+        document == {"schema": "hexalith.eventstore.story-4-15-successor-limitations/v3", "limitations": V3_LIMITATIONS},
+        "Story 4.15 v3 limitation text or order drift",
+    )
+    return sha256_bytes(v3_snapshot(snapshots, V3_SUCCESSOR / "limitations.json"))
+
+
+def validate_v3_validator_identity(snapshots: dict[str, bytes]) -> str:
+    lines = v3_snapshot_text(snapshots, V3_SUCCESSOR / "validator-sha256.txt").splitlines()
+    require(len(lines) == 1, "Story 4.15 v3 validator identity record is malformed")
+    parts = lines[0].split("  ", 1)
+    require(
+        len(parts) == 2
+        and parts[1] == "tools/validate-oq8-platform-evidence.py"
+        and SHA256_RE.fullmatch(parts[0]) is not None,
+        "Story 4.15 v3 validator identity record is malformed",
+    )
+    require(
+        parts[0] == sha256_bytes(v3_snapshot(snapshots, ROOT / parts[1])),
+        "Story 4.15 v3 current validator identity drift",
+    )
+    return parts[0]
+
+
+def validate_v3_pre_review_execution(
+    document: Any,
+    identity: dict[str, Any],
+    snapshots: dict[str, bytes],
+    now: datetime,
+) -> tuple[str, datetime]:
+    require(isinstance(document, dict), "Story 4.15 v3 pre-review execution must be an object")
+    require(
+        set(document) == {"schema", "executedAt", "scope", "candidateInputs", "commands", "summary", "authority"},
+        "Story 4.15 v3 pre-review execution field set drift",
+    )
+    require(
+        document.get("schema") == "hexalith.eventstore.story-4-15-successor-pre-review-execution/v3",
+        "Story 4.15 v3 pre-review execution schema drift",
+    )
+    executed_at = validate_successor_timestamp(document.get("executedAt"), "pre-review execution", now, "v3")
+    require(document.get("scope") == "receipt-independent-candidate", "Story 4.15 v3 pre-review execution scope drift")
+    require(
+        document.get("candidateInputs")
+        == {"sourceTransitions": identity.get("sourceTransitions"), "gateInputs": identity.get("gateInputs")},
+        "Story 4.15 v3 pre-review candidate-input binding drift",
+    )
+    authority = document.get("authority")
+    require(
+        isinstance(authority, dict)
+        and set(authority) == {"reviewSubjectFrozen", "reviewReceiptsValidated", "finalHandoffValidated", "externalAuthorityClaimed"}
+        and all(authority.get(field) is False for field in authority),
+        "Story 4.15 v3 pre-review authority disclosure drift",
+    )
+    commands = document.get("commands")
+    require(isinstance(commands, list) and len(commands) == len(V3_PRE_REVIEW_COMMANDS), "Story 4.15 v3 pre-review canonical command set drift")
+    for command, expected in zip(commands, V3_PRE_REVIEW_COMMANDS, strict=True):
+        validate_successor_passed_command(command, expected, "pre-review", "v3")
+    tests = sum(expected[2] for expected in V3_PRE_REVIEW_COMMANDS)
+    expected_summary = {
+        "commands": len(V3_PRE_REVIEW_COMMANDS),
+        "successfulCommands": len(V3_PRE_REVIEW_COMMANDS),
+        "tests": tests,
+        "passed": tests,
+        "failed": 0,
+        "skipped": 0,
+    }
+    summary = document.get("summary")
+    require(isinstance(summary, dict) and set(summary) == set(expected_summary), "Story 4.15 v3 pre-review summary field set drift")
+    for field, expected in expected_summary.items():
+        require_exact_integer(summary.get(field), expected, f"Story 4.15 v3 pre-review summary {field}")
+    return sha256_bytes(v3_snapshot(snapshots, V3_SUCCESSOR / "pre-review-execution.json")), executed_at
+
+
+def validate_v3_review_subject(
+    subject: Any,
+    identity: dict[str, Any],
+    limitations_sha256: str,
+    validator_sha256: str,
+    execution_sha256: str,
+    execution_at: datetime,
+    snapshots: dict[str, bytes],
+    now: datetime,
+) -> tuple[str, datetime]:
+    require(isinstance(subject, dict), "Story 4.15 v3 review subject must be an object")
+    require(
+        set(subject) == {"schema", "frozenAt", "proposedDecision", "predecessor", "sourceTransitions", "gateInputs", "bindings", "requiredReviews", "authority"},
+        "Story 4.15 v3 review subject field set drift",
+    )
+    require(subject.get("schema") == "hexalith.eventstore.story-4-15-successor-review-subject/v3", "Story 4.15 v3 review subject schema drift")
+    frozen_at = validate_successor_timestamp(subject.get("frozenAt"), "review-subject freeze", now, "v3")
+    require(execution_at < frozen_at, "Story 4.15 v3 pre-review execution is not strictly before subject freeze")
+    require(subject.get("proposedDecision") == "active-current-source-closure-complete", "Story 4.15 v3 proposed decision drift")
+    require(subject.get("predecessor") == expected_v3_predecessor(), "Story 4.15 v3 review predecessor drift")
+    require(subject.get("sourceTransitions") == identity.get("sourceTransitions"), "Story 4.15 v3 review source transition drift")
+    require(subject.get("gateInputs") == identity.get("gateInputs"), "Story 4.15 v3 review gate-input drift")
+    require(
+        subject.get("bindings")
+        == {
+            "sourceIdentity": {"path": "source-artifact-identity.json", "sha256": sha256_bytes(v3_snapshot(snapshots, V3_SUCCESSOR / "source-artifact-identity.json"))},
+            "limitations": {"path": "limitations.json", "sha256": limitations_sha256},
+            "validatorRecord": {
+                "path": "validator-sha256.txt",
+                "sha256": sha256_bytes(v3_snapshot(snapshots, V3_SUCCESSOR / "validator-sha256.txt")),
+                "validatorPath": "tools/validate-oq8-platform-evidence.py",
+                "validatorSha256": validator_sha256,
+            },
+            "preReviewExecution": {"path": "pre-review-execution.json", "sha256": execution_sha256},
+        },
+        "Story 4.15 v3 review candidate binding drift",
+    )
+    require(
+        subject.get("requiredReviews")
+        == [
+            {"role": role, "reviewer": REVIEW_ROSTER[role], "scope": V3_REVIEW_SCOPES[role], "status": "required"}
+            for role in ("architecture", "security", "test")
+        ],
+        "Story 4.15 v3 required review roster or scope drift",
+    )
+    validate_authority(subject.get("authority"))
+    return sha256_bytes(v3_snapshot(snapshots, V3_SUCCESSOR / "review-subject.json")), frozen_at
+
+
+def validate_v3_reviews(
+    subject_sha256: str,
+    limitations_sha256: str,
+    frozen_at: datetime,
+    snapshots: dict[str, bytes],
+    now: datetime,
+) -> tuple[dict[str, str], list[datetime]]:
+    receipts: dict[str, str] = {}
+    issued_at_values: list[datetime] = []
+    for role, reviewer in REVIEW_ROSTER.items():
+        path = V3_SUCCESSOR / "reviews" / f"{role}.json"
+        document = v3_snapshot_json(snapshots, f"reviews/{role}.json")
+        require(isinstance(document, dict), f"Story 4.15 v3 {role} review must be an object")
+        require(
+            set(document)
+            == ({"schema", "role", "reviewer", "issuedAt", "decision", "subjectSha256", "limitationsSha256", "acceptedScope", "findings", "authority"} | ({"verification"} if role == "test" else set())),
+            f"Story 4.15 v3 {role} review field set drift",
+        )
+        require(document.get("schema") == "hexalith.eventstore.story-4-15-successor-review-receipt/v3", f"Story 4.15 v3 {role} review schema drift")
+        require(document.get("role") == role, f"Story 4.15 v3 {role} review role drift")
+        require(document.get("reviewer") == reviewer, f"Story 4.15 v3 {role} reviewer identity drift")
+        issued_at = validate_successor_timestamp(document.get("issuedAt"), f"{role} receipt", now, "v3")
+        require(issued_at > frozen_at, f"Story 4.15 v3 {role} review predates the frozen subject")
+        issued_at_values.append(issued_at)
+        require(document.get("decision") == "approved", f"Story 4.15 v3 {role} review is not approved")
+        require(document.get("subjectSha256") == subject_sha256, f"Story 4.15 v3 {role} review subject drift")
+        require(document.get("limitationsSha256") == limitations_sha256, f"Story 4.15 v3 {role} review limitations drift")
+        require(document.get("acceptedScope") == V3_REVIEW_SCOPES[role], f"Story 4.15 v3 {role} review scope drift")
+        findings = document.get("findings")
+        require(
+            isinstance(findings, list) and findings and all(isinstance(finding, str) and finding.strip() for finding in findings),
+            f"Story 4.15 v3 {role} review findings are missing or blank",
+        )
+        validate_authority(document.get("authority"))
+        if role == "test":
+            verification = document.get("verification")
+            require(
+                isinstance(verification, list) and len(verification) == len(V3_TEST_RECEIPT_VERIFICATION),
+                "Story 4.15 v3 test review verification set drift",
+            )
+            for command, expected in zip(verification, V3_TEST_RECEIPT_VERIFICATION, strict=True):
+                validate_successor_passed_command(command, expected, "test review verification", "v3")
+        receipts[role] = sha256_bytes(v3_snapshot(snapshots, path))
+    return receipts, issued_at_values
+
+
+def validate_v3_handoff(
+    document: Any,
+    subject_sha256: str,
+    limitations_sha256: str,
+    receipts: dict[str, str],
+    receipt_times: list[datetime],
+    now: datetime,
+) -> None:
+    require(isinstance(document, dict), "Story 4.15 v3 handoff must be an object")
+    require(
+        set(document) == {"schema", "assembledAt", "story", "predecessor", "reviewSubjectSha256", "limitationsSha256", "reviewReceipts", "consumerInstructions", "authority"},
+        "Story 4.15 v3 handoff field set drift",
+    )
+    require(document.get("schema") == "hexalith.eventstore.story-4-15-successor-source-only-handoff/v3", "Story 4.15 v3 handoff schema drift")
+    assembled_at = validate_successor_timestamp(document.get("assembledAt"), "handoff assembly", now, "v3")
+    require(receipt_times and assembled_at > max(receipt_times), "Story 4.15 v3 handoff predates a review receipt")
+    require(document.get("story") == "4.15", "Story 4.15 v3 handoff story drift")
+    require(document.get("predecessor") == expected_v3_predecessor(), "Story 4.15 v3 handoff predecessor drift")
+    require(document.get("reviewSubjectSha256") == subject_sha256, "Story 4.15 v3 handoff subject drift")
+    require(document.get("limitationsSha256") == limitations_sha256, "Story 4.15 v3 handoff limitations drift")
+    require(document.get("reviewReceipts") == receipts, "Story 4.15 v3 handoff receipt set drift")
+    require(
+        document.get("consumerInstructions")
+        == {
+            "mode": "source-only",
+            "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
+            "historicalRule": "Validate Story 4.15 v1 and v2 only against their immutable historical artifacts and Git snapshots.",
+            "currentRule": "Treat current source as closed only when this complete v3 successor validates against the current candidate bytes.",
+        },
+        "Story 4.15 v3 consumer instructions drift",
+    )
+    validate_authority(document.get("authority"))
+
+
+def validate_v3_successor(
+    snapshots: dict[str, bytes] | None = None,
+    now: datetime | None = None,
+) -> None:
+    current_snapshots = capture_v3_snapshots() if snapshots is None else snapshots
+    current_utc = datetime.now(timezone.utc) if now is None else now
+    require(current_utc.tzinfo is not None, "Story 4.15 v3 current UTC must be timezone-aware")
+    validate_v3_manifest(current_snapshots)
+    identity = validate_v3_source_identity(current_snapshots)
+    limitations_sha256 = validate_v3_limitations(current_snapshots)
+    validator_sha256 = validate_v3_validator_identity(current_snapshots)
+    execution_sha256, execution_at = validate_v3_pre_review_execution(
+        v3_snapshot_json(current_snapshots, "pre-review-execution.json"),
+        identity,
+        current_snapshots,
+        current_utc,
+    )
+    subject_sha256, frozen_at = validate_v3_review_subject(
+        v3_snapshot_json(current_snapshots, "review-subject.json"),
+        identity,
+        limitations_sha256,
+        validator_sha256,
+        execution_sha256,
+        execution_at,
+        current_snapshots,
+        current_utc,
+    )
+    receipts, receipt_times = validate_v3_reviews(
+        subject_sha256,
+        limitations_sha256,
+        frozen_at,
+        current_snapshots,
+        current_utc,
+    )
+    validate_v3_handoff(
+        v3_snapshot_json(current_snapshots, "source-only-handoff.json"),
         subject_sha256,
         limitations_sha256,
         receipts,
@@ -3227,6 +3696,7 @@ def validate_platform_closure(platform: dict[str, Any], *, current_source: bool 
     validate_successor_closure(manifest)
     if current_source:
         validate_v2_successor()
+        validate_v3_successor()
         validate_status_and_documents(final=True)
 
 
@@ -3416,6 +3886,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Validate immutable Story 4.15 v1 evidence without authorizing current source",
     )
+    parser.add_argument(
+        "--historical-v2-only",
+        action="store_true",
+        help="Validate immutable Story 4.15 v1 and v2 evidence without authorizing current source",
+    )
     parser.add_argument("--lifecycle-mode", choices=("final",), help="Validate the exact final lifecycle/document gate in isolation")
     parser.add_argument("--capture-directory", type=Path, help="Validate one fresh opt-in OQ8 capture")
     parser.add_argument("--ctrf", type=Path, help="Raw CTRF input to sanitize for capture upload")
@@ -3436,6 +3911,7 @@ def main() -> int:
         if args.pre_review:
             require(
                 not args.historical_v1_only
+                and not args.historical_v2_only
                 and args.lifecycle_mode is None
                 and args.capture_directory is None
                 and args.ctrf is None
@@ -3446,7 +3922,8 @@ def main() -> int:
             )
         if args.historical_v1_only:
             require(
-                args.lifecycle_mode is None
+                not args.historical_v2_only
+                and args.lifecycle_mode is None
                 and args.capture_directory is None
                 and args.ctrf is None
                 and args.support_ctrf is None
@@ -3454,9 +3931,21 @@ def main() -> int:
                 and args.expected_runtime_version is None,
                 "Historical-v1 mode cannot be combined with capture, support, or lifecycle arguments",
             )
+        if args.historical_v2_only:
+            require(
+                args.lifecycle_mode is None
+                and args.capture_directory is None
+                and args.ctrf is None
+                and args.support_ctrf is None
+                and args.support_output is None
+                and args.expected_runtime_version is None,
+                "Historical-v2 mode cannot be combined with capture, support, or lifecycle arguments",
+            )
         if args.lifecycle_mode is not None:
             require(
                 not args.pre_review
+                and not args.historical_v1_only
+                and not args.historical_v2_only
                 and args.capture_directory is None
                 and args.ctrf is None
                 and args.support_ctrf is None
@@ -3495,11 +3984,15 @@ def main() -> int:
             if args.historical_v1_only:
                 validate_committed_packet(current_source=False)
                 print("OQ8 Story 4.15 v1 historical evidence validation passed; v1 does not authorize current source.")
+            elif args.historical_v2_only:
+                validate_committed_packet(current_source=False)
+                validate_v2_successor()
+                print("OQ8 Story 4.15 v1/v2 historical evidence validation passed; v2 does not authorize current source.")
             elif args.pre_review:
                 validate_pre_review_candidate()
             else:
                 validate_committed_packet()
-            if not args.historical_v1_only:
+            if not args.historical_v1_only and not args.historical_v2_only:
                 print("OQ8 pre-review candidate validation passed." if args.pre_review else "OQ8 platform evidence validation passed.")
         return 0
     except EvidenceError as exception:

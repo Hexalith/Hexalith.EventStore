@@ -1,0 +1,85 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-subject/v3",
+  "frozenAt": "2026-09-04T11:00:05Z",
+  "proposedDecision": "active-current-source-closure-complete",
+  "predecessor": {
+    "completedV2ClosureCommit": "83b32fcfad7bb608098aebccdc15002636ffb431",
+    "reviewSubjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
+    "closureManifestSha256": "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
+  },
+  "sourceTransitions": {
+    "tools/validate-oq8-platform-evidence.py": {
+      "predecessorSha256": "8934e82022535a3f1d4855202e8008341f99f0abce0331ab5c59616ce3ea8767",
+      "successorSha256": "2764e05752c17ac11fcfcc9096407377bc39050bef6c6b303d44089c05d15393"
+    },
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": {
+      "predecessorSha256": "434c1ad3ecb7d0bfe7390ce24b47919550b434c5f69db35d4e5b983d9b5864e0",
+      "successorSha256": "350a7b0d93c9beb2a8f21eb21653e1a4ada736ee337b76d76feb658729eb5c22"
+    },
+    "docs/ci.md": {
+      "predecessorSha256": "f37a5f0ef6058a339b7f5a47375ab9bed195fe548969523a6155e77765fea46c",
+      "successorSha256": "80b09abe87384382ca9e1db3e486fb8fbcf7de4fa6f8a01401e08518a755db46"
+    }
+  },
+  "gateInputs": {
+    ".github/workflows/integration.yml": "4bed16f86037c7eb8f5bcbfc370b5b3ae60fec3d40880605660eba6722974ca1",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "d5ac6c48917787c9249fe4257a639bf7077b09b88b19d2f327dbf8093e45f936",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs": "d87abfcb82c7fc1b9dad1cbb26720f5c637a5dba6a1c4a2e8549d8c65e44a70b",
+    "tools/validate-oq8-platform-evidence.py": "2764e05752c17ac11fcfcc9096407377bc39050bef6c6b303d44089c05d15393",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "350a7b0d93c9beb2a8f21eb21653e1a4ada736ee337b76d76feb658729eb5c22",
+    "docs/ci.md": "80b09abe87384382ca9e1db3e486fb8fbcf7de4fa6f8a01401e08518a755db46"
+  },
+  "bindings": {
+    "sourceIdentity": {
+      "path": "source-artifact-identity.json",
+      "sha256": "b5b78631fcffc25ae3b7ced10e82f608e489c9eb7d0f9bd45d1e5b160590e2fc"
+    },
+    "limitations": {
+      "path": "limitations.json",
+      "sha256": "d298f5dd8b35e5b8bf269d8190f698492b3147ab77f827820b2ff036a2dd7884"
+    },
+    "validatorRecord": {
+      "path": "validator-sha256.txt",
+      "sha256": "1121422fbaebb4a397424a71575ff02f566a9541fec1ce43e5211a4c1c9ed0c4",
+      "validatorPath": "tools/validate-oq8-platform-evidence.py",
+      "validatorSha256": "2764e05752c17ac11fcfcc9096407377bc39050bef6c6b303d44089c05d15393"
+    },
+    "preReviewExecution": {
+      "path": "pre-review-execution.json",
+      "sha256": "94d74f6a5dc2733b3ff2e223568a793f9b7e9bddec78ad8595e1171484e021d8"
+    }
+  },
+  "requiredReviews": [
+    {
+      "role": "architecture",
+      "reviewer": "Winston (System Architect)",
+      "scope": "v2 historical preservation, v3 current-source succession, deterministic UTC validation, and source-only authority boundaries",
+      "status": "required"
+    },
+    {
+      "role": "security",
+      "reviewer": "Security Reviewer",
+      "scope": "immutable predecessor lineage, fail-closed source and timestamp drift detection, receipt binding, and external-authority exclusions",
+      "status": "required"
+    },
+    {
+      "role": "test",
+      "reviewer": "Murat (Test Architect)",
+      "scope": "historical v2 validation, active v3 success and drift coverage, runtime-relative future mutations, and the full Contracts lane",
+      "status": "required"
+    }
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

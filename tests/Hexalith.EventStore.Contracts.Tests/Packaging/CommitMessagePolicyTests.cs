@@ -63,8 +63,8 @@ public sealed class CommitMessagePolicyTests
         string sharedLlmInstructions = File.ReadAllText(sharedLlmInstructionsPath);
         sharedLlmInstructions.ShouldContain(
             $"[hexalith-git-instructions.md]({SharedGitInstructionsRelativePath})");
-        sharedLlmInstructions.ShouldContain("Conventional Commits are mandatory");
-        sharedLlmInstructions.ShouldContain("<type>[scope][!]: <description>");
+        sharedLlmInstructions.ShouldContain("Before any Git work");
+        sharedLlmInstructions.ShouldContain("and follow it");
 
         string sharedGitInstructionsPath = Path.GetFullPath(Path.Combine(
             Path.GetDirectoryName(sharedLlmInstructionsPath).ShouldNotBeNull(),
@@ -73,11 +73,11 @@ public sealed class CommitMessagePolicyTests
             "The shared LLM instructions must delegate Git policy to a resolvable colocated file.");
 
         string sharedGitInstructions = File.ReadAllText(sharedGitInstructionsPath);
-        sharedGitInstructions.ShouldContain("## Message Rules");
-        sharedGitInstructions.ShouldContain(CommitHeaderFormat);
-        sharedGitInstructions.ShouldContain("The description starts lowercase");
-        sharedGitInstructions.ShouldContain("Never use the `chore` type");
-        sharedGitInstructions.ShouldContain("--no-verify");
+        sharedGitInstructions.ShouldContain("## Commit Workflow");
+        sharedGitInstructions.ShouldContain("All commits **must** follow");
+        sharedGitInstructions.ShouldContain("Conventional Commits Specification");
+        sharedGitInstructions.ShouldContain("Write the commit message to a temporary file");
+        sharedGitInstructions.ShouldContain("validate it with commitlint");
 
         string[] duplicatedPolicyMarkers =
         [

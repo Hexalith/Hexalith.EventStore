@@ -263,7 +263,7 @@ development_status:
   4-12-expiry-compaction-and-tombstone-retention: done
   4-13-legacy-admission-migration-and-fail-closed-reconciliation: done
   4-14-oq8-multi-host-production-evidence: done
-  4-15-oq8-platform-closure-and-handoff: in-progress
+  4-15-oq8-platform-closure-and-handoff: review
   epic-4-retrospective: optional
 
   epic-5: backlog

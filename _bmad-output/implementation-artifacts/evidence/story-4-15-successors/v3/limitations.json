@@ -1,0 +1,9 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-limitations/v3",
+  "limitations": [
+    "Story 4.15 v1 and v2 remain immutable historical evidence and do not authorize source bytes changed after completed-v2 closure commit 83b32fcfad7bb608098aebccdc15002636ffb431.",
+    "The active v3 successor validates exact current repository source bytes while preserving the reviewed PostgreSQL multi-platform index authority recorded by v2.",
+    "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
+    "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority."
+  ]
+}

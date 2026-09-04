@@ -23,6 +23,12 @@ public sealed class Oq8PlatformClosureTests
         "evidence",
         "story-4-15-successors",
         "v2");
+    private static readonly string V3SuccessorRelativeDirectory = Path.Combine(
+        "_bmad-output",
+        "implementation-artifacts",
+        "evidence",
+        "story-4-15-successors",
+        "v3");
     private static readonly Regex EventStorePlatformCompleteTrue = new(
         "\"eventStorePlatformComplete\"\\s*:\\s*true",
         RegexOptions.CultureInvariant,
@@ -111,15 +117,15 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("malformed-manifest", "Malformed Story 4.15 v2 closure manifest line")]
     [InlineData("symlinked-artifact", "Story 4.15 v2 artifact limitations.json has a symlinked path component")]
     [InlineData("symlinked-v2-ancestor", "Story 4.15 v2 successor directory has a symlinked path component")]
-    [InlineData("symlinked-source-ancestor", "Story 4.15 v2 bound source .github/workflows/integration.yml has a symlinked path component")]
-    [InlineData("symlinked-gate-ancestor", "Story 4.15 v2 bound source docs/ci.md has a symlinked path component")]
+    [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/integration.yml has a symlinked path component")]
+    [InlineData("symlinked-gate-ancestor", "Story 4.15 v3 bound source docs/ci.md has a symlinked path component")]
     [InlineData("oversized-artifact", "Story 4.15 v2 artifact limitations.json exceeds the 65536-byte limit")]
-    [InlineData("oversized-source", "Story 4.15 v2 bound source docs/ci.md exceeds the 524288-byte limit")]
+    [InlineData("oversized-source", "Story 4.15 v3 bound source docs/ci.md exceeds the 524288-byte limit")]
     [InlineData("predecessor-mismatch", "Story 4.15 v2 predecessor link drift")]
-    [InlineData("source-drift", "Story 4.15 v2 current source identity drift: .github/workflows/integration.yml")]
-    [InlineData("semantic-workflow-tag", "Story 4.15 v2 current source PostgreSQL image drift: .github/workflows/integration.yml")]
-    [InlineData("semantic-fixture-tag", "Story 4.15 v2 current source PostgreSQL image drift: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs")]
-    [InlineData("gate-input-drift", "Story 4.15 v2 gate-input identity drift: docs/ci.md")]
+    [InlineData("source-drift", "Story 4.15 v3 gate-input identity drift: .github/workflows/integration.yml")]
+    [InlineData("semantic-workflow-tag", "Story 4.15 v2 historical source identity drift: .github/workflows/integration.yml")]
+    [InlineData("semantic-fixture-tag", "Story 4.15 v2 historical source identity drift: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs")]
+    [InlineData("gate-input-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
     [InlineData("reviewed-index-boolean", "Story 4.15 v2 reviewed index authority type drift")]
     [InlineData("pre-review-name", "Story 4.15 v2 pre-review command name drift: postgres-image-governance")]
     [InlineData("pre-review-command", "Story 4.15 v2 pre-review command identity drift: postgres-image-governance")]
@@ -164,10 +170,10 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies one immutable snapshot drives both v2 hashing and semantic validation.
+    /// Verifies v2 remains valid from its immutable historical snapshot after current source evolves.
     /// </summary>
     [Fact]
-    public void V2ValidationUsesOneBoundSnapshotAndFreshRunsSeeLaterDrift()
+    public void V2ValidationRemainsHistoricalAfterCurrentSourceDrift()
     {
         string root = FindRepositoryRoot();
         string fixture = CreateFixture(root);
@@ -183,14 +189,56 @@ public sealed class Oq8PlatformClosureTests
                 validator = importlib.util.module_from_spec(specification)
                 specification.loader.exec_module(validator)
                 validator.configure_roots(pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3]))
-                snapshots = validator.capture_v2_snapshots()
                 workflow = pathlib.Path(sys.argv[2]) / ".github/workflows/integration.yml"
                 workflow.write_text(workflow.read_text(encoding="utf-8") + "\n# post-snapshot drift\n", encoding="utf-8")
-                validator.validate_v2_successor(snapshots=snapshots)
+                validator.validate_v2_successor()
+                print("historical-v2-preserved")
+                """);
+            process.StartInfo.WorkingDirectory = root;
+            process.StartInfo.ArgumentList.Add(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
+            process.StartInfo.ArgumentList.Add(fixture);
+            process.StartInfo.ArgumentList.Add(root);
+
+            (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
+
+            timedOut.ShouldBeFalse("OQ8 v2 historical validation probe timed out.");
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("historical-v2-preserved");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies one immutable snapshot drives both v3 hashing and semantic validation.
+    /// </summary>
+    [Fact]
+    public void V3ValidationUsesOneBoundSnapshotAndFreshRunsSeeLaterDrift()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            using Process process = CreatePythonProcess(
+                """
+                import importlib.util
+                import pathlib
+                import sys
+
+                specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+                validator = importlib.util.module_from_spec(specification)
+                specification.loader.exec_module(validator)
+                validator.configure_roots(pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3]))
+                snapshots = validator.capture_v3_snapshots()
+                workflow = pathlib.Path(sys.argv[2]) / ".github/workflows/integration.yml"
+                workflow.write_text(workflow.read_text(encoding="utf-8") + "\n# post-snapshot drift\n", encoding="utf-8")
+                validator.validate_v3_successor(snapshots=snapshots)
                 try:
-                    validator.validate_v2_successor()
+                    validator.validate_v3_successor()
                 except validator.EvidenceError as error:
-                    if "current source identity drift: .github/workflows/integration.yml" not in str(error):
+                    if "gate-input identity drift: .github/workflows/integration.yml" not in str(error):
                         raise
                     print("snapshot-consistent; fresh-drift-rejected")
                 else:
@@ -203,9 +251,41 @@ public sealed class Oq8PlatformClosureTests
 
             (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
 
-            timedOut.ShouldBeFalse("OQ8 v2 snapshot probe timed out.");
+            timedOut.ShouldBeFalse("OQ8 v3 snapshot probe timed out.");
             exitCode.ShouldBe(0, output);
             output.ShouldContain("snapshot-consistent; fresh-drift-rejected");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies missing, drifted, or future-dated v3 evidence fails closed.
+    /// </summary>
+    /// <param name="mutation">The isolated v3 mutation.</param>
+    /// <param name="expected">The specific diagnostic expected from the validator.</param>
+    [Theory]
+    [InlineData("missing-successor", "Story 4.15 v3 successor directory is missing or symlinked")]
+    [InlineData("source-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
+    [InlineData("pre-review-future", "Story 4.15 v3 pre-review execution timestamp is later than current UTC")]
+    [InlineData("subject-future", "Story 4.15 v3 review-subject freeze timestamp is later than current UTC")]
+    [InlineData("receipt-future", "Story 4.15 v3 security receipt timestamp is later than current UTC")]
+    [InlineData("handoff-future", "Story 4.15 v3 handoff assembly timestamp is later than current UTC")]
+    public void V3SuccessorMutationsFailClosed(string mutation, string expected)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            ApplyV3Mutation(fixture, mutation);
+
+            (int exitCode, string output) = RunValidator(root, fixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(expected);
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -238,7 +318,7 @@ public sealed class Oq8PlatformClosureTests
             {
                 case "current-source":
                     File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nSuccessor source drift.\n");
-                    expected = "Story 4.15 v2 gate-input identity drift: docs/ci.md";
+                    expected = "Story 4.15 v3 current source identity drift: docs/ci.md";
                     break;
                 case "prior-selection":
                 {
@@ -3151,10 +3231,10 @@ public sealed class Oq8PlatformClosureTests
                 break;
             }
             case "pre-review-future":
-                MutateV2Timestamp(successor, "pre-review-execution.json", "executedAt", "2026-09-01T23:59:59Z", ResealV2AfterPreReviewChange);
+                MutateV2Timestamp(successor, "pre-review-execution.json", "executedAt", FutureUtcSecond(), ResealV2AfterPreReviewChange);
                 break;
             case "subject-future":
-                MutateV2Timestamp(successor, "review-subject.json", "frozenAt", "2026-09-01T23:59:59Z", ResealV2AfterSubjectChange);
+                MutateV2Timestamp(successor, "review-subject.json", "frozenAt", FutureUtcSecond(), ResealV2AfterSubjectChange);
                 break;
             case "receipt-drift":
             {
@@ -3187,7 +3267,7 @@ public sealed class Oq8PlatformClosureTests
             {
                 string receiptPath = Path.Combine(successor, "reviews", "security.json");
                 JsonObject receipt = LoadObject(receiptPath);
-                receipt["issuedAt"] = "2026-09-01T23:59:59Z";
+                receipt["issuedAt"] = FutureUtcSecond();
                 WriteObject(receiptPath, receipt);
                 ResealV2Receipt(successor, "security");
                 break;
@@ -3202,7 +3282,7 @@ public sealed class Oq8PlatformClosureTests
                 break;
             }
             case "handoff-future":
-                MutateV2Timestamp(successor, "source-only-handoff.json", "assembledAt", "2026-09-01T23:59:59Z", ResealV2Manifest);
+                MutateV2Timestamp(successor, "source-only-handoff.json", "assembledAt", FutureUtcSecond(), ResealV2Manifest);
                 break;
             case "test-verification-missing":
             {
@@ -3246,6 +3326,115 @@ public sealed class Oq8PlatformClosureTests
             default:
                 throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown Story 4.15 v2 mutation.");
         }
+    }
+
+    private static void ApplyV3Mutation(string fixture, string mutation)
+    {
+        string successor = Path.Combine(fixture, V3SuccessorRelativeDirectory);
+        switch (mutation)
+        {
+            case "missing-successor":
+                Directory.Delete(successor, recursive: true);
+                break;
+            case "source-drift":
+                File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nV3 source drift.\n");
+                break;
+            case "pre-review-future":
+                MutateV3Timestamp(successor, "pre-review-execution.json", "executedAt", ResealV3AfterPreReviewChange);
+                break;
+            case "subject-future":
+                MutateV3Timestamp(successor, "review-subject.json", "frozenAt", ResealV3AfterSubjectChange);
+                break;
+            case "receipt-future":
+            {
+                string receiptPath = Path.Combine(successor, "reviews", "security.json");
+                JsonObject receipt = LoadObject(receiptPath);
+                receipt["issuedAt"] = FutureUtcSecond();
+                WriteObject(receiptPath, receipt);
+                ResealV3Receipt(successor, "security");
+                break;
+            }
+            case "handoff-future":
+                MutateV3Timestamp(successor, "source-only-handoff.json", "assembledAt", ResealV3Manifest);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown Story 4.15 v3 mutation.");
+        }
+    }
+
+    private static void MutateV3Timestamp(
+        string successor,
+        string relative,
+        string field,
+        Action<string> reseal)
+    {
+        string path = Path.Combine(successor, relative);
+        JsonObject document = LoadObject(path);
+        document[field] = FutureUtcSecond();
+        WriteObject(path, document);
+        reseal(successor);
+    }
+
+    private static string FutureUtcSecond() =>
+        DateTimeOffset.UtcNow.AddDays(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    private static void ResealV3AfterPreReviewChange(string successor)
+    {
+        string subjectPath = Path.Combine(successor, "review-subject.json");
+        JsonObject subject = LoadObject(subjectPath);
+        subject["bindings"]!["preReviewExecution"]!["sha256"] =
+            ComputeSha256(Path.Combine(successor, "pre-review-execution.json"));
+        WriteObject(subjectPath, subject);
+        ResealV3AfterSubjectChange(successor);
+    }
+
+    private static void ResealV3AfterSubjectChange(string successor)
+    {
+        string subjectSha256 = ComputeSha256(Path.Combine(successor, "review-subject.json"));
+        string limitationsSha256 = ComputeSha256(Path.Combine(successor, "limitations.json"));
+        JsonObject handoff = LoadObject(Path.Combine(successor, "source-only-handoff.json"));
+        handoff["reviewSubjectSha256"] = subjectSha256;
+        foreach (string role in new[] { "architecture", "security", "test" })
+        {
+            string receiptPath = Path.Combine(successor, "reviews", role + ".json");
+            JsonObject receipt = LoadObject(receiptPath);
+            receipt["subjectSha256"] = subjectSha256;
+            receipt["limitationsSha256"] = limitationsSha256;
+            WriteObject(receiptPath, receipt);
+            handoff["reviewReceipts"]![role] = ComputeSha256(receiptPath);
+        }
+
+        WriteObject(Path.Combine(successor, "source-only-handoff.json"), handoff);
+        ResealV3Manifest(successor);
+    }
+
+    private static void ResealV3Receipt(string successor, string role)
+    {
+        string receiptPath = Path.Combine(successor, "reviews", role + ".json");
+        string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+        JsonObject handoff = LoadObject(handoffPath);
+        handoff["reviewReceipts"]![role] = ComputeSha256(receiptPath);
+        WriteObject(handoffPath, handoff);
+        ResealV3Manifest(successor);
+    }
+
+    private static void ResealV3Manifest(string successor)
+    {
+        string[] relativeFiles =
+        [
+            "limitations.json",
+            "pre-review-execution.json",
+            "review-subject.json",
+            "reviews/architecture.json",
+            "reviews/security.json",
+            "reviews/test.json",
+            "source-artifact-identity.json",
+            "source-only-handoff.json",
+            "validator-sha256.txt",
+        ];
+        File.WriteAllText(
+            Path.Combine(successor, "closure-sha256.txt"),
+            string.Join('\n', relativeFiles.Select(relative => $"{ComputeSha256(Path.Combine(successor, relative))}  {relative}")) + "\n");
     }
 
     private static void ResealV2AfterIdentityChange(string successor)
@@ -4085,6 +4274,9 @@ public sealed class Oq8PlatformClosureTests
         CopyDirectory(
             Path.Combine(root, V2SuccessorRelativeDirectory),
             Path.Combine(fixture, V2SuccessorRelativeDirectory));
+        CopyDirectory(
+            Path.Combine(root, V3SuccessorRelativeDirectory),
+            Path.Combine(fixture, V3SuccessorRelativeDirectory));
         SetFinalLifecycle(fixture);
         return fixture;
     }

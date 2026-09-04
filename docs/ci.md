@@ -109,6 +109,21 @@ Tag-only, malformed, architecture-specific, mismatched, missing, or duplicated
 image declarations fail governance and must not be hidden behind generated
 source, MSBuild properties, `PATH`, or local Docker tags.
 
+Story 4.15 successor timestamps use exact UTC seconds in
+`YYYY-MM-DDTHH:MM:SSZ` form. Validation parses that format generically, captures
+current UTC once per run, rejects timestamps later than that instant, and keeps
+the strict execution → subject freeze → receipts → handoff order. Tests that
+exercise future-time rejection derive their mutation from runtime UTC; do not
+renew them by hard-coding another calendar date.
+
+The v1 and v2 successor packets remain immutable historical evidence. V2 is
+validated against completed closure commit
+`83b32fcfad7bb608098aebccdc15002636ffb431`, not against later working-tree
+bytes. The additive `story-4-15-successors/v3` packet is the active lineage for
+the evolved validator, closure tests, and this guidance; current-source closure
+requires valid historical v1/v2 evidence plus a complete v3 subject, reviews,
+handoff, and path-sorted manifest.
+
 Story 4.5's append-durability race and generic ETag control remain in this
 dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence
 artifact, not a reason to add the project to `unit-test-projects` or the release

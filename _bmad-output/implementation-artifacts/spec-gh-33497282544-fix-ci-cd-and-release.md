@@ -2,7 +2,7 @@
 title: 'Fix CI timestamp decay and publish the verified release'
 type: 'bugfix'
 created: '2026-09-04'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'fcafc59464efd2f97347a97f19a1d48ad340f10c'
@@ -47,10 +47,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `tools/validate-oq8-platform-evidence.py` -- parse exact UTC seconds generically, reject real future time, validate v2 historically, and require v3 for evolved bytes.
-- [ ] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs` -- use runtime-relative future values and cover v2 preservation plus v3 success/drift/future cases.
-- [ ] `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/**` -- seal candidate → subject → reviews → handoff → sorted manifest without changing v1/v2.
-- [ ] `docs/ci.md` -- document the durable timestamp rule and active successor lineage if operator guidance changes.
+- [x] `tools/validate-oq8-platform-evidence.py` -- parse exact UTC seconds generically, reject real future time, validate v2 historically, and require v3 for evolved bytes.
+- [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs` -- use runtime-relative future values and cover v2 preservation plus v3 success/drift/future cases.
+- [x] `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/**` -- seal candidate → subject → reviews → handoff → sorted manifest without changing v1/v2.
+- [x] `docs/ci.md` -- document the durable timestamp rule and active successor lineage if operator guidance changes.
 - [ ] Git/GitHub/NuGet -- validate a `fix(ci): ...` message, commit/push `main`, require exact-source CI, dispatch ordinary Release, then verify tag/source, release assets, NuGet availability, and contents.
 
 **Acceptance Criteria:**
@@ -59,6 +59,10 @@ context:
 - Given successful ordinary publication, when GitHub and NuGet are queried, then a stable release targets the repair SHA and all 14 package IDs exist at one valid version.
 
 ## Implementation Notes
+
+- Preserved the v1/v2 evidence bytes and bound historical v2 validation to completed closure commit `83b32fcfad7bb608098aebccdc15002636ffb431`; v3 is the only active current-source successor.
+- Aligned `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CommitMessagePolicyTests.cs` with the authoritative shared-policy wording introduced when root commit `fcafc59464efd2f97347a97f19a1d48ad340f10c` updated `references/Hexalith.AI.Tools` to `5f93d2ec8239494852c97032c819cb1689939e36`. The shared instruction changes themselves were preserved.
+- Local implementation and verification are complete. The Git/GitHub/NuGet task remains open because push, workflow dispatch, and publication require the post-review remote phase.
 
 ## Spec Change Log
 
@@ -69,6 +73,8 @@ context:
 The validator and closure test are content-bound, so their evolution belongs in v3 rather than hidden inside v2. The manifest binds exact approved timestamps; generic parsing plus comparison with current UTC avoids encoding “today” in source.
 
 ## Verification
+
+Local results: active and historical-v2 validators passed; the focused OQ8 suite passed 375/375; full Contracts passed 1,896/1,896; tier 1 passed; the Release build completed with zero warnings/errors; diff hygiene and the exact candidate commit message passed.
 
 **Commands:**
 - `python3 tools/validate-oq8-platform-evidence.py` -- expected: historical v1/v2 and active v3 current-source closure pass.
