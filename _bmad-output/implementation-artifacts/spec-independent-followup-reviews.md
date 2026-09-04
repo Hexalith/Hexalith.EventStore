@@ -36,7 +36,7 @@ deferred:
 
 ## Boundaries & Constraints
 
-**Always:** Preserve the `security` default resource identity, supported resource-name/realm/import overrides, Keycloak endpoint/authentication behavior, the 14-entry release manifest, both existing validator entry points, and the single scoped NuGet publication command. Keep all environment mutation serialized, restored in `finally`, and independent of the caller's machine state. Treat the source story specs and current acceptance criteria as read-only authority.
+**Always:** Preserve the `security` default resource identity, supported resource-name/realm/import overrides, Keycloak endpoint/authentication behavior, the 14-entry release manifest, both existing validator entry points, and the single scoped NuGet publication command. Keep all environment mutation serialized, restored in `finally`, and independent of the caller's machine state. Treat the source story specs and current acceptance criteria as read-only authority. During finalization, evaluate cleanliness only for the four Execution paths and this spec relative to `baseline_commit`; leave pre-existing or concurrent changes outside those paths untouched, and do not treat them as a story blocker after all specified verification passes. Changes that overlap an owned path, or any failed verification, remain blocking.
 
 **Never:** Rename Keycloak implementation concepts, change production AppHost topology merely to simplify tests, change package IDs/versions/inventory, publish artifacts, edit `references/**`, edit `_bmad-output/implementation-artifacts/deferred-work.md`, or reopen already-ledgered CLI-flag, version-example, shared-temp, GitHub-asset-glob, or stale-ledger-citation findings.
 
@@ -49,6 +49,7 @@ deferred:
 | Realm/import contract | Default and explicit realm/import options build a security resource | Realm URL and import annotation reflect the selected values without changing the `security` role | Missing or mismatched annotations fail focused model tests |
 | Repeated dependency group | One TFM appears in multiple nuspec groups whose union contains required edges | Both release validators reject the archive | Diagnostic identifies the archive and repeated target framework |
 | Extra publication command | Semantic-release contains the valid EventStore push plus any second NuGet push/operand | Governance test rejects the configuration | Exactly one scoped push remains accepted |
+| Unrelated dirty workspace | Pre-existing or concurrent changes exist outside the four Execution paths and this spec | Leave those changes untouched and complete the story after every specified verification passes | Any change overlapping an owned path or any failed verification remains blocking |
 
 </intent-contract>
 
@@ -78,11 +79,13 @@ deferred:
 - Given default or explicitly overridden realm/import options, when the security resource model is inspected, then its realm URL and import annotation match those options and its role name remains `security` by default.
 - Given a namespaced nuspec with two groups for the same TFM, when either release validator runs, then it fails before dependency unions can hide incomplete groups; a valid single group still succeeds.
 - Given semantic-release configuration with the valid EventStore push plus a second foreign push or package operand, when governance tests run, then they fail; the current single `./nupkgs/Hexalith.EventStore.*.nupkg` push succeeds.
+- Given pre-existing or concurrent changes only outside the four Execution paths and this spec, when every specified verification passes and finalization runs, then those unrelated changes remain untouched and do not block story completion; an owned-path overlap or failed verification still blocks.
 
 ## Spec Change Log
 
 - 2026-09-01 -- Implemented all five independent follow-up review guards without changing production topology, release inventory, or publication configuration; added focused mutation coverage and reproduced every verification command at baseline `28cd5935a156600b52f95b378f9c45ab57ba46cb`.
 - 2026-09-01 -- Applied the first review pass: widened the tracked audit and wait mutations, independently proved hostile environment restoration, strengthened realm/import assertions, rejected mixed ungrouped dependency shapes, preserved distinct grouped metadata, and scanned every semantic-release exec command field for foreign NuGet pushes.
+- 2026-09-03 -- Resolved the finalization ambiguity: unrelated changes outside the story-owned paths remain untouched and do not block completion after all specified verification passes; owned-path overlap or failed verification remains blocking.
 
 ## Review Triage Log
 
