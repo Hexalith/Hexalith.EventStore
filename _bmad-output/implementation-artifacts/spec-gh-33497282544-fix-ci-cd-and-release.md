@@ -2,9 +2,10 @@
 title: 'Fix CI timestamp decay and publish the verified release'
 type: 'bugfix'
 created: '2026-09-04'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: 'fcafc59464efd2f97347a97f19a1d48ad340f10c'
 context:
   - 'docs/ci.md'
   - '_bmad-output/implementation-artifacts/spec-postgres-image-governance.md'
