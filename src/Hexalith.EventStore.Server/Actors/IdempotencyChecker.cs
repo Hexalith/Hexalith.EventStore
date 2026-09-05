@@ -320,17 +320,13 @@ public partial class IdempotencyChecker(
             request.Source.MigrationId,
             request.Source.SourceEvidenceDigest,
             request.TargetAdmissionActorId);
-        try
-        {
-            await stateManager.SetStateAsync(
-                GetLegacyRedirectKey(request.Source.ExecutionMessageId),
-                redirect).ConfigureAwait(false);
-            await stateManager.SaveStateAsync().ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
-        }
+        // The aggregate actor owns cache remediation. Let mutation/save failures escape so its
+        // fail-closed boundary can discard the batch and inspect an ambiguous commit before the
+        // public actor contract is converted back to Unavailable.
+        await stateManager.SetStateAsync(
+            GetLegacyRedirectKey(request.Source.ExecutionMessageId),
+            redirect).ConfigureAwait(false);
+        await stateManager.SaveStateAsync().ConfigureAwait(false);
         return new IdempotencyLegacySourceInspection(
             IdempotencyLegacySourceDecision.Redirected,
             IdempotencyLegacySourceEvidence.Compute(redirect));

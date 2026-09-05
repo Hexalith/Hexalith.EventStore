@@ -2,7 +2,7 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 1
 followup_review_recommended: false
@@ -57,10 +57,10 @@ deferred: []
 
 **Execution:**
 
-- [ ] `references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/TenantQueryResult.cs` -- preserve opaque validator metadata while removing both ETag/version aliases and all timestamp-derived authority.
-- [ ] `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Queries/{TenantQueryHandlerETagTests,TenantQueryFreshnessTests,TenantQueryResultTests}.cs` -- pin both factories, all six routes, every timestamp/sequence case, and degenerate ETags.
-- [ ] `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/{TenantsApiGeneratedControllerTests,AspireTopologyTests}.cs` and `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Fixtures/AspireTopologyFixture.cs` -- prove synthetic header policy plus a zero-skip real `get-tenant` flow whose payload is first verified in Redis at `tenants||projection:tenants:<id>`.
-- [ ] `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/State/{TenantMembershipCommandProvenanceTests,TenantLifecycleCommandSnapshotTests}.cs` -- remove stale comments without changing UI behavior.
+- [x] `references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/TenantQueryResult.cs` -- preserve opaque validator metadata while removing both ETag/version aliases and all timestamp-derived authority.
+- [x] `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Queries/{TenantQueryHandlerETagTests,TenantQueryFreshnessTests,TenantQueryResultTests}.cs` -- pin both factories, all six routes, every timestamp/sequence case, and degenerate ETags.
+- [x] `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/{TenantsApiGeneratedControllerTests,AspireTopologyTests}.cs` and `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Fixtures/AspireTopologyFixture.cs` -- prove synthetic header policy plus a zero-skip real `get-tenant` flow whose payload is first verified in Redis at `tenants||projection:tenants:<id>`.
+- [x] `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/State/{TenantMembershipCommandProvenanceTests,TenantLifecycleCommandSnapshotTests}.cs` -- remove stale comments without changing UI behavior.
 - [ ] `references/Hexalith.Tenants/Hexalith.Tenants.slnx` and affected test projects -- perform fresh Debug/source and Release/package restores, builds, and project-level tests; record exact results and skips.
 - [ ] `references/Hexalith.Tenants` -- after local validation, obtain a reviewed Tenants commit/published SHA, then update only this root gitlink when the outer tree is stable; never mix concurrent root edits.
 
@@ -73,6 +73,14 @@ deferred: []
 - Given completion is claimed, when repository identity is checked, then evidence records the approved baseline, reviewed Tenants commit and full published SHA, exact validation results, and separately authorized root gitlink with no unrelated outer-tree changes.
 
 ## Implementation Notes
+
+- Implemented validator-only producer metadata: normalized opaque ETags remain internal validators with `IsNotModified=false`; projection version, lifecycle, staleness, degradation, and served-at authority are not authored by either factory overload.
+- Added direct factory coverage, a six-route handler matrix, current/old/missing timestamp and genuine-sequence cases, degenerate ETags, generated-controller stripping, and a Tier-3 proof that verifies Redis before reading the same tenant directly through EventStore, through the generated `tenants-api` route, and through `TenantsRestQueryClient`.
+- Focused verification passed with zero skips: Debug/source and Release/package server builds had 0 warnings and 0 errors; the three server classes passed 45/45 in both modes; generated-controller tests passed 28/28; UI provenance/snapshot tests passed 17/17; the live Aspire/Dapr/Redis test passed 1/1 in 27.007 seconds after the direct EventStore assertions were added.
+- Full `Hexalith.Tenants.slnx` restore remains blocked in both modes because it explicitly includes projects from uninitialized nested Commons, EventStore, FrontComposer, and Memories submodules. The approved boundary forbids initializing those nested submodules.
+- The fresh Debug/source integration restore succeeded, but its build stops in `references/Hexalith.Memories/Directory.Build.props:89` because Memories' nested `references/Hexalith.EventStore` is absent. The fresh Release/package integration restore succeeded, but its build stops at `src/Hexalith.Tenants.AppHost/Program.cs:132` with pre-existing `CS1503` Dapr-component/string API skew.
+- Post-review verification applied P2-ECH-01 by binding the Redis assertion to `DaprDiagnostics.DefaultRedisPort`, then repeated the affected matrix. Debug/source and fresh Release/package server builds again completed with 0 warnings and 0 errors and 45/45 tests passed in each mode with 0 skips; the patch-local Debug integration build completed with 0 warnings and 0 errors; generated-controller tests passed 28/28, UI tests passed 17/17, and the final live Aspire/Dapr/Redis proof passed 1/1 with 0 skips in 23.692 seconds. Fresh source and package integration restores both succeeded before reproducing only the recorded Memories nested-submodule blocker (2 errors) and AppHost `CS1503` blocker (1 error), respectively; both fresh full-solution restores remain blocked by explicitly listed uninitialized nested projects.
+- Concurrent automation published Tenants commits `2a204a03` and `a54f0b952eb213026b95fd64810f686d1403c17c`, then moved the EventStore root gitlink to `a54f0b95` in root commit `c08cb3497768806d80a8e949d320cb28ccc40afc`. The final compile aliases and direct EventStore leg remain an uncommitted local delta in `AspireTopologyTests.cs`, so `a54f0b95` is not the final reviewed Story 4.7 SHA and the publication/gitlink task remains open. This run did not commit, push, reset, initialize nested submodules, or edit `sprint-status.yaml`.
 
 ## Spec Change Log
 
@@ -119,6 +127,43 @@ deferred: []
   - `[high]` `[defer]` Later Operations topology: ECH-01, ECH-02, and VG-01 share the missing `eventstore-operations` AppHost/sidecar/component wiring root cause.
   - `[medium]` `[defer]` Later Operations, Admin, release-tooling, and agent-tooling findings: ECH-03 through ECH-05 and VG-02 through VG-05 are independently real but were not processed because the higher-priority intent gap triggered loopback.
 - loopback: No implementation code was changed in this review run, so there is no run-owned code to revert. Historical `main` commits and subsequent submodule updates were preserved. Review pauses for authenticated Tenants-maintainer and root-gitlink authority before planning can resume.
+
+### 2026-09-05 — Review pass 2
+
+- verdicts: 24 findings — high 0, medium 7, low 6, false 10, maybe-false 1
+- routes: intent_gap 0, bad_spec 0, patch 1, defer 8, reject 15
+- findings:
+  - `[medium]` `[reject]` `[P2-BH-01]` Carried from pass-1 BH-15: the 24,262,123-byte, 2,596-section baseline diff is not an isolated Story 4.7 review subject. Correcting the baseline would edit this build's spec, so the review rule rejects that remedy; this pass separately inspected the Tenants baseline delta.
+  - `[low]` `[reject]` `[P2-BH-02]` Baseline `b43d64f9` records `created: 2026-08-27`, while the replanned spec says `2026-09-05`. The historical-date discrepancy is real but its only fix is this build's spec, which review rules reject.
+  - `[medium]` `[reject]` `[P2-BH-03]` Fresh solution restores are structurally blocked by explicitly listed, uninitialized nested projects, while the frozen boundary forbids initializing nested submodules. The blocker is real, but the proposed acceptance-gate rewrite edits this build's spec and the alternative solution restructuring is not Story 4.7 implementation work.
+  - `[false]` `[reject]` `[P2-BH-04]` The spec does not claim a reproducible published completion: status is `in-review`, the publication task remains unchecked, and the uncommitted final delta plus exact blockers are explicitly recorded. Published-SHA evidence is required before that task can be checked.
+  - `[false]` `[reject]` `[P2-BH-05]` Repository search found no automation that interprets frontmatter `deferred:` as the review ledger. Pass-1 deferred findings already live in `deferred-work.md`; `deferred: []` does not conceal them from a demonstrated consumer.
+  - `[false]` `[reject]` `[P2-BH-06]` `IsDegraded` is deliberately valid for a handler-computed degraded path, independently of projection lifecycle; controller tests explicitly preserve it while stripping ETag, not-modified, staleness, and projection version. The real Tenants producer now authors no degradation value.
+  - `[false]` `[reject]` `[P2-BH-07]` The generated emitter's route-agnostic degradation header matches the established controller contract rather than leaking projection authority. The real Story 4.7 path asserts the header absent because its producer supplies no degraded state.
+  - `[false]` `[reject]` `[P2-BH-08]` `ServedAt` on the outer response is gateway timing metadata, not Tenants projection authority. `TenantQueryResult` leaves it null and the EventStore gateway stamps the response time; retaining/emitting that supported field does not contradict the producer-only contract.
+  - `[false]` `[reject]` `[P2-BH-09]` Degenerate ETags are pinned at both shared factory overloads, including null/blank/whitespace/quote-only forms, while separate executed matrices prove all six handlers use the same factory and omit timestamp/sequence authority. A six-route cross-product would duplicate the tested seam without covering a distinct branch.
+  - `[low]` `[reject]` `[P2-BH-10]` `Trim('"')` can produce a malformed raw token from weak or unbalanced quoted input, but Dapr supplies opaque unquoted state-store versions and EventStore strips the validator from handler-computed public responses. The unlikely direct-consumer case is low impact and robust weak/malformed parsing would add guards outside the approved edge matrix.
+  - `[false]` `[reject]` `[P2-BH-11]` The Redis proof intentionally binds the checked-in Dapr component's current `localhost:6379`, no-auth, `tenants||` physical-key contract. A future component change should break and update this persistence-origin proof rather than silently validate a different topology.
+  - `[medium]` `[defer]` `[P2-BH-12]` Real multi-RID and missing-input container publication tests are filtered from the default Contracts job and repository-wide workflow search found no automatic lane selecting `HeavyweightContainerPublish`; a real container regression can therefore merge behind synthetic-only coverage. This concurrent release-governance gap is unrelated to Story 4.7.
+  - `[low]` `[defer]` `[P2-BH-13]` DW-372's resolution says the malformed-input theory is heavyweight and excluded, while code and its manifest binder intentionally leave that direct-MSBuild theory in the default gate. The inaccurate concurrent ledger resolution is unrelated to Story 4.7.
+  - `[low]` `[defer]` `[P2-BH-14]` The validity-window theory tests 90,001 seconds rather than the exact 86,401-second first-invalid boundary, so a widened 24-hour validator limit could escape this focused test. This concurrent release-evidence test is unrelated to Story 4.7.
+  - `[low]` `[reject]` `[P2-BH-15]` Automatic lanes are Linux-only, but the seven Windows branches are structurally bound to `Assert.Skip` and forbidden from using `return`. Runtime observation on Windows would be stronger, but adding a platform lane is disproportionate to this low, unrelated verification concern.
+  - `[medium]` `[defer]` `[P2-VG-01]` Pre-verified: the default workflow excludes both real-publish `HeavyweightContainerPublish` theories and no automatic alternate lane selects them, leaving actual OCI publication behavior unexecuted. This is the same unrelated root cause as P2-BH-12/P2-BH-13.
+  - `[medium]` `[defer]` `[P2-VG-02]` Carried from pass-1 VG-04: `pick_methods.py` has meaningful pytest coverage but no normal Memories CI invocation, so advanced-elicitation catalog behavior can regress behind a green build. It remains unrelated agent tooling and is not deferred again.
+  - `[medium]` `[defer]` `[P2-VG-03]` Carried from pass-1 VG-05: loop event relay path selection, partial writes, atomic publication, mode, and redirect refusal still lack normal-CI behavioral tests. It remains unrelated agent tooling and is not deferred again.
+  - `[low]` `[patch]` `[P2-ECH-01]` The new Redis proof uses `DaprDiagnostics.ResolveRedisPort()`, which honors `HEXALITH_EVENTSTORE_TEST_REDIS_PORT`, while the actual checked-in Tenants state-store component is fixed to `localhost:6379`. With an override and both endpoints present, the proof can inspect the wrong Redis; the smallest fix is to bind the proof to `DaprDiagnostics.DefaultRedisPort`.
+  - `[false]` `[reject]` `[P2-ECH-02]` No supported production or test configuration supplies a throwing query-handler `TimeProvider`; all discovered callers use `TimeProvider.System` or non-throwing fixed providers. A hypothetical malicious dependency does not demonstrate a reachable defect, and the frozen design deliberately retains the compatibility overload.
+  - `[medium]` `[defer]` `[P2-ECH-03]` Carried from pass-1 ECH-05: the POSIX loop hook anchors the final directory but not every ancestor, leaving an ancestor-symlink redirect/refusal case. This unrelated tooling issue is not deferred again.
+  - `[false]` `[reject]` `[P2-ECH-04]` A failed write/rename can leave a temporary file, but the next event uses a new nanosecond-based filename, so the orphan cannot block the retried signal as claimed. Residual-file cleanup may be desirable but does not establish the filed consequence.
+  - `[maybe-false]` `[defer]` `[P2-ECH-05]` The hook does not sanitize separators in `BMAD_LOOP_TASK_ID` or the event name, but the producer of those environment values is outside the reviewed repository, so valid-character guarantees could not be established. Evidence from the orchestrator that IDs are separator-free would refute the risk; otherwise a valid separator can make the hook silently drop an event.
+  - `[false]` `[reject]` `[P2-ECH-06]` The test uses the repository's standard Dapr availability mechanism, but this acceptance run executed the method twice with 1 passed and 0 skipped. The frozen requirement rejects skipped output as evidence; it does not require every developer machine without Dapr to fail its full suite.
+- grouped survivors:
+  - `[low]` `[patch]` Redis proof endpoint: P2-ECH-01 is a one-line test-only correction binding direct persistence inspection to the component endpoint actually used by this topology.
+  - `[medium]` `[defer]` Container publication automation and ledger accuracy: P2-BH-12, P2-BH-13, and P2-VG-01 share the incomplete retiering that removed real publishes from the default job without adding a positive lane and then overstated DW-372's resolution.
+  - `[low]` `[defer]` Release authority boundary: P2-BH-14 leaves the exact first-invalid 24-hour boundary unpinned.
+  - `[medium-unverified]` `[defer]` Loop hook identifier safety: P2-ECH-05 needs the external orchestrator's task/event identifier contract to settle whether separator injection is reachable.
+  - `[medium]` `[defer]` Carried tooling gaps: P2-VG-02, P2-VG-03, and P2-ECH-03 retain their pass-1 routes and are not patched or deferred again.
+- loopback: none; no intent-gap or bad-spec survivor was found. Apply P2-ECH-01, rerun its focused live proof, and append only the three newly deferred groups.
 
 ## Design Notes
 

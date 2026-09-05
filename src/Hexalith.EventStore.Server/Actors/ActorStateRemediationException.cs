@@ -13,6 +13,9 @@ internal sealed class ActorStateRemediationException : InvalidOperationException
     /// <param name="primaryExceptionType">The type of the earliest causal exception.</param>
     /// <param name="remediationOperation">The remediation operation that failed.</param>
     /// <param name="remediationExceptionType">The support-safe remediation exception type.</param>
+    /// <param name="discardExceptionType">
+    /// The support-safe type of the later discard failure, or <c>None</c> when discard completed.
+    /// </param>
     /// <param name="failedBatchDiscarded">
     /// Whether the mutations belonging to the failed batch were discarded by a completed clear.
     /// This fact does not describe mutations from any later finalizer operation.
@@ -24,11 +27,13 @@ internal sealed class ActorStateRemediationException : InvalidOperationException
         string remediationOperation,
         string remediationExceptionType,
         bool failedBatchDiscarded,
-        string durableStateObservation)
+        string durableStateObservation,
+        string discardExceptionType = "None")
         : base(
             $"Actor state remediation failed. PrimaryFailureStage={primaryFailureStage}; "
             + $"PrimaryExceptionType={primaryExceptionType}; RemediationOperation={remediationOperation}; "
             + $"RemediationExceptionType={remediationExceptionType}; "
+            + $"DiscardExceptionType={discardExceptionType}; "
             + $"FailedBatchDiscarded={failedBatchDiscarded}; "
             + $"DurableStateObservation={durableStateObservation}.")
     {
@@ -36,6 +41,7 @@ internal sealed class ActorStateRemediationException : InvalidOperationException
         PrimaryExceptionType = primaryExceptionType;
         RemediationOperation = remediationOperation;
         RemediationExceptionType = remediationExceptionType;
+        DiscardExceptionType = discardExceptionType;
         FailedBatchDiscarded = failedBatchDiscarded;
         DurableStateObservation = durableStateObservation;
     }
@@ -51,6 +57,9 @@ internal sealed class ActorStateRemediationException : InvalidOperationException
 
     /// <summary>Gets the support-safe remediation exception type.</summary>
     public string RemediationExceptionType { get; }
+
+    /// <summary>Gets the support-safe type of the discard failure, or <c>None</c>.</summary>
+    public string DiscardExceptionType { get; }
 
     /// <summary>Gets whether the failed batch was discarded by a completed cache clear.</summary>
     public bool FailedBatchDiscarded { get; }

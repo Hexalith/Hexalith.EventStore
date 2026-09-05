@@ -26,6 +26,12 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
     /// </summary>
     public IReadOnlyList<UnpublishedPublicationEntry> Entries { get; init; } = Normalize(Entries);
 
+    /// <summary>
+    /// Gets the number of distinct, well-formed publication-recovery owners represented by the
+    /// normalized index.
+    /// </summary>
+    public int OwnerCount => Entries.Count(entry => entry.IsWellFormed);
+
     /// <summary>Determines whether an entry for the supplied message id is already tracked.</summary>
     /// <param name="messageId">The command message identifier.</param>
     /// <returns><c>true</c> when the index already tracks that message id.</returns>
@@ -110,9 +116,28 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
             return [];
         }
 
-        return entries.Any(e => e is null)
-            ? [.. entries.Where(e => e is not null)]
-            : entries;
+        var normalized = new List<UnpublishedPublicationEntry>(entries.Count);
+        var owners = new HashSet<string>(StringComparer.Ordinal);
+        foreach (UnpublishedPublicationEntry? entry in entries)
+        {
+            if (entry is null)
+            {
+                continue;
+            }
+
+            // Persisted payloads produced by older versions can contain duplicate owners. Keep
+            // the first stable entry so capacity, reconciliation, and pruning all agree that one
+            // message id owns exactly one pending publication slot. Malformed entries are retained
+            // for the activation repair path, but never count as owners.
+            if (entry.IsWellFormed && !owners.Add(entry.MessageId))
+            {
+                continue;
+            }
+
+            normalized.Add(entry);
+        }
+
+        return normalized;
     }
 
     private int IndexOf(string messageId) {

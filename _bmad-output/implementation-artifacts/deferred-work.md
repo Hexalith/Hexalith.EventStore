@@ -3482,3 +3482,15 @@ decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Assembler smoke refuse guards may accept JSON false exit_code or set-equal swapped platform/child digests.
   evidence: Edge-case hunter 2026-09-05; pre-existing assembler preflight, not introduced by receipt collection.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Add an automatic lane for the real container-publish tests and correct DW-372's overstated completion record.
+  evidence: The default Contracts workflow filters out both `HeavyweightContainerPublish` real-publish theories, no automatic workflow selects the trait, and DW-372 incorrectly says the unmarked malformed-input direct-MSBuild theory is also excluded; actual OCI publication can regress behind synthetic coverage.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Pin the first invalid retained-authority validity-window boundary.
+  evidence: The release-evidence theory uses 90,001 seconds rather than 86,401 seconds, so a regression widening the intended 24-hour maximum can escape until the later test point.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Establish or enforce separator-free loop hook task and event identifiers.
+  evidence: `bmad_loop_hook.py` interpolates `BMAD_LOOP_TASK_ID` and the event name directly into a filename and swallows the resulting `OSError`; the external orchestrator producer is absent from the reviewed repository, so its valid-character contract is needed to refute the risk, otherwise separators can silently drop completion events.
