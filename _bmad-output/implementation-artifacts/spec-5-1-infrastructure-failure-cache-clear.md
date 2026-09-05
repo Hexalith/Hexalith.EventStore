@@ -4,7 +4,7 @@ type: 'bugfix'
 created: '2026-09-05'
 status: 'in-review'
 route: 'dispatch'
-review_loop_iteration: 6
+review_loop_iteration: 7
 baseline_commit: 'b43d64f906665e2bf3015eb2d3f16b771598d352'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-5-context.md'
@@ -319,6 +319,39 @@ context:
 - verification-gap-loop5-3 -- **medium / patch** -- pre-verified: exact event-batch post-commit fixtures exist, but no negative test replaces or removes an attempted metadata/event witness before fresh inspection, so weakening `HasExactCommittedEventBatchAsync` would remain green.
 - verification-gap-loop5-4 -- **medium / patch** -- pre-verified: publication-recovery ambiguity has only exact pre/post endpoint tests; no concurrent partial drain, idempotency, owner, or count witness proves that the committed branch fails closed.
 - verification-gap-loop5-5 -- **medium / patch** -- pre-verified: terminal-save ambiguity has no concurrent conflicting idempotency result, publication index, or pending-count witness, so weakening the exact committed predicate would remain green.
+- blind-loop6-1 -- **medium / bad_spec** -- carried: same location and claim as `blind-loop5-1`; ambiguous legacy-migration inspection still accepts a same-identity terminal or recoverable record without proving the exact migrated result or legacy-key removal.
+- blind-loop6-2 -- **high / bad_spec** -- carried: same location and claim as `blind-loop5-2`; `TryAdd` still replaces a well-formed same-message owner whose correlation differs, discarding the prior recovery pointer instead of failing closed.
+- blind-loop6-3 -- **medium / bad_spec** -- carried: same location and claim as `edge-loop5-2`; `TryAdd` still replaces only the first same-message remnant through a `with` assignment that does not normalize the remaining malformed duplicates.
+- blind-loop6-4 -- **medium / bad_spec** -- carried: same location and claim as `blind-loop5-3`; publication-recovery pre-commit inspection still compares only command identity rather than the exact original `PipelineState`.
+- blind-loop6-5 -- **medium / bad_spec** -- carried: same location and claim as `edge-loop5-1`; a resumed recovery pre-commit failure still compares the durable old publication index with the timestamp-refreshed attempted index and is reported as ambiguous.
+- blind-loop6-6 -- **medium / defer** -- carried: same location and claim as `blind-loop5-7`; blank-message malformed entries still bypass the activation budgets and can cause unbounded scan/allocation work, but that pre-existing non-I/O risk is outside Story 5.1's frozen bounded state-I/O intent.
+- blind-loop6-7 -- **medium / patch** -- carried: same location and claim as `verification-gap-loop5-3`; event-batch ambiguity still has no partial or replaced metadata/event witness regression.
+- blind-loop6-8 -- **medium / patch** -- carried: same location and claim as `verification-gap-loop5-4`; publication-recovery ambiguity still has no partial drain, result, owner, index, or pending-count witness regression.
+- blind-loop6-9 -- **medium / patch** -- carried: same location and claim as `verification-gap-loop5-5`; terminal-save ambiguity still has no conflicting idempotency, publication-index, or pending-count witness regression.
+- blind-loop6-10 -- **high / defer** -- carried: same location and claim as `verification-gap-1`; every automatic workflow still excludes both real heavyweight container-publication tests.
+- blind-loop6-11 -- **medium / defer** -- carried: same location and claim as `verification-gap-2`; Windows skip behavior remains covered only by a fixed-window source-text scan on Ubuntu runners.
+- blind-loop6-12 -- **medium / defer** -- carried: same location and claim as `edge-7`; the first invalid 86,401-second retained-authority boundary remains untested.
+- blind-loop6-13 -- **medium / defer** -- carried: same location and claim as `blind-loop1-10`; the documented v4 succession procedure still omits the required v4 trust and codec-digest authority changes.
+- blind-loop6-14 -- **low / defer** -- carried: same location and claim as `blind-13`; DW-372 still describes the malformed-input test as heavyweight even though it remains in the default gate.
+- blind-loop6-15 -- **medium / defer** -- carried: same location and claim as `blind-loop3-16`; the unrelated Story 3.15 records still disagree on retained subject and re-mint counts.
+- blind-loop6-16 -- **low / defer** -- carried: same location and claim as `blind-loop1-14`; the unrelated Story 4.7 spec still rewrites its historical creation date.
+- verification-gap-loop6-1 -- **high / defer** -- carried: same location and claim as `verification-gap-1`; no automatic workflow positively selects the two real `HeavyweightContainerPublish` tests.
+- verification-gap-loop6-2 -- **medium / defer** -- carried: same location and claim as `verification-gap-2`; no Windows lane executes and verifies the seven skip branches.
+- verification-gap-loop6-3 -- **medium / patch** -- carried: same location and claim as `verification-gap-loop5-3`; the exact event-batch predicate remains unprotected by a partial-witness negative regression.
+- verification-gap-loop6-4 -- **medium / patch** -- carried: same location and claim as `verification-gap-loop5-4`; the publication-recovery committed predicate remains unprotected by partial or conflicting witness regressions.
+- verification-gap-loop6-5 -- **medium / patch** -- carried: same location and claim as `verification-gap-loop5-5`; the terminal committed predicate remains unprotected by conflicting publication-state regressions.
+- verification-gap-loop6-6 -- **high / bad_spec** -- carried: same location and claim as `blind-loop5-2`; active `TryAdd` still overwrites a well-formed owner with a different correlation instead of preserving the original owner and failing closed.
+- verification-gap-loop6-other-1 -- **medium / bad_spec** -- carried: same location and claim as `blind-loop5-1`; legacy migration still accepts a same-identity observed result without the exact migrated-result and legacy-key-removal witnesses.
+- verification-gap-loop6-other-2 -- **medium / bad_spec** -- carried: same location and claim as `blind-loop5-3`; publication-recovery pre-commit classification still accepts a same-identity but otherwise different checkpoint.
+- edge-loop6-1 -- **medium / defer** -- carried: same location and claim as `blind-loop5-7`; blank malformed message entries remain an unbounded pre-existing activation scan/allocation risk outside the frozen state-I/O budget.
+- edge-loop6-2 -- **medium / defer** -- carried: same location and claim as `blind-loop2-9`; successful external dead-letter publication followed by a pre-commit marker-save failure can republish the range, and the frozen intent excludes changing dead-letter retry policy.
+- edge-loop6-3 -- **high / defer** -- carried: same location and claim as `verification-gap-1`; real `PublishContainer` regressions remain outside every automatic workflow.
+- edge-loop6-4 -- **medium / defer** -- carried: same location and claim as `blind-14`; the fixed-window Windows binder can still be satisfied without proving the guarded branch skips.
+- edge-loop6-5 -- **medium / defer** -- carried: same location and claim as `edge-7`; an erroneous validity window between 86,401 and 90,000 seconds would remain green.
+- edge-loop6-6 -- **medium / defer** -- carried: same location and claim as `blind-loop1-10`; the v4 handler path retains v3-only trust/codec authority and cannot follow the documented succession procedure safely.
+- edge-loop6-7 -- **medium / defer** -- carried: same location and claim as `blind-loop5-7`; the Story 5.1 bounded-activation claim still does not cover arbitrarily many blank-message malformed entries, which perform no state I/O but are all scanned and accumulated.
+- edge-loop6-8 -- **medium / bad_spec** -- verified: the legacy-redirect caller has no proof that `SaveStateAsync` was attempted before its catch performs durable-success inspection; a `SetStateAsync` failure followed by a concurrent exact redirect can therefore be returned as this call's success, contrary to the exact save-attempt acceptance rule.
+- edge-loop6-9 -- **medium / patch** -- verified in part: `DrainSuccessCleanupMutationFailure_DiscardsPartialCleanupBeforePersistingRetry` covers the pre-save drain-retry lane, but the declared matrix still lacks a zero-event pre/post-save ambiguity test, a finalizer publication-owner-read recovery test, and a direct metadata-read cancellation propagation test.
 
 ## Design Notes
 
