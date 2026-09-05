@@ -165,6 +165,22 @@ deferred: []
   - `[medium]` `[defer]` Carried tooling gaps: P2-VG-02, P2-VG-03, and P2-ECH-03 retain their pass-1 routes and are not patched or deferred again.
 - loopback: none; no intent-gap or bad-spec survivor was found. Apply P2-ECH-01, rerun its focused live proof, and append only the three newly deferred groups.
 
+### 2026-09-05 — Review pass 3
+
+- verdicts: 18 findings — high 0, medium 4, low 4, false 0, maybe-false 0
+- routes: intent_gap 0, bad_spec 0, patch 0, defer 18, reject 0
+- findings:
+  - `[defer]` `[BH-01]` through `[BH-05]`, `[BH-09]` through `[BH-14]`: CI, documentation, date-history, release-boundary, and concurrent actor recovery concerns are outside the approved Tenants provenance change and arise from other dirty-tree work.
+  - `[defer]` `[BH-06]` through `[BH-08]`: additional actor recovery and pending-count concerns are outside Story 4.7 and require separate implementation authority.
+  - `[defer]` `[ECH-01]`: a failed cache-barrier recovery before durable counts are known may need a dedicated actor-state design review; it is not caused by the Tenants producer change.
+  - `[defer]` `[ECH-02]`: malformed retained publication entries and owner-capacity accounting belong to concurrent publication-recovery work, not Story 4.7.
+  - `[defer]` `[VG-01]`: activation reconciliation lacks a nonempty-index behavioral test, but the changed actor/index code is concurrent and unrelated to Story 4.7.
+  - `[defer]` `[VG-02]`: non-command cache-entry barriers lack direct behavioral tests, but the changed actor infrastructure is concurrent and unrelated to Story 4.7.
+- grouped survivors:
+  - `[medium]` `[defer]` Concurrent actor state recovery and publication-index hardening: BH-06 through BH-08, BH-09 through BH-14, ECH-01, ECH-02, VG-01, and VG-02 require separate actor-state scope and tests.
+  - `[medium]` `[defer]` Concurrent CI, release, documentation, and tooling concerns: BH-01 through BH-05 concern unrelated dirty-tree changes and are not Story 4.7 defects.
+- loopback: none; no Story 4.7 finding survived triage. The current Tenants producer correction and Redis proof remain unchanged.
+
 ## Design Notes
 
 Keep the active freshness overload signature so all handler constructors and call sites stay stable, but delegate it to the validator-only factory. The persisted read model still stores timestamp and sequence for replay/idempotency; only query-response authority changes. The Tier-3 proof must inspect Redis before both raw HTTP and typed-client assertions because a completed command or successful response does not establish projection origin.

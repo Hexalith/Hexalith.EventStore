@@ -3494,3 +3494,11 @@ decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Establish or enforce separator-free loop hook task and event identifiers.
   evidence: `bmad_loop_hook.py` interpolates `BMAD_LOOP_TASK_ID` and the event name directly into a filename and swallows the resulting `OSError`; the external orchestrator producer is absent from the reviewed repository, so its valid-character contract is needed to refute the risk, otherwise separators can silently drop completion events.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Review concurrent AggregateActor state-cache recovery, pending-count reconciliation, and publication-index capacity behavior with dedicated implementation and tests.
+  evidence: Review pass 3 identified missing nonempty-index activation coverage, missing direct non-command cache-barrier coverage, and possible recovery/index accounting defects in concurrently modified EventStore actor files; these are outside Story 4.7's Tenants producer scope.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Review concurrent CI, release-boundary, documentation, and tooling findings from the dirty tree.
+  evidence: Review pass 3 identified unrelated gaps in container-test lane selection, release validity-boundary coverage, CI documentation, Windows structural tests, and agent/tooling behavior; none is caused by the approved Tenants query-provenance change.
