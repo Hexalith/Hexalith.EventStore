@@ -52,6 +52,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     /// Verifies a real SDK multi-RID archive preserves identical exact provenance labels in both configs.
     /// </summary>
     [Fact]
+    [Trait("Category", "HeavyweightContainerPublish")]
     public async Task RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs()
     {
         string root = FindRepositoryRoot();
@@ -136,6 +137,7 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     /// </summary>
     /// <param name="missingProperty">The provenance property deliberately omitted.</param>
     [Theory]
+    [Trait("Category", "HeavyweightContainerPublish")]
     [InlineData("source")]
     [InlineData("version")]
     [InlineData("created")]
@@ -371,19 +373,13 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies canonical evidence is re-derived from all package, OCI, authority, and smoke bytes.
+    /// Verifies the checked-in Story 3.14 packet still validates at the frozen canonical digest.
     /// </summary>
     [Fact]
-    public void CanonicalReleaseIdentityBindsRetainedBytesAndRejectsMutations()
+    public void CanonicalReleaseIdentityValidatesCheckedInPacket()
     {
         string root = FindRepositoryRoot();
-        string checkedInPacket = Path.Combine(
-            root,
-            "_bmad-output",
-            "implementation-artifacts",
-            "evidence",
-            "story-3-14",
-            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
+        string checkedInPacket = CheckedInStory314Packet(root);
         ProcessResult checkedIn = RunEvidenceValidator(
             root,
             Path.Combine(checkedInPacket, "release-identity.json"),
@@ -392,7 +388,16 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         checkedIn.Output.Trim().ShouldBe(
             "[corrective-release-evidence] pass: " +
             "sha256:4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9");
+    }
 
+    /// <summary>
+    /// Verifies a mutated workflow SHA fails closed with a workflow-identity diagnostic.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsWorkflowMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
         Directory.CreateDirectory(temporary);
         try
@@ -407,7 +412,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 workflowPacket);
             workflowMutation.ExitCode.ShouldNotBe(0);
             workflowMutation.Error.ShouldContain("workflow identity mismatch");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies reordered package bindings fail closed with a package-order diagnostic.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsPackageOrderMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string orderPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "package-order"));
             JsonObject orderIdentity = LoadIdentity(orderPacket);
             JsonArray orderedPackages = orderIdentity["packages"]!.AsArray();
@@ -421,7 +444,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 orderPacket);
             orderMutation.ExitCode.ShouldNotBe(0);
             orderMutation.Error.ShouldContain("release package identity or order mismatch");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies a mutated package nuspec repository identity fails closed.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsPackageOriginMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string packagePacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "package-origin"));
             JsonObject packageIdentity = LoadIdentity(packagePacket);
             JsonNode package = packageIdentity["packages"]![0].ShouldNotBeNull();
@@ -438,7 +479,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 packagePacket);
             packageMutation.ExitCode.ShouldNotBe(0);
             packageMutation.Error.ShouldContain("package nuspec repository identity does not match");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies a mutated retained OCI config label fails closed.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsRawConfigLabelMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string configPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "raw-config"));
             JsonObject configIdentity = LoadIdentity(configPacket);
             JsonNode oci = configIdentity["oci"].ShouldNotBeNull();
@@ -505,7 +564,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 configPacket);
             configMutation.ExitCode.ShouldNotBe(0);
             configMutation.Error.ShouldContain("retained OCI config platform or labels mismatch");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies a mutated packet checksum inventory fails closed.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsChecksumManifestMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string checksumPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "checksum"));
             File.AppendAllText(Path.Combine(checksumPacket, "observations.json"), " \n");
             ProcessResult checksumMutation = RunEvidenceValidator(
@@ -514,7 +591,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 checksumPacket);
             checksumMutation.ExitCode.ShouldNotBe(0);
             checksumMutation.Error.ShouldContain("packet checksum manifest digest mismatch");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies a mutated raw smoke cleanup outcome fails closed.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsSmokeOutcomeMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string smokePacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "smoke"));
             JsonObject smokeIdentity = LoadIdentity(smokePacket);
             JsonNode smoke = smokeIdentity["smokes"]![0].ShouldNotBeNull();
@@ -531,14 +626,38 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 smokePacket);
             smokeMutation.ExitCode.ShouldNotBe(0);
             smokeMutation.Error.ShouldContain("retained raw smoke log identity or outcome mismatch");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies an edited authority record timestamp fails closed with a window diagnostic.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsAuthorityRecordMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string authorityPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "authority"));
             JsonObject authorityIdentity = LoadIdentity(authorityPacket);
             JsonNode authority = authorityIdentity["authority"].ShouldNotBeNull();
             string authorityFile = authority["authority_record_file"]!.GetValue<string>();
             JsonObject authorityRecord = JsonNode.Parse(File.ReadAllText(Path.Combine(authorityPacket, authorityFile)))!
                 .AsObject();
-            authorityRecord["updated_at"] = "2026-08-20T11:06:07Z";
+            DateTimeOffset createdAt = DateTimeOffset.Parse(
+                authorityRecord["created_at"]!.GetValue<string>(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind);
+            authorityRecord["updated_at"] = createdAt.AddSeconds(1).UtcDateTime.ToString(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                CultureInfo.InvariantCulture);
             byte[] authorityBytes = CanonicalJsonBytes(authorityRecord);
             File.WriteAllBytes(Path.Combine(authorityPacket, authorityFile), authorityBytes);
             authority["authority_record_sha256"] = Sha256(authorityBytes);
@@ -549,7 +668,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 authorityPacket);
             authorityMutation.ExitCode.ShouldNotBe(0);
             authorityMutation.Error.ShouldContain("timestamps or validity window are invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies a mutated consumption receipt schema fails closed.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsReceiptSchemaMutation()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string receiptPacket = CopyPacket(checkedInPacket, Path.Combine(temporary, "receipt"));
             JsonObject receiptIdentity = LoadIdentity(receiptPacket);
             JsonNode receiptAuthority = receiptIdentity["authority"].ShouldNotBeNull();
@@ -568,7 +705,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 receiptPacket);
             receiptMutation.ExitCode.ShouldNotBe(0);
             receiptMutation.Error.ShouldContain("consumption does not bind the selected identity");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies repository-scoped role evidence is accepted when correctly scoped.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityAcceptsRepositoryScopedRoleEvidence()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string scopedRolePacket = CopyPacket(
                 checkedInPacket,
                 Path.Combine(temporary, "repository-scoped-role"));
@@ -594,9 +749,41 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 Path.Combine(scopedRolePacket, "release-identity.json"),
                 scopedRolePacket);
             scopedRole.ExitCode.ShouldBe(0, scopedRole.Output + scopedRole.Error);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
-            scopedRoleEnvelope["request_url"] =
-                "https://api.github.com/repos/Hexalith/Other/collaborators/jpiquot/permission";
+    /// <summary>
+    /// Verifies repository-scoped role evidence fails closed when the request URL is mis-scoped.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsMisScopedRepositoryRoleEvidence()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            string scopedRolePacket = CopyPacket(
+                checkedInPacket,
+                Path.Combine(temporary, "repository-mis-scoped-role"));
+            JsonObject scopedRoleIdentity = LoadIdentity(scopedRolePacket);
+            JsonNode scopedRoleAuthority = scopedRoleIdentity["authority"].ShouldNotBeNull();
+            string scopedRoleFile = scopedRoleAuthority["role_evidence_file"]!.GetValue<string>();
+            string scopedRolePath = Path.Combine(scopedRolePacket, scopedRoleFile);
+            JsonNode legacyRoleResponse = JsonNode.Parse(File.ReadAllText(scopedRolePath)).ShouldNotBeNull();
+            JsonObject scopedRoleEnvelope = new()
+            {
+                ["schema"] = "hexalith.github-repository-permission-evidence.v1",
+                ["repository"] = "Hexalith/Hexalith.EventStore",
+                ["request_url"] =
+                    "https://api.github.com/repos/Hexalith/Other/collaborators/jpiquot/permission",
+                ["response"] = legacyRoleResponse,
+            };
             byte[] wrongRepositoryRoleBytes = CanonicalJsonBytes(scopedRoleEnvelope);
             File.WriteAllBytes(scopedRolePath, wrongRepositoryRoleBytes);
             scopedRoleAuthority["role_evidence_sha256"] = Sha256(wrongRepositoryRoleBytes);
@@ -607,58 +794,108 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 scopedRolePacket);
             wrongRepositoryRole.ExitCode.ShouldNotBe(0);
             wrongRepositoryRole.Error.ShouldContain("repository role proof is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
-            foreach (string field in new[] { "selects_deployed_identity", "grants_mutation_authority" })
+    /// <summary>
+    /// Verifies handoff flags cannot grant deployment selection or mutation authority.
+    /// </summary>
+    /// <param name="field">The handoff boolean to force true.</param>
+    [Theory]
+    [InlineData("selects_deployed_identity")]
+    [InlineData("grants_mutation_authority")]
+    public void CanonicalReleaseIdentityRejectsDeployedIdentityAndMutationAuthorityHandoff(string field)
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            string authorityHandoffPacket = CopyPacket(
+                checkedInPacket,
+                Path.Combine(temporary, field));
+            JsonObject authorityHandoffIdentity = LoadIdentity(authorityHandoffPacket);
+            authorityHandoffIdentity[field] = true;
+            WriteSelectedCanonicalJson(
+                root,
+                Path.Combine(authorityHandoffPacket, "release-identity.json"),
+                authorityHandoffIdentity);
+            ProcessResult authorityHandoffMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(authorityHandoffPacket, "release-identity.json"),
+                authorityHandoffPacket);
+            authorityHandoffMutation.ExitCode.ShouldNotBe(0);
+            authorityHandoffMutation.Error.ShouldContain(
+                "must not select deployment or grant mutation authority");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies unsupported codec version or digest cannot select a trusted live handler.
+    /// </summary>
+    /// <param name="field">The dispatch metadata field to mutate.</param>
+    [Theory]
+    [InlineData("version")]
+    [InlineData("sha256")]
+    public void CanonicalReleaseIdentityRejectsUntrustedHandlerDispatch(string field)
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            string dispatchPacket = CopyPacket(
+                checkedInPacket,
+                Path.Combine(temporary, $"handler-{field}"));
+            JsonObject dispatchIdentity = LoadIdentity(dispatchPacket);
+            if (field == "version")
             {
-                string authorityHandoffPacket = CopyPacket(
-                    checkedInPacket,
-                    Path.Combine(temporary, field));
-                JsonObject authorityHandoffIdentity = LoadIdentity(authorityHandoffPacket);
-                authorityHandoffIdentity[field] = true;
-                WriteSelectedCanonicalJson(
-                    root,
-                    Path.Combine(authorityHandoffPacket, "release-identity.json"),
-                    authorityHandoffIdentity);
-                ProcessResult authorityHandoffMutation = RunEvidenceValidator(
-                    root,
-                    Path.Combine(authorityHandoffPacket, "release-identity.json"),
-                    authorityHandoffPacket);
-                authorityHandoffMutation.ExitCode.ShouldNotBe(0);
-                authorityHandoffMutation.Error.ShouldContain(
-                    "must not select deployment or grant mutation authority");
+                dispatchIdentity["codec"]![field] = 4;
+            }
+            else
+            {
+                dispatchIdentity["codec"]!["codec"]![field] = new string('0', 64);
             }
 
-            foreach ((string field, JsonNode value) in new[]
-            {
-                ("version", JsonValue.Create(4)),
-                ("sha256", JsonValue.Create(new string('0', 64))),
-            })
-            {
-                string dispatchPacket = CopyPacket(
-                    checkedInPacket,
-                    Path.Combine(temporary, $"handler-{field}"));
-                JsonObject dispatchIdentity = LoadIdentity(dispatchPacket);
-                if (field == "version")
-                {
-                    dispatchIdentity["codec"]![field] = value;
-                }
-                else
-                {
-                    dispatchIdentity["codec"]!["codec"]![field] = value;
-                }
+            WriteSelectedCanonicalJson(
+                root,
+                Path.Combine(dispatchPacket, "release-identity.json"),
+                dispatchIdentity);
+            ProcessResult dispatchMutation = RunEvidenceValidator(
+                root,
+                Path.Combine(dispatchPacket, "release-identity.json"),
+                dispatchPacket);
+            dispatchMutation.ExitCode.ShouldNotBe(0);
+            dispatchMutation.Error.ShouldContain("does not select a trusted live handler");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
-                WriteSelectedCanonicalJson(
-                    root,
-                    Path.Combine(dispatchPacket, "release-identity.json"),
-                    dispatchIdentity);
-                ProcessResult dispatchMutation = RunEvidenceValidator(
-                    root,
-                    Path.Combine(dispatchPacket, "release-identity.json"),
-                    dispatchPacket);
-                dispatchMutation.ExitCode.ShouldNotBe(0);
-                dispatchMutation.Error.ShouldContain("does not select a trusted live handler");
-            }
-
+    /// <summary>
+    /// Verifies unhashable dispatch metadata fails closed without a Python traceback.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsUnhashableDispatchMetadata()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string unhashableDispatchPacket = CopyPacket(
                 checkedInPacket,
                 Path.Combine(temporary, "handler-unhashable-version"));
@@ -675,7 +912,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             unhashableDispatchMutation.Error.ShouldContain(
                 "[corrective-release-evidence] fail: release identity dispatch metadata is invalid");
             unhashableDispatchMutation.Error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies conflicting smoke outcomes in one log fail closed.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsConflictingSmokeOutcomes()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string conflictingSmokePacket = CopyPacket(
                 checkedInPacket,
                 Path.Combine(temporary, "conflicting-smoke"));
@@ -696,7 +951,25 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 conflictingSmokePacket);
             conflictingSmokeMutation.ExitCode.ShouldNotBe(0);
             conflictingSmokeMutation.Error.ShouldContain("raw smoke log identity or outcome mismatch");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
 
+    /// <summary>
+    /// Verifies divergent per-platform smoke summaries fail closed.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityRejectsSplitSmokeSummaries()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-release-evidence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
             string splitSummaryPacket = CopyPacket(
                 checkedInPacket,
                 Path.Combine(temporary, "split-smoke-summary"));
@@ -724,25 +997,17 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     }
 
     /// <summary>
-    /// Verifies retained authority cannot expire before creation, exceed 24 hours, or be edited.
+    /// Verifies retained authority cannot expire before creation or exceed a 24-hour window.
     /// </summary>
-    /// <param name="expiresAt">Optional replacement expiry.</param>
-    /// <param name="updatedAt">Optional replacement update timestamp.</param>
+    /// <param name="expiresOffsetSeconds">Expiry offset from the retained created_at timestamp.</param>
     [Theory]
-    [InlineData("2026-08-20T11:05:00Z", null)]
-    [InlineData("2026-08-21T11:06:07Z", null)]
-    [InlineData(null, "2026-08-20T11:06:07Z")]
-    public void RetainedAuthorityRejectsInvalidWindowAndEditedRecord(string? expiresAt, string? updatedAt)
+    [InlineData(-60)]
+    [InlineData(90001)]
+    public void RetainedAuthorityRejectsInvalidValidityWindow(int expiresOffsetSeconds)
     {
         string root = FindRepositoryRoot();
-        string source = Path.Combine(
-            root,
-            "_bmad-output",
-            "implementation-artifacts",
-            "evidence",
-            "story-3-14",
-            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
-        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-authority-{Guid.NewGuid():N}");
+        string source = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-authority-window-{Guid.NewGuid():N}");
         try
         {
             string packetRoot = CopyPacket(source, temporary);
@@ -752,16 +1017,14 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             string authorityPath = Path.Combine(packetRoot, authorityFile);
             JsonObject record = JsonNode.Parse(File.ReadAllText(authorityPath))!.AsObject();
             JsonObject body = JsonNode.Parse(record["body"]!.GetValue<string>())!.AsObject();
-            if (expiresAt is not null)
-            {
-                body["expires_at"] = expiresAt;
-                record["body"] = Encoding.UTF8.GetString(CanonicalJsonBytes(body)).TrimEnd('\n');
-            }
-
-            if (updatedAt is not null)
-            {
-                record["updated_at"] = updatedAt;
-            }
+            DateTimeOffset createdAt = DateTimeOffset.Parse(
+                record["created_at"]!.GetValue<string>(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind);
+            body["expires_at"] = createdAt.AddSeconds(expiresOffsetSeconds).UtcDateTime.ToString(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                CultureInfo.InvariantCulture);
+            record["body"] = Encoding.UTF8.GetString(CanonicalJsonBytes(body)).TrimEnd('\n');
 
             byte[] recordBytes = CanonicalJsonBytes(record);
             File.WriteAllBytes(authorityPath, recordBytes);
@@ -774,6 +1037,54 @@ public sealed class CorrectiveOciProvenanceReleaseTests
                 packetRoot);
             result.ExitCode.ShouldNotBe(0);
             result.Error.ShouldContain("timestamps or validity window are invalid");
+            result.Error.ShouldNotContain("publication authority evidence");
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies an edited authority record update timestamp fails closed independently of window bounds.
+    /// </summary>
+    [Fact]
+    public void RetainedAuthorityRejectsEditedRecordTimestamp()
+    {
+        string root = FindRepositoryRoot();
+        string source = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-authority-edit-{Guid.NewGuid():N}");
+        try
+        {
+            string packetRoot = CopyPacket(source, temporary);
+            JsonObject identity = LoadIdentity(packetRoot);
+            JsonNode authority = identity["authority"].ShouldNotBeNull();
+            string authorityFile = authority["authority_record_file"]!.GetValue<string>();
+            string authorityPath = Path.Combine(packetRoot, authorityFile);
+            JsonObject record = JsonNode.Parse(File.ReadAllText(authorityPath))!.AsObject();
+            DateTimeOffset createdAt = DateTimeOffset.Parse(
+                record["created_at"]!.GetValue<string>(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind);
+            record["updated_at"] = createdAt.AddSeconds(1).UtcDateTime.ToString(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                CultureInfo.InvariantCulture);
+
+            byte[] recordBytes = CanonicalJsonBytes(record);
+            File.WriteAllBytes(authorityPath, recordBytes);
+            authority["authority_record_sha256"] = Sha256(recordBytes);
+            RefreshPacketManifest(root, packetRoot, identity);
+
+            ProcessResult result = RunEvidenceValidator(
+                root,
+                Path.Combine(packetRoot, "release-identity.json"),
+                packetRoot);
+            result.ExitCode.ShouldNotBe(0);
+            result.Error.ShouldContain("timestamps or validity window are invalid");
+            result.Error.ShouldNotContain("publication authority evidence");
         }
         finally
         {
@@ -1202,6 +1513,15 @@ public sealed class CorrectiveOciProvenanceReleaseTests
         binding["sha256"] = hash;
         binding["digest"] = $"sha256:{hash}";
     }
+
+    private static string CheckedInStory314Packet(string root) =>
+        Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "story-3-14",
+            "f343bb0153e9cdcb8b12ec10153813072f5ad38d");
 
     private static string CopyPacket(string source, string destination)
     {

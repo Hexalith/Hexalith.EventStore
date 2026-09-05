@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-08-30
+# last_updated: 2026-09-05
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '08-30-2026 11:05'
+last_updated: '09-05-2026 08:28'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -227,7 +227,7 @@ development_status:
   # inside the frozen review subjects and the focused verifier, so they are unrenameable and
   # proposal section 4.9's atomic-rename condition cannot be met. Only the display title changed.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
-  3-14-corrective-oci-provenance-release: in-progress
+  3-14-corrective-oci-provenance-release: done
   # 2026-08-25 (loop-7 landing): the packet fails closed at 0 of 3 receipts and grants nothing.
   # Loop 7 landed at zero receipts, where a re-mint is free, and closed two regressions loop 6 had
   # introduced -- a nuspec prolog scan skipped behind a residual byte-order mark, and a bytes-path

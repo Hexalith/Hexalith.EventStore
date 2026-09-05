@@ -406,7 +406,7 @@ public sealed class ContainerPublishingGovernanceTests
     {
         if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
         }
 
         string root = FindRepositoryRoot();
@@ -438,7 +438,7 @@ public sealed class ContainerPublishingGovernanceTests
     {
         if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
         }
 
         string root = FindRepositoryRoot();
@@ -465,7 +465,7 @@ public sealed class ContainerPublishingGovernanceTests
     {
         if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
         }
 
         string root = FindRepositoryRoot();
@@ -486,61 +486,63 @@ public sealed class ContainerPublishingGovernanceTests
     {
         if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
         }
-
-        string root = FindRepositoryRoot();
-        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-reservation-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(temporary);
-        try
+        else
         {
-            string preflightMarker = Path.Combine(temporary, "preflight-ran");
-            string publishMarker = Path.Combine(temporary, "publish-ran");
-            string preflight = Path.Combine(temporary, "preflight.sh");
-            File.WriteAllText(preflight, "#!/usr/bin/env bash\nset -euo pipefail\ntouch \"$PREFLIGHT_MARKER\"\n");
-            File.SetUnixFileMode(
-                preflight,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            ProcessStartInfo start = new("bash")
+            string root = FindRepositoryRoot();
+            string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-reservation-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(temporary);
+            try
             {
-                WorkingDirectory = root,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-            };
-            start.ArgumentList.Add("-c");
-            start.ArgumentList.Add("bash \"$1\" 99.0.1 verify && touch \"$2\"");
-            start.ArgumentList.Add("reservation-test");
-            start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
-            start.ArgumentList.Add(publishMarker);
-            start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
-            start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
-            start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
-            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
-            start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
-            start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
-                ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
-            start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true";
-            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot";
-            start.Environment["GITHUB_SHA"] = new string('b', 40);
-            start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = preflight;
-            start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
-            start.Environment["PREFLIGHT_MARKER"] = preflightMarker;
+                string preflightMarker = Path.Combine(temporary, "preflight-ran");
+                string publishMarker = Path.Combine(temporary, "publish-ran");
+                string preflight = Path.Combine(temporary, "preflight.sh");
+                File.WriteAllText(preflight, "#!/usr/bin/env bash\nset -euo pipefail\ntouch \"$PREFLIGHT_MARKER\"\n");
+                File.SetUnixFileMode(
+                    preflight,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                ProcessStartInfo start = new("bash")
+                {
+                    WorkingDirectory = root,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                };
+                start.ArgumentList.Add("-c");
+                start.ArgumentList.Add("bash \"$1\" 99.0.1 verify && touch \"$2\"");
+                start.ArgumentList.Add("reservation-test");
+                start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
+                start.ArgumentList.Add(publishMarker);
+                start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
+                start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
+                start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
+                start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
+                start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
+                start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
+                    ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
+                start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true";
+                start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
+                start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
+                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
+                start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot";
+                start.Environment["GITHUB_SHA"] = new string('b', 40);
+                start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = preflight;
+                start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
+                start.Environment["PREFLIGHT_MARKER"] = preflightMarker;
 
-            using Process process = Process.Start(start).ShouldNotBeNull();
-            process.WaitForExit();
+                using Process process = Process.Start(start).ShouldNotBeNull();
+                process.WaitForExit();
 
-            process.ExitCode.ShouldNotBe(0);
-            process.StandardError.ReadToEnd().ShouldContain("different from the authorized reservation");
-            File.Exists(preflightMarker).ShouldBeFalse();
-            File.Exists(publishMarker).ShouldBeFalse();
-        }
-        finally
-        {
-            Directory.Delete(temporary, recursive: true);
+                process.ExitCode.ShouldNotBe(0);
+                process.StandardError.ReadToEnd().ShouldContain("different from the authorized reservation");
+                File.Exists(preflightMarker).ShouldBeFalse();
+                File.Exists(publishMarker).ShouldBeFalse();
+            }
+            finally
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
         }
     }
 
@@ -753,7 +755,7 @@ public sealed class ContainerPublishingGovernanceTests
     {
         if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
         }
 
         string root = FindRepositoryRoot();
@@ -836,7 +838,7 @@ public sealed class ContainerPublishingGovernanceTests
     {
         if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
         }
 
         string root = FindRepositoryRoot();
@@ -866,65 +868,104 @@ public sealed class ContainerPublishingGovernanceTests
     {
         if (OperatingSystem.IsWindows())
         {
-            return;
+            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
         }
-
-        string root = FindRepositoryRoot();
-        string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-preflight-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(temporary);
-        try
+        else
         {
-            string rejectingValidator = Path.Combine(temporary, "reject-preflight.sh");
-            string preflightInvocationMarker = Path.Combine(temporary, "preflight-invoked");
-            File.WriteAllText(
-                rejectingValidator,
-                "#!/usr/bin/env bash\n" +
-                "set -euo pipefail\n" +
-                ": > \"$PREFLIGHT_INVOCATION_MARKER\"\n" +
-                "exit 1\n");
-            File.SetUnixFileMode(
-                rejectingValidator,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            string nugetMarker = Path.Combine(temporary, "nuget-ran");
-            string containerMarker = Path.Combine(temporary, "container-ran");
-            ProcessStartInfo start = new("bash")
+            string root = FindRepositoryRoot();
+            string temporary = Path.Combine(Path.GetTempPath(), $"hexalith-preflight-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(temporary);
+            try
             {
-                WorkingDirectory = root,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-            };
-            start.ArgumentList.Add("-c");
-            start.ArgumentList.Add("bash \"$1\" 99.0.0 publish && touch \"$2\" && touch \"$3\"");
-            start.ArgumentList.Add("preflight-test");
-            start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
-            start.ArgumentList.Add(nugetMarker);
-            start.ArgumentList.Add(containerMarker);
-            start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
-            start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
-            start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
-            start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
-            start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
-            start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
-                ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
-            start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false";
-            start.Environment["GITHUB_SHA"] = new string('b', 40);
-            start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
-            start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
-            start.Environment["PREFLIGHT_INVOCATION_MARKER"] = preflightInvocationMarker;
+                string rejectingValidator = Path.Combine(temporary, "reject-preflight.sh");
+                string preflightInvocationMarker = Path.Combine(temporary, "preflight-invoked");
+                File.WriteAllText(
+                    rejectingValidator,
+                    "#!/usr/bin/env bash\n" +
+                    "set -euo pipefail\n" +
+                    ": > \"$PREFLIGHT_INVOCATION_MARKER\"\n" +
+                    "exit 1\n");
+                File.SetUnixFileMode(
+                    rejectingValidator,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                string nugetMarker = Path.Combine(temporary, "nuget-ran");
+                string containerMarker = Path.Combine(temporary, "container-ran");
+                ProcessStartInfo start = new("bash")
+                {
+                    WorkingDirectory = root,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                };
+                start.ArgumentList.Add("-c");
+                start.ArgumentList.Add("bash \"$1\" 99.0.0 publish && touch \"$2\" && touch \"$3\"");
+                start.ArgumentList.Add("preflight-test");
+                start.ArgumentList.Add(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
+                start.ArgumentList.Add(nugetMarker);
+                start.ArgumentList.Add(containerMarker);
+                start.Environment["HEXALITH_BUILDS_EXECUTION_SHA"] = new string('a', 40);
+                start.Environment["HEXALITH_RELEASE_ENVIRONMENT"] = "production";
+                start.Environment["HEXALITH_RELEASE_SOURCE_BRANCH"] = "main";
+                start.Environment["HEXALITH_RELEASE_SOURCE_CI_WORKFLOW"] = "ci.yml";
+                start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
+                start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
+                    ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
+                start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false";
+                start.Environment["GITHUB_SHA"] = new string('b', 40);
+                start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
+                start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
+                start.Environment["PREFLIGHT_INVOCATION_MARKER"] = preflightInvocationMarker;
 
-            using Process process = Process.Start(start).ShouldNotBeNull();
-            process.WaitForExit();
+                using Process process = Process.Start(start).ShouldNotBeNull();
+                process.WaitForExit();
 
-            process.ExitCode.ShouldNotBe(0);
-            File.Exists(preflightInvocationMarker).ShouldBeTrue();
-            File.Exists(nugetMarker).ShouldBeFalse();
-            File.Exists(containerMarker).ShouldBeFalse();
+                process.ExitCode.ShouldNotBe(0);
+                File.Exists(preflightInvocationMarker).ShouldBeTrue();
+                File.Exists(nugetMarker).ShouldBeFalse();
+                File.Exists(containerMarker).ShouldBeFalse();
+            }
+            finally
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
         }
-        finally
+    }
+
+    /// <summary>
+    /// Verifies POSIX governance cases use Assert.Skip on Windows instead of early-return vacuous passes.
+    /// </summary>
+    [Fact]
+    public void PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn()
+    {
+        string root = FindRepositoryRoot();
+        string source = File.ReadAllText(
+            Path.Combine(
+                root,
+                "tests",
+                "Hexalith.EventStore.Contracts.Tests",
+                "Packaging",
+                "ContainerPublishingGovernanceTests.cs"));
+        int selfStart = source.IndexOf(
+            "public void PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn()",
+            StringComparison.Ordinal);
+        selfStart.ShouldBeGreaterThanOrEqualTo(0);
+        int selfEnd = source.IndexOf("\n    /// <summary>", selfStart, StringComparison.Ordinal);
+        selfEnd.ShouldBeGreaterThan(selfStart);
+        string scanned = source.Remove(selfStart, selfEnd - selfStart);
+
+        const string windowsGuard = "if (OperatingSystem.IsWindows())";
+        int skipWindowCount = 0;
+        int index = 0;
+        while ((index = scanned.IndexOf(windowsGuard, index, StringComparison.Ordinal)) >= 0)
         {
-            Directory.Delete(temporary, recursive: true);
+            string window = scanned.Substring(index, Math.Min(280, scanned.Length - index));
+            window.ShouldContain("Assert.Skip(");
+            window.ShouldNotContain("return;");
+            skipWindowCount++;
+            index += windowsGuard.Length;
         }
+
+        skipWindowCount.ShouldBe(7);
     }
 
     /// <summary>
@@ -957,6 +998,10 @@ public sealed class ContainerPublishingGovernanceTests
         // and it drifted two rotations behind. Bind it to the workflow it describes.
         secrets.ShouldContain(ApprovedBuildsReleaseSha);
         ci.ShouldContain(ApprovedBuildsReleaseSha);
+        ci.ShouldContain("release_evidence_handlers");
+        ci.ShouldContain("v4");
+        ci.ShouldContain("HANDLER_FILE_SHA256");
+        ci.ShouldContain("Category=HeavyweightContainerPublish");
         targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:10.0-alpine");
         targets.ShouldContain("<ContainerUser>app</ContainerUser>");
         targets.ShouldContain("<ContainerPort Include=\"8080\"");

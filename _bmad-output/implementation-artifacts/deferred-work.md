@@ -2611,7 +2611,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: ContainerPublishingGovernanceTests.cs
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Replace the five Windows early-return vacuous passes in the container-publishing governance suite with real skips. evidence: `ContainerPublishingGovernanceTests.cs` returns early at lines 207, 239, 266, 287, 443 and 485 under `OperatingSystem.IsWindows()`. An early return is an xUnit pass, so AC1's "zero-skipped coverage" is satisfied by construction on Windows. Only line 287 is new in this chunk; the other five predate it.
-status: open
+status: done 2026-09-05
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs now Assert.Skip on Windows for the seven POSIX shell governance cases instead of early-return vacuous passes.
 
 ### DW-357: Clean up the release-evidence codec hygiene cluster.
 
@@ -2662,7 +2663,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-corrective-oci-provenance-release (2026-08-21)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Decouple the authority-window theory from the frozen timestamps and split the seven-scenario mutation Fact. evidence: `RetainedAuthorityRejectsInvalidWindowAndEditedRecord` InlineData sits exactly one second off the frozen `created_at` (`2026-08-20T11:06:06Z`); if the window check ever passes, the assertion falls through to an opaque summary-mismatch error instead of the intended message. Separately, `CanonicalReleaseIdentityBindsRetainedBytesAndRejectsMutations` packs seven independent mutation scenarios into one ~180-line `[Fact]`, so the first failure hides the other six.
-status: open
+status: done 2026-09-05
+resolution: already resolved: CorrectiveOciProvenanceReleaseTests splits retained-byte mutations into focused Facts/Theories and decouples authority-window cases from frozen absolute timestamps via created_at-relative offsets, with the edited-record case as its own Fact.
 
 ### DW-364: Split the governed release path into its own reusable workflow file so legacy callers stop having to grant `attestations: write` and `id-token: write`.
 
@@ -2734,7 +2736,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: github/workflows/ci.yml
 severity: low
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Mark or re-tier the heavyweight container-publish theories so the CI-gating Contracts lane is not paying for real `dotnet publish` cycles. evidence: `ContainerPublicationRejectsMissingProvenanceInputs` runs two full `dotnet publish -t:PublishContainer` cycles at an 8-minute budget each and `ContainerPublicationRejectsMalformedProvenanceInputs` runs four `dotnet msbuild -t:ValidateContainerProvenanceInputs` invocations, all inside `Hexalith.EventStore.Contracts.Tests`, which `.github/workflows/ci.yml` runs as a blocking deterministic gate. Nothing marks them excludable from a fast lane, and the two theories use inconsistent proof strategies (real publish versus direct private-target invocation) for the same guard. Pre-existing: the real-publish pattern arrived in an earlier Story 3.14 round. severity: low
-status: open
+status: done 2026-09-05
+resolution: already resolved: CorrectiveOciProvenanceReleaseTests marks RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs, ContainerPublicationRejectsMissingProvenanceInputs, and ContainerPublicationRejectsMalformedProvenanceInputs with Category=HeavyweightContainerPublish; .github/workflows/ci.yml Contracts lane uses --filter-not-trait to exclude them from the default gate; ReleasePackageManifestTests binds the filter.
 
 ### DW-373: Document how a second corrective release adds a `v4` evidence handler; the v3 handler is a deliberate single-packet allowlist with no successor and no procedure.
 
@@ -2742,7 +2745,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: tools/release_evidence_handlers/v3.py:15
 severity: medium
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Document how a second corrective release adds a `v4` evidence handler; the v3 handler is a deliberate single-packet allowlist with no successor and no procedure. evidence: `tools/release_evidence_handlers/v3.py:15` pins `EXPECTED_PACKET_CODEC_SHA256 = 814502bd…` and `:211` additionally rejects `codec["version"] != CODEC_VERSION`, so v3 accepts exactly the one retained codec digest of the frozen v3.96.2 packet. `tools/validate-corrective-release-evidence.py:14` has a single `HANDLERS` entry. Separately, `V3_PUBLICATION_PREFLIGHT_SHA256 = 830af8af…` is the *executed* `eadddc7b` shared preflight; the currently pinned `a07078ad` (and the development gitlink `307a043`) hash to `fe5ffc3f…`, so the legacy role-evidence branch is already closed to anything produced by today's pin. That is correct fail-closed behaviour for the frozen packet but leaves the next corrective release with no documented path, and no `docs/` page describes the `release_evidence_handlers` package or the dispatch table at all. severity: medium
-status: open
+status: done 2026-09-05
+resolution: already resolved: docs/ci.md documents the v4 evidence-handler succession procedure without changing live v3.py / dispatcher pins.
 
 ### DW-374: The deferred-work ledger itself records a stale publication pin.
 
@@ -2750,7 +2754,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: deferred-work.md:14
 severity: low
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: The deferred-work ledger itself records a stale publication pin. evidence: `deferred-work.md:14` describes the release-skip race entry's owner_repo as "currently pinned in this repo as `builds-execution-sha: cf04c419378dfe1bd3c41a9244b5e3283092056e`"; the caller has since rotated through `63409393…` to `a07078ad…`. The ledger is append-only legacy-advisory format, so this is recorded rather than edited in place. severity: low
-status: open
+status: done 2026-09-05
+resolution: already resolved: append-only clarification recorded below; historical DW-7 pin prose left unchanged.
+clarification: 2026-09-05 — The historical `builds-execution-sha: cf04c419378dfe1bd3c41a9244b5e3283092056e` text inside the DW-7 owner_repo note is stale relative to the current EventStore release pin `22a578b576a515d2af214fe81859447fffc97981` (see `.github/workflows/release.yml` `uses:` / `builds-execution-sha` and `ApprovedBuildsReleaseSha`). Intermediate pins included `63409393…` and `a07078ad…`. This ledger remains append-only; do not rewrite the DW-7 entry.
 
 ### DW-375: Replace the fixture-only Story 3.13 durable-source URL anchor with a GitHub-minted immutable acceptance reference before collecting the three production receipts.
 
@@ -3440,3 +3446,7 @@ severity: high
 reason: `python3 tools/validate-oq8-platform-evidence.py` fails with `Story 4.15 v2 gate-input identity drift: docs/ci.md`. The v2 successor packet sealed a byte-hash pin on `docs/ci.md` at commit `83b32fcf` (2026-08-30 09:47+02:00), content-bound to the three recorded `reviews/{architecture,security,test}.json` receipts. Commit `75dc59aa` ("fix: update BMAD 6.11.1-next.33", 2026-08-30 12:36+02:00) then legitimately updated `docs/ci.md` — it is Story 3.15's own narration of its deployed-runtime-parity re-mint state (subject hash, receipt counts), unrelated to OQ8/Story 4.15. This is the same "sealed gate-input drift" class already tracked for `tools/validate-oq8-platform-evidence.py` itself (see the story's Review Findings blocker note, 2026-08-30), now hitting a second pinned path that another story continuously re-narrates. Fixing it means recomputing `docs/ci.md`'s hash and repropagating it through `source-artifact-identity.json` → `review-subject.json`, which invalidates the three existing reviewer receipts and needs fresh architecture/security/test sign-off — not a mechanical patch, and out of scope for an implementation pass per the frozen spec's "never fabricate reviewer approval." No code or evidence file was changed while investigating this.
 status: open
 decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, propagate the new subject, and collect fresh architecture, security, and test reviewer sign-off.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release-2.md`
+  summary: Windows Assert.Skip outcome for POSIX governance cases is not observed on a Windows runner.
+  evidence: Contracts CI is Linux-only; PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn is a tightened source-text binder. A Windows host (or OS-detection seam) that runs those seven cases and observes xUnit skip vs vacuous pass would settle runtime AC1.

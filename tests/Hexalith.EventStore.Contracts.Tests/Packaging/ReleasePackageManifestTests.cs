@@ -726,6 +726,7 @@ public sealed class ReleasePackageManifestTests
         contractsJob.ShouldContain(installDependency);
         contractsJob.ShouldContain(publishEnvironment);
         contractsJob.ShouldContain("dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj");
+        contractsJob.ShouldContain("--filter-not-trait \"Category=HeavyweightContainerPublish\"");
         contractsJob.ShouldContain("--report-xunit-trx");
         contractsJob.ShouldContain("--coverage-output-format cobertura");
         contractsJob.ShouldNotContain("--collect:");
@@ -737,6 +738,23 @@ public sealed class ReleasePackageManifestTests
             .ShouldBeLessThan(contractsJob.IndexOf(publishEnvironment, StringComparison.Ordinal));
         contractsJob.IndexOf(publishEnvironment, StringComparison.Ordinal)
             .ShouldBeLessThan(contractsJob.IndexOf("dotnet test tests/Hexalith.EventStore.Contracts.Tests", StringComparison.Ordinal));
+
+        string correctiveReleaseTests = File.ReadAllText(
+            Path.Combine(
+                root,
+                "tests",
+                "Hexalith.EventStore.Contracts.Tests",
+                "Packaging",
+                "CorrectiveOciProvenanceReleaseTests.cs"));
+        AssertHeavyweightTraitBeforeMethod(
+            correctiveReleaseTests,
+            "RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs");
+        AssertHeavyweightTraitBeforeMethod(
+            correctiveReleaseTests,
+            "ContainerPublicationRejectsMissingProvenanceInputs");
+        AssertNoHeavyweightTraitBeforeMethod(
+            correctiveReleaseTests,
+            "ContainerPublicationRejectsMalformedProvenanceInputs");
 
         liveSidecarJob.ShouldContain(createEnvironment);
         liveSidecarJob.ShouldContain(installDependency);
@@ -1111,6 +1129,34 @@ public sealed class ReleasePackageManifestTests
 
         offenders.ShouldBeEmpty(
             "Active docs must describe the July 2 external API host/client-library split, not the superseded UI-host controller model.");
+    }
+
+    private static void AssertHeavyweightTraitBeforeMethod(string source, string methodName)
+    {
+        string prelude = AttributePreludeBeforeMethod(source, methodName);
+        prelude.ShouldContain("[Trait(\"Category\", \"HeavyweightContainerPublish\")]");
+    }
+
+    private static void AssertNoHeavyweightTraitBeforeMethod(string source, string methodName)
+    {
+        string prelude = AttributePreludeBeforeMethod(source, methodName);
+        prelude.ShouldNotContain("[Trait(\"Category\", \"HeavyweightContainerPublish\")]");
+    }
+
+    private static string AttributePreludeBeforeMethod(string source, string methodName)
+    {
+        int methodIndex = source.IndexOf($"public void {methodName}(", StringComparison.Ordinal);
+        if (methodIndex < 0)
+        {
+            methodIndex = source.IndexOf($"public async Task {methodName}(", StringComparison.Ordinal);
+        }
+
+        methodIndex.ShouldBeGreaterThanOrEqualTo(0, methodName);
+        int theoryIndex = source.LastIndexOf("\n    [Theory]", methodIndex, StringComparison.Ordinal);
+        int factIndex = source.LastIndexOf("\n    [Fact]", methodIndex, StringComparison.Ordinal);
+        int attributeStart = Math.Max(theoryIndex, factIndex);
+        attributeStart.ShouldBeGreaterThanOrEqualTo(0, methodName);
+        return source[attributeStart..methodIndex];
     }
 
     private static void CreateSyntheticReleaseOutput(string packageDirectory, string mutation)

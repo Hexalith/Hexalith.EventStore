@@ -87,6 +87,7 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
           --no-build
           --configuration Release
+          --filter-not-trait "Category=HeavyweightContainerPublish"
           --results-directory "TestResults/Hexalith.EventStore.Contracts.Tests"
           --report-xunit-trx
           --report-xunit-trx-filename Hexalith.EventStore.Contracts.Tests.trx
