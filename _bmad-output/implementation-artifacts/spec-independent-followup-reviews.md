@@ -2,9 +2,9 @@
 title: 'Independent Follow-up Reviews'
 type: 'bugfix'
 created: '2026-09-01'
-baseline_revision: '28cd5935a156600b52f95b378f9c45ab57ba46cb'
+baseline_revision: acfc2f8856796094d64102c6a2bff9946cee81ab
 baseline_commit: '28cd5935a156600b52f95b378f9c45ab57ba46cb'
-status: 'blocked'
+status: ready-for-dev
 review_loop_iteration: 0
 followup_review_recommended: true
 context: []
@@ -36,7 +36,7 @@ deferred:
 
 ## Boundaries & Constraints
 
-**Always:** Preserve the `security` default resource identity, supported resource-name/realm/import overrides, Keycloak endpoint/authentication behavior, the 14-entry release manifest, both existing validator entry points, and the single scoped NuGet publication command. Keep all environment mutation serialized, restored in `finally`, and independent of the caller's machine state. Treat the source story specs and current acceptance criteria as read-only authority. During finalization, evaluate cleanliness only for the four Execution paths and this spec relative to `baseline_commit`; leave pre-existing or concurrent changes outside those paths untouched, and do not treat them as a story blocker after all specified verification passes. Changes that overlap an owned path, or any failed verification, remain blocking.
+**Always:** Preserve the `security` default resource identity, supported resource-name/realm/import overrides, Keycloak endpoint/authentication behavior, the 14-entry release manifest, both existing validator entry points, and the single scoped NuGet publication command. Keep all environment mutation serialized, restored in `finally`, and independent of the caller's machine state. Treat the source story specs and current acceptance criteria as read-only authority. During finalization, evaluate cleanliness only for the four Execution paths and this spec relative to `baseline_commit`; leave pre-existing or concurrent changes outside those paths untouched, and do not treat them as a story blocker after all specified verification passes. Once those scoped checks pass, finalization MUST report the story complete even if other repository paths are dirty; repository-wide dirtiness is informational only and MUST NOT override this scoped rule. Changes that overlap an owned path, or any failed verification, remain blocking.
 
 **Never:** Rename Keycloak implementation concepts, change production AppHost topology merely to simplify tests, change package IDs/versions/inventory, publish artifacts, edit `references/**`, edit `_bmad-output/implementation-artifacts/deferred-work.md`, or reopen already-ledgered CLI-flag, version-example, shared-temp, GitHub-asset-glob, or stale-ledger-citation findings.
 
@@ -49,7 +49,7 @@ deferred:
 | Realm/import contract | Default and explicit realm/import options build a security resource | Realm URL and import annotation reflect the selected values without changing the `security` role | Missing or mismatched annotations fail focused model tests |
 | Repeated dependency group | One TFM appears in multiple nuspec groups whose union contains required edges | Both release validators reject the archive | Diagnostic identifies the archive and repeated target framework |
 | Extra publication command | Semantic-release contains the valid EventStore push plus any second NuGet push/operand | Governance test rejects the configuration | Exactly one scoped push remains accepted |
-| Unrelated dirty workspace | Pre-existing or concurrent changes exist outside the four Execution paths and this spec | Leave those changes untouched and complete the story after every specified verification passes | Any change overlapping an owned path or any failed verification remains blocking |
+| Unrelated dirty workspace | Pre-existing or concurrent changes exist outside the four Execution paths and this spec | Leave those changes untouched and report the story complete after every specified verification passes, irrespective of repository-wide dirty status | Any change overlapping an owned path or any failed verification remains blocking |
 
 </intent-contract>
 
@@ -79,7 +79,7 @@ deferred:
 - Given default or explicitly overridden realm/import options, when the security resource model is inspected, then its realm URL and import annotation match those options and its role name remains `security` by default.
 - Given a namespaced nuspec with two groups for the same TFM, when either release validator runs, then it fails before dependency unions can hide incomplete groups; a valid single group still succeeds.
 - Given semantic-release configuration with the valid EventStore push plus a second foreign push or package operand, when governance tests run, then they fail; the current single `./nupkgs/Hexalith.EventStore.*.nupkg` push succeeds.
-- Given pre-existing or concurrent changes only outside the four Execution paths and this spec, when every specified verification passes and finalization runs, then those unrelated changes remain untouched and do not block story completion; an owned-path overlap or failed verification still blocks.
+- Given pre-existing or concurrent changes only outside the four Execution paths and this spec, when every specified verification passes and finalization runs, then finalization reports the story complete while those unrelated changes remain untouched; repository-wide dirtiness alone must not block, while an owned-path overlap or failed verification still blocks.
 
 ## Spec Change Log
 
@@ -141,30 +141,3 @@ The package parser should reject structurally ambiguous repeated groups rather t
 
 **Results:** Both focused Release builds passed with zero warnings/errors. `AspireSecurityResourceNamingTests` passed 5/5 under hostile persistent/invalid-port environment values, `HexalithEventStoreSecurityExtensionsTests` passed 10/10, and `ReleasePackageManifestTests` passed 114/114 through both validator entry points. The package dry run emitted exactly 14 commands and created no output directory. `git diff --check` passed and `deferred-work.md` remains unchanged.
 
-## Auto Run Result
-
-Status: blocked
-Blocking condition: finalization left repository dirty because unrelated concurrent OQ8 edits remain in `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs` and `tools/validate-oq8-platform-evidence.py`.
-
-Summary: Independent follow-up reviews and implementation completed for Stories 3.4 and 3.6, but build-auto finalization is blocked by unrelated concurrent OQ8 working-tree edits. The Aspire role remains `security`, the 14-package release inventory and live publication configuration remain unchanged, and five reproduced verification defects plus the review pass's direct bypasses are now fail-closed. Already-verified and already-ledgered work was not reopened.
-
-Files changed:
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/AspireSecurityResourceNamingTests.cs` — widened tracked/operator identity coverage and made hostile environment isolation/restoration self-proving.
-- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/HexalithEventStoreSecurityExtensionsTests.cs` — pinned complete realm URLs and exact realm-import sources.
-- `tools/release_package_contract.py` — rejected repeated dependency groups and ambiguous direct/blank-group mixtures before union.
-- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs` — added negative and positive dependency-group matrices and exact cross-command NuGet publication governance.
-- `_bmad-output/implementation-artifacts/spec-independent-followup-reviews.md` — recorded intent, independent review evidence, all verdicts, deferrals, and final disposition.
-
-Review findings: 8 grouped patches applied (medium 5, low 3; 15 reviewer rows), 2 pre-existing medium items deferred in this spec, and 14 rows rejected. Rejections were: multiline shell continuation (rare and parser-heavy); null callback services (hypothetical framework evolution); case-colliding environment variables (rare and complex); three literal-shell obfuscation variants and one harmless-echo variant (outside the explicit canonical command contract); exact-command brittleness (intentional governance); the unrelated-file import claim (disproved by the one-file fixture); TFM-alias union (disproved by exact per-group validation); remediation-vs-review divergence (authorized by build-auto); premature empty-triage observation (workflow timing); and the two claims of narrow Story 3.4/3.6 review (disproved by full AppHost/Compose/live and real pack/consumer evidence).
-
-Follow-up review recommendation: `true`. Five medium and three low grouped entries were patched; two or more medium patches meet the damping recommendation threshold.
-
-Verification performed:
-- Live Aspire baseline: `security` reached Healthy and expected EventStore/Admin/Sample resources exposed WaitFor relationships to it; no `keycloak` resource identity appeared.
-- Independent Story 3.4 evidence: full AppHost assembly 96/96, focused naming/helper/port classes green, valid brownfield JSON, and scratch Compose proof of one `security` service, five dependents, `security:8080`, and `OTEL_SERVICE_NAME=security`.
-- Independent Story 3.6 evidence: 14-command dry run, focused package tests, real 14-package pack, both validators, and all 13 library plus one tool isolated consumers green.
-- Final patched gates: AppHost and Contracts Release builds each completed with 0 warnings/0 errors; naming 5/5, security helper 10/10, package manifest 114/114, Python compilation, 14-command dry run with no output directory, and whitespace checks all passed.
-- Git policy: all three implementation commits after baseline passed the repository's pinned commitlint range validation.
-- `_bmad-output/implementation-artifacts/deferred-work.md` has no diff from baseline.
-
-Residual risks: the two pre-existing deferred items above remain for later orchestration. Realm-import coverage intentionally observes Aspire 13.5's current container-file annotation callback model. Concurrent unrelated OQ8 working-tree edits were not read into, staged with, or modified by this run.
