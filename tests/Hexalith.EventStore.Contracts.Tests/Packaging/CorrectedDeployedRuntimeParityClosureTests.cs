@@ -145,47 +145,50 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const int AcceptanceIssue = 352;
 
     /// <summary>
-    /// Verifies the checked-in packet fails closed at zero of three receipts, so nothing is
-    /// granted, while the technical evidence it retains still names the exact current subject and
-    /// keeps every non-authority flag false. <c>deployed_runtime_parity</c> and
-    /// <c>selected_deployed_identity</c> are asserted to be the packet's <em>claim</em> -- the
-    /// proposition the three roles are asked to accept -- which the verifier grants only at three
-    /// of three; at zero receipts it exits 1 and grants nothing. Collecting replacement receipts
-    /// for the re-minted subject is an owner action outside this repository, so the checked-in
-    /// state is the fail-closed one; the granted verdict is proved on a synthesized fully accepted
-    /// packet by <see cref="ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject"/>.
+    /// Verifies the checked-in packet closes positive parity once three roster-bound receipts bind
+    /// the current subject: verifier exit 0, selected index only the bound digest, and every
+    /// non-authority flag remains false. <c>deployed_runtime_parity</c> and
+    /// <c>selected_deployed_identity</c> are granted only at three of three; a synthesized
+    /// zero-receipt copy still fails closed in
+    /// <see cref="AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict"/>.
     /// </summary>
     [Fact]
-    public void CheckedInPacketFailsClosedUntilThreeFreshReceiptsBindTheCurrentSubject()
+    public void CheckedInPacketClosesPositiveParityWhenThreeReceiptsBindTheCurrentSubject()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
         (int exitCode, string output, string error) = RunValidator(root, packet);
-        exitCode.ShouldBe(1, error);
-        error.ShouldContain("exactly three packet-bound receipts are required");
-        error.ShouldContain("rerun: " + RerunTrigger);
-        output.ShouldNotContain("pass:");
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("pass:");
+        output.ShouldContain("subject=sha256:" + CurrentSubjectSha256);
+        output.ShouldContain("selected=" + IndexDigest);
 
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
         closure["subject"]!["sha256"]!.GetValue<string>().ShouldBe(CurrentSubjectSha256);
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(RequiredRoles.Length);
+        closure["acceptances"]!["receipts"]!.AsArray()
+            .Select(item => item!["role"]!.GetValue<string>())
+            .ShouldBe(RequiredRoles);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
 
-        // The claim fields are present and unchanged; the exit code above is what says they are
-        // not granted. Asserting them without that pairing is how an auditor reads the JSON as
-        // meaning the opposite of every operator record.
+        // The claim fields are present and, with three receipts, granted by the exit 0 above.
         closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
         closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
 
-        // acceptances.directory is the address receipts must occupy, not a directory that exists:
-        // at zero receipts the packet carries no acceptances/ tree of any subject at all.
         closure["acceptances"]!["directory"]!.GetValue<string>()
             .ShouldBe("acceptances/" + CurrentSubjectSha256);
-        Directory.Exists(Path.Combine(packet, "acceptances")).ShouldBeFalse();
+        Directory.Exists(Path.Combine(packet, "acceptances", CurrentSubjectSha256)).ShouldBeTrue();
+        foreach (string role in RequiredRoles)
+        {
+            File.Exists(Path.Combine(packet, "acceptances", CurrentSubjectSha256, role + ".json"))
+                .ShouldBeTrue(role);
+            File.Exists(Path.Combine(packet, "acceptances", CurrentSubjectSha256, "sources", role + ".json"))
+                .ShouldBeTrue(role);
+        }
     }
 
     /// <summary>
@@ -1516,6 +1519,69 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies every retained smoke value predicate is mutation-proven independently of the
+    /// type/window cases. Mutating one field at a time, regenerating the matching platform log, and
+    /// re-attaching receipts must reach the outcome guard rather than an earlier binding failure.
+    /// </summary>
+    /// <param name="field">Platform field whose value predicate is breached.</param>
+    [Theory]
+    [InlineData("observed_runtime_platform")]
+    [InlineData("http_status")]
+    [InlineData("redirect_count")]
+    [InlineData("cleanup")]
+    [InlineData("readiness_result")]
+    [InlineData("outcome")]
+    [InlineData("child_digest")]
+    public void SmokeValuePredicatesFailClosedWhenMutated(string field)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CopyPacket(root);
+        try
+        {
+            MutateSmokeResults(temporary, results =>
+            {
+                JsonObject platform = results["platforms"]!.AsArray()[0]!.AsObject();
+                switch (field)
+                {
+                    case "observed_runtime_platform":
+                        platform["observed_runtime_platform"] = "linux/arm64";
+                        break;
+                    case "http_status":
+                        platform["http_status"] = 201;
+                        break;
+                    case "redirect_count":
+                        platform["redirect_count"] = 1;
+                        break;
+                    case "cleanup":
+                        platform["cleanup"] = "failure";
+                        break;
+                    case "readiness_result":
+                        platform["readiness_result"] = "failure";
+                        break;
+                    case "outcome":
+                        platform["outcome"] = "failure";
+                        break;
+                    case "child_digest":
+                        platform["child_digest"] =
+                            "sha256:ede853318267146a9888574f79e16ea1e51c1f363a35910fe883b5a9d7256f44";
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(field), field, "Unhandled smoke field.");
+                }
+            });
+            AttachThreeAcceptedReceipts(temporary);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "Production smoke platform outcome is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies the aggregate smoke summary itself uses the selected canonical UTF-8 encoding, as
     /// already required of both platform logs. Rebinding whitespace must not make two byte shapes
     /// represent the same authorizing evidence.
@@ -2825,17 +2891,27 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         try
         {
             CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+            // With three receipts, validate_identity no longer short-circuits before the predecessor
+            // packet is read from repository_root. Mirror that frozen handoff into the tools-only
+            // temp tree so the control reaches real roster validation instead of a missing-file
+            // Errno 2.
+            const string PredecessorRelative =
+                "_bmad-output/implementation-artifacts/evidence/story-3-14/" + SourceSha;
+            CopyDirectory(
+                Path.Combine(root, PredecessorRelative.Replace('/', Path.DirectorySeparatorChar)),
+                Path.Combine(temporary, PredecessorRelative.Replace('/', Path.DirectorySeparatorChar)));
 
             // Control: the copied tree reaches real validation before anything is mutated.
-            ShouldFailClosed(
-                RunProcess(
-                    temporary,
-                    "python3",
-                    "tools/validate-corrected-deployed-runtime-parity.py",
-                    Path.Combine(packet, "closure.json"),
-                    "--packet-root",
-                    packet),
-                "exactly three packet-bound receipts are required");
+            (int controlExit, string controlOutput, string controlError) = RunProcess(
+                temporary,
+                "python3",
+                "tools/validate-corrected-deployed-runtime-parity.py",
+                Path.Combine(packet, "closure.json"),
+                "--packet-root",
+                packet);
+            controlExit.ShouldBe(0, controlError);
+            controlOutput.ShouldContain("pass:");
+            controlOutput.ShouldContain("subject=sha256:" + CurrentSubjectSha256);
 
             string handlerPath = Path.Combine(
                 temporary, "tools", "deployed_runtime_parity_handlers", "v1.py");
@@ -3428,7 +3504,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     public void AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict()
     {
         string root = FindRepositoryRoot();
-        string incomplete = CopyPacket(root);
+        string incomplete = CreateIncompletePacket(root);
         string accepted = CreateAcceptedPacket(root);
         try
         {
@@ -3689,6 +3765,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private static string CreateIncompletePacket(string root)
     {
         string temporary = CopyPacket(root);
+        string acceptancesRoot = Path.Combine(temporary, "acceptances");
+        if (Directory.Exists(acceptancesRoot))
+        {
+            Directory.Delete(acceptancesRoot, recursive: true);
+        }
+
         string closurePath = Path.Combine(temporary, "closure.json");
         JsonObject closure = LoadJson(closurePath);
         closure["acceptances"]!["receipts"] = new JsonArray();

@@ -587,21 +587,21 @@ executing rather than the pristine repository file.
 
 The 2026-08-30 verifier and producer hardening re-minted the subject once more at zero receipts,
 where no acceptance was burned. The packet's current subject is
-`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`, and the packet **fails closed at
-zero of three receipts**: each re-mint rejected the receipts collected against the prior subject by
-the same rerun trigger, and collecting replacements on issue `#352` is an owner action outside this
-repository. Until that happens deployed-runtime parity is **unavailable** and **no identity is
-selected**. Reassembly reports `receipts=0 verifier_exit=1`. The `bb58d691...`, `dab64f5f...` and
-`a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit area, whose
-README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with its source.
-Five of the eight subjects never had receipts collected at all, so three retained sets against seven
-re-mints is the expected shape, not a gap.
+`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`. On 2026-09-05 the three roster-bound
+role receipts were collected on issue `#352` for that subject, so the packet now **closes positive
+parity at three of three**: the verifier exits 0 and selects only
+`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Reassembly reports
+`receipts=3 verifier_exit=0`. Deployed-runtime **parity is available**. The `bb58d691...`,
+`dab64f5f...` and `a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit
+area, whose README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with
+its source. Five of the eight subjects never had receipts collected at all, so three retained
+superseded sets against seven prior re-mints is the expected shape, not a gap.
 
 `closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
-`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles are asked
-to accept, not a granted verdict: the verifier grants them only at three of three, and at zero
-receipts it exits 1 and grants nothing. `acceptances.directory` likewise names the address receipts
-must occupy, not a directory that exists today.
+`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles accept;
+with three packet-bound receipts the verifier grants them by exit 0. An auditor must still read them
+together with the receipt count and the four non-authority flags. `acceptances.directory` names the
+retained receipt tree under the current subject.
 
 The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
 Architect record is explicitly self-attested without independent external authentication. Owner

@@ -197,6 +197,79 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
     }
 
     /// <summary>
+    /// Verifies non-exact readiness write-outs and a mismatched image inspect platform all retain a
+    /// non-pass outcome. <c>201 0</c> and <c>200 1</c> never satisfy the accept predicate; a swapped
+    /// inspect platform fails even when curl reports exact <c>200 0</c>.
+    /// </summary>
+    /// <param name="dockerMode">Docker fake mode.</param>
+    /// <param name="curlWriteOut">Curl <c>--write-out</c> body.</param>
+    [Theory]
+    [InlineData("platform-mismatch", "200 0")]
+    [InlineData("success", "201 0")]
+    [InlineData("success", "200 1")]
+    public void NonExactReadinessAndPlatformMismatchFailClosed(string dockerMode, string curlWriteOut)
+    {
+        RequireUnixHost();
+        string root = FindRepositoryRoot();
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-predicate-").FullName;
+        try
+        {
+            string fakeBin = Path.Combine(temporary, "bin");
+            Directory.CreateDirectory(fakeBin);
+            string dockerLog = Path.Combine(temporary, "docker-argv.log");
+            string curlLog = Path.Combine(temporary, "curl-argv.log");
+            WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake(dockerMode));
+            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake(curlWriteOut));
+
+            // Never-ready curl shapes burn the platform budget; keep it short. Platform mismatch
+            // still answers 200 0 and fails after inspect, so the override is harmless there.
+            ProcessResult result = RunCapture(
+                root,
+                temporary,
+                fakeBin,
+                dockerLog,
+                curlLog,
+                timeoutOverride: 1.0);
+
+            result.ExitCode.ShouldBe(1, result.Error);
+            result.Error.ShouldNotContain("Traceback");
+            JsonObject summary = LoadSummary(temporary);
+            summary["result"]!.GetValue<string>().ShouldBe("failure");
+            summary["platforms"]!.AsArray().Count.ShouldBe(2);
+            summary["platforms"]!.AsArray().ShouldAllBe(item =>
+                item!["outcome"]!.GetValue<string>() == "failure");
+
+            if (dockerMode == "platform-mismatch")
+            {
+                summary["platforms"]!.AsArray().ShouldAllBe(item =>
+                    item!["http_status"]!.GetValue<int>() == 200
+                    && item["redirect_count"]!.GetValue<int>() == 0
+                    && item["readiness_result"]!.GetValue<string>() == "pass"
+                    && item["observed_runtime_platform"]!.GetValue<string>()
+                        != item["platform"]!.GetValue<string>());
+            }
+            else if (curlWriteOut == "201 0")
+            {
+                summary["platforms"]!.AsArray().ShouldAllBe(item =>
+                    item!["http_status"]!.GetValue<int>() == 201
+                    && item["redirect_count"]!.GetValue<int>() == 0
+                    && item["readiness_result"]!.GetValue<string>() == "failure");
+            }
+            else
+            {
+                summary["platforms"]!.AsArray().ShouldAllBe(item =>
+                    item!["http_status"]!.GetValue<int>() == 200
+                    && item["redirect_count"]!.GetValue<int>() == 1
+                    && item["readiness_result"]!.GetValue<string>() == "failure");
+            }
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies the readiness loop actually polls. Every existing case answered on attempt one, so
     /// replacing the accept predicate with an unconditional break passed the whole suite and the
     /// bounded back-off ran in no test at all -- the poll/retry behaviour this utility exists for
@@ -548,7 +621,11 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
           exit 0
         fi
         if [ "$1" = "image" ]; then
-          case "$*" in *amd64*) printf '%s\n' 'linux/amd64' ;; *) printf '%s\n' 'linux/arm64' ;; esac
+          if [ "{{mode}}" = "platform-mismatch" ]; then
+            case "$*" in *amd64*) printf '%s\n' 'linux/arm64' ;; *) printf '%s\n' 'linux/amd64' ;; esac
+          else
+            case "$*" in *amd64*) printf '%s\n' 'linux/amd64' ;; *) printf '%s\n' 'linux/arm64' ;; esac
+          fi
           if [ "{{mode}}" = "log-write-failure" ]; then mkdir -p "$FAKE_BLOCKED_LOG"; fi
           if [ "{{mode}}" = "summary-write-failure" ]; then
             case "$*" in *arm64*) mkdir -p "$FAKE_BLOCKED_SUMMARY" ;; esac

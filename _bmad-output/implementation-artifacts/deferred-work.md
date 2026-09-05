@@ -3470,3 +3470,15 @@ decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, 
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
   summary: Restore an exact one-second-over-24-hours retained-authority validity-window test.
   evidence: The concurrent Story 3.14 test uses 90,001 seconds, so a validator regression that widens the approved 24-hour limit can pass until the later threshold; an 86,401-second case settles the boundary.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Subject-history arithmetic (seven vs eight subjects / re-mints) disagrees across superseded README, docs/ci.md, and Story 3.15 operator records.
+  evidence: Blind-hunter 2026-09-05 review; narrative only; not caused by the 3/3 receipt collection landing.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Assembler always emits repository_signature_entry_present True without inspecting the .nupkg for a .signature.p7s entry.
+  evidence: Edge/blind 2026-09-05 review; verifier still enforces the zip entry; producer misrepresentation is pre-existing.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Retained GitHub comment envelopes accept minimized/pin null without rejecting moderated or pinned comments.
+  evidence: Edge-case hunter 2026-09-05; closed-schema currently requires the fields but does not forbid non-null moderated states.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Assembler smoke refuse guards may accept JSON false exit_code or set-equal swapped platform/child digests.
+  evidence: Edge-case hunter 2026-09-05; pre-existing assembler preflight, not introduced by receipt collection.

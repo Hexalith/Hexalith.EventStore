@@ -2,18 +2,15 @@
 
 ## Decision
 
-The technical evidence passes and reproduces, but the acceptance gate is **not** complete. Current
-subject
+**Deployed-runtime parity is available.** Current subject
 `sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`
-has **zero of three roster-bound role receipts** (0 of 3), so the retained verifier **fails closed**,
-exit 1,
-deployed-runtime parity is unavailable and **no identity is selected**.
+has **three of three roster-bound role receipts** (3 of 3), so the retained verifier **passes**,
+exit 0, and selects only
+`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 
-The only candidate selected identity remains
-`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,
-and it becomes selectable only once three roster-bound receipts bind this exact subject. This packet
-grants no deployment, publication, registry mutation, consumer removal, or predecessor change
-authority.
+This packet still grants no deployment, publication, registry mutation, consumer removal, or
+predecessor change authority. The positive parity verdict is evidence that the deployed runtime
+matches the corrective release, not permission to act on it.
 
 ## Authority boundary
 
@@ -25,21 +22,13 @@ An auditor must confirm four flags in `closure.json`, and all four are `false`:
 | `publication_authorized` | `false` |
 | `consumer_removal_authorized` | `false` |
 | `grants_mutation_authority` | `false` |
-| `deployed_runtime_parity` | `available` -- **claim only**, granted at 3 of 3 |
-| `selected_deployed_identity` | the index digest -- **claim only**, granted at 3 of 3 |
+| `deployed_runtime_parity` | `available` -- claim granted at 3 of 3 |
+| `selected_deployed_identity` | the index digest -- claim granted at 3 of 3 |
 
-A positive parity verdict is evidence that the deployed runtime matches the corrective release, not
-permission to act on it.
-
-**`deployed_runtime_parity` and `selected_deployed_identity` are the claim, not the verdict.**
-`closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
-`selected_deployed_identity: sha256:4b141085...` while `acceptances.receipts` is empty. Those two
-fields are the proposition the three rostered roles are asked to accept; the verifier grants them
-only when three receipts bind the current subject, and at 0 of 3 it exits 1 and grants nothing. An
-auditor grepping the JSON must read them together with the receipt count, never alone.
-`acceptances.directory` likewise names the address receipts must occupy, not a directory that
-exists today -- at 0 of 3 the packet has no `acceptances/` tree at all.
-
+**`deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields.** With three
+packet-bound receipts they are granted by exit 0; an auditor must still read them together with the
+receipt count and the four non-authority flags, never alone. Receipts live under
+`acceptances/86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274/`.
 
 ## Bound technical evidence
 
@@ -108,10 +97,14 @@ authenticated people. All three facts are subject-bound limitations every receip
 
 ## Current acceptances
 
-None. The packet has no `acceptances` directory. Collecting three receipts that bind
-`86c59c79...` on dedicated Story 3.15 issue
-[#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352) is a separately authorized owner
-action and was not performed.
+Three roster-bound receipts bind subject `86c59c79...` under
+`acceptances/86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274/`:
+
+| Role | Source |
+| --- | --- |
+| EventStore-owner | issue `#352` comment [5550273078](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5550273078) |
+| Release-owner | issue `#352` comment [5550277712](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5550277712) |
+| Test Architect | self-attested `bmad:murat` record retained beside the owners |
 
 ## Reproduce
 
@@ -119,17 +112,17 @@ action and was not performed.
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.
+[corrected-deployed-runtime-parity] pass: subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
 $ echo $?
-1
+0
 ```
 
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 receipts=3 verifier_exit=0
 $ echo $?
-1
+0
 ```
 
 Reassembly deterministically reproduces subject `86c59c79...` and runs the pinned verifier over its

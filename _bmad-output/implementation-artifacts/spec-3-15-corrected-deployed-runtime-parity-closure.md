@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -736,8 +736,8 @@ Both owner receipts are independently constrained to the same positively allowli
 **Commands:**
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: sha256:4d1a0c33...`, exit 0. The frozen predecessor packet is unchanged, and its whole 66-file tree is now digest-pinned by the focused suite, not just the identity file.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: <trigger>`, exit 1. This is the expected checked-in state: the loop-6 batch rejected the three `a8cc777e...` receipts, loop 7 re-minted at zero receipts to `663747b1...`, and the 2026-08-30 producer/verifier hardening re-minted at zero receipts to `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`. Collecting three receipts on issue `#352` is an Ask First owner action that this run did not perform. Deployed-runtime parity is therefore **unavailable** and nothing is granted; `deployed_runtime_parity` and `selected_deployed_identity` remain in the packet as the *claim* the three roles are asked to accept. The positive verdict -- `pass`, exactly three roster-bound role receipts, selected identity only `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`, exit 0 -- is proved on a synthesized fully accepted packet by `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:86c59c79... receipts=0 verifier_exit=1`, exit 1, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` runs it over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: subject=sha256:86c59c79... selected=sha256:4b141085...`, exit 0. On 2026-09-05 the Ask First owner action completed: EventStore-owner comment `5550273078`, Release-owner comment `5550277712`, and the `bmad:murat` Test Architect record bind subject `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`. Deployed-runtime **parity is available**; `deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields, now granted by the 3-of-3 receipt gate. Non-authority flags stay false. A synthesized zero-receipt copy still fails closed in `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict`; the positive synthetic path remains in `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:86c59c79... receipts=3 verifier_exit=0`, exit 0, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 193 passed, 0 failed, 0 skipped.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 37 passed, 0 failed, 0 skipped.
 - Complete Contracts suite -- **actual:** 1846 passed, 29 failed, 0 skipped, 1875 total. All 29
@@ -908,11 +908,11 @@ Both owner receipts are independently constrained to the same positively allowli
 
 **Operator handoff and drift binding**
 
-- The current subject, the 0-of-3 fail-closed verdict, the claim-versus-verdict distinction, and the
+- The current subject, the 3-of-3 available verdict, the claim-versus-verdict distinction, and the
   two facts recorded rather than corrected.
-  [`ci.md:489`](../../docs/ci.md#L489)
+  [`ci.md:588`](../../docs/ci.md#L588)
 
-- The checked-in packet's fail-closed state, drift-bound to the current subject and reading the
+- The checked-in packet's positive 3-of-3 state, drift-bound to the current subject and reading the
   claim fields explicitly.
   [`CorrectedDeployedRuntimeParityClosureTests.cs:159`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L159)
 
@@ -944,3 +944,29 @@ Both owner receipts are independently constrained to the same positively allowli
 - [x] [Review][Patch] **[HIGH] Reject Production-smoke windows that lie in the future so impossible evidence cannot authorize parity.** [tools/deployed_runtime_parity_handlers/v1.py:727]
 - [x] [Review][Patch] **[HIGH] Require `smoke-results.json` itself to use the selected canonical UTF-8 representation, as already required for each platform log.** [tools/deployed_runtime_parity_handlers/v1.py:689]
 - [x] [Review][Patch] **[LOW] Include bounded timestamping/transition overhead in producer-verifier smoke windows so a legitimate near-budget capture cannot reject its own output.** [tools/capture-corrected-deployed-runtime-parity-smokes.py:103]
+
+## Review Triage Log
+
+| Finding | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| Proof packet Decision says 3/3 available while Current acceptances/Reproduce still said 0/3 | medium | patch | Verified: Decision updated; Current acceptances and Reproduce still claimed no acceptances directory and exit 1. Fixed in this review. |
+| Story record vs proof packet disagree on live verdict | medium | patch | Same root cause as above; grouped. Fixed. |
+| docs/ci.md still said fails closed at 0/3 / unavailable | medium | patch | Verified live prose still named zero receipts after collection. Fixed. |
+| Subject-history arithmetic (7 vs 8 subjects) inconsistent across docs | low | defer | Pre-existing narrative drift across superseded README / ci / story record; not caused by receipt collection. |
+| Spec Code Map omits a8cc777e superseded tree | false | reject | Fix would edit this build's spec Code Map; a8cc777e is already narrated in Design Notes / Verification. |
+| Spec status in-review / review_loop_iteration 6 mismatch claimed done | false | reject | Status correctly set to in-review for this review step; loop iteration is historical counter. |
+| sprint-status comment still said stays in-progress until three receipts | medium | patch | Verified comment contradicted `review` row after 3/3. Fixed. |
+| Assembler hardcodes repository_signature_entry_present True | medium | defer | Pre-existing producer behavior; verifier still rejects missing `.signature.p7s`. Not introduced by receipt collection. |
+| Proof packet Authority table says four flags then lists six rows | low | reject | Cosmetic table preamble; unlikely everyday harm; more than a one-line fix. |
+| Open deferred redirect_count / empty PLATFORMS / smoke logs | medium | defer | Already recorded deferred items; not closed by this receipt-collection change. |
+| Scoped review diff omits .gitattributes | false | reject | Artifact of story-scoped review diff, not a missing repo change. |
+| Duplicate new-file hunks for acceptance paths in diff | false | reject | Diff-generation noise from combining tracked rewrite with untracked add. |
+| Bootstrap execv failure continues non-isolated | maybe-false | defer | Unverified whether OSError path is reachable on supported hosts; pre-existing isolation design. |
+| minimized/pin GitHub comments still authenticate | medium | defer | Pre-existing closed-schema accepts null minimized/pin; not introduced by this change. |
+| Assembler smoke exit_code JSON false treated as pass | medium | defer | Pre-existing assembler refuse guard; not introduced by receipt collection. |
+| Assembler smoke platform/digest set match with swapped platforms | medium | defer | Pre-existing assembler coverage check; not introduced by this change. |
+| Import-shadow check skipped on validation failure paths | low | defer | Pre-existing finally-block ordering; fail path already exits 1. |
+| Frozen AC wording "authenticated ... Test Architect" vs self-attested record | false | reject | Limitations and operator records already disclose self-attestation; fix would edit frozen intent. |
+| Verifier smoke platform outcome value clauses lack mutation proofs | medium | patch | Verification-gap pre-verified: type/window tests do not force observed_platform/http_status/redirect/outcome value predicates. |
+| Capture suite never exercises observed-platform mismatch or non-200/redirect readiness | medium | patch | Verification-gap pre-verified: DockerFake always returns matching platforms; no 201/200+redirect cases. |
+

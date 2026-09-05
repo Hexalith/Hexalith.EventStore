@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '09-05-2026 08:55'
+last_updated: '09-05-2026 09:33'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -242,8 +242,8 @@ development_status:
   # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
-  # The row stays in-progress until three receipts bind the current subject.
-  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  # On 2026-09-05 three receipts bound subject 86c59c79...; the row is in review for closure.
+  3-15-corrected-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
   epic-4: in-progress
