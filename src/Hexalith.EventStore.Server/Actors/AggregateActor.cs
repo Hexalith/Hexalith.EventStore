@@ -1865,6 +1865,192 @@ public partial class AggregateActor(
         return newCount;
     }
 
+    /// <summary>
+    /// Releases one pending-command slot from a clean cache boundary and resolves an ambiguous
+    /// save exactly once. A post-commit throw is observed without a second decrement; a pre-commit
+    /// failure is repaired by one clean restage/save.
+    /// </summary>
+    private async Task FinalizePendingCommandAsync(CommandEnvelope command, Activity? processActivity)
+    {
+        const string clearOperation = "PendingFinalizerClear";
+        const string readOperation = "PendingFinalizerRead";
+        const string writeOperation = "PendingFinalizerWrite";
+        const string saveOperation = "PendingFinalizerSave";
+
+        string operation = clearOperation;
+        int committedBefore = -1;
+        int expectedAfter = -1;
+        try
+        {
+            await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
+            _stateCacheUnsafe = false;
+
+            operation = readOperation;
+            committedBefore = await ReadPendingCommandCountAsync().ConfigureAwait(false);
+            expectedAfter = Math.Max(0, committedBefore - 1);
+
+            operation = writeOperation;
+            _ = await DecrementPendingCommandCountAsync().ConfigureAwait(false);
+
+            operation = saveOperation;
+            await StateManager.SaveStateAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex)
+        {
+            (bool discarded, int observed, string consequence, string recoveryExceptionType) =
+                await InspectPendingFinalizerFailureAsync(
+                    committedBefore,
+                    expectedAfter,
+                    allowRecovery: false).ConfigureAwait(false);
+            RecordPendingFinalizationFailure(
+                command,
+                processActivity,
+                operation,
+                ex,
+                discarded,
+                committedBefore,
+                expectedAfter,
+                observed,
+                consequence,
+                recoveryExceptionType);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            (bool discarded, int observed, string consequence, string recoveryExceptionType) =
+                await InspectPendingFinalizerFailureAsync(
+                    committedBefore,
+                    expectedAfter,
+                    allowRecovery: true).ConfigureAwait(false);
+            RecordPendingFinalizationFailure(
+                command,
+                processActivity,
+                operation,
+                ex,
+                discarded,
+                committedBefore,
+                expectedAfter,
+                observed,
+                consequence,
+                recoveryExceptionType);
+        }
+    }
+
+    private async Task<(bool Discarded, int Observed, string Consequence, string RecoveryExceptionType)>
+        InspectPendingFinalizerFailureAsync(
+            int committedBefore,
+            int expectedAfter,
+            bool allowRecovery)
+    {
+        try
+        {
+            await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
+            _stateCacheUnsafe = false;
+        }
+        catch (Exception clearException)
+        {
+            _stateCacheUnsafe = true;
+            return (false, -1, "CacheDiscardUnproved", clearException.GetType().Name);
+        }
+
+        if ((committedBefore < 0 || expectedAfter < 0) && !allowRecovery)
+        {
+            return (true, -1, "NoPendingMutationStaged", "None");
+        }
+
+        int observed;
+        try
+        {
+            observed = await ReadPendingCommandCountAsync().ConfigureAwait(false);
+            if (committedBefore < 0 || expectedAfter < 0)
+            {
+                committedBefore = observed;
+                expectedAfter = Math.Max(0, committedBefore - 1);
+            }
+        }
+        catch (Exception inspectionException)
+        {
+            _stateCacheUnsafe = true;
+            return (true, -1, "DurableInspectionFailed", inspectionException.GetType().Name);
+        }
+
+        if (observed == expectedAfter)
+        {
+            return (true, observed, "CommitObserved", "None");
+        }
+
+        if (observed != committedBefore)
+        {
+            _stateCacheUnsafe = true;
+            return (true, observed, "UnexpectedPendingCount", "None");
+        }
+
+        if (!allowRecovery)
+        {
+            return (true, observed, "CommitNotObserved", "None");
+        }
+
+        try
+        {
+            await StagePendingCommandCountAsync(expectedAfter).ConfigureAwait(false);
+            await StateManager.SaveStateAsync(CancellationToken.None).ConfigureAwait(false);
+            return (true, expectedAfter, "RecoveredPreCommitFailure", "None");
+        }
+        catch (Exception recoveryException)
+        {
+            try
+            {
+                await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
+                _stateCacheUnsafe = false;
+                int recoveryObserved = await ReadPendingCommandCountAsync().ConfigureAwait(false);
+                if (recoveryObserved != expectedAfter)
+                {
+                    _stateCacheUnsafe = true;
+                }
+
+                return (
+                    true,
+                    recoveryObserved,
+                    recoveryObserved == expectedAfter
+                        ? "RecoveryCommitObserved"
+                        : "RecoveryCommitNotObserved",
+                    recoveryException.GetType().Name);
+            }
+            catch (Exception inspectionException)
+            {
+                _stateCacheUnsafe = true;
+                return (false, -1, "RecoveryInspectionFailed", inspectionException.GetType().Name);
+            }
+        }
+    }
+
+    private void RecordPendingFinalizationFailure(
+        CommandEnvelope command,
+        Activity? processActivity,
+        string operation,
+        Exception exception,
+        bool failedBatchDiscarded,
+        int committedBefore,
+        int expectedAfter,
+        int observed,
+        string durableConsequence,
+        string recoveryExceptionType)
+    {
+        ProtectedDataDiagnosticRedactor.RecordActivityException(processActivity, exception, "pipeline");
+        Log.PendingCommandFinalizationFailed(
+            logger,
+            Host.Id.GetId(),
+            command.CorrelationId,
+            operation,
+            exception.GetType().Name,
+            failedBatchDiscarded,
+            committedBefore,
+            expectedAfter,
+            observed,
+            durableConsequence,
+            recoveryExceptionType);
+    }
+
     private AggregateIdentity GetAggregateIdentityFromActorId() {
         string actorId = Host.Id.GetId();
         string[] parts = actorId.Split(':', 3);
