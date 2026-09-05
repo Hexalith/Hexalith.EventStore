@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '09-05-2026 09:33'
+last_updated: '09-05-2026 13:14'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -254,7 +254,7 @@ development_status:
   4-5-append-durability-race-evidence: done
   4-6-global-position-sharding-spec-renegotiation: done
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
-  4-7-tenants-query-provenance-follow-up: backlog
+  4-7-tenants-query-provenance-follow-up: review
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
   4-9-trusted-admission-contract-and-protected-identity: done
