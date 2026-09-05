@@ -129,9 +129,11 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
             .Returns(new EventStoreDomainEventMarkerRecord((EventStoreDomainEventMarkerState)999, DateTimeOffset.UtcNow));
         DaprEventStoreDomainEventMarkerStore store = CreateDaprStore(daprClient);
 
-        EventStoreDomainEventMarkerAcquisitionResult result = await store.TryAcquireAsync("message-1");
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => store.TryAcquireAsync("message-1"));
 
-        Enum.IsDefined(result).ShouldBeFalse();
+        exception.Message.ShouldContain("message-1");
+        exception.Message.ShouldContain("999");
     }
 
     [Fact]
@@ -177,6 +179,59 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
             Arg.Is<StateOptions>(options => options.Concurrency == ConcurrencyMode.FirstWrite),
             Arg.Any<IReadOnlyDictionary<string, string>>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DaprMarkerStore_MarkCompleted_TransitionsDispatchedEtagWithCheckedFirstWrite() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        SetupStateAndEtag(
+            daprClient,
+            EventStoreDomainEventMarkerRecord.Dispatched(DateTimeOffset.UtcNow),
+            "etag-dispatched");
+        SetupTrySave(daprClient, true);
+        DaprEventStoreDomainEventMarkerStore store = CreateDaprStore(daprClient);
+
+        await store.MarkCompletedAsync("message-1");
+
+        _ = await daprClient.Received(1).GetStateAndETagAsync<EventStoreDomainEventMarkerRecord?>(
+            "markers",
+            MarkerKey,
+            ConsistencyMode.Strong,
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "markers",
+            MarkerKey,
+            Arg.Is<EventStoreDomainEventMarkerRecord>(record => record.State == EventStoreDomainEventMarkerState.Completed),
+            "etag-dispatched",
+            Arg.Is<StateOptions>(options => options.Concurrency == ConcurrencyMode.FirstWrite),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DaprMarkerStore_TransitionRejectsPersistedInProgressOwnerWithoutSave() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        SetupStateAndEtag(
+            daprClient,
+            EventStoreDomainEventMarkerRecord.InProgress(DateTimeOffset.UtcNow),
+            "etag-in-progress");
+        DaprEventStoreDomainEventMarkerStore store = CreateDaprStore(daprClient);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => store.MarkCompletedAsync("message-1"));
+
+        exception.Message.ShouldContain("message-1");
+        exception.Message.ShouldContain("in-progress");
+        exception.Message.ShouldContain(nameof(EventStoreDomainEventMarkerState.Completed));
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync(
+            default!,
+            default!,
+            Arg.Any<EventStoreDomainEventMarkerRecord>(),
+            default!,
+            default!,
+            default!,
+            default);
     }
 
     [Fact]
@@ -258,6 +313,41 @@ public sealed class EventStoreDomainEventMarkerStoreTests {
 
         exception.Message.ShouldContain("message-1");
         exception.Message.ShouldContain(nameof(EventStoreDomainEventMarkerState.Completed));
+    }
+
+    [Fact]
+    public async Task DaprMarkerStore_TransitionExhaustion_FinalConvergenceReadIsStrong() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        (EventStoreDomainEventMarkerRecord?, string) absent = (null, string.Empty);
+        (EventStoreDomainEventMarkerRecord?, string) completed = (
+            EventStoreDomainEventMarkerRecord.Completed(DateTimeOffset.UtcNow),
+            "etag-completed");
+        _ = daprClient.GetStateAndETagAsync<EventStoreDomainEventMarkerRecord?>(
+                "markers",
+                MarkerKey,
+                Arg.Any<ConsistencyMode?>(),
+                Arg.Any<IReadOnlyDictionary<string, string>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(absent, absent, absent, absent, absent, completed);
+        SetupTrySave(daprClient, false);
+        DaprEventStoreDomainEventMarkerStore store = CreateDaprStore(daprClient);
+
+        await store.MarkCompletedAsync("message-1");
+
+        _ = await daprClient.Received(6).GetStateAndETagAsync<EventStoreDomainEventMarkerRecord?>(
+            "markers",
+            MarkerKey,
+            ConsistencyMode.Strong,
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+        _ = await daprClient.Received(5).TrySaveStateAsync(
+            "markers",
+            MarkerKey,
+            Arg.Any<EventStoreDomainEventMarkerRecord>(),
+            string.Empty,
+            Arg.Any<StateOptions>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

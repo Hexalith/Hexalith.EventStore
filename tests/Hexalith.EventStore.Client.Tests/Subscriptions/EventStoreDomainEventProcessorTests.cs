@@ -581,6 +581,19 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
+    public async Task ProcessAsync_PostAcquisitionInvalidEnvelope_ReleasesForCorrectedRedelivery() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope valid = Envelope(s_messageId, "t1", PayloadFor("t1", 1));
+
+        EventStoreDomainEventProcessingResult invalid = await processor.ProcessAsync(valid with { AggregateId = " " });
+        EventStoreDomainEventProcessingResult corrected = await processor.ProcessAsync(valid);
+
+        invalid.ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        corrected.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task ProcessAsync_UnsupportedSerializationFormat_ReturnsFailedInvalidPayloadAndCompletesMarker() {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
         EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { SerializationFormat = "xml" };
