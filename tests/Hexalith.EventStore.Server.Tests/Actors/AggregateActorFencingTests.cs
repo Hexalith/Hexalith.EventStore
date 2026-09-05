@@ -8,6 +8,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Time.Testing;
 
@@ -479,6 +480,74 @@ public class AggregateActorFencingTests
         reproved.Decision.ShouldBe(IdempotencyLegacySourceDecision.Exact);
         stateManager.CommittedState.ShouldNotContainKey(
             IdempotencyChecker.GetLegacyRedirectKey(source.ExecutionMessageId));
+    }
+
+    [Fact]
+    public async Task LegacyRedirectAmbiguousSaveWithConcurrentDifferentTarget_DoesNotAcceptTheWrongWitness()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        (IdempotencyRecord record, IdempotencyLegacySourceRequest source,
+            IdempotencyLegacySourceRedirectRequest redirect) = CreateLegacyRedirectFixture();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{record.MessageId}"] = record,
+        });
+        string redirectKey = IdempotencyChecker.GetLegacyRedirectKey(source.ExecutionMessageId);
+        var winner = new IdempotencyLegacySourceRedirectRecord(
+            IdempotencyLegacySourceRedirectRecord.CurrentSchemaVersion,
+            source.TenantPartition,
+            source.InventoryId,
+            source.MigrationId,
+            source.SourceEvidenceDigest,
+            "test-tenant:v1:concurrent-target");
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        stateManager.ActBeforeCall(
+            $"TryGetState:{redirectKey}",
+            3,
+            manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
+            {
+                [redirectKey] = winner,
+            }));
+        stateManager.FaultOnCall("ClearCache", 2, new IOException("poison barrier unavailable"));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
+        IIdempotencyLegacySourceActor actor = actorContext.Actor;
+
+        IdempotencyLegacySourceInspection result = await actor.SetLegacySourceRedirectAsync(redirect);
+
+        result.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unavailable);
+        stateManager.CommittedState[redirectKey].ShouldBe(winner);
+        _ = await Should.ThrowAsync<ActorStateRemediationException>(
+            () => actor.InspectLegacySourceAsync(source));
+    }
+
+    [Fact]
+    public async Task LegacyRedirectDiscardFailure_ReportsTheClearFailureAsTheRemediationType()
+    {
+        var logs = new List<LogEntry>();
+        var stateManager = new FaultInjectingActorStateManager();
+        (IdempotencyRecord record, _, IdempotencyLegacySourceRedirectRequest redirect) =
+            CreateLegacyRedirectFixture();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{record.MessageId}"] = record,
+        });
+        stateManager.FaultOnCall("SaveState", 1, new InvalidOperationException("save-secret"));
+        stateManager.FaultOnCall("ClearCache", 1, new IOException("discard-secret"));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(
+            logger: new TestLogger<AggregateActor>(logs),
+            stateManager: stateManager);
+        IIdempotencyLegacySourceActor actor = actorContext.Actor;
+
+        IdempotencyLegacySourceInspection result = await actor.SetLegacySourceRedirectAsync(redirect);
+
+        result.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unavailable);
+        LogEntry remediation = logs.Where(entry => entry.EventId.Id == 2020).ShouldHaveSingleItem();
+        remediation.Message.ShouldContain("RemediationOperation=DiscardRedirectBatch");
+        remediation.Message.ShouldContain("PrimaryExceptionType=InvalidOperationException");
+        remediation.Message.ShouldContain("RemediationExceptionType=IOException");
+        remediation.Message.ShouldContain("DiscardExceptionType=IOException");
+        remediation.Message.ShouldNotContain("save-secret");
+        remediation.Message.ShouldNotContain("discard-secret");
     }
 
     [Fact]

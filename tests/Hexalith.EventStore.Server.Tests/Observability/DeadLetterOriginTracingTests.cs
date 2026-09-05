@@ -16,6 +16,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Tests.Actors;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -265,28 +266,25 @@ public class DeadLetterOriginTracingTests {
     public async Task EventPersistenceFailure_CorrelationIdTracesBackThroughAllStages() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
-        (AggregateActor actor, IActorStateManager stateManager, List<LogEntry> logEntries, IDomainServiceInvoker invoker, FakeDeadLetterPublisher fakeDeadLetter, _) =
-            CreateActorWithFakeDeadLetter();
+        var stateManager = new FaultInjectingActorStateManager();
+        var logEntries = new List<LogEntry>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        var fakeDeadLetter = new FakeDeadLetterPublisher();
+        ActorTestContext context = AggregateActorTestHelper.CreateActor(
+            logger: new TestLogger<AggregateActor>(logEntries),
+            stateManager: stateManager,
+            invoker: invoker,
+            deadLetterPublisher: fakeDeadLetter);
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: correlationId);
 
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new TestEvent()]));
 
-        // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored)
-        int saveCallCount = 0;
-        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                saveCallCount++;
-                if (saveCallCount == 2) {
-                    throw new IOException("State store write failed");
-                }
-
-                return Task.CompletedTask;
-            });
+        stateManager.FaultOnCall("SaveState", 2, new IOException("State store write failed"));
 
         // Act
-        _ = await actor.ProcessCommandAsync(envelope);
+        _ = await context.Actor.ProcessCommandAsync(envelope);
 
         // Assert: Dead-letter published
         IReadOnlyList<(AggregateIdentity Identity, DeadLetterMessage Message)> dlMessages = fakeDeadLetter.GetDeadLetterMessages();

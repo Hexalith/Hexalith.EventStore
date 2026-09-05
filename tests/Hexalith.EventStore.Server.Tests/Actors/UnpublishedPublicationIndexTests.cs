@@ -29,13 +29,34 @@ public class UnpublishedPublicationIndexTests {
     public void Entries_DuplicatePersistedMessageIds_AreNormalizedToOneOwner() {
         var index = new UnpublishedPublicationIndex([
             Entry("msg-1", "corr-first"),
-            Entry("msg-1", "corr-duplicate"),
+            Entry("msg-1", "corr-first"),
             Entry("msg-2", "corr-second"),
         ]);
 
         index.Entries.Count.ShouldBe(2);
         index.OwnerCount.ShouldBe(2);
         index.Entries.Single(entry => entry.MessageId == "msg-1").CorrelationId.ShouldBe("corr-first");
+    }
+
+    [Fact]
+    public void Entries_DuplicatePersistedMessageIdWithConflictingCorrelations_FailsClosed() {
+        _ = Should.Throw<InvalidOperationException>(() => new UnpublishedPublicationIndex([
+            Entry("msg-1", "corr-first"),
+            Entry("msg-1", "corr-conflict"),
+        ]));
+    }
+
+    [Fact]
+    public void Entries_MalformedRemnantBeforeValidOwner_PrefersTheValidOwner() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", string.Empty),
+            Entry("msg-1", "corr-valid"),
+        ]);
+
+        index.Entries.ShouldHaveSingleItem().CorrelationId.ShouldBe("corr-valid");
+        index.OwnerCount.ShouldBe(1);
+        index.TryRemove("msg-1", out UnpublishedPublicationIndex removed).ShouldBeTrue();
+        removed.Entries.ShouldBeEmpty();
     }
 
     [Fact]
@@ -82,6 +103,20 @@ public class UnpublishedPublicationIndexTests {
         outcome.ShouldBe(PublicationIndexAddOutcome.AtCapacity);
         updated.ShouldBeSameAs(index);
         updated.Contains("msg-2").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TryAdd_OwnerlessMalformedEntries_DoNotConsumeCapacity() {
+        var index = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry(string.Empty, "corr-malformed", DateTimeOffset.UtcNow),
+        ]);
+
+        PublicationIndexAddOutcome outcome = index.TryAdd(
+            Entry("msg-1"), maxEntries: 1, out UnpublishedPublicationIndex updated);
+
+        outcome.ShouldBe(PublicationIndexAddOutcome.Added);
+        updated.OwnerCount.ShouldBe(1);
+        updated.Entries.Count.ShouldBe(2);
     }
 
     [Theory]

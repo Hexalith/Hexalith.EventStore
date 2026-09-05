@@ -70,8 +70,8 @@ public class AggregateActorTests {
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
-        // Assert -- Story 4.3 adds a final save for the persisted pending-count decrement.
-        await ctx.StateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Admission and terminal cleanup each commit once; terminal cleanup owns the counter update.
+        await ctx.StateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

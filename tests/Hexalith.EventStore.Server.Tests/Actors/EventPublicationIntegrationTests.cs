@@ -475,9 +475,8 @@ public class EventPublicationIntegrationTests {
         stageCheckpoints.IndexOf(CommandStatus.EventsStored).ShouldBeGreaterThan(stageCheckpoints.IndexOf(CommandStatus.Processing));
         stageCheckpoints.IndexOf(CommandStatus.EventsPublished).ShouldBeGreaterThan(stageCheckpoints.IndexOf(CommandStatus.EventsStored));
 
-        // SaveStateAsync was called (to commit the checkpoints and the final pending-count decrement)
-        // Story 4.3 adds one final save after terminal completion.
-        await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Processing, EventsStored+events, and EventsPublished+terminal+counter each commit once.
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // Test event types

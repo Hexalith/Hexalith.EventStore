@@ -252,34 +252,19 @@ public class DeadLetterRoutingTests {
     [Fact]
     public async Task ProcessCommand_EventPersistenceFails_DeadLetterPublished() {
         // Arrange
-        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
-        ConfigureNoDuplicate(stateManager);
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = context.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.Success([new TestEvent()]));
-
-        // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored commit), succeed third time (Rejected state)
-        int saveCallCount = 0;
-        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                saveCallCount++;
-                if (saveCallCount == 1) {
-                    return Task.CompletedTask; // Processing checkpoint succeeds
-                }
-
-                if (saveCallCount == 2) {
-                    throw new IOException("State store write failed"); // EventsStored commit fails
-                }
-
-                return Task.CompletedTask; // Rejected state save succeeds
-            });
+        stateManager.FaultOnCall("SaveState", 2, new IOException("State store write failed"));
 
         // Act
-        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+        _ = await context.Actor.ProcessCommandAsync(envelope);
 
         // Assert
-        _ = await deadLetterPublisher.Received(1).PublishDeadLetterAsync(
+        _ = await context.DeadLetterPublisher.Received(1).PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>());
@@ -288,38 +273,23 @@ public class DeadLetterRoutingTests {
     [Fact]
     public async Task ProcessCommand_EventPersistenceFails_CorrectEventCount() {
         // Arrange
-        (AggregateActor actor, IActorStateManager stateManager, _, IDomainServiceInvoker invoker, IDeadLetterPublisher deadLetterPublisher) = CreateActorWithMockState();
-        ConfigureNoDuplicate(stateManager);
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+        _ = context.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
             .Returns(DomainResult.Success([new TestEvent(), new TestEvent(), new TestEvent()]));
 
         DeadLetterMessage? capturedMessage = null;
-        _ = deadLetterPublisher.PublishDeadLetterAsync(
+        _ = context.DeadLetterPublisher.PublishDeadLetterAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Do<DeadLetterMessage>(m => capturedMessage = m),
             Arg.Any<CancellationToken>())
             .Returns(true);
-
-        // Configure SaveStateAsync to succeed first time (Processing checkpoint), fail second time (EventsStored commit), succeed third time (Rejected state)
-        int saveCallCount = 0;
-        _ = stateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                saveCallCount++;
-                if (saveCallCount == 1) {
-                    return Task.CompletedTask; // Processing checkpoint succeeds
-                }
-
-                if (saveCallCount == 2) {
-                    throw new IOException("State store write failed"); // EventsStored commit fails
-                }
-
-                return Task.CompletedTask; // Rejected state save succeeds
-            });
+        stateManager.FaultOnCall("SaveState", 2, new IOException("State store write failed"));
 
         // Act
-        _ = await actor.ProcessCommandAsync(envelope);
+        _ = await context.Actor.ProcessCommandAsync(envelope);
 
         // Assert
         _ = capturedMessage.ShouldNotBeNull();

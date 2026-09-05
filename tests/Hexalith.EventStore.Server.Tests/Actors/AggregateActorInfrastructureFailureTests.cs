@@ -983,6 +983,56 @@ public class AggregateActorInfrastructureFailureTests
     }
 
     [Fact]
+    public async Task IdempotencyRemediationMarksChildAndProcessActivitiesFailedWithoutSecrets()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(
+            correlationId: "corr-idempotency-activity-remediation",
+            causationId: "legacy-causation");
+        var legacy = new IdempotencyRecord(
+            command.CausationId!,
+            command.CorrelationId,
+            true,
+            null,
+            DateTimeOffset.UnixEpoch,
+            EventCount: 1,
+            MessageId: command.MessageId,
+            CommandType: command.CommandType,
+            ExpiresAt: DateTimeOffset.UtcNow.AddHours(1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{command.CausationId}"] = legacy,
+        });
+        stateManager.FaultOnCall(
+            $"TryRemoveState:idempotency:{command.CausationId}",
+            1,
+            new IOException("migration-secret"));
+        stateManager.FaultOnCall("ClearCache", 1, new IOException("discard-secret"));
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        IReadOnlyList<Activity> activities = await CaptureActivitiesAsync(
+            command.CorrelationId,
+            () => Should.ThrowAsync<ActorStateRemediationException>(
+                () => context.Actor.ProcessCommandAsync(command)));
+
+        Activity idempotency = activities
+            .Where(activity => activity.OperationName == EventStoreActivitySource.IdempotencyCheck)
+            .ShouldHaveSingleItem();
+        Activity process = activities
+            .Where(activity => activity.OperationName == EventStoreActivitySource.ProcessCommand)
+            .ShouldHaveSingleItem();
+        idempotency.Status.ShouldBe(ActivityStatusCode.Error);
+        process.Status.ShouldBe(ActivityStatusCode.Error);
+        string activityText = string.Join(
+            '|',
+            activities.SelectMany(activity => activity.Events).SelectMany(activityEvent => activityEvent.Tags)
+                .Select(tag => $"{tag.Key}={tag.Value}"));
+        activityText.ShouldNotContain("migration-secret");
+        activityText.ShouldNotContain("discard-secret");
+    }
+
+    [Fact]
     public async Task StaleCommittedHandoffAddsOneRecoveryOwnerAndLeavesItsExactPendingCount()
     {
         var stateManager = new FaultInjectingActorStateManager();
@@ -1015,6 +1065,146 @@ public class AggregateActorInfrastructureFailureTests
         ((UnpublishedEventsRecord)durable["drain:msg-stale-owner"])
             .MessageId.ShouldBe("msg-stale-owner");
         durable.ShouldNotContainKey(GetPipelineKey(command));
+    }
+
+    [Fact]
+    public async Task StaleCommittedHandoffAmbiguity_DoesNotAcceptAConcurrentPipelineReplacement()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-stale-concurrent");
+        var stale = new PipelineState(
+            command.CorrelationId,
+            CommandStatus.EventsStored,
+            command.CommandType,
+            DateTimeOffset.UnixEpoch,
+            EventCount: 1,
+            RejectionEventType: null,
+            MessageId: "msg-stale-owner",
+            CausationId: "msg-stale-owner",
+            StartSequence: 1,
+            EndSequence: 1);
+        var winner = stale with
+        {
+            CurrentStage = CommandStatus.Processing,
+            MessageId = "msg-concurrent-winner",
+            CausationId = "msg-concurrent-winner",
+            EventCount = null,
+            StartSequence = null,
+            EndSequence = null,
+        };
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [GetPipelineKey(command)] = stale,
+            [PendingCountKey] = 0,
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new IOException("commit uncertain"));
+        stateManager.ActBeforeCall(
+            $"TryGetState:{GetPipelineKey(command)}",
+            2,
+            manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
+            {
+                [GetPipelineKey(command)] = winner,
+            }));
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("command_identity_conflict");
+        stateManager.CommittedState[GetPipelineKey(command)].ShouldBe(winner);
+        _ = await context.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task StaleCommittedHandoffAmbiguity_DoesNotAcceptAPartialSameIdentityDrainWitness()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-stale-drain-concurrent");
+        var stale = new PipelineState(
+            command.CorrelationId,
+            CommandStatus.EventsStored,
+            command.CommandType,
+            DateTimeOffset.UnixEpoch,
+            EventCount: 1,
+            RejectionEventType: null,
+            MessageId: "msg-stale-drain",
+            CausationId: "msg-stale-drain",
+            StartSequence: 1,
+            EndSequence: 1);
+        var winner = new UnpublishedEventsRecord(
+            command.CorrelationId,
+            1,
+            1,
+            1,
+            "ConcurrentCommandType",
+            false,
+            DateTimeOffset.UnixEpoch.AddMinutes(1),
+            RetryCount: 7,
+            LastFailureReason: "concurrent-winner",
+            MessageId: "msg-stale-drain");
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [GetPipelineKey(command)] = stale,
+            [PendingCountKey] = 0,
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new IOException("commit uncertain"));
+        stateManager.ActBeforeCall(
+            $"TryGetState:{GetPipelineKey(command)}",
+            2,
+            manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
+            {
+                [UnpublishedEventsRecord.GetStateKey("msg-stale-drain")] = winner,
+            }));
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("command_identity_conflict");
+        stateManager.CommittedState[UnpublishedEventsRecord.GetStateKey("msg-stale-drain")]
+            .ShouldBe(winner);
+        _ = await context.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task StaleCommittedHandoffSaveCancellation_PropagatesAfterExactDurableInspection()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-stale-cancel");
+        var stale = new PipelineState(
+            command.CorrelationId,
+            CommandStatus.EventsStored,
+            command.CommandType,
+            DateTimeOffset.UnixEpoch,
+            EventCount: 1,
+            RejectionEventType: null,
+            MessageId: "msg-stale-cancel",
+            CausationId: "msg-stale-cancel",
+            StartSequence: 1,
+            EndSequence: 1);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [GetPipelineKey(command)] = stale,
+            [PendingCountKey] = 0,
+        });
+        stateManager.FaultAfterCall(
+            "SaveState",
+            1,
+            new OperationCanceledException("caller canceled"));
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => context.Actor.ProcessCommandAsync(command));
+
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.ShouldNotContainKey(GetPipelineKey(command));
+        durable[PendingCountKey].ShouldBe(1);
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains("msg-stale-cancel").ShouldBeTrue();
+        ((UnpublishedEventsRecord)durable["drain:msg-stale-cancel"])
+            .ReminderArmedAt.ShouldBeNull();
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+        _ = await context.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
     }
 
     [Fact]
@@ -1097,6 +1287,54 @@ public class AggregateActorInfrastructureFailureTests
     }
 
     [Fact]
+    public async Task StaleProcessingReplacementSaveFailsBeforeCommit_ReleasesTheProvenExcessSlot()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-stale-processing-precommit");
+        var stale = new PipelineState(
+            command.CorrelationId,
+            CommandStatus.Processing,
+            command.CommandType,
+            DateTimeOffset.UnixEpoch,
+            EventCount: null,
+            RejectionEventType: null,
+            MessageId: "msg-stale-processing",
+            CausationId: "msg-stale-processing");
+        var existingIndex = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry("msg-existing-owner", "corr-existing", DateTimeOffset.UnixEpoch),
+        ]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [GetPipelineKey(command)] = stale,
+            [UnpublishedPublicationIndex.StateKey] = existingIndex,
+            ["drain:msg-existing-owner"] = new UnpublishedEventsRecord(
+                "corr-existing",
+                1,
+                1,
+                1,
+                "CreateOrder",
+                false,
+                DateTimeOffset.UnixEpoch,
+                0,
+                null,
+                "msg-existing-owner"),
+            [PendingCountKey] = 2,
+        });
+        stateManager.FaultOnCall("SaveState", 2, new InvalidOperationException("pre-commit failure"));
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => context.Actor.ProcessCommandAsync(command));
+
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable[PendingCountKey].ShouldBe(1);
+        durable.ShouldNotContainKey(GetPipelineKey(command));
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Entries.Select(entry => entry.MessageId).ShouldBe(["msg-existing-owner"]);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+    }
+
+    [Fact]
     public async Task FailedPendingCountReadDoesNotPersistAGuessedCountOverRecoveryOwners()
     {
         var stateManager = new FaultInjectingActorStateManager();
@@ -1161,6 +1399,45 @@ public class AggregateActorInfrastructureFailureTests
         stateManager.CommittedState[$"idempotency:{command.MessageId}"].ShouldBe(legacy);
         stateManager.CommittedState.ShouldNotContainKey($"idempotency:{command.CausationId}");
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task LegacyMigrationRemovalMutationFailure_DiscardsThePartiallyStagedMigration()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(
+            correlationId: "corr-legacy-mutation",
+            causationId: "legacy-causation");
+        var legacy = new IdempotencyRecord(
+            command.CausationId!,
+            command.CorrelationId,
+            true,
+            null,
+            DateTimeOffset.UnixEpoch,
+            EventCount: 1,
+            MessageId: command.MessageId,
+            CommandType: command.CommandType,
+            ExpiresAt: DateTimeOffset.UtcNow.AddHours(1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{command.CausationId}"] = legacy,
+        });
+        var expected = new InvalidOperationException("migration-remove-secret");
+        stateManager.FaultOnCall(
+            $"TryRemoveState:idempotency:{command.CausationId}",
+            1,
+            expected);
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        InvalidOperationException observed = await Should.ThrowAsync<InvalidOperationException>(
+            () => context.Actor.ProcessCommandAsync(command));
+
+        observed.ShouldBeSameAs(expected);
+        stateManager.CommittedState[$"idempotency:{command.CausationId}"].ShouldBe(legacy);
+        stateManager.CommittedState.ShouldNotContainKey($"idempotency:{command.MessageId}");
+        stateManager.Trace.ShouldContain("ClearCache");
+        stateManager.Trace.ShouldNotContain("SaveState");
     }
 
     [Fact]
@@ -1254,6 +1531,26 @@ public class AggregateActorInfrastructureFailureTests
         durable.ShouldNotContainKey(PendingCountKey);
         durable.ShouldNotContainKey(GetPipelineKey(command));
         stateManager.Trace.ShouldContain("ClearCache");
+    }
+
+    [Fact]
+    public async Task ProcessingAdmissionCheckpointMutationFailure_DiscardsThePartiallyStagedSlot()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-admission-mutation");
+        var expected = new InvalidOperationException("checkpoint-mutation-secret");
+        stateManager.FaultOnCall($"SetState:{GetPipelineKey(command)}", 1, expected);
+
+        InvalidOperationException observed = await Should.ThrowAsync<InvalidOperationException>(
+            () => context.Actor.ProcessCommandAsync(command));
+
+        observed.ShouldBeSameAs(expected);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.ShouldNotContainKey(PendingCountKey);
+        durable.ShouldNotContainKey(GetPipelineKey(command));
+        stateManager.Trace.ShouldContain("ClearCache");
+        stateManager.Trace.ShouldNotContain("SaveState");
     }
 
     [Fact]
@@ -1414,6 +1711,154 @@ public class AggregateActorInfrastructureFailureTests
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(2);
     }
 
+    [Fact]
+    public async Task DrainSuccessCleanupMutationFailure_DiscardsPartialCleanupBeforePersistingRetry()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-drain-cleanup-mutation");
+        string trackingId = command.MessageId;
+        var record = new UnpublishedEventsRecord(
+            command.CorrelationId,
+            1,
+            1,
+            1,
+            command.CommandType,
+            false,
+            DateTimeOffset.UnixEpoch,
+            RetryCount: 0,
+            LastFailureReason: null,
+            MessageId: trackingId);
+        var index = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
+        ]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [UnpublishedEventsRecord.GetStateKey(trackingId)] = record,
+            [UnpublishedPublicationIndex.StateKey] = index,
+            [PendingCountKey] = 1,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] =
+                CreateEvent(command.AggregateIdentity, 1, command.MessageId),
+        });
+        stateManager.FaultOnCall(
+            $"SetState:{UnpublishedPublicationIndex.StateKey}",
+            1,
+            new InvalidOperationException("cleanup-mutation-secret"));
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        await context.Actor.ReceiveReminderAsync(
+            UnpublishedEventsRecord.GetReminderName(trackingId),
+            [],
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        UnpublishedEventsRecord updated = (UnpublishedEventsRecord)durable[
+            UnpublishedEventsRecord.GetStateKey(trackingId)];
+        updated.RetryCount.ShouldBe(1);
+        updated.LastFailureReason.ShouldNotContain("cleanup-mutation-secret");
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains(trackingId).ShouldBeTrue();
+        durable[PendingCountKey].ShouldBe(1);
+        stateManager.Trace.IndexOf("ClearCache").ShouldBeLessThan(
+            stateManager.Trace.LastIndexOf($"SetState:{UnpublishedEventsRecord.GetStateKey(trackingId)}"));
+    }
+
+    [Fact]
+    public async Task DrainExhaustionMarkerMutationFailure_DiscardsTheStagedMarker()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-drain-marker-mutation");
+        string trackingId = command.MessageId;
+        var record = new UnpublishedEventsRecord(
+            command.CorrelationId,
+            1,
+            1,
+            1,
+            command.CommandType,
+            false,
+            DateTimeOffset.UnixEpoch,
+            RetryCount: 1,
+            LastFailureReason: "publish failed",
+            MessageId: trackingId);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [UnpublishedEventsRecord.GetStateKey(trackingId)] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
+            ]),
+            [PendingCountKey] = 1,
+        });
+        stateManager.FaultAfterCall(
+            $"SetState:{UnpublishedEventsRecord.GetStateKey(trackingId)}",
+            1,
+            new InvalidOperationException("marker-mutation-secret"));
+        ActorTestContext context = CreateActor(
+            stateManager: stateManager,
+            eventDrainOptions: new EventDrainOptions { MaxDrainAttempts = 1 });
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => context.Actor.ReceiveReminderAsync(
+            UnpublishedEventsRecord.GetReminderName(trackingId),
+            [],
+            TimeSpan.Zero,
+            TimeSpan.Zero));
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState[
+            UnpublishedEventsRecord.GetStateKey(trackingId)]).ShouldBe(record);
+        stateManager.CommittedState[PendingCountKey].ShouldBe(1);
+        stateManager.Trace.ShouldContain("ClearCache");
+        stateManager.Trace.ShouldNotContain("SaveState");
+    }
+
+    [Fact]
+    public async Task DrainExhaustionCleanupMutationFailure_RetainsTheCommittedMarkerAndOwner()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-drain-exhaustion-cleanup");
+        string trackingId = command.MessageId;
+        var record = new UnpublishedEventsRecord(
+            command.CorrelationId,
+            1,
+            1,
+            1,
+            command.CommandType,
+            false,
+            DateTimeOffset.UnixEpoch,
+            RetryCount: 1,
+            LastFailureReason: "publish failed",
+            MessageId: trackingId);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [UnpublishedEventsRecord.GetStateKey(trackingId)] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
+            ]),
+            [PendingCountKey] = 1,
+        });
+        stateManager.FaultOnCall(
+            $"SetState:{UnpublishedPublicationIndex.StateKey}",
+            1,
+            new InvalidOperationException("cleanup-mutation-secret"));
+        ActorTestContext context = CreateActor(
+            stateManager: stateManager,
+            eventDrainOptions: new EventDrainOptions { MaxDrainAttempts = 1 });
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => context.Actor.ReceiveReminderAsync(
+            UnpublishedEventsRecord.GetReminderName(trackingId),
+            [],
+            TimeSpan.Zero,
+            TimeSpan.Zero));
+
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        ((UnpublishedEventsRecord)durable[UnpublishedEventsRecord.GetStateKey(trackingId)])
+            .DeadLettered.ShouldBeTrue();
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains(trackingId).ShouldBeTrue();
+        durable[PendingCountKey].ShouldBe(1);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+        stateManager.Trace.LastIndexOf("ClearCache").ShouldBeGreaterThan(
+            stateManager.Trace.LastIndexOf($"RemoveState:{UnpublishedEventsRecord.GetStateKey(trackingId)}"));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -1463,6 +1908,46 @@ public class AggregateActorInfrastructureFailureTests
             default!, default!, default!);
         stateManager.Trace.Count(operation => operation == "SaveState")
             .ShouldBe(commitThenThrow ? 3 : 4);
+    }
+
+    [Fact]
+    public async Task PublicationIndexCapacityRefusal_ReportsNormalizedOwnerCount()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-normalized-refusal");
+        var index = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry(
+                "msg-existing-owner",
+                "corr-existing",
+                DateTimeOffset.UnixEpoch),
+            new UnpublishedPublicationEntry(
+                string.Empty,
+                "corr-ownerless-remnant",
+                DateTimeOffset.UnixEpoch),
+        ]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [UnpublishedPublicationIndex.StateKey] = index,
+            [PendingCountKey] = 1,
+        });
+        ActorTestContext context = CreateActor(
+            stateManager: stateManager,
+            eventDrainOptions: new EventDrainOptions { MaxOutstandingPublicationEntries = 1 });
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        result.BackpressureExceeded.ShouldBeTrue();
+        result.BackpressurePendingCount.ShouldBe(1);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .OwnerCount.ShouldBe(1);
+        durable[PendingCountKey].ShouldBe(1);
     }
 
     [Theory]

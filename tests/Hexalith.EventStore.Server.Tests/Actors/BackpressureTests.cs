@@ -250,20 +250,20 @@ public class BackpressureTests {
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _) = CreateActor();
 
         ConfigureNoDuplicate(stateManager);
-        // Backpressure check reads 0 -> pass, final decrement reads 1 -> sets 0.
-        SetupPendingCountSequence(stateManager, 0, 1);
+        // Admission reads 0; after terminal commits the owner projection is durably 0.
+        SetupPendingCountSequence(stateManager, 0, 0);
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .Returns(DomainResult.NoOp());
 
         _ = await actor.ProcessCommandAsync(CreateCommand());
 
-        // Counter should be incremented then decremented (finally block)
+        // Counter is incremented at admission then reconciled in terminal cleanup.
         Received.InOrder(() => {
             _ = stateManager.SetStateAsync(PendingCommandCountKey, 1, Arg.Any<CancellationToken>());
             _ = stateManager.SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
         });
 
-        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // --- AC #7: Counter initialization on first use ---

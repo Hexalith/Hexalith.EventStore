@@ -38,15 +38,32 @@ public class AggregateActorManualSnapshotTests {
             .Returns(SnapshotLoadResult.Absent());
 
         object? capturedState = null;
+        SnapshotRecord? stagedSnapshot = null;
         _ = snapshotManager.CreateSnapshotAsync(
                 identity,
                 2,
-                Arg.Do<object>(state => capturedState = state),
+                Arg.Any<object>(),
                 stateManager,
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>(),
                 true)
-            .Returns(Task.CompletedTask);
+            .Returns(callInfo => {
+                capturedState = callInfo.ArgAt<object>(2);
+                stagedSnapshot = new SnapshotRecord(
+                    2,
+                    capturedState,
+                    DateTimeOffset.UnixEpoch,
+                    identity.Domain,
+                    identity.AggregateId,
+                    identity.TenantId);
+                return Task.CompletedTask;
+            });
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(
+                identity.SnapshotKey,
+                Arg.Any<CancellationToken>())
+            .Returns(_ => stagedSnapshot is null
+                ? new ConditionalValue<SnapshotRecord>(false, default!)
+                : new ConditionalValue<SnapshotRecord>(true, stagedSnapshot));
 
         IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
         _ = reconstructor.ReconstructAsync(
@@ -103,6 +120,37 @@ public class AggregateActorManualSnapshotTests {
         result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
         stateManager.CommittedState.ShouldNotContainKey(identity.SnapshotKey);
         stateManager.Trace.ShouldContain("ClearCache");
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_AmbiguousSaveWithConcurrentSameSequenceReplacement_DoesNotClaimCreated() {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshotManager = CreateStagingSnapshotManager(identity, stateManager);
+        IAggregateStateReconstructor reconstructor = CreateReconstructor(identity);
+        var winner = new SnapshotRecord(
+            2,
+            JsonSerializer.Deserialize<JsonElement>("""{"status":"concurrent-winner"}"""),
+            DateTimeOffset.UnixEpoch.AddMinutes(1),
+            identity.Domain,
+            identity.AggregateId,
+            identity.TenantId);
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        stateManager.ActBeforeCall(
+            $"TryGetState:{identity.SnapshotKey}",
+            2,
+            manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
+            {
+                [identity.SnapshotKey] = winner,
+            }));
+        AggregateActor actor = CreateActor(identity, stateManager, snapshotManager, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-ambiguous");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        ((SnapshotRecord)stateManager.CommittedState[identity.SnapshotKey]).ShouldBe(winner);
+        stateManager.Trace.ShouldContain("ConcurrentWinner");
     }
 
     private static ISnapshotManager CreateStagingSnapshotManager(

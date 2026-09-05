@@ -387,8 +387,8 @@ public class AggregateActorDomainResultTests {
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
-        // Assert -- 4 SaveStateAsync calls: Processing checkpoint, EventsStored+events, terminal, pending-count decrement
-        await ctx.StateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Processing, EventsStored+events, and terminal+counter each commit once.
+        await ctx.StateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -402,8 +402,8 @@ public class AggregateActorDomainResultTests {
         // Act
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
-        // Assert -- Story 4.3 adds a final save for the persisted pending-count decrement.
-        await ctx.StateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Admission and terminal cleanup each commit once; terminal cleanup owns the counter update.
+        await ctx.StateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -226,7 +226,7 @@ public partial class AggregateActor(
                     "LegacyRedirect",
                     exception.GetType().Name,
                     "DiscardRedirectBatch",
-                    exception.GetType().Name,
+                    discardExceptionType,
                     discardExceptionType,
                     failedBatchDiscarded: false,
                     durableStateObservation: "Unobserved");

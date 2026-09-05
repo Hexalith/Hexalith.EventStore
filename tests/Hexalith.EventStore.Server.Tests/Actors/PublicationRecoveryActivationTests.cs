@@ -536,6 +536,31 @@ public class PublicationRecoveryActivationTests {
             Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task OnActivate_NonblankMalformedEntries_ConsumeTheProbeBudgetAndLeaveTheTailDurable() {
+        const int entryCount = 40;
+        ActivationContext ctx = CreateActorForBoundedDrain();
+        UnpublishedPublicationEntry[] entries = [.. Enumerable.Range(0, entryCount)
+            .Select(i => new UnpublishedPublicationEntry(
+                $"msg-malformed-{i:D2}",
+                string.Empty,
+                DateTimeOffset.UtcNow))];
+        SeedPublicationIndex(ctx.StateManager, entries);
+        foreach (UnpublishedPublicationEntry entry in entries) {
+            SeedRecoverableIdempotency(ctx.StateManager, entry.MessageId);
+        }
+
+        await InvokeOnActivateAsync(ctx.Actor);
+
+        await ctx.StateManager.Received(1).SetStateAsync(
+            UnpublishedPublicationIndex.StateKey,
+            Arg.Is<UnpublishedPublicationIndex>(index =>
+                index.Entries.Count == entryCount - MaxActivationProbeEntries
+                && index.Entries[0].MessageId == "msg-malformed-32"),
+            Arg.Any<CancellationToken>());
+        CountStateReads(ctx.StateManager, "idempotency:").ShouldBe(MaxActivationProbeEntries);
+    }
+
     // ===== I/O matrix row: crash after drain commit, before reminder =====
 
     [Fact]

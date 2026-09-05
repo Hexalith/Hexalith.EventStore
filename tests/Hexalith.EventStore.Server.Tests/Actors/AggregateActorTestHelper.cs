@@ -63,7 +63,8 @@ internal static class AggregateActorTestHelper {
         IActorStateManager? stateManager = null,
         IDomainServiceInvoker? invoker = null,
         IEventPublisher? eventPublisher = null,
-        EventDrainOptions? eventDrainOptions = null) {
+        EventDrainOptions? eventDrainOptions = null,
+        IDeadLetterPublisher? deadLetterPublisher = null) {
         bool configureSubstituteStateManager = stateManager is null;
         bool configureDefaultInvoker = invoker is null;
         bool configureDefaultPublisher = eventPublisher is null;
@@ -82,12 +83,15 @@ internal static class AggregateActorTestHelper {
         eventPublisher ??= Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
-        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
-        _ = deadLetterPublisher.PublishDeadLetterAsync(
-            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
-            Arg.Any<DeadLetterMessage>(),
-            Arg.Any<CancellationToken>())
-            .Returns(true);
+        if (deadLetterPublisher is null)
+        {
+            deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+            _ = deadLetterPublisher.PublishDeadLetterAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<DeadLetterMessage>(),
+                Arg.Any<CancellationToken>())
+                .Returns(true);
+        }
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(eventDrainOptions ?? new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider, executionContextProtector: executionContextProtector);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)

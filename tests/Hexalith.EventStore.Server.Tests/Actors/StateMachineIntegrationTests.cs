@@ -123,8 +123,8 @@ public class StateMachineIntegrationTests {
             Arg.Is<string>(s => s.Contains(":pipeline:") && s.Contains(envelope.CorrelationId)),
             Arg.Any<CancellationToken>());
 
-        // 4 SaveStateAsync calls: Processing (with pending count), EventsStored+events, terminal, pending-count decrement
-        await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Processing, EventsStored+events, and terminal+counter each commit once.
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -219,8 +219,8 @@ public class StateMachineIntegrationTests {
             Arg.Is<string>(s => s.Contains(":pipeline:")),
             Arg.Any<CancellationToken>());
 
-        // 3 SaveStateAsync calls: Processing checkpoint + terminal + pending-count decrement
-        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Processing and terminal+counter each commit once.
+        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // --- Task 8.4: Crash recovery from EventsStored (NFR25) ---
