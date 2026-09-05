@@ -26,6 +26,30 @@ public class UnpublishedPublicationIndexTests {
     public void Entries_NullCollection_IsNormalizedToEmpty() => new UnpublishedPublicationIndex(null!).Entries.ShouldBeEmpty();
 
     [Fact]
+    public void Entries_DuplicatePersistedMessageIds_AreNormalizedToOneOwner() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", "corr-first"),
+            Entry("msg-1", "corr-duplicate"),
+            Entry("msg-2", "corr-second"),
+        ]);
+
+        index.Entries.Count.ShouldBe(2);
+        index.OwnerCount.ShouldBe(2);
+        index.Entries.Single(entry => entry.MessageId == "msg-1").CorrelationId.ShouldBe("corr-first");
+    }
+
+    [Fact]
+    public void OwnerCount_IgnoresMalformedPersistedEntries() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1"),
+            new UnpublishedPublicationEntry(string.Empty, "corr-malformed", DateTimeOffset.UtcNow),
+        ]);
+
+        index.Entries.Count.ShouldBe(2);
+        index.OwnerCount.ShouldBe(1);
+    }
+
+    [Fact]
     public void TryAdd_BelowCapacity_TracksTheEntry() {
         PublicationIndexAddOutcome outcome = UnpublishedPublicationIndex.Empty.TryAdd(
             Entry("msg-1"), maxEntries: 2, out UnpublishedPublicationIndex updated);

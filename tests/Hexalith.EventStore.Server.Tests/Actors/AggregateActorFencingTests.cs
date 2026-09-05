@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 
 using Dapr.Actors;
@@ -435,6 +436,132 @@ public class AggregateActorFencingTests
         _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
     }
 
+    [Fact]
+    public async Task LegacyRedirectSaveCommitsThenThrows_ReturnsRedirectedFromFreshDurableWitness()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        (IdempotencyRecord record, IdempotencyLegacySourceRequest source,
+            IdempotencyLegacySourceRedirectRequest redirect) = CreateLegacyRedirectFixture();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{record.MessageId}"] = record,
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
+
+        IdempotencyLegacySourceInspection result = await ((IIdempotencyLegacySourceActor)actorContext.Actor)
+            .SetLegacySourceRedirectAsync(redirect);
+
+        result.Decision.ShouldBe(IdempotencyLegacySourceDecision.Redirected);
+        stateManager.CommittedState.ShouldContainKey(
+            IdempotencyChecker.GetLegacyRedirectKey(source.ExecutionMessageId));
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task LegacyRedirectSaveFailsBeforeCommit_ReturnsUnavailableAndDiscardsStagedRedirect()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        (IdempotencyRecord record, IdempotencyLegacySourceRequest source,
+            IdempotencyLegacySourceRedirectRequest redirect) = CreateLegacyRedirectFixture();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{record.MessageId}"] = record,
+        });
+        stateManager.FaultOnCall("SaveState", 1, new InvalidOperationException("pre-commit failure"));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
+        IIdempotencyLegacySourceActor actor = actorContext.Actor;
+
+        IdempotencyLegacySourceInspection result = await actor.SetLegacySourceRedirectAsync(redirect);
+        IdempotencyLegacySourceInspection reproved = await actor.InspectLegacySourceAsync(source);
+
+        result.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unavailable);
+        reproved.Decision.ShouldBe(IdempotencyLegacySourceDecision.Exact);
+        stateManager.CommittedState.ShouldNotContainKey(
+            IdempotencyChecker.GetLegacyRedirectKey(source.ExecutionMessageId));
+    }
+
+    [Fact]
+    public async Task PoisonedActor_ReconciliationStopsAtTheCacheBarrierBeforeStateInspection()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        stateManager.FaultOnCall("ClearCache", 1, new IOException("cache unavailable"));
+        IdempotencyExecutionContextProtector protector = CreateProtector();
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(
+            stateManager: stateManager,
+            executionContextProtector: protector);
+        CommandEnvelope command = AggregateActorTestHelper.CreateTestEnvelope(
+            correlationId: "corr-poison-reconcile");
+        IdempotencyExecutionContext executionContext = await protector.ProtectAsync(
+            "test-tenant:v1:key-digest",
+            7,
+            "v1",
+            ToSubmitCommand(command));
+        Poison(actorContext.Actor);
+
+        _ = await Should.ThrowAsync<ActorStateRemediationException>(
+            () => actorContext.Actor.ReconcileFencedCommandAsync(
+                new FencedCommandEnvelope(command, executionContext)));
+
+        stateManager.Trace.ShouldBe(["ClearCache"]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PoisonedActor_LegacyInspectionAndRedirectStopAtTheCacheBarrier(bool redirectTurn)
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        stateManager.FaultOnCall("ClearCache", 1, new IOException("cache unavailable"));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
+        (_, IdempotencyLegacySourceRequest source, IdempotencyLegacySourceRedirectRequest redirect) =
+            CreateLegacyRedirectFixture();
+        IIdempotencyLegacySourceActor actor = actorContext.Actor;
+        Poison(actorContext.Actor);
+
+        _ = await Should.ThrowAsync<ActorStateRemediationException>(() => redirectTurn
+            ? actor.SetLegacySourceRedirectAsync(redirect)
+            : actor.InspectLegacySourceAsync(source));
+
+        stateManager.Trace.ShouldBe(["ClearCache"]);
+    }
+
+    private static (
+        IdempotencyRecord Record,
+        IdempotencyLegacySourceRequest Source,
+        IdempotencyLegacySourceRedirectRequest Redirect) CreateLegacyRedirectFixture()
+    {
+        DateTimeOffset processedAt = new(2026, 8, 10, 8, 0, 0, TimeSpan.Zero);
+        DateTimeOffset expiresAt = DateTimeOffset.UtcNow.AddDays(1);
+        var record = new IdempotencyRecord(
+            "legacy-message",
+            "legacy-correlation",
+            true,
+            null,
+            processedAt,
+            EventCount: 1,
+            MessageId: "legacy-message",
+            CommandType: "CreateFolderCommand",
+            ExpiresAt: expiresAt,
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        var source = new IdempotencyLegacySourceRequest(
+            IdempotencyLegacySourceRequest.CurrentSchemaVersion,
+            "test-tenant",
+            "inventory-2026-08",
+            "migration-legacy-message",
+            1,
+            IdempotencyLegacySourceEvidence.Compute(record),
+            record.MessageId!,
+            record.CorrelationId!,
+            processedAt,
+            expiresAt,
+            record.ToResult());
+        return (
+            record,
+            source,
+            new IdempotencyLegacySourceRedirectRequest(source, "test-tenant:v1:key-digest"));
+    }
+
     private static IdempotencyExecutionContextProtector CreateProtector(
         IIdempotencyAdmissionActor? authority = null)
     {
@@ -472,4 +599,9 @@ public class AggregateActorFencingTests
             envelope.CorrelationId,
             envelope.UserId,
             envelope.Extensions);
+
+    private static void Poison(AggregateActor actor)
+        => typeof(AggregateActor)
+            .GetField("_stateCacheUnsafe", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(actor, true);
 }

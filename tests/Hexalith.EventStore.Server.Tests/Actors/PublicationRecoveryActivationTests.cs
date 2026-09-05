@@ -48,8 +48,10 @@ public class PublicationRecoveryActivationTests {
         IDeadLetterPublisher DeadLetterPublisher,
         IDomainServiceInvoker Invoker);
 
-    private static ActivationContext CreateActorForBoundedDrain(EventDrainOptions? drainOptions = null) {
-        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+    private static ActivationContext CreateActorForBoundedDrain(
+        EventDrainOptions? drainOptions = null,
+        IActorStateManager? stateManager = null) {
+        stateManager ??= Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
@@ -683,7 +685,7 @@ public class PublicationRecoveryActivationTests {
     // ===== I/O matrix row: activation with nothing outstanding =====
 
     [Fact]
-    public async Task OnActivate_NoOutstandingEntries_ReadsExactlyOneKeyAndDoesNothingElse() {
+    public async Task OnActivate_NoOutstandingEntries_ReconcilesWithoutSaving() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         _ = ctx.StateManager.TryGetStateAsync<UnpublishedPublicationIndex>(
             UnpublishedPublicationIndex.StateKey, Arg.Any<CancellationToken>())
@@ -691,14 +693,162 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        await ctx.StateManager.Received(1).TryGetStateAsync<UnpublishedPublicationIndex>(
+        await ctx.StateManager.Received(2).TryGetStateAsync<UnpublishedPublicationIndex>(
             UnpublishedPublicationIndex.StateKey, Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received(1).ClearCacheAsync(Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received(1).TryGetStateAsync<int>(
+            "pending_command_count", Arg.Any<CancellationToken>());
         await ctx.StateManager.DidNotReceive().TryGetStateAsync<UnpublishedEventsRecord>(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         await ctx.StateManager.DidNotReceive().TryGetStateAsync<PipelineState>(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         await ctx.StateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
         await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+    }
+
+    [Fact]
+    public async Task OnActivate_NonemptyIndex_ReconcilesPendingCountToDistinctOwners() {
+        ActivationContext ctx = CreateActorForBoundedDrain();
+        UnpublishedPublicationEntry[] entries = [
+            Entry("msg-owner-1", "corr-owner-1"),
+            Entry("msg-owner-2", "corr-owner-2"),
+        ];
+        SeedPublicationIndex(ctx.StateManager, entries);
+        foreach (UnpublishedPublicationEntry entry in entries) {
+            SeedDrainRecord(ctx.StateManager, entry.MessageId, new UnpublishedEventsRecord(
+                entry.CorrelationId, 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                RetryCount: 0, LastFailureReason: null, MessageId: entry.MessageId,
+                ReminderArmedAt: DateTimeOffset.UtcNow));
+        }
+
+        _ = ctx.StateManager.TryGetStateAsync<int>(
+            "pending_command_count", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<int>(true, 7));
+
+        await InvokeOnActivateAsync(ctx.Actor);
+
+        await ctx.StateManager.Received(1).SetStateAsync(
+            "pending_command_count", 2, Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task OnActivate_ReconciliationSaveCommitsThenThrows_ObservesCommitWithoutSecondSave() {
+        var stateManager = new FaultInjectingActorStateManager();
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-owner-1", "corr-owner-1"),
+            Entry("msg-owner-2", "corr-owner-2"),
+        ]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            [UnpublishedPublicationIndex.StateKey] = index,
+            ["pending_command_count"] = 0,
+            ["drain:msg-owner-1"] = new UnpublishedEventsRecord(
+                "corr-owner-1", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                0, null, "msg-owner-1", ReminderArmedAt: DateTimeOffset.UtcNow),
+            ["drain:msg-owner-2"] = new UnpublishedEventsRecord(
+                "corr-owner-2", 2, 2, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                0, null, "msg-owner-2", ReminderArmedAt: DateTimeOffset.UtcNow),
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await InvokeOnActivateAsync(ctx.Actor);
+
+        stateManager.CommittedState["pending_command_count"].ShouldBe(2);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task OnActivate_ReconciliationSaveFailsBeforeCommit_FirstLaterReadRepairsIt() {
+        var stateManager = new FaultInjectingActorStateManager();
+        var index = new UnpublishedPublicationIndex([Entry("msg-owner", "corr-owner")]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            [UnpublishedPublicationIndex.StateKey] = index,
+            ["pending_command_count"] = 0,
+            ["drain:msg-owner"] = new UnpublishedEventsRecord(
+                "corr-owner", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                0, null, "msg-owner", ReminderArmedAt: DateTimeOffset.UtcNow),
+        });
+        stateManager.FaultOnCall("SaveState", 1, new InvalidOperationException("pre-commit failure"));
+        ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await InvokeOnActivateAsync(ctx.Actor);
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+
+        _ = await ctx.Actor.GetStreamMetadataAsync();
+
+        stateManager.CommittedState["pending_command_count"].ShouldBe(1);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task OnActivate_PrecommitReconciliationFailure_NextActivationUsingSameDurableManagerRepairsIt() {
+        var stateManager = new FaultInjectingActorStateManager();
+        var index = new UnpublishedPublicationIndex([Entry("msg-owner", "corr-owner")]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            [UnpublishedPublicationIndex.StateKey] = index,
+            ["pending_command_count"] = 0,
+            ["drain:msg-owner"] = new UnpublishedEventsRecord(
+                "corr-owner", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                0, null, "msg-owner", ReminderArmedAt: DateTimeOffset.UtcNow),
+        });
+        stateManager.FaultOnCall("SaveState", 1, new InvalidOperationException("pre-commit failure"));
+        ActivationContext first = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await InvokeOnActivateAsync(first.Actor);
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+
+        ActivationContext next = CreateActorForBoundedDrain(stateManager: stateManager);
+        await InvokeOnActivateAsync(next.Actor);
+
+        stateManager.CommittedState["pending_command_count"].ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task OnActivate_ReminderStampCommitsThenThrows_ObservesStampWithoutSecondSave() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = new(
+            "corr-owner", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+            0, null, "msg-owner");
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                Entry("msg-owner", "corr-owner"),
+            ]),
+            ["pending_command_count"] = 1,
+            ["drain:msg-owner"] = record,
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await InvokeOnActivateAsync(ctx.Actor);
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState["drain:msg-owner"])
+            .ReminderArmedAt.ShouldNotBeNull();
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task OnActivate_ReminderStampFailsBeforeCommit_LeavesRecordUnstampedWithoutCachedMutation() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = new(
+            "corr-owner", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+            0, null, "msg-owner");
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                Entry("msg-owner", "corr-owner"),
+            ]),
+            ["pending_command_count"] = 1,
+            ["drain:msg-owner"] = record,
+        });
+        stateManager.FaultOnCall("SaveState", 1, new InvalidOperationException("pre-commit failure"));
+        ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await InvokeOnActivateAsync(ctx.Actor);
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState["drain:msg-owner"])
+            .ReminderArmedAt.ShouldBeNull();
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+        stateManager.Trace.ShouldContain("ClearCache");
     }
 
     [Fact]

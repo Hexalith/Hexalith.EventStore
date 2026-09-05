@@ -60,21 +60,25 @@ internal static class AggregateActorTestHelper {
         TimeProvider? timeProvider = null,
         IdempotencyExecutionContextProtector? executionContextProtector = null,
         ILogger<AggregateActor>? logger = null,
-        IActorStateManager? stateManager = null) {
+        IActorStateManager? stateManager = null,
+        IDomainServiceInvoker? invoker = null,
+        IEventPublisher? eventPublisher = null) {
         bool configureSubstituteStateManager = stateManager is null;
+        bool configureDefaultInvoker = invoker is null;
+        bool configureDefaultPublisher = eventPublisher is null;
         stateManager ??= Substitute.For<IActorStateManager>();
         if (logger is null) {
             logger = Substitute.For<ILogger<AggregateActor>>();
             _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         }
 
-        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        invoker ??= Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
         ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();
         _ = aggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
-        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        eventPublisher ??= Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
         IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
@@ -89,11 +93,14 @@ internal static class AggregateActorTestHelper {
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: domain service returns NoOp
-        _ = invoker.InvokeAsync(
-                Arg.Any<CommandEnvelope>(),
-                Arg.Any<object?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(DomainResult.NoOp());
+        if (configureDefaultInvoker)
+        {
+            _ = invoker.InvokeAsync(
+                    Arg.Any<CommandEnvelope>(),
+                    Arg.Any<object?>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(DomainResult.NoOp());
+        }
 
         // Default: no pipeline state (fresh command, not a resume)
         if (configureSubstituteStateManager)
@@ -103,13 +110,16 @@ internal static class AggregateActorTestHelper {
         }
 
         // Default: event publisher succeeds
-        _ = eventPublisher.PublishEventsAsync(
-            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
-            Arg.Any<IReadOnlyList<EventEnvelope>>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>(),
-            Arg.Any<bool>())
-            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
+        if (configureDefaultPublisher)
+        {
+            _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+                .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
+        }
 
         return new ActorTestContext(actor, stateManager, logger, invoker, snapshotManager, aggregateTypeResolver, commandStatusStore, eventPublisher, deadLetterPublisher);
     }

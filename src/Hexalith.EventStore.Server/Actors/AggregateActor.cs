@@ -591,6 +591,34 @@ public partial class AggregateActor(
                                 throw;
                             }
                         }
+
+                        // A crashed Processing checkpoint may still own one pending slot, but an
+                        // activation reconciliation may already have reduced the idle projection to
+                        // publication owners only. Reuse only a proven excess slot; otherwise let
+                        // normal admission acquire a new one without consuming another owner's slot.
+                        try
+                        {
+                            UnpublishedPublicationIndex publicationOwners = await ReadPublicationIndexAsync()
+                                .ConfigureAwait(false);
+                            pendingCommandCountBeforeAdmission = await ReadPendingCommandCountAsync()
+                                .ConfigureAwait(false);
+                            pendingCommandTracked = pendingCommandCountBeforeAdmission > publicationOwners.OwnerCount;
+                        }
+                        catch (Exception countReadException) when (countReadException is not OperationCanceledException)
+                        {
+                            _pendingCountReconciliationRequired = true;
+                            return await HandleInfrastructureFailureAsync(
+                                command,
+                                causationId,
+                                CommandStatus.Processing,
+                                countReadException,
+                                stateMachine,
+                                pipelineKeyPrefix,
+                                processActivity,
+                                startTicks,
+                                eventCount: null,
+                                cancellationToken).ConfigureAwait(false);
+                        }
                     }
                 }
 
@@ -659,6 +687,7 @@ public partial class AggregateActor(
                     }
 
                     await StagePendingCommandCountAsync(pendingCount + 1).ConfigureAwait(false);
+                    pendingCommandCountBeforeAdmission = pendingCount;
 
                     _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                 }
@@ -684,9 +713,12 @@ public partial class AggregateActor(
                 {
                     pendingCommandTracked = await InspectProcessingAdmissionSaveFailureAsync(
                         command,
-                        commandIdentity,
+                        pipelineState,
                         pipelineKeyPrefix,
                         pendingCommandCountBeforeAdmission,
+                        pendingCommandTracked
+                            ? pendingCommandCountBeforeAdmission
+                            : checked(pendingCommandCountBeforeAdmission + 1),
                         admissionSaveException).ConfigureAwait(false);
                     if (!pendingCommandTracked)
                     {
@@ -1430,9 +1462,11 @@ public partial class AggregateActor(
                 null);
         }
         catch (OperationCanceledException) {
+            _ = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
             throw;
         }
         catch (ProtectedDataUnreadableException ex) {
+            _ = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
             return new ManualSnapshotResult(
                 ManualSnapshotOutcome.UnreadableProtected,
                 ex.SequenceNumber ?? currentSequence,
@@ -1441,6 +1475,30 @@ public partial class AggregateActor(
                 "Protected event data cannot be safely read.");
         }
         catch (Exception ex) {
+            (bool discarded, _) = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
+            if (discarded && currentSequence > 0)
+            {
+                try
+                {
+                    ConditionalValue<SnapshotRecord> observed = await StateManager
+                        .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)
+                        .ConfigureAwait(false);
+                    if (observed.HasValue && observed.Value.SequenceNumber == currentSequence)
+                    {
+                        return new ManualSnapshotResult(
+                            ManualSnapshotOutcome.Created,
+                            currentSequence,
+                            identity.SnapshotKey,
+                            null,
+                            null);
+                    }
+                }
+                catch (Exception)
+                {
+                    _stateCacheUnsafe = true;
+                }
+            }
+
             logger.LogWarning(
                 "Manual snapshot creation failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Reason={Reason}",
                 correlationId,
@@ -1742,17 +1800,30 @@ public partial class AggregateActor(
                 // record never expires and every later retry of this message id returns
                 // RetryableRecoverable forever, even though the events are now published.
                 string drainedIdentity = record.GetTrackingIdentity(trackingId);
-                _ = await StagePublicationIndexRemovalAsync(drainedIdentity).ConfigureAwait(false);
+                UnpublishedPublicationIndex remainingOwners =
+                    await StagePublicationIndexRemovalAsync(drainedIdentity).ConfigureAwait(false);
                 _ = await CompleteRecoverableIdempotencyAsync(drainedIdentity).ConfigureAwait(false);
 
                 // The counter is an ownership projection of the normalized publication index.
                 // Recompute it from the staged post-removal index instead of decrementing a value
                 // that might belong to another recovery owner.
-                UnpublishedPublicationIndex remainingOwners = await ReadPublicationIndexAsync()
-                    .ConfigureAwait(false);
                 await StagePendingCommandCountAsync(remainingOwners.OwnerCount).ConfigureAwait(false);
 
-                await StateManager.SaveStateAsync().ConfigureAwait(false);
+                try
+                {
+                    await StateManager.SaveStateAsync().ConfigureAwait(false);
+                }
+                catch (Exception cleanupSaveException)
+                {
+                    bool cleanupCommitted = await InspectDrainCleanupSaveFailureAsync(
+                        trackingId,
+                        record,
+                        cleanupSaveException).ConfigureAwait(false);
+                    if (!cleanupCommitted)
+                    {
+                        throw;
+                    }
+                }
 
                 try {
                     await UnregisterReminderAsync(UnpublishedEventsRecord.GetReminderName(trackingId))
@@ -1812,10 +1883,8 @@ public partial class AggregateActor(
             else {
                 // Failure: increment retry, save updated record, reminder continues
                 UnpublishedEventsRecord updatedRecord = record.IncrementRetry(publishResult.FailureReason);
-                await StateManager.SetStateAsync(
-                    UnpublishedEventsRecord.GetStateKey(trackingId),
-                    updatedRecord).ConfigureAwait(false);
-                await StateManager.SaveStateAsync().ConfigureAwait(false);
+                updatedRecord = await PersistDrainRetryAsync(trackingId, record, updatedRecord)
+                    .ConfigureAwait(false);
 
                 logger.LogWarning(
                     "Drain failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}, StartSequence={StartSequence}, EndSequence={EndSequence}, FailureReason={FailureReason}",
@@ -1853,6 +1922,9 @@ public partial class AggregateActor(
         catch (OperationCanceledException) {
             throw;
         }
+        catch (ActorStateRemediationException) {
+            throw;
+        }
         catch (Exception ex) {
             // Drain infrastructure failure: increment retry, save, reminder continues
             string failureReasonCode = ClassifyDrainFailure(ex);
@@ -1861,10 +1933,8 @@ public partial class AggregateActor(
 
             string safeFailureReason = ProtectedDataDiagnosticRedactor.RedactException(ex, "drain");
             UnpublishedEventsRecord updatedRecord = record.IncrementRetry(safeFailureReason);
-            await StateManager.SetStateAsync(
-                UnpublishedEventsRecord.GetStateKey(trackingId),
-                updatedRecord).ConfigureAwait(false);
-            await StateManager.SaveStateAsync().ConfigureAwait(false);
+            updatedRecord = await PersistDrainRetryAsync(trackingId, record, updatedRecord)
+                .ConfigureAwait(false);
 
             logger.LogWarning(
                 "Drain failed with exception: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}, StartSequence={StartSequence}, EndSequence={EndSequence}, FailureReason={FailureReason}",
@@ -1945,10 +2015,29 @@ public partial class AggregateActor(
                 return;
             }
 
+            UnpublishedEventsRecord markedRecord = record.MarkDeadLettered(
+                DrainReasonCodes.AttemptsExhausted);
             await StateManager.SetStateAsync(
                 UnpublishedEventsRecord.GetStateKey(trackingId),
-                record.MarkDeadLettered(DrainReasonCodes.AttemptsExhausted)).ConfigureAwait(false);
-            await StateManager.SaveStateAsync().ConfigureAwait(false);
+                markedRecord).ConfigureAwait(false);
+            try
+            {
+                await StateManager.SaveStateAsync().ConfigureAwait(false);
+            }
+            catch (Exception markerSaveException)
+            {
+                bool markerCommitted = await InspectDrainMarkerSaveFailureAsync(
+                    trackingId,
+                    record,
+                    markedRecord,
+                    markerSaveException).ConfigureAwait(false);
+                if (!markerCommitted)
+                {
+                    throw;
+                }
+            }
+
+            record = markedRecord;
         }
 
         // One atomic batch: record removal, index-entry removal, the Recoverable -> Terminal
@@ -1956,12 +2045,25 @@ public partial class AggregateActor(
         // keeps the decrement exactly-once across a retried exhaustion turn.
         await StateManager.RemoveStateAsync(UnpublishedEventsRecord.GetStateKey(trackingId))
             .ConfigureAwait(false);
-        _ = await StagePublicationIndexRemovalAsync(drainedIdentity).ConfigureAwait(false);
+        UnpublishedPublicationIndex remainingOwners =
+            await StagePublicationIndexRemovalAsync(drainedIdentity).ConfigureAwait(false);
         _ = await CompleteRecoverableIdempotencyAsync(drainedIdentity).ConfigureAwait(false);
-        UnpublishedPublicationIndex remainingOwners = await ReadPublicationIndexAsync()
-            .ConfigureAwait(false);
         await StagePendingCommandCountAsync(remainingOwners.OwnerCount).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        try
+        {
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+        catch (Exception cleanupSaveException)
+        {
+            bool cleanupCommitted = await InspectDrainCleanupSaveFailureAsync(
+                trackingId,
+                record,
+                cleanupSaveException).ConfigureAwait(false);
+            if (!cleanupCommitted)
+            {
+                throw;
+            }
+        }
 
         try {
             await UnregisterReminderAsync(UnpublishedEventsRecord.GetReminderName(trackingId))
@@ -2085,7 +2187,8 @@ public partial class AggregateActor(
             or StatusCode.DeadlineExceeded
             or StatusCode.ResourceExhausted;
 
-    // TODO: Future — reconcile counter against actual drain:* record count on actor activation
+    // Missing legacy state represents zero; activation and the fail-closed barrier reconcile this
+    // projection against the normalized publication-owner index before other state access proceeds.
     private async Task<int> ReadPendingCommandCountAsync() {
         ConditionalValue<int> result = await StateManager
             .TryGetStateAsync<int>(PendingCommandCountKey)
@@ -2250,9 +2353,11 @@ public partial class AggregateActor(
         }
         catch (Exception recoveryException)
         {
+            bool recoveryDiscarded = false;
             try
             {
                 await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
+                recoveryDiscarded = true;
                 _stateCacheUnsafe = false;
                 int recoveryObserved = await ReadPendingCommandCountAsync().ConfigureAwait(false);
                 if (recoveryObserved != expectedAfter)
@@ -2277,7 +2382,11 @@ public partial class AggregateActor(
             {
                 _stateCacheUnsafe = true;
                 RequirePendingFinalizerRecovery(committedBefore, expectedAfter);
-                return (false, -1, "RecoveryInspectionFailed", inspectionException.GetType().Name);
+                return (
+                    recoveryDiscarded,
+                    -1,
+                    recoveryDiscarded ? "RecoveryInspectionFailed" : "RecoveryDiscardUnproved",
+                    inspectionException.GetType().Name);
             }
         }
     }
@@ -2419,19 +2528,16 @@ public partial class AggregateActor(
     }
 
     /// <summary>Stages removal of an index entry into the caller's existing batch.</summary>
-    /// <returns><c>true</c> when an entry was present and its removal was staged.</returns>
-    private async Task<bool> StagePublicationIndexRemovalAsync(string messageId) {
-        if (string.IsNullOrWhiteSpace(messageId)) {
-            return false;
-        }
-
+    /// <returns>The normalized post-removal owner set staged by this operation.</returns>
+    private async Task<UnpublishedPublicationIndex> StagePublicationIndexRemovalAsync(string messageId) {
         UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
-        if (!index.TryRemove(messageId, out UnpublishedPublicationIndex updated)) {
-            return false;
+        if (string.IsNullOrWhiteSpace(messageId)
+            || !index.TryRemove(messageId, out UnpublishedPublicationIndex updated)) {
+            return index;
         }
 
         await StateManager.SetStateAsync(UnpublishedPublicationIndex.StateKey, updated).ConfigureAwait(false);
-        return true;
+        return updated;
     }
 
     /// <summary>
@@ -2600,10 +2706,7 @@ public partial class AggregateActor(
                 // store cannot burn every re-arm slot in one activation.
                 if (await RegisterDrainReminderAsync(messageId).ConfigureAwait(false)) {
                     work++;
-                    await StateManager.SetStateAsync(
-                        UnpublishedEventsRecord.GetStateKey(messageId),
-                        persisted.MarkReminderArmed(IdempotencyTimeProvider.GetUtcNow())).ConfigureAwait(false);
-                    await StateManager.SaveStateAsync().ConfigureAwait(false);
+                    await PersistReminderStampAsync(messageId, persisted).ConfigureAwait(false);
                     Log.PublicationRecoveryReminderRearmed(logger, Host.Id.GetId(), messageId);
                 }
 
@@ -2731,11 +2834,85 @@ public partial class AggregateActor(
             return false;
         }
 
-        await StateManager.SetStateAsync(
-            UnpublishedEventsRecord.GetStateKey(trackingId),
-            committedRecord.MarkReminderArmed(IdempotencyTimeProvider.GetUtcNow())).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await PersistReminderStampAsync(trackingId, committedRecord).ConfigureAwait(false);
         return true;
+    }
+
+    private async Task PersistReminderStampAsync(
+        string trackingId,
+        UnpublishedEventsRecord committedRecord)
+    {
+        string stateKey = UnpublishedEventsRecord.GetStateKey(trackingId);
+        UnpublishedEventsRecord stamped = committedRecord.MarkReminderArmed(
+            IdempotencyTimeProvider.GetUtcNow());
+        try
+        {
+            await StateManager.SetStateAsync(stateKey, stamped).ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+        catch (Exception saveException)
+        {
+            (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
+                .ConfigureAwait(false);
+            if (!discarded)
+            {
+                throw CreateStateRemediationException(
+                    committedRecord.CorrelationId,
+                    "ReminderStamp",
+                    saveException,
+                    "DiscardReminderStampBatch",
+                    saveException,
+                    discardExceptionType,
+                    failedBatchDiscarded: false,
+                    durableStateObservation: "Unobserved");
+            }
+
+            try
+            {
+                ConditionalValue<UnpublishedEventsRecord> observed = await StateManager
+                    .TryGetStateAsync<UnpublishedEventsRecord>(stateKey)
+                    .ConfigureAwait(false);
+                if (observed.HasValue && observed.Value == stamped)
+                {
+                    return;
+                }
+
+                // Registration is already live. A pre-commit stamp failure deliberately leaves
+                // the record unarmed so activation may safely re-register it later.
+                if (observed.HasValue && observed.Value == committedRecord)
+                {
+                    return;
+                }
+
+                _stateCacheUnsafe = true;
+                throw CreateStateRemediationException(
+                    committedRecord.CorrelationId,
+                    "ReminderStamp",
+                    saveException,
+                    "InspectReminderStampCommit",
+                    new InvalidOperationException("Reminder stamp durable state is ambiguous."),
+                    discardExceptionType,
+                    failedBatchDiscarded: true,
+                    durableStateObservation: "AmbiguousReminderStamp");
+            }
+            catch (ActorStateRemediationException)
+            {
+                throw;
+            }
+            catch (Exception inspectionException)
+            {
+                _stateCacheUnsafe = true;
+                throw CreateStateRemediationException(
+                    committedRecord.CorrelationId,
+                    "ReminderStamp",
+                    saveException,
+                    "InspectReminderStampCommit",
+                    inspectionException,
+                    discardExceptionType,
+                    failedBatchDiscarded: true,
+                    durableStateObservation: "DurableInspectionFailed");
+            }
+        }
     }
 
     private async Task<bool> RegisterDrainReminderAsync(string trackingId) {
@@ -3758,9 +3935,10 @@ public partial class AggregateActor(
 
     private async Task<bool> InspectProcessingAdmissionSaveFailureAsync(
         CommandEnvelope command,
-        CommandProcessingIdentity identity,
+        PipelineState expectedPipeline,
         string pipelineKeyPrefix,
         int committedBefore,
+        int expectedAfter,
         Exception saveException)
     {
         (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
@@ -3784,10 +3962,8 @@ public partial class AggregateActor(
                 .TryGetStateAsync<PipelineState>($"{pipelineKeyPrefix}{command.CorrelationId}")
                 .ConfigureAwait(false);
             int observedCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
-            int expectedAfter = checked(committedBefore + 1);
             if (pipeline.HasValue
-                && pipeline.Value.CurrentStage == CommandStatus.Processing
-                && identity.Matches(pipeline.Value)
+                && pipeline.Value == expectedPipeline
                 && observedCount == expectedAfter)
             {
                 return true;
@@ -3821,6 +3997,335 @@ public partial class AggregateActor(
                 "ProcessingAdmission",
                 saveException,
                 "InspectProcessingAdmissionCommit",
+                inspectionException,
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "DurableInspectionFailed");
+        }
+    }
+
+    private async Task<bool> InspectDrainCleanupSaveFailureAsync(
+        string trackingId,
+        UnpublishedEventsRecord record,
+        Exception saveException)
+    {
+        (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
+            .ConfigureAwait(false);
+        if (!discarded)
+        {
+            throw CreateStateRemediationException(
+                record.CorrelationId,
+                "DrainCleanup",
+                saveException,
+                "DiscardDrainCleanupBatch",
+                saveException,
+                discardExceptionType,
+                failedBatchDiscarded: false,
+                durableStateObservation: "Unobserved");
+        }
+
+        try
+        {
+            ConditionalValue<UnpublishedEventsRecord> observedDrain = await StateManager
+                .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(trackingId))
+                .ConfigureAwait(false);
+            if (observedDrain.HasValue)
+            {
+                if (observedDrain.Value == record)
+                {
+                    return false;
+                }
+
+                throw new InvalidOperationException("Drain cleanup durable record is ambiguous.");
+            }
+
+            UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
+            int pendingCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
+            if (!index.Contains(record.GetTrackingIdentity(trackingId))
+                && pendingCount == index.OwnerCount)
+            {
+                return true;
+            }
+
+            throw new InvalidOperationException("Drain cleanup durable ownership is ambiguous.");
+        }
+        catch (ActorStateRemediationException)
+        {
+            throw;
+        }
+        catch (Exception inspectionException)
+        {
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                record.CorrelationId,
+                "DrainCleanup",
+                saveException,
+                "InspectDrainCleanupCommit",
+                inspectionException,
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "DurableInspectionFailed");
+        }
+    }
+
+    private async Task<UnpublishedEventsRecord> PersistDrainRetryAsync(
+        string trackingId,
+        UnpublishedEventsRecord committedRecord,
+        UnpublishedEventsRecord updatedRecord)
+    {
+        string stateKey = UnpublishedEventsRecord.GetStateKey(trackingId);
+        try
+        {
+            await StateManager.SetStateAsync(stateKey, updatedRecord).ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+            return updatedRecord;
+        }
+        catch (Exception saveException)
+        {
+            (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
+                .ConfigureAwait(false);
+            if (!discarded)
+            {
+                throw CreateStateRemediationException(
+                    committedRecord.CorrelationId,
+                    "DrainRetry",
+                    saveException,
+                    "DiscardDrainRetryBatch",
+                    saveException,
+                    discardExceptionType,
+                    failedBatchDiscarded: false,
+                    durableStateObservation: "Unobserved");
+            }
+
+            ConditionalValue<UnpublishedEventsRecord> observed;
+            try
+            {
+                observed = await StateManager
+                    .TryGetStateAsync<UnpublishedEventsRecord>(stateKey)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception inspectionException)
+            {
+                _stateCacheUnsafe = true;
+                throw CreateStateRemediationException(
+                    committedRecord.CorrelationId,
+                    "DrainRetry",
+                    saveException,
+                    "InspectDrainRetryCommit",
+                    inspectionException,
+                    discardExceptionType,
+                    failedBatchDiscarded: true,
+                    durableStateObservation: "DurableInspectionFailed");
+            }
+
+            if (IsExpectedDrainRetry(observed, updatedRecord))
+            {
+                return observed.Value;
+            }
+
+            if (!IsExpectedDrainRetry(observed, committedRecord))
+            {
+                _stateCacheUnsafe = true;
+                throw CreateStateRemediationException(
+                    committedRecord.CorrelationId,
+                    "DrainRetry",
+                    saveException,
+                    "InspectDrainRetryCommit",
+                    new InvalidOperationException("Drain retry durable state is ambiguous."),
+                    discardExceptionType,
+                    failedBatchDiscarded: true,
+                    durableStateObservation: "AmbiguousDrainRetry");
+            }
+
+            try
+            {
+                await StateManager.SetStateAsync(stateKey, updatedRecord).ConfigureAwait(false);
+                await StateManager.SaveStateAsync(CancellationToken.None).ConfigureAwait(false);
+                return updatedRecord;
+            }
+            catch (Exception recoveryException)
+            {
+                (bool recoveryDiscarded, string recoveryDiscardExceptionType) =
+                    await TryDiscardFailedBatchAsync().ConfigureAwait(false);
+                if (recoveryDiscarded)
+                {
+                    try
+                    {
+                        ConditionalValue<UnpublishedEventsRecord> recoveryObserved = await StateManager
+                            .TryGetStateAsync<UnpublishedEventsRecord>(stateKey)
+                            .ConfigureAwait(false);
+                        if (IsExpectedDrainRetry(recoveryObserved, updatedRecord))
+                        {
+                            return recoveryObserved.Value;
+                        }
+                    }
+                    catch (Exception recoveryInspectionException)
+                    {
+                        _stateCacheUnsafe = true;
+                        throw CreateStateRemediationException(
+                            committedRecord.CorrelationId,
+                            "DrainRetry",
+                            saveException,
+                            "InspectDrainRetryRecoveryCommit",
+                            recoveryInspectionException,
+                            recoveryDiscardExceptionType,
+                            failedBatchDiscarded: true,
+                            durableStateObservation: "DurableInspectionFailed");
+                    }
+                }
+
+                throw CreateStateRemediationException(
+                    committedRecord.CorrelationId,
+                    "DrainRetry",
+                    saveException,
+                    "RepairDrainRetrySave",
+                    recoveryException,
+                    recoveryDiscardExceptionType,
+                    recoveryDiscarded,
+                    recoveryDiscarded ? "RecoveryNotCommitted" : "Unobserved");
+            }
+        }
+    }
+
+    private static bool IsExpectedDrainRetry(
+        ConditionalValue<UnpublishedEventsRecord> observed,
+        UnpublishedEventsRecord expected)
+        => observed.HasValue && observed.Value == expected;
+
+    private async Task<bool> InspectDrainMarkerSaveFailureAsync(
+        string trackingId,
+        UnpublishedEventsRecord committedRecord,
+        UnpublishedEventsRecord markedRecord,
+        Exception saveException)
+    {
+        (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
+            .ConfigureAwait(false);
+        if (!discarded)
+        {
+            throw CreateStateRemediationException(
+                committedRecord.CorrelationId,
+                "DrainExhaustionMarker",
+                saveException,
+                "DiscardDrainMarkerBatch",
+                saveException,
+                discardExceptionType,
+                failedBatchDiscarded: false,
+                durableStateObservation: "Unobserved");
+        }
+
+        try
+        {
+            ConditionalValue<UnpublishedEventsRecord> observed = await StateManager
+                .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(trackingId))
+                .ConfigureAwait(false);
+            if (observed.HasValue && observed.Value == markedRecord)
+            {
+                return true;
+            }
+
+            if (observed.HasValue && observed.Value == committedRecord)
+            {
+                return false;
+            }
+
+            throw new InvalidOperationException("Drain marker durable state is ambiguous.");
+        }
+        catch (ActorStateRemediationException)
+        {
+            throw;
+        }
+        catch (Exception inspectionException)
+        {
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                committedRecord.CorrelationId,
+                "DrainExhaustionMarker",
+                saveException,
+                "InspectDrainMarkerCommit",
+                inspectionException,
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "DurableInspectionFailed");
+        }
+    }
+
+    private async Task<(bool BatchCommitted, bool RecoveryOwnerCommitted)>
+        InspectPublicationRecoverySaveFailureAsync(
+            CommandEnvelope command,
+            UnpublishedEventsRecord expectedDrain,
+            string pipelineKeyPrefix,
+            Exception saveException)
+    {
+        (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
+            .ConfigureAwait(false);
+        if (!discarded)
+        {
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                "PublishFailedRecovery",
+                saveException,
+                "DiscardPublicationRecoveryBatch",
+                saveException,
+                discardExceptionType,
+                failedBatchDiscarded: false,
+                durableStateObservation: "Unobserved");
+        }
+
+        try
+        {
+            string trackingId = expectedDrain.GetTrackingIdentity(command.MessageId);
+            ConditionalValue<PipelineState> pipeline = await StateManager
+                .TryGetStateAsync<PipelineState>($"{pipelineKeyPrefix}{command.CorrelationId}")
+                .ConfigureAwait(false);
+            ConditionalValue<UnpublishedEventsRecord> drain = await StateManager
+                .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(trackingId))
+                .ConfigureAwait(false);
+            UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
+            int pendingCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
+            bool recoveryOwnerCommitted = index.Contains(trackingId);
+            bool countConsistent = pendingCount == index.OwnerCount;
+            bool exactDrain = drain.HasValue && drain.Value == expectedDrain;
+
+            if (!pipeline.HasValue && exactDrain && recoveryOwnerCommitted && countConsistent)
+            {
+                return (true, true);
+            }
+
+            // A still-present checkpoint is the pre-commit witness. An already committed recovery
+            // owner may pre-date this resume attempt and must not be finalized as though this turn
+            // had acquired a new pending slot.
+            if (pipeline.HasValue
+                && CreateCommandProcessingIdentity(command).Matches(pipeline.Value)
+                && (recoveryOwnerCommitted
+                    ? countConsistent
+                    : pendingCount == checked(index.OwnerCount + 1)))
+            {
+                return (false, recoveryOwnerCommitted);
+            }
+
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                "PublishFailedRecovery",
+                saveException,
+                "InspectPublicationRecoveryCommit",
+                new InvalidOperationException("Publication recovery durable state is ambiguous."),
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "AmbiguousPublicationRecovery");
+        }
+        catch (ActorStateRemediationException)
+        {
+            throw;
+        }
+        catch (Exception inspectionException)
+        {
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                "PublishFailedRecovery",
+                saveException,
+                "InspectPublicationRecoveryCommit",
                 inspectionException,
                 discardExceptionType,
                 failedBatchDiscarded: true,

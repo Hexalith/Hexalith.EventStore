@@ -71,6 +71,93 @@ public class AggregateActorManualSnapshotTests {
         await stateManager.Received(1).SaveStateAsync();
     }
 
+    [Fact]
+    public async Task CreateManualSnapshotAsync_SaveCommitsThenThrows_ReturnsCreatedFromFreshDurableWitness() {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshotManager = CreateStagingSnapshotManager(identity, stateManager);
+        IAggregateStateReconstructor reconstructor = CreateReconstructor(identity);
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        AggregateActor actor = CreateActor(identity, stateManager, snapshotManager, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-ambiguous");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.Created);
+        ((SnapshotRecord)stateManager.CommittedState[identity.SnapshotKey]).SequenceNumber.ShouldBe(2);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CreateManualSnapshotAsync_SaveFailsBeforeCommit_ReturnsBoundedFailureAndDiscardsSnapshot() {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshotManager = CreateStagingSnapshotManager(identity, stateManager);
+        IAggregateStateReconstructor reconstructor = CreateReconstructor(identity);
+        stateManager.FaultOnCall("SaveState", 1, new InvalidOperationException("pre-commit failure"));
+        AggregateActor actor = CreateActor(identity, stateManager, snapshotManager, reconstructor);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-ambiguous");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.InfrastructureFailure);
+        stateManager.CommittedState.ShouldNotContainKey(identity.SnapshotKey);
+        stateManager.Trace.ShouldContain("ClearCache");
+    }
+
+    private static ISnapshotManager CreateStagingSnapshotManager(
+        AggregateIdentity identity,
+        FaultInjectingActorStateManager stateManager) {
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        _ = snapshotManager.InspectSnapshotForManualOverwriteAsync(
+                identity,
+                stateManager,
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(SnapshotLoadResult.Absent());
+        _ = snapshotManager.CreateSnapshotAsync(
+                identity,
+                2,
+                Arg.Any<object>(),
+                stateManager,
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                true)
+            .Returns(callInfo => stateManager.SetStateAsync(
+                identity.SnapshotKey,
+                new SnapshotRecord(
+                    2,
+                    callInfo.ArgAt<object>(2),
+                    DateTimeOffset.UnixEpoch,
+                    identity.Domain,
+                    identity.AggregateId,
+                    identity.TenantId)));
+        return snapshotManager;
+    }
+
+    private static IAggregateStateReconstructor CreateReconstructor(AggregateIdentity identity) {
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        _ = reconstructor.ReconstructAsync(
+                identity,
+                "OrderAggregate",
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                2,
+                false,
+                "corr-ambiguous",
+                Arg.Any<CancellationToken>())
+            .Returns(AggregateReconstructionResult.Succeeded("""{"status":"ready"}""", 2));
+        return reconstructor;
+    }
+
+    private static Task SeedStreamAsync(
+        FaultInjectingActorStateManager stateManager,
+        AggregateIdentity identity)
+        => stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            [identity.MetadataKey] = new AggregateMetadata(2, DateTimeOffset.UtcNow, null),
+            [$"{identity.EventStreamKeyPrefix}1"] = CreateEvent(identity, 1),
+            [$"{identity.EventStreamKeyPrefix}2"] = CreateEvent(identity, 2),
+        });
+
     private static AggregateActor CreateActor(
         AggregateIdentity identity,
         IActorStateManager stateManager,

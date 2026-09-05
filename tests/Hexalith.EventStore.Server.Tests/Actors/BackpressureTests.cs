@@ -318,10 +318,10 @@ public class BackpressureTests {
             Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>());
     }
 
-    // --- Fail-open policy: State read failure allows command through ---
+    // --- Fail-closed policy: never admit from a guessed pending count ---
 
     [Fact]
-    public async Task ProcessCommand_BackpressureCheckStateReadFails_FailsOpen() {
+    public async Task ProcessCommand_BackpressureCheckStateReadFails_StopsAdmission() {
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _) = CreateActor(
             backpressureOptions: new BackpressureOptions { MaxPendingCommandsPerAggregate = 5 });
 
@@ -347,7 +347,13 @@ public class BackpressureTests {
 
         CommandProcessingResult result = await actor.ProcessCommandAsync(CreateCommand());
 
-        result.Accepted.ShouldBeTrue();
+        result.Accepted.ShouldBeFalse();
+        _ = await invoker.DidNotReceive().InvokeAsync(
+            Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SetStateAsync(
+            PendingCommandCountKey,
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
     }
 
     // --- AC #6: Drain success decrements counter ---
