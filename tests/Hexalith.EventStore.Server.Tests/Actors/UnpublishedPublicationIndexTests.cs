@@ -81,15 +81,51 @@ public class UnpublishedPublicationIndexTests {
     }
 
     [Fact]
-    public void TryAdd_DuplicateMessageId_RefreshesWithoutConsumingCapacity() {
-        var index = new UnpublishedPublicationIndex([Entry("msg-1", "corr-old")]);
+    public void TryAdd_SameCorrelationRefresh_DoesNotConsumeCapacity() {
+        DateTimeOffset committedAt = DateTimeOffset.UtcNow;
+        var index = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry("msg-1", "corr-1", committedAt),
+        ]);
 
         PublicationIndexAddOutcome outcome = index.TryAdd(
-            Entry("msg-1", "corr-new"), maxEntries: 1, out UnpublishedPublicationIndex updated);
+            new UnpublishedPublicationEntry("msg-1", "corr-1", committedAt.AddMinutes(1)),
+            maxEntries: 1,
+            out UnpublishedPublicationIndex updated);
 
         outcome.ShouldBe(PublicationIndexAddOutcome.Added);
-        updated.Entries.Count.ShouldBe(1);
-        updated.Entries[0].CorrelationId.ShouldBe("corr-new");
+        updated.Entries.ShouldHaveSingleItem().CommittedAt.ShouldBe(committedAt.AddMinutes(1));
+        updated.OwnerCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void TryAdd_ConflictingWellFormedOwner_FailsClosedWithoutSelectingEitherPath() {
+        var original = Entry("msg-1", "corr-old");
+        var index = new UnpublishedPublicationIndex([original]);
+
+        InvalidOperationException error = Should.Throw<InvalidOperationException>(() =>
+            index.TryAdd(Entry("msg-1", "corr-new"), maxEntries: 1, out _));
+
+        error.Message.ShouldContain("conflicting owners");
+        index.Entries.ShouldHaveSingleItem().ShouldBe(original);
+    }
+
+    [Fact]
+    public void TryAdd_MalformedSameIdRemnants_RemovesEveryRemnantWhenAddingTheOwner() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", string.Empty),
+            Entry("msg-1", "   "),
+            Entry("msg-2", "corr-other"),
+        ]);
+
+        PublicationIndexAddOutcome outcome = index.TryAdd(
+            Entry("msg-1", "corr-valid"), maxEntries: 8, out UnpublishedPublicationIndex updated);
+
+        outcome.ShouldBe(PublicationIndexAddOutcome.Added);
+        updated.Entries.Count.ShouldBe(2);
+        updated.Entries.Where(entry => entry.MessageId == "msg-1").ShouldHaveSingleItem()
+            .CorrelationId.ShouldBe("corr-valid");
+        updated.Contains("msg-2").ShouldBeTrue();
+        updated.OwnerCount.ShouldBe(2);
     }
 
     [Fact]
@@ -142,6 +178,21 @@ public class UnpublishedPublicationIndexTests {
         removed.ShouldBeTrue();
         updated.Contains("msg-1").ShouldBeFalse();
         updated.Contains("msg-2").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void TryRemove_MalformedSameIdRemnants_RemovesEveryRemnant() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", string.Empty),
+            Entry("msg-1", "   "),
+            Entry("msg-2"),
+        ]);
+
+        bool removed = index.TryRemove("msg-1", out UnpublishedPublicationIndex updated);
+
+        removed.ShouldBeTrue();
+        updated.Entries.ShouldHaveSingleItem().MessageId.ShouldBe("msg-2");
+        updated.Contains("msg-1").ShouldBeFalse();
     }
 
     [Theory]
@@ -199,6 +250,9 @@ public class UnpublishedPublicationIndexTests {
 
         UnpublishedPublicationIndex? roundTripped =
             JsonSerializer.Deserialize<UnpublishedPublicationIndex>(JsonSerializer.Serialize(original));
+
+        string json = JsonSerializer.Serialize(original);
+        json.ShouldNotContain("OwnerCount");
 
         _ = roundTripped.ShouldNotBeNull();
         roundTripped.Entries.Count.ShouldBe(2);

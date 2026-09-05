@@ -521,6 +521,42 @@ public class AggregateActorFencingTests
     }
 
     [Fact]
+    public async Task LegacyRedirectSetStateFailure_DoesNotAcceptAConcurrentExactRedirectAsThisCallsSuccess()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        (IdempotencyRecord record, IdempotencyLegacySourceRequest source,
+            IdempotencyLegacySourceRedirectRequest redirect) = CreateLegacyRedirectFixture();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{record.MessageId}"] = record,
+        });
+        string redirectKey = IdempotencyChecker.GetLegacyRedirectKey(source.ExecutionMessageId);
+        var concurrent = new IdempotencyLegacySourceRedirectRecord(
+            IdempotencyLegacySourceRedirectRecord.CurrentSchemaVersion,
+            source.TenantPartition,
+            source.InventoryId,
+            source.MigrationId,
+            source.SourceEvidenceDigest,
+            redirect.TargetAdmissionActorId);
+        stateManager.FaultOnCall($"SetState:{redirectKey}", 1, new IOException("set failed"));
+        stateManager.ActBeforeCall(
+            "ClearCache",
+            1,
+            manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
+            {
+                [$"idempotency:{record.MessageId}"] = record,
+                [redirectKey] = concurrent,
+            }));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
+        IIdempotencyLegacySourceActor actor = actorContext.Actor;
+
+        IdempotencyLegacySourceInspection result = await actor.SetLegacySourceRedirectAsync(redirect);
+
+        result.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unavailable);
+        stateManager.CommittedState[redirectKey].ShouldBe(concurrent);
+    }
+
+    [Fact]
     public async Task LegacyRedirectDiscardFailure_ReportsTheClearFailureAsTheRemediationType()
     {
         var logs = new List<LogEntry>();

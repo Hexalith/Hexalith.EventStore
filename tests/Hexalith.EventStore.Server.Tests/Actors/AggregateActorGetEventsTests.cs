@@ -25,8 +25,9 @@ public class AggregateActorGetEventsTests {
     private const string MetadataKey = "tenant-a:counter:counter-1:metadata";
     private const string EventKeyPrefix = "tenant-a:counter:counter-1:events:";
 
-    private static (AggregateActor Actor, IActorStateManager StateManager) CreateActor() {
-        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+    private static (AggregateActor Actor, IActorStateManager StateManager) CreateActor(
+        IActorStateManager? stateManager = null) {
+        stateManager ??= Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -82,6 +83,19 @@ public class AggregateActorGetEventsTests {
             _ = stateManager.TryGetStateAsync<EventEnvelope>($"{EventKeyPrefix}{seq}", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<EventEnvelope>(true, evt));
         }
+    }
+
+    [Fact]
+    public async Task GetEventsAsync_MetadataReadCancellation_PropagatesWithoutDeserializationWrapper() {
+        var stateManager = new FaultInjectingActorStateManager();
+        stateManager.FaultOnCall(
+            $"TryGetState:{MetadataKey}",
+            1,
+            new OperationCanceledException("metadata canceled"));
+        (AggregateActor actor, _) = CreateActor(stateManager);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => actor.GetEventsAsync(0));
     }
 
     [Fact]

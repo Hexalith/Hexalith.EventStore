@@ -273,9 +273,13 @@ public partial class IdempotencyChecker(
                 : IdempotencyLegacySourceDecision.Exact);
     }
 
-    /// <summary>Persists the irreversible payload-free redirect after exact source proof.</summary>
-    internal async Task<IdempotencyLegacySourceInspection> SetLegacySourceRedirectAsync(
-        IdempotencyLegacySourceRedirectRequest request)
+    /// <summary>
+    /// Stages the irreversible payload-free redirect after exact source proof. The caller owns the
+    /// subsequent <c>SaveStateAsync</c> so a pre-save mutation failure cannot be inspected as this
+    /// call's success.
+    /// </summary>
+    internal async Task<(IdempotencyLegacySourceInspection Result, bool StateMutationStaged)>
+        SetLegacySourceRedirectAsync(IdempotencyLegacySourceRedirectRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.TargetAdmissionActorId);
@@ -290,11 +294,11 @@ public partial class IdempotencyChecker(
         }
         catch (Exception)
         {
-            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
+            return (new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable), false);
         }
         if (existing.HasValue)
         {
-            return MatchesRedirect(existing.Value, request.Source)
+            IdempotencyLegacySourceInspection existingResult = MatchesRedirect(existing.Value, request.Source)
                 && string.Equals(
                     existing.Value.TargetAdmissionActorId,
                     request.TargetAdmissionActorId,
@@ -303,6 +307,7 @@ public partial class IdempotencyChecker(
                     IdempotencyLegacySourceDecision.Redirected,
                     IdempotencyLegacySourceEvidence.Compute(existing.Value))
                 : new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Conflict);
+            return (existingResult, false);
         }
 
         IdempotencyLegacySourceInspection inspection = await InspectLegacySourceAsync(request.Source)
@@ -310,20 +315,21 @@ public partial class IdempotencyChecker(
         if (inspection.Decision is not (IdempotencyLegacySourceDecision.Exact
             or IdempotencyLegacySourceDecision.Expired))
         {
-            return inspection;
+            return (inspection, false);
         }
 
         IdempotencyLegacySourceRedirectRecord redirect = CreateLegacyRedirectRecord(request);
-        // The aggregate actor owns cache remediation. Let mutation/save failures escape so its
-        // fail-closed boundary can discard the batch and inspect an ambiguous commit before the
-        // public actor contract is converted back to Unavailable.
+        // The aggregate actor owns cache remediation and the save. Let mutation failures escape so
+        // its fail-closed boundary can discard the batch without treating a concurrent redirect as
+        // this call's committed success.
         await stateManager.SetStateAsync(
             GetLegacyRedirectKey(request.Source.ExecutionMessageId),
             redirect).ConfigureAwait(false);
-        await stateManager.SaveStateAsync().ConfigureAwait(false);
-        return new IdempotencyLegacySourceInspection(
-            IdempotencyLegacySourceDecision.Redirected,
-            IdempotencyLegacySourceEvidence.Compute(redirect));
+        return (
+            new IdempotencyLegacySourceInspection(
+                IdempotencyLegacySourceDecision.Redirected,
+                IdempotencyLegacySourceEvidence.Compute(redirect)),
+            true);
     }
 
     /// <summary>
@@ -339,6 +345,9 @@ public partial class IdempotencyChecker(
             && record.ExpiresAt <= TimeProvider.GetUtcNow();
 
     private static string GetKey(string messageId) => $"{KeyPrefix}{messageId}";
+
+    /// <summary>Builds the exact message-keyed idempotency state name.</summary>
+    internal static string GetRecordKey(string messageId) => GetKey(messageId);
 
     /// <summary>Builds the exact payload-free redirect state name for a message.</summary>
     internal static string GetLegacyRedirectKey(string messageId)

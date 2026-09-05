@@ -3551,3 +3551,11 @@ decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, 
 
 - Activation recovery has no total scan/read bound for large armed or blank-malformed publication indexes. `RearmOutstandingPublicationsAsync` reads a drain record before charging the probe budget for every well-formed entry, skips armed entries without any total budget, and scans every blank-message malformed entry without charging either budget. This is a pre-existing activation-loop design risk; Story 5.1 bounds malformed state-backed cleanup only, while reconciling total work with armed-head starvation requires a separately designed cursor or total-scan budget. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2908`.
 - Drain exhaustion can republish after a pre-commit marker-save failure. `CompleteDrainExhaustionAsync` publishes externally before saving the `DeadLettered` marker, so a successful publication followed by a pre-commit marker failure is retried by the next reminder. This is the pre-existing Story 4.4 non-transactional boundary, and the frozen Story 5.1 scope preserves dead-letter retry policy. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2152`.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
+  summary: Treat a touched empty stream (`CurrentSequence == 0`) as empty in `GetEventsAsync`, matching `GetStreamMetadataAsync` and `ReadEventsRangeAsync`.
+  evidence: `GetEventsAsync` still throws `InvalidOperationException` when metadata exists with `CurrentSequence == 0`, while adjacent read APIs return an empty stream; Story 5.1 only added metadata-read cancellation propagation on that method.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
+  summary: Bound Client domain-event marker transition retries and save failures independently of Story 5.1.
+  evidence: Concurrent Client marker work can throw during `TrySaveStateAsync` without a bounded retry, and the in-memory transition loop has no `MaxTransitionAttempts` cap; `TryAcquireAsync` remains a documented read-only acquire.

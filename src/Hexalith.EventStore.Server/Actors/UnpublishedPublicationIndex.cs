@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.Server.Actors;
 
 /// <summary>
@@ -28,9 +30,11 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
 
     /// <summary>
     /// Gets the number of distinct, well-formed publication-recovery owners represented by the
-    /// normalized index.
+    /// normalized index. Derived at runtime from <see cref="Entries"/> and excluded from the
+    /// persisted actor-state payload so historical index documents keep their original shape.
     /// </summary>
-    public int OwnerCount => Entries.Count(entry => entry.IsWellFormed);
+    [JsonIgnore]
+    internal int OwnerCount => Entries.Count(entry => entry.IsWellFormed);
 
     /// <summary>Determines whether an entry for the supplied message id is already tracked.</summary>
     /// <param name="messageId">The command message identifier.</param>
@@ -59,22 +63,42 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
             return PublicationIndexAddOutcome.InvalidEntry;
         }
 
-        // De-duplicate by MessageId: a repeat of the same command refreshes its entry and never
-        // consumes additional capacity.
-        int existingIndex = IndexOf(entry.MessageId);
-        if (existingIndex >= 0) {
-            var replaced = new List<UnpublishedPublicationEntry>(Entries);
-            replaced[existingIndex] = entry;
-            updated = this with { Entries = replaced };
-            return PublicationIndexAddOutcome.Added;
+        UnpublishedPublicationEntry? existingOwner = null;
+        foreach (UnpublishedPublicationEntry candidate in Entries)
+        {
+            if (candidate.IsWellFormed
+                && string.Equals(candidate.MessageId, entry.MessageId, StringComparison.Ordinal))
+            {
+                existingOwner = candidate;
+                break;
+            }
         }
 
-        if (OwnerCount >= maxEntries) {
+        if (existingOwner is not null
+            && !string.Equals(existingOwner.CorrelationId, entry.CorrelationId, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Publication recovery index contains conflicting owners for one message id.");
+        }
+
+        // A same-correlation refresh does not consume another capacity slot. Adding a new
+        // well-formed owner does, even when only malformed same-id remnants are present.
+        if (existingOwner is null && OwnerCount >= maxEntries) {
             updated = this;
             return PublicationIndexAddOutcome.AtCapacity;
         }
 
-        updated = this with { Entries = [.. Entries, entry] };
+        var remaining = new List<UnpublishedPublicationEntry>(Entries.Count);
+        foreach (UnpublishedPublicationEntry candidate in Entries)
+        {
+            if (!string.Equals(candidate.MessageId, entry.MessageId, StringComparison.Ordinal))
+            {
+                remaining.Add(candidate);
+            }
+        }
+
+        remaining.Add(entry);
+        updated = new UnpublishedPublicationIndex(remaining);
         return PublicationIndexAddOutcome.Added;
     }
 
