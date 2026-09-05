@@ -1,6 +1,6 @@
 # Epic 5 Context: Tenants and Administrators Are Protected by Fail-Closed Boundaries
 
-<!-- Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change. -->
+<!-- Generated from planning artifacts. Regenerate with compile-epic-context if planning docs change. -->
 
 ## Goal
 

@@ -2,7 +2,7 @@
 title: 'Story 5.1: Infrastructure Failure Cache Clear'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'in-review'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 7
 baseline_commit: 'b43d64f906665e2bf3015eb2d3f16b771598d352'
@@ -99,6 +99,33 @@ context:
 - Given `ActorStateRemediationException` escapes a state-bearing turn, when its active process/child activities and structured log are inspected, then they are marked failed and a discard operation's remediation type identifies the clear failure rather than repeating the primary save/mutator type.
 - Given publication-index refusal reports backpressure, when malformed retained entries coexist with valid owners, then the result and log expose normalized `OwnerCount`, exactly matching the authority used for capacity and durable pending-count reconciliation.
 - Given implementation is complete, when focused tests, the full Server test project, and the Release solution build run, then all pass without warnings or regressions and every changed production await uses `ConfigureAwait(false)`.
+
+### Review Findings
+
+- [ ] [Review][Patch] Conflicting or malformed owner refresh violates normalized publication ownership [src/Hexalith.EventStore.Server/Actors/UnpublishedPublicationIndex.cs:64]
+- [ ] [Review][Patch] Legacy redirect can report success without a save attempt [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:205]
+- [ ] [Review][Patch] Legacy migration accepts non-exact durable witnesses [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:411]
+- [ ] [Review][Patch] Publication-recovery pre-commit inspection lacks the exact original state [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:4666]
+- [ ] [Review][Patch] Ambiguous command saves suppress cancellation after committed inspection [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:612,1262]
+- [ ] [Review][Patch] Resumed PublishFailed processing re-registers an already armed reminder [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:3620]
+- [ ] [Review][Patch] OwnerCount widens the public and persisted publication-index contract [src/Hexalith.EventStore.Server/Actors/UnpublishedPublicationIndex.cs:29]
+- [ ] [Review][Patch] Event-batch exact-witness negative regressions are missing [tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs:275]
+- [ ] [Review][Patch] Publication-recovery partial-witness negative regressions are missing [tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs:1444]
+- [ ] [Review][Patch] Terminal-save conflicting publication-state regressions are missing [tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs:1586]
+- [ ] [Review][Patch] Pending-finalizer publication-owner-read recovery is untested [tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs:699]
+- [ ] [Review][Patch] Zero-event stale-handoff save ambiguity is untested [tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs:1211]
+- [ ] [Review][Patch] Removing every same-ID malformed remnant is not directly verified [tests/Hexalith.EventStore.Server.Tests/Actors/UnpublishedPublicationIndexTests.cs:137]
+- [ ] [Review][Patch] GetEvents metadata-read cancellation lacks a direct actor regression [tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs:87]
+- [x] [Review][Defer] Activation recovery has no total scan/read bound for large armed or blank-malformed indexes [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2908] — deferred: this is a pre-existing activation-loop design risk; Story 5.1 bounds malformed state-backed cleanup only, while reconciling total work with armed-head starvation requires a separately designed cursor or total-scan budget.
+- [x] [Review][Defer] Drain exhaustion can republish after a pre-commit marker-save failure [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2152] — deferred: this is the pre-existing Story 4.4 non-transactional boundary between external publication and actor-state marking, and the frozen Story 5.1 scope preserves dead-letter retry policy.
+
+#### Rejected
+
+- [Rejected][false] A malformed same-message entry is treated as a committed recovery owner — `Contains` can make inspection fail closed as ambiguous, but it never satisfies the exact well-formed-owner predicate or accepts the batch as committed.
+- [Rejected][false] Drain cleanup accepts a committed outcome without rechecking terminal idempotency — drain removal, owner removal, terminal transition, and pending count share one atomic actor-state save; absent drain/owner plus the normalized count proves that cleanup consequence.
+- [Rejected][false] An initial state-cache barrier failure loses its clear-failure type — `RemediationExceptionType` records the exception from `StateCacheBarrierClear`; `DiscardExceptionType` is reserved for a later, secondary discard failure.
+- [Rejected][false] Barrier diagnostics report `DiscardExceptionType=None` inconsistently — the barrier clear is the remediation operation itself rather than a secondary discard, and its exception type is already retained in `RemediationExceptionType`.
+- [Rejected][false] Publication-index ownership generally accepts malformed entries — malformed entries cannot satisfy `IsWellFormed` owner predicates; the cited `Contains` uses only produce a fail-closed ambiguity, while the separate `TryAdd` defect remains an actionable finding above.
 
 ## Implementation Notes
 
