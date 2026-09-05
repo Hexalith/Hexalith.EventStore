@@ -1105,20 +1105,33 @@ public partial class AggregateActor(
                         command.MessageId,
                         unpublishedRecord).ConfigureAwait(false);
 
-                    // Story 4.3: Mark drain record created so try/finally skips decrement
-                    drainRecordCreated = true;
-
                     try {
                         await StateManager.SaveStateAsync().ConfigureAwait(false);
+                        drainRecordCreated = true;
                     }
-                    catch (InvalidOperationException ex) {
-                        throw new ConcurrencyConflictException(
-                            command.CorrelationId,
-                            command.AggregateId,
-                            command.TenantId,
-                            conflictSource: "StateStore",
-                            innerException: ex,
-                            messageId: command.MessageId);
+                    catch (Exception ex) {
+                        (bool recoveryBatchCommitted, bool recoveryOwnerCommitted) =
+                            await InspectPublicationRecoverySaveFailureAsync(
+                                command,
+                                unpublishedRecord,
+                                pipelineKeyPrefix,
+                                ex).ConfigureAwait(false);
+                        drainRecordCreated = recoveryOwnerCommitted;
+                        if (!recoveryBatchCommitted)
+                        {
+                            if (ex is InvalidOperationException)
+                            {
+                                throw new ConcurrencyConflictException(
+                                    command.CorrelationId,
+                                    command.AggregateId,
+                                    command.TenantId,
+                                    conflictSource: "StateStore",
+                                    innerException: ex,
+                                    messageId: command.MessageId);
+                            }
+
+                            throw;
+                        }
                     }
 
                     // Story 4.2: Register drain reminder AFTER successful commit
@@ -3192,14 +3205,40 @@ public partial class AggregateActor(
         try {
             await StateManager.SaveStateAsync().ConfigureAwait(false);
         }
-        catch (InvalidOperationException ex) {
-            throw new ConcurrencyConflictException(
-                command.CorrelationId,
-                command.AggregateId,
-                command.TenantId,
-                conflictSource: "StateStore",
-                innerException: ex,
-                messageId: command.MessageId);
+        catch (Exception ex) {
+            bool committed;
+            if (committedDrainRecord is not null)
+            {
+                (committed, _) = await InspectPublicationRecoverySaveFailureAsync(
+                    command,
+                    committedDrainRecord,
+                    pipelineKeyPrefix,
+                    ex).ConfigureAwait(false);
+            }
+            else
+            {
+                committed = await InspectPipelineCleanupSaveFailureAsync(
+                    command.CorrelationId,
+                    $"{pipelineKeyPrefix}{command.CorrelationId}",
+                    "PublishFailedRecovery",
+                    ex).ConfigureAwait(false);
+            }
+
+            if (!committed)
+            {
+                if (ex is InvalidOperationException)
+                {
+                    throw new ConcurrencyConflictException(
+                        command.CorrelationId,
+                        command.AggregateId,
+                        command.TenantId,
+                        conflictSource: "StateStore",
+                        innerException: ex,
+                        messageId: command.MessageId);
+                }
+
+                throw;
+            }
         }
 
         // Story 4.2: Register drain reminder AFTER successful commit
