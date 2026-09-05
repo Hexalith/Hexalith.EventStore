@@ -251,7 +251,7 @@ development_status:
   4-2-resume-and-idempotency-integrity: done
   4-3-deterministic-replay-dispatch-and-serialization: done
   4-4-committed-event-publication-recovery: done
-  4-5-append-durability-race-evidence: in-progress
+  4-5-append-durability-race-evidence: done
   4-6-global-position-sharding-spec-renegotiation: done
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   4-7-tenants-query-provenance-follow-up: backlog
