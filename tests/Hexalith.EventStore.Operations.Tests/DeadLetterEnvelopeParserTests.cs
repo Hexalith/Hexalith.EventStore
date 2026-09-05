@@ -2,6 +2,7 @@ using System.Text;
 
 using Hexalith.EventStore.Operations.Capture;
 using Hexalith.EventStore.Operations.Models;
+using Hexalith.EventStore.Server.Events;
 
 using Shouldly;
 
@@ -59,44 +60,18 @@ public sealed class DeadLetterEnvelopeParserTests
     [Fact]
     public void PublisherShapedEnvelopeProducesReplayableIdentity()
     {
-        byte[] body = Encoding.UTF8.GetBytes("""
-            {
-              "specversion":"1.0",
-              "id":"01ARZ3NDEKTSV4RRFFQ69G5FB4",
-              "source":"hexalith-eventstore/tenant-a/work",
-              "type":"Hexalith.Works.Events.WorkItemCreated",
-              "datacontenttype":"application/json",
-              "data":{
-                "messageId":"01ARZ3NDEKTSV4RRFFQ69G5FB4",
-                "aggregateId":"work-a",
-                "aggregateType":"WorkItem",
-                "tenantId":"tenant-a",
-                "domain":"work",
-                "sequenceNumber":3,
-                "globalPosition":42,
-                "timestamp":"2026-08-28T10:00:00+00:00",
-                "correlationId":"01ARZ3NDEKTSV4RRFFQ69G5FB5",
-                "causationId":"01ARZ3NDEKTSV4RRFFQ69G5FB6",
-                "userId":"user-a",
-                "domainServiceVersion":"v1",
-                "eventTypeName":"Hexalith.Works.Events.WorkItemCreated",
-                "metadataVersion":1,
-                "serializationFormat":"json",
-                "payload":"bXVzdC1ub3QtZXNjYXBl"
-              }
-            }
-            """);
+        (byte[] body, EventEnvelope envelope) = StructuredCloudEventFixture.Create();
 
         (DeadLetterSafeIdentity identity, _) = DeadLetterEnvelopeParser.Parse(body);
 
         identity.IsReplayable.ShouldBeTrue();
-        identity.MessageId.ShouldBe("01ARZ3NDEKTSV4RRFFQ69G5FB4");
-        identity.TenantId.ShouldBe("tenant-a");
-        identity.Domain.ShouldBe("work");
-        identity.AggregateId.ShouldBe("work-a");
-        identity.CorrelationId.ShouldBe("01ARZ3NDEKTSV4RRFFQ69G5FB5");
-        identity.EventType.ShouldBe("Hexalith.Works.Events.WorkItemCreated");
-        identity.ToString().ShouldNotContain("bXVzdC1ub3QtZXNjYXBl");
+        identity.MessageId.ShouldBe(envelope.MessageId);
+        identity.TenantId.ShouldBe(envelope.TenantId);
+        identity.Domain.ShouldBe(envelope.Domain);
+        identity.AggregateId.ShouldBe(envelope.AggregateId);
+        identity.CorrelationId.ShouldBe(envelope.CorrelationId);
+        identity.EventType.ShouldBe(envelope.EventTypeName);
+        identity.ToString().ShouldNotContain(Convert.ToBase64String(envelope.Payload));
     }
 
     /// <summary>Verifies malformed bodies remain deduplicated but replay-ineligible.</summary>

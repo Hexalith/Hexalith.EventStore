@@ -1,5 +1,4 @@
 using System.Diagnostics.Metrics;
-using System.Text;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -62,7 +61,7 @@ public sealed class DeadLetterCaptureBodyTests
     [Fact]
     public async Task CaptureEndpointAcceptsChunkedEnvelopeAtExactBoundary()
     {
-        byte[] body = Encoding.UTF8.GetBytes(ValidEnvelope());
+        (byte[] body, _) = StructuredCloudEventFixture.Create();
         var context = new DefaultHttpContext();
         context.Request.ContentLength = null;
         context.Request.Body = new ChunkedReadStream(body, 7);
@@ -117,7 +116,7 @@ public sealed class DeadLetterCaptureBodyTests
     [Fact]
     public async Task CaptureEndpointAcknowledgesHashConflict()
     {
-        byte[] body = Encoding.UTF8.GetBytes(ValidEnvelope());
+        (byte[] body, _) = StructuredCloudEventFixture.Create();
         var context = new DefaultHttpContext();
         context.Request.ContentLength = null;
         context.Request.Body = new ChunkedReadStream(body, 11);
@@ -150,10 +149,6 @@ public sealed class DeadLetterCaptureBodyTests
         _ = factory.CreateActorProxy<IDeadLetterDrainActor>(Arg.Any<ActorId>(), Arg.Any<string>()).Returns(actor);
         return factory;
     }
-
-    private static string ValidEnvelope() => """
-        {"specversion":"1.0","id":"message-a","source":"urn:hexalith:eventstore","type":"work.event","data":{"messageId":"message-a","tenantId":"tenant-a","domain":"work","aggregateId":"work-a","correlationId":"correlation-a","eventName":"WorkItemCreated"}}
-        """;
 
     private sealed class ChunkedReadStream(byte[] bytes, int chunkSize) : Stream
     {
