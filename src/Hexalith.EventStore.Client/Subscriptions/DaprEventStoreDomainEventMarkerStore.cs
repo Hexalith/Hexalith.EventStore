@@ -42,7 +42,8 @@ public sealed class DaprEventStoreDomainEventMarkerStore(
             EventStoreDomainEventMarkerState.Completed => EventStoreDomainEventMarkerAcquisitionResult.Completed,
             EventStoreDomainEventMarkerState.InProgress => EventStoreDomainEventMarkerAcquisitionResult.InProgress,
             EventStoreDomainEventMarkerState.Dispatched => EventStoreDomainEventMarkerAcquisitionResult.CompletionPending,
-            _ => (EventStoreDomainEventMarkerAcquisitionResult)(-1),
+            _ => throw new InvalidOperationException(
+                $"Cannot acquire marker for message '{messageId}' with unsupported durable state '{existing.State}'."),
         };
     }
 
@@ -140,7 +141,8 @@ public sealed class DaprEventStoreDomainEventMarkerStore(
             EventStoreDomainEventMarkerState.Completed => false,
             EventStoreDomainEventMarkerState.Dispatched when targetState == EventStoreDomainEventMarkerState.Dispatched => true,
             EventStoreDomainEventMarkerState.Dispatched when targetState == EventStoreDomainEventMarkerState.Completed => null,
-            EventStoreDomainEventMarkerState.InProgress => null,
+            EventStoreDomainEventMarkerState.InProgress => throw new InvalidOperationException(
+                $"Cannot transition marker for message '{messageId}' from in-progress state owned by another attempt to '{targetState}'."),
             _ => throw new InvalidOperationException(
                 $"Cannot transition marker for message '{messageId}' from unsupported state '{existing.State}' to '{targetState}'."),
         };
