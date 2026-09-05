@@ -69,7 +69,7 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
             return PublicationIndexAddOutcome.Added;
         }
 
-        if (Entries.Count >= maxEntries) {
+        if (OwnerCount >= maxEntries) {
             updated = this;
             return PublicationIndexAddOutcome.AtCapacity;
         }
@@ -89,8 +89,9 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
             return false;
         }
 
-        var remaining = new List<UnpublishedPublicationEntry>(Entries);
-        remaining.RemoveAt(existingIndex);
+        var remaining = Entries
+            .Where(entry => !string.Equals(entry.MessageId, messageId, StringComparison.Ordinal))
+            .ToList();
         updated = this with { Entries = remaining };
         return true;
     }
@@ -116,8 +117,30 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
             return [];
         }
 
+        var owners = new Dictionary<string, UnpublishedPublicationEntry>(StringComparer.Ordinal);
+        foreach (UnpublishedPublicationEntry? entry in entries)
+        {
+            if (entry is null || !entry.IsWellFormed)
+            {
+                continue;
+            }
+
+            if (owners.TryGetValue(entry.MessageId, out UnpublishedPublicationEntry? owner))
+            {
+                if (!string.Equals(owner.CorrelationId, entry.CorrelationId, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "Publication recovery index contains conflicting owners for one message id.");
+                }
+
+                continue;
+            }
+
+            owners.Add(entry.MessageId, entry);
+        }
+
         var normalized = new List<UnpublishedPublicationEntry>(entries.Count);
-        var owners = new HashSet<string>(StringComparer.Ordinal);
+        var emittedOwners = new HashSet<string>(StringComparer.Ordinal);
         foreach (UnpublishedPublicationEntry? entry in entries)
         {
             if (entry is null)
@@ -125,16 +148,23 @@ public record UnpublishedPublicationIndex(IReadOnlyList<UnpublishedPublicationEn
                 continue;
             }
 
-            // Persisted payloads produced by older versions can contain duplicate owners. Keep
-            // the first stable entry so capacity, reconciliation, and pruning all agree that one
-            // message id owns exactly one pending publication slot. Malformed entries are retained
-            // for the activation repair path, but never count as owners.
-            if (entry.IsWellFormed && !owners.Add(entry.MessageId))
+            if (entry.IsWellFormed)
             {
+                if (emittedOwners.Add(entry.MessageId))
+                {
+                    normalized.Add(entry);
+                }
+
                 continue;
             }
 
-            normalized.Add(entry);
+            // A well-formed owner is authoritative over every malformed historical remnant that
+            // shares its message id. Blank or otherwise ownerless entries remain durable for the
+            // bounded activation repair path.
+            if (string.IsNullOrWhiteSpace(entry.MessageId) || !owners.ContainsKey(entry.MessageId))
+            {
+                normalized.Add(entry);
+            }
         }
 
         return normalized;

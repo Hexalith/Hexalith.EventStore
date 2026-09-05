@@ -313,13 +313,7 @@ public partial class IdempotencyChecker(
             return inspection;
         }
 
-        var redirect = new IdempotencyLegacySourceRedirectRecord(
-            IdempotencyLegacySourceRedirectRecord.CurrentSchemaVersion,
-            request.Source.TenantPartition,
-            request.Source.InventoryId,
-            request.Source.MigrationId,
-            request.Source.SourceEvidenceDigest,
-            request.TargetAdmissionActorId);
+        IdempotencyLegacySourceRedirectRecord redirect = CreateLegacyRedirectRecord(request);
         // The aggregate actor owns cache remediation. Let mutation/save failures escape so its
         // fail-closed boundary can discard the batch and inspect an ambiguous commit before the
         // public actor contract is converted back to Unavailable.
@@ -349,6 +343,25 @@ public partial class IdempotencyChecker(
     /// <summary>Builds the exact payload-free redirect state name for a message.</summary>
     internal static string GetLegacyRedirectKey(string messageId)
         => string.Concat(LegacyRedirectPrefix, messageId);
+
+    /// <summary>Computes the exact payload-free redirect evidence expected from one request.</summary>
+    internal static string ComputeLegacyRedirectEvidence(IdempotencyLegacySourceRedirectRequest request)
+        => IdempotencyLegacySourceEvidence.Compute(CreateLegacyRedirectRecord(request));
+
+    private static IdempotencyLegacySourceRedirectRecord CreateLegacyRedirectRecord(
+        IdempotencyLegacySourceRedirectRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.TargetAdmissionActorId);
+        ValidateSourceRequest(request.Source);
+        return new IdempotencyLegacySourceRedirectRecord(
+            IdempotencyLegacySourceRedirectRecord.CurrentSchemaVersion,
+            request.Source.TenantPartition,
+            request.Source.InventoryId,
+            request.Source.MigrationId,
+            request.Source.SourceEvidenceDigest,
+            request.TargetAdmissionActorId);
+    }
 
     private static bool IsSupportedLegacySource(IdempotencyRecord record)
         => !string.IsNullOrWhiteSpace(record.CausationId)

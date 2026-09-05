@@ -55,6 +55,18 @@ internal sealed class FaultInjectingActorStateManager : IActorStateManager
         _afterFaults[(operation, callNumber)] = exception;
     }
 
+    /// <summary>Schedules a deterministic action immediately before one operation delegates.</summary>
+    internal void ActBeforeCall(
+        string operation,
+        int callNumber,
+        Func<FaultInjectingActorStateManager, Task> action)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(callNumber);
+        ArgumentNullException.ThrowIfNull(action);
+        _beforeActions[(operation, callNumber)] = action;
+    }
+
     /// <summary>Replaces pending attempt state with state committed by a concurrent winner.</summary>
     internal async Task InjectConcurrentWinnerAsync(IReadOnlyDictionary<string, object> winnerState)
     {

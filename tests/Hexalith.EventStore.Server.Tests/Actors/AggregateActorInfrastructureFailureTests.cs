@@ -268,7 +268,7 @@ public class AggregateActorInfrastructureFailureTests
         ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
         ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"])
             .Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(5);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]
@@ -305,7 +305,7 @@ public class AggregateActorInfrastructureFailureTests
             .ShouldBe(1);
         ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
         durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
     }
 
     [Fact]
@@ -371,7 +371,7 @@ public class AggregateActorInfrastructureFailureTests
             .ShouldBe(1);
         ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
         durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
     }
 
     [Fact]
@@ -836,7 +836,7 @@ public class AggregateActorInfrastructureFailureTests
         stateManager.FaultOnCall("SaveState", 4, new IOException("repair-save"));
         stateManager.FaultOnCall(
             $"TryGetState:{PendingCountKey}",
-            5,
+            4,
             new IOException("inspection-failure"));
 
         _ = await context.Actor.ProcessCommandAsync(command);
@@ -1314,7 +1314,7 @@ public class AggregateActorInfrastructureFailureTests
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
     }
 
     [Fact]
@@ -1377,7 +1377,7 @@ public class AggregateActorInfrastructureFailureTests
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
     }
 
     [Fact]
@@ -1391,19 +1391,19 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new TestEvent()]));
+        var expected = new InvalidOperationException("index-removal-secret");
         stateManager.FaultOnCall(
             $"SetState:{UnpublishedPublicationIndex.StateKey}",
             2,
-            new IOException("index-removal-secret"));
+            expected);
 
-        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
-        CommandProcessingResult duplicate = await context.Actor.ProcessCommandAsync(command);
+        InvalidOperationException observed = await Should.ThrowAsync<InvalidOperationException>(
+            () => context.Actor.ProcessCommandAsync(command));
 
-        result.Accepted.ShouldBeTrue();
-        duplicate.ShouldBe(result);
+        observed.ShouldBeSameAs(expected);
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
-        ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"]).ToResult().ShouldBe(result);
-        durable.ShouldNotContainKey(GetPipelineKey(command));
+        durable.ShouldNotContainKey($"idempotency:{command.MessageId}");
+        ((PipelineState)durable[GetPipelineKey(command)]).CurrentStage.ShouldBe(CommandStatus.EventsStored);
         ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
             .Contains(command.MessageId).ShouldBeTrue();
         durable[PendingCountKey].ShouldBe(1);
@@ -1411,7 +1411,7 @@ public class AggregateActorInfrastructureFailureTests
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(2);
     }
 
     [Theory]
