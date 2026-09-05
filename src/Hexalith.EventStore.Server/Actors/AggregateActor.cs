@@ -2306,7 +2306,7 @@ public partial class AggregateActor(
                 await InspectPendingFinalizerFailureAsync(
                     committedBefore,
                     expectedAfter,
-                    allowRecovery: expectedAfter >= 0).ConfigureAwait(false);
+                    allowRecovery: true).ConfigureAwait(false);
             RecordPendingFinalizationFailure(
                 command,
                 processActivity,
@@ -2350,9 +2350,21 @@ public partial class AggregateActor(
 
         if (expectedAfter < 0)
         {
-            ClearPendingFinalizerRecovery();
-            _pendingCountReconciliationRequired = true;
-            return (true, -1, "PublicationOwnerCountUnobserved", "None");
+            try
+            {
+                expectedAfter = (await ReadPublicationIndexAsync().ConfigureAwait(false)).OwnerCount;
+            }
+            catch (Exception ownerInspectionException)
+            {
+                _stateCacheUnsafe = true;
+                ClearPendingFinalizerRecovery();
+                _pendingCountReconciliationRequired = true;
+                return (
+                    true,
+                    -1,
+                    "PublicationOwnerCountInspectionFailed",
+                    ownerInspectionException.GetType().Name);
+            }
         }
 
         if (committedBefore < 0 && !allowRecovery)
@@ -5069,7 +5081,7 @@ public partial class AggregateActor(
         try {
             await StateManager.SaveStateAsync().ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
+        catch (Exception ex) {
             ConcurrencyConflictException? conflict = ex is InvalidOperationException
                 ? new ConcurrencyConflictException(
                     command.CorrelationId,
