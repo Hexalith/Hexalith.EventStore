@@ -4,7 +4,7 @@ type: 'bugfix'
 created: '2026-09-05'
 baseline_revision: '08f90f4bc143b657c712433a179667c88875aecf'
 baseline_commit: '08f90f4bc143b657c712433a179667c88875aecf'
-status: 'done'
+status: 'blocked'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -138,7 +138,11 @@ This is a completed-work re-drive. The independently reviewed implementation liv
 
 ## Auto Run Result
 
-Status: done
+Status: blocked
+
+Blocking condition: finalization left repository dirty.
+
+Finalization evidence: after commit `a511db66068b7359c775a158d79a7eaaa1441f57`, `git status --short --branch` still reported unrelated unstaged Story 5.1 changes under `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`, `src/Hexalith.EventStore.Server/Actors/`, and `tests/Hexalith.EventStore.Server.Tests/`. Those concurrent changes include modified and deleted files and cannot be staged, committed, reverted, or cleaned by this bundle. The bundle-owned spec was committed, its four execution code paths remained clean, and this run did not edit the deferred-work ledger.
 
 Summary: Independently re-verified the committed Aspire naming and manifest-driven packaging follow-up implementation. No current in-scope defect reproduced, so verified source, topology, package inventory, validator, and publication behavior remain unchanged. Five concrete residual findings are recorded in this spec's `deferred` metadata; the orchestrator-owned deferred-work ledger was not edited by this run.
 
