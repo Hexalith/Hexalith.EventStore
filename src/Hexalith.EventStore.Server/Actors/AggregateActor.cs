@@ -585,6 +585,7 @@ public partial class AggregateActor(
                                 command.CorrelationId,
                                 $"{pipelineKeyPrefix}{command.CorrelationId}",
                                 "ProcessingCheckpointCleanup",
+                                existingPipeline,
                                 cleanupSaveException).ConfigureAwait(false);
                             if (!cleanupCommitted)
                             {
@@ -841,12 +842,14 @@ public partial class AggregateActor(
                     return await CompleteTerminalAsync(
                         command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
                         accepted: true, eventCount: 0, errorMessage: null,
+                        expectedPreCommitPipeline: pipelineState,
                         processActivity, startTicks).ConfigureAwait(false);
                 }
 
                 // Step 5: Event persistence (Story 3.7)
                 // Dead-letter routing handles infrastructure exceptions.
                 EventPersistResult persistResult;
+                PipelineState? eventsStoredState = null;
                 using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
                     EventStoreActivitySource.EventsPersist,
                     ActivityKind.Internal)) {
@@ -903,6 +906,7 @@ public partial class AggregateActor(
                                 command,
                                 causationId,
                                 indexOutcome,
+                                pipelineState,
                                 stateMachine,
                                 pipelineKeyPrefix,
                                 processActivity,
@@ -913,7 +917,7 @@ public partial class AggregateActor(
                         string? rejectionEventType = domainResult.IsRejection
                             ? GetEventTypeName(domainResult.Events[0])
                             : null;
-                        var eventsStoredState = new PipelineState(
+                        eventsStoredState = new PipelineState(
                             command.CorrelationId,
                             CommandStatus.EventsStored,
                             command.CommandType,
@@ -931,16 +935,32 @@ public partial class AggregateActor(
                             await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
                             await StateManager.SaveStateAsync().ConfigureAwait(false);
                         }
-                        catch (InvalidOperationException ex) {
-                            var conflict = new ConcurrencyConflictException(
-                                command.CorrelationId,
-                                command.AggregateId,
-                                command.TenantId,
-                                conflictSource: "StateStore",
-                                innerException: ex,
-                                messageId: command.MessageId);
+                        catch (Exception ex) {
+                            ConcurrencyConflictException? conflict = ex is InvalidOperationException
+                                ? new ConcurrencyConflictException(
+                                    command.CorrelationId,
+                                    command.AggregateId,
+                                    command.TenantId,
+                                    conflictSource: "StateStore",
+                                    innerException: ex,
+                                    messageId: command.MessageId)
+                                : null;
 
-                            if (persistenceConflictRetryCount < maxPersistenceConflictRetries) {
+                            bool eventBatchCommitted = await InspectEventBatchSaveFailureAsync(
+                                command,
+                                pipelineState,
+                                eventsStoredState,
+                                persistResult,
+                                conflict ?? ex,
+                                conflict is null ? CommandStatus.EventsStored.ToString() : "PersistenceConflict",
+                                cancellationToken).ConfigureAwait(false);
+                            if (!eventBatchCommitted && conflict is null)
+                            {
+                                throw;
+                            }
+
+                            if (!eventBatchCommitted
+                                && persistenceConflictRetryCount < maxPersistenceConflictRetries) {
                                 persistenceConflictRetryCount++;
                                 Log.PersistenceConflictRetry(
                                     logger,
@@ -970,7 +990,7 @@ public partial class AggregateActor(
                                             Host.Id.GetId(),
                                             command.CorrelationId,
                                             "PersistenceConflict",
-                                            conflict.GetType().Name,
+                                            conflict!.GetType().Name,
                                             "ClearCacheBeforeRetryCancellation",
                                             nameof(OperationCanceledException),
                                             discardExceptionType,
@@ -985,7 +1005,7 @@ public partial class AggregateActor(
                                     throw await CreateRemediationExceptionAsync(
                                         command.CorrelationId,
                                         "PersistenceConflict",
-                                        conflict,
+                                        conflict!,
                                         "ClearCacheBeforeRetry",
                                         remediationException,
                                         attemptDiscard: true).ConfigureAwait(false);
@@ -994,15 +1014,18 @@ public partial class AggregateActor(
                                 goto RetryAfterPersistenceConflict;
                             }
 
-                            return await CompleteConcurrencyConflictAsync(
-                                command,
-                                causationId,
-                                conflict,
-                                stateMachine,
-                                pipelineKeyPrefix,
-                                processActivity,
-                                startTicks,
-                                maxPersistenceConflictRetries).ConfigureAwait(false);
+                            if (!eventBatchCommitted)
+                            {
+                                return await CompleteConcurrencyConflictAsync(
+                                    command,
+                                    causationId,
+                                    conflict!,
+                                    stateMachine,
+                                    pipelineKeyPrefix,
+                                    processActivity,
+                                    startTicks,
+                                    maxPersistenceConflictRetries).ConfigureAwait(false);
+                            }
                         }
 
                         LogStageTransition(CommandStatus.EventsStored, command, causationId, startTicks);
@@ -1081,6 +1104,8 @@ public partial class AggregateActor(
                     return await CompleteTerminalAsync(
                         command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
                         accepted, domainResult.Events.Count, errorMessage,
+                        eventsStoredState
+                            ?? throw new InvalidOperationException("EventsStored checkpoint was not established."),
                         processActivity, startTicks,
                         rejectionEventType: rejectionType,
                         resultPayload: domainResult.ResultPayload).ConfigureAwait(false);
@@ -1146,6 +1171,8 @@ public partial class AggregateActor(
                             await InspectPublicationRecoverySaveFailureAsync(
                                 command,
                                 unpublishedRecord,
+                                failResult,
+                                idempotencyChecker,
                                 pipelineKeyPrefix,
                                 ex).ConfigureAwait(false);
                         drainRecordCreated = recoveryOwnerCommitted;
@@ -1225,7 +1252,7 @@ public partial class AggregateActor(
                 .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
                 .ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
+        catch (Exception ex) {
             throw new EventDeserializationException(-1, identity.ActorId, ex);
         }
 
@@ -2213,13 +2240,14 @@ public partial class AggregateActor(
     }
 
     /// <summary>
-    /// Releases one pending-command slot from a clean cache boundary and resolves an ambiguous
-    /// save exactly once. A post-commit throw is observed without a second decrement; a pre-commit
-    /// failure is repaired by one clean restage/save.
+    /// Reconciles the pending-command projection to the fresh normalized publication-owner count
+    /// from a clean cache boundary and resolves an ambiguous save exactly once. A post-commit throw
+    /// is observed without a second save; a pre-commit failure is repaired by one clean restage/save.
     /// </summary>
     private async Task FinalizePendingCommandAsync(CommandEnvelope command, Activity? processActivity)
     {
         const string clearOperation = "PendingFinalizerClear";
+        const string ownerReadOperation = "PendingFinalizerOwnerRead";
         const string readOperation = "PendingFinalizerRead";
         const string writeOperation = "PendingFinalizerWrite";
         const string saveOperation = "PendingFinalizerSave";
@@ -2232,12 +2260,21 @@ public partial class AggregateActor(
             await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
             _stateCacheUnsafe = false;
 
+            operation = ownerReadOperation;
+            UnpublishedPublicationIndex publicationOwners = await ReadPublicationIndexAsync()
+                .ConfigureAwait(false);
+            expectedAfter = publicationOwners.OwnerCount;
+
             operation = readOperation;
             committedBefore = await ReadPendingCommandCountAsync().ConfigureAwait(false);
-            expectedAfter = Math.Max(0, committedBefore - 1);
+            if (committedBefore == expectedAfter)
+            {
+                ClearPendingFinalizerRecovery();
+                return;
+            }
 
             operation = writeOperation;
-            _ = await DecrementPendingCommandCountAsync().ConfigureAwait(false);
+            await StagePendingCommandCountAsync(expectedAfter).ConfigureAwait(false);
 
             operation = saveOperation;
             await StateManager.SaveStateAsync(CancellationToken.None).ConfigureAwait(false);
@@ -2269,7 +2306,7 @@ public partial class AggregateActor(
                 await InspectPendingFinalizerFailureAsync(
                     committedBefore,
                     expectedAfter,
-                    allowRecovery: true).ConfigureAwait(false);
+                    allowRecovery: expectedAfter >= 0).ConfigureAwait(false);
             RecordPendingFinalizationFailure(
                 command,
                 processActivity,
@@ -2298,11 +2335,27 @@ public partial class AggregateActor(
         catch (Exception clearException)
         {
             _stateCacheUnsafe = true;
-            RequirePendingFinalizerRecovery(committedBefore, expectedAfter);
+            if (expectedAfter >= 0)
+            {
+                RequirePendingFinalizerRecovery(committedBefore, expectedAfter);
+            }
+            else
+            {
+                ClearPendingFinalizerRecovery();
+                _pendingCountReconciliationRequired = true;
+            }
+
             return (false, -1, "CacheDiscardUnproved", clearException.GetType().Name);
         }
 
-        if ((committedBefore < 0 || expectedAfter < 0) && !allowRecovery)
+        if (expectedAfter < 0)
+        {
+            ClearPendingFinalizerRecovery();
+            _pendingCountReconciliationRequired = true;
+            return (true, -1, "PublicationOwnerCountUnobserved", "None");
+        }
+
+        if (committedBefore < 0 && !allowRecovery)
         {
             RequirePendingFinalizerRecovery(committedBefore, expectedAfter);
             return (true, -1, "NoPendingMutationStaged", "None");
@@ -2312,10 +2365,9 @@ public partial class AggregateActor(
         try
         {
             observed = await ReadPendingCommandCountAsync().ConfigureAwait(false);
-            if (committedBefore < 0 || expectedAfter < 0)
+            if (committedBefore < 0)
             {
                 committedBefore = observed;
-                expectedAfter = Math.Max(0, committedBefore - 1);
             }
         }
         catch (Exception inspectionException)
@@ -2569,12 +2621,30 @@ public partial class AggregateActor(
         CommandEnvelope command,
         string causationId,
         PublicationIndexAddOutcome outcome,
+        PipelineState processingPipeline,
         ActorStateMachine stateMachine,
         string pipelineKeyPrefix,
         Activity? processActivity,
         long startTicks) {
         // Discard everything the persistence step staged. These events must NOT commit.
-        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        try
+        {
+            await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
+            _stateCacheUnsafe = false;
+        }
+        catch (Exception discardException)
+        {
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                "PublicationIndexRefusal",
+                new InvalidOperationException("Publication recovery index refused the staged event batch."),
+                "DiscardPublicationIndexRefusalBatch",
+                discardException,
+                discardException.GetType().Name,
+                failedBatchDiscarded: false,
+                durableStateObservation: "Unobserved");
+        }
 
         UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
         int outstanding = index.Entries.Count;
@@ -2600,7 +2670,23 @@ public partial class AggregateActor(
 
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
             .ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        try
+        {
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+        catch (Exception cleanupSaveException)
+        {
+            bool cleanupCommitted = await InspectPipelineCleanupSaveFailureAsync(
+                command.CorrelationId,
+                $"{pipelineKeyPrefix}{command.CorrelationId}",
+                "PublicationIndexRefusal",
+                processingPipeline,
+                cleanupSaveException).ConfigureAwait(false);
+            if (!cleanupCommitted)
+            {
+                throw;
+            }
+        }
 
         await WriteAdvisoryStatusAsync(
             command,
@@ -3229,6 +3315,7 @@ public partial class AggregateActor(
             accepted,
             eventCount,
             errorMessage,
+            existingPipeline,
             processActivity,
             startTicks,
             rejectionEventType: existingPipeline.RejectionEventType).ConfigureAwait(false);
@@ -3389,15 +3476,21 @@ public partial class AggregateActor(
                 (committed, _) = await InspectPublicationRecoverySaveFailureAsync(
                     command,
                     committedDrainRecord,
+                    failResult,
+                    idempotencyChecker,
                     pipelineKeyPrefix,
                     ex).ConfigureAwait(false);
             }
             else
             {
-                committed = await InspectPipelineCleanupSaveFailureAsync(
-                    command.CorrelationId,
+                committed = await InspectIdempotencyCleanupSaveFailureAsync(
+                    command,
+                    failResult,
+                    idempotencyChecker,
                     $"{pipelineKeyPrefix}{command.CorrelationId}",
                     "PublishFailedRecovery",
+                    existingPipeline,
+                    IdempotencyCheckOutcome.RetryableRecoverable,
                     ex).ConfigureAwait(false);
             }
 
@@ -4253,6 +4346,8 @@ public partial class AggregateActor(
         InspectPublicationRecoverySaveFailureAsync(
             CommandEnvelope command,
             UnpublishedEventsRecord expectedDrain,
+            CommandProcessingResult expectedResult,
+            IdempotencyChecker idempotencyChecker,
             string pipelineKeyPrefix,
             Exception saveException)
     {
@@ -4282,11 +4377,20 @@ public partial class AggregateActor(
                 .ConfigureAwait(false);
             UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
             int pendingCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
+            IdempotencyCheckResult idempotency = await idempotencyChecker
+                .InspectAsync(CreateCommandProcessingIdentity(command))
+                .ConfigureAwait(false);
             bool recoveryOwnerCommitted = index.Contains(trackingId);
             bool countConsistent = pendingCount == index.OwnerCount;
             bool exactDrain = drain.HasValue && drain.Value == expectedDrain;
+            bool exactRecoverable = idempotency.Outcome == IdempotencyCheckOutcome.RetryableRecoverable
+                && idempotency.Result == expectedResult;
 
-            if (!pipeline.HasValue && exactDrain && recoveryOwnerCommitted && countConsistent)
+            if (!pipeline.HasValue
+                && exactDrain
+                && exactRecoverable
+                && recoveryOwnerCommitted
+                && countConsistent)
             {
                 return (true, true);
             }
@@ -4333,10 +4437,269 @@ public partial class AggregateActor(
         }
     }
 
+    private async Task<bool> InspectEventBatchSaveFailureAsync(
+        CommandEnvelope command,
+        PipelineState processingPipeline,
+        PipelineState eventsStoredPipeline,
+        EventPersistResult persistResult,
+        Exception primaryException,
+        string primaryFailureStage,
+        CancellationToken cancellationToken)
+    {
+        string discardExceptionType;
+        try
+        {
+            await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
+            _stateCacheUnsafe = false;
+            discardExceptionType = "None";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            (bool discarded, string retryDiscardExceptionType) = await TryDiscardFailedBatchAsync()
+                .ConfigureAwait(false);
+            if (!discarded)
+            {
+                Log.ActorStateRemediationFailed(
+                    logger,
+                    Host.Id.GetId(),
+                    command.CorrelationId,
+                    primaryFailureStage,
+                    primaryException.GetType().Name,
+                    "ClearCacheBeforeRetryCancellation",
+                    nameof(OperationCanceledException),
+                    retryDiscardExceptionType,
+                    failedBatchDiscarded: false,
+                    durableStateObservation: "Unobserved");
+            }
+
+            throw;
+        }
+        catch (Exception discardException)
+        {
+            throw await CreateRemediationExceptionAsync(
+                command.CorrelationId,
+                primaryFailureStage,
+                primaryException,
+                "ClearCache",
+                discardException,
+                attemptDiscard: true).ConfigureAwait(false);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            string pipelineKey = $"{command.AggregateIdentity.PipelineKeyPrefix}{command.CorrelationId}";
+            ConditionalValue<PipelineState> pipeline = await StateManager
+                .TryGetStateAsync<PipelineState>(pipelineKey)
+                .ConfigureAwait(false);
+            UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
+            bool exactRecoveryOwner = index.Entries.Any(entry =>
+                string.Equals(entry.MessageId, command.MessageId, StringComparison.Ordinal)
+                && string.Equals(entry.CorrelationId, command.CorrelationId, StringComparison.Ordinal));
+
+            if (pipeline.HasValue
+                && pipeline.Value == processingPipeline
+                && !index.Contains(command.MessageId))
+            {
+                return false;
+            }
+
+            if (pipeline.HasValue
+                && pipeline.Value == eventsStoredPipeline
+                && exactRecoveryOwner
+                && await HasExactCommittedEventBatchAsync(command, persistResult).ConfigureAwait(false))
+            {
+                return true;
+            }
+
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                primaryFailureStage,
+                primaryException,
+                "InspectEventBatchCommit",
+                new InvalidOperationException("Event batch durable state is ambiguous."),
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "AmbiguousEventBatch");
+        }
+        catch (ActorStateRemediationException)
+        {
+            throw;
+        }
+        catch (Exception inspectionException)
+        {
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                primaryFailureStage,
+                primaryException,
+                "InspectEventBatchCommit",
+                inspectionException,
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "DurableInspectionFailed");
+        }
+    }
+
+    private async Task<bool> HasExactCommittedEventBatchAsync(
+        CommandEnvelope command,
+        EventPersistResult persistResult)
+    {
+        if (persistResult.PersistedEnvelopes.Count == 0)
+        {
+            return false;
+        }
+
+        EventEnvelope first = persistResult.PersistedEnvelopes[0];
+        ConditionalValue<AggregateMetadata> metadata = await StateManager
+            .TryGetStateAsync<AggregateMetadata>(command.AggregateIdentity.MetadataKey)
+            .ConfigureAwait(false);
+        if (!metadata.HasValue
+            || metadata.Value != new AggregateMetadata(
+                persistResult.NewSequenceNumber,
+                first.Timestamp,
+                ETag: null))
+        {
+            return false;
+        }
+
+        foreach (EventEnvelope expected in persistResult.PersistedEnvelopes)
+        {
+            ConditionalValue<EventEnvelope> observed = await StateManager
+                .TryGetStateAsync<EventEnvelope>(
+                    $"{command.AggregateIdentity.EventStreamKeyPrefix}{expected.SequenceNumber}")
+                .ConfigureAwait(false);
+            if (!observed.HasValue || !EventEnvelopesMatch(observed.Value, expected))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool EventEnvelopesMatch(EventEnvelope observed, EventEnvelope expected)
+        => string.Equals(observed.MessageId, expected.MessageId, StringComparison.Ordinal)
+            && string.Equals(observed.AggregateId, expected.AggregateId, StringComparison.Ordinal)
+            && string.Equals(observed.AggregateType, expected.AggregateType, StringComparison.Ordinal)
+            && string.Equals(observed.TenantId, expected.TenantId, StringComparison.Ordinal)
+            && string.Equals(observed.Domain, expected.Domain, StringComparison.Ordinal)
+            && observed.SequenceNumber == expected.SequenceNumber
+            && observed.GlobalPosition == expected.GlobalPosition
+            && observed.Timestamp == expected.Timestamp
+            && string.Equals(observed.CorrelationId, expected.CorrelationId, StringComparison.Ordinal)
+            && string.Equals(observed.CausationId, expected.CausationId, StringComparison.Ordinal)
+            && string.Equals(observed.UserId, expected.UserId, StringComparison.Ordinal)
+            && string.Equals(observed.DomainServiceVersion, expected.DomainServiceVersion, StringComparison.Ordinal)
+            && string.Equals(observed.EventTypeName, expected.EventTypeName, StringComparison.Ordinal)
+            && observed.MetadataVersion == expected.MetadataVersion
+            && string.Equals(observed.SerializationFormat, expected.SerializationFormat, StringComparison.Ordinal)
+            && observed.Payload.AsSpan().SequenceEqual(expected.Payload)
+            && EventExtensionsMatch(observed.Extensions, expected.Extensions);
+
+    private static bool EventExtensionsMatch(
+        IDictionary<string, string>? observed,
+        IDictionary<string, string>? expected)
+    {
+        if (ReferenceEquals(observed, expected))
+        {
+            return true;
+        }
+
+        if (observed is null || expected is null || observed.Count != expected.Count)
+        {
+            return false;
+        }
+
+        return expected.All(pair =>
+            observed.TryGetValue(pair.Key, out string? value)
+            && string.Equals(value, pair.Value, StringComparison.Ordinal));
+    }
+
+    private async Task<bool> InspectIdempotencyCleanupSaveFailureAsync(
+        CommandEnvelope command,
+        CommandProcessingResult expectedResult,
+        IdempotencyChecker idempotencyChecker,
+        string pipelineStateKey,
+        string primaryFailureStage,
+        PipelineState expectedPreCommitPipeline,
+        IdempotencyCheckOutcome expectedCommittedOutcome,
+        Exception saveException)
+    {
+        (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
+            .ConfigureAwait(false);
+        if (!discarded)
+        {
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                primaryFailureStage,
+                saveException,
+                "DiscardIdempotencyCleanupBatch",
+                saveException,
+                discardExceptionType,
+                failedBatchDiscarded: false,
+                durableStateObservation: "Unobserved");
+        }
+
+        try
+        {
+            CommandProcessingIdentity identity = CreateCommandProcessingIdentity(command);
+            IdempotencyCheckResult idempotency = await idempotencyChecker
+                .InspectAsync(identity)
+                .ConfigureAwait(false);
+            ConditionalValue<PipelineState> pipeline = await StateManager
+                .TryGetStateAsync<PipelineState>(pipelineStateKey)
+                .ConfigureAwait(false);
+            if (idempotency.Outcome == expectedCommittedOutcome
+                && idempotency.Result == expectedResult
+                && !pipeline.HasValue)
+            {
+                return true;
+            }
+
+            bool exactPreCommitPipeline = pipeline.HasValue
+                && pipeline.Value == expectedPreCommitPipeline;
+            if (idempotency.Outcome == IdempotencyCheckOutcome.Miss && exactPreCommitPipeline)
+            {
+                return false;
+            }
+
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                primaryFailureStage,
+                saveException,
+                "InspectIdempotencyCleanupCommit",
+                new InvalidOperationException("Idempotency cleanup durable state is ambiguous."),
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "AmbiguousIdempotencyCleanup");
+        }
+        catch (ActorStateRemediationException)
+        {
+            throw;
+        }
+        catch (Exception inspectionException)
+        {
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                command.CorrelationId,
+                primaryFailureStage,
+                saveException,
+                "InspectIdempotencyCleanupCommit",
+                inspectionException,
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "DurableInspectionFailed");
+        }
+    }
+
     private async Task<bool> InspectPipelineCleanupSaveFailureAsync(
         string correlationId,
         string pipelineStateKey,
         string primaryFailureStage,
+        PipelineState expectedPreCommitPipeline,
         Exception saveException)
     {
         (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
@@ -4359,7 +4722,30 @@ public partial class AggregateActor(
             ConditionalValue<PipelineState> observed = await StateManager
                 .TryGetStateAsync<PipelineState>(pipelineStateKey)
                 .ConfigureAwait(false);
-            return !observed.HasValue;
+            if (!observed.HasValue)
+            {
+                return true;
+            }
+
+            if (observed.Value == expectedPreCommitPipeline)
+            {
+                return false;
+            }
+
+            _stateCacheUnsafe = true;
+            throw CreateStateRemediationException(
+                correlationId,
+                primaryFailureStage,
+                saveException,
+                "InspectPipelineCleanupCommit",
+                new InvalidOperationException("Pipeline cleanup durable state is ambiguous."),
+                discardExceptionType,
+                failedBatchDiscarded: true,
+                durableStateObservation: "AmbiguousPipelineCleanup");
+        }
+        catch (ActorStateRemediationException)
+        {
+            throw;
         }
         catch (Exception inspectionException)
         {
@@ -4455,11 +4841,16 @@ public partial class AggregateActor(
     {
         int observed = await ReadPendingCommandCountAsync().ConfigureAwait(false);
         int expectedAfter = _pendingFinalizerExpectedAfter;
-        if (_pendingFinalizerCommittedBefore < 0 || expectedAfter < 0)
+        if (_pendingFinalizerCommittedBefore < 0)
         {
             _pendingFinalizerCommittedBefore = observed;
-            expectedAfter = Math.Max(0, observed - 1);
-            _pendingFinalizerExpectedAfter = expectedAfter;
+        }
+
+        if (expectedAfter < 0)
+        {
+            ClearPendingFinalizerRecovery();
+            _pendingCountReconciliationRequired = true;
+            return;
         }
 
         if (observed == expectedAfter)
@@ -4640,6 +5031,7 @@ public partial class AggregateActor(
         bool accepted,
         int eventCount,
         string? errorMessage,
+        PipelineState expectedPreCommitPipeline,
         Activity? processActivity,
         long startTicks,
         string? rejectionEventType = null,
@@ -4677,14 +5069,34 @@ public partial class AggregateActor(
         try {
             await StateManager.SaveStateAsync().ConfigureAwait(false);
         }
-        catch (InvalidOperationException ex) {
-            throw new ConcurrencyConflictException(
-                command.CorrelationId,
-                command.AggregateId,
-                command.TenantId,
-                conflictSource: "StateStore",
-                innerException: ex,
-                messageId: command.MessageId);
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            ConcurrencyConflictException? conflict = ex is InvalidOperationException
+                ? new ConcurrencyConflictException(
+                    command.CorrelationId,
+                    command.AggregateId,
+                    command.TenantId,
+                    conflictSource: "StateStore",
+                    innerException: ex,
+                    messageId: command.MessageId)
+                : null;
+            bool terminalCommitted = await InspectIdempotencyCleanupSaveFailureAsync(
+                command,
+                result,
+                idempotencyChecker,
+                $"{pipelineKeyPrefix}{command.CorrelationId}",
+                "TerminalCompletion",
+                expectedPreCommitPipeline,
+                IdempotencyCheckOutcome.ExactTerminalDuplicate,
+                conflict ?? ex).ConfigureAwait(false);
+            if (!terminalCommitted)
+            {
+                if (conflict is not null)
+                {
+                    throw conflict;
+                }
+
+                throw;
+            }
         }
 
         CommandStatus terminalStatus = accepted ? CommandStatus.Completed : CommandStatus.Rejected;

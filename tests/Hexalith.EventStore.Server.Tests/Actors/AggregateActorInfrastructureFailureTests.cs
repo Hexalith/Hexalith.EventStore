@@ -240,6 +240,141 @@ public class AggregateActorInfrastructureFailureTests
     }
 
     [Fact]
+    public async Task EventBatchSaveFailsBeforeCommit_RetriesWithoutLeavingTheFailedAttempt()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(
+            concurrencyOptions: new CommandConcurrencyOptions { MaxPersistenceConflictRetries = 1 },
+            stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-event-batch-precommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultOnCall("SaveState", 2, new InvalidOperationException("pre-commit conflict"));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        _ = await context.Invoker.Received(2).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
+            .ShouldBe(1);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
+        ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"])
+            .Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task EventBatchSaveCommitsThenThrows_DoesNotReinvokeDomainOrAppendADuplicateEvent()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(
+            concurrencyOptions: new CommandConcurrencyOptions { MaxPersistenceConflictRetries = 1 },
+            stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-event-batch-postcommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultAfterCall("SaveState", 2, new InvalidOperationException("commit uncertain"));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        _ = await context.EventPublisher.Received(1).PublishEventsAsync(
+            command.AggregateIdentity,
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1 && events[0].SequenceNumber == 1),
+            command.CorrelationId,
+            Arg.Any<CancellationToken>(),
+            false);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
+            .ShouldBe(1);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
+        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task EventBatchSaveFailsBeforeCommitWithIOException_UsesTheExistingInfrastructureRejection()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-event-batch-io-precommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultOnCall("SaveState", 2, new IOException("pre-commit-secret"));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldNotContain("pre-commit-secret");
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        _ = await context.DeadLetterPublisher.Received(1).PublishDeadLetterAsync(
+            command.AggregateIdentity,
+            Arg.Is<DeadLetterMessage>(message => message.FailureStage == CommandStatus.EventsStored.ToString()),
+            Arg.Any<CancellationToken>());
+        _ = await context.EventPublisher.DidNotReceiveWithAnyArgs().PublishEventsAsync(
+            default!, default!, default!);
+        AssertSuccessfulRejectionEndState(stateManager, command);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task EventBatchSaveCommitsThenThrowsIOException_DoesNotReinvokeDomainOrAppendADuplicateEvent()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-event-batch-io-postcommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultAfterCall("SaveState", 2, new IOException("commit-uncertain-secret"));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        _ = await context.EventPublisher.Received(1).PublishEventsAsync(
+            command.AggregateIdentity,
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1 && events[0].SequenceNumber == 1),
+            command.CorrelationId,
+            Arg.Any<CancellationToken>(),
+            false);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
+            .ShouldBe(1);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
+        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+    }
+
+    [Fact]
     public async Task PersistenceConflictExhaustionPreservesOnlyTheConcurrentWinner()
     {
         var stateManager = new FaultInjectingActorStateManager();
@@ -1119,6 +1254,215 @@ public class AggregateActorInfrastructureFailureTests
         durable.ShouldNotContainKey(PendingCountKey);
         durable.ShouldNotContainKey(GetPipelineKey(command));
         stateManager.Trace.ShouldContain("ClearCache");
+    }
+
+    [Fact]
+    public async Task TerminalSaveFailsBeforeCommit_PreservesTheExistingRetryableCheckpoint()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-terminal-precommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultOnCall("SaveState", 3, new InvalidOperationException("pre-commit conflict"));
+
+        _ = await Should.ThrowAsync<ConcurrencyConflictException>(
+            () => context.Actor.ProcessCommandAsync(command));
+
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.ShouldNotContainKey($"idempotency:{command.MessageId}");
+        ((PipelineState)durable[GetPipelineKey(command)]).CurrentStage.ShouldBe(CommandStatus.EventsStored);
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains(command.MessageId).ShouldBeTrue();
+        durable[PendingCountKey].ShouldBe(1);
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task TerminalSaveCommitsThenThrows_ReturnsTheExactResultWithoutARedundantTerminalSave()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-terminal-postcommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultAfterCall("SaveState", 3, new InvalidOperationException("commit uncertain"));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+        CommandProcessingResult duplicate = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        duplicate.ShouldBe(result);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"]).ToResult().ShouldBe(result);
+        durable.ShouldNotContainKey(GetPipelineKey(command));
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains(command.MessageId).ShouldBeFalse();
+        durable[PendingCountKey].ShouldBe(0);
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task TerminalSaveFailsBeforeCommitWithIOException_PropagatesAfterCleanInspection()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-terminal-io-precommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        var expected = new IOException("pre-commit-secret");
+        stateManager.FaultOnCall("SaveState", 3, expected);
+
+        IOException observed = await Should.ThrowAsync<IOException>(
+            () => context.Actor.ProcessCommandAsync(command));
+
+        observed.ShouldBeSameAs(expected);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.ShouldNotContainKey($"idempotency:{command.MessageId}");
+        ((PipelineState)durable[GetPipelineKey(command)]).CurrentStage.ShouldBe(CommandStatus.EventsStored);
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains(command.MessageId).ShouldBeTrue();
+        durable[PendingCountKey].ShouldBe(1);
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task TerminalSaveCommitsThenThrowsIOException_ReturnsTheExactResultWithoutARedundantTerminalSave()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-terminal-io-postcommit");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultAfterCall("SaveState", 3, new IOException("commit-uncertain-secret"));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+        CommandProcessingResult duplicate = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        duplicate.ShouldBe(result);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"]).ToResult().ShouldBe(result);
+        durable.ShouldNotContainKey(GetPipelineKey(command));
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains(command.MessageId).ShouldBeFalse();
+        durable[PendingCountKey].ShouldBe(0);
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task TerminalIndexRemovalStagingFailure_RetainsTheRecoveryOwnerAndItsPendingSlot()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-terminal-index-removal-failure");
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        stateManager.FaultOnCall(
+            $"SetState:{UnpublishedPublicationIndex.StateKey}",
+            2,
+            new IOException("index-removal-secret"));
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+        CommandProcessingResult duplicate = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeTrue();
+        duplicate.ShouldBe(result);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"]).ToResult().ShouldBe(result);
+        durable.ShouldNotContainKey(GetPipelineKey(command));
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Contains(command.MessageId).ShouldBeTrue();
+        durable[PendingCountKey].ShouldBe(1);
+        _ = await context.Invoker.Received(1).InvokeAsync(
+            command,
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PublicationIndexRefusalCleanupSaveAmbiguityHasABoundedExactConsequence(
+        bool commitThenThrow)
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: $"corr-refusal-{commitThenThrow}");
+        var existingIndex = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry("msg-existing-owner", "corr-existing", DateTimeOffset.UnixEpoch),
+        ]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [UnpublishedPublicationIndex.StateKey] = existingIndex,
+            [PendingCountKey] = 1,
+        });
+        ActorTestContext context = CreateActor(
+            stateManager: stateManager,
+            eventDrainOptions: new EventDrainOptions { MaxOutstandingPublicationEntries = 1 });
+        _ = context.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        if (commitThenThrow)
+        {
+            stateManager.FaultAfterCall("SaveState", 2, new IOException("commit uncertain"));
+        }
+        else
+        {
+            stateManager.FaultOnCall("SaveState", 2, new IOException("pre-commit failure"));
+        }
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.Accepted.ShouldBeFalse();
+        result.BackpressureExceeded.ShouldBe(commitThenThrow);
+        IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
+        durable.ShouldNotContainKey(command.AggregateIdentity.MetadataKey);
+        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}1");
+        durable.ShouldNotContainKey(GetPipelineKey(command));
+        durable.ShouldNotContainKey($"idempotency:{command.MessageId}");
+        durable[PendingCountKey].ShouldBe(1);
+        ((UnpublishedPublicationIndex)durable[UnpublishedPublicationIndex.StateKey])
+            .Entries.Select(entry => entry.MessageId).ShouldBe(["msg-existing-owner"]);
+        _ = await context.EventPublisher.DidNotReceiveWithAnyArgs().PublishEventsAsync(
+            default!, default!, default!);
+        stateManager.Trace.Count(operation => operation == "SaveState")
+            .ShouldBe(commitThenThrow ? 3 : 4);
     }
 
     [Theory]

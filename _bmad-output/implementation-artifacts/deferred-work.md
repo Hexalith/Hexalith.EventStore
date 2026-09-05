@@ -3502,3 +3502,19 @@ decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Review concurrent CI, release-boundary, documentation, and tooling findings from the dirty tree.
   evidence: Review pass 3 identified unrelated gaps in container-test lane selection, release validity-boundary coverage, CI documentation, Windows structural tests, and agent/tooling behavior; none is caused by the approved Tenants query-provenance change.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Make drain-exhaustion dead-letter publication idempotent across a pre-commit marker-save failure.
+  evidence: `CompleteDrainExhaustionAsync` publishes externally before saving `DeadLettered`; if that save fails before commit, the next reminder republishes the same exhausted range, and no repository-owned consumer or sink contract proves that the stable CloudEvent id suppresses it.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Restrict manual-snapshot success inference to an ambiguous snapshot save and compare the exact expected snapshot.
+  evidence: `CreateManualSnapshotAsync` catches inspection, reconstruction, creation, and save failures together, then reports `Created` whenever any pre-existing snapshot has the current sequence; an earlier infrastructure failure can therefore be misreported as a successful creation.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Add before-commit and commit-then-throw stale-checkpoint handoff save-fault tests.
+  evidence: Successful stale-handoff tests do not exercise `InspectStaleHandoffSaveFailureAsync`, so a regression can surface an already-committed handoff as a failed command or accept an incomplete durable handoff.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Add a pre-commit drain-retry persistence repair test.
+  evidence: Existing tests cover normal retry persistence and commit-then-throw ambiguity only; no test proves that a failure before the first save commits is discarded, inspected, and repaired with exactly one durable retry increment.

@@ -9,6 +9,7 @@ Blocking condition: dirty working tree
 Command: `git add --refresh -- . && git status --short --branch`
 Observed dirty paths:
 
-- `_bmad-output/implementation-artifacts/deferred-work.md`
-- `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-- `_bmad-output/implementation-artifacts/spec-independent-followup-reviews.md`
+- `references/Hexalith.FrontComposer`
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTestHelper.cs`

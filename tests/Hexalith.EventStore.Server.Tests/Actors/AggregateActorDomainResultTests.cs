@@ -444,26 +444,11 @@ public class AggregateActorDomainResultTests {
     public async Task ProcessCommandAsync_SaveStateAsyncThrows_RetriesAgainstFreshState() {
         // Arrange -- Story 3.8: allow Processing checkpoint SaveStateAsync to succeed,
         // then throw once on the EventsStored batch commit and retry from rehydration.
-        ActorTestContext ctx = CreateActor();
-        ConfigureNoDuplicate(ctx.StateManager);
+        var stateManager = new FaultInjectingActorStateManager();
+        ActorTestContext ctx = CreateActor(stateManager: stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-
-        int saveCallCount = 0;
-        _ = ctx.StateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                saveCallCount++;
-                // First call: Processing checkpoint (succeeds)
-                if (saveCallCount == 1) {
-                    return Task.CompletedTask;
-                }
-
-                // Second call: EventsStored batch (throws -- simulating concurrency conflict).
-                // Later calls are the retried EventsStored batch, terminal completion, and pending-count decrement.
-                return saveCallCount == 2
-                    ? Task.FromException(new InvalidOperationException("ETag mismatch"))
-                    : Task.CompletedTask;
-            });
+        stateManager.FaultOnCall("SaveState", 2, new InvalidOperationException("ETag mismatch"));
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-conflict");
 
@@ -473,26 +458,19 @@ public class AggregateActorDomainResultTests {
         // Assert
         result.Accepted.ShouldBeTrue();
         _ = await ctx.Invoker.Received(2).InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
-        await ctx.StateManager.Received(2).ClearCacheAsync(Arg.Any<CancellationToken>());
+        stateManager.Trace.Count(operation => operation == "ClearCache").ShouldBe(3);
     }
 
     [Fact]
     public async Task ProcessCommandAsync_SaveStateAsyncConflictRetryExhausted_ReturnsRejectedConcurrencyResult() {
         // Arrange -- zero configured retries means the first EventsStored commit conflict is terminal.
+        var stateManager = new FaultInjectingActorStateManager();
         ActorTestContext ctx = CreateActor(
-            concurrencyOptions: new CommandConcurrencyOptions { MaxPersistenceConflictRetries = 0 });
-        ConfigureNoDuplicate(ctx.StateManager);
+            concurrencyOptions: new CommandConcurrencyOptions { MaxPersistenceConflictRetries = 0 },
+            stateManager: stateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-
-        int saveCallCount = 0;
-        _ = ctx.StateManager.SaveStateAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                saveCallCount++;
-                return saveCallCount == 2
-                    ? Task.FromException(new InvalidOperationException("ETag mismatch"))
-                    : Task.CompletedTask;
-            });
+        stateManager.FaultOnCall("SaveState", 2, new InvalidOperationException("ETag mismatch"));
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-conflict-terminal", causationId: "cause-conflict-terminal");
 
@@ -502,10 +480,10 @@ public class AggregateActorDomainResultTests {
         // Assert
         result.Accepted.ShouldBeFalse();
         result.ErrorMessage.ShouldBe("ConcurrencyConflict");
-        await ctx.StateManager.DidNotReceive().SetStateAsync(
-            $"idempotency:{envelope.MessageId}",
-            Arg.Any<IdempotencyRecord>(),
-            Arg.Any<CancellationToken>());
+        IReadOnlyDictionary<string, object> rejectedState = stateManager.CreateCommittedView();
+        rejectedState.ShouldNotContainKey($"idempotency:{envelope.MessageId}");
+        rejectedState.ShouldNotContainKey($"{envelope.AggregateIdentity.EventStreamKeyPrefix}1");
+        rejectedState.ShouldNotContainKey($"{envelope.AggregateIdentity.PipelineKeyPrefix}{envelope.CorrelationId}");
         await ctx.StatusStore.Received(1).WriteStatusAsync(
             envelope.TenantId,
             envelope.MessageId,
