@@ -3518,3 +3518,31 @@ decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, 
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Add a pre-commit drain-retry persistence repair test.
   evidence: Existing tests cover normal retry persistence and commit-then-throw ambiguity only; no test proves that a failure before the first save commits is discarded, inspected, and repaired with exactly one durable retry increment.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Establish whether admission staging exceptions can leave a commit-capable abandoned actor-state batch.
+  evidence: `StagePendingCommandCountAsync` and `ActorStateMachine.CheckpointAsync` run before the guarded save, but no catch discards their batch if a staging call throws; a Dapr implementation guarantee or fault test must establish whether a post-staging exception can retain state for a later save.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Apply the actor discard-or-poison protocol to legacy idempotency migration and source-read failures.
+  evidence: A legacy migration can stage the new key before legacy-key removal throws, while legacy source/redirect reads swallow state-manager failures as `Unavailable`; both paths can leave a possibly unsafe cache without actor-owned remediation.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Preserve cancellation semantics for aggregate event metadata reads.
+  evidence: `GetEventsAsync` catches metadata-read `OperationCanceledException` as `Exception` and wraps it in `EventDeserializationException`, although adjacent event reads preserve cancellation, so callers and telemetry can misclassify cancellation as corrupt state.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Make malformed publication-index activation fail closed without pruning valid duplicate owners or bypassing work bounds.
+  evidence: A malformed entry before a valid duplicate is terminalized and adds the shared message id to the final prune set, removing the valid owner too; malformed nonblank entries can also perform idempotency reads and saves without consuming either activation budget.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Make the documented corrective-release v4 handler path compatible with a handler-specific codec digest.
+  evidence: `docs/ci.md` requires v4 to define its own `EXPECTED_PACKET_CODEC_SHA256`, but `_load_handler` rejects any value different from `V3_PACKET_CODEC_SHA256`, so a correctly authored successor cannot load.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Finalize a reused stale-Processing pending slot when replacement admission fails before commit.
+  evidence: After stale checkpoint cleanup commits, pre-commit replacement-admission inspection returns false and overwrites `pendingCommandTracked`; the `finally` path then skips decrementing the now-ownerless durable slot.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Refresh the Story 4.7 deferred actor-review evidence after its named tests were added.
+  evidence: The pass-3 ledger entry still cites missing nonempty-index activation and direct state-cache-barrier coverage, but `OnActivate_NonemptyIndex_ReconcilesPendingCountToDistinctOwners` and `PoisonedActor_StateBearingTurnsStopAtTheCacheBarrier` now exist; the remaining actor concerns need accurate evidence.

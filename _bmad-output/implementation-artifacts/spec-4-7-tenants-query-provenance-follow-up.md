@@ -2,7 +2,7 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 followup_review_recommended: false
@@ -227,6 +227,57 @@ deferred: []
   - `[medium]` `[defer]` Carried actor/index hardening: P4-BH-03 through P4-BH-07 and P4-ECH-02 retain pass-3 routing and were not deferred again.
   - `[medium]` `[defer]` Carried release/tooling gaps: P4-BH-01, P4-BH-02, P4-VG-03, P4-VG-04, and P4-ECH-03 retain prior routing and were not deferred again.
 - loopback: none; no intent gap or bad spec survived. The Story 4.7 patch passed focused and Release/package verification, but review cannot advance while the required Debug/source gate is blocked by unrelated concurrent outer changes.
+
+### 2026-09-05 — Review pass 5
+
+- verdicts: 35 findings — high 3, medium 22, low 8, false 1, maybe-false 1
+- routes: intent_gap 0, bad_spec 0, patch 0, defer 29, reject 6
+- findings:
+  - `[maybe-false]` `[defer]` `[P5-BH-01]` `StagePendingCommandCountAsync` and `ActorStateMachine.CheckpointAsync` run before the guarded admission save, and no catch discards their batch if either staging call throws. The bad outcome requires a Dapr state-manager or logger failure that throws after retaining staged state; a fault test or implementation guarantee for those post-staging exceptions would settle whether a later turn can commit the abandoned admission.
+  - `[medium]` `[defer]` `[P5-BH-02]` Legacy idempotency migration stages the new key before removing the legacy key, and an exception from `TryRemoveStateAsync` escapes `CheckAsync` without actor-owned discard or poison handling. A later state save can commit the partially staged migration; this concurrent actor-safety issue is outside Story 4.7.
+  - `[medium]` `[defer]` `[P5-BH-03]` Carried from P4-BH-09: `CreateManualSnapshotAsync` can report `Created` after an earlier inspection, reconstruction, or creation failure when a pre-existing snapshot has the current sequence. This concurrent EventStore issue remains outside Story 4.7 and is not deferred again.
+  - `[medium]` `[defer]` `[P5-BH-04]` `GetEventsAsync` catches metadata-read `OperationCanceledException` as `Exception` and wraps it as `EventDeserializationException`, while its event reads preserve cancellation. Callers and telemetry can misclassify cancellation as corrupt event state; this EventStore actor issue is unrelated to Story 4.7.
+  - `[high]` `[defer]` `[P5-BH-05]` Normalization retains a malformed entry before a well-formed entry with the same message id; activation terminalizes that id from the malformed entry and final `Prune` removes both entries, including the valid recovery owner. That can strand committed publication recovery and is concurrent EventStore work outside Story 4.7.
+  - `[medium]` `[defer]` `[P5-BH-06]` Malformed nonblank entries do not consume either activation budget but call `CommitRecoverableCompletionAsync`, which can read and save actor state. Because the deserialized index has no length cap, malformed entries can cause unbounded activation work; this is unrelated to the Tenants provenance change.
+  - `[false]` `[reject]` `[P5-BH-07]` The stale-handoff pipeline-presence check runs in a serialized actor turn immediately after loading and attempting to remove that exact checkpoint; no reachable in-turn writer can replace the same correlation key before inspection. The proposed unequal-checkpoint outcome was not demonstrated.
+  - `[high]` `[defer]` `[P5-BH-08]` Carried from P4-BH-08: drain exhaustion publishes externally before durably marking `DeadLettered`, leaving a duplicate-publication window on a pre-commit marker-save failure. This pre-existing EventStore issue is not deferred again.
+  - `[medium]` `[defer]` `[P5-BH-09]` Carried from P4-BH-01/P4-VG-03: no automatic workflow positively executes the real `HeavyweightContainerPublish` cases. This unrelated release-governance gap is not deferred again.
+  - `[medium]` `[defer]` `[P5-BH-10]` The documented v4 succession path requires a handler-specific codec digest, but `_load_handler` rejects every handler whose digest differs from `V3_PACKET_CODEC_SHA256`. Following the documentation therefore produces an unusable v4 handler; this corrective-release tooling issue is outside Story 4.7.
+  - `[low]` `[reject]` `[P5-BH-11]` Carried from P2-BH-15/P4-VG-05: the fixed-window source binder is weaker than Windows execution, but adding a Windows lane or parser is disproportionate to this low unrelated concern.
+  - `[low]` `[defer]` `[P5-BH-12]` Carried from P2-BH-14/P4-BH-02: the exact 86,401-second first-invalid retained-authority boundary remains untested. This unrelated release-evidence gap is not deferred again.
+  - `[low]` `[defer]` `[P5-BH-13]` Carried from P2-BH-13: DW-372 still incorrectly says the malformed-input direct-MSBuild theory is heavyweight and excluded. The inaccurate concurrent ledger record is not deferred again.
+  - `[low]` `[defer]` `[P5-BH-14]` The pass-3 deferred actor entry still cites missing nonempty-index activation and direct cache-barrier tests, while both named tests now exist. The remaining actor concerns may still be valid, but stale evidence can misroute future work; ledger maintenance is outside Story 4.7.
+  - `[medium]` `[reject]` `[P5-BH-15]` Carried from P2-BH-01/P4-ECH-06: the recorded baseline and current Tenants gitlink span unrelated commits, and root pointer advances were mixed with other work. The spec already leaves final reviewed-SHA/gitlink completion open, while changing the review baseline or historical commits is not a code-review patch.
+  - `[medium]` `[defer]` `[P5-ECH-01]` Carried from P4-BH-01/P4-VG-03: heavyweight container publication has no positive automatic lane. It is unrelated to Story 4.7 and is not deferred again.
+  - `[low]` `[reject]` `[P5-ECH-02]` Carried from P2-BH-15/P4-VG-05: a balanced-block parser or Windows execution would strengthen the source binder, but the low unrelated risk does not justify that added machinery here.
+  - `[low]` `[defer]` `[P5-ECH-03]` Carried from P2-BH-14/P4-BH-02: the 86,401-second validity boundary remains uncovered and is not deferred again.
+  - `[medium]` `[defer]` `[P5-ECH-04]` Carried from P4-BH-03: pending-count reconciliation uses publication-index owners only and can erase a slot owned by a committed `Processing` checkpoint. This unrelated actor issue is not deferred again.
+  - `[medium]` `[defer]` `[P5-ECH-05]` Carried from P4-BH-04: normalization can keep the wrong correlation owner when well-formed duplicate message ids conflict. This unrelated actor issue is not deferred again.
+  - `[medium]` `[defer]` `[P5-ECH-06]` Carried from P4-BH-05: first-match removal can delete only a malformed duplicate and leave the well-formed owner stuck. This unrelated actor issue is not deferred again.
+  - `[medium]` `[defer]` `[P5-ECH-07]` Carried from P4-BH-06: `Contains` accepts a malformed nonblank message id while `OwnerCount` excludes it. This unrelated actor issue is not deferred again.
+  - `[medium]` `[defer]` `[P5-ECH-08]` Carried from P4-BH-07/P4-ECH-02: malformed entries consume raw index capacity without contributing usable owners. This unrelated actor issue is not deferred again.
+  - `[high]` `[defer]` `[P5-ECH-09]` Carried from P4-BH-08: a pre-commit dead-letter marker failure can cause duplicate external publication. This pre-existing EventStore issue is not deferred again.
+  - `[medium]` `[defer]` `[P5-ECH-10]` Carried from P4-BH-09: manual-snapshot same-sequence inference can turn an earlier infrastructure exception into a false `Created` result. This concurrent actor issue is not deferred again.
+  - `[medium]` `[defer]` `[P5-ECH-11]` A stale `Processing` checkpoint may contribute an existing pending slot; after its cleanup commits, a pre-commit replacement-admission save returns `false` from inspection and overwrites `pendingCommandTracked`, so finalization skips the now-ownerless durable slot. This concurrent EventStore actor issue is outside Story 4.7.
+  - `[medium]` `[defer]` `[P5-ECH-12]` The metadata-read catch in `GetEventsAsync` wraps cancellation as `EventDeserializationException`, unlike the adjacent per-event read path. This is the same unrelated cancellation-classification defect as P5-BH-04.
+  - `[medium]` `[reject]` `[P5-ECH-13]` Carried from P2-BH-01/P4-ECH-06: the broad Tenants gitlink delta contains unrelated ancestry and the root moves were not isolated. The spec does not claim that the final SHA/gitlink task is complete, and rewriting its baseline or shared history is not a review patch.
+  - `[medium]` `[defer]` `[P5-VG-01]` Carried from P4-BH-01/P4-VG-03: real container publication is excluded from every automatic lane. This unrelated gap is not deferred again.
+  - `[low]` `[reject]` `[P5-VG-02]` Carried from P2-BH-15/P4-VG-05: Windows skip outcomes are verified structurally rather than by a Windows lane, but the low unrelated gap remains rejected.
+  - `[low]` `[defer]` `[P5-VG-03]` Carried from P2-BH-14/P4-VG-04: the first invalid 24-hour authority boundary remains uncovered and is not deferred again.
+  - `[medium]` `[defer]` `[P5-VG-04]` Pre-verified: legacy-source and redirect reads convert state-manager exceptions directly to `Unavailable`, so the actor never discards or poisons a possibly unsafe state cache before the next state-bearing turn. This cache-safety adoption gap is concurrent EventStore work outside Story 4.7.
+  - `[medium]` `[defer]` `[P5-VG-05]` Carried from P4-VG-01: stale-checkpoint handoff has no before-commit or commit-then-throw save-fault coverage. This unrelated test gap is not deferred again.
+  - `[medium]` `[defer]` `[P5-VG-06]` Carried from P4-VG-02: drain-retry repair still lacks a pre-commit save-fault test. This unrelated test gap is not deferred again.
+  - `[medium]` `[defer]` `[P5-VG-07]` Carried from P4-BH-09: manual-snapshot same-sequence success inference remains broader than the save ambiguity it is meant to resolve. This unrelated actor defect is not deferred again.
+- grouped survivors:
+  - `[medium-unverified]` `[defer]` Admission staging exceptions: P5-BH-01 needs a fault test or Dapr implementation guarantee to establish whether a post-staging exception can leave an abandoned batch commit-capable.
+  - `[medium]` `[defer]` Legacy idempotency cache safety: P5-BH-02 and P5-VG-04 expose migration/read failure paths that bypass the actor's discard-or-poison protocol.
+  - `[medium]` `[defer]` Cancellation classification: P5-BH-04 and P5-ECH-12 show `GetEventsAsync` translating cancellation into data corruption.
+  - `[high]` `[defer]` Malformed publication-index activation: P5-BH-05 and P5-BH-06 show a malformed duplicate can terminalize/prune a valid owner and malformed indexes can bypass activation work bounds.
+  - `[medium]` `[defer]` Corrective-release v4 dispatch: P5-BH-10 shows the documented successor-handler procedure conflicts with the dispatcher's hard-coded v3 codec pin.
+  - `[medium]` `[defer]` Stale-Processing pending-slot cleanup: P5-ECH-11 shows a pre-commit replacement-admission failure can leak the prior durable slot.
+  - `[low]` `[defer]` Deferred-ledger evidence: P5-BH-14 leaves already-added actor tests described as missing.
+  - `[high]` `[defer]` Carried actor, publication, snapshot, and verification findings retain their pass-2 through pass-4 routes and were not deferred again.
+- loopback: none; no intent gap, bad spec, or Story 4.7 patch survived triage. The review added no production change and preserves the still-open reviewed-SHA/gitlink and broad Debug/source validation tasks.
 
 ## Design Notes
 
