@@ -2,7 +2,7 @@
 title: 'Story 5.1: Infrastructure Failure Cache Clear'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: 'b43d64f906665e2bf3015eb2d3f16b771598d352'
@@ -52,11 +52,11 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` -- harden infrastructure/conflict/finalizer clear-restage-save ordering; preserve caller cancellation and dead-letter contracts; record failed activities; and install a poisoned-activation barrier that prevents every later state-bearing turn from staging or saving until a non-cancelable cache clear succeeds.
-- [ ] `src/Hexalith.EventStore.Server/Actors/ActorStateRemediationException.cs` -- carry support-safe primary/remediation classification and a narrowly defined discard fact without raw exception messages or an ambiguous claim about later finalizer state.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/FaultInjectingActorStateManager.cs` -- add a test-local wrapper over the real pending/committed model with ordered tracing, before-delegate and commit-then-throw faults, repeated/double failures, committed snapshots, and concurrent-winner injection.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTestHelper.cs` -- expose only the state-manager, logger/activity, and collaborator seams required by the focused fault matrix.
-- [ ] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs` -- prove infrastructure staging, conflict retry/exhaustion remediation, every finalizer operation, double-clear poisoning/recovery, pre/post-commit save ambiguity, cancellation, activity/log redaction fields, and exact durable end state.
+- [x] `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` -- harden infrastructure/conflict/finalizer clear-restage-save ordering; preserve caller cancellation and dead-letter contracts; record failed activities; and install a poisoned-activation barrier that prevents every later state-bearing turn from staging or saving until a non-cancelable cache clear succeeds.
+- [x] `src/Hexalith.EventStore.Server/Actors/ActorStateRemediationException.cs` -- carry support-safe primary/remediation classification and a narrowly defined discard fact without raw exception messages or an ambiguous claim about later finalizer state.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/FaultInjectingActorStateManager.cs` -- add a test-local wrapper over the real pending/committed model with ordered tracing, before-delegate and commit-then-throw faults, repeated/double failures, committed snapshots, and concurrent-winner injection.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTestHelper.cs` -- expose only the state-manager, logger/activity, and collaborator seams required by the focused fault matrix.
+- [x] `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorInfrastructureFailureTests.cs` -- prove infrastructure staging, conflict retry/exhaustion remediation, every finalizer operation, double-clear poisoning/recovery, pre/post-commit save ambiguity, cancellation, activity/log redaction fields, and exact durable end state.
 
 **Acceptance Criteria:**
 - Given concrete stream and auxiliary values are staged before rehydration, domain-service, or event-persistence failure, when rejection completes, then clear precedes every rejection checkpoint, cleanup, dead-letter outcome, or save and no staged stream value reaches durable state.
@@ -77,6 +77,9 @@ context:
 - The project-level `dotnet test --no-build` command discovered zero tests and exited 5 under Microsoft.Testing.Platform. The repository-prescribed direct built-assembly fallback ran the complete Server suite successfully.
 - Concurrent commit `68d04065576d31490e14346ffd81fdaf182fe724` landed after the recorded baseline. Its unrelated Story 3.14 changes were preserved; its overwrite of the Story 5.1 sprint transition was reapplied.
 - Review loop 1 reverted the Story 5.1 code/tests after finding that a finalizer-operation plus cleanup-clear double failure left cached mutations available to a later actor turn. The passing first-pass behavior remains evidence only; implementation is being re-derived from the strengthened design below.
+- 2026-09-05 -- Review loop 1 reimplementation added the activation-local unsafe-cache barrier, bounded pending-finalizer recovery, pre/post-commit durable inspection, caller-cancellation cleanup, structured redacted diagnostics, and the complete conflict/finalizer fault matrix. The focused suite now contains 28 passing cases.
+- Independent verification: restore passed; the Release Server test project built with 0 warnings/errors; the focused infrastructure matrix passed 28/28; the full Server assembly passed 3,168 tests with 25 pre-existing skips and no failures/errors; and the Release solution build passed with 0 warnings/errors.
+- Concurrent commits `834985a273d396666f2c9cb5b67645b3461de163`, `89564e0c290f4bc32ac7ebdb7d33802ff6d5e9d5`, and `30336c2c` advanced the shared branch during implementation. Their committed spec/status, partial finalizer, Story 3.15, and submodule-pointer changes were preserved. Story 5.1 was re-applied and verified atop the resulting HEAD without staging, committing, or pushing.
 
 ## Spec Change Log
 

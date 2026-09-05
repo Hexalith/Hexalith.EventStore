@@ -59,8 +59,10 @@ internal static class AggregateActorTestHelper {
         CommandConcurrencyOptions? concurrencyOptions = null,
         TimeProvider? timeProvider = null,
         IdempotencyExecutionContextProtector? executionContextProtector = null,
-        ILogger<AggregateActor>? logger = null) {
-        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor>? logger = null,
+        IActorStateManager? stateManager = null) {
+        bool configureSubstituteStateManager = stateManager is null;
+        stateManager ??= Substitute.For<IActorStateManager>();
         if (logger is null) {
             logger = Substitute.For<ILogger<AggregateActor>>();
             _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -94,8 +96,11 @@ internal static class AggregateActorTestHelper {
             .Returns(DomainResult.NoOp());
 
         // Default: no pipeline state (fresh command, not a resume)
-        _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<PipelineState>(false, default!));
+        if (configureSubstituteStateManager)
+        {
+            _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<PipelineState>(false, default!));
+        }
 
         // Default: event publisher succeeds
         _ = eventPublisher.PublishEventsAsync(

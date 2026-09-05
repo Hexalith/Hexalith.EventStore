@@ -473,7 +473,7 @@ public class AggregateActorDomainResultTests {
         // Assert
         result.Accepted.ShouldBeTrue();
         _ = await ctx.Invoker.Received(2).InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
-        await ctx.StateManager.Received(1).ClearCacheAsync(Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received(2).ClearCacheAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

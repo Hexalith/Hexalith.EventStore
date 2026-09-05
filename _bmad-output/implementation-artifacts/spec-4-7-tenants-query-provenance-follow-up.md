@@ -2,7 +2,7 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 1
 followup_review_recommended: false
