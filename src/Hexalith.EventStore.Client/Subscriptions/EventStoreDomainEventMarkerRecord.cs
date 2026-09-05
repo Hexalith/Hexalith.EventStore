@@ -23,4 +23,12 @@ public sealed record EventStoreDomainEventMarkerRecord(
     /// <returns>A completed marker.</returns>
     public static EventStoreDomainEventMarkerRecord Completed(DateTimeOffset updatedAt)
         => new(EventStoreDomainEventMarkerState.Completed, updatedAt);
+
+    /// <summary>
+    /// Creates a dispatched marker whose handlers ran successfully and whose completion is pending.
+    /// </summary>
+    /// <param name="updatedAt">When the marker was written.</param>
+    /// <returns>A dispatched marker.</returns>
+    public static EventStoreDomainEventMarkerRecord Dispatched(DateTimeOffset updatedAt)
+        => new(EventStoreDomainEventMarkerState.Dispatched, updatedAt);
 }

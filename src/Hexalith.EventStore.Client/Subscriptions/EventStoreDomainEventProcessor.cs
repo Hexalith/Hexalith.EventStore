@@ -100,8 +100,8 @@ public class EventStoreDomainEventProcessor {
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        if (!ValidateEnvelope(envelope)) {
-            _logger.LogWarning("Skipping invalid domain-event envelope with missing or unsupported metadata.");
+        if (!IsValidMessageId(envelope.MessageId)) {
+            _logger.LogWarning("Skipping invalid domain-event envelope with an invalid message ID.");
             return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
         }
 
@@ -117,6 +117,10 @@ public class EventStoreDomainEventProcessor {
             case EventStoreDomainEventMarkerAcquisitionResult.InProgress:
                 _logger.LogWarning("Event {MessageId} is already being processed; keeping delivery retryable.", envelope.MessageId);
                 return EventStoreDomainEventProcessingResult.RetryableInProgress;
+            case EventStoreDomainEventMarkerAcquisitionResult.CompletionPending:
+                await MarkCompletedStrictAsync(envelope.MessageId).ConfigureAwait(false);
+                _logger.LogDebug("Completed previously dispatched event {MessageId} without redispatching handlers.", envelope.MessageId);
+                return EventStoreDomainEventProcessingResult.Duplicate;
             default:
                 _logger.LogWarning(
                     "Marker store returned unsupported acquisition result {AcquisitionResult} for event {MessageId}; keeping delivery retryable.",
@@ -128,6 +132,12 @@ public class EventStoreDomainEventProcessor {
         bool releaseMarkerOnFailure = true;
 
         try {
+            if (!ValidateEnvelopeAfterAcquisition(envelope)) {
+                _logger.LogWarning("Skipping invalid domain-event envelope with missing or unsupported metadata.");
+                await ReleaseSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+            }
+
             if (!IsSupportedSerializationFormat(envelope.SerializationFormat)) {
                 _logger.LogWarning(
                     "Skipping event {MessageId}: unsupported serialization format '{SerializationFormat}'",
@@ -217,7 +227,11 @@ public class EventStoreDomainEventProcessor {
             // Once handlers have completed successfully, do not delete the marker if the completion write
             // fails. Releasing here would let a redelivery run side effects a second time.
             releaseMarkerOnFailure = false;
-            await MarkCompletedSafelyAsync(envelope.MessageId).ConfigureAwait(false);
+            bool completionPending = await MarkDispatchedStrictAsync(envelope.MessageId).ConfigureAwait(false);
+            if (completionPending) {
+                await MarkCompletedStrictAsync(envelope.MessageId).ConfigureAwait(false);
+            }
+
             return EventStoreDomainEventProcessingResult.Processed;
         }
         catch {
@@ -229,15 +243,16 @@ public class EventStoreDomainEventProcessor {
         }
     }
 
-    private static bool ValidateEnvelope(EventStoreDomainEventEnvelope envelope)
-        => !string.IsNullOrWhiteSpace(envelope.MessageId)
-        && IsValidUniqueId(envelope.MessageId)
-        && !string.IsNullOrWhiteSpace(envelope.AggregateId)
+    private static bool ValidateEnvelopeAfterAcquisition(EventStoreDomainEventEnvelope envelope)
+        => !string.IsNullOrWhiteSpace(envelope.AggregateId)
         && !string.IsNullOrWhiteSpace(envelope.TenantId)
         && !string.IsNullOrWhiteSpace(envelope.EventTypeName)
         && !string.IsNullOrWhiteSpace(envelope.CorrelationId)
         && !string.IsNullOrWhiteSpace(envelope.SerializationFormat)
         && envelope.Payload is { Length: > 0 };
+
+    private static bool IsValidMessageId(string messageId)
+        => !string.IsNullOrWhiteSpace(messageId) && IsValidUniqueId(messageId);
 
     private static bool IsValidUniqueId(string value) {
         try {
@@ -295,6 +310,32 @@ public class EventStoreDomainEventProcessor {
                 "Failed to mark domain event {MessageId} as completed; ExceptionType={ExceptionType}",
                 messageId,
                 exception.GetType().Name);
+        }
+    }
+
+    private async Task<bool> MarkDispatchedStrictAsync(string messageId) {
+        try {
+            return await _markerStore.MarkDispatchedAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception) {
+            _logger.LogWarning(
+                "Failed to mark domain event {MessageId} as dispatched; ExceptionType={ExceptionType}",
+                messageId,
+                exception.GetType().Name);
+            throw;
+        }
+    }
+
+    private async Task MarkCompletedStrictAsync(string messageId) {
+        try {
+            await _markerStore.MarkCompletedAsync(messageId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception) {
+            _logger.LogWarning(
+                "Failed to mark dispatched domain event {MessageId} as completed; ExceptionType={ExceptionType}",
+                messageId,
+                exception.GetType().Name);
+            throw;
         }
     }
 

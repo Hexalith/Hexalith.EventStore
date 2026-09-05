@@ -6,6 +6,7 @@ using Hexalith.EventStore.Client.Subscriptions;
 using Hexalith.EventStore.Contracts.Events;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
@@ -63,12 +64,137 @@ public class EventStoreDomainEventProcessorTests {
             CancellationToken cancellationToken = default)
             => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
 
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
         public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("synthetic marker completion failure");
 
         public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
             ReleaseCount++;
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class DispatchThenCompletionFailsOnceMarkerStore : IEventStoreDomainEventMarkerStore {
+        private EventStoreDomainEventMarkerAcquisitionResult _acquisition = EventStoreDomainEventMarkerAcquisitionResult.Acquired;
+
+        public int CompletionCount { get; private set; }
+
+        public int DispatchCount { get; private set; }
+
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(_acquisition);
+
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default) {
+            DispatchCount++;
+            _acquisition = EventStoreDomainEventMarkerAcquisitionResult.CompletionPending;
+            return Task.FromResult(true);
+        }
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+            CompletionCount++;
+            if (CompletionCount == 1) {
+                throw new InvalidOperationException("synthetic first completion failure");
+            }
+
+            _acquisition = EventStoreDomainEventMarkerAcquisitionResult.Completed;
+            return Task.CompletedTask;
+        }
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CompletionPendingFailingMarkerStore : IEventStoreDomainEventMarkerStore {
+        public int CompletionCount { get; private set; }
+
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.CompletionPending);
+
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("dispatch must not run");
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+            CompletionCount++;
+            throw new InvalidOperationException("synthetic persistent completion failure");
+        }
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class DispatchFailingMarkerStore : IEventStoreDomainEventMarkerStore {
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("synthetic dispatch marker failure");
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class LegacyCompletionMarkerStore : IEventStoreDomainEventMarkerStore {
+        public List<CancellationToken> CompletionTokens { get; } = [];
+
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+            CompletionTokens.Add(cancellationToken);
+            return Task.CompletedTask;
+        }
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T> {
+        public List<IReadOnlyDictionary<string, object?>> StructuredEntries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) {
+            if (state is IEnumerable<KeyValuePair<string, object?>> values) {
+                StructuredEntries.Add(values.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
+            }
         }
     }
 
@@ -160,6 +286,32 @@ public class EventStoreDomainEventProcessorTests {
         handler.Handled[0].Event.Value.ShouldBe(42);
         handler.Handled[0].Context.AggregateId.ShouldBe("t1");
         handler.Handled[0].Context.CorrelationId.ShouldBe("corr-1");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_LegacyMarkerStore_CompletesExactlyOnceWithoutCallerToken() {
+        var handler = new CapturingHandler();
+        var markerStore = new LegacyCompletionMarkerStore();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal) {
+                [typeof(TestEvent).FullName!] = typeof(TestEvent),
+            },
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        using var cancellation = new CancellationTokenSource();
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(
+            Envelope(s_messageId, "t1", PayloadFor("t1", 42)),
+            cancellation.Token);
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+        markerStore.CompletionTokens.ShouldBe([CancellationToken.None]);
+        markerStore.ReleaseCount.ShouldBe(0);
     }
 
     [Fact]
@@ -267,7 +419,7 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_MarkCompletedFailureAfterHandlerSuccess_DoesNotReleaseMarker() {
+    public async Task ProcessAsync_CompletionFailureAfterHandlerSuccess_ThrowsAndDoesNotReleaseMarker() {
         var handler = new CapturingHandler();
         var markerStore = new CompletionFailingMarkerStore();
         ServiceProvider provider = new ServiceCollection()
@@ -282,12 +434,89 @@ public class EventStoreDomainEventProcessorTests {
             markerStore,
             NullLogger<EventStoreDomainEventProcessor>.Instance);
 
-        EventStoreDomainEventProcessingResult result = await processor
-            .ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 7)));
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => processor.ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 7))));
 
-        result.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
         handler.Handled.Count.ShouldBe(1);
         markerStore.ReleaseCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CompletionFailureRedelivery_CompletesWithoutDecodeOrRedispatch() {
+        var handler = new CapturingHandler();
+        var markerStore = new DispatchThenCompletionFailsOnceMarkerStore();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 7));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => processor.ProcessAsync(envelope));
+        EventStoreDomainEventProcessingResult redelivery = await processor.ProcessAsync(envelope with {
+            AggregateId = " ",
+            EventTypeName = " ",
+            SerializationFormat = " ",
+            Payload = [],
+        });
+
+        redelivery.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        handler.Handled.Count.ShouldBe(1);
+        markerStore.DispatchCount.ShouldBe(1);
+        markerStore.CompletionCount.ShouldBe(2);
+        markerStore.ReleaseCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CompletionPendingPersistentFailure_ThrowsWithoutDecodeOrRelease() {
+        var markerStore = new CompletionPendingFailingMarkerStore();
+        ServiceProvider provider = new ServiceCollection().BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal),
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, " ", []) with {
+            EventTypeName = " ",
+            SerializationFormat = " ",
+        };
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => processor.ProcessAsync(envelope));
+
+        markerStore.CompletionCount.ShouldBe(1);
+        markerStore.ReleaseCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DispatchMarkerFailure_ThrowsWithoutReleaseAndLogsStructuredContext() {
+        var handler = new CapturingHandler();
+        var markerStore = new DispatchFailingMarkerStore();
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal) {
+                [typeof(TestEvent).FullName!] = typeof(TestEvent),
+            },
+            markerStore,
+            logger);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => processor.ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 7))));
+
+        handler.Handled.Count.ShouldBe(1);
+        markerStore.ReleaseCount.ShouldBe(0);
+        logger.StructuredEntries.ShouldContain(entry =>
+            Equals(entry["MessageId"], s_messageId)
+            && Equals(entry["ExceptionType"], nameof(InvalidOperationException)));
     }
 
     [Fact]

@@ -146,13 +146,15 @@ builder.Services.AddEventStoreDomainEventHandler<MyEvent, MyEventHandler>();
 app.MapEventStoreDomainEvents();
 ```
 
-The platform endpoint is decorated with DAPR topic metadata and uses message markers keyed by EventStore `messageId`. The default marker store is in-memory, which avoids implicit DAPR state-store topology requirements for generic consumers. If the consuming service's sidecar has state-store access and needs durable completed-message markers, opt in explicitly:
+The platform endpoint is decorated with DAPR topic metadata and uses message markers keyed by EventStore `messageId`. The default marker store is in-memory, which avoids implicit DAPR state-store topology requirements for generic consumers. If the consuming service's sidecar has state-store access and needs durable processing markers, opt in explicitly:
 
 ```csharp
 builder.Services.AddDaprEventStoreDomainEventMarkerStore();
 ```
 
-The DAPR marker store persists completed markers scoped by topic, subscription route, and message id; it does not create a durable in-progress lease. Handlers must be idempotent under at-least-once delivery, especially when multiple handlers subscribe to the same event type. Duplicate, unknown, skipped, and invalid payload outcomes are acknowledged, while handler failures release in-process markers and remain retryable. Domain modules should not write their own DAPR subscription routers, projection actors, marker stores, or duplicate-handling dictionaries unless they are replacing the platform seam intentionally.
+The DAPR marker store persists markers scoped by topic, subscription route, and message id; it does not create a durable in-progress lease. After handlers succeed, it durably advances through `Dispatched` and then `Completed`. If final completion fails, the delivery remains retryable; redelivery of `Dispatched` completes the marker without decoding the payload or invoking handlers again. Marker reads use strong consistency, and checked ETag writes use first-write concurrency. The configured state component must support both ETags and first-write concurrency.
+
+The `Dispatched` state requires a coordinated rollout. Drain or stop all old consumers before enabling any new marker writer or reader, then deploy the compatible new cohort; do not run old and new consumers concurrently. Handlers must still be idempotent under at-least-once delivery, especially when multiple handlers subscribe to the same event type. Duplicate, unknown, skipped, and invalid payload outcomes are acknowledged, while handler failures release in-process markers and remain retryable. Domain modules should not write their own DAPR subscription routers, projection actors, marker stores, or duplicate-handling dictionaries unless they are replacing the platform seam intentionally.
 
 ### Running the event store server
 

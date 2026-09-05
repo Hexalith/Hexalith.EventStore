@@ -15,6 +15,23 @@ public interface IEventStoreDomainEventMarkerStore {
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Durably records that handlers completed successfully and reports whether a separate completion
+    /// transition remains.
+    /// </summary>
+    /// <remarks>
+    /// The compatibility implementation completes through <see cref="MarkCompletedAsync(string, CancellationToken)"/>
+    /// exactly once. Marker stores that support the durable dispatched phase override this method and return
+    /// <see langword="true"/> while completion remains pending.
+    /// </remarks>
+    /// <param name="messageId">The EventStore event message ID.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns><see langword="true"/> when the caller must still mark the message completed; otherwise, <see langword="false"/>.</returns>
+    async Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default) {
+        await MarkCompletedAsync(messageId, cancellationToken).ConfigureAwait(false);
+        return false;
+    }
+
+    /// <summary>
     /// Marks an EventStore message ID as completed after it was handled or terminally skipped.
     /// </summary>
     /// <param name="messageId">The EventStore event message ID.</param>

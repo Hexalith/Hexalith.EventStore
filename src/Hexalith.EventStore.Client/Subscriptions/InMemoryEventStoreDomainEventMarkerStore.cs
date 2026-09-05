@@ -23,19 +23,23 @@ public sealed class InMemoryEventStoreDomainEventMarkerStore : IEventStoreDomain
             }
 
             if (_markers.TryGetValue(messageId, out EventStoreDomainEventMarkerState state)) {
-                return Task.FromResult(state == EventStoreDomainEventMarkerState.Completed
-                    ? EventStoreDomainEventMarkerAcquisitionResult.Completed
-                    : EventStoreDomainEventMarkerAcquisitionResult.InProgress);
+                return Task.FromResult(state switch {
+                    EventStoreDomainEventMarkerState.Completed => EventStoreDomainEventMarkerAcquisitionResult.Completed,
+                    EventStoreDomainEventMarkerState.InProgress => EventStoreDomainEventMarkerAcquisitionResult.InProgress,
+                    EventStoreDomainEventMarkerState.Dispatched => EventStoreDomainEventMarkerAcquisitionResult.CompletionPending,
+                    _ => (EventStoreDomainEventMarkerAcquisitionResult)(-1),
+                });
             }
         }
     }
 
     /// <inheritdoc/>
-    public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
-        cancellationToken.ThrowIfCancellationRequested();
+    public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default)
+        => Task.FromResult(Transition(messageId, EventStoreDomainEventMarkerState.Dispatched, cancellationToken));
 
-        _markers[messageId] = EventStoreDomainEventMarkerState.Completed;
+    /// <inheritdoc/>
+    public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+        _ = Transition(messageId, EventStoreDomainEventMarkerState.Completed, cancellationToken);
         return Task.CompletedTask;
     }
 
@@ -44,7 +48,43 @@ public sealed class InMemoryEventStoreDomainEventMarkerStore : IEventStoreDomain
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
         cancellationToken.ThrowIfCancellationRequested();
 
-        _ = _markers.TryRemove(messageId, out _);
+        _ = ((ICollection<KeyValuePair<string, EventStoreDomainEventMarkerState>>)_markers)
+            .Remove(new KeyValuePair<string, EventStoreDomainEventMarkerState>(messageId, EventStoreDomainEventMarkerState.InProgress));
         return Task.CompletedTask;
+    }
+
+    private bool Transition(
+        string messageId,
+        EventStoreDomainEventMarkerState targetState,
+        CancellationToken cancellationToken) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_markers.TryGetValue(messageId, out EventStoreDomainEventMarkerState existing)) {
+                if (_markers.TryAdd(messageId, targetState)) {
+                    return targetState == EventStoreDomainEventMarkerState.Dispatched;
+                }
+
+                continue;
+            }
+
+            switch (existing) {
+                case EventStoreDomainEventMarkerState.Completed:
+                    return false;
+                case EventStoreDomainEventMarkerState.Dispatched when targetState == EventStoreDomainEventMarkerState.Dispatched:
+                    return true;
+                case EventStoreDomainEventMarkerState.Dispatched:
+                case EventStoreDomainEventMarkerState.InProgress:
+                    if (_markers.TryUpdate(messageId, targetState, existing)) {
+                        return targetState == EventStoreDomainEventMarkerState.Dispatched;
+                    }
+
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Cannot transition marker for message '{messageId}' from unsupported state '{existing}' to '{targetState}'.");
+            }
+        }
     }
 }
