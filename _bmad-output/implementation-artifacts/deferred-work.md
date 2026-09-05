@@ -3450,3 +3450,23 @@ decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release-2.md`
   summary: Windows Assert.Skip outcome for POSIX governance cases is not observed on a Windows runner.
   evidence: Contracts CI is Linux-only; PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn is a tightened source-text binder. A Windows host (or OS-detection seam) that runs those seven cases and observes xUnit skip vs vacuous pass would settle runtime AC1.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
+  summary: Run the real heavyweight container-publishing provenance tests in an automatic workflow lane.
+  evidence: Concurrent Story 3.14 work excludes `HeavyweightContainerPublish` from the default Contracts gate, and no automatic workflow selects it, so multi-RID label and real publish fail-closed regressions can merge unobserved.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
+  summary: Prove Windows governance cases report real xUnit skips with a structural guard binder or Windows runner.
+  evidence: The concurrent source test scans only 280 characters after each Windows condition and all automatic lanes run on Ubuntu; parsing each guard body or executing on Windows would settle the missing behavior.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
+  summary: Correct the DW-372 completion resolution to match the malformed-input theory's actual default-gate status.
+  evidence: The ledger says `ContainerPublicationRejectsMalformedProvenanceInputs` is heavyweight and excluded, while its code, CI documentation, and manifest binder intentionally keep it unmarked and in the default gate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
+  summary: Restore the historical creation date in the concurrently replanned Story 4.7 specification.
+  evidence: The file now says `created: 2026-09-05`, while its retained change log records the specification and inventory on 2026-08-27; replanning needs a separate timestamp.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
+  summary: Restore an exact one-second-over-24-hours retained-authority validity-window test.
+  evidence: The concurrent Story 3.14 test uses 90,001 seconds, so a validator regression that widens the approved 24-hour limit can pass until the later threshold; an 86,401-second case settles the boundary.
