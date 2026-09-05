@@ -3772,7 +3772,7 @@ So that anonymous, cross-tenant, over-privileged, or resource-exhausting request
 **Then** the controller applies one documented safe default and clamps or rejects every out-of-range value according to the public contract before service invocation
 **And** focused tests prove default, minimum, maximum, and excessive-value behavior without allocating or retrieving an unbounded result set.
 
-**Given** an Admin JSON-body endpoint for stream sandbox execution, projection reset or replay, consistency checking, tenant commands, dead-letter actions, storage snapshot-policy changes, backup export or admission, or crypto-shredding is available
+**Given** an Admin JSON-body endpoint other than `AdminBackupsController.ImportStream` for stream sandbox execution, projection reset or replay, consistency checking, tenant commands, dead-letter actions, storage snapshot-policy changes, backup export or admission, or crypto-shredding is available
 **When** the request body is read
 **Then** a default maximum of `1_048_576` bytes is enforced before deserialization or application-service invocation, the exact limit remains processable when otherwise valid, and the first larger body returns bounded HTTP `413` Problem Details
 **And** representative mutation and sandbox integration tests prove no partial action, raw-body echo, exception text, or hidden resource disclosure.
@@ -3780,6 +3780,7 @@ So that anonymous, cross-tenant, over-privileged, or resource-exhausting request
 **Given** `AdminBackupsController.ImportStream` receives an import body
 **When** its size is exactly, below, or above `10 * 1024 * 1024` bytes
 **Then** the exact and smaller valid bodies reach normal validation while an oversized body is rejected at the HTTP boundary with bounded HTTP `413` Problem Details
+**And** this `10 * 1024 * 1024`-byte limit is the sole exception to the default `1_048_576`-byte Admin JSON-body limit
 **And** no import service, state mutation, temporary unbounded copy, payload log, or tenant existence disclosure occurs for the rejected request.
 
 **Given** a named endpoint has no body or its operation is unavailable in the current product boundary
