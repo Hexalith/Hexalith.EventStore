@@ -119,7 +119,11 @@ public class EventStoreDomainEventProcessor {
                 return EventStoreDomainEventProcessingResult.RetryableInProgress;
             case EventStoreDomainEventMarkerAcquisitionResult.CompletionPending:
                 await MarkCompletedStrictAsync(envelope.MessageId).ConfigureAwait(false);
-                _logger.LogDebug("Completed previously dispatched event {MessageId} without redispatching handlers.", envelope.MessageId);
+
+                // Information rather than Debug: this branch only runs after an earlier attempt dispatched
+                // handlers and failed to complete its marker. It is the signal an operator needs when
+                // draining Dispatched markers before a rollback, and Debug is off in production.
+                _logger.LogInformation("Completed previously dispatched event {MessageId} without redispatching handlers.", envelope.MessageId);
                 return EventStoreDomainEventProcessingResult.Duplicate;
             default:
                 _logger.LogWarning(

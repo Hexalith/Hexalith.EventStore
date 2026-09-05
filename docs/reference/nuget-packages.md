@@ -146,7 +146,7 @@ builder.Services.AddEventStoreDomainEventHandler<MyEvent, MyEventHandler>();
 app.MapEventStoreDomainEvents();
 ```
 
-The platform endpoint is decorated with DAPR topic metadata and uses message markers keyed by EventStore `messageId`. The default marker store is in-memory, which avoids implicit DAPR state-store topology requirements for generic consumers. If the consuming service's sidecar has state-store access and needs durable processing markers, opt in explicitly:
+The platform endpoint is decorated with DAPR topic metadata and uses message markers keyed by EventStore `messageId`. The default marker store is in-memory, which avoids implicit DAPR state-store topology requirements for generic consumers. It holds the post-handler `Dispatched` state in process memory only, so a restart between dispatch and completion loses the marker and the next delivery redispatches handlers. If the consuming service's sidecar has state-store access and needs durable processing markers, opt in explicitly:
 
 ```csharp
 builder.Services.AddDaprEventStoreDomainEventMarkerStore();
