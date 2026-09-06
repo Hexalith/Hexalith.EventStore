@@ -3809,6 +3809,8 @@ So that development-only credentials or insecure token validation cannot leak in
 
 **Current reconciliation:** Story 5.3 remains backlog. The Admin UI base configuration is currently free of development identity values, but committed Development configuration still carries fixed signing-key and administrator credential values. Admin Server Host already validates development symmetric-key versus non-development authority posture. Completion is not established: accepted JWT algorithms are not visibly pinned, `MapDefaultEndpoints()` does not attach explicit anonymous metadata to each probe, and real-pipeline evidence has not proved the protected-endpoint/probe contract under Production configuration.
 
+**Planning directive:** Treat this complete Story 5.3 definition and its acceptance criteria unchanged as the authoritative input for a fresh planning pass. Materialize a frozen implementation spec from this input before development is dispatched; this directive changes or waives no requirement.
+
 **Acceptance Criteria:**
 
 **Given** every committed configuration file, including clearly named Development configuration, plus every deployment template, reusable test fixture, and generated configuration artifact is inspected

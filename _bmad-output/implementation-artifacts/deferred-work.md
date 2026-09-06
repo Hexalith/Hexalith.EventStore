@@ -3810,6 +3810,26 @@ status: done 2026-09-06
 evidence: Release `Hexalith.EventStore.Client.Tests.Indexes.AdminOperationalIndexHostedServiceTests` 12/12, 0 skipped, 0.586s. Live Story 4.7 proof `Generated_tenants_api_get_tenant_reads_verified_redis_state_without_projection_authority` 1/1, 0 skipped, 26.173s after Redis catalogs were deleted: Event 6104 persisted recovered query-type indexes for 2 domains while Event 6101 still skipped projection/type-catalog writes; EventStore invoked `tenants/method/query`; DAPR hash `eventstore||admin:query-types:tenants` contained `get-tenant`, `get-tenant-audit`, `get-tenant-users`, `get-user-tenants`, and `list-tenants`.
 resolution: `AdminOperationalIndexHostedService` now writes `admin:query-types:{domain}` for every domain whose metadata loaded successfully, including when sibling sources fail, and `RefreshAsync` rewrites that catalog when a binding recovers. Named-route `Replace` and projection/type-catalog indexes remain all-or-nothing.
 
+### DW-496: Claimed current-source proofs hash frozen Git, not HEAD or the worktree.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-06 Group A)
+location: tools/validate-oq8-platform-evidence.py:893,1839-2006,1491-1568,2278-2364
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: high
+reason: v1 JSON, SDK successor bindingRule, and v2 bindingRule/currentRule claim current HEAD/worktree/candidate bytes, but the checker hashes frozen commits. v3 reads live disk for only six gate-input paths, not the 24 capability paths. Implementing live HEAD proof against the original 24 paths would fail on current main. Remint with DW-457; keep v1/v2 historical and put live proof on a reduced v3 path set — do not freeze the original 24 capability paths.
+status: open
+decision: 2026-09-06 Defer to DW-457 remint — Remint with DW-457; keep v1/v2 historical and put live proof on a reduced v3 path set — do not freeze the original 24 capability paths.
+
+### DW-497: Full validator requires Story 4.15 tracking already review/done before the packet can pass.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-06 Group A)
+location: tools/validate-oq8-platform-evidence.py:3697-3700,3522-3548
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: Default validation calls validate_status_and_documents(final=True), requiring sprint 4-15 status review and spec frontmatter done. Frozen Always says advance tracking only when the fail-closed validator passes. Isolated --lifecycle-mode final is not the bypass. Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
+status: open
+decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Story 3.15's required `docs/ci.md` update leaves the Story 4.15 v3 successor packet unbound, so the complete Contracts suite fails on current-source identity drift until that separately reviewed packet is reminted.
   evidence: Focused Story 3.15/3.14 classes are green; the 12 full-suite failures are `Story 4.15 v3 current source identity drift: docs/ci.md`. Reminting v3 would invalidate its approvals and is outside this story.
@@ -3945,3 +3965,5 @@ resolution: `AdminOperationalIndexHostedService` now writes `admin:query-types:{
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-06)
 
 - Restated TOCTOU between `require_no_symlink_components` and `stat()`/`open()` in `read_bounded_regular_snapshot` (`tools/validate-oq8-platform-evidence.py:1049-1063`). Already tracked as DW-454; no new DW. Same single-writer CI trust boundary as the 2026-08-30 Group A defer.
+- DW-496: Claimed current-source proofs hash frozen Git, not HEAD or the worktree. Remint with DW-457; keep v1/v2 historical and put live proof on a reduced v3 path set — do not freeze the original 24 capability paths.
+- DW-497: Full validator requires Story 4.15 tracking already review/done before the packet can pass. Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
