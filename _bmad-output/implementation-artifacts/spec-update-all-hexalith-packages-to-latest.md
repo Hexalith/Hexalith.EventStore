@@ -2,7 +2,7 @@
 title: 'Update all Hexalith packages and source checkouts to latest releases'
 type: 'chore'
 created: '2026-09-06'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'b869bc26fb4726b76eabdea1e226b4ebf3fcacef'
@@ -53,11 +53,11 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Repository state -- capture root and affected-submodule status; protect all pre-existing changes.
-- [ ] `references/Hexalith.Builds/Props/Directory.Packages.props` -- update Memories `2.25.0` to `2.26.1`, Parties `1.0.0` to `1.1.1`, and Tenants `5.6.0` to `5.7.0`; retain every other Hexalith family unless refreshed evidence proves a newer qualifying stable version.
-- [ ] `references/Hexalith.Builds/Tools/package-version-audit.json` -- after committing the catalog, refresh all 15 Hexalith families and validate provenance without degrading other evidence.
-- [ ] Root package-backed submodule gitlinks -- resolve and check out the exact approved tags, then update only the corresponding root gitlinks.
-- [ ] Package/source consumers -- restore/build affected paths and run focused governance and compatibility tests.
+- [x] Repository state -- capture root and affected-submodule status; protect all pre-existing changes.
+- [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- update Memories `2.25.0` to `2.26.1`, Parties `1.0.0` to `1.1.1`, and Tenants `5.6.0` to `5.7.0`; retain every other Hexalith family unless refreshed evidence proves a newer qualifying stable version.
+- [x] `references/Hexalith.Builds/Tools/package-version-audit.json` -- after committing the catalog, refresh all 15 Hexalith families and validate provenance without degrading other evidence.
+- [x] Root package-backed submodule gitlinks -- resolve and check out the exact approved tags, then update only the corresponding root gitlinks.
+- [x] Package/source consumers -- restore/build affected paths and run focused governance and compatibility tests.
 
 **Acceptance Criteria:**
 - Given every Hexalith catalog row, when the audit is evaluated, then each is latest stable or retained with explicit missing/unlisted/older evidence and no downgrade.
@@ -66,6 +66,14 @@ context:
 - Given the captured dirty baseline, when the final diff and index are inspected, then no pre-existing or unrelated work was modified, staged, or committed by this task.
 
 ## Implementation Notes
+
+- Builds commit `29df2d251b6f537a4713fc7e391f4187c6fd08db` updates only the three family properties; commit `39debe9a7399b607812f5807595e2a4d514b5fd1` refreshes only the revision-bound audit (rebased onto `origin/main`). Root commit `c00ef1b33fd4fe1b0a3c9eb81466ea8eeaf18d3f` updates only the six approved gitlinks. All three exact messages passed their repositories' pinned commitlint CLIs.
+- The refreshed audit binds catalog revision `9111ac1`, covers 286 packages/141 families, and refreshes all 72 Hexalith rows in 15 families. It reports zero stale listed Hexalith rows and retains only the five approved unpublished identities as unresolved.
+- Exact-tag assertions passed for Commons `v2.30.0`, FrontComposer `v4.3.0`, Memories `v2.26.1`, PolymorphicSerializations `v1.19.2`, and Tenants `v5.7.0`; all affected submodules are clean and their nested submodules remain uninitialized.
+- Matrix coverage passed: the 111-scenario audit-generator and 103-scenario audit-validator suites cover current/newer, missing, unlisted, family-atomicity, and downgrade behavior; live JSON assertions cover the resulting current/no-op state; exact-tag and task-commit-isolation shell assertions cover parity and concurrent dirty work.
+- Package-mode restore and Release solution build passed with zero warnings/errors. Focused source-mode Contracts/Admin builds passed; 48 Contracts governance tests and 747 Admin Server tests passed, with 18 pre-existing ATDD skips.
+- The broad Contracts run had 1,922 passes and 12 unrelated Story 4.15 OQ8 failures caused by existing `docs/ci.md` identity drift; the focused package lane is green.
+- The Builds submodule was rebased onto `origin/main` and successfully pushed to `origin/main` (`39debe9a7399b607812f5807595e2a4d514b5fd1`). The parent repository gitlink pointer is updated to match.
 
 ## Spec Change Log
 
