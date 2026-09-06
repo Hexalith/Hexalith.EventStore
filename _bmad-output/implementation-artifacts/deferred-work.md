@@ -139,6 +139,8 @@ origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: n/a
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-6-1-p2-dual-principal-query-envelope-safe-denial.md` summary: Close the timing side-channel for the safe-denial adapter (Forbidden vs. genuine not-found currently have different latency profiles -- actor-activation-then-403 vs. actor-lookup-failure -- with no constant-time/padding normalization). evidence: Blind-hunter review of 6.1-P2 found no timing normalization despite the story's original AC naming "timing-observable behavior" indistinguishability; full closure requires platform-level work (DAPR actor activation, network jitter) beyond what a query-router decorator controls, so the AC was narrowed to shape/status indistinguishability only and this was split out as separate future hardening.
 status: open
+decision: 2026-09-06 Keep deferred
+decision: 2026-09-06 Keep deferred
 decision: 2026-09-01 Keep deferred
 
 ### DW-19: Expose an authoritative persisted global-position/watermark to projections and `QueryCursorScope`, consumed by Hexalith.Projects Story 6.1-P2's watermark-replay/restart requirement.
@@ -1204,6 +1206,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-5-dedicate
 location: src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:70
 reason: source_spec: `_bmad-output/implementation-artifacts/2-5-dedicated-external-tenants-api-host.md` summary: [LOW] The DAPR API token is captured by value at registration time, so a token rotated at runtime (secret remount, config reload) stays stale until process restart; an `IOptionsMonitor`-based handler factory would pick up rotations. evidence: Story 2.5 code review (edge-case-hunter) [`src/Hexalith.EventStore.Client/Registration/EventStoreServiceCollectionExtensions.cs:70`]. Pre-existing platform design, unchanged by this patch and identical to the deleted host-local handler. Owned by Hexalith.EventStore.
 status: open
+decision: 2026-09-06 Support live rotation — Resolve the token per request through validated IOptionsMonitor state and test valid, blank, and changed token snapshots.
+decision: 2026-09-06 Support live rotation — Resolve the token per request through validated IOptionsMonitor state and test valid, blank, and changed token snapshots.
 
 ### DW-162: [LOW] `DaprServiceInvocationExtension_ReplacesUntrustedRoutingHeaders` builds a synthetic named client `"dapr"` that no Tenants production code registers, so it exercises zero Tenants code and only re-tests EventStore platform behavior; the rename traded the Tenants suite's only test of Tenants-owned outbound routing for a third copy of a platform test.
 
@@ -2656,6 +2660,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: observations.json
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Give `observations.json` semantic validation instead of checksum-only coverage. evidence: The codec never opens `observations.json`; it is bound only through `packet-sha256.txt`, which is regenerated whenever the packet is rebuilt. The GitHub Release asset list and the "all 14 visible on NuGet.org" claim therefore rest on an unvalidated file. Cross-checked by hand during this review: all 14 `github_release.assets` digests and sizes do match `packages[].sha256`/`size`, so the claim is factually true today.
 status: open
+decision: 2026-09-06 Keep deferred
+decision: 2026-09-06 Keep deferred
 
 ### DW-359: Decide whether the OCI image index should carry provenance annotations.
 
@@ -2672,6 +2678,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: release_evidence_codec.py:69
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Cross-check the three JSON canonicalisers against one shared fixture. evidence: `canonical_bytes` (`release_evidence_codec.py:69`, compact, `ensure_ascii=False`), `_publisher_canonical_bytes` (`:489`, `indent=2`, default `ensure_ascii=True`) and the C# `CanonicalJsonBytes` (`CorrectiveOciProvenanceReleaseTests.cs:1011`, `Utf8JsonWriter` default `JavaScriptEncoder`) can diverge on non-ASCII and HTML-sensitive characters. The tests work around this by re-canonicalising `release-identity.json` through Python only; no test asserts the three encoders agree byte-for-byte.
 status: open
+decision: 2026-09-06 Keep packet stable
+decision: 2026-09-06 Keep packet stable
 
 ### DW-361: Bound nuspec parsing against oversized archives and entity expansion.
 
@@ -2679,6 +2687,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: release_evidence_codec.py:466
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Bound nuspec parsing against oversized archives and entity expansion. evidence: `_nuspec_identity` (`release_evidence_codec.py:466`) calls `element_tree.fromstring` on a nuspec read straight out of a retained `.nupkg` with no size cap and no entity-expansion defence. The packet bytes are repository-controlled today, so this is hardening rather than a live exposure.
 status: open
+decision: 2026-09-06 Keep deferred
+decision: 2026-09-06 Keep deferred
 
 ### DW-362: Prove the issue-comment snapshot is complete before asserting "exactly one authority and one receipt".
 
@@ -2686,6 +2696,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: release_evidence_codec.py:770-790
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: Prove the issue-comment snapshot is complete before asserting "exactly one authority and one receipt". evidence: `release_evidence_codec.py:770-790` validates ordering, uniqueness and issue affinity of the retained snapshot but has no total-count or last-page marker, so a truncated or paginated snapshot can satisfy the exactly-one authority and exactly-one receipt claims on incomplete data.
 status: open
+decision: 2026-09-06 Keep current schema
+decision: 2026-09-06 Keep current schema
 
 ### DW-363: Decouple the authority-window theory from the frozen timestamps and split the seven-scenario mutation Fact.
 
@@ -2749,6 +2761,8 @@ location: tools/release_evidence_handlers/v3.py:76
 severity: medium
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Two canonicalizers define one authority with no equivalence test. evidence: Python `canonical_bytes` (`tools/release_evidence_handlers/v3.py:76`, reached via the 11-line `tools/release_evidence_codec.py` facade) authors the envelope bytes, while C# `CanonicalDispositionBytes` verifies them; nothing tests that the two agree for non-ASCII input or line separators. Already recorded on the spec Defer list, but the Code Map still points at the pre-facade `release_evidence_codec.py:74`. severity: medium
 status: open
+decision: 2026-09-06 Keep deferred
+decision: 2026-09-06 Keep deferred
 
 ### DW-371: Receipt `source_url` requires a GitHub commit anchor that cannot exist; the existing deferral's "pre-existing pattern inherited" rationale is false and is corrected here.
 
@@ -2981,6 +2995,8 @@ location: github/workflows/release.yml:103,110
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` summary: No executable guard asserts that the release caller's pinned reusable-workflow SHA is reachable on the Hexalith.Builds remote rather than only in a local object store. evidence: `.github/workflows/release.yml:103,110` pin `builds-execution-sha`, and the story record's warning that a rotation target must exist on the remote was deleted in `f2d2575c` with nothing replacing it. This is the defect that produced the chunk-A+B blocking Decision, when `63409393…` was pinned while it existed only on an unpushed branch (it has since been merged to Builds `main` and superseded by `a07078ad…`). Deferred 2026-08-24 by owner decision: an unresolvable `uses:` SHA already fails the Release dispatch at startup — the quarantined run `32347773728` failure mode — so nothing publishes silently, and every candidate guard costs either network plus auth inside the Tier-1 CI-gating Contracts lane or a `origin/main` remote-tracking ref that a CI submodule checkout may not populate (and which reds on force-pushes it should not judge). The recurring drift class is closed separately by binding the `docs/ci.md` pin prose to `ApprovedBuildsReleaseSha`. severity: low
 status: open
+decision: 2026-09-06 Honor keep-open decision
+decision: 2026-09-06 Honor keep-open decision
 decision: 2026-09-01 Keep open
 
 ### DW-398: The Story 3.13 closure-packet gate `ValidateAcceptances` still enforces the unmintable `#story-3-13-<hash>-<role>` commit anchor that only a fixture can satisfy.
@@ -3006,6 +3022,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-15-co
 location: CorrectiveOciProvenanceReleaseTests.cs:118
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` summary: The OCI `created` provenance labels are self-comparing in tests and unchecked by the codec, and the retained child configs carry a malformed truncated value. evidence: `CorrectiveOciProvenanceReleaseTests.cs:118` sets `expected ??= ExpectedLabels(observedCreated)` where `observedCreated` is read from the first child config, so child 1 compares to itself; `v3.py:134 _expected_labels` omits `created` from the five enforced keys. Both retained configs carry `org.opencontainers.image.created = "2026-08-20T11"`, truncated at the first colon, inside the selected identity.
 status: open
+decision: 2026-09-06 Build corrective successor — Create the versioned corrective packet, validate timestamps independently, and collect new governed evidence.
+decision: 2026-09-06 Build corrective successor — Create the versioned corrective packet, validate timestamps independently, and collect new governed evidence.
 decision: 2026-09-01 Build successor packet — Enforce a canonical OCI creation timestamp, produce corrected child configs, reseal the successor packet, and collect required authorization.
 
 ### DW-401: Two Production-smoke guards are green by construction -- `redirect_count` and `observed_runtime_platform` can never disagree with what they are checked against.
@@ -3064,6 +3082,8 @@ location: references/Hexalith.Builds
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: No guard asserts the pinned Builds release SHA is reachable on the Builds remote; the only availability check reads the local clone. evidence: `ContainerPublishingGovernanceTests` asserts the pin only as a string, and `CorrectiveOciProvenanceReleaseTests` runs `git cat-file -e <sha>^{commit}` inside `references/Hexalith.Builds`, which a commit on an unpushed local branch also satisfies. A pin that exists only locally makes the reusable-workflow `uses:` ref unresolvable at dispatch -- the defect that already shipped once with `63409393`. Verified today that `a07078ad` and `22a578b5` are both contained in `origin/main`, so this is a missing guard rather than a live break.
 status: open
+decision: 2026-09-06 Honor prior decision
+decision: 2026-09-06 Honor prior decision
 
 ### DW-408: The `.gitattributes` normalization guard enumerates only `*.raw`, leaving 56 `.nupkg` and every digest-bound `.json`/`.txt`/`.log` file unguarded.
 
@@ -3112,6 +3132,8 @@ location: n/a
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: Retained-file `size` has no upper bound and every retained and discovered file is read whole into memory. evidence: `_binding` requires `size` to be a positive integer with no cap, and `_verify_file` / `_validate_inventory` `read_bytes()` each retained file plus every file the inventory `rglob` walk discovers. A packet declaring or containing multi-gigabyte files exhausts memory before any verdict is reached. Bounded in practice by the packet being local and produced by the assembler.
 status: open
+decision: 2026-09-06 Build bounded handler — Create a successor handler with per-file and aggregate limits, then remint and verify it.
+decision: 2026-09-06 Build bounded handler — Create a successor handler with per-file and aggregate limits, then remint and verify it.
 
 ### DW-414: The dispatch-table consistency guards cannot fire with the current single-entry constant tables.
 
@@ -3128,6 +3150,8 @@ location: n/a
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The Production smoke results file is never checked for canonical byte form. evidence: `_validate_smokes` binds the results file by digest and validates its fields, but unlike the receipt, subject, and registry paths it never asserts `results_bytes == canonical_bytes(results)`. Non-canonical whitespace simply yields a different subject digest rather than a forgery vector, so this is a consistency gap rather than a hole.
 status: open
+decision: 2026-09-06 Version smoke contract — Add canonical-byte proof to a successor smoke schema and recollect governed evidence.
+decision: 2026-09-06 Version smoke contract — Add canonical-byte proof to a successor smoke schema and recollect governed evidence.
 
 ### DW-416: All verifier failures collapse to exit code 1, so "the verifier itself was modified" is indistinguishable from "the evidence did not validate".
 
@@ -3144,6 +3168,8 @@ location: tools/deployed_runtime_parity_handlers/v1.py:746
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: `"closure.json"` is hardcoded into the closed technical inventory while the CLI accepts an arbitrary evidence path and an independent `--packet-root`. evidence: `tools/deployed_runtime_parity_handlers/v1.py:746` excludes the literal `closure.json` from the stray-file sweep. A closure file under a different name at the packet root fails with a misleading "files outside the closed technical inventory"; a `--packet-root` pointing elsewhere leaves the closure file uncovered by the inventory entirely. Neither the argparse help nor the docstring records the constraint.
 status: open
+decision: 2026-09-06 Build aligned successor — Version both contracts, define one authoritative meaning, and remint the packet.
+decision: 2026-09-06 Build aligned successor — Version both contracts, define one authoritative meaning, and remint the packet.
 
 ### DW-418: The `summary_bindings` deletion reduces `validate_packet_files`' standalone behavior inside a line range the Code Map freezes, leaving a vestigial `summaries` dict.
 
@@ -3218,6 +3244,8 @@ location: closure.json
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The packet inventory does not require the validated closure path to be the packet root's `closure.json`. evidence: `_validate_inventory` permits literal `closure.json` but checks only unexpected actual files, while the CLI accepts independent evidence and packet-root paths. A copied packet root without its own closure can validate against an external closure, which is a CLI/inventory contract follow-up.
 status: open
+decision: 2026-09-06 Build aligned successor — Create an aligned versioned closure/CLI contract and remint its evidence.
+decision: 2026-09-06 Build aligned successor — Create an aligned versioned closure/CLI contract and remint its evidence.
 
 ### DW-427: The checked-in traceability gate artifacts remain superseded and do not cover the final Story 3.15 subject or current focused suite.
 
@@ -3258,6 +3286,8 @@ location: tools/validate-corrected-deployed-runtime-parity.py:164
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: The post-execution import-shadow backstop runs only on the success path and no test reaches it with a repository module loaded. evidence: `_verify_no_repository_import_shadows` (`tools/validate-corrected-deployed-runtime-parity.py:164`, called at `:280`) sits inside the `try` after `validate_packet_files` succeeds, so it can invalidate a verdict but cannot prevent a shadow module's side effects. `RepositoryLocalStandardLibraryShadowCannotExecute` fails earlier at the receipt-count check, so making the backstop a no-op changes no test outcome. The `sys.path` half of the protection is genuinely covered.
 status: open
+decision: 2026-09-06 Build identity backstop — Add post-import identity verification to a versioned dispatcher and remint its governed evidence.
+decision: 2026-09-06 Build identity backstop — Add post-import identity verification to a versioned dispatcher and remint its governed evidence.
 
 ### DW-432: v3's timestamp parser is looser than v1's, so frozen-predecessor timestamps are checked by the weaker rule.
 
@@ -3274,6 +3304,8 @@ location: tools/deployed_runtime_parity_handlers/v1.py:161-185
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: No size bound on retained files, and the nuspec decompression-bomb half of the earlier entry is still open. evidence: `tools/deployed_runtime_parity_handlers/v1.py:161-185` reads every retained and discovered file whole into memory with no upper bound on `size`. `tools/release_evidence_handlers/v3.py:436` still performs an uncapped `archive.read(nuspecs[0])`; loop 4's hardening closed only the entity-expansion half, so a small `.nupkg` declaring a huge `.nuspec` entry still expands unbounded before any check.
 status: open
+decision: 2026-09-06 Build bounded successor — Introduce per-entry and aggregate byte budgets in a successor handler and remint evidence.
+decision: 2026-09-06 Build bounded successor — Introduce per-entry and aggregate byte budgets in a successor handler and remint evidence.
 
 ### DW-434: All failure modes collapse to exit 1 and, for loader failures, to a single message that hides the chained cause.
 
@@ -3298,6 +3330,8 @@ location: tools/deployed_runtime_parity_handlers/v1.py:855
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: Several distinct fail-closed branches share one message, so no test can show which clause fired. evidence: `tools/deployed_runtime_parity_handlers/v1.py:855` raises `GitHub acceptance source is not authenticated to the rostered owner` for eight or-ed conditions, and is the single expected message for both `ReceiptSourceAnchoredOnForeignLineageIssueFailsClosed` and all three cases of `ReceiptSourceIdentityMustResolveToOneComment`. The registry path has the same shape.
 status: open
+decision: 2026-09-06 Build diagnostic successor — Define stable distinct diagnostics in a successor handler and recollect evidence.
+decision: 2026-09-06 Build diagnostic successor — Define stable distinct diagnostics in a successor handler and recollect evidence.
 
 ### DW-437: The two timestamp-rejected owner comments are named in three documents but retained nowhere, and the `dab64f5f` pair was never annotated.
 
@@ -3435,6 +3469,8 @@ location: n/a
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The assembler still imports the trusted handler through ordinary importlib rather than the source-only loader the dispatchers use. evidence: Loop 7 set `sys.dont_write_bytecode` before the import, made the assembler verify that the imported `v1` and `v3` modules resolve to their repository paths, bound `Path(__file__).resolve()` instead of the pristine repository file, and removed the stale `__pycache__` trees. A stale `.pyc` can still be *read* by that import. The end-to-end trust property holds regardless, because the assembler runs the pinned verifier -- which loads the whole trust path from verified source bytes -- over its own output and propagates its exit code. Duplicating the ~90-line source-only loader into a third file is the remaining option and is deliberately not taken; it is the same twin-maintenance hazard already filed for the two dispatchers. status: open — accepted; revisit together with the dispatcher-loader deduplication entry.
 status: open
+decision: 2026-09-06 Build loader migration — Version the assembler, use the source-only loader, and remint/re-sign the resulting subject.
+decision: 2026-09-06 Build loader migration — Version the assembler, use the source-only loader, and remint/re-sign the resulting subject.
 
 ### DW-453: The closed GitHub envelope schema has no recorded capture provenance and no tolerance path, so a future GitHub API field addition would block owner receipt re-collection with no documented remedy.
 
@@ -3451,6 +3487,8 @@ location: tools/validate-oq8-platform-evidence.py:876-905
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md` severity: low summary: TOCTOU gap between `require_no_symlink_components` and the later `stat()`/`open()` in `read_bounded_regular_snapshot`. evidence: `require_no_symlink_components` checks each path component for `is_symlink()`, then `read_bounded_regular_snapshot` independently calls `path.stat()`/`path.open()` afterward — a component could be swapped to a symlink in between. `tools/validate-oq8-platform-evidence.py:876-905`. status: open — deferred, low exploitability given this tool's single-writer CI trust boundary (it validates the project's own checked-out repo content, not attacker-controlled concurrent writers). Revisit by opening with `O_NOFOLLOW` or re-checking `st_mode` via `os.fstat` after opening.
 status: open
+decision: 2026-09-06 Remint hardened validator — Use descriptor-relative/no-follow reads, add race tests, and recollect Story 4.15 approvals.
+decision: 2026-09-06 Remint hardened validator — Use descriptor-relative/no-follow reads, add race tests, and recollect Story 4.15 approvals.
 
 ### DW-455: `REVIEW_ROSTER` names two reviewers as specific accountable personas but the security role is only a generic role label.
 
@@ -3478,6 +3516,8 @@ source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: high
 reason: `python3 tools/validate-oq8-platform-evidence.py` fails with `Story 4.15 v2 gate-input identity drift: docs/ci.md`. The v2 successor packet sealed a byte-hash pin on `docs/ci.md` at commit `83b32fcf` (2026-08-30 09:47+02:00), content-bound to the three recorded `reviews/{architecture,security,test}.json` receipts. Commit `75dc59aa` ("fix: update BMAD 6.11.1-next.33", 2026-08-30 12:36+02:00) then legitimately updated `docs/ci.md` — it is Story 3.15's own narration of its deployed-runtime-parity re-mint state (subject hash, receipt counts), unrelated to OQ8/Story 4.15. This is the same "sealed gate-input drift" class already tracked for `tools/validate-oq8-platform-evidence.py` itself (see the story's Review Findings blocker note, 2026-08-30), now hitting a second pinned path that another story continuously re-narrates. Fixing it means recomputing `docs/ci.md`'s hash and repropagating it through `source-artifact-identity.json` → `review-subject.json`, which invalidates the three existing reviewer receipts and needs fresh architecture/security/test sign-off — not a mechanical patch, and out of scope for an implementation pass per the frozen spec's "never fabricate reviewer approval." No code or evidence file was changed while investigating this.
 status: open
+decision: 2026-09-06 Remint and re-sign — Recompute the packet for the intended subject and collect all required non-fabricated reviewer approvals.
+decision: 2026-09-06 Remint and re-sign — Recompute the packet for the intended subject and collect all required non-fabricated reviewer approvals.
 decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, propagate the new subject, and collect fresh architecture, security, and test reviewer sign-off.
 
 ### DW-458: Prove Windows POSIX governance cases report real xUnit skips.
@@ -3507,6 +3547,8 @@ origin: migrated from legacy ledger ("unsectioned flat append from spec-5-1-infr
 location: _bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md
 reason: The replanned specification says `created: 2026-09-05`, while its retained change log records the specification and inventory on 2026-08-27; replanning needs a separate timestamp rather than replacing the historical creation date.
 status: open
+decision: 2026-09-06 Restore and annotate — Set created to 2026-08-27 and record 2026-09-05 separately as the replanning date.
+decision: 2026-09-06 Restore and annotate — Set created to 2026-08-27 and record 2026-09-05 separately as the replanning date.
 
 ### DW-462: Pin the first invalid retained-authority validity-window boundary.
 
@@ -3528,6 +3570,8 @@ origin: migrated from legacy ledger ("unsectioned flat append from spec-3-15-cor
 location: tools/assemble-corrected-deployed-runtime-parity.py
 reason: The assembler always emits `repository_signature_entry_present: true` without inspecting each `.nupkg` for a `.signature.p7s` entry. The verifier still enforces the zip entry, but the producer's pre-existing representation is inaccurate.
 status: open
+decision: 2026-09-06 Build derived successor — Derive the field from validated entries in a versioned assembler and remint evidence.
+decision: 2026-09-06 Build derived successor — Derive the field from validated entries in a versioned assembler and remint evidence.
 
 ### DW-465: Reject moderated or pinned retained GitHub comments.
 
@@ -3535,6 +3579,8 @@ origin: migrated from legacy ledger ("unsectioned flat append from spec-3-15-cor
 location: tools/deployed_runtime_parity_handlers/v1.py
 reason: The retained GitHub comment closed schema requires `minimized` and `pin` fields but does not forbid non-null moderated or pinned states, so moderated or pinned comments can be accepted.
 status: open
+decision: 2026-09-06 Build stricter schema — Version the GitHub envelope schema, validate nullability/semantics, and recollect receipts.
+decision: 2026-09-06 Build stricter schema — Version the GitHub envelope schema, validate nullability/semantics, and recollect receipts.
 
 ### DW-466: Harden assembler smoke refusal guards.
 
@@ -3542,6 +3588,8 @@ origin: migrated from legacy ledger ("unsectioned flat append from spec-3-15-cor
 location: tools/assemble-corrected-deployed-runtime-parity.py
 reason: The pre-existing assembler preflight may accept JSON `false` for `exit_code` or set-equal swapped platform and child digests, weakening its smoke refusal checks; this was not introduced by receipt collection.
 status: open
+decision: 2026-09-06 Build strict successor — Require integer zero, preserve child roles/order, add adversarial tests, and remint the packet.
+decision: 2026-09-06 Build strict successor — Require integer zero, preserve child roles/order, add adversarial tests, and remint the packet.
 
 ### DW-467: Align automatic container-publish coverage and DW-372's record.
 
@@ -3577,6 +3625,8 @@ origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tena
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`CompleteDrainExhaustionAsync`; legacy locations 2152 and 2233)
 reason: `CompleteDrainExhaustionAsync` publishes externally before saving the `DeadLettered` marker, so successful broker publication followed by a pre-commit marker-save failure is retried by the next reminder and republishes the exhausted range. No repository-owned consumer or sink contract proves that the stable CloudEvent id suppresses the duplicate; this is the pre-existing Story 4.4 non-transactional boundary preserved outside Story 5.1's frozen scope.
 status: open
+decision: 2026-09-06 Durable outbox — Persist an outbox/dead-letter intent transactionally, publish by stable identity, and mark completion after acknowledged delivery.
+decision: 2026-09-06 Durable outbox — Persist an outbox/dead-letter intent transactionally, publish by stable identity, and mark completion after acknowledged delivery.
 
 ### DW-472: Restrict manual-snapshot success inference.
 
@@ -3638,6 +3688,8 @@ origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tena
 location: docs/ci.md; tools/validate-corrective-release-evidence.py (`_load_handler`)
 reason: `docs/ci.md` requires a v4 handler to define its own `EXPECTED_PACKET_CODEC_SHA256`, but `_load_handler` rejects any value different from `V3_PACKET_CODEC_SHA256`, so a correctly authored successor cannot load.
 status: open
+decision: 2026-09-06 Keep v4 deferred
+decision: 2026-09-06 Keep v4 deferred
 
 ### DW-480: Finalize a reused stale-Processing slot after failed replacement admission.
 
@@ -3688,3 +3740,5 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-5-1-inf
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (legacy location 2748)
 reason: At-capacity resume or stale-checkpoint handoff can persist a drain without a publication-index owner; if reminder registration then fails, activation cannot rediscover the unpublished range. This known Story 4.4 crash window predates Story 5.1 and requires separate publication-recovery policy design.
 status: open
+decision: 2026-09-06 Durable overflow cursor — Persist overflow ownership and process it through a bounded resumable cursor.
+decision: 2026-09-06 Durable overflow cursor — Persist overflow ownership and process it through a bounded resumable cursor.

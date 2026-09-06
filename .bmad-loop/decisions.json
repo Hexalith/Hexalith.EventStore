@@ -107,6 +107,15 @@
     "label": "Registry immutability",
     "resolution": ""
   },
+  "DW-161": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Resolve the token per request through validated IOptionsMonitor state and test valid, blank, and changed token snapshots.",
+    "key": "1",
+    "label": "Support live rotation",
+    "resolution": ""
+  },
   "DW-163": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
@@ -123,6 +132,15 @@
     "intent": "Preserve cached payload but render authoritative Degraded lifecycle consistently.",
     "key": "1",
     "label": "Render degraded",
+    "resolution": ""
+  },
+  "DW-18": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep deferred",
     "resolution": ""
   },
   "DW-190": {
@@ -278,6 +296,42 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-358": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep deferred",
+    "resolution": ""
+  },
+  "DW-360": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep packet stable",
+    "resolution": ""
+  },
+  "DW-361": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep deferred",
+    "resolution": ""
+  },
+  "DW-362": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep current schema",
+    "resolution": ""
+  },
   "DW-364": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
@@ -285,6 +339,15 @@
     "intent": "",
     "key": "2",
     "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-370": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep deferred",
     "resolution": ""
   },
   "DW-382": {
@@ -296,6 +359,24 @@
     "label": "Encode pending state",
     "resolution": ""
   },
+  "DW-397": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Honor keep-open decision",
+    "resolution": ""
+  },
+  "DW-400": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Create the versioned corrective packet, validate timestamps independently, and collect new governed evidence.",
+    "key": "1",
+    "label": "Build corrective successor",
+    "resolution": ""
+  },
   "DW-401": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -303,6 +384,15 @@
     "intent": "",
     "key": "3",
     "label": "Keep deferred",
+    "resolution": ""
+  },
+  "DW-407": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Honor prior decision",
     "resolution": ""
   },
   "DW-410": {
@@ -323,6 +413,24 @@
     "label": "Keep deferred",
     "resolution": ""
   },
+  "DW-413": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Create a successor handler with per-file and aggregate limits, then remint and verify it.",
+    "key": "1",
+    "label": "Build bounded handler",
+    "resolution": ""
+  },
+  "DW-415": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add canonical-byte proof to a successor smoke schema and recollect governed evidence.",
+    "key": "1",
+    "label": "Version smoke contract",
+    "resolution": ""
+  },
   "DW-416": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -330,6 +438,15 @@
     "intent": "Define stable dispatch, evidence, I/O, and usage exit codes; preserve diagnostic safety; update docs, scripts, and compatibility tests.",
     "key": "1",
     "label": "Add typed exit codes",
+    "resolution": ""
+  },
+  "DW-417": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Version both contracts, define one authoritative meaning, and remint the packet.",
+    "key": "1",
+    "label": "Build aligned successor",
     "resolution": ""
   },
   "DW-418": {
@@ -350,6 +467,15 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-426": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Create an aligned versioned closure/CLI contract and remint its evidence.",
+    "key": "1",
+    "label": "Build aligned successor",
+    "resolution": ""
+  },
   "DW-430": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
@@ -359,6 +485,15 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-431": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add post-import identity verification to a versioned dispatcher and remint its governed evidence.",
+    "key": "1",
+    "label": "Build identity backstop",
+    "resolution": ""
+  },
   "DW-432": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
@@ -366,6 +501,15 @@
     "intent": "",
     "key": "2",
     "label": "Keep open",
+    "resolution": ""
+  },
+  "DW-433": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Introduce per-entry and aggregate byte budgets in a successor handler and remint evidence.",
+    "key": "1",
+    "label": "Build bounded successor",
     "resolution": ""
   },
   "DW-434": {
@@ -384,6 +528,15 @@
     "intent": "Extract a minimal pinned loader module, migrate both dispatchers, add equivalence/security tests, and regenerate affected packet identities.",
     "key": "1",
     "label": "Share one loader",
+    "resolution": ""
+  },
+  "DW-436": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Define stable distinct diagnostics in a successor handler and recollect evidence.",
+    "key": "1",
+    "label": "Build diagnostic successor",
     "resolution": ""
   },
   "DW-443": {
@@ -413,6 +566,33 @@
     "label": "Fix and re-seal",
     "resolution": ""
   },
+  "DW-452": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Version the assembler, use the source-only loader, and remint/re-sign the resulting subject.",
+    "key": "1",
+    "label": "Build loader migration",
+    "resolution": ""
+  },
+  "DW-454": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Use descriptor-relative/no-follow reads, add race tests, and recollect Story 4.15 approvals.",
+    "key": "1",
+    "label": "Remint hardened validator",
+    "resolution": ""
+  },
+  "DW-457": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Recompute the packet for the intended subject and collect all required non-fabricated reviewer approvals.",
+    "key": "1",
+    "label": "Remint and re-sign",
+    "resolution": ""
+  },
   "DW-459": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -429,6 +609,42 @@
     "intent": "Re-run the owning OQ8 evidence workflow against the current fixture, regenerate bound identities and receipts, and restore the blocking Contracts lane.",
     "key": "1",
     "label": "Re-seal OQ8 evidence",
+    "resolution": ""
+  },
+  "DW-461": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Set created to 2026-08-27 and record 2026-09-05 separately as the replanning date.",
+    "key": "1",
+    "label": "Restore and annotate",
+    "resolution": ""
+  },
+  "DW-464": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Derive the field from validated entries in a versioned assembler and remint evidence.",
+    "key": "1",
+    "label": "Build derived successor",
+    "resolution": ""
+  },
+  "DW-465": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Version the GitHub envelope schema, validate nullability/semantics, and recollect receipts.",
+    "key": "1",
+    "label": "Build stricter schema",
+    "resolution": ""
+  },
+  "DW-466": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Require integer zero, preserve child roles/order, add adversarial tests, and remint the packet.",
+    "key": "1",
+    "label": "Build strict successor",
     "resolution": ""
   },
   "DW-467": {
@@ -449,6 +665,24 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-471": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Persist an outbox/dead-letter intent transactionally, publish by stable identity, and mark completion after acknowledged delivery.",
+    "key": "1",
+    "label": "Durable outbox",
+    "resolution": ""
+  },
+  "DW-479": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "2",
+    "label": "Keep v4 deferred",
+    "resolution": ""
+  },
   "DW-480": {
     "answered_at": "2026-08-26",
     "bundle_name": "",
@@ -456,6 +690,15 @@
     "intent": "Define a trace retention policy, remove unconsumed duplicates, redact sensitive metadata, and retain only intentional minimal evidence with consumer links.",
     "key": "1",
     "label": "Sanitize and minimize",
+    "resolution": ""
+  },
+  "DW-486": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Persist overflow ownership and process it through a bounded resumable cursor.",
+    "key": "2",
+    "label": "Durable overflow cursor",
     "resolution": ""
   },
   "DW-51": {
