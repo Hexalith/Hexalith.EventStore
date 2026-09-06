@@ -2,7 +2,7 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 6
 followup_review_recommended: true
@@ -85,11 +85,13 @@ deferred: ['DW-487', 'DW-488', 'DW-489', 'DW-490', 'DW-491', 'DW-492', 'DW-493',
 - Release/package project restores and builds for Server, Integration, and UI completed with 0 warnings and 0 errors. The maintained project-level Server test command returned exit 5 with zero tests under Microsoft.Testing.Platform, so the repository-prescribed direct-assembly fallback supplied the 789/789 result. Fresh full-solution restores remain blocked by the solution's uninitialized nested project paths. Debug/source broad validation is additionally blocked by concurrent outer work: the Integration build reaches the known `references/Hexalith.Memories/Directory.Build.props:89` nested-EventStore guard, and the Server build fails at `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1098` because the unrelated dirty actor change references undefined `eventsStoredState`.
 - Concurrent automation advanced EventStore to `a907fc07a1d7b33c1fc413ca98370c7cd5e360f1` and both the root Tenants gitlink and Tenants `main` to `b5e9907c938a8384e3bd4a37cdadbddf6dc39cfa`. The pass-4 payload assertion is an uncommitted Tenants delta on top of that published SHA, so the final reviewed-SHA/gitlink task remains open.
 - `python3 references/Hexalith.Tenants/scripts/validate-story-gitlinks.py _bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md` cannot validate this cross-repository story record: it exits `FAIL` because the root-owned `baseline_commit` is not a commit in the Tenants repository. No Tenants-local story file exists to supply a Tenants baseline to that repository-scoped validator.
+- Review pass 6 patches (2026-09-06): balanced-quote ETag normalization; factory coverage for `W/"abc"`, matching degenerate theories, and `JsonValueKind.Undefined`; six-route freshness controls that prove persisted `ProjectedAt`/`tenant-sequence:` inputs and the matching `GetAsync` reads; Redis helper `AbortOnConnectFail=true` plus `JsonException` retries; `tenants-api` moved last without fixture-wide aliveness wait; isolated typed client that clones the HTTP request; direct `StackExchange.Redis` PackageReference; `TenantProjectionVersionFormat.SequencePrefix`; and `PublishFailed` skipped as an environment outage. Review pass 7 removed the EventStore `ProjectionBacked` retry and the test-injected `eventstore||admin:query-types:tenants` write so the gateway assertion fail-closes. After deleting leftover Redis catalogs, the Release live proof executed 1 failed / 0 skipped in 26.063 seconds: Redis tenant persistence succeeded, then `POST /api/v1/queries` returned `X-Hexalith-Query-Provenance: ProjectionBacked`. Server query classes remain 49/49 (0 skipped) in Release; generated-controller tests remain 28/28 (0 skipped). Full-solution restores remain DW-494. On 2026-09-06 the Administrator authorized a separate EventStore change (DW-495) so `AdminOperationalIndexHostedService` persists recovered `admin:query-types:{domain}` catalogs when sibling metadata fails; that EventStore edit is not Story 4.7 producer scope. After rebuilding EventStore Debug/Release and deleting leftover Redis catalogs, the same fail-closed live proof passed 1/1 (0 skipped) in 26.173 seconds: Event 6104 wrote recovered handler catalogs for two domains, EventStore invoked `tenants/method/query`, and `eventstore||admin:query-types:tenants` contained the five Tenants handler types. No commit, push, nested-submodule init, `sprint-status.yaml` edit, or root gitlink move.
 
 ## Spec Change Log
 
 - 2026-08-27 -- Recorded the exact six-route producer/consumer inventory and authority split at EventStore `168c657676ab2e210401bb5fe1c7ae9df06dc0e7` / Tenants `d5ce92881019d3deca20b5fe03b84f86489dd062`; all EventStore-owned focused and persisted-path verification passed. No authenticated Tenants-maintainer or root-gitlink authority was supplied, so the protected external changes remain unchecked and status moved to `awaiting-operator` without touching `sprint-status.yaml`.
 - 2026-09-05 -- Administrator approved the exact Story 4.7 producer/test scope at Tenants `d2b7ede359830c27934ac9f577e3073955c3e2c2` and separate root-gitlink authority. Re-planned from Review pass 1 to isolate the validator-only factory correction, all-six-route tests, persisted real-route proof, and fresh dual-mode validation while preserving EventStore normalization and genuine stored sequence stamping.
+- 2026-09-06 -- After the fail-closed live proof returned `ProjectionBacked`, the Administrator authorized a separate EventStore repair (choice 1 / DW-495): persist handler query-type indexes for domains whose metadata loaded successfully, and rewrite them on refresh, without folding EventStore routing into Story 4.7 producer scope.
 
 ## Review Triage Log
 
@@ -279,6 +281,49 @@ deferred: ['DW-487', 'DW-488', 'DW-489', 'DW-490', 'DW-491', 'DW-492', 'DW-493',
   - `[high]` `[defer]` Carried actor, publication, snapshot, and verification findings retain their pass-2 through pass-4 routes and were not deferred again.
 - loopback: none; no intent gap, bad spec, or Story 4.7 patch survived triage. The review added no production change and preserves the still-open reviewed-SHA/gitlink and broad Debug/source validation tasks.
 
+### 2026-09-06 — Review pass 7 (bmad-build)
+
+- verdicts: 31 findings — high 0, medium 12, low 3, false 8, maybe-false 0, carried 8
+- routes: intent_gap 0, bad_spec 0, patch 2, defer 8, reject 21
+- findings:
+  - `[medium]` `[reject]` `[P7-BH-01]` Carried from P2-BH-01/P5-BH-15: the concatenated EventStore-since-baseline plus Tenants-dirty subject is not an isolated Story 4.7 tree. Correcting the baseline is a spec-only remedy.
+  - `[medium]` `[reject]` `[P7-BH-02]` Carried from P5-BH-15: pass-6 Tenants edits are still an uncommitted delta on `6eb579fa`, while the audited range remains `d2b7ede3..37fcfded`. Publication/gitlink completion is already open and AC5 was waived; rewriting SHAs is spec/history work.
+  - `[medium]` `[reject]` `[P7-BH-03]` Carried from P1-BH-01/P5-ECH-13: the EventStore half of the baseline-wide diff moves many gitlinks. Story 4.7's Tenants delta does not move the root gitlink; this run left it at `6eb579fa`.
+  - `[false]` `[reject]` `[P7-BH-04]` Carried from P1-BH-13: `sprint-status.yaml` changes in the EventStore-since-baseline diff are later orchestrator-owned edits, not this Story 4.7 implementation. The Tenants pass-6 delta does not touch that file.
+  - `[medium]` `[patch]` `[P7-BH-05]` `SendEventStoreGetTenantUntilHandlerComputedAsync` retries HTTP 200 `ProjectionBacked` instead of failing closed. The frozen EventStore-gateway row requires fail-closed on contradictory provenance, and AC3 is a single-request `HandlerComputed` proof.
+  - `[medium]` `[patch]` `[P7-BH-06]` `EnsureEventStoreSidecarHandlerQueryTypesAsync` writes `eventstore||admin:query-types:tenants` before the EventStore assertion, so the live proof can observe a test-injected catalog rather than `AdminOperationalIndexHostedService`. Frozen Never forbids treating mocks as freshness proof.
+  - `[medium]` `[defer]` `[P7-BH-07]` EventStore `DaprDomainQueryHandlerRegistry` fail-opens to the projection-actor path when `admin:query-types:tenants` is missing after `AdminOperationalIndexHostedService` skips writes (sample metadata `InvalidOperationException`). This is pre-existing platform topology (DW-107 class), not a Tenants producer defect.
+  - `[false]` `[reject]` `[P7-BH-08]` `PublishFailed` → `Assert.Skip` is the approved pass-6 patch so a pub/sub outage is not scored as a provenance failure. This run's live proof completed 1/1 with 0 skips; a skip is still not completion evidence.
+  - `[low]` `[patch]` `[P7-BH-09]` If the 4-minute CTS cancels an in-flight `/alive` GET, `WaitForTenantsApiAliveAsync` lets `TaskCanceledException` escape because the catch requires `!timeout.IsCancellationRequested`. The Delay path already breaks into the existing `TimeoutException`.
+  - `[false]` `[reject]` `[P7-BH-10]` `AssertPrimaryReadModelInputsExist` stamps `tenant-sequence:42` on every setup model so whichever row is primary actually carries sequence; ETag-only and degenerate tokens remain on the factory and `TenantQueryHandlerETagTests` seams (P2-BH-09).
+  - `[false]` `[reject]` `[P7-BH-11]` Balanced-quote `NormalizeETag` retaining `W/"abc"` and unmatched `"abc` is the pass-6 specified result. Weak-tag HTTP parsing was rejected at P2-BH-10/P4-BH-10.
+  - `[false]` `[reject]` `[P7-BH-12]` `SharedClientRelayHandler` clones method, URI, and headers for the GET-only typed client; `TenantsRestQueryClient.SendAsync` sends no body. Isolation is the Authorization header on the outer client, which is copied onto the clone.
+  - `[medium]` `[reject]` `[P7-BH-13]` Missing DW-487–DW-494 rows in `.bmad-loop/decisions.json` is ledger/orchestrator bookkeeping. The only in-story fix would edit this spec or agent-context files.
+  - `[medium]` `[reject]` `[P7-BH-14]` Missing pass-6 triage-log section and stale RESOLVED gitlink prose are spec-only bookkeeping, rejected by the review rule.
+  - `[medium]` `[defer]` `[P7-ECH-01]` `DaprEventStoreDomainEventMarkerStore` first-write race is concurrent EventStore subscription work in the baseline-wide diff, outside Story 4.7.
+  - `[medium]` `[defer]` `[P7-ECH-02]` `InMemoryEventStoreDomainEventMarkerStore` retry with `CancellationToken.None` is concurrent EventStore work, outside Story 4.7.
+  - `[medium]` `[defer]` `[P7-ECH-03]` `AggregateActor` post-save inspect swallowing cancellation is concurrent EventStore actor work, outside Story 4.7.
+  - `[medium]` `[defer]` `[P7-ECH-04]` Carried from P4-BH-05/P5-ECH-06: malformed publication-index remnants can make save inspection throw. Unrelated actor work; not deferred again.
+  - `[medium]` `[defer]` `[P7-ECH-05]` Admin consistency empty `tenantId` fallback is concurrent Admin/epic-5 work, outside Story 4.7.
+  - `[low]` `[defer]` `[P7-ECH-06]` Repeated `tenantId` query parameters in `AdminTenantAuthorizationFilter` is concurrent Admin work, outside Story 4.7.
+  - `[medium]` `[defer]` `[P7-ECH-07]` Admin challenge `MemoryStream` cap is concurrent Admin work, outside Story 4.7.
+  - `[medium]` `[defer]` `[P7-ECH-08]` `Consistency.razor` unhandled `ServiceUnavailableException` on expand is concurrent Admin UI work, outside Story 4.7.
+  - `[medium]` `[defer]` `[P7-ECH-09]` `Consistency.razor` auth callback after dispose is concurrent Admin UI work, outside Story 4.7.
+  - `[low]` `[defer]` `[P7-ECH-10]` `DaprActors.razor` access-denied banner on deep-link inspect is concurrent Admin UI work, outside Story 4.7.
+  - `[false]` `[reject]` `[P7-ECH-11]` Unmatched wrapping quotes are retained by the new balanced stripper; that is the approved pass-6 ETag contract, not a regression to `Trim('"')`.
+  - `[low]` `[patch]` `[P7-ECH-12]` Same `/alive` cancellation hole as P7-BH-09.
+  - `[low]` `[reject]` `[P7-ECH-13]` Duplicate `X-Hexalith-Query-Provenance` values make `SingleOrDefault` throw. EventStore emits one header; throwing on duplicates is fail-closed, and adding retry complexity is disproportionate.
+  - `[medium]` `[defer]` `[P7-ECH-14]` `assemble-corrected-deployed-runtime-parity.py` previous-closure unlink is Story 3.15 tooling, outside Story 4.7.
+  - `[medium]` `[defer]` `[P7-ECH-15]` `capture-corrected-deployed-runtime-parity-smokes.py` leftover docker container is Story 3.15 tooling, outside Story 4.7.
+  - `[false]` `[reject]` `[P7-ECH-16]` Claim that `PublishFailed` skip prevents the Redis-backed proof: same as P7-BH-08; skip is environmental triage, not a passing substitute, and this run executed 0 skips.
+  - `[medium]` `[defer]` `[P7-VG-01]` Carried from P4-BH-01/P5-BH-09: `HeavyweightContainerPublish` remains excluded from automatic Contracts CI. Unrelated release-governance gap; not deferred again.
+- grouped survivors:
+  - `[medium]` `[patch]` EventStore live-proof fail-open workaround: P7-BH-05 and P7-BH-06 retry `ProjectionBacked` and write a sidecar handler catalog. Restore a single fail-closed EventStore POST and do not mutate Redis routing keys.
+  - `[low]` `[patch]` `WaitForTenantsApiAliveAsync` cancellation: P7-BH-09 and P7-ECH-12. Catch a CTS-cancelled `/alive` GET and surface the existing `TimeoutException`.
+  - `[medium]` `[defer]` EventStore handler-registry fail-open: P7-BH-07 remains platform topology outside Tenants producer scope.
+  - `[medium]` `[defer]` Concurrent EventStore/Admin/3.15 findings: P7-ECH-01 through P7-ECH-10, P7-ECH-14, P7-ECH-15, and carried P7-ECH-04/P7-VG-01 retain prior routing and are not deferred again.
+- loopback: none; no intent gap or bad spec survived. Apply the two Story 4.7 patches.
+
 ## Design Notes
 
 Keep the active freshness overload signature so all handler constructors and call sites stay stable, but delegate it to the validator-only factory. The persisted read model still stores timestamp and sequence for replay/idempotency; only query-response authority changes. The Tier-3 proof must inspect Redis before both raw HTTP and typed-client assertions because a completed command or successful response does not establish projection origin.
@@ -304,13 +349,13 @@ Review pass 6 (2026-09-06, `bmad-code-review`). Reviewed range corrected mid-rev
 
 **Patch**
 
-- [ ] [Review][Patch] Six-route freshness matrix has no control proving its inputs exist [tests/Hexalith.Tenants.Server.Tests/Queries/TenantQueryFreshnessTests.cs:55-113]
-- [ ] [Review][Patch] Tier-3 Redis helper degrades to opaque failures — `JsonException` escapes the retry loop and `AbortOnConnectFail=false` lets a dead Redis surface as `RedisConnectionException` instead of the crafted diagnostic [tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:442-470]
-- [ ] [Review][Patch] Fixture change widens Tier-3 blast radius — `tenants-api` is the only `https` resource among five, is inserted before `tenants-ui`/`sample`, waits on aliveness with `CancellationToken.None` (outside the 6-minute startup budget), and the new test mutates the shared client's `DefaultRequestHeaders.Authorization` [tests/Hexalith.Tenants.IntegrationTests/Fixtures/AspireTopologyFixture.cs:26]
-- [ ] [Review][Patch] `using StackExchange.Redis` types with no `PackageReference` — compiles transitively only; version already exists in Builds central props [tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj]
-- [ ] [Review][Patch] Magic `"tenant-sequence:"` literals instead of the live `TenantProjectionVersionFormat.SequencePrefix` constant [tests/Hexalith.Tenants.Server.Tests/Queries/TenantQueryFreshnessTests.cs:227]
-- [ ] [Review][Patch] `NormalizeETag` lossy cases uncovered — `W/"abc"` becomes `W/"abc`, the two degenerate-ETag theories are asymmetric (5 cases vs 4), and the `JsonValueKind.Undefined` guard gained no replacement coverage after being removed from the six-argument overload [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:46-53]
-- [ ] [Review][Patch] Tier-3 proof misreports an environment pub/sub outage as a provenance-contract failure [tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:140-152]
+- [x] [Review][Patch] Six-route freshness matrix has no control proving its inputs exist [tests/Hexalith.Tenants.Server.Tests/Queries/TenantQueryFreshnessTests.cs:55-113]
+- [x] [Review][Patch] Tier-3 Redis helper degrades to opaque failures — `JsonException` escapes the retry loop and `AbortOnConnectFail=false` lets a dead Redis surface as `RedisConnectionException` instead of the crafted diagnostic [tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:442-470]
+- [x] [Review][Patch] Fixture change widens Tier-3 blast radius — `tenants-api` is the only `https` resource among five, is inserted before `tenants-ui`/`sample`, waits on aliveness with `CancellationToken.None` (outside the 6-minute startup budget), and the new test mutates the shared client's `DefaultRequestHeaders.Authorization` [tests/Hexalith.Tenants.IntegrationTests/Fixtures/AspireTopologyFixture.cs:26]
+- [x] [Review][Patch] `using StackExchange.Redis` types with no `PackageReference` — compiles transitively only; version already exists in Builds central props [tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj]
+- [x] [Review][Patch] Magic `"tenant-sequence:"` literals instead of the live `TenantProjectionVersionFormat.SequencePrefix` constant [tests/Hexalith.Tenants.Server.Tests/Queries/TenantQueryFreshnessTests.cs:227]
+- [x] [Review][Patch] `NormalizeETag` lossy cases uncovered — `W/"abc"` becomes `W/"abc`, the two degenerate-ETag theories are asymmetric (5 cases vs 4), and the `JsonValueKind.Undefined` guard gained no replacement coverage after being removed from the six-argument overload [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:46-53]
+- [x] [Review][Patch] Tier-3 proof misreports an environment pub/sub outage as a provenance-contract failure [tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:140-152]
 
 **Deferred**
 

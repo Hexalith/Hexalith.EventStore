@@ -3801,6 +3801,15 @@ reason: Story 4.7's AC4 requires fresh Debug/source and Release/package restores
 status: open
 decision: 2026-09-06 Accept focused-lane evidence — Administrator accepted the recorded focused results in place of the blocked broad gate for Story 4.7 closure.
 
+### DW-495: Persist recovered handler query-type indexes when sibling domain metadata fails.
+
+origin: administrator authorization 2026-09-06 after Story 4.7 AC3 halt (P7-BH-07)
+location: src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs
+reason: `AdminOperationalIndexHostedService.StartAsync` skipped every admin index write, including `admin:query-types:{domain}`, whenever any configured domain metadata source failed. The refresh loop then updated named projection routes only, so a healthy Tenants metadata load never persisted `admin:query-types:tenants` while `sample` continued to throw. `DaprDomainQueryHandlerRegistry` treated the missing catalog as “no handlers” and fail-opened to `ProjectionBacked`. Administrator authorized a separate EventStore change: persist handler query-type indexes for domains whose metadata loaded successfully, and rewrite them when a later `RefreshAsync` recovers that binding. Named-route `Replace` and projection/type-catalog indexes remain all-or-nothing.
+status: done 2026-09-06
+evidence: Release `Hexalith.EventStore.Client.Tests.Indexes.AdminOperationalIndexHostedServiceTests` 12/12, 0 skipped, 0.586s. Live Story 4.7 proof `Generated_tenants_api_get_tenant_reads_verified_redis_state_without_projection_authority` 1/1, 0 skipped, 26.173s after Redis catalogs were deleted: Event 6104 persisted recovered query-type indexes for 2 domains while Event 6101 still skipped projection/type-catalog writes; EventStore invoked `tenants/method/query`; DAPR hash `eventstore||admin:query-types:tenants` contained `get-tenant`, `get-tenant-audit`, `get-tenant-users`, `get-user-tenants`, and `list-tenants`.
+resolution: `AdminOperationalIndexHostedService` now writes `admin:query-types:{domain}` for every domain whose metadata loaded successfully, including when sibling sources fail, and `RefreshAsync` rewrites that catalog when a binding recovers. Named-route `Replace` and projection/type-catalog indexes remain all-or-nothing.
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Story 3.15's required `docs/ci.md` update leaves the Story 4.15 v3 successor packet unbound, so the complete Contracts suite fails on current-source identity drift until that separately reviewed packet is reminted.
   evidence: Focused Story 3.15/3.14 classes are green; the 12 full-suite failures are `Story 4.15 v3 current source identity drift: docs/ci.md`. Reminting v3 would invalidate its approvals and is outside this story.
@@ -3880,3 +3889,11 @@ decision: 2026-09-06 Accept focused-lane evidence — Administrator accepted the
 - source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
   summary: Story 3.15 lacks timeout-removal coverage for first-time assembly when no previous closure exists.
   evidence: VG-02 verified that every timeout fixture begins with prior closure bytes, leaving the `previous_bytes is None` deletion branch untested.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: EventStore fail-opens Tenants queries to the projection-actor path when AdminOperationalIndexHostedService skips `admin:query-types:tenants` after a sample metadata failure.
+  evidence: P7-BH-07 verified Event 6101 skip plus Event 6100 sample InvalidOperationException, after which `eventstore||admin:query-types:tenants` stayed missing and `DaprDomainQueryHandlerRegistry` treated the domain as having no handlers. Administrator authorized a separate EventStore repair on 2026-09-06 (DW-495): persist recovered `admin:query-types:{domain}` writes without waiting for every sibling metadata source.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Concurrent EventStore marker, actor, Admin UI, and Story 3.15 tooling defects remain in the baseline-wide review subject.
+  evidence: P7-ECH-01 through P7-ECH-10 and P7-ECH-14/P7-ECH-15 verified those outcomes in EventStore/Admin/3.15 files that Story 4.7 did not change.

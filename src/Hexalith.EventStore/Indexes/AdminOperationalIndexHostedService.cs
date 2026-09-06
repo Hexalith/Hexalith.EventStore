@@ -44,19 +44,23 @@ public sealed partial class AdminOperationalIndexHostedService(
         _refreshTask = RefreshLoopAsync(_refreshStopping.Token);
 
         AdminOperationalIndexMetadataLoadResult metadataLoad = await LoadDomainMetadataAsync(cancellationToken).ConfigureAwait(false);
-        if (metadataLoad.HasFailures) {
-            Log.MetadataWriteSkipped(logger);
-            return;
-        }
-
         AdminOperationalIndexSnapshot snapshot = BuildSnapshot(
             metadataLoad.Metadata,
             domainServiceOptions.Value.Registrations.Values,
             projectionOptions.Value,
             metadataLoad.BoundMetadata);
+        int recoveredQueryTypeDomains = await WriteQueryTypeIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
+        if (metadataLoad.HasFailures) {
+            if (recoveredQueryTypeDomains > 0) {
+                Log.QueryTypeIndexesWrittenDespitePartialFailure(logger, recoveredQueryTypeDomains);
+            }
+
+            Log.MetadataWriteSkipped(logger);
+            return;
+        }
+
         await WriteProjectionIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
         await WriteTypeCatalogIndexesAsync(snapshot, cancellationToken).ConfigureAwait(false);
-        await WriteQueryTypeIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
         namedProjectionRouteCatalog.Replace(metadataLoad.NamedProjectionRoutes);
     }
 
@@ -78,12 +82,18 @@ public sealed partial class AdminOperationalIndexHostedService(
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(registration);
         TrackRegistration(registration);
-        (bool success, _, IReadOnlyList<NamedProjectionRouteCatalogEntry> entries) = await LoadBindingAsync(
-            registration,
-            cancellationToken).ConfigureAwait(false);
+        (bool success, AdminOperationalIndexDomainMetadata? bindingMetadata, IReadOnlyList<NamedProjectionRouteCatalogEntry> entries) =
+            await LoadBindingAsync(registration, cancellationToken).ConfigureAwait(false);
         if (!success) {
             throw new InvalidOperationException(
                 $"Named projection metadata refresh failed for '{registration.AppId}/{GetServiceVersion(registration)}/{registration.Domain}'.");
+        }
+
+        if (bindingMetadata is not null) {
+            _ = await WriteDomainQueryTypeIndexAsync(
+                registration.Domain,
+                bindingMetadata.QueryTypes ?? [],
+                cancellationToken).ConfigureAwait(false);
         }
 
         string version = GetServiceVersion(registration);
@@ -463,18 +473,39 @@ public sealed partial class AdminOperationalIndexHostedService(
         }
     }
 
-    private async Task WriteQueryTypeIndexAsync(AdminOperationalIndexSnapshot snapshot, CancellationToken ct) {
+    private async Task<int> WriteQueryTypeIndexAsync(AdminOperationalIndexSnapshot snapshot, CancellationToken ct) {
         if (snapshot.QueryTypesByDomain is null) {
-            return;
+            return 0;
         }
 
+        int written = 0;
         foreach ((string domain, IReadOnlyList<string> queryTypes) in snapshot.QueryTypesByDomain) {
-            await daprClient.SaveStateAsync(
-                _stateStoreName,
-                $"admin:query-types:{domain}",
-                queryTypes.ToList(),
-                cancellationToken: ct).ConfigureAwait(false);
+            if (await WriteDomainQueryTypeIndexAsync(domain, queryTypes, ct).ConfigureAwait(false)) {
+                written++;
+            }
         }
+
+        return written;
+    }
+
+    private async Task<bool> WriteDomainQueryTypeIndexAsync(
+        string domain,
+        IReadOnlyList<string> queryTypes,
+        CancellationToken ct) {
+        List<string> normalized = [.. queryTypes
+            .Where(static queryType => !string.IsNullOrWhiteSpace(queryType))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+        if (normalized.Count == 0) {
+            return false;
+        }
+
+        await daprClient.SaveStateAsync(
+            _stateStoreName,
+            $"admin:query-types:{domain}",
+            normalized,
+            cancellationToken: ct).ConfigureAwait(false);
+        return true;
     }
 
     private async Task SaveCatalogScopeAsync(
@@ -535,7 +566,7 @@ public sealed partial class AdminOperationalIndexHostedService(
         [LoggerMessage(
             EventId = 6101,
             Level = LogLevel.Warning,
-            Message = "Skipping admin operational index writes because one or more domain metadata sources failed. Existing indexes are preserved.")]
+            Message = "Skipping admin projection and type-catalog index writes because one or more domain metadata sources failed. Existing projection and type-catalog indexes are preserved.")]
         public static partial void MetadataWriteSkipped(ILogger logger);
 
         [LoggerMessage(
@@ -549,6 +580,12 @@ public sealed partial class AdminOperationalIndexHostedService(
             Level = LogLevel.Warning,
             Message = "Named projection metadata rejected for AppId={AppId}, ServiceVersion={ServiceVersion}; the previous complete route catalog is preserved.")]
         public static partial void NamedProjectionMetadataRejected(ILogger logger, string appId, string serviceVersion);
+
+        [LoggerMessage(
+            EventId = 6104,
+            Level = LogLevel.Information,
+            Message = "Persisted handler query-type indexes for {DomainCount} domain(s) whose metadata loaded successfully while other domain metadata sources failed.")]
+        public static partial void QueryTypeIndexesWrittenDespitePartialFailure(ILogger logger, int domainCount);
     }
 }
 

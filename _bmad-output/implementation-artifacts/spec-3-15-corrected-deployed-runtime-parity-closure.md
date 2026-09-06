@@ -1051,3 +1051,32 @@ Scope: `94591f35...HEAD` narrowed to the seven Story 3.15 tool files (`assemble-
 - low — In-process `validate()` without `-I` from a non-repo cwd can shadow stdlib: the operator CLI re-execs `-I -S -B`; adding cwd/stdlib-origin guards is more than a direct correction for a library path operators do not use.
 - maybe-false — `subject.json` deleted between timestamp load and restamp keeps a stale `created_at`: requires a concurrent deleter during a single-threaded assemble; if true it would only be low (content restamp already runs when the file still exists and changed).
 
+### Review Findings (2026-09-06, Group B — tests chunk)
+
+Scope: `94591f35...HEAD` narrowed to Story 3.15 test files (`CorrectedDeployedRuntimeParityClosureTests.cs` and `CorrectedDeployedRuntimeParitySmokeCaptureTests.cs`). 5,516 diff lines. Four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); none failed.
+
+**patch (unambiguous fix; no human input needed):**
+
+- [ ] [Review][Patch] Missing Windows OS check in SymbolicLinksCannotEvadeClosedInventory [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:1274]
+- [ ] [Review][Patch] Negative coverage for nested durable source and stray fields omits the Test Architect role [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2187, :3157]
+- [ ] [Review][Patch] Platform smoke execution interval containment within aggregate window is unverified [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2915-2925, :3524-3580]
+- [ ] [Review][Patch] Receipt claim divergence from retained GitHub acceptance comment payload is unverified [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3474-3522]
+- [ ] [Review][Patch] Vacuous test execution in BytesRepositoryPathsAreRecognisedRatherThanSilentlyDropped due to interpreter bootstrap re-exec [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3025-3042]
+- [ ] [Review][Patch] Malformed XML doc comment on Utc and missing doc on MutateRegistrySourceBody [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4313-4325]
+- [ ] [Review][Patch] Brittle byte offset calculation in StaleBytecodeCannotStandInForVerifiedSource [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2417-2422]
+
+**Rejected**
+
+- false — Missing disk verification for GitHub release asset package domain: `github_release_asset` files are in the predecessor Story 3.14 packet and are verified via predecessor identity checks, not inside Story 3.15's own packages folder.
+- false — Dead assertion branch in `OperatorRecordsStateTheCurrentSubjectAndVerdict`: `if (receipts == RequiredRoles.Length)` is a valid intentional branch supporting future/varied packet state.
+- false — One-sided collision testing in `RosterAndOwnerAcceptanceCommentsRequireDistinctIdentities`: set uniqueness `len({roster, eventstore, release}) == 3` is symmetric; testing collision against roster and against eventstore-owner fully exercises duplicates.
+- false — Multiline regex end-of-line matching on CRLF checkouts in `CleanupAllowanceAgreesBetweenVerifierAndCaptureTool`: `.gitattributes` and `.editorconfig` pin Python files to LF; CRLF would invalidate their SHA-256 digests before regex runs.
+- spec-edit — Test assertions enforce current reminted subject `a5c07d17...`, conflicting with superseded subject `84dee6e5...` in Spec § Verification: rejected because fix would edit the spec under review.
+- low — Inconsistent platform filtering (`return;` in ClosureTests vs `Assert.Skip` in SmokeCaptureTests): deliberate to satisfy AC4 "no skipped case" on Windows in ClosureTests while SmokeCaptureTests requires Unix host; no impact on Linux CI.
+- low — Unused `role` parameter on duplicate/missing rows and missing switch `default` throw in `InvalidAcceptanceNeverAuthorizesParity`: purely defensive/cosmetic in test helper with known theory data.
+- low — Misleading variable naming `expectedError = "pass:"` in `VerifiersCrossAHermeticInterpreterBoundaryBeforeShadowableImports`: cosmetic naming in private test method.
+- low — Attribute discrepancy between `[SupportedOSPlatform("linux")]` and `RequireUnixHost()`: documented analyzer hint vs runtime Unix skip.
+- low — Defensive missing `else throw` / `default: throw` across test helpers: inputs are statically bounded by theory `InlineData`.
+- low — Matrix Row 2 tag-only fact mutation: OCI validator strictly checks digest strings (`sha256:...`); tag values fail equality without separate test case.
+
+

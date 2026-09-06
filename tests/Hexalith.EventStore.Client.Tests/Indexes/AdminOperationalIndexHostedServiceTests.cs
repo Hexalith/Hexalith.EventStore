@@ -103,6 +103,96 @@ public class AdminOperationalIndexHostedServiceTests {
     }
 
     [Fact]
+    public async Task StartAsync_PartialMetadataFailure_WritesRecoveredHandlerQueryTypesWithoutProjectionIndexes() {
+        AdminOperationalIndexMetadataResponse tenantsResponse = CreateTenantsMetadataResponse(["get-tenant", "list-tenants"]);
+        DaprClient daprClient = CreateDaprClient();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(request => {
+            if (IsAppId(request, "tenants")) {
+                return JsonResponse(tenantsResponse);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        });
+        INamedProjectionRouteCatalog routeCatalog = Substitute.For<INamedProjectionRouteCatalog>();
+        AdminOperationalIndexHostedService hostedService = CreateHostedService(
+            daprClient,
+            httpClientFactory,
+            routeCatalog,
+            new DomainServiceRegistration("sample", "process", "*", "counter", "v1"),
+            new DomainServiceRegistration("tenants", "process", "*", "tenants", "v1"));
+
+        await hostedService.StartAsync(CancellationToken.None);
+        await hostedService.StopAsync(CancellationToken.None);
+
+        routeCatalog.DidNotReceiveWithAnyArgs().Replace(default!);
+        IReadOnlyList<(string Key, object? Value)> saved = GetSavedStates(daprClient);
+        saved.Select(static item => item.Key).ShouldBe(["admin:query-types:tenants"]);
+        ((IEnumerable<string>)saved[0].Value!).ShouldBe(["get-tenant", "list-tenants"]);
+    }
+
+    [Fact]
+    public async Task StartAsync_PartialMetadataFailure_DoesNotWriteEmptyQueryTypeCatalog() {
+        AdminOperationalIndexMetadataResponse tenantsResponse = CreateTenantsMetadataResponse([]);
+        DaprClient daprClient = CreateDaprClient();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(request => {
+            if (IsAppId(request, "tenants")) {
+                return JsonResponse(tenantsResponse);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        });
+        INamedProjectionRouteCatalog routeCatalog = Substitute.For<INamedProjectionRouteCatalog>();
+        AdminOperationalIndexHostedService hostedService = CreateHostedService(
+            daprClient,
+            httpClientFactory,
+            routeCatalog,
+            new DomainServiceRegistration("sample", "process", "*", "counter", "v1"),
+            new DomainServiceRegistration("tenants", "process", "*", "tenants", "v1"));
+
+        await hostedService.StartAsync(CancellationToken.None);
+        await hostedService.StopAsync(CancellationToken.None);
+
+        routeCatalog.DidNotReceiveWithAnyArgs().Replace(default!);
+        daprClient.ReceivedCalls().ShouldNotContain(static call => call.GetMethodInfo().Name == nameof(DaprClient.SaveStateAsync));
+    }
+
+    [Fact]
+    public async Task RefreshAsync_RecoveredBinding_WritesHandlerQueryTypesAfterStartupFailure() {
+        int tenantsRequests = 0;
+        AdminOperationalIndexMetadataResponse tenantsResponse = CreateTenantsMetadataResponse(["get-tenant"]);
+        DaprClient daprClient = CreateDaprClient();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(request => {
+            if (!IsAppId(request, "tenants")) {
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
+
+            tenantsRequests++;
+            return tenantsRequests == 1
+                ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                : JsonResponse(tenantsResponse);
+        });
+        INamedProjectionRouteCatalog routeCatalog = Substitute.For<INamedProjectionRouteCatalog>();
+        var tenantsRegistration = new DomainServiceRegistration("tenants", "process", "*", "tenants", "v1");
+        AdminOperationalIndexHostedService hostedService = CreateHostedService(
+            daprClient,
+            httpClientFactory,
+            routeCatalog,
+            new DomainServiceRegistration("sample", "process", "*", "counter", "v1"),
+            tenantsRegistration);
+
+        await hostedService.StartAsync(CancellationToken.None);
+        GetSavedStates(daprClient).ShouldBeEmpty();
+
+        bool namedRoutesPublished = await hostedService.RefreshAsync(tenantsRegistration);
+        await hostedService.StopAsync(CancellationToken.None);
+
+        namedRoutesPublished.ShouldBeFalse();
+        IReadOnlyList<(string Key, object? Value)> saved = GetSavedStates(daprClient);
+        saved.Select(static item => item.Key).ShouldBe(["admin:query-types:tenants"]);
+        ((IEnumerable<string>)saved[0].Value!).ShouldBe(["get-tenant"]);
+    }
+
+    [Fact]
     public void BuildSnapshot_RejectsProjectionActorKeysAndBuildsCatalogPayloads() {
         var metadata = new AdminOperationalIndexDomainMetadata(
             "counter",
@@ -276,10 +366,17 @@ public class AdminOperationalIndexHostedServiceTests {
     private static AdminOperationalIndexHostedService CreateHostedService(
         DaprClient daprClient,
         IHttpClientFactory httpClientFactory,
-        INamedProjectionRouteCatalog routeCatalog) {
-        var registration = new DomainServiceRegistration("sample", "process", "*", "counter", "v1");
+        INamedProjectionRouteCatalog routeCatalog,
+        params DomainServiceRegistration[] registrations) {
+        DomainServiceRegistration[] effectiveRegistrations = registrations.Length == 0
+            ? [new DomainServiceRegistration("sample", "process", "*", "counter", "v1")]
+            : registrations;
         var domainOptions = new DomainServiceOptions();
-        domainOptions.Registrations["*:counter:v1"] = registration;
+        foreach (DomainServiceRegistration registration in effectiveRegistrations) {
+            string version = string.IsNullOrWhiteSpace(registration.Version) ? "v1" : registration.Version;
+            domainOptions.Registrations[$"{registration.TenantId}:{registration.Domain}:{version}:{registration.AppId}"] = registration;
+        }
+
         return new AdminOperationalIndexHostedService(
             daprClient,
             httpClientFactory,
@@ -294,15 +391,20 @@ public class AdminOperationalIndexHostedServiceTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.CreateInvokeMethodRequest(
                 HttpMethod.Post,
-                "sample",
+                Arg.Any<string>(),
                 "admin/operational-index-metadata",
                 Arg.Any<IReadOnlyCollection<KeyValuePair<string, string>>>(),
                 Arg.Any<AdminOperationalIndexMetadataRequest>())
-            .Returns(new HttpRequestMessage(HttpMethod.Post, "http://metadata"));
+            .Returns(callInfo => new HttpRequestMessage(
+                HttpMethod.Post,
+                $"http://metadata/{callInfo.ArgAt<string>(1)}"));
         return daprClient;
     }
 
-    private static IHttpClientFactory CreateHttpClientFactory(Func<HttpResponseMessage> responseFactory) {
+    private static IHttpClientFactory CreateHttpClientFactory(Func<HttpResponseMessage> responseFactory)
+        => CreateHttpClientFactory(_ => responseFactory());
+
+    private static IHttpClientFactory CreateHttpClientFactory(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         _ = factory.CreateClient(Arg.Any<string>())
             .Returns(new HttpClient(new AdminOperationalIndexHttpMessageHandler(responseFactory)));
@@ -310,4 +412,34 @@ public class AdminOperationalIndexHostedServiceTests {
             .Returns(new HttpClient(new AdminOperationalIndexHttpMessageHandler(responseFactory)));
         return factory;
     }
+
+    private static AdminOperationalIndexMetadataResponse CreateTenantsMetadataResponse(IReadOnlyList<string> queryTypes)
+        => new([
+            new AdminOperationalIndexDomainMetadata(
+                "tenants",
+                ["Hexalith.Tenants.Contracts.Events.TenantCreated"],
+                [],
+                ["Hexalith.Tenants.Contracts.Commands.CreateTenant"],
+                ["Hexalith.Tenants.TenantAggregate"],
+                ["tenants"],
+                queryTypes),
+        ]);
+
+    private static HttpResponseMessage JsonResponse(AdminOperationalIndexMetadataResponse response)
+        => new(HttpStatusCode.OK) {
+            Content = new StringContent(
+                JsonSerializer.Serialize(response, JsonSerializerOptions.Web),
+                Encoding.UTF8,
+                "application/json"),
+        };
+
+    private static bool IsAppId(HttpRequestMessage request, string appId)
+        => string.Equals(request.RequestUri?.AbsolutePath.Trim('/'), appId, StringComparison.Ordinal);
+
+    private static IReadOnlyList<(string Key, object? Value)> GetSavedStates(DaprClient daprClient)
+        => [.. daprClient.ReceivedCalls()
+            .Where(static call => string.Equals(call.GetMethodInfo().Name, nameof(DaprClient.SaveStateAsync), StringComparison.Ordinal))
+            .Select(static call => (
+                Key: (string)call.GetArguments()[1]!,
+                Value: call.GetArguments()[2]))];
 }

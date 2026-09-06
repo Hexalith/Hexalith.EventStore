@@ -10,7 +10,8 @@ namespace Hexalith.EventStore.Queries;
 
 /// <summary>
 /// Reads each domain's handler-served query types from the admin operational index (DAPR state key
-/// <c>admin:query-types:{domain}</c>, written at startup by <c>AdminOperationalIndexHostedService</c>),
+/// <c>admin:query-types:{domain}</c>, written by <c>AdminOperationalIndexHostedService</c> for every
+/// domain whose metadata loaded successfully),
 /// with a short in-memory cache mirroring <c>DaprCommandAggregateTypeResolver</c>. On any read failure it
 /// reports "no handler", so routing fails safe to the projection-actor path.
 /// </summary>
