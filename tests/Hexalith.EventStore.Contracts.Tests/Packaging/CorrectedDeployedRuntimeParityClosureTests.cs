@@ -2427,10 +2427,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 "# subject must bind them too, or a v3 change would leave the subject and every receipt valid while";
             int lineStart = trustedText.IndexOf(ReplaceableLine, StringComparison.Ordinal);
             lineStart.ShouldBeGreaterThan(0);
+            int byteOffset = Encoding.UTF8.GetByteCount(trustedText.AsSpan(0, lineStart));
             string maliciousLine = "print('untrusted-bytecode-executed')".PadRight(ReplaceableLine.Length);
             maliciousLine.Length.ShouldBe(ReplaceableLine.Length);
             byte[] malicious = [.. trusted];
-            Encoding.ASCII.GetBytes(maliciousLine).CopyTo(malicious, lineStart);
+            Encoding.ASCII.GetBytes(maliciousLine).CopyTo(malicious, byteOffset);
             DateTime timestampCandidate = DateTime.UtcNow.AddMinutes(-1);
             DateTime cacheTimestamp = new(
                 timestampCandidate.Ticks - (timestampCandidate.Ticks % TimeSpan.TicksPerSecond),
@@ -4462,6 +4463,14 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         RebindInventoryAndSubject(packet);
     }
 
+    /// <summary>
+    /// Rewrites the retained roster comment's body, then rebinds the registry document and the
+    /// closure's registry binding. The technical inventory and the canonical subject are left alone
+    /// on purpose: registry validation runs before the inventory sweep, so a negative case fails on
+    /// the registry itself.
+    /// </summary>
+    /// <param name="packet">Packet root to mutate.</param>
+    /// <param name="transform">Body rewrite to apply.</param>
     private static void MutateRegistrySourceBody(string packet, Func<string, string> transform) =>
         MutateRegistrySourceDocument(
             packet,
