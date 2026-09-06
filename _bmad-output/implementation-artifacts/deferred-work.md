@@ -3897,3 +3897,47 @@ resolution: `AdminOperationalIndexHostedService` now writes `admin:query-types:{
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Concurrent EventStore marker, actor, Admin UI, and Story 3.15 tooling defects remain in the baseline-wide review subject.
   evidence: P7-ECH-01 through P7-ECH-10 and P7-ECH-14/P7-ECH-15 verified those outcomes in EventStore/Admin/3.15 files that Story 4.7 did not change.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: An empty recovered handler query-type list leaves any prior `admin:query-types:{domain}` catalog in place, so EventStore can keep routing dropped handler types.
+  evidence: P8-BH-05, P8-ECH-10, and P8-VG-02 verified `WriteDomainQueryTypeIndexAsync` returns false with no `DeleteStateAsync` when normalized types are empty, and hosted-service tests never seed a leftover catalog before recovering `[]`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: The in-memory domain-event marker store disagrees with the Dapr store on illegal states and transition retry bounds.
+  evidence: P8-BH-07 and P8-ECH-07 verified unknown states return cast `-1` in memory while Dapr throws; P8-ECH-08 verified in-memory `Transition` retries until cancel versus Dapr's five-attempt cap.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Binding `get-tenant-audit` cursors to requester identity can invalidate previously issued audit cursors without a purpose-version bump.
+  evidence: P8-BH-10 verified `GetTenantAuditQueryHandler` now scopes cursors with `envelope.UserId` via `TenantQueryCursorScopes.GetTenantAudit`; that handler is outside the Story 4.7 Code Map.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: A single unknown or category-mismatched tenant audit event fails the entire audit page as `InvalidPayload`.
+  evidence: P8-BH-11 verified `IsValidTenantAuditPayload` returns false on the first unsupported `EventType`/`Category` pair, with no mixed-page coverage.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Tenant audit identifier safety matches unsafe fragments against an alphanumeric-only collapsed string and rejects legitimate ids that contain those fragments.
+  evidence: P8-BH-12 verified `TenantAuditSupportSafety.IsSafe` inspects a letter-or-digit-only form, so values such as `token-service` or ids containing `eyj` are treated as unsafe.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: An Access audit row with a missing or unsafe narrative user id uses the tenant id as the correction target.
+  evidence: P8-ECH-02 verified `TenantAuditRow.FromEntry` sets `target` to `narrative.UserId ?? narrative.ConfigurationKey ?? tenantId` with no Access-category invalidation.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Completing a terminal aggregate-command reconciliation after the owner has left clears the retained result so a later owner cannot adopt it.
+  evidence: P8-ECH-03 verified `TryCompleteReconciliationDispatch` nulls `Reconciliation` and sets `IsReleased` when the lifecycle is terminal and `CurrentOwner` is null.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: A later exception in global-administrator remove dispatch can overwrite an accepted lease with `Ambiguous`.
+  evidence: P8-ECH-04 verified the `catch` still runs `ApplySubmissionFailure` / `TryCompleteReconciliationDispatch` even after an earlier accepted dispatch.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Tenant detail audit retention can treat another caller's snapshot as in-scope because it uses the caller-free `MatchesScope` overload.
+  evidence: P8-ECH-06 verified `TenantDetailPage` calls `audit.MatchesScope(request)` while `TenantQueryGateway` binds retained evidence with `MatchesScope(request, callerScope)`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Admin Consistency has no Operator+Running test that Cancel is hidden, even though the control is Admin-gated in markup.
+  evidence: P8-VG-03 verified `Consistency_CancelButtonOnlyForRunningChecks` uses the default Admin identity and the Operator opaque-check test uses a Completed row.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: `Consistency_ShowsTriggerButton_ForOperatorUser` never configures an Operator identity.
+  evidence: P8-VG-O1 verified the method uses `AdminUITestContext`'s default Admin user and never calls `ConfigureRole(AdminRole.Operator)`.

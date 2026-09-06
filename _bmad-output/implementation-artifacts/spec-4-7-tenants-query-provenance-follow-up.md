@@ -2,7 +2,7 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 6
 followup_review_recommended: true
@@ -323,6 +323,54 @@ deferred: ['DW-487', 'DW-488', 'DW-489', 'DW-490', 'DW-491', 'DW-492', 'DW-493',
   - `[medium]` `[defer]` EventStore handler-registry fail-open: P7-BH-07 remains platform topology outside Tenants producer scope.
   - `[medium]` `[defer]` Concurrent EventStore/Admin/3.15 findings: P7-ECH-01 through P7-ECH-10, P7-ECH-14, P7-ECH-15, and carried P7-ECH-04/P7-VG-01 retain prior routing and are not deferred again.
 - loopback: none; no intent gap or bad spec survived. Apply the two Story 4.7 patches.
+
+### 2026-09-06 — Review pass 8 (bmad-build)
+
+- verdicts: 29 findings — high 0, medium 16, low 1, false 12, maybe-false 0, carried 11
+- routes: intent_gap 0, bad_spec 0, patch 0, defer 11, reject 18
+- findings:
+  - `[false]` `[reject]` `[carried]` `[P8-BH-01]` Carried from P7-BH-08: `PublishFailed` → `Assert.Skip` remains the approved pass-6 environment triage. This run's subject still contains that skip; a skip is still not completion evidence.
+  - `[false]` `[reject]` `[P8-BH-02]` The live Aspire proof covers `get-tenant` only. Frozen Always six-route coverage is the handler/factory matrices; AC3 specifies one uniquely persisted tenant through EventStore, generated API, and typed client.
+  - `[false]` `[reject]` `[P8-BH-03]` After the fail-closed EventStore POST, a missing `admin:query-types:tenants` catalog yields `ProjectionBacked` and the test fails. AC3 does not require asserting Event 6104 or the catalog key.
+  - `[false]` `[reject]` `[P8-BH-04]` EventStore `Metadata.IsNotModified` is the stripped producer validator (`null`). Typed-client `IsNotModified` is the HTTP 304 flag from `TenantsRestQueryClient.ReadMetadata`, not a second producer contract.
+  - `[medium]` `[defer]` `[P8-BH-05]` `WriteDomainQueryTypeIndexAsync` returns false without `DeleteStateAsync` when recovered types are empty, so a prior `admin:query-types:{domain}` list can remain. This is DW-495 EventStore routing, which Story 4.7 intent excludes.
+  - `[medium]` `[defer]` `[carried]` `[P8-BH-06]` Carried from P7-ECH-01: Dapr `TryAcquireAsync` still never persists `InProgress`. Concurrent EventStore marker work; not deferred again.
+  - `[medium]` `[defer]` `[P8-BH-07]` In-memory `TryAcquireAsync` returns `(EventStoreDomainEventMarkerAcquisitionResult)(-1)` for unknown states while the Dapr store throws. Concurrent EventStore marker protocol, not Tenants producer scope.
+  - `[medium]` `[defer]` `[carried]` `[P8-BH-08]` Carried from P7-ECH-05: blank `tenantId` still injects `tenantClaims.FirstOrDefault()`. Concurrent Admin work; not deferred again.
+  - `[false]` `[reject]` `[P8-BH-09]` `QueryEnvelope` construction requires non-whitespace `UserId` (`QueryEnvelope.cs:182`). A requester-less query never reaches `GetTenantAuditQueryHandler`.
+  - `[medium]` `[defer]` `[P8-BH-10]` Binding `get-tenant-audit` cursors to requester identity can invalidate previously issued cursors. The handler is outside the Story 4.7 Code Map.
+  - `[medium]` `[defer]` `[P8-BH-11]` `IsValidTenantAuditPayload` fails the whole page on an unknown event type or category mismatch. Tenants UI validation, not producer provenance.
+  - `[medium]` `[defer]` `[P8-BH-12]` `TenantAuditSupportSafety` matches unsafe fragments against an alphanumeric-only collapsed string, so identifiers containing `token`/`secret`/`eyj` are rejected. Tenants UI safety, not Story 4.7.
+  - `[medium]` `[defer]` `[carried]` `[P8-BH-13]` Carried from P7-ECH-08 and P7-ECH-09: `OnRowClick` still lets `ServiceUnavailableException` escape, and `OnAuthenticationStateChanged` still queues `InvokeAsync` without a `_disposed` guard. Concurrent Admin UI; not deferred again.
+  - `[medium]` `[defer]` `[carried]` `[P8-BH-14]` Carried from DW-493/DW-490: inert `ReadModelFreshnessOptions` and unsatisfiable UI projection-confirmation remain. Frozen Design Notes keep the signature; not deferred again.
+  - `[medium]` `[reject]` `[carried]` `[P8-BH-15]` Carried from P7-BH-01/P7-BH-04: the concatenated EventStore-since-baseline plus Tenants-since-`d2b7ede3` subject is not an isolated Story 4.7 tree, and `sprint-status.yaml` movement is orchestrator-owned. Spec/history rewrite is rejected.
+  - `[false]` `[reject]` `[P8-ECH-01]` The cited `HasMore && Items.Count < pageSize` guard does not exist. Nonempty short pages keep `payload.HasMore`; `Empty()` runs only when `rows.Count == 0`.
+  - `[medium]` `[defer]` `[P8-ECH-02]` `TenantAuditRow.FromEntry` falls back to `tenantId` when an Access narrative has no safe `UserId`. Tenants UI targeting, not producer provenance.
+  - `[medium]` `[defer]` `[P8-ECH-03]` Terminal reconciliation with a null current owner removes the lock and nulls `Reconciliation`, so a later owner cannot adopt that terminal result. Concurrent Tenants command-admission UI.
+  - `[medium]` `[defer]` `[P8-ECH-04]` The remove-dispatch `catch` can still overwrite an accepted lease with `Ambiguous` after a later exception. Concurrent Tenants UI, not Story 4.7.
+  - `[medium]` `[defer]` `[carried]` `[P8-ECH-05]` Carried from P7-ECH-05 / P8-BH-08: blank `tenantId` still injects the first tenant claim. The cited `tenantClaims.Count != 1` deny guard is not in the current filter. Not deferred again.
+  - `[medium]` `[defer]` `[P8-ECH-06]` `TenantDetailPage` still calls caller-free `MatchesScope(request)` while the gateway binds retention with caller scope. Concurrent Tenants UI.
+  - `[medium]` `[defer]` `[P8-ECH-07]` Same in-memory unknown-state `(-1)` result as P8-BH-07. Concurrent EventStore marker protocol.
+  - `[medium]` `[defer]` `[P8-ECH-08]` In-memory marker `Transition` retries until cancel, unlike the Dapr five-attempt cap. Concurrent EventStore marker protocol.
+  - `[false]` `[reject]` `[P8-ECH-09]` `WriteTooLargeAsync` checks `Response.HasStarted` and does not write a second 413 problem body; it rethrows the original overflow exception.
+  - `[medium]` `[defer]` `[P8-ECH-10]` Same empty recovered catalog as P8-BH-05. The claimed `DeleteStateAsync` line is not in `WriteDomainQueryTypeIndexAsync`; the leftover prior key is the actual outcome.
+  - `[medium]` `[defer]` `[carried]` `[P8-VG-01]` Carried from P7-VG-01: `HeavyweightContainerPublish` remains excluded from automatic Contracts CI. Unrelated release-governance gap; not deferred again.
+  - `[medium]` `[defer]` `[P8-VG-02]` Pre-verified: hosted-service tests never seed a leftover `admin:query-types:{domain}` and then recover an empty list. Same DW-495 empty-catalog defect as P8-BH-05; Story 4.7 intent excludes EventStore routing, so this is not a story patch.
+  - `[medium]` `[defer]` `[P8-VG-03]` Pre-verified: no Operator+Running test asserts Cancel is hidden. The page already wraps Cancel in `AuthorizedView MinimumRole=Admin`. Concurrent Admin UI.
+  - `[low]` `[defer]` `[P8-VG-O1]` `Consistency_ShowsTriggerButton_ForOperatorUser` uses the default Admin identity and never calls `ConfigureRole(Operator)`. Concurrent Admin UI test naming.
+- grouped survivors:
+  - `[medium]` `[defer]` Empty recovered query-type catalogs leave a prior handler index: P8-BH-05, P8-ECH-10, and P8-VG-02.
+  - `[medium]` `[defer]` In-memory vs Dapr marker protocol: P8-BH-07, P8-ECH-07, and P8-ECH-08.
+  - `[medium]` `[defer]` `get-tenant-audit` requester-bound cursors: P8-BH-10.
+  - `[medium]` `[defer]` Unknown audit events fail the whole page: P8-BH-11.
+  - `[medium]` `[defer]` Alphanumeric audit-safety false positives: P8-BH-12.
+  - `[medium]` `[defer]` Access audit target fallback: P8-ECH-02.
+  - `[medium]` `[defer]` Terminal reconciliation dropped after owner left: P8-ECH-03.
+  - `[medium]` `[defer]` Remove-dispatch catch overwrites accepted lease: P8-ECH-04.
+  - `[medium]` `[defer]` Caller-free audit `MatchesScope` on tenant detail: P8-ECH-06.
+  - `[medium]` `[defer]` Missing Operator+Running Cancel test: P8-VG-03.
+  - `[low]` `[defer]` Misnamed Operator trigger test: P8-VG-O1.
+- loopback: none; no intent gap, bad spec, or Story 4.7 patch survived. Carried deferrals were not written again.
 
 ## Design Notes
 
