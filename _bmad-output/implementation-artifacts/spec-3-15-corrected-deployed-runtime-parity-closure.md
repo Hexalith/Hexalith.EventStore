@@ -45,9 +45,10 @@ context:
 - `tools/assemble-corrected-deployed-runtime-parity.py` -- deterministic packet producer: re-mints the subject, derives the package count and parity verdict from retained evidence rather than asserting them, and runs the pinned verifier over its own output before exiting.
 - `tools/capture-corrected-deployed-runtime-parity-smokes.py` -- bounded two-platform Production smoke capture.
 - `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/` -- complete
-  receipt/source trees bound to superseded subjects `bb58d691...` and `dab64f5f...`, retained unbound
-  for audit. They must never be moved back into the packet; the `bb58d691...` owner sources are
-  anchored on issue `#346` and are rejected on lineage as well as on subject.
+  receipt/source trees bound to superseded subjects `bb58d691...`, `dab64f5f...`, `a8cc777e...`, and
+  `86c59c79...`, retained unbound for audit. They must never be moved back into the packet; the
+  `bb58d691...` owner sources are anchored on issue `#346` and are rejected on lineage as well as on
+  subject.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- new positive-closure and fail-closed mutation suite.
 - `_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` -- immutable predecessor packet; only the successful `v3.96.2` subgraph is selectable.
 - `_bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` -- new hash-closed technical evidence, subject-addressed acceptances, and final verdict.
@@ -520,6 +521,21 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-09-06 (Group A tools patch):** Closed the six Group A patches in one remint. A
+  `TimeoutExpired` during `docker run` now inspects/rms the uuid-named container without changing the
+  non-zero-exit “do not rm” rule. The assembler restores the previous `closure.json` when the pinned
+  verifier does not complete (timeout, spawn failure); a completed verifier, including the expected
+  receipt-gate exit 1, keeps the newly assembled claim file so zero-receipt assembly remains
+  inspectable. Encrypted or unsupported-compression nuspec reads fail closed as `EvidenceError`. The
+  closed inventory exempts only the validated evidence path. Story 3.14 tests now exercise the
+  script-adjacent `--manifest` default and assert the `rerun:` trigger. Binding those live bytes
+  re-minted subject `86c59c79...` to
+  `84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`; the packet reports
+  `receipts=0 verifier_exit=1` and **fails closed**. The three `86c59c79...` receipts collected on
+  2026-09-05 remain byte-for-byte in the superseded audit area. Replacement receipts were not
+  collected (Ask First). No deployment, publication, registry mutation, consumer removal, predecessor
+  change, commit, or push was performed.
+
 - **2026-08-30 (trusted verifier and packet producers):** Closed all 14 Chunk-1 review findings.
   Both verifier entry points now cross an isolated, no-site interpreter boundary before shadowable
   imports. The Production capture bypasses proxies, rejects unsafe output paths, owns cleanup only
@@ -736,8 +752,8 @@ Both owner receipts are independently constrained to the same positively allowli
 **Commands:**
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: sha256:4d1a0c33...`, exit 0. The frozen predecessor packet is unchanged, and its whole 66-file tree is now digest-pinned by the focused suite, not just the identity file.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: subject=sha256:86c59c79... selected=sha256:4b141085...`, exit 0. On 2026-09-05 the Ask First owner action completed: EventStore-owner comment `5550273078`, Release-owner comment `5550277712`, and the `bmad:murat` Test Architect record bind subject `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`. Deployed-runtime **parity is available**; `deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields, now granted by the 3-of-3 receipt gate. Non-authority flags stay false. A synthesized zero-receipt copy still fails closed in `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict`; the positive synthetic path remains in `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:86c59c79... receipts=3 verifier_exit=0`, exit 0, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.`, exit 1. The 2026-09-06 Group A remint rejected the three `86c59c79...` receipts collected on 2026-09-05. Current subject is `84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`. Deployed-runtime parity is **unavailable**; `deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields and are not granted. Non-authority flags stay false. A synthesized 3-of-3 copy still closes positive parity in `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`; the zero-receipt assembler path remains in `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict`.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:84dee6e5... receipts=0 verifier_exit=1`, exit 1, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 193 passed, 0 failed, 0 skipped.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 37 passed, 0 failed, 0 skipped.
 - Complete Contracts suite -- **actual:** 1846 passed, 29 failed, 0 skipped, 1875 total. All 29
@@ -764,7 +780,7 @@ Both owner receipts are independently constrained to the same positively allowli
   owner action in one place.
   [`3-15-...-closure.md:3`](3-15-corrected-deployed-runtime-parity-closure.md#L3)
 
-- Eight subjects, seven re-mints, and which three of them ever carried receipts.
+- Nine subjects, eight re-mints, and which four of them ever carried receipts.
   [`3-15-...-closure.md:61`](3-15-corrected-deployed-runtime-parity-closure.md#L61)
 
 - The loop-7 ledger entries, including the regression class loop 6 introduced.
@@ -908,13 +924,13 @@ Both owner receipts are independently constrained to the same positively allowli
 
 **Operator handoff and drift binding**
 
-- The current subject, the 3-of-3 available verdict, the claim-versus-verdict distinction, and the
+- The current subject, the fail-closed 0-of-3 verdict, the claim-versus-verdict distinction, and the
   two facts recorded rather than corrected.
   [`ci.md:588`](../../docs/ci.md#L588)
 
-- The checked-in packet's positive 3-of-3 state, drift-bound to the current subject and reading the
-  claim fields explicitly.
-  [`CorrectedDeployedRuntimeParityClosureTests.cs:159`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L159)
+- The checked-in packet's fail-closed 0-of-3 state, drift-bound to the current subject and reading
+  the claim fields explicitly.
+  [`CorrectedDeployedRuntimeParityClosureTests.cs:166`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L166)
 
 - Both markdown records are drift-bound and must read `deployed_runtime_parity` itself.
   [`CorrectedDeployedRuntimeParityClosureTests.cs:2949`](../../tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs#L2949)
@@ -980,12 +996,12 @@ Scope: `94591f35...HEAD` narrowed to the seven Story 3.15 tool files (`assemble-
 
 **patch (unambiguous fix; no human input needed):**
 
-- [ ] [Review][Patch] On `TimeoutExpired` during `docker run`, inspect/rm the uuid-named container; do not `rm` on non-zero `docker run` exit — `container_created` is set only after `docker run --detach` returns 0, so a hung run that created the container never reaches `docker rm`. [tools/capture-corrected-deployed-runtime-parity-smokes.py:143]
-- [ ] [Review][Patch] Assembler writes success-shaped `closure.json` before the pinned verifier finishes and leaves it on verifier failure, timeout, or non-locale stderr decode — `canonical_write(.../closure.json)` runs at `tools/assemble-corrected-deployed-runtime-parity.py:393-397`, then `subprocess.run` at `:409-421`; non-zero `returncode`, `TimeoutExpired` (`SubprocessError`), and `UnicodeDecodeError` from `text=True` all leave `deployed_runtime_parity: "available"` on disk. [tools/assemble-corrected-deployed-runtime-parity.py:393]
-- [ ] [Review][Patch] Encrypted or unsupported-compression `.nuspec` reads raise `RuntimeError`/`NotImplementedError` instead of `EvidenceError` — `nuspec_identity` catches only `OSError`, `zipfile.BadZipFile`, and `ParseError` (`tools/release_evidence_handlers/v3.py:509-510`). The 3.15 dispatcher does not catch `RuntimeError`, so a self-consistent candidate with an encrypted nuspec entry exits with a traceback instead of support-safe `fail:` + `rerun:`. [tools/release_evidence_handlers/v3.py:463]
-- [ ] [Review][Patch] Closed inventory always exempts a basename `closure.json` even when the validated evidence file is a different path — `_validate_inventory` unions `"closure.json"` into `closed` (`tools/deployed_runtime_parity_handlers/v1.py:922`) while the CLI takes an arbitrary evidence path plus `--packet-root`. A leftover packet `closure.json` whose bytes disagree with the validated evidence is not an extra-file failure. [tools/deployed_runtime_parity_handlers/v1.py:922]
-- [ ] [Review][Patch] Story 3.14 `--manifest` default (script-adjacent `release-packages.json`) is never exercised — every `RunEvidenceValidator` call passes `--manifest tools/release-packages.json` (`CorrectiveOciProvenanceReleaseTests.cs:1589-1597`). Restoring the cwd-relative default would not fail that suite. [tools/validate-corrective-release-evidence.py:243]
-- [ ] [Review][Patch] Story 3.14 fail line never asserts the new `rerun:` trigger — `CanonicalReleaseIdentityRejectsUnhashableDispatchMetadata` checks only the fail prefix and no `Traceback` (`CorrectiveOciProvenanceReleaseTests.cs:891-914`). Dropping `; rerun: {RERUN_TRIGGER}` at `validate-corrective-release-evidence.py:257-261` keeps that test green. [tools/validate-corrective-release-evidence.py:257]
+- [x] [Review][Patch] On `TimeoutExpired` during `docker run`, inspect/rm the uuid-named container; do not `rm` on non-zero `docker run` exit — `container_created` is set only after `docker run --detach` returns 0, so a hung run that created the container never reaches `docker rm`. Closed by `_reap_timed_out_run_container` and `TimedOutDockerRunInspectsAndRemovesTheUuidNamedContainer`. [tools/capture-corrected-deployed-runtime-parity-smokes.py:92]
+- [x] [Review][Patch] Assembler writes success-shaped `closure.json` before the pinned verifier finishes and leaves it on verifier failure, timeout, or non-locale stderr decode — `canonical_write(.../closure.json)` then `subprocess.run`. Closed for incomplete children (`TimeoutExpired` / `OSError` / `SubprocessError`): `_restore_previous_closure` restores previous bytes or unlinks if none; child I/O uses `encoding="utf-8", errors="replace"`. A completed verifier, including receipt-gate exit 1, still keeps the new claim file so zero-receipt assembly remains inspectable. Proved by `AssemblerRestoresPreviousClosureWhenThePinnedVerifierTimesOut`. [tools/assemble-corrected-deployed-runtime-parity.py:97]
+- [x] [Review][Patch] Encrypted or unsupported-compression `.nuspec` reads raise `RuntimeError`/`NotImplementedError` instead of `EvidenceError` — `nuspec_identity` now maps those plus zip/XML errors to `EvidenceError("package archive could not be independently inspected")`. Proved by `EncryptedNuspecEntryFailsClosedWithoutTraceback`. [tools/release_evidence_handlers/v3.py:512]
+- [x] [Review][Patch] Closed inventory always exempts a basename `closure.json` even when the validated evidence file is a different path — `_validate_inventory` now exempts only the validated evidence path when it sits inside the packet. Proved by `LeftoverPacketClosureJsonIsNotExemptWhenEvidenceIsADifferentPath`. [tools/deployed_runtime_parity_handlers/v1.py:904]
+- [x] [Review][Patch] Story 3.14 `--manifest` default (script-adjacent `release-packages.json`) is never exercised — closed by `CanonicalReleaseIdentityUsesTheScriptAdjacentManifestDefault` (cwd ≠ repo root, no `--manifest`). [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:932]
+- [x] [Review][Patch] Story 3.14 fail line never asserts the new `rerun:` trigger — `CanonicalReleaseIdentityRejectsUnhashableDispatchMetadata` now asserts `rerun:` and the Story 3.14 trigger text. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs:891]
 
 **Rejected**
 

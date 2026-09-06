@@ -3784,3 +3784,19 @@ origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
 location: references/Hexalith.Tenants/docs/tenants-ui-truth-state-and-action-availability-spec.md (102)
 reason: The document still states that "the freshness primitive is `If-None-Match` -> `304 Not Modified`, served by the REST-backed Tenants read endpoints". After Story 4.7 the Tenants routes never emit an ETag and EventStore suppresses `IsNotModified` for non-projection-backed provenance, so 304 is unreachable on those endpoints. Neither the spec, the CHANGELOG, nor a prior ledger entry records the change. The fix edits a separate specification document and so is routed out of this review.
 status: open
+
+### DW-493: Remove or re-activate the inert Tenants read-model freshness configuration.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: references/Hexalith.Tenants/src/Hexalith.Tenants/Program.cs (71-75)
+reason: After Story 4.7, `TenantQueryResult.FromPayload`'s six-argument overload discards `readModel`, `thresholds`, and `now`, so nothing downstream can observe freshness inputs. `ReadModelFreshnessOptions` is nevertheless still bound from configuration, validated by `IsValidReadModelFreshnessOptions`, and `.ValidateOnStart()`-ed, and `_freshnessThresholds`/`_timeProvider` are still constructed and threaded through all six query handlers (`Queries/Handlers/TenantQueryHandlerBase.cs:45,76,156-166`). An operator can therefore set `ReadModelFreshness:Aging` and `:Stale`, have them accepted and validated at startup, and get no observable effect anywhere. Two comments also still describe `ToQueryResponseMetadata` as the live path (`src/Hexalith.Tenants.UI/Services/Gateways/TenantsRestQueryClient.cs:391`, `tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs:2934`). Story 4.7's frozen Design Notes deliberately preserve the overload signature for caller stability, so removing the dead surface contradicts the approved spec and needs its own story.
+status: open
+decision: 2026-09-06 Keep as-is — Administrator accepted the frozen signature and host binding unchanged for Story 4.7; cleanup routed here.
+
+### DW-494: Restore a runnable full-solution dual-graph validation lane for Hexalith.Tenants.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: references/Hexalith.Tenants/Hexalith.Tenants.slnx
+reason: Story 4.7's AC4 requires fresh Debug/source and Release/package restores plus per-project tests in both graphs. Both full-solution restores are blocked because `Hexalith.Tenants.slnx` explicitly lists projects from uninitialized nested Commons, EventStore, FrontComposer, and Memories submodules, and the approved boundary forbids initializing them. The Debug/source Integration build additionally stops at `references/Hexalith.Memories/Directory.Build.props:89` (absent nested EventStore) and the Release/package build at `src/Hexalith.Tenants.AppHost/Program.cs:132` (pre-existing `CS1503` Dapr-component API skew). The dual-graph guarantee AC4 describes is therefore never demonstrated end to end; only focused per-project lanes run.
+status: open
+decision: 2026-09-06 Accept focused-lane evidence — Administrator accepted the recorded focused results in place of the blocked broad gate for Story 4.7 closure.

@@ -81,14 +81,14 @@ therefore any complete 3/3 verdict.
 
 ## Superseded acceptances
 
-Three acceptance sets are retained byte-for-byte outside the packet under
-`evidence/story-3-15/superseded-acceptances/`: `bb58d691...`, `dab64f5f...`, and the three receipts
-collected against `a8cc777e...` that the loop-6 batch re-mint rejected. There are three sets against
-eight subjects because receipts were only ever collected for three of them; the other five subjects
-happened before any receipt existed, so their absence is expected rather than a gap. They authorize nothing for
-the current subject. That directory's README carries the re-rooting rule an auditor needs, because
-each retained receipt still declares its source under the `acceptances/<subject>/sources/` path it
-bound while it was live.
+Four acceptance sets are retained byte-for-byte outside the packet under
+`evidence/story-3-15/superseded-acceptances/`: `bb58d691...`, `dab64f5f...`, `a8cc777e...`, and the
+three receipts collected against `86c59c79...` that the 2026-09-06 Group A remint rejected. There are
+four sets against nine subjects because receipts were only ever collected for four of them; the other
+five subjects happened before any receipt existed, so their absence is expected rather than a gap.
+They authorize nothing for the current subject. That directory's README carries the re-rooting rule
+an auditor needs, because each retained receipt still declares its source under the
+`acceptances/<subject>/sources/` path it bound while it was live.
 
 For every historical set the two owner roles map to one authenticated GitHub human,
 `github:jpiquot`, while the Test Architect role is the explicitly limited, self-attested

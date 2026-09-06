@@ -3801,49 +3801,50 @@ So that development-only credentials or insecure token validation cannot leak in
 
 **Requirements coverage:** Primary ownership of the production authentication and committed-secret removal slices of FR26, NFR3, and NFR4.
 
-**Architecture constraints:** AD-10 and AD-16. Application-layer credentials are mandatory outside the three explicit health probes; if a global fallback authorization policy or default-deny convention is introduced, explicit probe anonymity lands in this same slice and the default is never weakened to restore probe reachability.
+**Architecture constraints:** AD-10 and AD-16. Application-layer credentials are mandatory outside the three explicit health probes. This story adds explicit probe-anonymity metadata but does not introduce a new global fallback authorization policy; an already-protected representative Admin endpoint is the negative authentication control. If a fallback policy or another default-deny convention exists or is introduced separately, explicit probe anonymity lands in the same or an earlier slice and the default is never weakened to restore probe reachability.
 
 **UX coverage:** Authentication and authorization failures render the canonical support-safe denied state and never expose bearer tokens, decoded claims, signing material, credential values, authority internals, or stack traces. Anonymous probe output is status-only outside Development.
 
 **Dependencies:** Story 5.2 establishes the Admin endpoint matrix this host-level posture protects. This story is the authentication prerequisite for Story 5.5's internal/domain-service boundary.
 
-**Current reconciliation:** Story 5.3 remains backlog. The Admin UI base configuration is currently free of development identity values, and Admin Server Host already validates development symmetric-key versus non-development authority posture. Completion is not established: accepted JWT algorithms are not visibly pinned, `MapDefaultEndpoints()` does not attach explicit anonymous metadata to each probe, and real-pipeline evidence has not proved the fallback-policy/probe contract under Production configuration.
+**Current reconciliation:** Story 5.3 remains backlog. The Admin UI base configuration is currently free of development identity values, but committed Development configuration still carries fixed signing-key and administrator credential values. Admin Server Host already validates development symmetric-key versus non-development authority posture. Completion is not established: accepted JWT algorithms are not visibly pinned, `MapDefaultEndpoints()` does not attach explicit anonymous metadata to each probe, and real-pipeline evidence has not proved the protected-endpoint/probe contract under Production configuration.
 
 **Acceptance Criteria:**
 
-**Given** every committed non-development or base configuration file, deployment template, test fixture intended for production reuse, and generated configuration artifact is inspected
+**Given** every committed configuration file, including clearly named Development configuration, plus every deployment template, reusable test fixture, and generated configuration artifact is inspected
 **When** administrator authentication settings are enumerated
 **Then** no signing key, password, username, bearer token, client secret, forgeable role/global-admin identity, decoded JWT payload, or other operational secret is committed
-**And** development-only credentials remain confined to clearly named Development configuration and cannot be loaded as a production fallback.
+**And** Development and test credentials are supplied only through user-secrets, environment variables, ephemeral developer tooling, or runtime-generated fixtures; no committed credential value is permitted as a fixture or can be loaded as a non-Development fallback.
 
-**Given** Admin Server Host, the gateway, or another protected host starts outside Development
+**Given** the EventStore gateway or Admin Server Host starts outside Development
 **When** no trusted authority is configured, symmetric-key validation is selected, HTTPS metadata is disabled where metadata retrieval applies, or required issuer/audience values are missing
-**Then** validated startup fails before the host becomes ready unless a narrowly named break-glass option explicitly permits the exact insecure mode
+**Then** validated startup fails before the host becomes ready unless `Authentication:JwtBearer:AllowInsecureSymmetricKey` explicitly permits the symmetric-key mode
 **And** the bounded failure identifies the unsafe configuration field and remediation without printing secret values.
 
-**Given** the break-glass option is enabled outside Development
+**Given** `Authentication:JwtBearer:AllowInsecureSymmetricKey` is enabled outside Development
 **When** startup and authentication occur
-**Then** the override is explicit, observable, auditable, and limited to symmetric-key acceptance rather than bypassing issuer, audience, lifetime, signature, role, or tenant validation
+**Then** the override emits a support-safe structured startup warning or equivalent audit signal and is limited to HS256 symmetric-key acceptance rather than bypassing issuer, audience, lifetime, signature, role, or tenant validation
 **And** documentation and tests state that it is non-production/trusted-deployment behavior rather than a conforming production posture.
 
-**Given** production JWT bearer validation is configured
+**Given** JWT bearer validation is configured outside Development
 **When** token-validation parameters and authority metadata are evaluated
-**Then** issuer, audience, signature, and lifetime validation are enabled, HTTPS metadata is required where applicable, clock skew is bounded, and the accepted signing algorithms are explicitly allowlisted
-**And** tokens using `none`, an unexpected symmetric/asymmetric family, or another non-allowlisted algorithm fail before claims transformation or endpoint execution.
+**Then** issuer, audience, signature, and lifetime validation are enabled, HTTPS metadata is required for authority/OIDC discovery, and clock skew is exactly 60 seconds
+**And** authority/OIDC mode requires a nonempty explicitly configured `Authentication:JwtBearer:AllowedAlgorithms` list containing only asymmetric algorithms, with no implicit production default, while Development and break-glass symmetric mode accept exactly HS256
+**And** a missing or empty required allowlist and tokens using `none`, the wrong symmetric/asymmetric family, or another non-allowlisted algorithm fail before claims transformation or endpoint execution.
 
-**Given** a host applies a fallback authorization policy or any default-deny endpoint convention
-**When** `/health`, `/alive`, and `/ready` are mapped
-**Then** each endpoint carries explicit `AllowAnonymous` metadata or a proven equivalent in the same or an earlier implementation slice
-**And** the fallback policy remains the fail-closed default for every endpoint without an intentional exemption.
+**Given** `ServiceDefaults.MapDefaultEndpoints` maps `/health`, `/alive`, and `/ready` on any host
+**When** endpoint metadata is built, whether or not that host currently applies a fallback authorization policy or another default-deny convention
+**Then** each probe carries explicit `AllowAnonymous` metadata or a proven equivalent and does not depend on the absence of a fallback policy
+**And** this story neither introduces nor weakens a global fallback policy; any separately introduced default remains fail closed for every endpoint without an intentional exemption.
 
-**Given** the fail-closed default is active on the real host pipeline in Production mode
+**Given** explicit probe anonymity and the existing protected Admin endpoint authorization are active on the real Admin Server Host pipeline in Production mode
 **When** an unauthenticated client calls `/health`, `/alive`, `/ready`, and a representative protected Admin endpoint
 **Then** all three probes return their actual health status while the protected endpoint challenges the caller
 **And** anonymous probe bodies disclose only `Healthy`, `Degraded`, or `Unhealthy` outcome/status—not component names, dependencies, connection targets, versions, tenant data, exception detail, or Development diagnostics.
 
 **Given** Development mode uses the documented local symmetric-key path
 **When** a valid development token and each unsafe production configuration fixture are exercised
-**Then** local development authentication remains functional while absent authority, unapproved symmetric mode, insecure metadata, missing issuer/audience, weak key, and non-allowlisted algorithm fixtures fail deterministically in their intended environments
+**Then** local development authentication remains functional while absent authority, unapproved symmetric mode, insecure metadata, missing issuer/audience, weak key, missing or empty authority-mode algorithm allowlist, and non-allowlisted algorithm fixtures fail deterministically in their intended environments
 **And** focused option tests, real-host authentication/probe tests, secret scans, the Admin Host regression lane, and Release build pass.
 
 ### Story 5.4: Admin Surface Safety Hygiene
