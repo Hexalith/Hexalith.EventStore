@@ -30,7 +30,8 @@ location: n/a
 source_spec: `spec-3-4-aspire-security-resource-naming.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260730-064902-1608; this entry preserves the lingering recommendation for a deliberate later review.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 116af80f implemented the independent Aspire-security follow-up guards; _bmad-output/implementation-artifacts/spec-independent-followup-reviews.md:93-94 records all five guards implemented and independently reviewed.
 
 ### DW-5: Follow-up review still recommended for 3-6-manifest-driven-release-packaging after the damping cap was spent
 origin: review-budget-followup
@@ -38,7 +39,8 @@ location: n/a
 source_spec: `spec-3-6-manifest-driven-release-packaging.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260731-203343-5b29; this entry preserves the lingering recommendation for a deliberate later review.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 116af80f implemented the independent release-packaging follow-up guards in ReleasePackageManifestTests and release_package_contract.py; _bmad-output/implementation-artifacts/spec-independent-followup-reviews.md:93-94 records completion.
 
 ### DW-6: The final owner-record limitation-ID comparison is asymmetric across the WORM boundary. Block 15's `validate_final_owner_record` dedupes the record's IDs with `LC_ALL=C sort -u` before diffing them against the expected set, while block 16's `validate_committed_owner_record` uses a plain `LC_ALL=C sort` and separately asserts uniqueness in jq (`length == (map(.id) | unique | length)`). A final approval record carrying a duplicate limitation ID therefore passes approval validation and only fails during A/B/C verification.
 
@@ -152,7 +154,8 @@ resolution: already resolved: src/Hexalith.EventStore.Client/Queries/QueryCursor
 origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: RestQueryBinding
 reason: 2026-07-05: Epic D retrospective follow-through requires a dedicated REST generator hardening story or backlog item. Scope it from the D5/D7 deferred items below rather than scattering generator diagnostics into unrelated security, correctness, or UI stories. Minimum scope: unsupported contract-shape diagnostics, duplicate command JSON-name diagnostics, invalid `RestQueryBinding` source diagnostics, empty constant binding diagnostics, route-template constraint behavior, case-insensitive route/JSON-name matching, referenced-contract incrementality, and generated external API error-semantics coverage.
-status: open
+status: done 2026-09-06
+resolution: already resolved: _bmad-output/planning-artifacts/backlog/rest-generator-hardening.md:29-40 records the requested first wave implemented; _bmad-output/implementation-artifacts/7-5-rest-generator-hardening.md:17 and :246-259 record done status and every minimum-scope result.
 
 ### DW-21: Query freshness/projection metadata needed a platform-owned gateway contract before UI or generated REST stories could treat stale/current state or projection version as production-backed evidence. RESOLVED 2026-07-11 by Story 2.8 / AD-15 for EventStore route provenance, route-aware ETags, and fail-safe consumers. Genuine persisted-age evidence remains the separate D6 handoff; the Tenants producer cleanup remains Story 4.7.
 
@@ -175,7 +178,8 @@ resolution: Generated API proof stories need a reusable DAPR/Aspire smoke prefli
 origin: migrated from legacy ledger ("Existing deferred work"), 2026-08-30
 location: n/a
 reason: 2026-07-01: Packaging governance tests hard-code external dependency patch versions. Consider a lower-maintenance guard that still proves central version pins and emitted package metadata stay aligned, so routine published package bumps do not require brittle test-only edits.
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs:28-41 intentionally avoids a patch-version assertion while proving one concrete nonblank central pin.
 
 ### DW-24: Handler-backed query routes need explicit provenance so the gateway can decide whether projection ETags are valid for the response.
 
@@ -206,7 +210,8 @@ resolution: already resolved: src/Hexalith.EventStore.Server/Queries/QueryRouter
 origin: migrated from legacy ledger ("Route-provenance contract reconciliation (updated 2026-07-11)"), 2026-08-30
 location: references/Hexalith.Tenants/.../TenantQueryResult.cs
 reason: **Story 4.7 is now Tenants-only follow-up.** It retains the producer cleanup that stops aliasing `ProjectionVersion := ETag` in `references/Hexalith.Tenants/.../TenantQueryResult.cs`; no EventStore platform enforcement remains assigned to Story 4.7.
-status: open
+status: done 2026-09-06
+resolution: already resolved: references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/TenantQueryResult.cs:23-34 preserves normalized ETag metadata without aliasing it into ProjectionVersion.
 
 ### DW-28: The D6 read-model-freshness handoff remains a separate deferred platform item (persisted projection-age metadata). Until a route sources genuine freshness it is `HandlerComputed`/`Unknown` under AD-15 and consumers render `unknown`.
 
@@ -242,7 +247,8 @@ resolution: already resolved: tests/Hexalith.EventStore.RestApi.Generators.Tests
 origin: migrated from legacy ledger ("Deferred from: code review of D-5-proof-sample-blazorui-queries (2026-07-02)"), 2026-08-30
 location: RestApiMessageParser.ParseReferenced
 reason: Referenced-message discovery (`RestApiMessageParser.ParseReferenced`) is driven off `CompilationProvider` and emits a reference-equality `ImmutableArray`, so it re-runs the referenced-assembly walk on every compilation and weakens IDE incrementality. Consistent with the generator's pre-existing CompilationProvider usage; perf-only. Consider an equatable model/comparer if editor responsiveness regresses.
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.EventStore.RestApi.Generators/RestApiGenerator.cs:31-49 applies RestApiMessageDescriptorArrayComparer to collected, referenced, and combined descriptor arrays.
 
 ### DW-33: Blazor components treat "no projection yet" only as HTTP 404; a gateway `Success==false` semantic failure surfaces as `EventStoreGatewayException.StatusCode == 200` and falls through to the generic catch. Matches the old code's 404-only behavior, so no regression, but the empty-state contract could be made explicit.
 
@@ -362,7 +368,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of D-7-proof-tenants-ui-host-submodule (2026-07-04)"), 2026-08-30
 location: TenantsQueryControllerIntegrationTests
 reason: MEDIUM — External REST error-semantics coverage gap. The 2054-line `TenantsQueryControllerIntegrationTests` was replaced by a 296-line generated-controller test covering 401/request-shape/freshness/ETag-304 but not 403/RBAC, gateway-failure → problem-details, or invalid-cursor at the generated surface. Add once the transport-fault and 400-vs-500 patches land.
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.cs:437,561,589,724 directly covers generated 403, 503, invalid-cursor 400, and ETag/304 semantics.
 
 ### DW-49: LOW — Generator silently falls back to aggregate `"index"` for invalid `[RestQueryBinding]` sources (None / out-of-range enum / empty Constant) with no HESREST diagnostic, and `RestApiQueryBindingDescriptor.GetHashCode` can NRE on a null constant value. Re-logged from the D5 review; now exercised by D7 `[RestQueryBinding]` usage so worth prioritizing.
 
@@ -686,7 +693,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-2-resume-and-idempotency-integrity (2026-07-12)"), 2026-08-30
 location: DaprCommandCorrelationIndex.cs:81
 reason: source_spec: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md` summary: Bound the correlation-index overflow marker so a hot shared correlationId is not permanently ambiguous. evidence: DaprCommandCorrelationIndex.cs:81 refreshes OverflowExpiresAt on every over-capacity AddAsync, so a steadily-loaded correlationId stays Ambiguous (409) indefinitely even after the original 128 entries expire.
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.EventStore.Server/Commands/DaprCommandCorrelationIndex.cs:52-81,128-167 bounds overflow by TTL and prunes expiry; tests/Hexalith.EventStore.Server.Tests/Commands/DaprCommandCorrelationIndexTests.cs:188-232 proves expired overflow resolves to NotFound.
 
 ### DW-93: (Story 4.4) Prevent domain re-execution when a Recoverable (stored-but-unpublished) idempotency record expires after the retention window.
 
@@ -1006,7 +1014,8 @@ resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packagin
 origin: migrated from legacy ledger ("Deferred from: code review of spec-1-20-add-github-approval-login (2026-07-18, loop 4)"), 2026-08-30
 location: _bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md
 reason: Story 3.5's contract does not define precedence when explicit `UseNuGetDeps` and explicit `UseHexalithProjectReferences` conflict ("preserve its existing mapping" vs "normalize … one authoritative boolean" with no truth-table row, AC, or test naming the winner) — contradictory caller properties could activate both or neither reference edge. Owned by Story 3.5's active cycle. [`_bmad-output/implementation-artifacts/3-5-shared-package-catalog-and-source-package-reference-modes.md`]
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.EventStore.Contracts.Tests/Packaging/DependencyModeEvaluationTests.cs:12-22,45-55 covers conflicting explicit flags, while :125-145 proves UseHexalithProjectReferences wins and exactly one dependency edge remains.
 decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-135, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-136: The seven root-submodule source bumps ratified into `ea6ce49b` are compile-verified only: the per-project unit-test CI runs in package mode (`UseHexalithProjectReferences` defaults false), and the only source-mode lane is the filtered `tenants-source-mode` launch-settings job — a behavioral regression in bumped Commons/FrontComposer/PolymorphicSerializations/Tenants source that still compiles leaves all CI green. Consider a periodic/advisory source-mode lane running a representative unit-test subset, or record source-mode validation evidence in the ratifying artifact; CI-lane design belongs with Story 3.5's dual-mode validation scope.
@@ -1342,7 +1351,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: focused UX acceptance review of 2-6-tenants-ui-client-library-alignment-and-ux-evidence (2026-07-26, Sally)"), 2026-08-30
 location: hexalith-ux-instructions.md
 reason: source_spec: `_bmad-output/implementation-artifacts/2-6-tenants-ui-client-library-alignment-and-ux-evidence.md` summary: [MEDIUM] Four legacy Fluent v4 / FAST tokens survive in three Tenants UI stylesheets, so the "accent" callout treatment never tracks the active theme. `hexalith-ux-instructions.md` forbids `--accent-*` and `--neutral-foreground-*` outright — they belong to the previous major version and do not resolve under Fluent V5, so every occurrence falls through to its system-colour fallback and renders `LinkText` / `GrayText` in every theme with the intended accent silently absent. The UX instruction's own escape hatch requires these files to be tracked as an explicit, allowlisted migration backlog rather than silently exempted; this entry is that tracking. Migrate each to a Fluent 2 design token (or a Fluent primitive) and keep the `@media (forced-colors: active)` fallbacks. evidence: Story 2.6 focused UX acceptance review (Sally), verified against source at Tenants `11d6992`, 2026-07-26. Occurrences: `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Pages/TenantAuditPage.razor.css:20` (`var(--accent-stroke-rest, LinkText)`) and `:27` (`var(--neutral-foreground-hint, GrayText)`); `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Tenants/Members/RemoveTenantMemberFlow.razor.css:22` and `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Tenants/Configuration/SetTenantConfigurationFlow.razor.css:49` (both `var(--accent-fill-rest, LinkText)`). All four carry an `fc-css-exception` marker, but each marker justifies only the **layout** (border-inline-start + padding Fluent has no primitive for) — none declares or justifies the **token** choice, so `DomainUiFluentConformanceTests` passes them while the theme-tracking rule stays broken. NOT attributable to Story 2.6: neither the published `11d6992` change nor the 2026-07-27 lifecycle-presentation patch touches these three stylesheets; the lifecycle-state styles remain clean. Suggested durable fix: extend the conformance guard to reject legacy v4/FAST token names outright, so the marker cannot mask them. Owned by the Hexalith.Tenants maintainer.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Tenants commits 2e19cc8e0b99d232a38fcaf0e7e6d967fd7f642f, bb85fadb149fed1fa00dfd9c8d3315df541566e8, and 281e3c3c3d2ce13a5282383216c104914a724390 replaced the residual legacy Fluent tokens; a current stylesheet scan has zero --accent-* or --neutral-foreground-* hits.
 
 ### DW-182: [HIGH] Member, configuration, metadata, tenant-lifecycle, and global-administrator projection gates still accept `Freshness == Current` without requiring projection-confirmed lifecycle/provenance, so legacy-current/unknown-lifecycle responses can arm mutations outside the correction-start surface.
 
@@ -1623,7 +1633,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 8-1-shared-p
 location: _bmad-output/implementation-artifacts/sprint-status.yaml:19,205
 severity: low
 reason: [LOW] Add the intentionally preserved `awaiting-operator` value to the sprint-status schema comments. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:19,205`. Pre-existing schema-comment drift outside Story 8.1.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 8d6f7dacd2ed3ccbf3c1ffd2a18e7477f5eb2c0b removed the sole awaiting-operator value by moving Story 4.6 to done, so the requested schema-comment addition is moot.
 
 ### DW-221: [MEDIUM] Separate unrelated Epic 1-7 tracking changes from the Story 8.1 baseline evidence so scope attribution is reviewable. Source: `_bmad-output/implementation-artifacts/sprint-status.yaml:51`. The shared sprint file accumulated concurrent story updates after the recorded baseline.
 
@@ -1772,7 +1783,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-4-committed-event-publication-recovery (2026-08-07)"), 2026-08-30
 location: tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs:148
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md` summary: [MEDIUM] The two `DeadLetterMessage` producers now disagree about the dead-letter contract, and the suite that encodes it only exercises one of them. evidence: `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs:148` encodes "Dead-letter should contain full command envelope for replay" as an invariant of the contract. Story 4.4's `DeadLetterMessage.FromDrainExhaustion` deliberately emits a reduced, non-replayable envelope, but that suite exercises only `FromException`, so the two producers contradict each other with nothing reconciling them. Either scope the invariant to replay-eligible producers or assert the reduced shape explicitly.
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterMessageTests.cs:194-244 now exercises both FromException and FromDrainExhaustion producer contracts.
 
 ### DW-242: [LOW] `Retryable` is left null for every non-drain status, which collides with the documented meaning of null as "written before this field existed".
 
@@ -1809,7 +1821,8 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 origin: migrated from legacy ledger ("Deferred from: Story 3.13 review (2026-08-08)"), 2026-08-30
 location: epic-3-context.md
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Epic 3 context rewrite thins earlier concrete cross-story constraints without an explicit supersession note. evidence: Review of `epic-3-context.md` in the baseline..HEAD scoped diff; historical live-sidecar/DaprETag specificity was reduced while adding 3.12/3.13 guidance.
-status: open
+status: done 2026-09-06
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:360 records the owner's explicit ratification of the Epic 3 context compression and why no context rewrite is required.
 
 ### DW-247: Expected AC4 acceptance scaffolding (`acceptances/{subject_sha256}` layout / receipt schema example) is narrative-only and not checked into hashed manifests.
 
@@ -1945,7 +1958,8 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: docs/ci.md
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.5 LiveSidecar ownership prose was added in docs/ci.md within the same baseline range as Story 3.13's ownership rewrite. evidence: Spec Code Map allows only the Story 3.12-to-1.20 ownership paragraph change in docs/ci.md; the Story 4.5 paragraph is concurrent scope leakage outside 3.13's single-goal delivery and should be owned by Story 4.5 tracking.
-status: open
+status: done 2026-09-06
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:362 records the owner's reassignment of the co-landed Story 4.5 docs change to its owning story.
 
 ### DW-265: Add an `acceptances/{subject_sha256}/` scaffold or receipt template beside the roster before AC4 collection.
 
@@ -1968,14 +1982,16 @@ resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deploye
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reviewer roster maps both eventstore-owner and release-owner to the same github:jpiquot identity. evidence: AC4 asks for distinct EventStore-owner and Release-owner acceptances, but the hash-bound roster and verifier currently authorize the same identity for both roles; separation of duties is not enforced and was not renegotiated in frozen intent.
-status: open
+status: done 2026-09-06
+resolution: already resolved: _bmad-output/implementation-artifacts/3-13-deployed-runtime-parity-closure.md:331 records the owner's explicit ratification of github:jpiquot holding both eventstore-owner and release-owner roles.
 
 ### DW-268: Same working tree advances Epic 4 tracker rows and Story 4.5 LiveSidecar docs/ci prose beside Story 3.13.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: docs/ci
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Same working tree advances Epic 4 tracker rows and Story 4.5 LiveSidecar docs/ci prose beside Story 3.13. evidence: Story 3.13 Code Map limits docs/ci.md edits to the deployed-closure ownership paragraph and forbids scope leakage, yet the baseline diff also includes Epic 4 status moves and LiveSidecar prose outside that ownership scope.
-status: open
+status: done 2026-09-06
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md:362 records the owner's reviewed decision not to rewrite published co-landed history and assigns each material change to its owning story.
 
 ### DW-269: Retained fail-closed runtime-verification.json remains schema v1 without pass-path v2 command/smoke_results shape.
 
@@ -1997,7 +2013,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Story 4.4 activation recovery can permanently starve publication-index entries beyond the fixed head scan and work budgets. evidence: `RearmOutstandingPublicationsAsync` always restarts at the first entry, persists no cursor, and schedules no continuation while a continuously active actor may never receive another activation.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 4b0a7b1d3628a857f131cfbff99030714aefc747 changed AggregateActor activation recovery so already-armed head entries do not consume the probe/work budgets and later entries receive recovery opportunity.
 
 ### DW-272: Story 4.4 can report `Retryable=true` when only a recovery-index entry exists and reminder registration failed.
 
@@ -2046,7 +2063,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Persisted duplicate publication-index entries survive normalization and can leave stale capacity behind. evidence: `Normalize` removes only null elements, while refresh and removal operate on the first matching message ID despite the type contract promising de-duplication.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 659f3c72a653525f028b0a2212fb568e82bb50cb added owner-map normalization and duplicate suppression; src/Hexalith.EventStore.Server/Actors/UnpublishedPublicationIndex.cs:117-171 now emits at most one well-formed owner per MessageId.
 
 ### DW-279: Story 4.4's trailing optional parameters on public positional records are binary-breaking for already compiled consumers.
 
@@ -2067,28 +2085,32 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: AGENTS.md
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync can write `AGENTS.md` outside the selected project through a compass area path. evidence: `cmd_sync` joins unvalidated absolute or parent-traversing `area` values to `project_root` without resolving and enforcing containment.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed .agents/skills/bmad-project-context/scripts/context.py, including the vulnerable compass-area filesystem writer.
 
 ### DW-282: BMAD project-context sync can duplicate or remove user-authored text when managed markers are missing, reversed, or duplicated.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync can duplicate or remove user-authored text when managed markers are missing, reversed, or duplicated. evidence: `apply_block` validates neither marker cardinality nor ordering before slicing or appending the managed block.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed the marker-rewriting project-context implementation; the installed skill now contains no apply_block/cmd_sync code.
 
 ### DW-283: BMAD project-context sync does not re-anchor relative Markdown links that include fragments or query strings.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: decision.md
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: BMAD project-context sync does not re-anchor relative Markdown links that include fragments or query strings. evidence: `rewrite_links` only processes targets that literally end in `.md`, so links such as `decision.md#rationale` break when moved to another directory.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed the project-context rewrite_links implementation and its executable script.
 
 ### DW-284: The installed BMAD project-context implementation lacks regression coverage for its filesystem-writing and resolution paths.
 
 origin: migrated from legacy ledger ("Deferred from: spec-gh-29567058321-fix-ci-cd review (2026-08-08)"), 2026-08-30
 location: n/a
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: The installed BMAD project-context implementation lacks regression coverage for its filesystem-writing and resolution paths. evidence: The local suite contains three smoke tests and conditionally skips the referenced full Layer-1 suite, leaving resolve, sweep, compass, sync, remote, and cache behavior unverified.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 2b9502b6c0781f3a9b4fbb0db0363deca334b608 removed the implementation whose missing filesystem regression suite this entry targeted.
 
 ### DW-285: Story 4.4 tests do not prove the publication-recovery index is staged before the event commit batch.
 
@@ -2277,7 +2299,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-4-committed-event-publication-recovery (2026-08-11)"), 2026-08-30
 location: UnpublishedPublicationIndex.cs:148-157
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-4-4-committed-event-publication-recovery.md` summary: [MEDIUM] `Normalize` does not dedupe duplicate MessageIds (reconfirmed, group-1 review). evidence: `UnpublishedPublicationIndex.Normalize` drops nulls only; duplicate MessageIds inflate `Count` toward capacity. Already on ledger; reconfirmed at `UnpublishedPublicationIndex.cs:148-157`.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 659f3c72a653525f028b0a2212fb568e82bb50cb resolves this duplicate of DW-278; src/Hexalith.EventStore.Server/Actors/UnpublishedPublicationIndex.cs:117-171 now deduplicates MessageIds.
 
 ### DW-311: [MEDIUM] Commit-batch index staging order is not asserted by tests (reconfirmed, group-1 review).
 
@@ -2348,7 +2371,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence (2026-08-11)"), 2026-08-30
 location: evidence/story-4-5/0776785f.../commands.md:71
 reason: No binding between a committed capture and the receipt of the run that produced it — append-durability-race.json armedAtUtc falls inside the post-mutation window, not the race-test-results.json window; disclosed in prose but not machine-checked. [`evidence/story-4-5/0776785f.../commands.md:71`]
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 added CAPTURE_BINDINGS; validate-evidence.py:92-97 and :327-340 require each committed capture to equal the exact post-mutation receipt payload.
 decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-320, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-321: retryCount derives from unfiltered AllocationAttempts while AppendDurabilityRaceControl is a singleton registered into both the primary and replica hosts; mitigated by serial collection execution and disclosed in allocatorIdentityLimitation.
@@ -2370,14 +2394,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence (2026-08-11)"), 2026-08-30
 location: evidence/story-4-5/0776785f.../commands.md:135
 reason: Redaction gate uses `! rg …`, so an rg failure (exit 2) inverts to success and reports clean having scanned nothing. [`evidence/story-4-5/0776785f.../commands.md:135`]
-status: open
+status: done 2026-09-06
+resolution: already resolved: commands.md:291-303 now captures rg's exit code and treats only exit 1 as clean while failing exit 0 and exit >=2.
 
 ### DW-324: commands.md leaks errexit from the mutation wrapper, uses `exit 2` in the canonical-overwrite guard (closes an interactive shell), and runs the redact/hash block on unguarded variables.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence (2026-08-11)"), 2026-08-30
 location: evidence/story-4-5/0776785f.../commands.md:89
 reason: commands.md leaks errexit from the mutation wrapper, uses `exit 2` in the canonical-overwrite guard (closes an interactive shell), and runs the redact/hash block on unguarded variables. [`evidence/story-4-5/0776785f.../commands.md:89`]
-status: open
+status: done 2026-09-06
+resolution: already resolved: commands.md:15-29 uses return rather than exit for canonical-overwrite refusal, and :187-215 scopes mutation failure handling without leaking errexit.
 
 ### DW-325: concurrency-conflict.md Common Causes bullet 1 describes an optimistic-transaction rejection that cannot arise on the current actor commit path, since nothing supplies an etag there; page is otherwise correctly hedged.
 
@@ -2399,14 +2425,16 @@ decision: 2026-08-31 Implement verified change — Implement the concrete change
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence (2026-08-11)"), 2026-08-30
 location: AppendDurabilityRaceLiveSidecarTests.cs:364
 reason: Story 4.5 provider profile is a source literal validated against itself (daprRuntime "1.18.1", redisImage "redis:6") and the two deterministic classes lack Collection/Trait attributes — deferred to the approved append-fencing follow-up, which must re-capture across multiple provider profiles anyway, so fixing runtime attribution and test placement is cheapest as part of that multi-profile capture. [`AppendDurabilityRaceLiveSidecarTests.cs:364`]
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 5e8f175b re-captured live-sidecar evidence with the runtime container/image and resolved-port metadata.
 
 ### DW-328: Story 4.5 evidence packet left partially updated by the 2026-08-11 review: harness and validator patched (D1/D2/D4/D5) but the live re-capture could not run — DaprTestContainerFixture probes localhost:50005/50006 while Dapr CLI 1.18 publishes placement/scheduler on 6050/6060, and the local control plane is 1.18.2 against a packet claiming 1.18.1. validate-evidence.py fails until a fresh capture regenerates the receipts, source-state.md, and evidence-sha256.txt.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-4-5-append-durability-race-evidence (2026-08-11)"), 2026-08-30
 location: DaprTestContainerFixture.cs:47
 reason: Story 4.5 evidence packet left partially updated by the 2026-08-11 review: harness and validator patched (D1/D2/D4/D5) but the live re-capture could not run — DaprTestContainerFixture probes localhost:50005/50006 while Dapr CLI 1.18 publishes placement/scheduler on 6050/6060, and the local control plane is 1.18.2 against a packet claiming 1.18.1. validate-evidence.py fails until a fresh capture regenerates the receipts, source-state.md, and evidence-sha256.txt. [`DaprTestContainerFixture.cs:47`]
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 5e8f175b; DaprTestContainerFixture.cs:47-52 now probes both 50005/6050 and 50006/6060.
 
 ### DW-329: Classifier completeness lives only in a docstring — "covers all twenty reachable classification names" is true today (verified: 20 distinct names, 22-row table covers all 20), but adding a 21st branch would fail no test.
 
@@ -2548,7 +2576,8 @@ resolution: already resolved: _bmad-output/implementation-artifacts/evidence/sto
 origin: migrated from legacy ledger ("Deferred from: code review of spec-3-13-deployed-runtime-parity-closure (2026-08-11)"), 2026-08-30
 location: evidence/story-4-5/0776785f.../validate-evidence.py
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-13-deployed-runtime-parity-closure.md` summary: Reseal or revert Story 4.5's self-invalidating evidence packet. evidence: `evidence/story-4-5/0776785f.../validate-evidence.py` was modified by `3e365150` after the packet was sealed at `86308550`; `sha256sum -c evidence-sha256.txt` now reports a genuine content mismatch. Found incidentally during the Story 3.13 evidence-integrity sweep; not a Story 3.13 defect.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 5e8f175b re-sealed the Story 4.5 packet; its evidence-sha256.txt verifies against the retained files.
 
 ### DW-348: Exercise every provider-state response through the normal provider-verification lane.
 
@@ -2672,7 +2701,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-3-14-co
 location: github/workflows/domain-release.yml
 severity: medium
 reason: source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release.md` owner_repo: `Hexalith.Builds` — reusable `.github/workflows/domain-release.yml`. NOT owned by `Hexalith.EventStore`; the EventStore `release.yml` only calls the reusable workflow, so this fix cannot land here. summary: Split the governed release path into its own reusable workflow file so legacy callers stop having to grant `attestations: write` and `id-token: write`. evidence: GitHub validates the maximum permissions across every job in a called workflow, including jobs that never run. Because `governed-release` (`domain-release.yml:478`) declares both scopes, every caller must grant them — EventStore's `release.yml` now does. The legacy `release` job (`:240`) declares no `permissions:` block, so it inherits the caller's set and executes in the protected `production` environment holding both write scopes unused. The obvious narrow fix — an explicit `permissions:` block on the legacy job — is blocked by an existing Builds contract test, `test_governed_release_workflow.GovernedOffParityTests.test_only_the_governed_job_requests_attestation_permissions`, which asserts `assertNotIn("permissions:", job_slice(workflow, "release"))`; that shape was tried during this review and reverted. Splitting the two paths into separate reusable workflow files removes the coupling without contradicting that contract. Epic 3 explicitly withholds signing/SBOM/attestation authority, so the grant should not persist longer than necessary. severity: medium status: accepted — ratified for now (Story 3.14 D5 option A); nothing is signed or attested because `governed-release: false` keeps the governed job skipped, and `ContainerPublishingGovernanceTests` pins that input.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Hexalith.Builds commit bd94f7f; references/Hexalith.Builds/.github/workflows/domain-release.yml:248-252 omits id-token/attestations globally while :495-508 grants them only to governed-release.
 
 ### DW-365: Unify Roslynator package families under a single `roslynator` family in Hexalith.Builds central package audit.
 
@@ -3138,7 +3168,8 @@ origin: migrated from legacy ledger ("Trusted-verifier hardening pass (2026-08-2
 location: github/workflows/release.yml
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: The legacy release job retains unused `attestations: write` and `id-token: write` permissions. evidence: `.github/workflows/release.yml` grants both permissions to the production release job although the current legacy path does not consume them. Removing or splitting them changes release-workflow authority and is outside Story 3.15's evidence-only boundary.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Hexalith.Builds commit bd94f7f; the legacy release job inherits only the root scopes at domain-release.yml:248-263, while sensitive scopes are job-local at :495-508.
 
 ### DW-421: Container provenance URL validation accepts unrelated hosts and malformed percent escapes instead of enforcing the repository-derived canonical URLs.
 
@@ -3315,7 +3346,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-6 authorize
 location: n/a
 severity: medium
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: medium summary: SUPERSEDES the loop-3 entry stating that opening a dedicated Story 3.15 acceptance issue and requesting acceptances "is an Ask First action and was not performed" -- it was subsequently performed. evidence: Dedicated issue [#352](https://github.com/Hexalith/Hexalith.EventStore/issues/352) was opened, its MEMBER-authenticated roster comment `5407975180` was retained as the registry `authority_source`, and two complete acceptance rounds were collected on that thread: `5408186984`/`5408189299` against subject `dab64f5f...`, then `5409145568`/`5409148235` against `a8cc777e...`, plus two timestamp-mismatched attempts `5409140199`/`5409147909` marked superseded. The earlier ledger and spec wording is stale at HEAD and is corrected by this entry rather than edited in place, because the ledger is append-only. What remains genuinely unperformed is collecting a *third* round against the current subject `663747b1...`, which this landing did not do. status: open — recorded correction; the outstanding owner action is the new receipt round.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 30336c2c records the final Story 3.15 subject and all three current owner/test-architect receipts.
 decision: 2026-08-31 Implement verified change — Implement the concrete change described by DW-442, add focused regression coverage, and update any directly affected contract or operator documentation.
 
 ### DW-443: Ledger-format repair notice for the trusted-verifier hardening block filed under the loop-4 heading.
@@ -3324,7 +3356,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 3.15 loop-6 authorize
 location: closure.json
 severity: low
 reason: source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md` severity: low summary: Ledger-format repair notice for the trusted-verifier hardening block filed under the loop-4 heading. evidence: That block carried machine-local absolute `source_spec` paths, omitted `severity:`, sat under a heading naming a different pass, and duplicated several still-open loop-3 items (the v3-versus-v1 timestamp parser and the hardcoded `closure.json` inventory path are also duplicated within the block itself). The absolute paths, missing severities and heading were repaired in place; the duplicates are left standing because the ledger is append-only. Nothing enforces any of this: every `Dw6*` governance case and both `Dw4` ATDD cases are `[Fact(Skip = ...)]`, which is tracked separately above. status: open — format repaired; the missing enforcement gate remains deferred.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 44b79719 migrated the legacy ledger material into structured DW records.
 
 ### DW-444: The `raw OCI index shape is invalid` branch is unreachable through packet mutation while the index digest is pinned, and is retained as a structural precondition rather than removed.
 
@@ -3550,7 +3583,8 @@ status: open
 origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`CreateManualSnapshotAsync`)
 reason: `CreateManualSnapshotAsync` catches inspection, reconstruction, creation, and save failures together, then reports `Created` whenever any pre-existing snapshot has the current sequence. An earlier infrastructure failure can therefore be misreported as successful creation; inference should be limited to an ambiguous snapshot save and compare the exact expected snapshot.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 57fa0909; AggregateActor.cs:1695-1805 tracks snapshot-save ambiguity and compares the attempted snapshot before inferring Created.
 
 ### DW-473: Add stale-checkpoint handoff save-fault tests.
 
@@ -3564,28 +3598,32 @@ status: open
 origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
 location: tests/Hexalith.EventStore.Server.Tests (drain-retry persistence)
 reason: Existing tests cover normal retry persistence and commit-then-throw ambiguity only; no test proves that a failure before the first save commits is discarded, inspected, and repaired with exactly one durable retry increment.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 57fa0909; EventDrainRecoveryTests.cs:535 exercises retry-increment failure before commit and verifies one durable repair.
 
 ### DW-475: Establish actor-state batch safety after admission staging failures.
 
 origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`StagePendingCommandCountAsync` and `ActorStateMachine.CheckpointAsync`)
 reason: `StagePendingCommandCountAsync` and `ActorStateMachine.CheckpointAsync` run before the guarded save, but no catch discards their batch if a staging call throws. A Dapr implementation guarantee or fault test must establish whether a post-staging exception can retain a commit-capable abandoned state batch for a later save.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 57fa0909; AggregateActor.cs:891-940 discards staged admission mutations on pre-commit infrastructure failure, covered at AggregateActorInfrastructureFailureTests.cs:1974.
 
 ### DW-476: Apply actor discard-or-poison handling to legacy idempotency paths.
 
 origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (legacy idempotency migration and source reads)
 reason: A legacy migration can stage the new key before legacy-key removal throws, while legacy source or redirect reads swallow state-manager failures as `Unavailable`; both paths can leave a possibly unsafe cache without actor-owned discard-or-poison remediation.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 57fa0909; AggregateActorFencingTests.cs:483 and the corresponding AggregateActor poison/discard paths cover the lost-checkpoint branch.
 
 ### DW-477: Preserve cancellation for aggregate event metadata reads.
 
 origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`GetEventsAsync`)
 reason: `GetEventsAsync` catches metadata-read `OperationCanceledException` as `Exception` and wraps it in `EventDeserializationException`, although adjacent event reads preserve cancellation, so callers and telemetry can misclassify cancellation as corrupt state.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 57fa0909; AggregateActorGetEventsTests.cs:89 and :102 prove cancellation is propagated rather than converted into deserialization failure.
 
 ### DW-478: Fail closed on malformed publication-index activation.
 
@@ -3606,7 +3644,8 @@ status: open
 origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
 location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (stale checkpoint cleanup and replacement admission)
 reason: After stale-checkpoint cleanup commits, pre-commit replacement-admission inspection returns false and overwrites `pendingCommandTracked`; the `finally` path then skips decrementing the now-ownerless durable pending slot.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 57fa0909; AggregateActor.cs:959-964 preserves stale processing-slot ownership, covered at AggregateActorInfrastructureFailureTests.cs:1489.
 
 ### DW-481: Refresh Story 4.7's deferred actor-review evidence.
 
