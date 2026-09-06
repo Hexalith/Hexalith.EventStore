@@ -3800,3 +3800,23 @@ location: references/Hexalith.Tenants/Hexalith.Tenants.slnx
 reason: Story 4.7's AC4 requires fresh Debug/source and Release/package restores plus per-project tests in both graphs. Both full-solution restores are blocked because `Hexalith.Tenants.slnx` explicitly lists projects from uninitialized nested Commons, EventStore, FrontComposer, and Memories submodules, and the approved boundary forbids initializing them. The Debug/source Integration build additionally stops at `references/Hexalith.Memories/Directory.Build.props:89` (absent nested EventStore) and the Release/package build at `src/Hexalith.Tenants.AppHost/Program.cs:132` (pre-existing `CS1503` Dapr-component API skew). The dual-graph guarantee AC4 describes is therefore never demonstrated end to end; only focused per-project lanes run.
 status: open
 decision: 2026-09-06 Accept focused-lane evidence — Administrator accepted the recorded focused results in place of the blocked broad gate for Story 4.7 closure.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 3.15's required `docs/ci.md` update leaves the Story 4.15 v3 successor packet unbound, so the complete Contracts suite fails on current-source identity drift until that separately reviewed packet is reminted.
+  evidence: Focused Story 3.15/3.14 classes are green; the 12 full-suite failures are `Story 4.15 v3 current source identity drift: docs/ci.md`. Reminting v3 would invalidate its approvals and is outside this story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `.gitattributes` LF-pins `evidence/story-4-15-successors/v2/**` while `docs/ci.md` names v3 as the active hash-bound lineage.
+  evidence: Story 4.15 successor ownership; not part of the Story 3.15 parity-closure intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The withdrawn `gate-decision.json` remint chain still ends at `86c59c79` after the Group A subject `84dee6e5`.
+  evidence: The artifact is already marked SUPERSEDED in every status field; regeneration belongs to the trace workflow, not the parity verifier.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: The canonical subject now binds the current capture-tool digest, but retained Production smokes were captured on 2026-08-21 before later capture hardening.
+  evidence: Recapture is Ask First. Smoke logs remain canonical JSON restatements of `smoke-results.json` (already deferred). The bound producer cannot reproduce those retained bytes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Assembler restore runs only for incomplete verifier children (`TimeoutExpired` / spawn failure), not for a completed wait with a negative `returncode`.
+  evidence: Unverified whether a signal-killed verifier is reachable for operators. If true, a success-shaped `closure.json` could remain after an incomplete run; severity would be medium. Settle by reproducing a negative `returncode` from the pinned verifier child.

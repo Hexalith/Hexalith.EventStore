@@ -3,7 +3,7 @@
 ## Decision
 
 **The packet fails closed at 0 of 3 receipts.** Current subject
-`sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`
+`sha256:a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448`
 has **zero of three roster-bound role receipts**, so the retained verifier **fails closed**,
 exit 1, and grants nothing. The only identity this closure may ever select, once parity is
 available, remains
@@ -29,7 +29,7 @@ An auditor must confirm four flags in `closure.json`, and all four are `false`:
 **`deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields.** At zero
 packet-bound receipts they are not granted; an auditor must still read them together with the
 receipt count and the four non-authority flags, never alone. Receipts would live under
-`acceptances/84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f/` once collected.
+`acceptances/a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448/` once collected.
 
 ## Bound technical evidence
 
@@ -54,8 +54,8 @@ The current dispatch binds these verdict-bearing live files:
 | Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `dababb480cbea609fd500a248b479c367d531012d3dc61a2a713e9f28600e104` |
 | Predecessor handler | `tools/release_evidence_handlers/v3.py` | `b1a1756252fb79777dd0dbb37861260f6b02c03c58c160823b2c4252d0c33dc0` |
 | Predecessor package | `tools/release_evidence_handlers/__init__.py` | `a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625` |
-| Smoke capture producer | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `74a1b0c0e181104f01db073e94dd0e79c1926dff6dc491de015d69d25fa3a644` |
-| Packet assembler | `tools/assemble-corrected-deployed-runtime-parity.py` | `abb3c77c826aedc10b8f75ae2533affc90963ca3390270eff3125019269cb032` |
+| Smoke capture producer | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `0a2b30415131ee5e0f473dfa797dccd46536c75b0e94e39d49f3fe1c3075d110` |
+| Packet assembler | `tools/assemble-corrected-deployed-runtime-parity.py` | `9a39a12599e7746426e3ccc471ba6dbd50e5cd3e3f36dd91993abcbdcac5f6ae` |
 
 The two producers are bound even though the verifier never executes them. Until they were bound, the
 capture tool could change what a passing Production smoke means -- as it did, from any 2xx to
@@ -98,7 +98,7 @@ authenticated people. All three facts are subject-bound limitations every receip
 
 ## Current acceptances
 
-No packet-bound receipt currently binds subject `84dee6e5...`. The 2026-09-05 round for subject
+No packet-bound receipt currently binds subject `a5c07d17...`. The 2026-09-05 round for subject
 `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274` was moved unmodified to
 `evidence/story-3-15/superseded-acceptances/86c59c79.../`:
 
@@ -125,10 +125,10 @@ $ echo $?
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448 receipts=0 verifier_exit=1
 $ echo $?
 1
 ```
 
-Reassembly deterministically reproduces subject `84dee6e5...` and runs the pinned verifier over its
+Reassembly deterministically reproduces subject `a5c07d17...` and runs the pinned verifier over its
 own output. It does not copy or rewrite any superseded receipt.

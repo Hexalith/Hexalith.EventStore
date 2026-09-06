@@ -438,7 +438,54 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             dockerArguments.Count(line => line.StartsWith("rm --force ", StringComparison.Ordinal))
                 .ShouldBe(2);
             LoadSummary(temporary)["platforms"]!.AsArray().ShouldAllBe(item =>
-                item!["outcome"]!.GetValue<string>() == "failure");
+                item!["cleanup"]!.GetValue<string>() == "pass"
+                && item["outcome"]!.GetValue<string>() == "failure");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a timed-out <c>docker run</c> whose inspect/rm reap fails records
+    /// <c>cleanup: failure</c> in the retained summary. <c>container_created</c> stays false, so
+    /// the previous finally branch recorded cleanup pass even when <c>docker rm</c> failed.
+    /// </summary>
+    [Fact]
+    public void TimedOutDockerRunRecordsCleanupFailureWhenReapRemoveFails()
+    {
+        RequireUnixHost();
+        string root = FindRepositoryRoot();
+        string temporary = Directory.CreateTempSubdirectory("eventstore-story315-smoke-run-timeout-rm-").FullName;
+        try
+        {
+            string fakeBin = Path.Combine(temporary, "bin");
+            Directory.CreateDirectory(fakeBin);
+            string dockerLog = Path.Combine(temporary, "docker-argv.log");
+            string curlLog = Path.Combine(temporary, "curl-argv.log");
+            WriteExecutable(Path.Combine(fakeBin, "docker"), DockerFake("run-timeout-rm-failure"));
+            WriteExecutable(Path.Combine(fakeBin, "curl"), CurlFake("200 0"));
+
+            ProcessResult result = RunCapture(
+                root,
+                temporary,
+                fakeBin,
+                dockerLog,
+                curlLog,
+                timeoutOverride: 0.2);
+
+            result.ExitCode.ShouldBe(1, result.Error);
+            result.Error.ShouldNotContain("Traceback");
+            string[] dockerArguments = File.ReadAllLines(dockerLog);
+            dockerArguments.Count(line =>
+                    line.StartsWith("inspect --format {{.Id}} hexalith-story315-", StringComparison.Ordinal))
+                .ShouldBe(2);
+            dockerArguments.Count(line => line.StartsWith("rm --force ", StringComparison.Ordinal))
+                .ShouldBe(2);
+            LoadSummary(temporary)["platforms"]!.AsArray().ShouldAllBe(item =>
+                item!["cleanup"]!.GetValue<string>() == "failure"
+                && item["outcome"]!.GetValue<string>() == "failure");
         }
         finally
         {
@@ -663,6 +710,7 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         if [ "{{mode}}" = "pull-failure" ] && [ "$1" = "pull" ]; then exit 42; fi
         if [ "{{mode}}" = "run-failure" ] && [ "$1" = "run" ]; then exit 44; fi
         if [ "{{mode}}" = "run-timeout" ] && [ "$1" = "run" ]; then exec /bin/sleep 5; fi
+        if [ "{{mode}}" = "run-timeout-rm-failure" ] && [ "$1" = "run" ]; then exec /bin/sleep 5; fi
         if [ "$1" = "port" ]; then printf '%s\n' '127.0.0.1:45678'; exit 0; fi
         if [ "$1" = "inspect" ]; then
           case "$*" in *amd64*) printf '%s\n' 'sha256:amd64' ;; *) printf '%s\n' 'sha256:arm64' ;; esac
@@ -683,6 +731,7 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
         fi
         if [ "$1" = "rm" ]; then
           if [ "{{mode}}" = "cleanup-command-failure" ]; then exit 43; fi
+          if [ "{{mode}}" = "run-timeout-rm-failure" ]; then exit 43; fi
           if [ "{{mode}}" = "cleanup-timeout" ]; then exec /bin/sleep 5; fi
         fi
         exit 0

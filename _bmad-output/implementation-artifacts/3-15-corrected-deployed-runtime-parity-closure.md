@@ -3,8 +3,8 @@
 ## Current verdict
 
 **The packet fails closed at 0 of 3 receipts.** Current subject
-`sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`. The 2026-09-06 Group A
-tools patch re-minted the subject and, by the packet's own rerun trigger, rejected the three
+`sha256:a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448`. The 2026-09-06 review
+patches re-minted the subject after the Group A tools patch. The Group A remint had rejected the three
 `86c59c79...` receipts collected on 2026-09-05. Those receipts remain byte-for-byte outside the
 packet under `evidence/story-3-15/superseded-acceptances/86c59c79.../`, alongside the earlier
 `bb58d691...`, `dab64f5f...` and `a8cc777e...` trees. Collecting three fresh receipts on issue
@@ -27,7 +27,7 @@ Re-running the assembler is idempotent and reports the same fail-closed verdict:
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448 receipts=0 verifier_exit=1
 $ echo $?
 1
 ```
@@ -227,7 +227,7 @@ The role registry retains the owner-ratified mappings:
 - `release-owner` -> `github:jpiquot`
 - `test-architect` -> `bmad:murat`
 
-No acceptance currently binds subject `84dee6e5...`; the packet holds zero receipts. The four
+No acceptance currently binds subject `a5c07d17...`; the packet holds zero receipts. The four
 superseded rounds are listed above and authorize nothing here.
 
 No planning approval, release authority, prior receipt, label, tag, self-declared role, or synthetic
@@ -281,7 +281,7 @@ decision, registry and producer digests -> receipts addressed by that subject.
   `Story 4.15 v3 current source identity drift: docs/ci.md`; rebinding that separately reviewed packet
   requires a Story 4.15 re-review and is not fabricated here.
 - Checked-in Story 3.15 assembler and verifier: **fail closed at zero of three receipts**, exit 1;
-  subject `84dee6e5...`; nothing granted; all non-authority flags false.
+  subject `a5c07d17...`; nothing granted; all non-authority flags false.
 - `git diff --check`: no whitespace errors reported.
 
 ## Rerun trigger

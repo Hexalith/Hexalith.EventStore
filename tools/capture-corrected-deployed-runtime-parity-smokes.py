@@ -98,6 +98,10 @@ def _reap_timed_out_run_container(container_name):
     dockerd may have started the named container after this process lost the wait. Inspect first,
     and only then ``rm --force`` that exact name, using the independent cleanup budget rather than
     the already-exhausted platform deadline.
+
+    Return True when there was nothing to reap or ``rm`` succeeded. Return False when inspect
+    found the container and ``rm`` did not complete, or when inspect/rm themselves failed: the
+    caller must record that as cleanup failure rather than ``pass``.
     """
     try:
         inspect = subprocess.run(
@@ -108,19 +112,21 @@ def _reap_timed_out_run_container(container_name):
             timeout=CLEANUP_TIMEOUT_SECONDS,
         )
         if inspect.returncode != 0:
-            return
-        subprocess.run(
+            return True
+        removed = subprocess.run(
             ("docker", "rm", "--force", container_name),
             check=False,
             capture_output=True,
             text=True,
             timeout=CLEANUP_TIMEOUT_SECONDS,
         )
+        return removed.returncode == 0
     except (OSError, subprocess.TimeoutExpired) as error:
         print(
             f"[corrected-deployed-runtime-parity-smokes] timed-out run reap failed: {error}",
             file=sys.stderr,
         )
+        return False
 
 
 def parse_curl_write_out(value):
@@ -171,6 +177,7 @@ def capture_platform(output_root, platform, child_digest):
     exit_code = 1
     cleanup = "failure"
     container_created = False
+    timed_out_run_reap_failed = False
     observed_platform = "unknown/unknown"
     try:
         run(deadline, "docker", "pull", "--platform", platform, immutable_image)
@@ -203,7 +210,8 @@ def capture_platform(output_root, platform, child_digest):
                 immutable_image,
             )
         except subprocess.TimeoutExpired:
-            _reap_timed_out_run_container(container_name)
+            if not _reap_timed_out_run_container(container_name):
+                timed_out_run_reap_failed = True
             raise
         container_created = True
         port_output = run(deadline, "docker", "port", container_name, "8080/tcp").stdout.strip()
@@ -253,11 +261,7 @@ def capture_platform(output_root, platform, child_digest):
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, RuntimeError, OSError) as error:
         print(f"[corrected-deployed-runtime-parity-smokes] {platform} capture failed: {error}", file=sys.stderr)
     finally:
-        if not container_created:
-            # A failed docker run did not create this capture's container. Treat cleanup as
-            # unnecessary and never force-remove a coincidentally same-named external container.
-            cleanup = "pass"
-        else:
+        if container_created:
             try:
                 cleanup_deadline = time.monotonic() + CLEANUP_TIMEOUT_SECONDS
                 run(
@@ -274,6 +278,14 @@ def capture_platform(output_root, platform, child_digest):
                     f"[corrected-deployed-runtime-parity-smokes] {platform} cleanup failed: {error}",
                     file=sys.stderr,
                 )
+        elif timed_out_run_reap_failed:
+            # Inspect found the timed-out run's container and rm did not complete. Do not record
+            # cleanup pass: container_created stayed false, so the branch below would hide this.
+            cleanup = "failure"
+        else:
+            # A failed docker run did not create this capture's container. Treat cleanup as
+            # unnecessary and never force-remove a coincidentally same-named external container.
+            cleanup = "pass"
     ended_at = now()
     outcome = "pass" if exit_code == 0 and cleanup == "pass" and observed_platform == platform else "failure"
     record = {

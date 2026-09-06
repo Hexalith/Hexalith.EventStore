@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '09-06-2026 14:05'
+last_updated: '09-06-2026 15:10'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -234,7 +234,7 @@ development_status:
   # on issue #352 is an Ask First owner action and was not performed.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
-  # 84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f; the packet
+  # a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448; the packet
   # subject has now been re-minted eight times across nine subjects; receipts existed for only four
   # of them, and all four sets are retained byte-for-byte under
   # evidence/story-3-15/superseded-acceptances/.
@@ -242,7 +242,7 @@ development_status:
   # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
-  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  3-15-corrected-deployed-runtime-parity-closure: review
   epic-3-retrospective: optional
 
   epic-4: in-progress

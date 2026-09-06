@@ -100,16 +100,14 @@ def _restore_previous_closure(path, previous_bytes):
     A completed verifier verdict -- including the expected receipt-gate exit 1 -- keeps the newly
     assembled ``closure.json``, because that is the packet an operator must inspect. Timeout,
     spawn failure, and other incomplete child runs must not leave a success-shaped claim file
-    behind.
+    behind. A failed restore raises ``OSError`` so the caller can fail closed instead of leaving
+    that claim file in place.
     """
-    try:
-        if previous_bytes is None:
-            if path.exists():
-                path.unlink()
-            return
-        path.write_bytes(previous_bytes)
-    except OSError:
-        pass
+    if previous_bytes is None:
+        if path.exists():
+            path.unlink()
+        return
+    path.write_bytes(previous_bytes)
 
 
 def repository_root():
@@ -452,7 +450,16 @@ def main():
             timeout=VERIFIER_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.SubprocessError) as error:
-        _restore_previous_closure(closure_path, previous_closure)
+        try:
+            _restore_previous_closure(closure_path, previous_closure)
+        except OSError as restore_error:
+            print(
+                "[corrected-deployed-runtime-parity-assembly] fail: "
+                "could not restore the previous closure after an incomplete verifier: "
+                f"{restore_error}; rerun: {v1.RERUN_TRIGGER}",
+                file=sys.stderr,
+            )
+            return 1
         print(
             "[corrected-deployed-runtime-parity-assembly] fail: "
             f"the bounded verifier process could not complete: {error}; "

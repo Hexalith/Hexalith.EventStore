@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-review'
+status: 'done'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -521,6 +521,14 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-09-06 (review patches):** Closed restore-`OSError` fail-closed, timeout-reap cleanup
+  failure, a zero-signature package case, assembler bound-path refusals, and `[*.py]` EditorConfig
+  LF. Binding those producer bytes re-minted the subject to
+  `a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448`; the packet reports
+  `receipts=0 verifier_exit=1` and **fails closed**. Replacement receipts were not collected
+  (Ask First). No deployment, publication, registry mutation, consumer removal, predecessor
+  change, commit, or push was performed.
+
 - **2026-09-06 (Group A tools patch):** Closed the six Group A patches in one remint. A
   `TimeoutExpired` during `docker run` now inspects/rms the uuid-named container without changing the
   non-zero-exit “do not rm” rule. The assembler restores the previous `closure.json` when the pinned
@@ -752,14 +760,14 @@ Both owner receipts are independently constrained to the same positively allowli
 **Commands:**
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: sha256:4d1a0c33...`, exit 0. The frozen predecessor packet is unchanged, and its whole 66-file tree is now digest-pinned by the focused suite, not just the identity file.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.`, exit 1. The 2026-09-06 Group A remint rejected the three `86c59c79...` receipts collected on 2026-09-05. Current subject is `84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`. Deployed-runtime parity is **unavailable**; `deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields and are not granted. Non-authority flags stay false. A synthesized 3-of-3 copy still closes positive parity in `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`; the zero-receipt assembler path remains in `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict`.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.`, exit 1. The 2026-09-06 Group A remint rejected the three `86c59c79...` receipts collected on 2026-09-05. Current subject is `a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448` after the review-patch remint (Group A had rejected the three `86c59c79...` receipts). Deployed-runtime parity is **unavailable**; `deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields and are not granted. Non-authority flags stay false. A synthesized 3-of-3 copy still closes positive parity in `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`; the zero-receipt assembler path remains in `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict`.
 - `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:84dee6e5... receipts=0 verifier_exit=1`, exit 1, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
-- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 207 passed, 0 failed, 0 skipped.
+- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 212 passed, 0 failed, 0 skipped.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 55 passed, 0 failed, 0 skipped.
 - Complete Contracts suite -- **actual:** 1917 passed, 12 failed, 0 skipped, 1929 total. All 12
   failures are Story 4.15 OQ8 cases stopped by the same intentional downstream drift gate:
   `Story 4.15 v3 current source identity drift: docs/ci.md`. Rebinding that separately reviewed
-  successor packet would invalidate its approvals and is outside this story; Story 3.15's 207
+  successor packet would invalidate its approvals and is outside this story; Story 3.15's 212
   focused cases and the 55 predecessor/provenance cases remain green.
 - `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py tools/capture-corrected-deployed-runtime-parity-smokes.py tools/assemble-corrected-deployed-runtime-parity.py` -- **actual:** `text: set`, `eol: lf` for all six, so no SHA-256 pin can be broken by working-tree EOL drift. The two producers are included because their digests are now subject-bound.
 - `git diff --check` -- **actual:** no output, exit 0.
@@ -985,6 +993,27 @@ Both owner receipts are independently constrained to the same positively allowli
 | Frozen AC wording "authenticated ... Test Architect" vs self-attested record | false | reject | Limitations and operator records already disclose self-attestation; fix would edit frozen intent. |
 | Verifier smoke platform outcome value clauses lack mutation proofs | medium | patch | Verification-gap pre-verified: type/window tests do not force observed_platform/http_status/redirect/outcome value predicates. |
 | Capture suite never exercises observed-platform mismatch or non-200/redirect readiness | medium | patch | Verification-gap pre-verified: DockerFake always returns matching platforms; no 201/200+redirect cases. |
+| docs/ci.md Story 3.15 rewrite without a Story 4.15 v3 successor remint | medium | defer | Complete Contracts suite is red on `Story 4.15 v3 current source identity drift: docs/ci.md`. Reminting that separately reviewed packet is outside this story's frozen Never (no rewrite of published artifacts / other lineage). |
+| `.gitattributes` LF-pins `story-4-15-successors/v2/**` while docs name v3 | low | defer | Story 4.15 successor packet ownership; not caused by the parity-closure intent. |
+| `.editorconfig` `[*]` `end_of_line = crlf` still covers `*.py` | low | patch | `.gitattributes` already has `*.py text eol=lf`, but an EditorConfig-honouring editor can still rewrite SHA-pinned producers/verifiers in the working tree. Direct `[*.py]` override. |
+| `_bmad-output/test-artifacts/gate-decision.json` remint chain stops at `86c59c79` | low | defer | Artifact is already `SUPERSEDED`; regeneration belongs to the trace workflow (existing deferred-work entries). |
+| Timeout `docker run` reap ignores failed `docker rm` and records `cleanup: pass` | medium | patch | `container_created` stays false, so `finally` always stores `cleanup: pass`. `_reap_timed_out_run_container` runs `rm --force` with `check=False` and ignores its returncode. |
+| `_restore_previous_closure` swallows `OSError` | high | patch | Failed restore leaves the success-shaped `closure.json` the incomplete-child path was written to remove. |
+| Assembler restore skipped when verifier child returns a negative `returncode` | maybe-false | defer | `subprocess.run` treats a signal-killed child as a completed wait. Unverified whether operators can hit this; if true it would be medium. |
+| `closure.json` claim fields say `available` at 0/3 receipts | false | reject | Documented claim-versus-verdict: verifier exits 1 and grants nothing; `CheckedInPacketFailsClosedAtZeroOfThreeReceipts` pins both. |
+| Retained Production smokes predate the bound capture-tool digest | medium | defer | Recapture is Ask First. Smoke logs vs summary already deferred as restatements; the bound producer cannot reproduce those Aug-21 bytes. |
+| `review_loop_iteration: 6` / Code Map omits smoke-capture tests | false | reject | Loop counter is historical; fixing the Code Map would edit this build's spec. |
+| Proof/story authority tables say four flags then list six rows | low | reject | carried: cosmetic table preamble; unlikely everyday harm; more than a one-line fix. |
+| Isolation `execv` has no `OSError` handler | maybe-false | defer | carried: unverified whether OSError is reachable on supported hosts; pre-existing isolation design. |
+| Remint omitted `sprint-status.yaml` / `deferred-work.md` / 4.15 packet | false | reject | `sprint-status.yaml` already names `84dee6e5…` and is drift-bound. 4.15 remint grouped with the docs/ci.md defer above. |
+| CLI `evidence_path.read_bytes()` / inventory re-hash can block on a FIFO | low | reject | Unlikely everyday path; packet `_verify_file` already requires `S_ISREG`. Extra TOCTOU guards are more than a direct correction. |
+| Capture `subprocess.run(text=True)` without UTF-8 replace | low | reject | `docker`/`curl` write-outs used here are ASCII integers; assembler child I/O already uses `errors="replace"`. |
+| Assembler can execute stale `.pyc` beside hashed sources | false | reject | Live verifier isolates and execs hashed bytes; a shadowed producer cannot make the isolated verifier accept a bad packet. |
+| Test `Kill` after budget does not drain redirected pipes | low | reject | Unlikely everyday (2-minute / 15-second budgets); adding WaitForExit+drain is more than a one-line correction. |
+| Zero-receipt CLI never calls `_validate_predecessor` | false | reject | `validate_identity` pins the predecessor digest before the receipt-count gate; packet-file recompute runs on a schema-valid (3-receipt) document. 0/3 is the invalid-acceptance row. Independent Story 3.14 validator still recomputes. |
+| Issued subject has no roster-bound receipts | false | reject | Documented fail-closed 0/3; collecting `#352` receipts remains Ask First. |
+| No test removes `.signature.p7s` (only the duplicate-entry case) | medium | patch | Verification-gap pre-verified: `signature_count != 1` can be weakened to `> 1` with the suite still green. |
+| Assembler provenance refusals never execute off the bound path | medium | patch | Verification-gap pre-verified: every assembler test runs the repository script; deleting the `__file__` comparison keeps the suite green. |
 
 ### Review Findings (2026-09-06, Group A — tools / verifier chunk)
 

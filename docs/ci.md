@@ -588,7 +588,7 @@ executing rather than the pristine repository file.
 The 2026-08-30 verifier and producer hardening re-minted the subject once more at zero receipts,
 where no acceptance was burned. The 2026-09-06 Group A tools patch then re-minted again, rejecting
 the three `86c59c79...` receipts collected on 2026-09-05. The packet's current subject is
-`84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`. The packet now **fails closed at
+`a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448`. The packet now **fails closed at
 zero of three receipts**: the verifier exits 1 and grants nothing. Reassembly reports
 `receipts=0 verifier_exit=1`. Deployed-runtime parity is **unavailable**. The `bb58d691...`,
 `dab64f5f...`, `a8cc777e...` and `86c59c79...` receipts and sources all remain byte-for-byte in the

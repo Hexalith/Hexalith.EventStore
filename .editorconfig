@@ -10,6 +10,11 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
+# SHA-pinned Python verifiers and packet producers. Global CRLF would rewrite their
+# bytes and break subject-bound pins on an EditorConfig-honouring save.
+[*.py]
+end_of_line = lf
+
 # C# files
 [*.cs]
 # Naming conventions

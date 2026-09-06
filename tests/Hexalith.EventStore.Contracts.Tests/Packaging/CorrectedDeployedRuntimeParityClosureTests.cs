@@ -53,7 +53,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// record that keeps naming a superseded subject cannot stay green.
     /// </summary>
     private const string CurrentSubjectSha256 =
-        "84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f";
+        "a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448";
 
     /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
     private const int FrozenStory314PacketFileCount = 66;
@@ -1380,9 +1380,49 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         {
             string closurePath = Path.Combine(temporary, "closure.json");
             JsonObject closure = LoadJson(closurePath);
+            RebindLiveDispatchHashes(root, closure);
             string relative = closure["packages"]!["items"]![0]!["nuget_org"]!["file"]!.GetValue<string>();
             string packagePath = Path.Combine(temporary, relative);
             DuplicateZipEntry(packagePath, ".signature.p7s");
+            closure["packages"]!["items"]![0]!["nuget_org"]!["sha256"] = ComputeSha256(packagePath);
+            closure["packages"]!["items"]![0]!["nuget_org"]!["size"] = new FileInfo(packagePath).Length;
+            WriteCanonical(closurePath, closure);
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "NuGet.org package signature or nuspec identity is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a NuGet.org package with its <c>.signature.p7s</c> entry removed fails closed on
+    /// the signature count check. Only the duplicate-entry sibling existed, so
+    /// <c>signature_count != 1</c> could be weakened to <c>&gt; 1</c> with the suite still green.
+    /// </summary>
+    [Fact]
+    public void PackageWithRemovedSignatureEntryFailsClosedOnSignatureCheck()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            RebindLiveDispatchHashes(root, closure);
+            string relative = closure["packages"]!["items"]![0]!["nuget_org"]!["file"]!.GetValue<string>();
+            string packagePath = Path.Combine(temporary, relative);
+            RemoveZipEntry(packagePath, ".signature.p7s");
+            // Stripping the signature can make the public archive byte-identical to the unsigned
+            // GitHub release asset; a marker entry keeps the domains distinct so the check under
+            // test is signature_count == 0, not domain conflation.
+            using (ZipArchive archive = ZipFile.Open(packagePath, ZipArchiveMode.Update))
+            {
+                archive.CreateEntry("_not-a-signature");
+            }
             closure["packages"]!["items"]![0]!["nuget_org"]!["sha256"] = ComputeSha256(packagePath);
             closure["packages"]!["items"]![0]!["nuget_org"]!["size"] = new FileInfo(packagePath).Length;
             WriteCanonical(closurePath, closure);
@@ -3733,6 +3773,142 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies a failed closure restore after an incomplete verifier fails closed with a
+    /// support-safe restore reason instead of swallowing <c>OSError</c> and leaving the newly
+    /// written success-shaped claim file as the packet.
+    /// </summary>
+    [Fact]
+    public void AssemblerRestoreFailureFailsClosedWithoutTraceback()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        string hanging = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-hanging-verifier-{Guid.NewGuid():N}.py");
+        try
+        {
+            string acceptancesRoot = Path.Combine(temporary, "acceptances");
+            if (Directory.Exists(acceptancesRoot))
+            {
+                Directory.Delete(acceptancesRoot, recursive: true);
+            }
+
+            File.WriteAllText(hanging, "import time\ntime.sleep(30)\n");
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "-c",
+                "import importlib.util, pathlib, sys\n"
+                + "writes = []\n"
+                + "orig = pathlib.Path.write_bytes\n"
+                + "def wrapped(self, data):\n"
+                + "    if self.name == 'closure.json':\n"
+                + "        writes.append(1)\n"
+                + "        if len(writes) > 1:\n"
+                + "            raise OSError('restore refused')\n"
+                + "    return orig(self, data)\n"
+                + "pathlib.Path.write_bytes = wrapped\n"
+                + "p = pathlib.Path(sys.argv[1]).resolve()\n"
+                + "sys.path.insert(0, str(p.parent))\n"
+                + "s = importlib.util.spec_from_file_location('story315_assemble', str(p))\n"
+                + "m = importlib.util.module_from_spec(s)\n"
+                + "s.loader.exec_module(m)\n"
+                + "m.VERIFIER_TIMEOUT_SECONDS = 0.2\n"
+                + "m.VERIFIER_FILE = pathlib.Path(sys.argv[2])\n"
+                + "sys.argv = [str(p), sys.argv[3]]\n"
+                + "raise SystemExit(m.main())",
+                Path.Combine(root, "tools", "assemble-corrected-deployed-runtime-parity.py"),
+                hanging,
+                temporary);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("could not restore the previous closure after an incomplete verifier");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+            if (File.Exists(hanging))
+            {
+                File.Delete(hanging);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies the assembler refuses to run from a copied script path, and refuses a shadowed
+    /// handler <c>__file__</c>, without rewriting the retained packet. Neither bound-path check
+    /// ran off the repository file in this suite.
+    /// </summary>
+    /// <param name="mode">Which bound-path check to displace.</param>
+    [Theory]
+    [InlineData("assembler")]
+    [InlineData("handler")]
+    public void AssemblerRefusesExecutionOffTheBoundRepositoryPath(string mode)
+    {
+        ArgumentNullException.ThrowIfNull(mode);
+        string root = FindRepositoryRoot();
+        string retainedClosure = ComputeSha256(
+            Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string temporary = CreateAcceptedPacket(root);
+        string shadow = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-bound-path-{mode}-{Guid.NewGuid():N}.py");
+        try
+        {
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "-c",
+                "import importlib.util,pathlib,shutil,sys;"
+                + "root=pathlib.Path(sys.argv[1]).resolve();"
+                + "packet=pathlib.Path(sys.argv[2]).resolve();"
+                + "mode=sys.argv[3];"
+                + "shadow=pathlib.Path(sys.argv[4]).resolve();"
+                + "sys.path.insert(0,str(root/'tools'));"
+                + "bound=root/'tools'/'assemble-corrected-deployed-runtime-parity.py';"
+                + "target=shadow if mode=='assembler' else bound;"
+                + "shutil.copy2(bound if mode=='assembler' else root/'tools'/'deployed_runtime_parity_handlers'/'v1.py', shadow);"
+                + "s=importlib.util.spec_from_file_location('story315_assemble',str(target));"
+                + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                + "m.v1.__file__=str(shadow) if mode=='handler' else m.v1.__file__;"
+                + "sys.argv=[str(target),str(packet)];"
+                + "raise SystemExit(m.main())",
+                root,
+                temporary,
+                mode,
+                shadow);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            if (mode == "assembler")
+            {
+                error.ShouldContain("assembler is executing from");
+                error.ShouldContain("not the bound repository path");
+            }
+            else
+            {
+                error.ShouldContain("tools/deployed_runtime_parity_handlers/v1.py was imported from");
+            }
+
+            ComputeSha256(Path.Combine(root, EvidenceRelativePath, "closure.json"))
+                .ShouldBe(retainedClosure);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+            if (File.Exists(shadow))
+            {
+                File.Delete(shadow);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies the closure binds both packet producers. Neither the bounded smoke capture tool nor
     /// the assembler was bound anywhere, which is exactly why the smoke acceptance semantics could
     /// change -- from any 2xx to exactly 200 -- without invalidating a single receipt.
@@ -3872,6 +4048,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         using Stream duplicateStream = duplicate.Open();
         buffer.Position = 0;
         buffer.CopyTo(duplicateStream);
+    }
+
+    private static void RemoveZipEntry(string zipPath, string entryName)
+    {
+        using ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Update);
+        archive.GetEntry(entryName).ShouldNotBeNull().Delete();
     }
 
     private static void ReplaceNuspec(string zipPath, string content)
@@ -4229,6 +4411,32 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         closure["owner_role_registry"]!["sha256"] = ComputeSha256(registryPath);
         closure["owner_role_registry"]!["size"] = new FileInfo(registryPath).Length;
         WriteCanonical(closurePath, closure);
+    }
+
+    /// <summary>
+    /// Rebinds every dispatch live-file hash on a temporary packet to the working-tree bytes.
+    /// Producer edits remint the checked-in packet; mutation cases still have to get past the
+    /// dispatch pin to reach the field under test.
+    /// </summary>
+    /// <param name="root">Repository root.</param>
+    /// <param name="closure">Closure document to rebind.</param>
+    private static void RebindLiveDispatchHashes(string root, JsonObject closure)
+    {
+        foreach (string name in new[]
+            {
+                "assembler",
+                "capture",
+                "handler",
+                "predecessor_handler",
+                "predecessor_package",
+                "verifier",
+            })
+        {
+            JsonObject binding = closure["dispatch"]![name]!.AsObject();
+            string path = Path.Combine(root, binding["file"]!.GetValue<string>());
+            binding["sha256"] = ComputeSha256(path);
+            binding["size"] = new FileInfo(path).Length;
+        }
     }
 
     /// <summary>
