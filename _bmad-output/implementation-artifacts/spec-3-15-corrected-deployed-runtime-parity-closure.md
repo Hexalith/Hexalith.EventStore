@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -754,13 +754,13 @@ Both owner receipts are independently constrained to the same positively allowli
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
 - `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.`, exit 1. The 2026-09-06 Group A remint rejected the three `86c59c79...` receipts collected on 2026-09-05. Current subject is `84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`. Deployed-runtime parity is **unavailable**; `deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields and are not granted. Non-authority flags stay false. A synthesized 3-of-3 copy still closes positive parity in `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`; the zero-receipt assembler path remains in `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict`.
 - `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:84dee6e5... receipts=0 verifier_exit=1`, exit 1, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
-- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 193 passed, 0 failed, 0 skipped.
-- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 37 passed, 0 failed, 0 skipped.
-- Complete Contracts suite -- **actual:** 1846 passed, 29 failed, 0 skipped, 1875 total. All 29
+- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 207 passed, 0 failed, 0 skipped.
+- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 55 passed, 0 failed, 0 skipped.
+- Complete Contracts suite -- **actual:** 1917 passed, 12 failed, 0 skipped, 1929 total. All 12
   failures are Story 4.15 OQ8 cases stopped by the same intentional downstream drift gate:
-  `Story 4.15 v2 gate-input identity drift: docs/ci.md`. Rebinding that separately reviewed
-  successor packet would invalidate its approvals and is outside this story; Story 3.15's 193
-  focused cases and the 37 predecessor/provenance cases remain green.
+  `Story 4.15 v3 current source identity drift: docs/ci.md`. Rebinding that separately reviewed
+  successor packet would invalidate its approvals and is outside this story; Story 3.15's 207
+  focused cases and the 55 predecessor/provenance cases remain green.
 - `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py tools/capture-corrected-deployed-runtime-parity-smokes.py tools/assemble-corrected-deployed-runtime-parity.py` -- **actual:** `text: set`, `eol: lf` for all six, so no SHA-256 pin can be broken by working-tree EOL drift. The two producers are included because their digests are now subject-bound.
 - `git diff --check` -- **actual:** no output, exit 0.
 
@@ -988,7 +988,7 @@ Both owner receipts are independently constrained to the same positively allowli
 
 ### Review Findings (2026-09-06, Group A — tools / verifier chunk)
 
-Scope: `94591f35...HEAD` narrowed to the seven Story 3.15 tool files (`assemble-corrected-deployed-runtime-parity.py`, `capture-corrected-deployed-runtime-parity-smokes.py`, `deployed_runtime_parity_handlers/{__init__,v1}.py`, `validate-corrected-deployed-runtime-parity.py`, `validate-corrective-release-evidence.py`, `release_evidence_handlers/v3.py`). 2,665 diff lines. Four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); none failed. Remaining follow-up groups: B tests, C spec/story/proof, D docs, E evidence.
+Scope: `94591f35...HEAD` narrowed to the seven Story 3.15 tool files (`assemble-corrected-deployed-runtime-parity.py`, `capture-corrected-deployed-runtime-parity-smokes.py`, `deployed_runtime_parity_handlers/{__init__,v1}.py`, `validate-corrected-deployed-runtime-parity.py`, `validate-corrective-release-evidence.py`, `release_evidence_handlers/v3.py`). 2,665 diff lines. Four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); none failed. Groups B (tests), C (spec/story/proof), D (docs), and E (evidence remint) landed with this Group A remint.
 
 **decision (resolved):**
 

@@ -276,9 +276,9 @@ decision, registry and producer digests -> receipts addressed by that subject.
   synthetic test fixtures only to mutation-prove the receipt contract; those fixtures are never
   copied into the retained packet.
 - Focused predecessor/provenance suite: pass, zero failed, zero skipped.
-- Complete Contracts suite: 1846 passed, 29 failed, zero skipped. Every failure is the Story 4.15
+- Complete Contracts suite: 1917 passed, 12 failed, zero skipped, 1929 total. Every failure is the Story 4.15
   OQ8 successor rejecting this story's required `docs/ci.md` update as
-  `Story 4.15 v2 gate-input identity drift: docs/ci.md`; rebinding that separately reviewed packet
+  `Story 4.15 v3 current source identity drift: docs/ci.md`; rebinding that separately reviewed packet
   requires a Story 4.15 re-review and is not fabricated here.
 - Checked-in Story 3.15 assembler and verifier: **fail closed at zero of three receipts**, exit 1;
   subject `84dee6e5...`; nothing granted; all non-authority flags false.

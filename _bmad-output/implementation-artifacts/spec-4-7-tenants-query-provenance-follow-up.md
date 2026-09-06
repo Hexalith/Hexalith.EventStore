@@ -2,10 +2,10 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
-review_loop_iteration: 1
-followup_review_recommended: false
+review_loop_iteration: 6
+followup_review_recommended: true
 baseline_commit: 'b43d64f906665e2bf3015eb2d3f16b771598d352'
 baseline_revision: 'b43d64f906665e2bf3015eb2d3f16b771598d352'
 tenants_baseline_commit: 'd2b7ede359830c27934ac9f577e3073955c3e2c2'
@@ -14,7 +14,7 @@ context:
   - 'references/Hexalith.Tenants/_bmad-output/project-context.md'
   - '_bmad-output/implementation-artifacts/epic-4-context.md'
 warnings: [oversized]
-deferred: []
+deferred: ['DW-487', 'DW-488', 'DW-489', 'DW-490', 'DW-491', 'DW-492', 'DW-493', 'DW-494']
 ---
 
 <frozen-after-approval reason="human-approved Story 4.7 scope and repository authority — do not modify unless human renegotiates">

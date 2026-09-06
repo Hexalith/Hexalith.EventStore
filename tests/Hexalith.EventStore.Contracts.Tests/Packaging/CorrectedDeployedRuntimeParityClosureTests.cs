@@ -1472,6 +1472,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// Verifies an encrypted nuspec zip entry fails closed with the support-safe archive reason
     /// rather than a <c>RuntimeError</c> traceback. <c>ZipFile.read</c> raises
     /// <c>RuntimeError</c> for encryption, which the Story 3.15 dispatcher does not catch.
+    /// <c>ZipFile.writestr</c> clears <c>flag_bits</c>, so the fixture patches the encryption bit
+    /// into the local and central headers after the archive is closed.
     /// </summary>
     [Fact]
     public void EncryptedNuspecEntryFailsClosedWithoutTraceback()
@@ -1497,12 +1499,31 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 + "    nuspecs = [name for name in names if name.endswith('.nuspec')]\n"
                 + "if len(nuspecs) != 1:\n"
                 + "    raise SystemExit('expected one nuspec')\n"
-                + "info = zipfile.ZipInfo(nuspecs[0])\n"
-                + "info.flag_bits |= 0x1\n"
+                + "nuspec = nuspecs[0]\n"
                 + "with zipfile.ZipFile(path, 'w') as dst:\n"
                 + "    for name, data in contents.items():\n"
                 + "        dst.writestr(name, data)\n"
-                + "    dst.writestr(info, b'encrypted-nuspec')\n",
+                + "    dst.writestr(nuspec, b'encrypted-nuspec')\n"
+                + "data = bytearray(path.read_bytes())\n"
+                + "with zipfile.ZipFile(path) as archive:\n"
+                + "    info = archive.getinfo(nuspec)\n"
+                + "    local_off = info.header_offset\n"
+                + "    start_dir = archive.start_dir\n"
+                + "    filename = info.filename.encode('utf-8')\n"
+                + "data[local_off + 6] |= 0x1\n"
+                + "pos = start_dir\n"
+                + "while pos + 46 <= len(data) and data[pos:pos+4] == b'PK' + bytes([1, 2]):\n"
+                + "    fn_len = int.from_bytes(data[pos+28:pos+30], 'little')\n"
+                + "    extra_len = int.from_bytes(data[pos+30:pos+32], 'little')\n"
+                + "    comment_len = int.from_bytes(data[pos+32:pos+34], 'little')\n"
+                + "    fn = bytes(data[pos+46:pos+46+fn_len])\n"
+                + "    if fn == filename:\n"
+                + "        data[pos + 8] |= 0x1\n"
+                + "        break\n"
+                + "    pos += 46 + fn_len + extra_len + comment_len\n"
+                + "else:\n"
+                + "    raise SystemExit('nuspec central directory header was not found')\n"
+                + "path.write_bytes(data)\n",
                 packagePath);
             rewriteExit.ShouldBe(0, rewriteError);
             UpdateFileBinding(nuget, packagePath, updateDigest: false);
