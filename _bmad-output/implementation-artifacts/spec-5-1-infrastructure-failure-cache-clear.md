@@ -127,6 +127,31 @@ context:
 - [Rejected][false] Barrier diagnostics report `DiscardExceptionType=None` inconsistently — the barrier clear is the remediation operation itself rather than a secondary discard, and its exception type is already retained in `RemediationExceptionType`.
 - [Rejected][false] Publication-index ownership generally accepts malformed entries — malformed entries cannot satisfy `IsWellFormed` owner predicates; the cited `Contains` uses only produce a fail-closed ambiguity, while the separate `TryAdd` defect remains an actionable finding above.
 
+### Review Findings — AggregateActor chunk (2026-09-06)
+
+- [ ] [Review][Decision] Ambiguous event-batch inspection can serialize up to 1,000 state-store reads — `HasExactCommittedEventBatchAsync` reads metadata and then every emitted event sequentially while the actor turn is locked after an already-degraded save. The configured domain-result limit permits 1,000 events, so durable inspection can itself time out or monopolize the actor. Preserving the frozen exact-witness requirement without this cost requires choosing whether to add a compact durable batch witness, accept a bounded fail-closed inspection, or retain the current worst-case behavior.
+- [ ] [Review][Patch] Ambiguous-save recovery paths suppress `OperationCanceledException` after durable inspection [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:3197]
+- [ ] [Review][Patch] Legacy-source `Unavailable` results bypass discard-or-poison handling [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:174]
+- [ ] [Review][Patch] Manual-snapshot durable comparison uses serializer defaults that differ from actor persistence [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1740]
+- [ ] [Review][Patch] Legacy-migration inspection misclassifies an exact migrated record that expires after the save [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:447]
+- [ ] [Review][Patch] Empty publication-index reconciliation lacks a nonzero durable-count regression [tests/Hexalith.EventStore.Server.Tests/Actors/PublicationRecoveryActivationTests.cs:736]
+- [ ] [Review][Patch] Pre-commit drain-retry repair lacks a committed-state regression [tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs:336]
+- [ ] [Review][Patch] `GetEventsAsync` metadata exception classification lacks a non-deserialization regression [tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs:89]
+- [ ] [Review][Patch] Commit-then-cancel stale-Processing cleanup can orphan its pending slot [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:661]
+- [ ] [Review][Patch] Escaping reminder remediation does not mark the active drain activity failed [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2172]
+- [x] [Review][Defer] Activation recovery has no total scan or continuation bound [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2984] — deferred: this is the previously accepted activation-loop risk outside Story 5.1's frozen state-I/O budget; armed and blank-malformed entries can still monopolize a turn, and skipped tail entries wait for another activation.
+- [x] [Review][Defer] Drain exhaustion can republish after a pre-commit marker-save failure [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2233] — deferred: this is the pre-existing Story 4.4 external-publication/state-marker boundary, and Story 5.1 explicitly preserves dead-letter retry policy.
+- [x] [Review][Defer] `GetEventsAsync` rejects a touched empty stream accepted by adjacent read APIs [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1449] — deferred: this pre-existing read-contract inconsistency is unrelated to the Story 5.1 cache-safety change.
+- [x] [Review][Defer] Recovered rejection drains lose rejection-event-type fidelity in advisory status [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2097] — deferred: `UnpublishedEventsRecord` does not retain the type and this behavior predates Story 5.1; correcting all recovery paths requires separate status-contract work.
+- [x] [Review][Defer] At-capacity resume or stale handoff can persist an unindexed drain [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2748] — deferred: this known Story 4.4 crash window predates the current change and the frozen Story 5.1 scope excludes publication-recovery policy; if post-commit reminder registration fails, unpublished events have no activation-discoverable owner.
+
+#### Rejected — AggregateActor chunk (2026-09-06)
+
+- [Rejected][false] The production change has no accompanying tests — this review chunk intentionally excluded tests; the full Story 5.1 range changes fifteen actor test files, although the specific confirmed gaps above still need regressions.
+- [Rejected][low] `AggregateActor` should be split into collaborators — the 5,926-line class is costly to review, but a broad extraction is substantially riskier than a direct Story 5.1 correction and the finding identified no separate behavioral failure.
+- [Rejected][false] Publication owners can change concurrently during pending-finalizer inspection — DAPR actor turns are serialized and no in-scope path mutates this actor's index between capture and inspection; unexpected external store mutation is correctly treated as ambiguity.
+- [Rejected][false] A pre-existing same-message owner makes a known pre-commit event save unsafe — such an owner contradicts the normal atomic pipeline/index path; the inspector deliberately refuses that non-exact witness and fails closed instead of accepting an unsafe outcome.
+
 ## Implementation Notes
 
 - 2026-09-05 -- Hardened conflict retry, infrastructure rejection, conflict exhaustion, and pending-command finalization around explicit clear/restage/save boundaries. Remediation failures now retain support-safe primary/remediation classifications, and throwing dead-letter publication remains advisory.
