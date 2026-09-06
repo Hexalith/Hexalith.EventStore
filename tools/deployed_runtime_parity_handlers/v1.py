@@ -901,7 +901,25 @@ def _validate_registry(document, packet_root):
         raise EvidenceError("owner-role registry authority source is invalid")
 
 
-def _validate_inventory(document, packet_root):
+def _evidence_relative_to_packet(packet_root, evidence_path):
+    """Return the packet-relative evidence path, or None when evidence sits outside the packet.
+
+    The closed inventory used to always exempt the basename ``closure.json``, even when the CLI
+    validated a different evidence file. A leftover packet ``closure.json`` whose bytes disagreed
+    with the validated evidence was then invisible to the extra-file sweep.
+    """
+    if evidence_path is None:
+        return None
+    try:
+        relative = Path(evidence_path).resolve().relative_to(packet_root.resolve()).as_posix()
+    except (OSError, ValueError):
+        return None
+    if not relative or relative == "." or relative.startswith("../"):
+        return None
+    return relative
+
+
+def _validate_inventory(document, packet_root, evidence_path=None):
     expected = {
         item["nuget_org"]["file"] for item in document["packages"]["items"]
     }
@@ -919,7 +937,10 @@ def _validate_inventory(document, packet_root):
     ).encode("utf-8")
     if inventory_bytes != expected_text:
         raise EvidenceError("technical inventory is not closed over the exact retained files")
-    closed = expected | {document["technical_inventory"]["file"], document["subject"]["file"], "closure.json"}
+    closed = expected | {document["technical_inventory"]["file"], document["subject"]["file"]}
+    evidence_relative = _evidence_relative_to_packet(packet_root, evidence_path)
+    if evidence_relative is not None:
+        closed.add(evidence_relative)
     # The bound subject's own acceptance directory is close-listed by _validate_receipts, so it is
     # excluded here -- but only that one directory. Anything else under acceptances/ is a stale or
     # foreign receipt tree (a superseded subject's, or a planted one) and must be rejected rather
@@ -1091,7 +1112,14 @@ def _github_comment_identity_agrees(source_document):
     )
 
 
-def validate_packet_files(document, packet_root, expected_package_ids, expected_manifest_sha256, repository_root):
+def validate_packet_files(
+    document,
+    packet_root,
+    expected_package_ids,
+    expected_manifest_sha256,
+    repository_root,
+    evidence_path=None,
+):
     """Recompute all retained edges without executing any packet-supplied code."""
     packet_root = packet_root.resolve()
     predecessor = _validate_predecessor(document, expected_package_ids, expected_manifest_sha256, repository_root)
@@ -1099,7 +1127,7 @@ def validate_packet_files(document, packet_root, expected_package_ids, expected_
     _validate_oci(document, predecessor, packet_root, repository_root)
     _validate_smokes(document, packet_root)
     _validate_registry(document, packet_root)
-    _validate_inventory(document, packet_root)
+    _validate_inventory(document, packet_root, evidence_path)
     subject_bytes = _verify_file(packet_root, document["subject"])
     subject_document = load_json_bytes(subject_bytes)
     if (

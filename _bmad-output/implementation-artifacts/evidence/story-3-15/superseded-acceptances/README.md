@@ -1,10 +1,10 @@
 # Superseded Story 3.15 acceptances
 
-This audit area retains three superseded Story 3.15 acceptance sets. There are **three sets against
-seven subjects** -- the canonical subject has been re-minted six times -- because receipts were only
-ever collected against three of them. The other three re-mints (`1dee194f...`, `5acb8176...`,
-`93559e61...`) happened before any receipt was collected for that subject, so there is nothing to
-retain for them and their absence here is expected, not a gap.
+This audit area retains four superseded Story 3.15 acceptance sets. There are **four sets against
+nine subjects** -- the canonical subject has been re-minted eight times -- because receipts were only
+ever collected against four of them. The other re-mints happened before any receipt was collected
+for that subject, so there is nothing to retain for them and their absence here is expected, not a
+gap.
 
 These sets authorize nothing for the current subject. Do not move them back into the packet.
 
@@ -36,6 +36,8 @@ that make the retention auditable -- so the re-rooting is documented here instea
   `dab64f5fbbf55783630ad75451d35d517d829e194fb618dc8b0526d39761d38d`.
 - Three roster-bound role receipts collected on 2026-08-25 for subject
   `a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`.
+- Three roster-bound role receipts collected on 2026-09-05 for subject
+  `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`.
 
 The packet's `closure.json` carries `deployed_runtime_parity: "available"` and a
 `selected_deployed_identity`. Those two fields are the **claim** the three roles are asked to
@@ -71,6 +73,13 @@ The `a8cc777e...` set was superseded by the loop-6 review batch, landed as one r
   with the subject unchanged.
 - A fourth limitation was bound into the subject, disclosing that every acceptance receipt is
   composed by repository tooling and posted with the rostered role holder's credential.
+
+The `86c59c79...` set was superseded by the 2026-09-06 Group A tools patch, landed as one re-mint:
+
+- A `TimeoutExpired` during `docker run` now inspects and force-removes the uuid-named container.
+- The assembler restores the previous `closure.json` when the pinned verifier does not complete.
+- Encrypted or unsupported-compression nuspec reads fail closed as `EvidenceError`.
+- The closed inventory exempts only the validated evidence path, not a hardcoded `closure.json`.
 
 Per the rerun trigger, **every prior receipt is rejected**. The bytes are retained here, outside the
 packet root, so they survive for audit while the packet stays closed over exactly the current

@@ -586,16 +586,15 @@ tool can no longer emit records this verifier rejects, and bound the assembler t
 executing rather than the pristine repository file.
 
 The 2026-08-30 verifier and producer hardening re-minted the subject once more at zero receipts,
-where no acceptance was burned. The packet's current subject is
-`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`. On 2026-09-05 the three roster-bound
-role receipts were collected on issue `#352` for that subject, so the packet now **closes positive
-parity at three of three**: the verifier exits 0 and selects only
-`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Reassembly reports
-`receipts=3 verifier_exit=0`. Deployed-runtime **parity is available**. The `bb58d691...`,
-`dab64f5f...` and `a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit
-area, whose README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with
-its source. Five of the eight subjects never had receipts collected at all, so three retained
-superseded sets against seven prior re-mints is the expected shape, not a gap.
+where no acceptance was burned. The 2026-09-06 Group A tools patch then re-minted again, rejecting
+the three `86c59c79...` receipts collected on 2026-09-05. The packet's current subject is
+`84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`. The packet now **fails closed at
+zero of three receipts**: the verifier exits 1 and grants nothing. Reassembly reports
+`receipts=0 verifier_exit=1`. Deployed-runtime parity is **unavailable**. The `bb58d691...`,
+`dab64f5f...`, `a8cc777e...` and `86c59c79...` receipts and sources all remain byte-for-byte in the
+superseded audit area, whose README carries the re-rooting rule an auditor needs to re-pair a
+superseded receipt with its source. Five of the nine subjects never had receipts collected at all,
+so four retained superseded sets against eight prior re-mints is the expected shape, not a gap.
 
 `closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
 `selected_deployed_identity`. Those two fields are the **claim** the three rostered roles accept;

@@ -20,6 +20,9 @@ from deployed_runtime_parity_handlers import v1  # noqa: E402
 
 
 VERIFIER_TIMEOUT_SECONDS = 120
+# Rebound by focused tests so a hanging child can prove the restore path. Production runs keep the
+# pinned verifier beside this script.
+VERIFIER_FILE = Path(__file__).resolve().parent / "validate-corrected-deployed-runtime-parity.py"
 
 
 def _inside(root, path):
@@ -89,6 +92,24 @@ def oci_binding(path, relative, media_type, trusted_root):
 
 def canonical_write(packet_root, path, value):
     _write_bytes(packet_root, path, v1.canonical_bytes(value))
+
+
+def _restore_previous_closure(path, previous_bytes):
+    """Restore the pre-assembly closure when the pinned verifier does not complete.
+
+    A completed verifier verdict -- including the expected receipt-gate exit 1 -- keeps the newly
+    assembled ``closure.json``, because that is the packet an operator must inspect. Timeout,
+    spawn failure, and other incomplete child runs must not leave a success-shaped claim file
+    behind.
+    """
+    try:
+        if previous_bytes is None:
+            if path.exists():
+                path.unlink()
+            return
+        path.write_bytes(previous_bytes)
+    except OSError:
+        pass
 
 
 def repository_root():
@@ -388,11 +409,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("packet_root", type=Path)
     arguments = parser.parse_args()
+    closure_path = arguments.packet_root / "closure.json"
+    previous_closure = None
+    if closure_path.is_file() and not closure_path.is_symlink():
+        try:
+            previous_closure = closure_path.read_bytes()
+        except OSError:
+            previous_closure = None
     try:
         document, subject_sha256 = build_document(arguments.packet_root)
         canonical_write(
             arguments.packet_root,
-            arguments.packet_root / "closure.json",
+            closure_path,
             document,
         )
     except (OSError, TypeError, ValueError) as error:
@@ -405,21 +433,26 @@ def main():
     receipts = len(document["acceptances"]["receipts"])
     # Assemble and verify are one operation: emitting a packet without running the pinned verifier
     # over it is how a rejected packet acquired a success-shaped assembly line and exit 0.
+    # Decode child output as UTF-8 with replacement so a non-locale stderr cannot raise
+    # UnicodeDecodeError after the success-shaped closure is already on disk.
     try:
         verdict = subprocess.run(
             [
                 sys.executable,
-                str(Path(__file__).resolve().parent / "validate-corrected-deployed-runtime-parity.py"),
-                str(arguments.packet_root / "closure.json"),
+                str(VERIFIER_FILE),
+                str(closure_path),
                 "--packet-root",
                 str(arguments.packet_root),
             ],
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=VERIFIER_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.SubprocessError) as error:
+        _restore_previous_closure(closure_path, previous_closure)
         print(
             "[corrected-deployed-runtime-parity-assembly] fail: "
             f"the bounded verifier process could not complete: {error}; "

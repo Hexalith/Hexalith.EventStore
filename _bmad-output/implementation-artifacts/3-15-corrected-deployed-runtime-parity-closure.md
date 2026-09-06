@@ -2,14 +2,14 @@
 
 ## Current verdict
 
-**Deployed-runtime parity is available: three of three roster-bound role receipts bind subject
-`sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`, and the retained verifier
-selects only
-`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.** The technical lineage
-still reproduces exactly. Every superseded receipt tree -- `bb58d691...`, `dab64f5f...` and
-`a8cc777e...` -- remains byte-for-byte outside the packet under
-`evidence/story-3-15/superseded-acceptances/`, whose README carries the re-rooting rule needed to
-re-pair a superseded receipt with its retained source.
+**The packet fails closed at 0 of 3 receipts.** Current subject
+`sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`. The 2026-09-06 Group A
+tools patch re-minted the subject and, by the packet's own rerun trigger, rejected the three
+`86c59c79...` receipts collected on 2026-09-05. Those receipts remain byte-for-byte outside the
+packet under `evidence/story-3-15/superseded-acceptances/86c59c79.../`, alongside the earlier
+`bb58d691...`, `dab64f5f...` and `a8cc777e...` trees. Collecting three fresh receipts on issue
+`#352` remains an **Ask First** owner action and was **not** performed. Deployed-runtime parity is
+**unavailable**; no identity is selected.
 
 Running the retained verifier reproduces exactly this state:
 
@@ -17,33 +17,29 @@ Running the retained verifier reproduces exactly this state:
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] pass: subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
+[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.
 $ echo $?
-0
+1
 ```
 
-Re-running the assembler is idempotent and reports the same verdict:
+Re-running the assembler is idempotent and reports the same fail-closed verdict:
 
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 receipts=3 verifier_exit=0
+[corrected-deployed-runtime-parity-assembly] subject=sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f receipts=0 verifier_exit=1
 $ echo $?
-0
+1
 ```
 
 **`deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields whose grant is
-the 3-of-3 receipt gate.** With three packet-bound receipts they are granted by exit 0; an auditor
-must still read them together with the receipt count and the four non-authority flags, never alone.
-Receipts are retained under
-`acceptances/86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274/` with durable sources
-for EventStore-owner comment
-[5550273078](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5550273078),
-Release-owner comment
-[5550277712](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5550277712),
-and the self-attested `bmad:murat` Test Architect record.
+the 3-of-3 receipt gate.** At zero receipts they are the packet's claim, not a granted verdict; an
+auditor must still read them together with the receipt count and the four non-authority flags, never
+alone. The selected index remains
+`sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3` as the only identity this
+closure may ever select once parity is available.
 
-### Completed owner action
+### Completed owner action (now superseded)
 
 1. Posted EventStore-owner and Release-owner acceptances on issue `#352`, each binding subject
    `86c59c79...` with the exact scope, decision, identity, role and the four required limitations,
@@ -52,12 +48,14 @@ and the self-attested `bmad:murat` Test Architect record.
 3. Re-ran the assembler, which re-derived the receipt bindings and re-ran the pinned verifier over
    its own output.
 
-### Why the subject changed seven times
+Those three receipts no longer bind the current subject. They are retained unbound for audit.
 
-Five 2026-08-25 review loops, two authorized completion/hardening passes, and the 2026-08-30
-producer/verifier hardening each re-minted the
+### Why the subject changed eight times
+
+Five 2026-08-25 review loops, two authorized completion/hardening passes, the 2026-08-30
+producer/verifier hardening, and the 2026-09-06 Group A tools patch each re-minted the
 subject, and by the packet's own rerun trigger each re-mint rejected every receipt collected against
-the prior subject. Receipts existed for only three of the eight subjects; the other five subjects
+the prior subject. Receipts existed for only four of the nine subjects; the other five subjects
 happened before any receipt had been collected for them.
 
 - Loop 2 bound the transitively imported `tools/release_evidence_handlers/v3.py`, which was
@@ -98,6 +96,11 @@ happened before any receipt had been collected for them.
   proxy and producer-path escapes, bounded support-safe producer failures, tightened packet and
   smoke semantics, and expanded executable regression coverage. Subject `663747b1...` ->
   `86c59c79...`; no receipts existed to reject.
+- The 2026-09-06 Group A tools patch landed as one re-mint: a `TimeoutExpired` during `docker run`
+  now inspects/rms the uuid-named container; the assembler restores the previous `closure.json` when
+  the pinned verifier does not complete; encrypted or unsupported-compression nuspec reads fail
+  closed as `EvidenceError`; and the closed inventory exempts only the validated evidence path.
+  Subject `86c59c79...` -> `84dee6e5...`; all three `86c59c79...` receipts became superseded.
 
 The first superseded receipt set is additionally rejected on lineage: both owner comments were anchored on
 issue [#346](https://github.com/Hexalith/Hexalith.EventStore/issues/346), which is Story 3.14's
@@ -106,8 +109,8 @@ verifier now accepts owner receipts only from dedicated issue `#352`, rejecting 
 
 ### Superseded acceptance history
 
-Two complete acceptance rounds were collected and are now superseded. Both are retained
-byte-for-byte in the superseded audit area and authorize nothing for `86c59c79...`.
+Four complete acceptance rounds were collected and are now superseded. All four are retained
+byte-for-byte in the superseded audit area and authorize nothing for `84dee6e5...`.
 
 Against subject `dab64f5f...`:
 
@@ -128,6 +131,14 @@ Against subject `a8cc777e...`:
    [5409148235](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5409148235),
    created at `2026-08-25T10:33:45Z`.
 3. Test Architect `bmad:murat` self-attested record, accepted at `2026-08-25T10:34:41Z`.
+
+Against subject `86c59c79...`:
+
+1. EventStore-owner comment
+   [5550273078](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5550273078).
+2. Release-owner comment
+   [5550277712](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5550277712).
+3. Test Architect `bmad:murat` self-attested record.
 
 The first timestamp attempt for each owner role in that round crossed GitHub's second boundary.
 Comments
@@ -216,7 +227,7 @@ The role registry retains the owner-ratified mappings:
 - `release-owner` -> `github:jpiquot`
 - `test-architect` -> `bmad:murat`
 
-No acceptance currently binds subject `86c59c79...`; the packet holds zero receipts. The two
+No acceptance currently binds subject `84dee6e5...`; the packet holds zero receipts. The four
 superseded rounds are listed above and authorize nothing here.
 
 No planning approval, release authority, prior receipt, label, tag, self-declared role, or synthetic
@@ -270,7 +281,7 @@ decision, registry and producer digests -> receipts addressed by that subject.
   `Story 4.15 v2 gate-input identity drift: docs/ci.md`; rebinding that separately reviewed packet
   requires a Story 4.15 re-review and is not fabricated here.
 - Checked-in Story 3.15 assembler and verifier: **fail closed at zero of three receipts**, exit 1;
-  subject `86c59c79...`; nothing granted; all non-authority flags false.
+  subject `84dee6e5...`; nothing granted; all non-authority flags false.
 - `git diff --check`: no whitespace errors reported.
 
 ## Rerun trigger

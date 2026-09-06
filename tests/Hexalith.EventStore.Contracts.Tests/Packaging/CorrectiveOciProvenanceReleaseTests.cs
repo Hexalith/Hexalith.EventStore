@@ -911,7 +911,42 @@ public sealed class CorrectiveOciProvenanceReleaseTests
             unhashableDispatchMutation.ExitCode.ShouldNotBe(0);
             unhashableDispatchMutation.Error.ShouldContain(
                 "[corrective-release-evidence] fail: release identity dispatch metadata is invalid");
+            unhashableDispatchMutation.Error.ShouldContain("rerun: ");
+            unhashableDispatchMutation.Error.ShouldContain(
+                "Re-derive the retained Story 3.14 packet from trusted sources and revalidate it");
             unhashableDispatchMutation.Error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the Story 3.14 dispatcher default <c>--manifest</c> is the script-adjacent
+    /// <c>release-packages.json</c>, not a cwd-relative path. Every other <c>RunEvidenceValidator</c>
+    /// call passes <c>--manifest tools/release-packages.json</c>, so restoring the old cwd-relative
+    /// default would not fail that suite.
+    /// </summary>
+    [Fact]
+    public void CanonicalReleaseIdentityUsesTheScriptAdjacentManifestDefault()
+    {
+        string root = FindRepositoryRoot();
+        string checkedInPacket = CheckedInStory314Packet(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-manifest-default-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            ProcessResult result = RunProcess(
+                temporary,
+                "python3",
+                Path.Combine(root, "tools", "validate-corrective-release-evidence.py"),
+                Path.Combine(checkedInPacket, "release-identity.json"),
+                "--packet-root",
+                checkedInPacket);
+            result.ExitCode.ShouldBe(0, result.Error);
+            result.Output.ShouldContain("pass: sha256:4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9");
+            result.Error.ShouldNotContain("Traceback");
         }
         finally
         {

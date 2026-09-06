@@ -43,11 +43,17 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         "a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f";
 
     /// <summary>
+    /// Subject whose three receipts were superseded by the 2026-09-06 Group A tools patch.
+    /// </summary>
+    private const string ReceiptCollectionSupersededSubjectSha256 =
+        "86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274";
+
+    /// <summary>
     /// Subject the checked-in packet currently binds. It is drift-bound here and in docs/ci.md so a
     /// record that keeps naming a superseded subject cannot stay green.
     /// </summary>
     private const string CurrentSubjectSha256 =
-        "86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274";
+        "84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f";
 
     /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
     private const int FrozenStory314PacketFileCount = 66;
@@ -98,7 +104,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     private static readonly (string RelativePath, string Sha256)[] SupersededArtefacts =
     [
-        ("README.md", "ee4acf117309481a8f59ff21f1b862d69f5444bd0f91ca4ff146ce0922e1f488"),
+        ("README.md", "71c267f7c9ce5761117b2711d6b7259240c5dd73c74c850fb8e94a78c956331e"),
         (SupersededSubjectSha256 + "/eventstore-owner.json",
             "ad8cc4fb62e5d1b843f42716235a8cce415ab612359b77fd0006c7dbea6ecfbf"),
         (SupersededSubjectSha256 + "/release-owner.json",
@@ -135,6 +141,18 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             "181f2001d93ee982b19758335cb2ba37d7bfd5b0f9e99c77990a40f697d6bb25"),
         (BatchSupersededSubjectSha256 + "/sources/test-architect.json",
             "c20fee033cfcb055ed2387d0c40109a7da33a0b97e73db98aef71dd975b9e40a"),
+        (ReceiptCollectionSupersededSubjectSha256 + "/eventstore-owner.json",
+            "8ae1056825b89400d0ddd6ece4f2ccb05a6dbddc57d890fc298009bf15713cb1"),
+        (ReceiptCollectionSupersededSubjectSha256 + "/release-owner.json",
+            "eb38d797d8722309989b351123801d71cad28ebf1f15dee2573afa4c012728fd"),
+        (ReceiptCollectionSupersededSubjectSha256 + "/test-architect.json",
+            "8aa7338fe9788299e14da9756b4fed5ecb227dacbc1fa52a4e03880559bd12af"),
+        (ReceiptCollectionSupersededSubjectSha256 + "/sources/eventstore-owner.json",
+            "4a5fd58cd07870fcc00be1ace00d66d0b5f7885cab625c4a1fc21cdcd96d71d9"),
+        (ReceiptCollectionSupersededSubjectSha256 + "/sources/release-owner.json",
+            "3881cd93ef37906eece57f08b6994a6029d0accc822af0b9e006594d0623bb6c"),
+        (ReceiptCollectionSupersededSubjectSha256 + "/sources/test-architect.json",
+            "d7f447b03296c6deccdcfffd70910f6997b970d7d54ef14317ce9ba8d0f2803f"),
     ];
 
     /// <summary>
@@ -145,48 +163,46 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const int AcceptanceIssue = 352;
 
     /// <summary>
-    /// Verifies the checked-in packet closes positive parity once three roster-bound receipts bind
-    /// the current subject: verifier exit 0, selected index only the bound digest, and every
-    /// non-authority flag remains false. <c>deployed_runtime_parity</c> and
-    /// <c>selected_deployed_identity</c> are granted only at three of three; a synthesized
-    /// zero-receipt copy still fails closed in
-    /// <see cref="AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict"/>.
+    /// Verifies the checked-in packet fails closed at zero of three receipts after the Group A
+    /// re-mint: verifier exit 1, claim fields still present, every non-authority flag false, and
+    /// the previously collected <c>86c59c79...</c> receipts live only in the superseded audit area.
+    /// Synthetic 3-of-3 remains in
+    /// <see cref="ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject"/>.
     /// </summary>
     [Fact]
-    public void CheckedInPacketClosesPositiveParityWhenThreeReceiptsBindTheCurrentSubject()
+    public void CheckedInPacketFailsClosedAtZeroOfThreeReceipts()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
-        (int exitCode, string output, string error) = RunValidator(root, packet);
-        exitCode.ShouldBe(0, error);
-        output.ShouldContain("pass:");
-        output.ShouldContain("subject=sha256:" + CurrentSubjectSha256);
-        output.ShouldContain("selected=" + IndexDigest);
+        ShouldFailClosed(
+            RunValidator(root, packet),
+            "exactly three packet-bound receipts are required");
 
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
         closure["subject"]!["sha256"]!.GetValue<string>().ShouldBe(CurrentSubjectSha256);
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(RequiredRoles.Length);
-        closure["acceptances"]!["receipts"]!.AsArray()
-            .Select(item => item!["role"]!.GetValue<string>())
-            .ShouldBe(RequiredRoles);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
 
-        // The claim fields are present and, with three receipts, granted by the exit 0 above.
+        // The claim fields remain the packet's claim; the 3-of-3 gate has not granted them.
         closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
         closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
 
         closure["acceptances"]!["directory"]!.GetValue<string>()
             .ShouldBe("acceptances/" + CurrentSubjectSha256);
-        Directory.Exists(Path.Combine(packet, "acceptances", CurrentSubjectSha256)).ShouldBeTrue();
+        Directory.Exists(Path.Combine(packet, "acceptances")).ShouldBeFalse();
+        Directory.Exists(Path.Combine(root, SupersededRelativePath, ReceiptCollectionSupersededSubjectSha256))
+            .ShouldBeTrue();
         foreach (string role in RequiredRoles)
         {
-            File.Exists(Path.Combine(packet, "acceptances", CurrentSubjectSha256, role + ".json"))
-                .ShouldBeTrue(role);
-            File.Exists(Path.Combine(packet, "acceptances", CurrentSubjectSha256, "sources", role + ".json"))
+            File.Exists(Path.Combine(
+                    root,
+                    SupersededRelativePath,
+                    ReceiptCollectionSupersededSubjectSha256,
+                    role + ".json"))
                 .ShouldBeTrue(role);
         }
     }
@@ -1208,6 +1224,45 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies a leftover packet <c>closure.json</c> is not exempt when the validated evidence file
+    /// is a different path. The closed inventory used to always union the basename
+    /// <c>closure.json</c>, so a disagreeing leftover beside an outside evidence copy was invisible.
+    /// </summary>
+    [Fact]
+    public void LeftoverPacketClosureJsonIsNotExemptWhenEvidenceIsADifferentPath()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        string outside = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-outside-evidence-{Guid.NewGuid():N}.json");
+        try
+        {
+            string packetClosure = Path.Combine(temporary, "closure.json");
+            File.Copy(packetClosure, outside, overwrite: true);
+            File.AppendAllText(packetClosure, " ");
+
+            ShouldFailClosed(
+                RunProcess(
+                    root,
+                    "python3",
+                    "tools/validate-corrected-deployed-runtime-parity.py",
+                    outside,
+                    "--packet-root",
+                    temporary),
+                "packet contains files outside the closed technical inventory");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+            if (File.Exists(outside))
+            {
+                File.Delete(outside);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies file, directory, and dangling symbolic links cannot evade the packet inventory walk
     /// or the separately close-listed acceptance tree.
     /// </summary>
@@ -1406,6 +1461,59 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             ShouldFailClosed(
                 RunValidator(root, temporary),
                 "package nuspec is not strict UTF-8 XML");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies an encrypted nuspec zip entry fails closed with the support-safe archive reason
+    /// rather than a <c>RuntimeError</c> traceback. <c>ZipFile.read</c> raises
+    /// <c>RuntimeError</c> for encryption, which the Story 3.15 dispatcher does not catch.
+    /// </summary>
+    [Fact]
+    public void EncryptedNuspecEntryFailsClosedWithoutTraceback()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            JsonObject closure = LoadJson(closurePath);
+            JsonObject nuget = closure["packages"]!["items"]![0]!["nuget_org"]!.AsObject();
+            string packagePath = Path.Combine(temporary, nuget["file"]!.GetValue<string>());
+            (int rewriteExit, _, string rewriteError) = RunProcess(
+                root,
+                "python3",
+                "-c",
+                "import sys, zipfile\n"
+                + "from pathlib import Path\n"
+                + "path = Path(sys.argv[1])\n"
+                + "with zipfile.ZipFile(path) as src:\n"
+                + "    names = src.namelist()\n"
+                + "    contents = {name: src.read(name) for name in names if not name.endswith('.nuspec')}\n"
+                + "    nuspecs = [name for name in names if name.endswith('.nuspec')]\n"
+                + "if len(nuspecs) != 1:\n"
+                + "    raise SystemExit('expected one nuspec')\n"
+                + "info = zipfile.ZipInfo(nuspecs[0])\n"
+                + "info.flag_bits |= 0x1\n"
+                + "with zipfile.ZipFile(path, 'w') as dst:\n"
+                + "    for name, data in contents.items():\n"
+                + "        dst.writestr(name, data)\n"
+                + "    dst.writestr(info, b'encrypted-nuspec')\n",
+                packagePath);
+            rewriteExit.ShouldBe(0, rewriteError);
+            UpdateFileBinding(nuget, packagePath, updateDigest: false);
+            WriteCanonical(closurePath, closure);
+
+            (int exitCode, string output, string error) = RunValidator(root, temporary);
+            exitCode.ShouldBe(1, error);
+            error.ShouldContain("package archive could not be independently inspected");
+            error.ShouldContain("rerun: " + RerunTrigger);
+            error.ShouldNotContain("Traceback");
+            output.ShouldNotContain("pass:");
         }
         finally
         {
@@ -2634,6 +2742,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] subjects =
         [
             subjectSha256,
+            ReceiptCollectionSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
@@ -2886,7 +2995,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     {
         ArgumentNullException.ThrowIfNull(replacement);
         string root = FindRepositoryRoot();
-        string packet = CopyPacket(root);
+        string packet = CreateAcceptedPacket(root);
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-roster-{Guid.NewGuid():N}");
         try
         {
@@ -3544,6 +3653,65 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies an incomplete pinned-verifier child (timeout) restores the previous
+    /// <c>closure.json</c> rather than leaving a newly written success-shaped claim file on disk.
+    /// A completed verifier verdict, including the expected receipt-gate exit 1, still keeps the
+    /// assembled closure; only an incomplete child restores.
+    /// </summary>
+    [Fact]
+    public void AssemblerRestoresPreviousClosureWhenThePinnedVerifierTimesOut()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        string hanging = Path.Combine(
+            Path.GetTempPath(),
+            $"eventstore-story315-hanging-verifier-{Guid.NewGuid():N}.py");
+        try
+        {
+            string closurePath = Path.Combine(temporary, "closure.json");
+            string originalClosure = ComputeSha256(closurePath);
+            string acceptancesRoot = Path.Combine(temporary, "acceptances");
+            if (Directory.Exists(acceptancesRoot))
+            {
+                Directory.Delete(acceptancesRoot, recursive: true);
+            }
+
+            File.WriteAllText(hanging, "import time\ntime.sleep(30)\n");
+            (int exitCode, string output, string error) = RunProcess(
+                root,
+                "python3",
+                "-c",
+                "import importlib.util,pathlib,sys;"
+                + "p=pathlib.Path(sys.argv[1]).resolve();"
+                + "sys.path.insert(0,str(p.parent));"
+                + "s=importlib.util.spec_from_file_location('story315_assemble',str(p));"
+                + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                + "m.VERIFIER_TIMEOUT_SECONDS=0.2;"
+                + "m.VERIFIER_FILE=pathlib.Path(sys.argv[2]);"
+                + "sys.argv=[str(p),sys.argv[3]];"
+                + "raise SystemExit(m.main())",
+                Path.Combine(root, "tools", "assemble-corrected-deployed-runtime-parity.py"),
+                hanging,
+                temporary);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("the bounded verifier process could not complete");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            ComputeSha256(closurePath).ShouldBe(originalClosure);
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+            if (File.Exists(hanging))
+            {
+                File.Delete(hanging);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies the closure binds both packet producers. Neither the bounded smoke capture tool nor
     /// the assembler was bound anywhere, which is exactly why the smoke acceptance semantics could
     /// change -- from any 2xx to exactly 200 -- without invalidating a single receipt.
@@ -3632,6 +3800,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] subjects =
         [
             subjectSha256,
+            ReceiptCollectionSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,

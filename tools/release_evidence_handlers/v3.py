@@ -506,7 +506,17 @@ def nuspec_identity(package_path):
             # honoring a second byte-level encoding while preserving the parser's normal XML
             # declaration behavior for the only accepted encoding.
             root = element_tree.fromstring(nuspec_text.encode("utf-8"))
-    except (OSError, zipfile.BadZipFile, element_tree.ParseError) as error:
+    except (
+        OSError,
+        RuntimeError,
+        NotImplementedError,
+        zipfile.BadZipFile,
+        element_tree.ParseError,
+    ) as error:
+        # ZipFile.read raises RuntimeError for an encrypted entry and NotImplementedError for an
+        # unsupported compression method. Neither was in the previous catch tuple, so a
+        # self-consistent candidate with an encrypted nuspec escaped as a traceback instead of
+        # the support-safe fail: / rerun: line.
         raise EvidenceError("package archive could not be independently inspected") from error
     namespace = {"n": root.tag.partition("}")[0].removeprefix("{")} if root.tag.startswith("{") else {}
     prefix = "n:" if namespace else ""

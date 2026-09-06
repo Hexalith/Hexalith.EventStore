@@ -3742,3 +3742,45 @@ reason: At-capacity resume or stale-checkpoint handoff can persist a drain witho
 status: open
 decision: 2026-09-06 Durable overflow cursor — Persist overflow ownership and process it through a bounded resumable cursor.
 decision: 2026-09-06 Durable overflow cursor — Persist overflow ownership and process it through a bounded resumable cursor.
+
+### DW-487: Make the Tenants handler-computed wire contract fail the owning repository's build.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/
+reason: Story 4.7's flagship route and persisted-state proofs (`Generated_query_route_suppresses_projection_headers_for_handler_computed_result`, `Generated_tenants_api_get_tenant_reads_verified_redis_state_without_projection_authority`) live in `Hexalith.Tenants.IntegrationTests`, which Tenants CI runs only as `aspire-test-project` (`ci.yml:34`). That job inherits `continue-on-error: ${{ inputs.aspire-continue-on-error }}`, which defaults to `true` in `references/Hexalith.Builds/.github/workflows/domain-ci.yml:109-113` and is never overridden by Tenants. The Tier-3 test additionally carries `[DaprFact]` and calls `_fixture.SkipIfUnavailable()`, so it self-skips wherever local Dapr/Aspire is absent. A regression in the handler-computed header contract can therefore ship from Tenants with a green CI. Closing it means splitting the non-Dapr generated-controller class into a blocking project or setting `aspire-continue-on-error: false` for the non-performance tier — both CI-policy changes beyond Story 4.7's approved scope. Exposure is limited to cross-repository package drift because the emitter behavior itself has blocking coverage in `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratedControllerErrorSemanticsTests.cs:227-269`.
+status: open
+
+### DW-488: Provenance-gate X-Hexalith-Served-At and X-Hexalith-Is-Degraded in the generated controller.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs (472-485)
+reason: The emitter gates `X-Hexalith-Projection-Version` and `X-Hexalith-Is-Stale` on `provenance == QueryResponseProvenance.ProjectionBacked`, but emits `X-Hexalith-Served-At` on `metadata.ServedAt is not null` and `X-Hexalith-Is-Degraded` on `isDegraded is not null` with no provenance check. `ProjectionLifecyclePolicy.ProjectIsDegraded(Unknown, producerValue)` returns the producer's value verbatim, so a HandlerComputed producer that authors `IsDegraded` or `ServedAt` leaks freshness-adjacent headers the AD-15 contract says it may not claim. Story 4.7 closes this at the Tenants producer only; the platform guard remains fail-open for every other domain. Story 4.7's frozen boundary forbids editing the emitter. The new generated-controller test also leaves both fields unset, so the leak path is uncovered — a fix should set `ServedAt` and `IsDegraded` on the hostile fixture metadata and assert both headers are absent.
+status: open
+
+### DW-489: Correct the release-history record for the Story 4.7 producer change.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: references/Hexalith.Tenants commit 2a204a03
+reason: Commit `2a204a03` is typed `refactor(tests): streamline TenantQueryResult and enhance query handler tests`, but it edits production source `src/Hexalith.Tenants/Queries/TenantQueryResult.cs` and removes `ProjectionVersion`, `IsStale`, `IsDegraded`, and `ServedAt` from produced query metadata for all six Tenants query routes. Under the pinned `conventional-changelog-angular` parser `refactor` produces no release and no changelog entry, so a behavioral change to shipped query responses is invisible in Tenants release notes. History is already published, so correction means a follow-up note rather than a rewrite.
+status: open
+
+### DW-490: Restore a reachable projection-confirmation path for Tenants command flows.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs (2517)
+reason: `HasSupportedProjectionVersion` requires a non-blank `QueryResponseMetadata.ProjectionVersion`, and `TenantSetConfigurationPreview`/`TenantRemoveConfigurationPreview` return `Unavailable` when it is false (lines 345, 412); the 304 paths degrade to `GatewayFailure` (lines 701, 864). No Tenants route can ever supply that value: `QueriesController.NormalizeProducerMetadata` nulls `ProjectionVersion` for every non-`ProjectionBacked` provenance, and the generated controller emits the header only for `ProjectionBacked`. All six Tenants handlers are `HandlerComputed`, so the gate is unsatisfiable on the wire. This predates Story 4.7 — the change only makes it unambiguous by removing the producer-side alias as well. `TenantQueryGatewayTests` masks it by feeding metadata with `ProjectionVersion = "tenant-sequence:41"`, a value the real wire cannot deliver, so those gate paths are green only in an unreachable state. Story 4.7's frozen boundary forbids touching UI behavior.
+status: open
+
+### DW-491: Retire or re-scope ReadModelFreshnessExtensions.ToQueryResponseMetadata.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: src/Hexalith.EventStore.Client/Projections/ReadModelFreshnessExtensions.cs (62-84)
+reason: After Story 4.7 removed the last Tenants caller, the helper has no production caller anywhere in the workspace — only `tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelFreshnessTests.cs` and `tests/Hexalith.EventStore.Server.Tests/Integration/QueryResponseProvenancePersistenceTests.cs:79` invoke it. Its XML documentation still presents it as the supported way for a domain handler to author `ProjectionVersion`/`IsStale`/`ServedAt`, i.e. it advertises exactly the producer-authored authority AD-15 forbids for non-projection-backed routes. Only EventStore's normalization stands between a future domain author following that doc and reintroducing the Story 4.7 defect.
+status: open
+
+### DW-492: Align the Tenants UI truth-state spec with the unreachable 304 freshness primitive.
+
+origin: code review of spec-4-7-tenants-query-provenance-follow-up (2026-09-06)
+location: references/Hexalith.Tenants/docs/tenants-ui-truth-state-and-action-availability-spec.md (102)
+reason: The document still states that "the freshness primitive is `If-None-Match` -> `304 Not Modified`, served by the REST-backed Tenants read endpoints". After Story 4.7 the Tenants routes never emit an ETag and EventStore suppresses `IsNotModified` for non-projection-backed provenance, so 304 is unreachable on those endpoints. Neither the spec, the CHANGELOG, nor a prior ledger entry records the change. The fix edits a separate specification document and so is routed out of this review.
+status: open

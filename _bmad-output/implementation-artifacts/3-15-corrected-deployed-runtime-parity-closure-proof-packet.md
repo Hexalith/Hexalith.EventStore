@@ -2,15 +2,16 @@
 
 ## Decision
 
-**Deployed-runtime parity is available.** Current subject
-`sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`
-has **three of three roster-bound role receipts** (3 of 3), so the retained verifier **passes**,
-exit 0, and selects only
+**The packet fails closed at 0 of 3 receipts.** Current subject
+`sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f`
+has **zero of three roster-bound role receipts**, so the retained verifier **fails closed**,
+exit 1, and grants nothing. The only identity this closure may ever select, once parity is
+available, remains
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
 
 This packet still grants no deployment, publication, registry mutation, consumer removal, or
-predecessor change authority. The positive parity verdict is evidence that the deployed runtime
-matches the corrective release, not permission to act on it.
+predecessor change authority. Collecting three fresh receipts on issue `#352` remains an Ask First
+owner action and was not performed.
 
 ## Authority boundary
 
@@ -22,13 +23,13 @@ An auditor must confirm four flags in `closure.json`, and all four are `false`:
 | `publication_authorized` | `false` |
 | `consumer_removal_authorized` | `false` |
 | `grants_mutation_authority` | `false` |
-| `deployed_runtime_parity` | `available` -- claim granted at 3 of 3 |
-| `selected_deployed_identity` | the index digest -- claim granted at 3 of 3 |
+| `deployed_runtime_parity` | `available` -- claim, granted only at 3 of 3 |
+| `selected_deployed_identity` | the index digest -- claim, granted only at 3 of 3 |
 
-**`deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields.** With three
-packet-bound receipts they are granted by exit 0; an auditor must still read them together with the
-receipt count and the four non-authority flags, never alone. Receipts live under
-`acceptances/86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274/`.
+**`deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields.** At zero
+packet-bound receipts they are not granted; an auditor must still read them together with the
+receipt count and the four non-authority flags, never alone. Receipts would live under
+`acceptances/84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f/` once collected.
 
 ## Bound technical evidence
 
@@ -49,12 +50,12 @@ The current dispatch binds these verdict-bearing live files:
 
 | Role | File | SHA-256 |
 | --- | --- | --- |
-| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `405dd1ac8c8872d9ced666c7420019462de0779386d804f227912ca5d749c3d5` |
-| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `10b41a5677a2a31b035dad515f676587531dd9cf2de90f1404ed95724a1bad08` |
-| Predecessor handler | `tools/release_evidence_handlers/v3.py` | `f212c784bb0b4b006d683f25248c40a14edf19198cbfaee61f520e07b3bb03d2` |
+| Handler | `tools/deployed_runtime_parity_handlers/v1.py` | `c19b47817f826b78fabd2c7365dcec7e40cd0d0ee2ab2ffca10a2fc06b0e5178` |
+| Verifier | `tools/validate-corrected-deployed-runtime-parity.py` | `dababb480cbea609fd500a248b479c367d531012d3dc61a2a713e9f28600e104` |
+| Predecessor handler | `tools/release_evidence_handlers/v3.py` | `b1a1756252fb79777dd0dbb37861260f6b02c03c58c160823b2c4252d0c33dc0` |
 | Predecessor package | `tools/release_evidence_handlers/__init__.py` | `a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625` |
-| Smoke capture producer | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `cd627d7ab35604ce3a7e07876a2a62342316e167cd1f9220a5b4091dc7904600` |
-| Packet assembler | `tools/assemble-corrected-deployed-runtime-parity.py` | `c0968ac9e0c26cbedcfaae479802634e97ef80a99c203fc40021628235e5b961` |
+| Smoke capture producer | `tools/capture-corrected-deployed-runtime-parity-smokes.py` | `74a1b0c0e181104f01db073e94dd0e79c1926dff6dc491de015d69d25fa3a644` |
+| Packet assembler | `tools/assemble-corrected-deployed-runtime-parity.py` | `abb3c77c826aedc10b8f75ae2533affc90963ca3390270eff3125019269cb032` |
 
 The two producers are bound even though the verifier never executes them. Until they were bound, the
 capture tool could change what a passing Production smoke means -- as it did, from any 2xx to
@@ -97,8 +98,9 @@ authenticated people. All three facts are subject-bound limitations every receip
 
 ## Current acceptances
 
-Three roster-bound receipts bind subject `86c59c79...` under
-`acceptances/86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274/`:
+No packet-bound receipt currently binds subject `84dee6e5...`. The 2026-09-05 round for subject
+`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274` was moved unmodified to
+`evidence/story-3-15/superseded-acceptances/86c59c79.../`:
 
 | Role | Source |
 | --- | --- |
@@ -106,24 +108,27 @@ Three roster-bound receipts bind subject `86c59c79...` under
 | Release-owner | issue `#352` comment [5550277712](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5550277712) |
 | Test Architect | self-attested `bmad:murat` record retained beside the owners |
 
+Collecting three fresh receipts on issue `#352` for the current subject remains an Ask First owner
+action and was not performed.
+
 ## Reproduce
 
 ```text
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] pass: subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
+[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.
 $ echo $?
-0
+1
 ```
 
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274 receipts=3 verifier_exit=0
+[corrected-deployed-runtime-parity-assembly] subject=sha256:84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f receipts=0 verifier_exit=1
 $ echo $?
-0
+1
 ```
 
-Reassembly deterministically reproduces subject `86c59c79...` and runs the pinned verifier over its
+Reassembly deterministically reproduces subject `84dee6e5...` and runs the pinned verifier over its
 own output. It does not copy or rewrite any superseded receipt.

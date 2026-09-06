@@ -291,3 +291,44 @@ Keep the active freshness overload signature so all handler constructors and cal
 - `dotnet restore Hexalith.Tenants.slnx --force-evaluate -p:Configuration=Release -p:UseHexalithProjectReferences=false -nodeReuse:false -m:1` then Release build/tests by project -- expected: package-mode graph and affected suites pass.
 - `dotnet test tests/Hexalith.Tenants.Server.Tests/Hexalith.Tenants.Server.Tests.csproj` and `dotnet test tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj` with matching mode/configuration and no-build/no-restore -- expected: producer matrices pass; the named Aspire proof executes with zero skips and verifies Redis plus raw/typed routes.
 - `git -C references/Hexalith.Tenants diff --check` and `git diff --check` -- expected: clean Tenants and outer diffs, with no `sprint-status.yaml` or unrelated outer-tree changes attributable to Story 4.7.
+
+### Review Findings
+
+Review pass 6 (2026-09-06, `bmad-code-review`). Reviewed range corrected mid-review: the staged diff `d2b7ede3..a54f0b95` is not the story's final state. Story 4.7 test work continues through `ce0e2aab` and `37fcfded`; the audited range is `d2b7ede3..37fcfded` restricted to the Code Map file set (9 files, +543/-151). Four layers ran; none failed.
+
+**Decision needed**
+
+- [ ] [Review][Decision] Root gitlink was published at a non-compiling Tenants tree — AC5 remains unmet. The EventStore root gitlink was moved to `a54f0b95` (root commit `c08cb349`) before any reviewed SHA existed. At `a54f0b95` `tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:37` carries a bare `using StackExchange.Redis;` while line 419 uses unqualified `CommandStatus.Rejected`; `StackExchange.Redis.CommandStatus` collides with `Hexalith.EventStore.Contracts.Commands.CommandStatus`, so the whole IntegrationTests project fails CS0104. The collision is resolved only at `37fcfded`, which replaces the namespace import with five type aliases. The gitlink is now `b7d3619e` — three commits past the reviewed tip and carrying unrelated stories. Decide the authorized reviewed SHA and whether the gitlink is re-pointed.
+- [ ] [Review][Decision] Freshness plumbing is inert but still operator-configurable. `TenantQueryResult.FromPayload`'s six-argument overload discards `readModel`, `thresholds`, and `now`. `ReadModelFreshnessOptions` is still bound, `.Validate(...)`d and `.ValidateOnStart()`d in `src/Hexalith.Tenants/Program.cs:71-75`, threaded through all six handler constructors, and converted to `_freshnessThresholds`/`_timeProvider` in `TenantQueryHandlerBase.cs:45,76,156-166` — so `ReadModelFreshness:Aging`/`Stale` accept any valid value with no observable effect anywhere. Two comments still describe `ToQueryResponseMetadata` as live (`TenantsRestQueryClient.cs:391`, `TenantQueryGatewayTests.cs:2934`). Design Notes deliberately froze the signature for caller stability, so removing the dead surface contradicts the approved spec — human call required.
+- [ ] [Review][Decision] AC4 is unmet while frontmatter declares `status: 'done'`. The fresh dual-mode task is unchecked and Implementation Notes record that both full-solution restores are blocked by uninitialized nested submodules, the Debug/source Integration build stops at `references/Hexalith.Memories/Directory.Build.props:89`, and Release/package stops at `src/Hexalith.Tenants.AppHost/Program.cs:132` (CS1503). Accept the focused-lane evidence in place of the broad gate, or hold the story open.
+
+**Patch**
+
+- [ ] [Review][Patch] Six-route freshness matrix has no control proving its inputs exist [tests/Hexalith.Tenants.Server.Tests/Queries/TenantQueryFreshnessTests.cs:55-113]
+- [ ] [Review][Patch] Tier-3 Redis helper degrades to opaque failures — `JsonException` escapes the retry loop and `AbortOnConnectFail=false` lets a dead Redis surface as `RedisConnectionException` instead of the crafted diagnostic [tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:442-470]
+- [ ] [Review][Patch] Fixture change widens Tier-3 blast radius — `tenants-api` is the only `https` resource among five, is inserted before `tenants-ui`/`sample`, waits on aliveness with `CancellationToken.None` (outside the 6-minute startup budget), and the new test mutates the shared client's `DefaultRequestHeaders.Authorization` [tests/Hexalith.Tenants.IntegrationTests/Fixtures/AspireTopologyFixture.cs:26]
+- [ ] [Review][Patch] `using StackExchange.Redis` types with no `PackageReference` — compiles transitively only; version already exists in Builds central props [tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj]
+- [ ] [Review][Patch] Magic `"tenant-sequence:"` literals instead of the live `TenantProjectionVersionFormat.SequencePrefix` constant [tests/Hexalith.Tenants.Server.Tests/Queries/TenantQueryFreshnessTests.cs:227]
+- [ ] [Review][Patch] `NormalizeETag` lossy cases uncovered — `W/"abc"` becomes `W/"abc`, the two degenerate-ETag theories are asymmetric (5 cases vs 4), and the `JsonValueKind.Undefined` guard gained no replacement coverage after being removed from the six-argument overload [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:46-53]
+- [ ] [Review][Patch] Tier-3 proof misreports an environment pub/sub outage as a provenance-contract failure [tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:140-152]
+
+**Deferred**
+
+- [x] [Review][Defer] Flagship route evidence cannot fail Tenants CI [tests/Hexalith.Tenants.IntegrationTests/] — deferred: DW-487; closing it is a CI-policy change beyond approved scope
+- [x] [Review][Defer] `X-Hexalith-Served-At` and `X-Hexalith-Is-Degraded` are not provenance-gated [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:472-485] — deferred: DW-488; pre-existing platform fail-open, and the spec forbids editing the emitter
+- [x] [Review][Defer] Production behavior change published as `refactor(tests)` [commit 2a204a03] — deferred: DW-489; history already published
+- [x] [Review][Defer] UI projection-confirmation gate is permanently unsatisfiable for Tenants routes [src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs:2517] — deferred: DW-490; pre-existing, predates this change
+- [x] [Review][Defer] `ToQueryResponseMetadata` has no production caller but still advertises producer authority [src/Hexalith.EventStore.Client/Projections/ReadModelFreshnessExtensions.cs:62-84] — deferred: DW-491; EventStore-side, out of story scope
+- [x] [Review][Defer] UI truth-state spec still documents an unreachable 304 freshness primitive [docs/tenants-ui-truth-state-and-action-availability-spec.md:102] — deferred: DW-492; fix edits another spec
+
+**Rejected**
+
+- `false` — "EventStore query leg missing from AC3 proof": stale range artifact; the `/api/v1/queries` leg exists at `37fcfded:166-198` with full metadata assertions.
+- `false` — "Redis/payload comparison covers only 3 of 7 fields": stale; `AssertTenantDetailMatchesPersisted` compares identity, name, description, status, created-at, members, and configuration.
+- `false` — "`ResolveRedisPort()` honours an env override that can point at the wrong store": stale; `37fcfded:442` binds `DaprDiagnostics.DefaultRedisPort`.
+- `false` — verification-gap's restatement of the 3-field comparison, same refutation as above.
+- rejected — "Frontmatter bookkeeping (`review_loop_iteration: 1`, `deferred: []`) contradicts recorded history": the only fix is to edit the spec under review.
+- `low` — "Degenerate-ETag coverage exercises only `get-tenant`": all six routes provably share one factory seam, which this diff confirms; previously adjudicated as P2-BH-09.
+- `low` — "Header assertions use raw string literals": no shared constant exists, so the fix adds new public surface for a rename hazard that has not occurred.
+- `low` — "Brace style inconsistent within the changeset": the new code matches the pre-existing same-line style of the files it edits; only the wholesale Allman reformat of `TenantQueryFreshnessTests` differs, and it matches `.editorconfig`.
+- `low` — "Changeset ships no positive control for header emission": the emission side has blocking coverage in `tests/Hexalith.EventStore.RestApi.Generators.Tests/` and `QueryResponseProvenanceE2ETests`.

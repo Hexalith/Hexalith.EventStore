@@ -29,7 +29,7 @@ RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
     "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "405dd1ac8c8872d9ced666c7420019462de0779386d804f227912ca5d749c3d5"
+V1_HANDLER_SHA256 = "c19b47817f826b78fabd2c7365dcec7e40cd0d0ee2ab2ffca10a2fc06b0e5178"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -45,7 +45,7 @@ IMPORT_PATH_FILE_SHA256 = {
     "release_evidence_handlers/__init__.py":
         "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
     "release_evidence_handlers/v3.py":
-        "f212c784bb0b4b006d683f25248c40a14edf19198cbfaee61f520e07b3bb03d2",
+        "b1a1756252fb79777dd0dbb37861260f6b02c03c58c160823b2c4252d0c33dc0",
 }
 EXPECTED_IMPORT_PATH_FILES = {
     "deployed_runtime_parity_handlers/__init__.py",
@@ -277,12 +277,14 @@ def validate(evidence_path, manifest_path=None, packet_root=None):
         )
         if evidence_bytes != canonical:
             raise handler.EvidenceError("closure bytes are not the selected codec's canonical UTF-8 form")
+        resolved_packet_root = packet_root or evidence_path.parent
         handler.validate_packet_files(
             document,
-            packet_root or evidence_path.parent,
+            resolved_packet_root,
             expected_package_ids,
             manifest_sha256,
             repository_root,
+            evidence_path,
         )
         _verify_no_repository_import_shadows(trusted_names)
         return document["subject"]["sha256"], document["selected_deployed_identity"]

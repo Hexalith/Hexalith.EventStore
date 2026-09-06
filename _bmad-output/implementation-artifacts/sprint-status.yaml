@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '09-06-2026 12:17'
+last_updated: '09-06-2026 13:20'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -228,22 +228,21 @@ development_status:
   # proposal section 4.9's atomic-rename condition cannot be met. Only the display title changed.
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
-  # 2026-08-25 (loop-7 landing): the packet fails closed at 0 of 3 receipts and grants nothing.
-  # Loop 7 landed at zero receipts, where a re-mint is free, and closed two regressions loop 6 had
-  # introduced -- a nuspec prolog scan skipped behind a residual byte-order mark, and a bytes-path
-  # guard bypass in both dispatchers -- each reproduced with a live control.
+  # 2026-09-06 (Group A tools patch): the packet fails closed at 0 of 3 receipts and grants nothing.
+  # The Group A re-mint rejected the three 86c59c79... receipts collected on 2026-09-05; those
+  # bytes remain under evidence/story-3-15/superseded-acceptances/. Collecting three fresh receipts
+  # on issue #352 is an Ask First owner action and was not performed.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
-  # 86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274; the packet
-  # subject has now been re-minted seven times across eight subjects; receipts existed for only three
-  # of them, and all three sets are retained byte-for-byte under
+  # 84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f; the packet
+  # subject has now been re-minted eight times across nine subjects; receipts existed for only four
+  # of them, and all four sets are retained byte-for-byte under
   # evidence/story-3-15/superseded-acceptances/.
   # closure.json's deployed_runtime_parity/selected_deployed_identity are the claim the three roles
   # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
-  # On 2026-09-05 three receipts bound subject 86c59c79...; the row is in review for closure.
-  3-15-corrected-deployed-runtime-parity-closure: review
+  3-15-corrected-deployed-runtime-parity-closure: in-progress
   epic-3-retrospective: optional
 
   epic-4: in-progress

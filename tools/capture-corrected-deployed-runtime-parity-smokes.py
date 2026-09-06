@@ -89,6 +89,40 @@ def run(deadline, *arguments, check=True, budget=None):
     )
 
 
+def _reap_timed_out_run_container(container_name):
+    """Inspect/rm a uuid-named container that ``docker run`` may have created before timing out.
+
+    ``container_created`` is set only after ``docker run --detach`` returns 0, so a hung run that
+    did create the container never reached ``docker rm``. A non-zero ``docker run`` exit still must
+    not force-remove a coincidentally same-named container; TimeoutExpired is different because
+    dockerd may have started the named container after this process lost the wait. Inspect first,
+    and only then ``rm --force`` that exact name, using the independent cleanup budget rather than
+    the already-exhausted platform deadline.
+    """
+    try:
+        inspect = subprocess.run(
+            ("docker", "inspect", "--format", "{{.Id}}", container_name),
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=CLEANUP_TIMEOUT_SECONDS,
+        )
+        if inspect.returncode != 0:
+            return
+        subprocess.run(
+            ("docker", "rm", "--force", container_name),
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=CLEANUP_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        print(
+            f"[corrected-deployed-runtime-parity-smokes] timed-out run reap failed: {error}",
+            file=sys.stderr,
+        )
+
+
 def parse_curl_write_out(value):
     """Parse the exact two-integer curl write-out retained by the smoke contract."""
     fields = value.strip().split()
@@ -140,33 +174,37 @@ def capture_platform(output_root, platform, child_digest):
     observed_platform = "unknown/unknown"
     try:
         run(deadline, "docker", "pull", "--platform", platform, immutable_image)
-        run(
-            deadline,
-            "docker",
-            "run",
-            "--detach",
-            "--name",
-            container_name,
-            "--platform",
-            platform,
-            "--publish",
-            "127.0.0.1::8080",
-            "--env",
-            "ASPNETCORE_ENVIRONMENT=Production",
-            "--env",
-            "DOTNET_ENVIRONMENT=Production",
-            "--env",
-            "ASPNETCORE_URLS=http://+:8080",
-            "--env",
-            "Authentication__JwtBearer__Issuer=hexalith-container-smoke",
-            "--env",
-            "Authentication__JwtBearer__Audience=hexalith-eventstore",
-            "--env",
-            "Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret",
-            "--env",
-            "Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
-            immutable_image,
-        )
+        try:
+            run(
+                deadline,
+                "docker",
+                "run",
+                "--detach",
+                "--name",
+                container_name,
+                "--platform",
+                platform,
+                "--publish",
+                "127.0.0.1::8080",
+                "--env",
+                "ASPNETCORE_ENVIRONMENT=Production",
+                "--env",
+                "DOTNET_ENVIRONMENT=Production",
+                "--env",
+                "ASPNETCORE_URLS=http://+:8080",
+                "--env",
+                "Authentication__JwtBearer__Issuer=hexalith-container-smoke",
+                "--env",
+                "Authentication__JwtBearer__Audience=hexalith-eventstore",
+                "--env",
+                "Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret",
+                "--env",
+                "Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
+                immutable_image,
+            )
+        except subprocess.TimeoutExpired:
+            _reap_timed_out_run_container(container_name)
+            raise
         container_created = True
         port_output = run(deadline, "docker", "port", container_name, "8080/tcp").stdout.strip()
         if ":" not in port_output:
