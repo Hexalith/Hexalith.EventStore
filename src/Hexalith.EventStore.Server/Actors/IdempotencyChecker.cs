@@ -216,24 +216,15 @@ public partial class IdempotencyChecker(
         IdempotencyLegacySourceRequest request)
     {
         ValidateSourceRequest(request);
-        ConditionalValue<IdempotencyLegacySourceRedirectRecord> redirect;
-        ConditionalValue<IdempotencyRecord> stored;
-        try
-        {
-            redirect = await stateManager
-                .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
-                    GetLegacyRedirectKey(request.ExecutionMessageId))
+        ConditionalValue<IdempotencyLegacySourceRedirectRecord> redirect = await stateManager
+            .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                GetLegacyRedirectKey(request.ExecutionMessageId))
+            .ConfigureAwait(false);
+        ConditionalValue<IdempotencyRecord> stored = redirect.HasValue
+            ? default
+            : await stateManager
+                .TryGetStateAsync<IdempotencyRecord>(GetKey(request.ExecutionMessageId))
                 .ConfigureAwait(false);
-            stored = redirect.HasValue
-                ? default
-                : await stateManager
-                    .TryGetStateAsync<IdempotencyRecord>(GetKey(request.ExecutionMessageId))
-                    .ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
-        }
 
         if (redirect.HasValue)
         {
@@ -284,18 +275,10 @@ public partial class IdempotencyChecker(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.TargetAdmissionActorId);
         ValidateSourceRequest(request.Source);
-        ConditionalValue<IdempotencyLegacySourceRedirectRecord> existing;
-        try
-        {
-            existing = await stateManager
-                .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
-                    GetLegacyRedirectKey(request.Source.ExecutionMessageId))
-                .ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            return (new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable), false);
-        }
+        ConditionalValue<IdempotencyLegacySourceRedirectRecord> existing = await stateManager
+            .TryGetStateAsync<IdempotencyLegacySourceRedirectRecord>(
+                GetLegacyRedirectKey(request.Source.ExecutionMessageId))
+            .ConfigureAwait(false);
         if (existing.HasValue)
         {
             IdempotencyLegacySourceInspection existingResult = MatchesRedirect(existing.Value, request.Source)

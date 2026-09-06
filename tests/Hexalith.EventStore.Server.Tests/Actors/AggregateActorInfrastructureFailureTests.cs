@@ -11,6 +11,8 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
+using Microsoft.Extensions.Time.Testing;
+
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -268,6 +270,7 @@ public class AggregateActorInfrastructureFailureTests
         ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
         ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"])
             .Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
+        durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
@@ -305,6 +308,18 @@ public class AggregateActorInfrastructureFailureTests
             .ShouldBe(1);
         ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
         durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
+        durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
+        int inspectionClear = stateManager.Trace.IndexOf("ClearCache");
+        inspectionClear.ShouldBeGreaterThanOrEqualTo(0);
+        stateManager.Trace
+            .Skip(inspectionClear + 1)
+            .Any(operation => operation.StartsWith(
+                $"TryGetState:{command.AggregateIdentity.EventStreamKeyPrefix}",
+                StringComparison.Ordinal))
+            .ShouldBeFalse();
+        stateManager.Trace.Count(operation => operation ==
+                $"TryGetState:{AggregateActor.EventBatchCommitWitnessKey}")
+            .ShouldBe(1);
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
     }
 
@@ -395,6 +410,7 @@ public class AggregateActorInfrastructureFailureTests
             manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
             {
                 [command.AggregateIdentity.MetadataKey] = winnerMetadata,
+                [AggregateActor.EventBatchCommitWitnessKey] = "competing-attempt",
             }));
 
         _ = await Should.ThrowAsync<ActorStateRemediationException>(
@@ -430,6 +446,7 @@ public class AggregateActorInfrastructureFailureTests
             manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object>
             {
                 [$"{identity.EventStreamKeyPrefix}1"] = winnerEvent,
+                [AggregateActor.EventBatchCommitWitnessKey] = "competing-attempt",
             }));
 
         _ = await Should.ThrowAsync<ActorStateRemediationException>(
@@ -1168,6 +1185,7 @@ public class AggregateActorInfrastructureFailureTests
         {
             [GetPipelineKey(command)] = stale,
             [PendingCountKey] = 0,
+            [AggregateActor.EventBatchCommitWitnessKey] = "stale-event-batch",
         });
         ActorTestContext context = CreateActor(stateManager: stateManager);
 
@@ -1181,6 +1199,7 @@ public class AggregateActorInfrastructureFailureTests
         ((UnpublishedEventsRecord)durable["drain:msg-stale-owner"])
             .MessageId.ShouldBe("msg-stale-owner");
         durable.ShouldNotContainKey(GetPipelineKey(command));
+        durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
     }
 
     [Fact]
@@ -1515,6 +1534,45 @@ public class AggregateActorInfrastructureFailureTests
     }
 
     [Fact]
+    public async Task StaleProcessingCleanupCommitsThenCancels_ReconcilesOrphanedPendingSlotOnNextTurn()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(correlationId: "corr-stale-processing-cancel");
+        var stale = new PipelineState(
+            command.CorrelationId,
+            CommandStatus.Processing,
+            command.CommandType,
+            DateTimeOffset.UnixEpoch,
+            EventCount: null,
+            RejectionEventType: null,
+            MessageId: command.MessageId,
+            CausationId: command.MessageId);
+        var existingIndex = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry("msg-existing-owner", "corr-existing", DateTimeOffset.UnixEpoch),
+        ]);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [GetPipelineKey(command)] = stale,
+            [UnpublishedPublicationIndex.StateKey] = existingIndex,
+            [PendingCountKey] = 2,
+        });
+        stateManager.FaultAfterCall(
+            "SaveState",
+            1,
+            new OperationCanceledException("cleanup canceled"));
+        ActorTestContext context = CreateActor(stateManager: stateManager);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => context.Actor.ProcessCommandAsync(command));
+        _ = await context.Actor.GetStreamMetadataAsync();
+
+        stateManager.CommittedState.ShouldNotContainKey(GetPipelineKey(command));
+        stateManager.CommittedState[PendingCountKey].ShouldBe(1);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(2);
+        _ = await context.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
     public async Task FailedPendingCountReadDoesNotPersistAGuessedCountOverRecoveryOwners()
     {
         var stateManager = new FaultInjectingActorStateManager();
@@ -1579,6 +1637,49 @@ public class AggregateActorInfrastructureFailureTests
         stateManager.CommittedState[$"idempotency:{command.MessageId}"].ShouldBe(legacy);
         stateManager.CommittedState.ShouldNotContainKey($"idempotency:{command.CausationId}");
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task LegacyMigrationSaveCommitsThenThrows_RecordExpiresBeforeInspection_AcceptsRawWitness()
+    {
+        DateTimeOffset now = new(2026, 9, 6, 12, 0, 0, TimeSpan.Zero);
+        var timeProvider = new FakeTimeProvider(now);
+        var stateManager = new FaultInjectingActorStateManager();
+        CommandEnvelope command = CreateTestEnvelope(
+            correlationId: "corr-legacy-migration-expiry",
+            causationId: "legacy-causation");
+        var legacy = new IdempotencyRecord(
+            command.CausationId!,
+            command.CorrelationId,
+            true,
+            null,
+            now.AddHours(-1),
+            EventCount: 1,
+            MessageId: command.MessageId,
+            CommandType: command.CommandType,
+            ExpiresAt: now.AddMinutes(1),
+            Disposition: IdempotencyRecordDisposition.Terminal);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [$"idempotency:{command.CausationId}"] = legacy,
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        stateManager.ActBeforeCall(
+            "ClearCache",
+            1,
+            _ =>
+            {
+                timeProvider.Advance(TimeSpan.FromMinutes(2));
+                return Task.CompletedTask;
+            });
+        ActorTestContext context = CreateActor(stateManager: stateManager, timeProvider: timeProvider);
+
+        CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
+
+        result.ShouldBe(legacy.ToResult());
+        stateManager.CommittedState[$"idempotency:{command.MessageId}"].ShouldBe(legacy);
+        stateManager.CommittedState.ShouldNotContainKey($"idempotency:{command.CausationId}");
+        _ = await context.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
     }
 
     [Fact]

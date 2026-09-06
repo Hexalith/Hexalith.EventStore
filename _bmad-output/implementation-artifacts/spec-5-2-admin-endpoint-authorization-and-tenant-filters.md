@@ -2,7 +2,7 @@
 title: 'Story 5.2: Admin Endpoint Authorization And Tenant Filters'
 type: 'feature'
 created: '2026-09-06'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 2
 followup_review_recommended: false
 baseline_revision: 'acf5c4e403699d4f9290fd6636e4d6b1872a3bd6'

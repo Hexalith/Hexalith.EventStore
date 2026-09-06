@@ -99,6 +99,19 @@ public class AggregateActorGetEventsTests {
     }
 
     [Fact]
+    public async Task GetEventsAsync_MetadataTransportFailure_PropagatesWithoutDeserializationWrapper() {
+        var stateManager = new FaultInjectingActorStateManager();
+        var expected = new IOException("metadata unavailable");
+        stateManager.FaultOnCall($"TryGetState:{MetadataKey}", 1, expected);
+        (AggregateActor actor, _) = CreateActor(stateManager);
+
+        IOException observed = await Should.ThrowAsync<IOException>(
+            () => actor.GetEventsAsync(0));
+
+        observed.ShouldBeSameAs(expected);
+    }
+
+    [Fact]
     public async Task GetEventsAsync_NewAggregate_ReturnsEmptyArray() {
         (AggregateActor actor, IActorStateManager stateManager) = CreateActor();
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(MetadataKey, Arg.Any<CancellationToken>())

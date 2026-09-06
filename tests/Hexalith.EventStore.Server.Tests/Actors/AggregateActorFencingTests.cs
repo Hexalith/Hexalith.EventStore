@@ -434,7 +434,27 @@ public class AggregateActorFencingTests
 
         inspection.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unavailable);
         inspection.ToString().ShouldNotContain(RawStateKeySentinel);
+        await actorContext.StateManager.Received(1).ClearCacheAsync(CancellationToken.None);
         _ = actorContext.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task LegacyRedirect_StateUnavailableReturnsBoundedDecisionAfterDiscardingCache()
+    {
+        var stateManager = new FaultInjectingActorStateManager();
+        (_, _, IdempotencyLegacySourceRedirectRequest redirect) = CreateLegacyRedirectFixture();
+        stateManager.FaultOnCall(
+            $"TryGetState:{IdempotencyChecker.GetLegacyRedirectKey(redirect.Source.ExecutionMessageId)}",
+            1,
+            new IOException("redirect read unavailable"));
+        ActorTestContext actorContext = AggregateActorTestHelper.CreateActor(stateManager: stateManager);
+
+        IdempotencyLegacySourceInspection inspection = await ((IIdempotencyLegacySourceActor)actorContext.Actor)
+            .SetLegacySourceRedirectAsync(redirect);
+
+        inspection.Decision.ShouldBe(IdempotencyLegacySourceDecision.Unavailable);
+        stateManager.Trace.ShouldContain("ClearCache");
+        stateManager.Trace.ShouldNotContain("SaveState");
     }
 
     [Fact]

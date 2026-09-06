@@ -63,6 +63,7 @@ public partial class AggregateActor(
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
     private const string PendingCommandCountKey = "pending_command_count";
+    internal const string EventBatchCommitWitnessKey = "event_batch_commit_witness";
     private int _pendingFinalizerCommittedBefore = -1;
     private int _pendingFinalizerExpectedAfter = -1;
     private bool _pendingFinalizerRecoveryRequired;
@@ -97,6 +98,11 @@ public partial class AggregateActor(
             ?? IdempotencyRetentionOptions.DefaultTerminalRetentionSeconds;
 
     private TimeProvider IdempotencyTimeProvider { get; } = timeProvider ?? TimeProvider.System;
+
+    private JsonSerializerOptions ActorStateJsonSerializerOptions
+        => (serviceProvider?.GetService(typeof(IOptions<ActorRuntimeOptions>))
+                as IOptions<ActorRuntimeOptions>)?.Value.JsonSerializerOptions
+            ?? JsonSerializerOptions.Web;
 
     /// <summary>Gets the normalized bounded drain-attempt budget for one committed range.</summary>
     private int MaxDrainAttempts
@@ -184,7 +190,44 @@ public partial class AggregateActor(
             StateManager,
             Host.LoggerFactory.CreateLogger<IdempotencyChecker>(),
             IdempotencyTimeProvider);
-        return await checker.InspectLegacySourceAsync(request).ConfigureAwait(false);
+        try
+        {
+            IdempotencyLegacySourceInspection inspection = await checker
+                .InspectLegacySourceAsync(request)
+                .ConfigureAwait(false);
+            if (inspection.Decision == IdempotencyLegacySourceDecision.Unavailable)
+            {
+                _ = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
+            }
+
+            return inspection;
+        }
+        catch (OperationCanceledException)
+        {
+            _ = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            (bool discarded, string discardExceptionType) = await TryDiscardFailedBatchAsync()
+                .ConfigureAwait(false);
+            if (!discarded)
+            {
+                Log.ActorStateRemediationFailed(
+                    logger,
+                    Host.Id.GetId(),
+                    request.ExecutionCorrelationId,
+                    "LegacySourceInspection",
+                    exception.GetType().Name,
+                    "DiscardLegacySourceInspection",
+                    discardExceptionType,
+                    discardExceptionType,
+                    failedBatchDiscarded: false,
+                    durableStateObservation: "Unobserved");
+            }
+
+            return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
+        }
     }
 
     /// <inheritdoc/>
@@ -212,6 +255,11 @@ public partial class AggregateActor(
                 .ConfigureAwait(false);
             if (!mutationStaged)
             {
+                if (staged.Decision == IdempotencyLegacySourceDecision.Unavailable)
+                {
+                    _ = await TryDiscardFailedBatchAsync().ConfigureAwait(false);
+                }
+
                 return staged;
             }
 
@@ -249,9 +297,33 @@ public partial class AggregateActor(
                 return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
             }
 
-            IdempotencyLegacySourceInspection observed = await checker
-                .InspectLegacySourceAsync(request.Source)
-                .ConfigureAwait(false);
+            IdempotencyLegacySourceInspection observed;
+            try
+            {
+                observed = await checker
+                    .InspectLegacySourceAsync(request.Source)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception inspectionException)
+            {
+                _stateCacheUnsafe = true;
+                Log.ActorStateRemediationFailed(
+                    logger,
+                    Host.Id.GetId(),
+                    request.Source.ExecutionCorrelationId,
+                    "LegacyRedirect",
+                    exception.GetType().Name,
+                    "InspectLegacyRedirectCommit",
+                    inspectionException.GetType().Name,
+                    discardExceptionType,
+                    failedBatchDiscarded: true,
+                    durableStateObservation: "DurableInspectionFailed");
+                return new IdempotencyLegacySourceInspection(IdempotencyLegacySourceDecision.Unavailable);
+            }
             if (observed.Decision == IdempotencyLegacySourceDecision.Redirected
                 && string.Equals(
                     observed.RedirectDigest,
@@ -390,7 +462,7 @@ public partial class AggregateActor(
 
                 IdempotencyCheckResult idempotencyCheck;
                 bool migrationSaveAttempted = false;
-                CommandProcessingResult? expectedMigratedResult = null;
+                IdempotencyRecord? expectedMigratedRecord = null;
                 try
                 {
                     idempotencyCheck = await idempotencyChecker
@@ -399,7 +471,14 @@ public partial class AggregateActor(
 
                     if (idempotencyCheck.StateMutationStaged)
                     {
-                        expectedMigratedResult = idempotencyCheck.Result;
+                        ConditionalValue<IdempotencyRecord> stagedMigration = await StateManager
+                            .TryGetStateAsync<IdempotencyRecord>(
+                                IdempotencyChecker.GetRecordKey(command.MessageId))
+                            .ConfigureAwait(false);
+                        expectedMigratedRecord = stagedMigration.HasValue
+                            ? stagedMigration.Value
+                            : throw new InvalidOperationException(
+                                "Legacy migration did not stage the message-keyed record.");
                         migrationSaveAttempted = true;
                         await StateManager.SaveStateAsync().ConfigureAwait(false);
                     }
@@ -426,12 +505,12 @@ public partial class AggregateActor(
                         throw;
                     }
 
-                    IdempotencyCheckResult observed;
                     bool leftoverCausationPlusMiss = false;
                     try
                     {
-                        observed = await idempotencyChecker
-                            .InspectAsync(commandIdentity)
+                        ConditionalValue<IdempotencyRecord> observed = await StateManager
+                            .TryGetStateAsync<IdempotencyRecord>(
+                                IdempotencyChecker.GetRecordKey(command.MessageId))
                             .ConfigureAwait(false);
                         bool legacyKeyRemoved = true;
                         if (!string.IsNullOrWhiteSpace(command.CausationId)
@@ -444,14 +523,13 @@ public partial class AggregateActor(
                             legacyKeyRemoved = !leftoverLegacy.HasValue;
                         }
 
-                        if ((observed.Outcome is IdempotencyCheckOutcome.ExactTerminalDuplicate
-                                or IdempotencyCheckOutcome.RetryableRecoverable)
-                            && observed.Result == expectedMigratedResult
+                        if (observed.HasValue
+                            && observed.Value == expectedMigratedRecord
                             && legacyKeyRemoved)
                         {
                             leftoverCausationPlusMiss = false;
                         }
-                        else if (observed.Outcome == IdempotencyCheckOutcome.Miss && !legacyKeyRemoved)
+                        else if (!observed.HasValue && !legacyKeyRemoved)
                         {
                             leftoverCausationPlusMiss = true;
                         }
@@ -492,7 +570,11 @@ public partial class AggregateActor(
                         throw;
                     }
 
-                    idempotencyCheck = observed;
+                    idempotencyCheck = new IdempotencyCheckResult(
+                        IdempotencyCheckOutcome.LegacyMigration,
+                        expectedMigratedRecord?.ToResult()
+                            ?? throw new InvalidOperationException(
+                                "Legacy migration expected record was not captured."));
                 }
 
                 if (idempotencyCheck.Outcome is IdempotencyCheckOutcome.ExactTerminalDuplicate
@@ -674,6 +756,14 @@ public partial class AggregateActor(
                                 cleanupSaveException).ConfigureAwait(false);
                             if (cleanupSaveException is OperationCanceledException)
                             {
+                                if (cleanupCommitted)
+                                {
+                                    // Cleanup committed before cancellation, but ownership was not
+                                    // observed yet. Force the next turn to normalize the pending
+                                    // projection from the durable publication index.
+                                    _pendingCountReconciliationRequired = true;
+                                }
+
                                 throw;
                             }
 
@@ -1081,6 +1171,13 @@ public partial class AggregateActor(
                             EndSequence: persistResult.NewSequenceNumber);
                         await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsStoredState).ConfigureAwait(false);
 
+                        // One actor-scoped opaque token proves which complete atomic event batch
+                        // committed without rereading every event after an ambiguous save.
+                        string eventBatchAttemptToken = Guid.NewGuid().ToString("N");
+                        await StateManager.SetStateAsync(
+                            EventBatchCommitWitnessKey,
+                            eventBatchAttemptToken).ConfigureAwait(false);
+
                         // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
                         bool eventBatchSaveAttempted = false;
                         try {
@@ -1104,7 +1201,7 @@ public partial class AggregateActor(
                                 command,
                                 pipelineState,
                                 eventsStoredState,
-                                persistResult,
+                                eventBatchAttemptToken,
                                 conflict ?? ex,
                                 conflict is null ? CommandStatus.EventsStored.ToString() : "PersistenceConflict",
                                 cancellationToken).ConfigureAwait(false);
@@ -1737,16 +1834,18 @@ public partial class AggregateActor(
         }
     }
 
-    private static bool SnapshotRecordsMatch(SnapshotRecord observed, SnapshotRecord expected)
+    private bool SnapshotRecordsMatch(SnapshotRecord observed, SnapshotRecord expected)
         => observed.SequenceNumber == expected.SequenceNumber
             && observed.CreatedAt == expected.CreatedAt
             && string.Equals(observed.Domain, expected.Domain, StringComparison.Ordinal)
             && string.Equals(observed.AggregateId, expected.AggregateId, StringComparison.Ordinal)
             && string.Equals(observed.TenantId, expected.TenantId, StringComparison.Ordinal)
             && Equals(observed.ProtectionMetadata, expected.ProtectionMetadata)
-            && JsonSerializer.SerializeToUtf8Bytes(observed.State)
+            && JsonSerializer.SerializeToUtf8Bytes(observed.State, ActorStateJsonSerializerOptions)
                 .AsSpan()
-                .SequenceEqual(JsonSerializer.SerializeToUtf8Bytes(expected.State));
+                .SequenceEqual(JsonSerializer.SerializeToUtf8Bytes(
+                    expected.State,
+                    ActorStateJsonSerializerOptions));
 
     private async Task<object?> MaterializeManualSnapshotStateAsync(
         AggregateIdentity identity,
@@ -2066,6 +2165,11 @@ public partial class AggregateActor(
                         trackingId,
                         record,
                         cleanupSaveException).ConfigureAwait(false);
+                    if (cleanupSaveException is OperationCanceledException)
+                    {
+                        throw;
+                    }
+
                     if (!cleanupCommitted)
                     {
                         throw;
@@ -2169,7 +2273,10 @@ public partial class AggregateActor(
         catch (OperationCanceledException) {
             throw;
         }
-        catch (ActorStateRemediationException) {
+        catch (ActorStateRemediationException exception) {
+            ProtectedDataDiagnosticRedactor.RecordActivityException(activity, exception, "drain");
+            _ = (activity?.SetTag("eventstore.failure_reason", "actor_state_remediation_failed"));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, "ActorStateRemediationFailed"));
             throw;
         }
         catch (Exception ex) {
@@ -2290,6 +2397,11 @@ public partial class AggregateActor(
                     record,
                     markedRecord,
                     markerSaveException).ConfigureAwait(false);
+                if (markerSaveException is OperationCanceledException)
+                {
+                    throw;
+                }
+
                 if (!markerCommitted)
                 {
                     throw;
@@ -2330,6 +2442,11 @@ public partial class AggregateActor(
                 trackingId,
                 record,
                 cleanupSaveException).ConfigureAwait(false);
+            if (cleanupSaveException is OperationCanceledException)
+            {
+                throw;
+            }
+
             if (!cleanupCommitted)
             {
                 throw;
@@ -2752,6 +2869,7 @@ public partial class AggregateActor(
         await StateManager.SetStateAsync(
             UnpublishedEventsRecord.GetStateKey(trackingId),
             record).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(EventBatchCommitWitnessKey).ConfigureAwait(false);
 
         // Story 4.4: this method is the single choke point covering ALL THREE drain-record creation
         // sites (first-pass publish failure, stale-checkpoint handoff, resume publish failure), so
@@ -3218,6 +3336,11 @@ public partial class AggregateActor(
                     .ConfigureAwait(false);
                 if (observed.HasValue && observed.Value == stamped)
                 {
+                    if (saveException is OperationCanceledException)
+                    {
+                        throw;
+                    }
+
                     return;
                 }
 
@@ -3225,6 +3348,11 @@ public partial class AggregateActor(
                 // the record unarmed so activation may safely re-register it later.
                 if (observed.HasValue && observed.Value == committedRecord)
                 {
+                    if (saveException is OperationCanceledException)
+                    {
+                        throw;
+                    }
+
                     return;
                 }
 
@@ -3240,6 +3368,10 @@ public partial class AggregateActor(
                     durableStateObservation: "AmbiguousReminderStamp");
             }
             catch (ActorStateRemediationException)
+            {
+                throw;
+            }
+            catch (OperationCanceledException) when (saveException is OperationCanceledException)
             {
                 throw;
             }
@@ -3377,6 +3509,7 @@ public partial class AggregateActor(
         {
             await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, stalePipeline.CorrelationId)
                 .ConfigureAwait(false);
+            _ = await StateManager.TryRemoveStateAsync(EventBatchCommitWitnessKey).ConfigureAwait(false);
             UnpublishedPublicationIndex currentIndex = await ReadPublicationIndexAsync()
                 .ConfigureAwait(false);
             await StagePendingCommandCountAsync(currentIndex.OwnerCount).ConfigureAwait(false);
@@ -4569,6 +4702,11 @@ public partial class AggregateActor(
 
             if (IsExpectedDrainRetry(observed, updatedRecord))
             {
+                if (saveException is OperationCanceledException)
+                {
+                    throw;
+                }
+
                 return observed.Value;
             }
 
@@ -4584,6 +4722,11 @@ public partial class AggregateActor(
                     discardExceptionType,
                     failedBatchDiscarded: true,
                     durableStateObservation: "AmbiguousDrainRetry");
+            }
+
+            if (saveException is OperationCanceledException)
+            {
+                throw;
             }
 
             try
@@ -4605,8 +4748,17 @@ public partial class AggregateActor(
                             .ConfigureAwait(false);
                         if (IsExpectedDrainRetry(recoveryObserved, updatedRecord))
                         {
+                            if (recoveryException is OperationCanceledException)
+                            {
+                                throw;
+                            }
+
                             return recoveryObserved.Value;
                         }
+                    }
+                    catch (OperationCanceledException) when (recoveryException is OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception recoveryInspectionException)
                     {
@@ -4805,7 +4957,7 @@ public partial class AggregateActor(
         CommandEnvelope command,
         PipelineState processingPipeline,
         PipelineState eventsStoredPipeline,
-        EventPersistResult persistResult,
+        string expectedAttemptToken,
         Exception primaryException,
         string primaryFailureStage,
         CancellationToken cancellationToken)
@@ -4856,6 +5008,9 @@ public partial class AggregateActor(
             ConditionalValue<PipelineState> pipeline = await StateManager
                 .TryGetStateAsync<PipelineState>(pipelineKey)
                 .ConfigureAwait(false);
+            ConditionalValue<string> attemptToken = await StateManager
+                .TryGetStateAsync<string>(EventBatchCommitWitnessKey)
+                .ConfigureAwait(false);
             UnpublishedPublicationIndex index = await ReadPublicationIndexAsync().ConfigureAwait(false);
             bool exactRecoveryOwner = index.Entries.Any(entry =>
                 string.Equals(entry.MessageId, command.MessageId, StringComparison.Ordinal)
@@ -4863,6 +5018,7 @@ public partial class AggregateActor(
 
             if (pipeline.HasValue
                 && pipeline.Value == processingPipeline
+                && !attemptToken.HasValue
                 && !index.Contains(command.MessageId))
             {
                 return false;
@@ -4871,7 +5027,8 @@ public partial class AggregateActor(
             if (pipeline.HasValue
                 && pipeline.Value == eventsStoredPipeline
                 && exactRecoveryOwner
-                && await HasExactCommittedEventBatchAsync(command, persistResult).ConfigureAwait(false))
+                && attemptToken.HasValue
+                && string.Equals(attemptToken.Value, expectedAttemptToken, StringComparison.Ordinal))
             {
                 return true;
             }
@@ -4904,81 +5061,6 @@ public partial class AggregateActor(
                 failedBatchDiscarded: true,
                 durableStateObservation: "DurableInspectionFailed");
         }
-    }
-
-    private async Task<bool> HasExactCommittedEventBatchAsync(
-        CommandEnvelope command,
-        EventPersistResult persistResult)
-    {
-        if (persistResult.PersistedEnvelopes.Count == 0)
-        {
-            return false;
-        }
-
-        EventEnvelope first = persistResult.PersistedEnvelopes[0];
-        ConditionalValue<AggregateMetadata> metadata = await StateManager
-            .TryGetStateAsync<AggregateMetadata>(command.AggregateIdentity.MetadataKey)
-            .ConfigureAwait(false);
-        if (!metadata.HasValue
-            || metadata.Value != new AggregateMetadata(
-                persistResult.NewSequenceNumber,
-                first.Timestamp,
-                ETag: null))
-        {
-            return false;
-        }
-
-        foreach (EventEnvelope expected in persistResult.PersistedEnvelopes)
-        {
-            ConditionalValue<EventEnvelope> observed = await StateManager
-                .TryGetStateAsync<EventEnvelope>(
-                    $"{command.AggregateIdentity.EventStreamKeyPrefix}{expected.SequenceNumber}")
-                .ConfigureAwait(false);
-            if (!observed.HasValue || !EventEnvelopesMatch(observed.Value, expected))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool EventEnvelopesMatch(EventEnvelope observed, EventEnvelope expected)
-        => string.Equals(observed.MessageId, expected.MessageId, StringComparison.Ordinal)
-            && string.Equals(observed.AggregateId, expected.AggregateId, StringComparison.Ordinal)
-            && string.Equals(observed.AggregateType, expected.AggregateType, StringComparison.Ordinal)
-            && string.Equals(observed.TenantId, expected.TenantId, StringComparison.Ordinal)
-            && string.Equals(observed.Domain, expected.Domain, StringComparison.Ordinal)
-            && observed.SequenceNumber == expected.SequenceNumber
-            && observed.GlobalPosition == expected.GlobalPosition
-            && observed.Timestamp == expected.Timestamp
-            && string.Equals(observed.CorrelationId, expected.CorrelationId, StringComparison.Ordinal)
-            && string.Equals(observed.CausationId, expected.CausationId, StringComparison.Ordinal)
-            && string.Equals(observed.UserId, expected.UserId, StringComparison.Ordinal)
-            && string.Equals(observed.DomainServiceVersion, expected.DomainServiceVersion, StringComparison.Ordinal)
-            && string.Equals(observed.EventTypeName, expected.EventTypeName, StringComparison.Ordinal)
-            && observed.MetadataVersion == expected.MetadataVersion
-            && string.Equals(observed.SerializationFormat, expected.SerializationFormat, StringComparison.Ordinal)
-            && observed.Payload.AsSpan().SequenceEqual(expected.Payload)
-            && EventExtensionsMatch(observed.Extensions, expected.Extensions);
-
-    private static bool EventExtensionsMatch(
-        IDictionary<string, string>? observed,
-        IDictionary<string, string>? expected)
-    {
-        if (ReferenceEquals(observed, expected))
-        {
-            return true;
-        }
-
-        if (observed is null || expected is null || observed.Count != expected.Count)
-        {
-            return false;
-        }
-
-        return expected.All(pair =>
-            observed.TryGetValue(pair.Key, out string? value)
-            && string.Equals(value, pair.Value, StringComparison.Ordinal));
     }
 
     private async Task<bool> InspectIdempotencyCleanupSaveFailureAsync(
@@ -5286,8 +5368,9 @@ public partial class AggregateActor(
             await StateManager.SaveStateAsync(CancellationToken.None).ConfigureAwait(false);
             _pendingCountReconciliationRequired = false;
         }
-        catch
+        catch (Exception saveException)
         {
+            bool durableReconciled = false;
             try
             {
                 await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
@@ -5295,15 +5378,22 @@ public partial class AggregateActor(
                 UnpublishedPublicationIndex durableIndex = await ReadPublicationIndexAsync()
                     .ConfigureAwait(false);
                 int durableCount = await ReadPendingCommandCountAsync().ConfigureAwait(false);
-                if (durableCount == durableIndex.OwnerCount)
-                {
-                    _pendingCountReconciliationRequired = false;
-                    return;
-                }
+                durableReconciled = durableCount == durableIndex.OwnerCount;
             }
             catch
             {
                 _stateCacheUnsafe = true;
+            }
+
+            if (durableReconciled)
+            {
+                _pendingCountReconciliationRequired = false;
+                if (saveException is OperationCanceledException)
+                {
+                    throw;
+                }
+
+                return;
             }
 
             _pendingCountReconciliationRequired = true;
@@ -5474,6 +5564,7 @@ public partial class AggregateActor(
                 .ConfigureAwait(false);
             await StagePendingCommandCountAsync(expectedPublicationIndex.OwnerCount)
                 .ConfigureAwait(false);
+            _ = await StateManager.TryRemoveStateAsync(EventBatchCommitWitnessKey).ConfigureAwait(false);
 
             terminalSaveAttempted = true;
             await StateManager.SaveStateAsync().ConfigureAwait(false);

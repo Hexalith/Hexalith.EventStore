@@ -755,6 +755,20 @@ public class PublicationRecoveryActivationTests {
     }
 
     [Fact]
+    public async Task OnActivate_EmptyIndexWithNonzeroPendingCount_ReconcilesToZero() {
+        var stateManager = new FaultInjectingActorStateManager();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["pending_command_count"] = 4,
+        });
+        ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await InvokeOnActivateAsync(ctx.Actor);
+
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
     public async Task OnActivate_NonemptyIndex_ReconcilesPendingCountToDistinctOwners() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         UnpublishedPublicationEntry[] entries = [
@@ -804,6 +818,25 @@ public class PublicationRecoveryActivationTests {
 
         stateManager.CommittedState["pending_command_count"].ShouldBe(2);
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task OnActivate_ReconciliationSaveCommitsThenCancels_NextTurnStillRunsBarrier() {
+        var stateManager = new FaultInjectingActorStateManager();
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["pending_command_count"] = 3,
+        });
+        stateManager.FaultAfterCall(
+            "SaveState",
+            1,
+            new OperationCanceledException("commit canceled"));
+        ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await InvokeOnActivateAsync(ctx.Actor);
+        _ = await ctx.Actor.GetStreamMetadataAsync();
+
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+        stateManager.Trace.Count(operation => operation == "ClearCache").ShouldBe(4);
     }
 
     [Fact]
@@ -1174,6 +1207,37 @@ public class PublicationRecoveryActivationTests {
             "drain:msg-stamp-first",
             Arg.Is<UnpublishedEventsRecord>(r => r.ReminderArmedAt != null),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_ReminderStampCommitsThenCancels_PropagatesCancellation() {
+        var stateManager = new FaultInjectingActorStateManager();
+        ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+        _ = ctx.Invoker.InvokeAsync(
+                Arg.Any<CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]));
+        _ = ctx.EventPublisher.PublishEventsAsync(
+                Arg.Any<AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+        stateManager.FaultAfterCall(
+            "SaveState",
+            4,
+            new OperationCanceledException("stamp canceled"));
+        CommandEnvelope command = CreateEnvelope("msg-stamp-cancel", "corr-stamp-cancel");
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => ctx.Actor.ProcessCommandAsync(command));
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState["drain:msg-stamp-cancel"])
+            .ReminderArmedAt.ShouldNotBeNull();
+        stateManager.CommittedState.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]

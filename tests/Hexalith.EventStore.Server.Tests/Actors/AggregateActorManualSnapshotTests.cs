@@ -153,6 +153,62 @@ public class AggregateActorManualSnapshotTests {
         stateManager.Trace.ShouldContain("ConcurrentWinner");
     }
 
+    [Fact]
+    public async Task CreateManualSnapshotAsync_DurableComparisonUsesConfiguredActorSerializerOptions() {
+        var identity = new AggregateIdentity("tenant-a", "orders", "order-1");
+        var stateManager = new FaultInjectingActorStateManager();
+        await SeedStreamAsync(stateManager, identity);
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        _ = snapshotManager.InspectSnapshotForManualOverwriteAsync(
+                identity,
+                stateManager,
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(SnapshotLoadResult.Absent());
+        SnapshotRecord? attempted = null;
+        _ = snapshotManager.CreateSnapshotAsync(
+                identity,
+                2,
+                Arg.Any<object>(),
+                stateManager,
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                true)
+            .Returns(async _ => {
+                attempted = new SnapshotRecord(
+                    2,
+                    new { CurrentStatus = "ready" },
+                    DateTimeOffset.UnixEpoch,
+                    identity.Domain,
+                    identity.AggregateId,
+                    identity.TenantId);
+                await stateManager.SetStateAsync(identity.SnapshotKey, attempted).ConfigureAwait(false);
+            });
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        stateManager.ActBeforeCall(
+            $"TryGetState:{identity.SnapshotKey}",
+            2,
+            manager => manager.InjectConcurrentWinnerAsync(new Dictionary<string, object> {
+                [identity.SnapshotKey] = attempted! with {
+                    State = JsonSerializer.Deserialize<JsonElement>(
+                        """{"current_status":"ready"}"""),
+                },
+            }));
+        var actorStateOptions = new JsonSerializerOptions {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        };
+        AggregateActor actor = CreateActor(
+            identity,
+            stateManager,
+            snapshotManager,
+            CreateReconstructor(identity),
+            actorStateOptions);
+
+        ManualSnapshotResult result = await actor.CreateManualSnapshotAsync("corr-ambiguous");
+
+        result.Outcome.ShouldBe(ManualSnapshotOutcome.Created);
+    }
+
     private static ISnapshotManager CreateStagingSnapshotManager(
         AggregateIdentity identity,
         FaultInjectingActorStateManager stateManager) {
@@ -210,7 +266,8 @@ public class AggregateActorManualSnapshotTests {
         AggregateIdentity identity,
         IActorStateManager stateManager,
         ISnapshotManager snapshotManager,
-        IAggregateStateReconstructor reconstructor) {
+        IAggregateStateReconstructor reconstructor,
+        JsonSerializerOptions? actorStateJsonSerializerOptions = null) {
         var host = ActorHost.CreateForTest<AggregateActor>(
             new ActorTestOptions { ActorId = new ActorId(identity.ActorId) });
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
@@ -227,7 +284,7 @@ public class AggregateActorManualSnapshotTests {
             Options.Create(new EventDrainOptions()),
             Options.Create(new BackpressureOptions()),
             Substitute.For<IDeadLetterPublisher>(),
-            new TestServiceProvider(reconstructor));
+            new TestServiceProvider(reconstructor, actorStateJsonSerializerOptions));
 
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return actor;
@@ -263,8 +320,20 @@ public class AggregateActorManualSnapshotTests {
             Payload: JsonSerializer.SerializeToUtf8Bytes(new { sequence }),
             Extensions: null);
 
-    private sealed class TestServiceProvider(IAggregateStateReconstructor reconstructor) : IServiceProvider {
+    private sealed class TestServiceProvider(
+        IAggregateStateReconstructor reconstructor,
+        JsonSerializerOptions? actorStateJsonSerializerOptions) : IServiceProvider {
+        private readonly IOptions<ActorRuntimeOptions>? _actorOptions = actorStateJsonSerializerOptions is null
+            ? null
+            : Options.Create(new ActorRuntimeOptions {
+                JsonSerializerOptions = actorStateJsonSerializerOptions,
+            });
+
         public object? GetService(Type serviceType)
-            => serviceType == typeof(IAggregateStateReconstructor) ? reconstructor : null;
+            => serviceType == typeof(IAggregateStateReconstructor)
+                ? reconstructor
+                : serviceType == typeof(IOptions<ActorRuntimeOptions>)
+                    ? _actorOptions
+                    : null;
     }
 }
