@@ -3447,123 +3447,205 @@ reason: `python3 tools/validate-oq8-platform-evidence.py` fails with `Story 4.15
 status: open
 decision: 2026-09-01 Re-mint and re-sign — Recompute the docs/ci.md identity, propagate the new subject, and collect fresh architecture, security, and test reviewer sign-off.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-3-14-corrective-oci-provenance-release-2.md`
-  summary: Windows Assert.Skip outcome for POSIX governance cases is not observed on a Windows runner.
-  evidence: Contracts CI is Linux-only; PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn is a tightened source-text binder. A Windows host (or OS-detection seam) that runs those seven cases and observes xUnit skip vs vacuous pass would settle runtime AC1.
+### DW-458: Prove Windows POSIX governance cases report real xUnit skips.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
-  summary: Run the real heavyweight container-publishing provenance tests in an automatic workflow lane.
-  evidence: Concurrent Story 3.14 work excludes `HeavyweightContainerPublish` from the default Contracts gate, and no automatic workflow selects it, so multi-RID label and real publish fail-closed regressions can merge unobserved.
+origin: migrated from legacy ledger ("unsectioned flat appends from spec-3-14-corrective-oci-provenance-release-2.md and spec-5-1-infrastructure-failure-cache-clear.md"), 2026-09-06
+location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs
+reason: Contracts CI is Linux-only and all automatic lanes run on Ubuntu; `PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn` is only a tightened source-text binder that scans 280 characters after each Windows condition. A Windows host or OS-detection seam must run all seven cases and observe xUnit skip rather than a vacuous pass to settle runtime AC1.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
-  summary: Prove Windows governance cases report real xUnit skips with a structural guard binder or Windows runner.
-  evidence: The concurrent source test scans only 280 characters after each Windows condition and all automatic lanes run on Ubuntu; parsing each guard body or executing on Windows would settle the missing behavior.
+### DW-459: Run heavyweight container-publishing provenance tests automatically.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
-  summary: Correct the DW-372 completion resolution to match the malformed-input theory's actual default-gate status.
-  evidence: The ledger says `ContainerPublicationRejectsMalformedProvenanceInputs` is heavyweight and excluded, while its code, CI documentation, and manifest binder intentionally keep it unmarked and in the default gate.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-5-1-infrastructure-failure-cache-clear.md"), 2026-09-06
+location: .github/workflows/ci.yml; tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs
+reason: Concurrent Story 3.14 work excludes `HeavyweightContainerPublish` from the default Contracts gate, and no automatic workflow selects it, so multi-RID label and real-publish fail-closed regressions can merge unobserved.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
-  summary: Restore the historical creation date in the concurrently replanned Story 4.7 specification.
-  evidence: The file now says `created: 2026-09-05`, while its retained change log records the specification and inventory on 2026-08-27; replanning needs a separate timestamp.
+### DW-460: Correct DW-372's overstated completion resolution.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
-  summary: Restore an exact one-second-over-24-hours retained-authority validity-window test.
-  evidence: The concurrent Story 3.14 test uses 90,001 seconds, so a validator regression that widens the approved 24-hour limit can pass until the later threshold; an 86,401-second case settles the boundary.
-- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
-  summary: Subject-history arithmetic (seven vs eight subjects / re-mints) disagrees across superseded README, docs/ci.md, and Story 3.15 operator records.
-  evidence: Blind-hunter 2026-09-05 review; narrative only; not caused by the 3/3 receipt collection landing.
-- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
-  summary: Assembler always emits repository_signature_entry_present True without inspecting the .nupkg for a .signature.p7s entry.
-  evidence: Edge/blind 2026-09-05 review; verifier still enforces the zip entry; producer misrepresentation is pre-existing.
-- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
-  summary: Retained GitHub comment envelopes accept minimized/pin null without rejecting moderated or pinned comments.
-  evidence: Edge-case hunter 2026-09-05; closed-schema currently requires the fields but does not forbid non-null moderated states.
-- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
-  summary: Assembler smoke refuse guards may accept JSON false exit_code or set-equal swapped platform/child digests.
-  evidence: Edge-case hunter 2026-09-05; pre-existing assembler preflight, not introduced by receipt collection.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-5-1-infrastructure-failure-cache-clear.md"), 2026-09-06
+location: _bmad-output/implementation-artifacts/deferred-work.md (DW-372)
+reason: DW-372 says `ContainerPublicationRejectsMalformedProvenanceInputs` is heavyweight and excluded, while its code, CI documentation, and manifest binder intentionally keep that direct-MSBuild theory unmarked and in the default gate.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Add an automatic lane for the real container-publish tests and correct DW-372's overstated completion record.
-  evidence: The default Contracts workflow filters out both `HeavyweightContainerPublish` real-publish theories, no automatic workflow selects the trait, and DW-372 incorrectly says the unmarked malformed-input direct-MSBuild theory is also excluded; actual OCI publication can regress behind synthetic coverage.
+### DW-461: Restore Story 4.7's historical creation date.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Pin the first invalid retained-authority validity-window boundary.
-  evidence: The release-evidence theory uses 90,001 seconds rather than 86,401 seconds, so a regression widening the intended 24-hour maximum can escape until the later test point.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-5-1-infrastructure-failure-cache-clear.md"), 2026-09-06
+location: _bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md
+reason: The replanned specification says `created: 2026-09-05`, while its retained change log records the specification and inventory on 2026-08-27; replanning needs a separate timestamp rather than replacing the historical creation date.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Establish or enforce separator-free loop hook task and event identifiers.
-  evidence: `bmad_loop_hook.py` interpolates `BMAD_LOOP_TASK_ID` and the event name directly into a filename and swallows the resulting `OSError`; the external orchestrator producer is absent from the reviewed repository, so its valid-character contract is needed to refute the risk, otherwise separators can silently drop completion events.
+### DW-462: Pin the first invalid retained-authority validity-window boundary.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Review concurrent AggregateActor state-cache recovery, pending-count reconciliation, and publication-index capacity behavior with dedicated implementation and tests.
-  evidence: Review pass 3 identified missing nonempty-index activation coverage, missing direct non-command cache-barrier coverage, and possible recovery/index accounting defects in concurrently modified EventStore actor files; these are outside Story 4.7's Tenants producer scope.
+origin: migrated from legacy ledger ("unsectioned flat appends from spec-5-1-infrastructure-failure-cache-clear.md and spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs
+reason: The retained-authority release-evidence theory uses 90,001 seconds rather than the exact one-second-over-24-hours boundary of 86,401 seconds, so a validator regression that widens the approved 24-hour maximum can pass until the later threshold.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Review concurrent CI, release-boundary, documentation, and tooling findings from the dirty tree.
-  evidence: Review pass 3 identified unrelated gaps in container-test lane selection, release validity-boundary coverage, CI documentation, Windows structural tests, and agent/tooling behavior; none is caused by the approved Tenants query-provenance change.
+### DW-463: Reconcile Story 3.15 subject-history arithmetic.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Make drain-exhaustion dead-letter publication idempotent across a pre-commit marker-save failure.
-  evidence: `CompleteDrainExhaustionAsync` publishes externally before saving `DeadLettered`; if that save fails before commit, the next reminder republishes the same exhausted range, and no repository-owned consumer or sink contract proves that the stable CloudEvent id suppresses it.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-3-15-corrected-deployed-runtime-parity-closure.md, blind-hunter review 2026-09-05"), 2026-09-06
+location: _bmad-output/implementation-artifacts/evidence/story-3-15 README; docs/ci.md; Story 3.15 operator records
+reason: The superseded README, `docs/ci.md`, and Story 3.15 operator records disagree on whether subject history contains seven or eight subjects or re-mints. This is a narrative inconsistency found by the 2026-09-05 blind-hunter review and was not caused by the 3/3 receipt-collection landing.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Restrict manual-snapshot success inference to an ambiguous snapshot save and compare the exact expected snapshot.
-  evidence: `CreateManualSnapshotAsync` catches inspection, reconstruction, creation, and save failures together, then reports `Created` whenever any pre-existing snapshot has the current sequence; an earlier infrastructure failure can therefore be misreported as a successful creation.
+### DW-464: Inspect NuGet signature entries before assembler attestation.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Add before-commit and commit-then-throw stale-checkpoint handoff save-fault tests.
-  evidence: Successful stale-handoff tests do not exercise `InspectStaleHandoffSaveFailureAsync`, so a regression can surface an already-committed handoff as a failed command or accept an incomplete durable handoff.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-3-15-corrected-deployed-runtime-parity-closure.md, edge/blind review 2026-09-05"), 2026-09-06
+location: tools/assemble-corrected-deployed-runtime-parity.py
+reason: The assembler always emits `repository_signature_entry_present: true` without inspecting each `.nupkg` for a `.signature.p7s` entry. The verifier still enforces the zip entry, but the producer's pre-existing representation is inaccurate.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Add a pre-commit drain-retry persistence repair test.
-  evidence: Existing tests cover normal retry persistence and commit-then-throw ambiguity only; no test proves that a failure before the first save commits is discarded, inspected, and repaired with exactly one durable retry increment.
+### DW-465: Reject moderated or pinned retained GitHub comments.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Establish whether admission staging exceptions can leave a commit-capable abandoned actor-state batch.
-  evidence: `StagePendingCommandCountAsync` and `ActorStateMachine.CheckpointAsync` run before the guarded save, but no catch discards their batch if a staging call throws; a Dapr implementation guarantee or fault test must establish whether a post-staging exception can retain state for a later save.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-3-15-corrected-deployed-runtime-parity-closure.md, edge-case review 2026-09-05"), 2026-09-06
+location: tools/deployed_runtime_parity_handlers/v1.py
+reason: The retained GitHub comment closed schema requires `minimized` and `pin` fields but does not forbid non-null moderated or pinned states, so moderated or pinned comments can be accepted.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Apply the actor discard-or-poison protocol to legacy idempotency migration and source-read failures.
-  evidence: A legacy migration can stage the new key before legacy-key removal throws, while legacy source/redirect reads swallow state-manager failures as `Unavailable`; both paths can leave a possibly unsafe cache without actor-owned remediation.
+### DW-466: Harden assembler smoke refusal guards.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Preserve cancellation semantics for aggregate event metadata reads.
-  evidence: `GetEventsAsync` catches metadata-read `OperationCanceledException` as `Exception` and wraps it in `EventDeserializationException`, although adjacent event reads preserve cancellation, so callers and telemetry can misclassify cancellation as corrupt state.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-3-15-corrected-deployed-runtime-parity-closure.md, edge-case review 2026-09-05"), 2026-09-06
+location: tools/assemble-corrected-deployed-runtime-parity.py
+reason: The pre-existing assembler preflight may accept JSON `false` for `exit_code` or set-equal swapped platform and child digests, weakening its smoke refusal checks; this was not introduced by receipt collection.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Make malformed publication-index activation fail closed without pruning valid duplicate owners or bypassing work bounds.
-  evidence: A malformed entry before a valid duplicate is terminalized and adds the shared message id to the final prune set, removing the valid owner too; malformed nonblank entries can also perform idempotency reads and saves without consuming either activation budget.
+### DW-467: Align automatic container-publish coverage and DW-372's record.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Make the documented corrective-release v4 handler path compatible with a handler-specific codec digest.
-  evidence: `docs/ci.md` requires v4 to define its own `EXPECTED_PACKET_CODEC_SHA256`, but `_load_handler` rejects any value different from `V3_PACKET_CODEC_SHA256`, so a correctly authored successor cannot load.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: .github/workflows/ci.yml; _bmad-output/implementation-artifacts/deferred-work.md (DW-372)
+reason: The default Contracts workflow filters out both `HeavyweightContainerPublish` real-publish theories, no automatic workflow selects the trait, and DW-372 incorrectly says the unmarked malformed-input direct-MSBuild theory is also excluded; actual OCI publication can regress behind synthetic coverage.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Finalize a reused stale-Processing pending slot when replacement admission fails before commit.
-  evidence: After stale checkpoint cleanup commits, pre-commit replacement-admission inspection returns false and overwrites `pendingCommandTracked`; the `finally` path then skips decrementing the now-ownerless durable slot.
+### DW-468: Enforce separator-free loop hook identifiers.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
-  summary: Refresh the Story 4.7 deferred actor-review evidence after its named tests were added.
-  evidence: The pass-3 ledger entry still cites missing nonempty-index activation and direct state-cache-barrier coverage, but `OnActivate_NonemptyIndex_ReconcilesPendingCountToDistinctOwners` and `PoisonedActor_StateBearingTurnsStopAtTheCacheBarrier` now exist; the remaining actor concerns need accurate evidence.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: .bmad-loop/bmad_loop_hook.py
+reason: `bmad_loop_hook.py` interpolates `BMAD_LOOP_TASK_ID` and the event name directly into a filename and swallows the resulting `OSError`; because the external orchestrator producer is absent from the reviewed repository, its valid-character contract is needed to refute the risk or separators can silently drop completion events.
+status: open
 
-## Deferred from: code review of spec-5-1-infrastructure-failure-cache-clear (2026-09-05)
+### DW-469: Review concurrent AggregateActor recovery and capacity behavior.
 
-- Activation recovery has no total scan/read bound for large armed or blank-malformed publication indexes. `RearmOutstandingPublicationsAsync` reads a drain record before charging the probe budget for every well-formed entry, skips armed entries without any total budget, and scans every blank-message malformed entry without charging either budget. This is a pre-existing activation-loop design risk; Story 5.1 bounds malformed state-backed cleanup only, while reconciling total work with armed-head starvation requires a separately designed cursor or total-scan budget. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2908`.
-- Drain exhaustion can republish after a pre-commit marker-save failure. `CompleteDrainExhaustionAsync` publishes externally before saving the `DeadLettered` marker, so a successful publication followed by a pre-commit marker failure is retried by the next reminder. This is the pre-existing Story 4.4 non-transactional boundary, and the frozen Story 5.1 scope preserves dead-letter retry policy. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2152`.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md, review pass 3"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs; tests/Hexalith.EventStore.Server.Tests
+reason: Review pass 3 identified missing nonempty-index activation coverage, missing direct non-command cache-barrier coverage, and possible recovery or publication-index accounting defects in concurrently modified EventStore actor files. These concerns are outside Story 4.7's Tenants producer scope and need dedicated implementation and tests.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
-  summary: Treat a touched empty stream (`CurrentSequence == 0`) as empty in `GetEventsAsync`, matching `GetStreamMetadataAsync` and `ReadEventsRangeAsync`.
-  evidence: `GetEventsAsync` still throws `InvalidOperationException` when metadata exists with `CurrentSequence == 0`, while adjacent read APIs return an empty stream; Story 5.1 only added metadata-read cancellation propagation on that method.
+### DW-470: Review concurrent CI, release, documentation, and tooling findings.
 
-- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-1-infrastructure-failure-cache-clear.md`
-  summary: Bound Client domain-event marker transition retries and save failures independently of Story 5.1.
-  evidence: Concurrent Client marker work can throw during `TrySaveStateAsync` without a bounded retry, and the in-memory transition loop has no `MaxTransitionAttempts` cap; `TryAcquireAsync` remains a documented read-only acquire.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md, review pass 3"), 2026-09-06
+location: CI, release-boundary, documentation, and agent tooling components
+reason: Review pass 3 identified unrelated gaps in container-test lane selection, release validity-boundary coverage, CI documentation, Windows structural tests, and agent or tooling behavior in the dirty tree. None is caused by the approved Tenants query-provenance change.
+status: open
 
-## Deferred from: code review of spec-5-1-infrastructure-failure-cache-clear (2026-09-06)
+### DW-471: Make drain-exhaustion dead-letter publication idempotent.
 
-- Activation recovery still lacks a total scan or continuation bound. Armed and blank-malformed entries can monopolize one actor activation, while entries after either current budget wait indefinitely on a continuously active actor. This is the previously accepted activation-loop risk outside Story 5.1's frozen state-I/O budget. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2984`.
-- Drain exhaustion can publish the same dead letter again after external publication succeeds but the following marker save fails before commit. This is the pre-existing Story 4.4 non-transactional boundary, and Story 5.1 explicitly preserves dead-letter retry policy. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2233`.
-- `GetEventsAsync` throws for persisted `CurrentSequence == 0`, while `GetStreamMetadataAsync` and `ReadEventsRangeAsync` accept the same touched-empty stream. This pre-existing read-contract inconsistency is unrelated to Story 5.1. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1449`.
-- Successful recovery of rejection events writes advisory status with `RejectionEventType: null`, losing rejection-type fidelity. `UnpublishedEventsRecord` does not retain that value and this behavior predates Story 5.1, so correcting all recovery paths needs separate status-contract work. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2097`.
-- At-capacity resume or stale-checkpoint handoff can persist a drain without a publication-index owner; if reminder registration then fails, activation cannot rediscover the unpublished range. This known Story 4.4 crash window predates Story 5.1 and requires separate publication-recovery policy design. Location: `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2748`.
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md and code reviews of spec-5-1-infrastructure-failure-cache-clear on 2026-09-05 and 2026-09-06"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`CompleteDrainExhaustionAsync`; legacy locations 2152 and 2233)
+reason: `CompleteDrainExhaustionAsync` publishes externally before saving the `DeadLettered` marker, so successful broker publication followed by a pre-commit marker-save failure is retried by the next reminder and republishes the exhausted range. No repository-owned consumer or sink contract proves that the stable CloudEvent id suppresses the duplicate; this is the pre-existing Story 4.4 non-transactional boundary preserved outside Story 5.1's frozen scope.
+status: open
+
+### DW-472: Restrict manual-snapshot success inference.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`CreateManualSnapshotAsync`)
+reason: `CreateManualSnapshotAsync` catches inspection, reconstruction, creation, and save failures together, then reports `Created` whenever any pre-existing snapshot has the current sequence. An earlier infrastructure failure can therefore be misreported as successful creation; inference should be limited to an ambiguous snapshot save and compare the exact expected snapshot.
+status: open
+
+### DW-473: Add stale-checkpoint handoff save-fault tests.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: tests/Hexalith.EventStore.Server.Tests (`InspectStaleHandoffSaveFailureAsync` coverage)
+reason: Successful stale-handoff tests do not exercise `InspectStaleHandoffSaveFailureAsync`; add before-commit and commit-then-throw faults so a regression cannot surface an already committed handoff as a failed command or accept an incomplete durable handoff.
+status: open
+
+### DW-474: Add a pre-commit drain-retry persistence repair test.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: tests/Hexalith.EventStore.Server.Tests (drain-retry persistence)
+reason: Existing tests cover normal retry persistence and commit-then-throw ambiguity only; no test proves that a failure before the first save commits is discarded, inspected, and repaired with exactly one durable retry increment.
+status: open
+
+### DW-475: Establish actor-state batch safety after admission staging failures.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`StagePendingCommandCountAsync` and `ActorStateMachine.CheckpointAsync`)
+reason: `StagePendingCommandCountAsync` and `ActorStateMachine.CheckpointAsync` run before the guarded save, but no catch discards their batch if a staging call throws. A Dapr implementation guarantee or fault test must establish whether a post-staging exception can retain a commit-capable abandoned state batch for a later save.
+status: open
+
+### DW-476: Apply actor discard-or-poison handling to legacy idempotency paths.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (legacy idempotency migration and source reads)
+reason: A legacy migration can stage the new key before legacy-key removal throws, while legacy source or redirect reads swallow state-manager failures as `Unavailable`; both paths can leave a possibly unsafe cache without actor-owned discard-or-poison remediation.
+status: open
+
+### DW-477: Preserve cancellation for aggregate event metadata reads.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`GetEventsAsync`)
+reason: `GetEventsAsync` catches metadata-read `OperationCanceledException` as `Exception` and wraps it in `EventDeserializationException`, although adjacent event reads preserve cancellation, so callers and telemetry can misclassify cancellation as corrupt state.
+status: open
+
+### DW-478: Fail closed on malformed publication-index activation.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (publication-index activation)
+reason: A malformed entry before a valid duplicate is terminalized and adds the shared message id to the final prune set, removing the valid owner too. Malformed nonblank entries can also perform idempotency reads and saves without consuming either activation budget, so recovery must preserve valid duplicate owners and enforce work bounds.
+status: open
+
+### DW-479: Support handler-specific codec digests in corrective-release v4.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: docs/ci.md; tools/validate-corrective-release-evidence.py (`_load_handler`)
+reason: `docs/ci.md` requires a v4 handler to define its own `EXPECTED_PACKET_CODEC_SHA256`, but `_load_handler` rejects any value different from `V3_PACKET_CODEC_SHA256`, so a correctly authored successor cannot load.
+status: open
+
+### DW-480: Finalize a reused stale-Processing slot after failed replacement admission.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (stale checkpoint cleanup and replacement admission)
+reason: After stale-checkpoint cleanup commits, pre-commit replacement-admission inspection returns false and overwrites `pendingCommandTracked`; the `finally` path then skips decrementing the now-ownerless durable pending slot.
+status: open
+
+### DW-481: Refresh Story 4.7's deferred actor-review evidence.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-4-7-tenants-query-provenance-follow-up.md"), 2026-09-06
+location: _bmad-output/implementation-artifacts/deferred-work.md (Story 4.7 pass-3 actor-review entry)
+reason: The pass-3 ledger entry still cites missing nonempty-index activation and direct state-cache-barrier coverage, but `OnActivate_NonemptyIndex_ReconcilesPendingCountToDistinctOwners` and `PoisonedActor_StateBearingTurnsStopAtTheCacheBarrier` now exist. The remaining actor concerns need refreshed, accurate evidence.
+status: open
+
+### DW-482: Bound total activation-recovery scanning and continuation.
+
+origin: migrated from legacy ledger ("Deferred from: code review of spec-5-1-infrastructure-failure-cache-clear (2026-09-05 and 2026-09-06)"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`RearmOutstandingPublicationsAsync`; legacy locations 2908 and 2984)
+reason: Activation recovery has no total scan, read, or continuation bound: it reads drain records before charging the probe budget, skips armed entries without a total budget, and scans blank-message malformed entries without charging either budget. Large armed or blank-malformed indexes can monopolize activation and starve later entries on a continuously active actor; Story 5.1 bounds only malformed state-backed cleanup, so a cursor or total-scan budget needs separate design.
+status: open
+
+### DW-483: Treat touched `CurrentSequence == 0` streams as empty in `GetEventsAsync`.
+
+origin: migrated from legacy ledger ("unsectioned flat append and 2026-09-06 code review of spec-5-1-infrastructure-failure-cache-clear"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (`GetEventsAsync`; legacy location 1449)
+reason: `GetEventsAsync` still throws `InvalidOperationException` for persisted metadata with `CurrentSequence == 0`, while `GetStreamMetadataAsync` and `ReadEventsRangeAsync` accept the same touched-empty stream and return empty results. Story 5.1 changed only metadata-read cancellation propagation, so this pre-existing read-contract inconsistency remains separate.
+status: open
+
+### DW-484: Bound Client domain-event marker transition persistence.
+
+origin: migrated from legacy ledger ("unsectioned flat append from spec-5-1-infrastructure-failure-cache-clear.md"), 2026-09-06
+location: src/Hexalith.EventStore.Client/Subscriptions/DaprEventStoreDomainEventMarkerStore.cs
+reason: Concurrent Client marker work can throw during `TrySaveStateAsync` without a bounded retry, and the in-memory transition loop has no `MaxTransitionAttempts` cap; `TryAcquireAsync` remains a documented read-only acquire. Bound transition retries and save failures independently of Story 5.1.
+status: open
+
+### DW-485: Preserve rejection-event type fidelity during recovery.
+
+origin: migrated from legacy ledger ("Deferred from: code review of spec-5-1-infrastructure-failure-cache-clear (2026-09-06)"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (legacy location 2097)
+reason: Successful recovery of rejection events writes advisory status with `RejectionEventType: null`, losing rejection-type fidelity. `UnpublishedEventsRecord` does not retain that value and this behavior predates Story 5.1, so correcting all recovery paths requires separate status-contract work.
+status: open
+
+### DW-486: Make ownerless persisted drains rediscoverable after reminder failure.
+
+origin: migrated from legacy ledger ("Deferred from: code review of spec-5-1-infrastructure-failure-cache-clear (2026-09-06)"), 2026-09-06
+location: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs (legacy location 2748)
+reason: At-capacity resume or stale-checkpoint handoff can persist a drain without a publication-index owner; if reminder registration then fails, activation cannot rediscover the unpublished range. This known Story 4.4 crash window predates Story 5.1 and requires separate publication-recovery policy design.
+status: open
