@@ -3769,8 +3769,8 @@ So that anonymous, cross-tenant, over-privileged, or resource-exhausting request
 
 **Given** the Admin recent-commands query receives its count parameter
 **When** the value is omitted, valid, zero, negative, or above the supported maximum
-**Then** the controller applies one documented safe default and clamps or rejects every out-of-range value according to the public contract before service invocation
-**And** focused tests prove default, minimum, maximum, and excessive-value behavior without allocating or retrieving an unbounded result set.
+**Then** the controller applies the public default of `1000` when omitted and clamps every supplied value to the inclusive range `1..1000` before service invocation
+**And** focused tests prove omitted=`1000`, zero/negative=`1`, values within `1..1000` unchanged, and values above `1000`=`1000` without allocating or retrieving an unbounded result set.
 
 **Given** an Admin JSON-body endpoint other than `AdminBackupsController.ImportStream` for stream sandbox execution, projection reset or replay, consistency checking, tenant commands, dead-letter actions, storage snapshot-policy changes, backup export or admission, or crypto-shredding is available
 **When** the request body is read
