@@ -84,22 +84,89 @@
 ## Admin API (`src/Hexalith.EventStore.Admin.Server`, host = `eventstore-admin`)
 
 REST API consumed by Admin.UI, Admin.Cli, and Admin.Mcp. Backed by DAPR actors/state, delegating writes
-to the gateway via DAPR service invocation (ADR-P4). 10 controllers, 3-tier RBAC policies
-(`AdminReadOnly` / `AdminOperator` / `AdminFull`):
+to the gateway via DAPR service invocation (ADR-P4). The authenticated, case-sensitive policies are
+`AdminReadOnly` (roles `ReadOnly`, `Operator`, or `Admin`), `AdminOperator` (roles `Operator` or
+`Admin`), and `AdminFull` (role `Admin` only). A missing, unknown, or differently-cased role never
+satisfies a policy. Opaque consistency-check result/cancel and actor-state routes are Admin-only
+because their route contracts cannot establish tenant ownership before lookup.
 
-| Controller | Surface | Min policy |
-|------------|---------|-----------|
-| `AdminStreamsController` | timeline, state reconstruction, diff, blame, bisect, causation/correlation, sandbox | ReadOnly (read) |
-| `AdminProjectionsController` | status, pause/resume/reset/replay | Operator (writes) |
-| `AdminStorageController` | storage overview, snapshot policies, manual snapshot, compaction | Operator |
-| `AdminDeadLettersController` | query, resubmit, purge | Operator |
-| `AdminConsistencyController` | trigger/cancel checks, anomalies | Operator |
-| `AdminBackupsController` | backup/restore (point-in-time), stream export/import, validation, admission (22.7c), crypto-shredding | Full |
-| `AdminTenantsController` | tenant CRUD, enable/disable, user role management | Full |
-| `AdminHealthController` | system + component health | ReadOnly |
-| `AdminDaprController` | actors, components, subscriptions, resiliency metadata | ReadOnly |
-| `AdminTypeCatalogController` | aggregate/command/event type catalog | ReadOnly |
-| `AdminTracesController` | correlation trace mapping | ReadOnly |
+### Admin operation policy and request-limit inventory
+
+This table is the complete current public controller inventory. Limits apply to encoded HTTP bodies.
+`N/A (bodyless)` means the action has no effective `[FromBody]` binding; its current route/query-only
+contract owns that classification and does not read a request body. There are no currently unavailable
+body classifications: every bound body has an enforced limit. Future actions must be added explicitly.
+
+| Method and path | Exact policy | Effective body shape | Limit | Limit owner and reason |
+|---|---|---|---:|---|
+| `GET /api/v1/admin/backups` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant is query-bound. |
+| `POST /api/v1/admin/backups/{tenantId}` | `AdminFull` | none | N/A (bodyless) | Operation contract — tenant is route-bound; options are query-bound. |
+| `POST /api/v1/admin/backups/{backupId}/validate` | `AdminFull` | none | N/A (bodyless) | Operation contract — opaque backup identifier is route-bound. |
+| `POST /api/v1/admin/backups/{backupId}/restore` | `AdminFull` | none | N/A (bodyless) | Operation contract — identifier is route-bound; restore options are query-bound. |
+| `POST /api/v1/admin/backups/export-stream` | `AdminFull` | `StreamExportRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `POST /api/v1/admin/backups/import-stream` | `AdminFull` | JSON string containing export content | 10 MiB | Story 5.2 explicit backup-import exception. |
+| `POST /api/v1/admin/backups/admissions` | `AdminFull` | `RestoredBackupAdmissionRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `POST /api/v1/admin/backups/admissions/{tenantId}/{admissionId}/decision` | `AdminFull` | none | N/A (bodyless) | Operation contract — scope/identifier are route-bound; decision is query-bound. |
+| `GET /api/v1/admin/backups/admissions/{tenantId}/{admissionId}` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — tenant and opaque identifier are route-bound. |
+| `POST /api/v1/admin/backups/crypto-shredding/workflows` | `AdminFull` | `CryptoShreddingWorkflowRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `GET /api/v1/admin/backups/crypto-shredding/workflows/{tenantId}/{workflowId}` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — tenant and opaque identifier are route-bound. |
+| `GET /api/v1/admin/consistency/checks/{checkId}` | `AdminFull` | none | N/A (bodyless) | Operation contract — opaque check identifier is route-bound. |
+| `GET /api/v1/admin/consistency/checks` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant is query-bound and narrowed for non-Admins. |
+| `POST /api/v1/admin/consistency/checks` | `AdminOperator` | `ConsistencyCheckRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `POST /api/v1/admin/consistency/checks/{checkId}/cancel` | `AdminFull` | none | N/A (bodyless) | Operation contract — opaque check identifier is route-bound. |
+| `GET /api/v1/admin/dapr/components` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/dapr/sidecar` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/dapr/overview` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/dapr/actors` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — runtime inventory read has no request body. |
+| `GET /api/v1/admin/dapr/actors/{actorType}/state` | `AdminFull` | none | N/A (bodyless) | Operation contract — actor type is route-bound and actor ID is query-bound. |
+| `GET /api/v1/admin/dapr/pubsub` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/dapr/resiliency` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/dead-letters/count` | `AdminFull` | none | N/A (bodyless) | Operation contract — global count has no request body. |
+| `GET /api/v1/admin/dead-letters` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — tenant/filter/page inputs are query-bound. |
+| `POST /api/v1/admin/dead-letters/{tenantId}/retry` | `AdminOperator` | `DeadLetterActionRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `POST /api/v1/admin/dead-letters/{tenantId}/skip` | `AdminOperator` | `DeadLetterActionRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `POST /api/v1/admin/dead-letters/{tenantId}/archive` | `AdminOperator` | `DeadLetterActionRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `GET /api/v1/admin/health` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/health/dapr` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/health/dapr/history` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — range/filter inputs are query-bound. |
+| `GET /api/v1/admin/projections` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant is query-bound and narrowed for non-Admins. |
+| `GET /api/v1/admin/projections/{tenantId}/{projectionName}` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — scope and projection are route-bound. |
+| `POST /api/v1/admin/projections/{tenantId}/{projectionName}/pause` | `AdminOperator` | none | N/A (bodyless) | Operation contract — action is route-only. |
+| `POST /api/v1/admin/projections/{tenantId}/{projectionName}/resume` | `AdminOperator` | none | N/A (bodyless) | Operation contract — action is route-only. |
+| `POST /api/v1/admin/projections/{tenantId}/{projectionName}/reset` | `AdminOperator` | nullable `ProjectionResetRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `POST /api/v1/admin/projections/{tenantId}/{projectionName}/replay` | `AdminOperator` | `ProjectionReplayRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `GET /api/v1/admin/storage/overview` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant is query-bound. |
+| `GET /api/v1/admin/storage/hot-streams` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant and count are query-bound. |
+| `GET /api/v1/admin/storage/snapshot-policies` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant is query-bound. |
+| `GET /api/v1/admin/storage/compaction-jobs` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant is query-bound. |
+| `POST /api/v1/admin/storage/{tenantId}/compact` | `AdminOperator` | none | N/A (bodyless) | Operation contract — tenant is route-bound and compaction options are query-bound. |
+| `POST /api/v1/admin/storage/{tenantId}/{domain}/{aggregateId}/snapshot` | `AdminOperator` | none | N/A (bodyless) | Operation contract — stream identity is route-bound. |
+| `PUT /api/v1/admin/storage/{tenantId}/{domain}/{aggregateType}/snapshot-policy` | `AdminOperator` | none | N/A (bodyless) | Operation contract — the current PUT policy values are query-bound. |
+| `DELETE /api/v1/admin/storage/{tenantId}/{domain}/{aggregateType}/snapshot-policy` | `AdminOperator` | none | N/A (bodyless) | Operation contract — policy identity is route-bound. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/bisect` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — range inputs are query-bound. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/diff` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — versions are query-bound. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/blame` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — stream identity is route-bound. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/state` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — version is query-bound. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber}` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — event identity is route-bound. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/step` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — stepping inputs are query-bound. |
+| `GET /api/v1/admin/streams/commands` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant and bounded count are query-bound. |
+| `GET /api/v1/admin/streams/GetRecentlyActiveStreams` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — optional tenant/filter inputs are query-bound. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/timeline` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — paging inputs are query-bound. |
+| `POST /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/sandbox` | `AdminReadOnly` | `SandboxCommandRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `GET /api/v1/admin/streams/{tenantId}/{domain}/{aggregateId}/causation` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — correlation inputs are query-bound. |
+| `POST /api/v1/admin/tenants/{tenantId}/users` | `AdminFull` | `AddTenantUserRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `GET /api/v1/admin/tenants/{tenantId}/users` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — tenant is route-bound. |
+| `POST /api/v1/admin/tenants/{tenantId}/change-role` | `AdminFull` | `ChangeTenantUserRoleRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `POST /api/v1/admin/tenants` | `AdminFull` | `CreateTenantRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `GET /api/v1/admin/tenants` | `AdminFull` | none | N/A (bodyless) | Operation contract — global tenant inventory has no request body. |
+| `POST /api/v1/admin/tenants/{tenantId}/disable` | `AdminFull` | none | N/A (bodyless) | Operation contract — tenant is route-bound. |
+| `POST /api/v1/admin/tenants/{tenantId}/enable` | `AdminFull` | none | N/A (bodyless) | Operation contract — tenant is route-bound. |
+| `GET /api/v1/admin/tenants/{tenantId}` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — tenant is route-bound. |
+| `POST /api/v1/admin/tenants/{tenantId}/remove-user` | `AdminFull` | `RemoveTenantUserRequest` JSON | 1 MiB | Story 5.2 ordinary Admin JSON boundary. |
+| `GET /api/v1/admin/traces/{tenantId}/{correlationId}` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — tenant and correlation identifier are route-bound. |
+| `GET /api/v1/admin/types/events` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/types/commands` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
+| `GET /api/v1/admin/types/aggregates` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
 
 > Admin API also serves OpenAPI/Swagger (gated by `EventStore:Admin:OpenApi:Enabled`).
 > See `docs/reference/admin-stream-export.md` and `docs/operations/admin-debugging-json-large-stream-hardening.md`.

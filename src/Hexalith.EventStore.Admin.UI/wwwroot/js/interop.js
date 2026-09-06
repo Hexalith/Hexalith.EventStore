@@ -123,6 +123,13 @@ window.hexalithAdmin = {
         }
     },
 
+    focusElementById: function (elementId) {
+        const element = document.getElementById(elementId);
+        if (element && typeof element.focus === "function") {
+            element.focus();
+        }
+    },
+
     // Theme color-scheme helpers for v5 migration
     // Sets data-theme attribute (triggers project CSS custom property recalc via [data-theme] selectors)
     // AND color-scheme property (triggers FluentUI v5 web component repaint).

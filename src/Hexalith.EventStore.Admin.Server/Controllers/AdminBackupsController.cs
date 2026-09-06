@@ -2,6 +2,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -86,7 +87,6 @@ public class AdminBackupsController(
     /// </summary>
     [HttpPost("{backupId}/validate")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -114,7 +114,6 @@ public class AdminBackupsController(
     /// </summary>
     [HttpPost("{backupId}/restore")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -144,9 +143,11 @@ public class AdminBackupsController(
     /// </summary>
     [HttpPost("export-stream")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(StreamExportResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ExportStream(
         [FromBody] StreamExportRequest request,
@@ -181,11 +182,12 @@ public class AdminBackupsController(
     /// </summary>
     [HttpPost("import-stream")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
-    [RequestSizeLimit(10 * 1024 * 1024)]
+    [RequestSizeLimit(AdminRequestSizeLimits.BackupImportJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ImportStream(
         [FromQuery] string tenantId,
@@ -225,9 +227,11 @@ public class AdminBackupsController(
     /// <returns>The admission result or a ProblemDetails describing the conflict.</returns>
     [HttpPost("admissions")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(RestoredBackupAdmissionResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SubmitAdmission(
         [FromBody] RestoredBackupAdmissionRequest request,
@@ -321,6 +325,7 @@ public class AdminBackupsController(
     /// <returns>The admission status, or 404 when no record exists.</returns>
     [HttpGet("admissions/{tenantId}/{admissionId}")]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(RestoredBackupAdmissionResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAdmission(
@@ -357,8 +362,10 @@ public class AdminBackupsController(
     /// </summary>
     [HttpPost("crypto-shredding/workflows")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(CryptoShreddingWorkflowDecision), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     public async Task<IActionResult> SubmitCryptoShreddingWorkflow(
         [FromBody] CryptoShreddingWorkflowRequest request,
         CancellationToken ct = default) {
@@ -396,6 +403,7 @@ public class AdminBackupsController(
     /// </summary>
     [HttpGet("crypto-shredding/workflows/{tenantId}/{workflowId}")]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(CryptoShreddingWorkflowDecision), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCryptoShreddingWorkflow(

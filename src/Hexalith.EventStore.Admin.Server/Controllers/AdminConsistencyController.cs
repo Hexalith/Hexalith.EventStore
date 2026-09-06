@@ -2,6 +2,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Models;
 
 using Microsoft.AspNetCore.Authorization;
@@ -26,8 +27,7 @@ public class AdminConsistencyController(
     /// Gets the full result of a consistency check including anomaly details.
     /// </summary>
     [HttpGet("checks/{checkId}")]
-    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(ConsistencyCheckResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -89,22 +89,20 @@ public class AdminConsistencyController(
     [HttpPost("checks")]
     [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> TriggerCheck(
         [FromBody] ConsistencyCheckRequest request,
         CancellationToken ct = default) {
         try {
             ArgumentNullException.ThrowIfNull(request);
-            string? effectiveTenantId = ResolveTenantScopeForBody(request.TenantId);
-            if (request.TenantId is not null && effectiveTenantId != request.TenantId) {
-                return CreateProblemResult(
-                    StatusCodes.Status403Forbidden,
-                    "Forbidden",
-                    "Not authorized for the requested tenant.");
+            if (!TryResolveTenantScopeForBody(request.TenantId, out string? effectiveTenantId)) {
+                return TenantDenied();
             }
 
             AdminOperationResult result = await commandService
@@ -124,8 +122,7 @@ public class AdminConsistencyController(
     /// Cancels a running consistency check.
     /// </summary>
     [HttpPost("checks/{checkId}/cancel")]
-    [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -160,21 +157,40 @@ public class AdminConsistencyController(
         return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
     }
 
-    private string? ResolveTenantScopeForBody(string? requestedTenantId) {
+    private bool TryResolveTenantScopeForBody(string? requestedTenantId, out string? effectiveTenantId) {
         if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
-            return requestedTenantId;
+            effectiveTenantId = requestedTenantId;
+            return true;
         }
 
-        string? tenantClaim = User.FindFirst(AdminClaimTypes.Tenant)?.Value;
-        if (string.IsNullOrWhiteSpace(tenantClaim)) {
-            return null;
+        string[] tenantClaims = User
+            .FindAll(AdminClaimTypes.Tenant)
+            .Select(claim => claim.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToArray();
+        if (tenantClaims.Length == 0) {
+            effectiveTenantId = null;
+            return false;
         }
 
-        return requestedTenantId is null
-            ? tenantClaim
-            : string.Equals(requestedTenantId, tenantClaim, StringComparison.Ordinal)
-                ? requestedTenantId
-                : null;
+        if (requestedTenantId is null) {
+            effectiveTenantId = tenantClaims[0];
+            return true;
+        }
+
+        effectiveTenantId = requestedTenantId;
+        return tenantClaims.Contains(requestedTenantId, StringComparer.Ordinal);
+    }
+
+    private ObjectResult TenantDenied() {
+        string correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+        logger.LogWarning("Admin consistency tenant access denied. CorrelationId={CorrelationId}", correlationId);
+        return new ObjectResult(new ProblemDetails {
+            Status = StatusCodes.Status403Forbidden,
+            Title = "Forbidden",
+            Detail = "The request is not authorized for the requested scope.",
+            Extensions = { ["correlationId"] = correlationId },
+        }) { StatusCode = StatusCodes.Status403Forbidden };
     }
 
     private IActionResult MapOperationResult(AdminOperationResult? result) {

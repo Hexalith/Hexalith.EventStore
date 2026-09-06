@@ -54,6 +54,34 @@ public class AdminStreamsControllerTests {
         okResult.Value.ShouldBe(expected);
     }
 
+    [Theory]
+    [InlineData(1000, 1000)]
+    [InlineData(0, 1)]
+    [InlineData(-1, 1)]
+    [InlineData(1, 1)]
+    [InlineData(500, 500)]
+    [InlineData(1001, 1000)]
+    [InlineData(int.MaxValue, 1000)]
+    public async Task GetRecentCommands_ClampsCountBeforeServiceInvocation(int requested, int expected) {
+        var result = new PagedResult<CommandSummary>([], 0, null);
+        _ = _service.GetRecentCommandsAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                expected,
+                Arg.Any<CancellationToken>())
+            .Returns(result);
+
+        _ = await _sut.GetRecentCommandsAsync("tenant-a", null, null, requested);
+
+        _ = await _service.Received(1).GetRecentCommandsAsync(
+            "tenant-a",
+            null,
+            null,
+            expected,
+            Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task GetAggregateState_NullResult_Returns404() {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())

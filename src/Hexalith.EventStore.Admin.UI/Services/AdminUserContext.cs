@@ -15,18 +15,8 @@ public sealed class AdminUserContext(AuthenticationStateProvider authStateProvid
     /// </summary>
     public async Task<AdminRole> GetRoleAsync(CancellationToken cancellationToken = default) {
         AuthenticationState authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
-        string? roleClaim = authState.User.FindFirst(AdminClaimTypes.Role)?.Value;
-
-        if (!string.IsNullOrEmpty(roleClaim)
-            && Enum.TryParse<AdminRole>(roleClaim, ignoreCase: true, out AdminRole role)) {
+        if (TryResolveRole(authState, out AdminRole role)) {
             return role;
-        }
-
-        // Fallback: Keycloak JWT has global_admin claim instead of
-        // eventstore:admin-role (AdminClaimsTransformation runs on
-        // Admin.Server only, not Admin.UI).
-        if (IsGlobalAdministrator(authState.User)) {
-            return AdminRole.Admin;
         }
 
         return AdminRole.ReadOnly;
@@ -88,7 +78,38 @@ public sealed class AdminUserContext(AuthenticationStateProvider authStateProvid
     /// Admin > Operator > ReadOnly.
     /// </summary>
     public async Task<bool> HasMinimumRoleAsync(AdminRole minimumRole, CancellationToken cancellationToken = default) {
-        AdminRole currentRole = await GetRoleAsync(cancellationToken).ConfigureAwait(false);
-        return currentRole >= minimumRole;
+        AuthenticationState authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+        return TryResolveRole(authState, out AdminRole currentRole) && currentRole >= minimumRole;
+    }
+
+    private static bool TryResolveRole(AuthenticationState authState, out AdminRole role) {
+        if (authState.User.Identity?.IsAuthenticated != true) {
+            role = default;
+            return false;
+        }
+
+        string? roleClaim = authState.User.FindFirst(AdminClaimTypes.Role)?.Value;
+        if (roleClaim is nameof(AdminRole.ReadOnly)) {
+            role = AdminRole.ReadOnly;
+            return true;
+        }
+
+        if (roleClaim is nameof(AdminRole.Operator)) {
+            role = AdminRole.Operator;
+            return true;
+        }
+
+        if (roleClaim is nameof(AdminRole.Admin)) {
+            role = AdminRole.Admin;
+            return true;
+        }
+
+        if (IsGlobalAdministrator(authState.User)) {
+            role = AdminRole.Admin;
+            return true;
+        }
+
+        role = default;
+        return false;
     }
 }

@@ -4,6 +4,7 @@ using Hexalith.EventStore.Admin.Server.OpenApi;
 using Hexalith.EventStore.Admin.Server.Services;
 
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -30,11 +31,22 @@ public static class ServiceCollectionExtensions {
         // 1. Authorization policies (NFR46)
         _ = services.AddAuthorizationBuilder()
             .AddPolicy(AdminAuthorizationPolicies.ReadOnly, policy =>
-                policy.RequireClaim(AdminClaimTypes.AdminRole))
+                policy.RequireAuthenticatedUser()
+                    .RequireClaim(
+                        AdminClaimTypes.AdminRole,
+                        nameof(Abstractions.Models.Common.AdminRole.ReadOnly),
+                        nameof(Abstractions.Models.Common.AdminRole.Operator),
+                        nameof(Abstractions.Models.Common.AdminRole.Admin)))
             .AddPolicy(AdminAuthorizationPolicies.Operator, policy =>
-                policy.RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Operator), nameof(Abstractions.Models.Common.AdminRole.Admin)))
+                policy.RequireAuthenticatedUser()
+                    .RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Operator), nameof(Abstractions.Models.Common.AdminRole.Admin)))
             .AddPolicy(AdminAuthorizationPolicies.Admin, policy =>
-                policy.RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)));
+                policy.RequireAuthenticatedUser()
+                    .RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)));
+
+        // AddAuthorization installs the framework result handler with TryAdd. Appending our
+        // scoped normalizer makes it the effective service while preserving host registrations.
+        _ = services.AddSingleton<IAuthorizationMiddlewareResultHandler, AdminAuthorizationMiddlewareResultHandler>();
 
         // 2. Admin claims transformation (maps existing claims to admin roles)
         _ = services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();

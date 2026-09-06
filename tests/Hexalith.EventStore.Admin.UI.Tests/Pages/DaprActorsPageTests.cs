@@ -1,13 +1,19 @@
+using System.Security.Claims;
+
 using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.UI.Pages;
+using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 
@@ -274,6 +280,56 @@ public class DaprActorsPageTests : AdminUITestContext {
         cut.Markup.ShouldNotContain("old input");
     }
 
+    [Fact]
+    public async Task DaprActorsPage_DemotionClearsProtectedStateAndHidesLookup() {
+        var authProvider = ConfigureRole(AdminRole.Admin);
+        _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
+        _ = _mockApiClient.GetActorInstanceStateAsync("ETagActor", "counter:tenant-a", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorInstanceState?>(new DaprActorInstanceState(
+                "ETagActor",
+                "counter:tenant-a",
+                [new DaprActorStateEntry("state", "{}", 2, true)],
+                2,
+                DateTimeOffset.UtcNow,
+                DaprActorLookupStatus.Available)));
+
+        IRenderedComponent<DaprActors> cut = Render<DaprActors>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Instance Lookup"), TimeSpan.FromSeconds(5));
+        SetPrivateField(cut.Instance, "_selectedActorType", "ETagActor");
+        SetPrivateField(cut.Instance, "_actorId", "counter:tenant-a");
+        await cut.InvokeAsync(() => InvokeInspectAsync(cut.Instance));
+        cut.Render();
+        cut.Markup.ShouldContain(">Actor State</h2>");
+
+        authProvider.SetRole(AdminRole.Operator);
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("Instance Lookup");
+            cut.Markup.ShouldNotContain(">Actor State</h2>");
+            cut.Markup.ShouldNotContain("counter:tenant-a");
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task DaprActorsPage_ForbiddenInspectionShowsCanonicalDenialAndRestoresFocus() {
+        _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
+        _mockApiClient.GetActorInstanceStateAsync("ETagActor", "counter:tenant-a", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ForbiddenAccessException("sensitive server detail"));
+
+        IRenderedComponent<DaprActors> cut = Render<DaprActors>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Instance Lookup"), TimeSpan.FromSeconds(5));
+        SetPrivateField(cut.Instance, "_selectedActorType", "ETagActor");
+        SetPrivateField(cut.Instance, "_actorId", "counter:tenant-a");
+        await cut.InvokeAsync(() => InvokeInspectAsync(cut.Instance));
+        cut.Render();
+
+        cut.Markup.ShouldContain("Administrator permission is required");
+        cut.Markup.ShouldNotContain("sensitive server detail");
+        _ = JSInterop.VerifyInvoke("hexalithAdmin.focusElementById");
+    }
+
     // ===== Helper methods =====
 
     // Round 10 P0b: DaprActorRuntimeInfo.IsInventoryComplete now defaults to false (truth-contract
@@ -303,5 +359,29 @@ public class DaprActorsPageTests : AdminUITestContext {
             .GetMethod("InspectActorAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("InspectActorAsync was not found.");
         return (Task)(method.Invoke(instance, []) ?? throw new InvalidOperationException("InspectActorAsync returned null."));
+    }
+
+    private MutableAuthStateProvider ConfigureRole(AdminRole role) {
+        var authProvider = new MutableAuthStateProvider(role);
+        _ = Services.RemoveAll<AuthenticationStateProvider>();
+        _ = Services.RemoveAll<AdminUserContext>();
+        _ = Services.AddSingleton<AuthenticationStateProvider>(authProvider);
+        _ = Services.AddScoped<AdminUserContext>();
+        return authProvider;
+    }
+
+    private sealed class MutableAuthStateProvider(AdminRole initialRole) : AuthenticationStateProvider {
+        private AdminRole _role = initialRole;
+
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(new AuthenticationState(
+                new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(AdminClaimTypes.Role, _role.ToString())],
+                    "TestAuth"))));
+
+        public void SetRole(AdminRole role) {
+            _role = role;
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
     }
 }

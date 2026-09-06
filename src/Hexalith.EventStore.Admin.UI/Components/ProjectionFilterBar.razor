@@ -21,7 +21,7 @@
                       ValueChanged="OnTenantChanged"
                       aria-label="Filter by tenant"
                       Style="min-width: 160px;">
-            <FluentOption Value="@string.Empty">All Tenants</FluentOption>
+            <FluentOption Value="@string.Empty">Authorized scope (all tenants for Admin)</FluentOption>
             @foreach (string tenant in Tenants)
             {
                 <FluentOption Value="@tenant">@tenant</FluentOption>

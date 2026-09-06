@@ -2,6 +2,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Models;
 
 using Microsoft.AspNetCore.Authorization;
@@ -143,9 +144,11 @@ public class AdminProjectionsController(
     [HttpPost("{tenantId}/{projectionName}/reset")]
     [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ResetProjection(
         string tenantId,
@@ -172,9 +175,11 @@ public class AdminProjectionsController(
     [HttpPost("{tenantId}/{projectionName}/replay")]
     [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ReplayProjection(
         string tenantId,

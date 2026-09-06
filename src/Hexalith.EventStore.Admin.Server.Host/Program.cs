@@ -36,6 +36,7 @@ app.UseExceptionHandler();
 app.MapDefaultEndpoints();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<AdminRequestBodySizeMiddleware>();
 
 // OpenAPI/Swagger UI (gated by configuration)
 if (app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true)) {

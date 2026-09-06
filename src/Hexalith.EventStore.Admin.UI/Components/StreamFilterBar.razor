@@ -21,7 +21,7 @@
                   Value="@SelectedTenantId"
                   ValueChanged="OnTenantChanged"
                   Style="min-width: 160px;">
-        <FluentOption Value="@string.Empty">All Tenants</FluentOption>
+        <FluentOption Value="@string.Empty">Authorized scope (all tenants for Admin)</FluentOption>
         @if (Tenants is not null)
         {
             @foreach (TenantOption tenant in Tenants)

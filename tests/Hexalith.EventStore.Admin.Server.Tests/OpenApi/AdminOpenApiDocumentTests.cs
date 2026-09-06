@@ -286,6 +286,37 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
+    public async Task OpenApiDocument_EveryBodyEndpoint_Has413ProblemDetailsSchema() {
+        JsonElement doc = await GetOpenApiDocumentAsync();
+        JsonElement paths = doc.GetProperty("paths");
+        int bodyOperationCount = 0;
+
+        foreach (JsonProperty path in paths.EnumerateObject()) {
+            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.Ordinal)) {
+                continue;
+            }
+
+            foreach (JsonProperty method in path.Value.EnumerateObject()) {
+                if (!IsHttpMethod(method.Name) || !method.Value.TryGetProperty("requestBody", out _)) {
+                    continue;
+                }
+
+                bodyOperationCount++;
+                string operationName = $"{method.Name.ToUpperInvariant()} {path.Name}";
+                method.Value.GetProperty("responses").TryGetProperty("413", out JsonElement tooLarge)
+                    .ShouldBeTrue($"{operationName} should advertise 413");
+                tooLarge.GetProperty("content")
+                    .TryGetProperty("application/problem+json", out JsonElement problemContent)
+                    .ShouldBeTrue($"{operationName} 413 should be application/problem+json: {tooLarge}");
+                problemContent.GetProperty("schema").GetProperty("$ref").GetString()
+                    .ShouldBe("#/components/schemas/ProblemDetails", operationName);
+            }
+        }
+
+        bodyOperationCount.ShouldBe(15);
+    }
+
+    [Fact]
     public async Task OpenApiDocument_OperationIds_AreReadable() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");

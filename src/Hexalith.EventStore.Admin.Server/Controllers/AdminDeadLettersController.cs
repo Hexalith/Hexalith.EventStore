@@ -2,6 +2,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Models;
 
 using Microsoft.AspNetCore.Authorization;
@@ -94,9 +95,11 @@ public class AdminDeadLettersController(
     [HttpPost("{tenantId}/retry")]
     [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RetryDeadLetters(
         string tenantId,
@@ -124,9 +127,11 @@ public class AdminDeadLettersController(
     [HttpPost("{tenantId}/skip")]
     [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SkipDeadLetters(
         string tenantId,
@@ -154,9 +159,11 @@ public class AdminDeadLettersController(
     [HttpPost("{tenantId}/archive")]
     [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ArchiveDeadLetters(
         string tenantId,

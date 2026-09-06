@@ -3,6 +3,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 
 using Microsoft.AspNetCore.Authorization;
@@ -321,8 +322,9 @@ public class AdminStreamsController(
         CancellationToken ct = default) {
         try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
+            int boundedCount = Math.Clamp(count, 1, 1000);
             PagedResult<CommandSummary> result = await streamQueryService
-                .GetRecentCommandsAsync(effectiveTenantId, status, commandType, count, ct)
+                .GetRecentCommandsAsync(effectiveTenantId, status, commandType, boundedCount, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
@@ -406,9 +408,11 @@ public class AdminStreamsController(
     /// </summary>
     [HttpPost("{tenantId}/{domain}/{aggregateId}/sandbox")]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(SandboxResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SandboxCommandAsync(
         string tenantId,

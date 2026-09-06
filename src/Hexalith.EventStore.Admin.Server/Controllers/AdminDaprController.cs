@@ -119,6 +119,7 @@ public class AdminDaprController(
     /// <param name="actorId">The actor instance ID (query parameter to support colon-delimited IDs).</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet("actors/{actorType}/state")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(DaprActorInstanceState), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

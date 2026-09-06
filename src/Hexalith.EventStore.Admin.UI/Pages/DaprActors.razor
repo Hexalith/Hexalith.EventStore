@@ -1,14 +1,20 @@
 @page "/dapr/actors"
 
 @using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@using Microsoft.AspNetCore.Components.Authorization
 
 @implements IAsyncDisposable
 
 @inject AdminActorApiClient ApiClient
 @inject NavigationManager NavigationManager
 @inject ILogger<DaprActors> Logger
+@inject IJSRuntime JSRuntime
+@inject AdminUserContext UserContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>DAPR Actor Inspector - Hexalith EventStore</PageTitle>
 
@@ -157,9 +163,11 @@
         </div>
     </FluentCard>
 
-    @* Instance lookup (AC3) *@
-    <h2 style="margin: 0 0 12px;">Instance Lookup</h2>
-    <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap;">
+    @if (_canInspectActors)
+    {
+        @* Instance lookup (AC3) *@
+        <h2 style="margin: 0 0 12px;">Instance Lookup</h2>
+        <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap;">
         <FluentSelect TOption="string" TValue="string"
                       Value="@_selectedActorType"
                       ValueChanged="OnActorTypeSelected"
@@ -179,13 +187,15 @@
                          style="min-width: 300px;"
                          aria-label="Enter actor instance ID" />
         <FluentButton Appearance="ButtonAppearance.Primary"
+                      id="inspect-actor-button"
                       Disabled="@(string.IsNullOrWhiteSpace(_selectedActorType) || string.IsNullOrWhiteSpace(_actorId))"
                       Loading="@_isInspecting"
                       OnClick="InspectActorAsync"
                       aria-label="Inspect actor instance">
             Inspect
         </FluentButton>
-    </div>
+        </div>
+    }
 }
 
 @* Not-found banner (AC8) *@
@@ -197,8 +207,12 @@
              Title="Actor lookup unavailable"
              Description="@(_actorLookupMessage ?? "The state lookup source is unavailable, so the actor cannot be classified as inactive.")" />
 
+<IssueBanner Visible="@_actorAccessDenied"
+             Title="Access denied"
+             Description="Administrator permission is required to inspect actor instance state." />
+
 @* State viewer (AC4, AC5) *@
-@if (_inspectedState is not null)
+@if (_canInspectActors && _inspectedState is not null)
 {
     <h2 style="margin: 0 0 12px;">Actor State</h2>
     <div style="margin-bottom: 8px; color: var(--colorNeutralForeground3); font-size: 0.85em;">
@@ -268,6 +282,8 @@
     private bool _isInspecting;
     private bool _actorNotFound;
     private bool _actorLookupUnavailable;
+    private bool _actorAccessDenied;
+    private bool _canInspectActors;
     private long _inspectRequestVersion;
     private string? _error;
     private string? _actorLookupMessage;
@@ -291,7 +307,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadRuntimeInfoAsync();
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await RefreshCapabilitiesAsync().ConfigureAwait(false);
+        await LoadRuntimeInfoAsync().ConfigureAwait(false);
 
         // AC10: Deep linking support
         if (Type is not null)
@@ -299,13 +317,35 @@
             _selectedActorType = Type;
         }
 
-        if (Type is not null && Id is not null)
+        if (_canInspectActors && Type is not null && Id is not null)
         {
             _actorId = Id;
-            await InspectActorAsync();
+            await InspectActorAsync().ConfigureAwait(false);
         }
 
         _ = PollAsync(); // fire-and-forget
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> authenticationStateTask)
+    {
+        _ = authenticationStateTask;
+        _ = InvokeAsync(async () =>
+        {
+            await RefreshCapabilitiesAsync().ConfigureAwait(false);
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshCapabilitiesAsync()
+    {
+        _canInspectActors = await UserContext.HasMinimumRoleAsync(AdminRole.Admin).ConfigureAwait(false);
+        if (!_canInspectActors)
+        {
+            Interlocked.Increment(ref _inspectRequestVersion);
+            _isInspecting = false;
+            _actorAccessDenied = false;
+            ClearInspectResult();
+        }
     }
 
     private async Task PollAsync()
@@ -349,6 +389,13 @@
 
     private async Task InspectActorAsync()
     {
+        if (!_canInspectActors)
+        {
+            _actorAccessDenied = true;
+            await FocusInspectButtonAsync().ConfigureAwait(false);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_selectedActorType) || string.IsNullOrWhiteSpace(_actorId))
         {
             return;
@@ -360,6 +407,7 @@
         _isInspecting = true;
         _actorNotFound = false;
         _actorLookupUnavailable = false;
+        _actorAccessDenied = false;
         _actorLookupMessage = null;
         _inspectedState = null;
 
@@ -381,6 +429,15 @@
         catch (OperationCanceledException)
         {
             // Disposal or navigation cancellation
+        }
+        catch (ForbiddenAccessException)
+        {
+            if (IsCurrentInspectRequest(requestVersion, requestedActorType, requestedActorId))
+            {
+                _actorAccessDenied = true;
+                ClearInspectResult();
+                await FocusInspectButtonAsync().ConfigureAwait(false);
+            }
         }
         catch (Exception)
         {
@@ -512,8 +569,12 @@
         _inspectedState = null;
     }
 
+    private async Task FocusInspectButtonAsync()
+        => await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusElementById", "inspect-actor-button").ConfigureAwait(false);
+
     public async ValueTask DisposeAsync()
     {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         await _cts.CancelAsync();
         _cts.Dispose();
     }

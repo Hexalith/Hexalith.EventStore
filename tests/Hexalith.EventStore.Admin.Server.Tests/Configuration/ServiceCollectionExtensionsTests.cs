@@ -7,6 +7,7 @@ using Hexalith.EventStore.Admin.Server.Services;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -122,6 +123,55 @@ public class ServiceCollectionExtensionsTests {
         _ = (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.ReadOnly)).ShouldNotBeNull();
         _ = (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Operator)).ShouldNotBeNull();
         _ = (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Admin)).ShouldNotBeNull();
+    }
+
+    [Theory]
+    [InlineData(AdminAuthorizationPolicies.ReadOnly, "ReadOnly", true)]
+    [InlineData(AdminAuthorizationPolicies.ReadOnly, "Operator", true)]
+    [InlineData(AdminAuthorizationPolicies.ReadOnly, "Admin", true)]
+    [InlineData(AdminAuthorizationPolicies.ReadOnly, "Unknown", false)]
+    [InlineData(AdminAuthorizationPolicies.Operator, "ReadOnly", false)]
+    [InlineData(AdminAuthorizationPolicies.Operator, "Operator", true)]
+    [InlineData(AdminAuthorizationPolicies.Admin, "Operator", false)]
+    [InlineData(AdminAuthorizationPolicies.Admin, "Admin", true)]
+    public async Task AddAdminApi_PoliciesRequireAuthenticatedExactRole(
+        string policyName,
+        string role,
+        bool expectedAuthorized) {
+        (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
+        _ = services.AddAdminApi(config);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IAuthorizationService authorization = provider.GetRequiredService<IAuthorizationService>();
+        var authenticated = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim(AdminClaimTypes.AdminRole, role)],
+                "Test"));
+        var unauthenticated = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim(AdminClaimTypes.AdminRole, role)]));
+
+        AuthorizationResult authenticatedResult = await authorization
+            .AuthorizeAsync(authenticated, null, policyName);
+        AuthorizationResult unauthenticatedResult = await authorization
+            .AuthorizeAsync(unauthenticated, null, policyName);
+
+        authenticatedResult.Succeeded.ShouldBe(expectedAuthorized);
+        unauthenticatedResult.Succeeded.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AddAdminApi_ResolvesBoundedHandlerWithoutRemovingHostRegistration() {
+        (IServiceCollection services, IConfiguration config) = CreateServicesWithConfig();
+        IAuthorizationMiddlewareResultHandler hostHandler = Substitute.For<IAuthorizationMiddlewareResultHandler>();
+        _ = services.AddSingleton(hostHandler);
+
+        _ = services.AddAdminApi(config);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IAuthorizationMiddlewareResultHandler>()
+            .ShouldBeOfType<AdminAuthorizationMiddlewareResultHandler>();
+        provider.GetServices<IAuthorizationMiddlewareResultHandler>().ShouldContain(hostHandler);
     }
 
     [Fact]

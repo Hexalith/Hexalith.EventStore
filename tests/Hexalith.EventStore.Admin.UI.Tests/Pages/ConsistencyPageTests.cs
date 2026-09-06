@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
@@ -5,8 +7,10 @@ using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -635,6 +639,60 @@ public class ConsistencyPageTests : AdminUITestContext {
             TimeSpan.FromSeconds(5));
     }
 
+    [Fact]
+    public async Task Consistency_OperatorCannotFetchOpaqueCheckAndFocusReturnsToRow() {
+        _ = ConfigureRole(AdminRole.Operator);
+        ConsistencyCheckSummary summary = CreateSummary(
+            "opaque-check", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0);
+        SetupChecks([summary]);
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("opaque-check"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, summary));
+        cut.Render();
+
+        _ = _mockConsistencyApi.DidNotReceive()
+            .GetCheckResultAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        cut.Markup.ShouldContain("Administrator permission is required to view check details");
+        _ = JSInterop.VerifyInvoke("hexalithAdmin.focusElementById");
+    }
+
+    [Fact]
+    public async Task Consistency_DemotionClearsExpandedOpaqueCheckState() {
+        var authProvider = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary summary = CreateSummary(
+            "opaque-check", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0);
+        SetupChecks([summary]);
+        _ = _mockConsistencyApi.GetCheckResultAsync("opaque-check", Arg.Any<CancellationToken>())
+            .Returns(new ConsistencyCheckResult(
+                "opaque-check",
+                ConsistencyCheckStatus.Completed,
+                "tenant-a",
+                null,
+                [ConsistencyCheckType.SequenceContinuity],
+                DateTimeOffset.UtcNow.AddMinutes(-1),
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow.AddMinutes(10),
+                50,
+                0,
+                [],
+                false,
+                null));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("opaque-check"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, summary));
+        cut.Render();
+        _ = await _mockConsistencyApi.Received(1)
+            .GetCheckResultAsync("opaque-check", Arg.Any<CancellationToken>());
+
+        authProvider.SetRole(AdminRole.Operator);
+
+        cut.WaitForAssertion(
+            () => GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult").ShouldBeNull(),
+            TimeSpan.FromSeconds(5));
+    }
+
     // ===== Helpers =====
 
     private void SetupChecks(IReadOnlyList<ConsistencyCheckSummary> checks) => _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -681,4 +739,42 @@ public class ConsistencyPageTests : AdminUITestContext {
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>
         Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+    private MutableAuthStateProvider ConfigureRole(AdminRole role) {
+        var authProvider = new MutableAuthStateProvider(role);
+        _ = Services.RemoveAll<AuthenticationStateProvider>();
+        _ = Services.RemoveAll<AdminUserContext>();
+        _ = Services.AddSingleton<AuthenticationStateProvider>(authProvider);
+        _ = Services.AddScoped<AdminUserContext>();
+        return authProvider;
+    }
+
+    private static Task InvokeRowClickAsync(Consistency instance, ConsistencyCheckSummary summary) {
+        System.Reflection.MethodInfo method = typeof(Consistency)
+            .GetMethod("OnRowClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OnRowClick was not found.");
+        return (Task)(method.Invoke(instance, [summary]) ?? throw new InvalidOperationException("OnRowClick returned null."));
+    }
+
+    private static T GetPrivateField<T>(object instance, string name) {
+        System.Reflection.FieldInfo field = typeof(Consistency)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {name} was not found.");
+        return (T)field.GetValue(instance)!;
+    }
+
+    private sealed class MutableAuthStateProvider(AdminRole initialRole) : AuthenticationStateProvider {
+        private AdminRole _role = initialRole;
+
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(new AuthenticationState(
+                new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(AdminClaimTypes.Role, _role.ToString())],
+                    "TestAuth"))));
+
+        public void SetRole(AdminRole role) {
+            _role = role;
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
+    }
 }

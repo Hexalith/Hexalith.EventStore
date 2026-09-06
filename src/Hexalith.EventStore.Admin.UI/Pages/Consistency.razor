@@ -6,6 +6,7 @@
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
 @using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@using Microsoft.AspNetCore.Components.Authorization
 
 @implements IAsyncDisposable
 
@@ -13,6 +14,8 @@
 @inject NavigationManager NavigationManager
 @inject INotificationService ToastService
 @inject IJSRuntime JSRuntime
+@inject AdminUserContext UserContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Consistency - Hexalith EventStore</PageTitle>
 
@@ -126,7 +129,7 @@
                         OnRowClick="@(row => OnRowClick(row.Item))">
             <TemplateColumn Title="Check ID" Class="monospace" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.CheckId))">
-                <span title="@context.CheckId">@context.CheckId[..Math.Min(8, context.CheckId.Length)]</span>
+                <span id="@GetCheckFocusId(context.CheckId)" tabindex="-1" title="@context.CheckId">@context.CheckId[..Math.Min(8, context.CheckId.Length)]</span>
             </TemplateColumn>
             <TemplateColumn Title="Tenant" Class="monospace" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.TenantId ?? ""))">
@@ -178,8 +181,9 @@
             <TemplateColumn Title="Actions">
                 @if (context.Status is ConsistencyCheckStatus.Pending or ConsistencyCheckStatus.Running)
                 {
-                    <AuthorizedView MinimumRole="AdminRole.Operator">
+                    <AuthorizedView MinimumRole="AdminRole.Admin">
                         <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                      id="@GetCancelFocusId(context.CheckId)"
                                       OnClick="@(() => OpenCancelDialog(context.CheckId))"
                                       OnClick:stopPropagation="true"
                                       aria-label="Cancel check">
@@ -193,7 +197,7 @@
 }
 
 @* Expanded check detail *@
-@if (_expandedCheck is not null && _expandedCheckResult is not null)
+@if (_canUseOpaqueChecks && _expandedCheck is not null && _expandedCheckResult is not null)
 {
     <FluentCard aria-label="Check details" Style="margin-bottom: 24px; padding: 16px;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
@@ -330,7 +334,7 @@
             </TitleTemplate>
             <ChildContent>
                 <FluentTextInput @bind-Value="_triggerTenantId"
-                                 Label="Tenant ID (optional, all tenants when empty)"
+                                 Label="@(_canUseOpaqueChecks ? "Tenant ID (optional, all tenants when empty)" : "Tenant ID (optional, your authorized tenant when empty)")"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
                 <FluentTextInput @bind-Value="_triggerDomain"
@@ -408,6 +412,8 @@
     private bool _isLoading = true;
     private bool _apiUnavailable;
     private bool _disposed;
+    private bool _canOperate;
+    private bool _canUseOpaqueChecks;
     private string _apiErrorMessage = "Unable to load consistency checks. The admin backend may be unavailable.";
     private string? _tenantFilter;
     private string? _tenantFilterInput;
@@ -439,6 +445,7 @@
     private FluentDialog? _cancelDialog;
     private bool _pendingShowCancel;
     private string? _cancelCheckId;
+    private string? _cancelInitiatorId;
     private bool _isCancelling;
 
     private bool _isAnyDialogOpen => _selectedAnomaly is not null || _showTriggerDialog || _showCancelDialog;
@@ -451,10 +458,43 @@
 
     protected override async Task OnInitializedAsync()
     {
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await RefreshCapabilitiesAsync().ConfigureAwait(false);
         ReadUrlParameters();
         _tenantFilterInput = _tenantFilter;
         _domainFilterInput = _domainFilter;
         await LoadDataAsync();
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> authenticationStateTask)
+    {
+        _ = authenticationStateTask;
+        _ = InvokeAsync(async () =>
+        {
+            await RefreshCapabilitiesAsync().ConfigureAwait(false);
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshCapabilitiesAsync()
+    {
+        _canOperate = await UserContext.HasMinimumRoleAsync(AdminRole.Operator).ConfigureAwait(false);
+        _canUseOpaqueChecks = await UserContext.HasMinimumRoleAsync(AdminRole.Admin).ConfigureAwait(false);
+        if (!_canUseOpaqueChecks)
+        {
+            _expandedCheck = null;
+            _expandedCheckResult = null;
+            _showCancelDialog = false;
+            _pendingShowCancel = false;
+            _cancelCheckId = null;
+            _cancelInitiatorId = null;
+        }
+
+        if (!_canOperate)
+        {
+            _showTriggerDialog = false;
+            _pendingShowTrigger = false;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -667,6 +707,16 @@
             return;
         }
 
+        if (!_canUseOpaqueChecks)
+        {
+            _expandedCheck = null;
+            _expandedCheckResult = null;
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Administrator permission is required to view check details.";
+            await FocusElementAsync(GetCheckFocusId(check.CheckId)).ConfigureAwait(false);
+            return;
+        }
+
         if (_expandedCheck?.CheckId == check.CheckId)
         {
             _expandedCheck = null;
@@ -675,7 +725,18 @@
         }
 
         _expandedCheck = check;
-        _expandedCheckResult = await ConsistencyApi.GetCheckResultAsync(check.CheckId);
+        try
+        {
+            _expandedCheckResult = await ConsistencyApi.GetCheckResultAsync(check.CheckId).ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            _expandedCheck = null;
+            _expandedCheckResult = null;
+            _apiUnavailable = true;
+            _apiErrorMessage = "Access denied. Administrator permission is required to view check details.";
+            await FocusElementAsync(GetCheckFocusId(check.CheckId)).ConfigureAwait(false);
+        }
     }
 
     // Anomaly detail
@@ -778,8 +839,10 @@
     // Cancel dialog
     private void OpenCancelDialog(string checkId)
     {
+        if (!_canUseOpaqueChecks) { return; }
         if (_isAnyDialogOpen) { return; }
         _cancelCheckId = checkId;
+        _cancelInitiatorId = GetCancelFocusId(checkId);
         _showCancelDialog = true;
         _pendingShowCancel = true;
     }
@@ -789,6 +852,7 @@
         if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
         _showCancelDialog = false;
         _cancelCheckId = null;
+        _cancelInitiatorId = null;
     }
 
     private async Task OnCancelConfirm()
@@ -821,6 +885,20 @@
         catch (ServiceUnavailableException)
         {
             await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
+        }
+        catch (ForbiddenAccessException)
+        {
+            string? focusId = _cancelInitiatorId;
+            await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
+            _showCancelDialog = false;
+            _pendingShowCancel = false;
+            _cancelCheckId = null;
+            _cancelInitiatorId = null;
+            if (focusId is not null)
+            {
+                await FocusElementAsync(focusId).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -898,8 +976,17 @@
         return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
     }
 
-    private static string FormatTenantScope(string? tenantId)
-        => string.IsNullOrWhiteSpace(tenantId) ? "All tenants" : tenantId;
+    private string FormatTenantScope(string? tenantId)
+        => string.IsNullOrWhiteSpace(tenantId)
+            ? _canUseOpaqueChecks ? "All tenants" : "Authorized tenant scope"
+            : tenantId;
+
+    private static string GetCheckFocusId(string checkId) => $"consistency-check-{checkId}";
+
+    private static string GetCancelFocusId(string checkId) => $"consistency-cancel-{checkId}";
+
+    private async Task FocusElementAsync(string elementId)
+        => await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusElementById", elementId).ConfigureAwait(false);
 
     private static string FormatDomainScope(string? domain)
         => string.IsNullOrWhiteSpace(domain) ? "All domains" : domain;
@@ -937,6 +1024,7 @@
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         _loadCts?.Cancel();
         _loadCts?.Dispose();
         if (_debounceTimer is not null)

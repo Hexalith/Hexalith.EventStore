@@ -6,6 +6,7 @@ using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Controllers;
 using Hexalith.EventStore.Admin.Server.Models;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -124,6 +125,78 @@ public class AdminConsistencyControllerTests {
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        _ = await _commandService.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TriggerCheck_ExplicitTenantMayMatchAnyUsableClaim() {
+        _sut.ControllerContext.HttpContext.User = CreatePrincipal("Operator", "tenant-a", "tenant-b");
+        _ = _commandService.TriggerCheckAsync(
+                "tenant-b",
+                null,
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "check-new", "started", null));
+
+        IActionResult result = await _sut.TriggerCheck(
+            new ConsistencyCheckRequest("tenant-b", null, [ConsistencyCheckType.SequenceContinuity]));
+
+        result.ShouldBeOfType<AcceptedResult>();
+        _ = await _commandService.Received(1).TriggerCheckAsync(
+            "tenant-b",
+            null,
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TriggerCheck_OmittedTenantNarrowsToFirstUsableClaim() {
+        _ = _commandService.TriggerCheckAsync(
+                "tenant-a",
+                null,
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "check-new", "started", null));
+
+        IActionResult result = await _sut.TriggerCheck(
+            new ConsistencyCheckRequest(null, null, [ConsistencyCheckType.SequenceContinuity]));
+
+        result.ShouldBeOfType<AcceptedResult>();
+        _ = await _commandService.Received(1).TriggerCheckAsync(
+            "tenant-a",
+            null,
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TriggerCheck_OmittedTenantWithoutClaim_DeniesWithCorrelationOnlyEvidence() {
+        var logger = new RecordingLogger<AdminConsistencyController>();
+        var controller = new AdminConsistencyController(_queryService, _commandService, logger) {
+            ControllerContext = new ControllerContext {
+                HttpContext = new DefaultHttpContext {
+                    User = CreatePrincipal("Operator"),
+                    Items = { ["CorrelationId"] = "correlation-safe" },
+                },
+            },
+        };
+
+        IActionResult result = await controller.TriggerCheck(
+            new ConsistencyCheckRequest(null, null, [ConsistencyCheckType.SequenceContinuity]));
+
+        ObjectResult denied = result.ShouldBeOfType<ObjectResult>();
+        denied.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        string evidence = string.Join(' ', logger.Records.Select(record => record.Message));
+        evidence.ShouldBe("Admin consistency tenant access denied. CorrelationId=correlation-safe");
+        _ = await _commandService.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

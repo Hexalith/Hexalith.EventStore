@@ -4,6 +4,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +32,9 @@ public class AdminTenantsController(
     /// </summary>
     [HttpPost("{tenantId}/users")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> AddUserToTenantAsync(
         string tenantId,
@@ -61,7 +64,9 @@ public class AdminTenantsController(
     /// </summary>
     [HttpPost("{tenantId}/change-role")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ChangeUserRoleAsync(
         string tenantId,
@@ -91,7 +96,9 @@ public class AdminTenantsController(
     /// </summary>
     [HttpPost]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CreateTenantAsync(
         [FromBody] CreateTenantRequest request,
@@ -277,7 +284,9 @@ public class AdminTenantsController(
     /// </summary>
     [HttpPost("{tenantId}/remove-user")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [RequestSizeLimit(AdminRequestSizeLimits.OrdinaryJsonBody)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RemoveUserFromTenantAsync(
         string tenantId,

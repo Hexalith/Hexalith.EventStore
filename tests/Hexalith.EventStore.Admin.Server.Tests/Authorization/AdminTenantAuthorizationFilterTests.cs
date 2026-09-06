@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -86,13 +87,93 @@ public class AdminTenantAuthorizationFilterTests {
         objectResult.StatusCode.ShouldBe(403);
     }
 
+    [Fact]
+    public async Task OnActionExecutionAsync_OmittedTenantArgument_NarrowsToFirstClaim() {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: null,
+            tenantClaims: ["tenant-a", "tenant-b"],
+            includeTenantArgument: true);
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeTrue();
+        context.ActionArguments["tenantId"].ShouldBe("tenant-a");
+    }
+
+    [Fact]
+    public async Task OnActionExecutionAsync_OmittedTenantArgumentWithoutClaim_DeniesBeforeNext() {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: null,
+            tenantClaims: [],
+            includeTenantArgument: true);
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+    }
+
+    [Fact]
+    public async Task OnActionExecutionAsync_AdminWithoutTenantClaim_BypassesScope() {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: "any-tenant",
+            tenantClaims: [],
+            admin: true);
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeTrue();
+        context.Result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task OnActionExecutionAsync_DenialLogAndProblemAreIdentifierFree() {
+        var logger = new RecordingLogger<AdminTenantAuthorizationFilter>();
+        var filter = new AdminTenantAuthorizationFilter(logger);
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: "tenant-secret",
+            tenantClaims: ["authorized-secret"]);
+        context.HttpContext.Items["CorrelationId"] = "correlation-safe";
+
+        await filter.OnActionExecutionAsync(
+            context,
+            () => Task.FromResult<ActionExecutedContext>(null!));
+
+        ObjectResult result = context.Result.ShouldBeOfType<ObjectResult>();
+        string problem = System.Text.Json.JsonSerializer.Serialize(result.Value);
+        string log = logger.Records.ShouldHaveSingleItem().Message;
+        problem.ShouldNotContain("tenant-secret");
+        problem.ShouldNotContain("authorized-secret");
+        log.ShouldNotContain("tenant-secret");
+        log.ShouldNotContain("authorized-secret");
+        log.ShouldContain("correlation-safe");
+    }
+
     private static ActionExecutingContext CreateContext(
         string? routeTenantId,
         string[] tenantClaims,
-        string? queryTenantId = null) {
+        string? queryTenantId = null,
+        bool includeTenantArgument = false,
+        bool admin = false) {
         var claims = new List<Claim>();
         foreach (string tenant in tenantClaims) {
             claims.Add(new Claim(AdminClaimTypes.Tenant, tenant));
+        }
+
+        if (admin) {
+            claims.Add(new Claim(AdminClaimTypes.AdminRole, "Admin"));
         }
 
         var identity = new ClaimsIdentity(claims, "TestAuth");
@@ -110,10 +191,13 @@ public class AdminTenantAuthorizationFilterTests {
         }
 
         var actionContext = new ActionContext(httpContext, routeData, new ActionDescriptor());
+        Dictionary<string, object?> arguments = includeTenantArgument
+            ? new Dictionary<string, object?> { ["tenantId"] = null }
+            : new Dictionary<string, object?>();
         return new ActionExecutingContext(
             actionContext,
             [],
-            new Dictionary<string, object?>(),
+            arguments,
             controller: null!);
     }
 }

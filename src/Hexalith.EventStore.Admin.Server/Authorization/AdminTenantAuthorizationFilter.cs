@@ -15,55 +15,81 @@ public class AdminTenantAuthorizationFilter(ILogger<AdminTenantAuthorizationFilt
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
-        string? tenantId = context.RouteData.Values.TryGetValue("tenantId", out object? routeValue)
-            ? routeValue?.ToString()
-            : null;
-
-        // Also check query string
-        tenantId ??= context.HttpContext.Request.Query.TryGetValue("tenantId", out Microsoft.Extensions.Primitives.StringValues queryValue)
-            ? queryValue.ToString()
-            : null;
-
-        if (string.IsNullOrWhiteSpace(tenantId)) {
-            // No tenantId in request — skip validation (tenant-agnostic endpoint)
-            _ = await next().ConfigureAwait(false);
-            return;
-        }
-
-        // Admin-role users can access any tenant
         if (context.HttpContext.User.HasClaim(AdminClaimTypes.AdminRole, "Admin")) {
             _ = await next().ConfigureAwait(false);
             return;
         }
 
-        var tenantClaims = context.HttpContext.User
-            .FindAll(AdminClaimTypes.Tenant)
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
+        string? tenantId = ResolveRequestedTenantId(context);
+        List<string> tenantClaims = GetAuthorizedTenantClaims(context);
+
+        if (string.IsNullOrWhiteSpace(tenantId)) {
+            if (!HasTenantArgument(context)) {
+                _ = await next().ConfigureAwait(false);
+                return;
+            }
+
+            string? firstAuthorizedTenant = tenantClaims.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(firstAuthorizedTenant)) {
+                Deny(context);
+                return;
+            }
+
+            context.ActionArguments["tenantId"] = firstAuthorizedTenant;
+            _ = await next().ConfigureAwait(false);
+            return;
+        }
 
         if (!tenantClaims.Contains(tenantId, StringComparer.Ordinal)) {
-            logger.LogWarning(
-                "Tenant access denied: requested={TenantId}, authorized=[{AuthorizedTenants}]",
-                tenantId,
-                string.Join(",", tenantClaims));
-
-            string correlationId = context.HttpContext.Items["CorrelationId"]?.ToString()
-                ?? Guid.NewGuid().ToString();
-
-            context.Result = new ObjectResult(new ProblemDetails {
-                Status = StatusCodes.Status403Forbidden,
-                Title = "Tenant Access Denied",
-                Detail = "Not authorized for the requested tenant.",
-                Instance = context.HttpContext.Request.Path,
-                Extensions = { ["correlationId"] = correlationId },
-            }) {
-                StatusCode = StatusCodes.Status403Forbidden,
-            };
-
+            Deny(context);
             return;
         }
 
         _ = await next().ConfigureAwait(false);
+    }
+
+    private static List<string> GetAuthorizedTenantClaims(ActionExecutingContext context)
+        => context.HttpContext.User
+            .FindAll(AdminClaimTypes.Tenant)
+            .Select(claim => claim.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+
+    private static bool HasTenantArgument(ActionExecutingContext context)
+        => context.ActionArguments.ContainsKey("tenantId")
+            || context.ActionDescriptor.Parameters.Any(parameter =>
+                string.Equals(parameter.Name, "tenantId", StringComparison.Ordinal));
+
+    private static string? ResolveRequestedTenantId(ActionExecutingContext context) {
+        if (context.RouteData.Values.TryGetValue("tenantId", out object? routeValue)
+            && !string.IsNullOrWhiteSpace(routeValue?.ToString())) {
+            return routeValue.ToString();
+        }
+
+        if (context.HttpContext.Request.Query.TryGetValue("tenantId", out Microsoft.Extensions.Primitives.StringValues queryValue)
+            && !string.IsNullOrWhiteSpace(queryValue.ToString())) {
+            return queryValue.ToString();
+        }
+
+        if (context.ActionArguments.TryGetValue("tenantId", out object? actionValue)
+            && !string.IsNullOrWhiteSpace(actionValue?.ToString())) {
+            return actionValue.ToString();
+        }
+
+        return null;
+    }
+
+    private void Deny(ActionExecutingContext context) {
+        string correlationId = context.HttpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+        logger.LogWarning("Admin tenant access denied. CorrelationId={CorrelationId}", correlationId);
+
+        context.Result = new ObjectResult(new ProblemDetails {
+            Status = StatusCodes.Status403Forbidden,
+            Title = "Forbidden",
+            Detail = "The request is not authorized for the requested scope.",
+            Extensions = { ["correlationId"] = correlationId },
+        }) {
+            StatusCode = StatusCodes.Status403Forbidden,
+        };
     }
 }

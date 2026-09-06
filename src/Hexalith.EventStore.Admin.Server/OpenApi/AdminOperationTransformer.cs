@@ -33,6 +33,15 @@ public sealed class AdminOperationTransformer : IOpenApiOperationTransformer {
             Description = "Service Unavailable — Admin backend service temporarily unavailable (DAPR/infrastructure)",
         });
 
+        if (operation.Responses.TryGetValue("413", out IOpenApiResponse? response)
+            && response is OpenApiResponse tooLarge
+            && tooLarge.Content is not null
+            && tooLarge.Content.Values.FirstOrDefault() is OpenApiMediaType mediaType) {
+            tooLarge.Content = new Dictionary<string, OpenApiMediaType> {
+                ["application/problem+json"] = mediaType,
+            };
+        }
+
         return Task.CompletedTask;
     }
 }

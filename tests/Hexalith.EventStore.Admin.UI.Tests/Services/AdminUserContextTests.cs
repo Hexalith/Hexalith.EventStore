@@ -15,9 +15,6 @@ public class AdminUserContextTests {
     [InlineData("Admin", AdminRole.Admin)]
     [InlineData("Operator", AdminRole.Operator)]
     [InlineData("ReadOnly", AdminRole.ReadOnly)]
-    [InlineData("admin", AdminRole.Admin)]
-    [InlineData("operator", AdminRole.Operator)]
-    [InlineData("readonly", AdminRole.ReadOnly)]
     public async Task GetRoleAsync_ExtractsCorrectRole(string claimValue, AdminRole expectedRole) {
         // Arrange
         AuthenticationStateProvider authProvider = CreateAuthProvider(claimValue);
@@ -28,6 +25,20 @@ public class AdminUserContextTests {
 
         // Assert
         role.ShouldBe(expectedRole);
+    }
+
+    [Theory]
+    [InlineData("admin")]
+    [InlineData("operator")]
+    [InlineData("readonly")]
+    [InlineData("Unknown")]
+    public async Task HasMinimumRoleAsync_RejectsNonCanonicalRoleValues(string claimValue) {
+        AuthenticationStateProvider authProvider = CreateAuthProvider(claimValue);
+        var context = new AdminUserContext(authProvider);
+
+        bool result = await context.HasMinimumRoleAsync(AdminRole.ReadOnly);
+
+        result.ShouldBeFalse();
     }
 
     [Fact]

@@ -143,7 +143,45 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
     }
 
     [Fact]
+    public async Task AnonymousAdminRequest_ReturnsBoundedRedacted401WithoutServiceWork() {
+        _factory.StreamService.ClearReceivedCalls();
+        using HttpClient client = _factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/v1/admin/streams/private-tenant/orders/private-aggregate/state");
+
+        await AssertBoundedProblemAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "private-tenant",
+            "private-aggregate");
+        _ = await _factory.StreamService.DidNotReceiveWithAnyArgs()
+            .GetAggregateStateAtPositionAsync(default!, default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task UnknownExactRole_ReturnsBoundedRedacted403WithoutServiceWork() {
+        _factory.StreamService.ClearReceivedCalls();
+        using HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(
+            new Claim("sub", "unknown-role-user"),
+            new Claim(AdminClaimTypes.AdminRole, "admin")));
+
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/v1/admin/streams/private-tenant/orders/private-aggregate/state");
+
+        await AssertBoundedProblemAsync(
+            response,
+            HttpStatusCode.Forbidden,
+            "private-tenant",
+            "private-aggregate");
+        _ = await _factory.StreamService.DidNotReceiveWithAnyArgs()
+            .GetAggregateStateAtPositionAsync(default!, default!, default!, default, default);
+    }
+
+    [Fact]
     public async Task Authenticated_Request_ForUnauthorizedTenant_Returns403() {
+        _factory.StreamService.ClearReceivedCalls();
         using HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(
             new Claim("sub", "readonly-user"),
@@ -151,7 +189,77 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
 
         HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams?tenantId=blocked-tenant");
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        await AssertBoundedProblemAsync(response, HttpStatusCode.Forbidden, "blocked-tenant", "allowed-tenant");
+        _ = await _factory.StreamService.DidNotReceiveWithAnyArgs()
+            .GetRecentlyActiveStreamsAsync(default, default, default, default);
+    }
+
+    [Theory]
+    [InlineData("/api/v1/admin/backups/admissions/blocked-tenant/private-admission", true)]
+    [InlineData("/api/v1/admin/backups/crypto-shredding/workflows/blocked-tenant/private-workflow", false)]
+    public async Task BackupOpaqueRead_ForUnauthorizedTenant_IsRedactedAndDoesNoWork(
+        string route,
+        bool admission) {
+        _factory.BackupQueryService.ClearReceivedCalls();
+        using HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(
+            new Claim("sub", "readonly-user"),
+            new Claim(AdminClaimTypes.Tenant, "allowed-tenant")));
+
+        HttpResponseMessage response = await client.GetAsync(route);
+
+        await AssertBoundedProblemAsync(
+            response,
+            HttpStatusCode.Forbidden,
+            "blocked-tenant",
+            admission ? "private-admission" : "private-workflow");
+        if (admission) {
+            _ = await _factory.BackupQueryService.DidNotReceiveWithAnyArgs()
+                .GetRestoreAdmissionAsync(default!, default!, default);
+        }
+        else {
+            _ = await _factory.BackupQueryService.DidNotReceiveWithAnyArgs()
+                .GetCryptoShreddingWorkflowAsync(default!, default!, default);
+        }
+    }
+
+    [Theory]
+    [InlineData("/api/v1/admin/consistency/checks/private-check", "check-result")]
+    [InlineData("/api/v1/admin/consistency/checks/private-check/cancel", "check-cancel")]
+    [InlineData("/api/v1/admin/dapr/actors/AggregateActor/state?actorId=private-actor", "actor-state")]
+    public async Task OperatorOpaqueLookup_ReturnsRedacted403BeforeServiceWork(string route, string operation) {
+        ArgumentNullException.ThrowIfNull(operation);
+        _factory.ConsistencyQueryService.ClearReceivedCalls();
+        _factory.ConsistencyCommandService.ClearReceivedCalls();
+        _factory.DaprInfrastructureQueryService.ClearReceivedCalls();
+        using HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(
+            new Claim("sub", "operator-user"),
+            new Claim(AdminClaimTypes.AdminRole, "Operator")));
+
+        using var request = new HttpRequestMessage(
+            operation == "check-result" || operation == "actor-state" ? HttpMethod.Get : HttpMethod.Post,
+            route);
+        HttpResponseMessage response = await client.SendAsync(request);
+
+        await AssertBoundedProblemAsync(
+            response,
+            HttpStatusCode.Forbidden,
+            operation.StartsWith("check", StringComparison.Ordinal) ? "private-check" : "private-actor");
+        switch (operation) {
+            case "check-result":
+                _ = await _factory.ConsistencyQueryService.DidNotReceiveWithAnyArgs()
+                    .GetCheckResultAsync(default!, default);
+                break;
+            case "check-cancel":
+                _ = await _factory.ConsistencyCommandService.DidNotReceiveWithAnyArgs()
+                    .CancelCheckAsync(default!, default);
+                break;
+            default:
+                _ = await _factory.DaprInfrastructureQueryService.DidNotReceiveWithAnyArgs()
+                    .GetActorInstanceStateAsync(default!, default!, default);
+                break;
+        }
     }
 
     [Fact]
@@ -197,13 +305,56 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         return handler.WriteToken(handler.CreateToken(descriptor));
     }
 
+    private static async Task AssertBoundedProblemAsync(
+        HttpResponseMessage response,
+        HttpStatusCode expectedStatus,
+        params string[] protectedValues) {
+        response.StatusCode.ShouldBe(expectedStatus);
+        response.Content.Headers.ContentType.ShouldNotBeNull();
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        string body = await response.Content.ReadAsStringAsync();
+        body.Length.ShouldBeLessThan(512);
+        foreach (string protectedValue in protectedValues) {
+            body.ShouldNotContain(protectedValue);
+        }
+    }
+
     /// <summary>
     /// Custom WebApplicationFactory that replaces DaprClient with a mock
     /// and uses a test authentication scheme so the host boots without DAPR sidecar.
     /// </summary>
     public class AdminServerHostFactory : WebApplicationFactory<Program> {
+        public IStreamQueryService StreamService { get; } = Substitute.For<IStreamQueryService>();
+
+        public IBackupQueryService BackupQueryService { get; } = Substitute.For<IBackupQueryService>();
+
+        public IConsistencyQueryService ConsistencyQueryService { get; } = Substitute.For<IConsistencyQueryService>();
+
+        public IConsistencyCommandService ConsistencyCommandService { get; } = Substitute.For<IConsistencyCommandService>();
+
+        public IDaprInfrastructureQueryService DaprInfrastructureQueryService { get; } = Substitute.For<IDaprInfrastructureQueryService>();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
+            _ = StreamService.GetRecentlyActiveStreamsAsync(
+                    Arg.Any<string?>(),
+                    Arg.Any<string?>(),
+                    Arg.Any<int>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(callInfo => new PagedResult<StreamSummary>(
+                [
+                    new StreamSummary(
+                        callInfo.ArgAt<string?>(0) ?? "test-tenant",
+                        callInfo.ArgAt<string?>(1) ?? "test-domain",
+                        "test-aggregate",
+                        42,
+                        DateTimeOffset.Parse("2026-03-21T12:00:00+00:00"),
+                        42,
+                        true,
+                        StreamStatus.Active),
+                ],
+                1,
+                null));
             _ = builder.ConfigureServices(services => {
                 // Replace DaprClient with mock
                 ServiceDescriptor? daprDescriptor = services
@@ -215,26 +366,11 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
                 _ = services.AddSingleton(Substitute.For<DaprClient>());
 
                 // Override DAPR-backed services with mocks so controller routes are reachable
-                _ = services.AddScoped(sp => {
-                    IStreamQueryService service = Substitute.For<IStreamQueryService>();
-                    _ = service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-                        .Returns(callInfo => new PagedResult<StreamSummary>(
-                        [
-                            new StreamSummary(
-                                callInfo.ArgAt<string?>(0) ?? "test-tenant",
-                                callInfo.ArgAt<string?>(1) ?? "test-domain",
-                                "test-aggregate",
-                                42,
-                                DateTimeOffset.Parse("2026-03-21T12:00:00+00:00"),
-                                42,
-                                true,
-                                StreamStatus.Active),
-                        ],
-                        1,
-                        null));
-
-                    return service;
-                });
+                _ = services.AddSingleton(StreamService);
+                _ = services.AddSingleton(BackupQueryService);
+                _ = services.AddSingleton(ConsistencyQueryService);
+                _ = services.AddSingleton(ConsistencyCommandService);
+                _ = services.AddSingleton(DaprInfrastructureQueryService);
                 _ = services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
                 _ = services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
                 _ = services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
