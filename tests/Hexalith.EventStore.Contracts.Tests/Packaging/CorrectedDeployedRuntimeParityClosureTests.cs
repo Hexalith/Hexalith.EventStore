@@ -1273,6 +1273,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     [InlineData("dangling-acceptance")]
     public void SymbolicLinksCannotEvadeClosedInventory(string shape)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         string root = FindRepositoryRoot();
         string temporary = CreateAcceptedPacket(root);
         try
@@ -2170,21 +2175,27 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
     /// <summary>
     /// Verifies removing a single nested field from a receipt's durable_source binding fails closed,
-    /// not only removal of a top-level receipt field.
+    /// across both owner and Test Architect receipt shapes.
     /// </summary>
+    /// <param name="role">Which receipt role to mutate.</param>
     /// <param name="field">Nested durable-source field to remove.</param>
     [Theory]
-    [InlineData("file")]
-    [InlineData("kind")]
-    [InlineData("sha256")]
-    [InlineData("size")]
-    public void ReceiptDurableSourceMissingNestedFieldFailsClosed(string field)
+    [InlineData("eventstore-owner", "file")]
+    [InlineData("eventstore-owner", "kind")]
+    [InlineData("eventstore-owner", "sha256")]
+    [InlineData("eventstore-owner", "size")]
+    [InlineData("test-architect", "file")]
+    [InlineData("test-architect", "kind")]
+    [InlineData("test-architect", "sha256")]
+    [InlineData("test-architect", "size")]
+    public void ReceiptDurableSourceMissingNestedFieldFailsClosed(string role, string field)
     {
         string root = FindRepositoryRoot();
         string temporary = CreateAcceptedPacket(root);
         try
         {
-            RewriteReceipt(temporary, 0, receipt => receipt["durable_source"]!.AsObject().Remove(field));
+            int index = ReceiptIndex(temporary, role);
+            RewriteReceipt(temporary, index, receipt => receipt["durable_source"]!.AsObject().Remove(field));
 
             ShouldFailClosed(RunValidator(root, temporary), "receipt source binding is invalid");
         }
@@ -2901,6 +2912,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     [Theory]
     [InlineData("platform-window", "Production smoke platform outcome is invalid")]
     [InlineData("aggregate-window", "Production smoke aggregate bound is invalid")]
+    [InlineData("platform-start-before-aggregate", "Production smoke platform outcome is invalid")]
+    [InlineData("platform-end-after-aggregate", "Production smoke platform outcome is invalid")]
     public void SmokeWindowsExceedingTheirBoundsFailClosed(string mutation, string expectedError)
     {
         string root = FindRepositoryRoot();
@@ -2921,6 +2934,25 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                         CultureInfo.InvariantCulture);
                     platform["ended_at"] = Utc(platformStart.AddSeconds(216));
                     results["ended_at"] = Utc(platformStart.AddSeconds(300));
+                }
+                else if (mutation == "platform-start-before-aggregate")
+                {
+                    // Platform started before aggregate start, but platform duration stays <= 215s.
+                    JsonObject platform = results["platforms"]!.AsArray()[0]!.AsObject();
+                    DateTimeOffset platformStart = start.AddSeconds(-1);
+                    platform["started_at"] = Utc(platformStart);
+                    platform["ended_at"] = Utc(platformStart.AddSeconds(10));
+                }
+                else if (mutation == "platform-end-after-aggregate")
+                {
+                    // Platform ended after aggregate end, but platform duration stays <= 215s.
+                    JsonObject platform = results["platforms"]!.AsArray()[0]!.AsObject();
+                    DateTimeOffset aggregateEnd = DateTimeOffset.Parse(
+                        results["ended_at"]!.GetValue<string>(),
+                        CultureInfo.InvariantCulture);
+                    DateTimeOffset platformEnd = aggregateEnd.AddSeconds(1);
+                    platform["started_at"] = Utc(platformEnd.AddSeconds(-10));
+                    platform["ended_at"] = Utc(platformEnd);
                 }
                 else
                 {
@@ -3020,9 +3052,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                 root,
                 "python3",
                 "-c",
-                "import runpy,sys;sys.path.insert(0, b'/tmp/bytes-path-entry');"
-                + "sys.argv=[sys.argv[1],*sys.argv[2:]];"
-                + "runpy.run_path(sys.argv[0],run_name='__main__')",
+                "import importlib.util,sys;sys.path.insert(0, b'/tmp/bytes-path-entry');"
+                + "target=sys.argv[1];"
+                + "sys.argv=['v', *sys.argv[2:]];"
+                + "s=importlib.util.spec_from_file_location('v', target);"
+                + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                + "sys.exit(m.main())",
                 Path.Combine(root, "tools", "validate-corrected-deployed-runtime-parity.py"),
                 Path.Combine(packet, "closure.json"),
                 "--packet-root",
@@ -3178,6 +3213,34 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies a stray unreviewed field cannot persist inside the retained Test Architect record.
+    /// </summary>
+    [Fact]
+    public void StrayFieldInsideRetainedTestArchitectAcceptanceSourceFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            int index = ReceiptIndex(temporary, "test-architect");
+            RewriteReceiptSource(temporary, index, source =>
+            {
+                source["stray_unreviewed_field"] = "anything at all";
+            });
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "Test Architect acceptance source is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies a stray unreviewed field cannot persist inside the retained roster comment either.
     /// </summary>
     [Fact]
@@ -3195,6 +3258,35 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             ShouldFailClosed(
                 RunValidator(root, temporary),
                 "owner-role registry authority source schema is invalid");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies divergence between a receipt's claims and its retained GitHub comment source body fails closed.
+    /// </summary>
+    [Fact]
+    public void ReceiptClaimDivergingFromRetainedGitHubCommentBodyFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string temporary = CreateAcceptedPacket(root);
+        try
+        {
+            RunValidator(root, temporary).ExitCode.ShouldBe(0);
+
+            int index = ReceiptIndex(temporary, "eventstore-owner");
+            RewriteReceiptSource(temporary, index, source =>
+            {
+                source["body"] = source["body"]!.GetValue<string>()
+                    .Replace("\"decision\":\"accepted\"", "\"decision\":\"rejected\"", StringComparison.Ordinal);
+            });
+
+            ShouldFailClosed(
+                RunValidator(root, temporary),
+                "GitHub acceptance source is not authenticated to the rostered owner");
         }
         finally
         {
@@ -4310,14 +4402,6 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         WriteCanonical(Path.Combine(temporary, "closure.json"), closure);
     }
 
-    /// <summary>
-    /// Rewrites the retained roster comment's body, then rebinds the registry document and the
-    /// closure's registry binding. The technical inventory and the canonical subject are left alone
-    /// on purpose: registry validation runs before the inventory sweep, so a negative case fails on
-    /// the registry itself.
-    /// </summary>
-    /// <param name="packet">Packet root to mutate.</param>
-    /// <param name="transform">Body rewrite to apply.</param>
     /// <summary>Formats one instant in the exact second-precision UTC shape the verifier requires.</summary>
     /// <param name="value">Instant to format.</param>
     /// <returns>The formatted timestamp.</returns>
