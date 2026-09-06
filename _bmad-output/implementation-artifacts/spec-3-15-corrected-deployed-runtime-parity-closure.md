@@ -1079,4 +1079,36 @@ Scope: `94591f35...HEAD` narrowed to Story 3.15 test files (`CorrectedDeployedRu
 - low — Defensive missing `else throw` / `default: throw` across test helpers: inputs are statically bounded by theory `InlineData`.
 - low — Matrix Row 2 tag-only fact mutation: OCI validator strictly checks digest strings (`sha256:...`); tag values fail equality without separate test case.
 
+### Review Findings (2026-09-06, Group C — spec / story / proof chunk)
+
+Scope: `94591f35...HEAD` narrowed to Story 3.15 spec, story, and proof packet files (`spec-3-15-corrected-deployed-runtime-parity-closure.md`, `3-15-corrected-deployed-runtime-parity-closure.md`, `3-15-corrected-deployed-runtime-parity-closure-proof-packet.md`). 1,526 diff lines. Four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); none failed.
+
+**patch (unambiguous fix; no human input needed):**
+
+- [x] [Review][Patch] Superseded acceptance history states non-authorization for superseded subject `84dee6e5...` instead of current subject `a5c07d17...` [_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:113]
+
+**Rejected**
+
+- false — Group B review patch items unchecked in spec: all 7 patches verified and checked `[x]` on disk at lines 1060-1066.
+- spec-edit — Spec frontmatter status claims `done` while parity is unavailable: rejected because fix would edit the spec under review.
+- spec-edit — Spec Verification command output cites superseded subject `84dee6e5...`: rejected because fix would edit the spec under review.
+- spec-edit — Spec Verification section reports 212 tests instead of 220: rejected because fix would edit the spec under review.
+- spec-edit — Spec Change Log missing Group B tests patch entry: rejected because fix would edit the spec under review.
+- spec-edit — Spec Change Log chronological ordering: rejected because fix would edit the spec under review.
+- spec-edit — Spec Suggested Review Order line anchors drifted: rejected because fix would edit the spec under review.
+- spec-edit — Spec Code Map omits SmokeCaptureTests and retains drifted line range: rejected because fix would edit the spec under review.
+- spec-edit — Spec review findings section organization under Tasks & Acceptance: rejected because fix would edit the spec under review.
+- spec-edit — Spec triage log entry cites `84dee6e5...`: rejected because fix would edit the spec under review.
+- spec-edit — Spec task checkbox claims retention of subject-addressed receipts: rejected because fix would edit the spec under review.
+- low — Proof packet authority boundary preamble says four flags, but table has six rows: cosmetic preamble; already triaged in Group A as rejected.
+- low — Proof packet omits linux/arm64 QEMU binfmt emulation prerequisite: documented in story record lines 356-361 and capture script; proof packet is a concise summary.
+- low — Proof packet omits the known reviewer-roster.json wording mismatch: documented in story record lines 305-309 and spec line 808; proof packet is a concise summary.
+- low — Proof packet runtime evidence omits platform attempt counts and execution results table: detailed in smoke-results.json and story record.
+- low — Proof packet displays superseded 2026-09-05 comments table under `## Current acceptances`: prose immediately clarifies "No packet-bound receipt currently binds subject a5c07d17...".
+- low — Operator records report stale subject count arithmetic of nine subjects rather than eleven: cosmetic historical prose count; no invariant affected.
+- low — Story record subject-change accounting heading and itemized list omit latest re-mint to `a5c07d17...`: cosmetic historical narrative section; current subject explained in § Decision.
+- low — Story record superseded acceptance history itemizes only three rounds, omitting `bb58d691...`: cosmetic narrative omission; bb58d691 is discussed at line 105 as rejected on lineage.
+- low — Failed timestamp-mismatch note misplaced after `86c59c79...` instead of `a8cc777e...`: cosmetic narrative placement in historical notes.
+
+
 

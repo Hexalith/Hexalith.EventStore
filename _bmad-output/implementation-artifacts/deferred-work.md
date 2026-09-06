@@ -3941,3 +3941,7 @@ resolution: `AdminOperationalIndexHostedService` now writes `admin:query-types:{
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: `Consistency_ShowsTriggerButton_ForOperatorUser` never configures an Operator identity.
   evidence: P8-VG-O1 verified the method uses `AdminUITestContext`'s default Admin user and never calls `ConfigureRole(AdminRole.Operator)`.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-06)
+
+- Restated TOCTOU between `require_no_symlink_components` and `stat()`/`open()` in `read_bounded_regular_snapshot` (`tools/validate-oq8-platform-evidence.py:1049-1063`). Already tracked as DW-454; no new DW. Same single-writer CI trust boundary as the 2026-08-30 Group A defer.

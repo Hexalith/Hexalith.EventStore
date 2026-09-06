@@ -110,7 +110,7 @@ verifier now accepts owner receipts only from dedicated issue `#352`, rejecting 
 ### Superseded acceptance history
 
 Four complete acceptance rounds were collected and are now superseded. All four are retained
-byte-for-byte in the superseded audit area and authorize nothing for `84dee6e5...`.
+byte-for-byte in the superseded audit area and authorize nothing for `a5c07d17...`.
 
 Against subject `dab64f5f...`:
 

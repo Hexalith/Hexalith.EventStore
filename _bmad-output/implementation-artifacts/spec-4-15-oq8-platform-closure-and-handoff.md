@@ -78,6 +78,35 @@ _Chunked code review, Group A of 3 (`tools/validate-oq8-platform-evidence.py` on
 - [x] [Review][Defer] TOCTOU gap between `require_no_symlink_components` and the later `stat()`/`open()` in `read_bounded_regular_snapshot` [tools/validate-oq8-platform-evidence.py:876-905] — deferred, low exploitability in this tool's single-writer CI trust boundary
 - [x] [Review][Defer] `REVIEW_ROSTER` names two reviewers as specific personas ("Winston", "Murat") but security is only a role label ("Security Reviewer") [tools/validate-oq8-platform-evidence.py:237-241] — deferred, cosmetic
 
+_Chunked code review, Group A re-review (2026-09-06). Baseline `699ca712` → HEAD `ce5441c3`. Same file only: `tools/validate-oq8-platform-evidence.py`. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor._
+
+- [ ] [Review][Decision] Claimed current-source proofs hash frozen Git, not HEAD or the worktree — `validate_source_state` requires JSON `current.source == "current HEAD Git tree"`, `headMustDescendFromLandedSource is True`, and a rule that every non-evolved capability path exists in HEAD, stays byte-equivalent to landed source, and has no index or semantic worktree change, but it never calls `git_diff_is_clean` (defined at 893, unused), never `rev-parse HEAD`, and hashes `git show LANDED_SOURCE` / `COMPLETED_V1_CLOSURE_COMMIT`. Ancestry is `merge-base --is-ancestor LANDED_SOURCE COMPLETED_V1_CLOSURE_COMMIT`, two frozen commits. The SDK successor `bindingRule` claims current worktree bytes while `validate_successor_source_identity` hashes `LEGACY_SUCCESSOR_SNAPSHOT_COMMIT`. v2 `bindingRule` / `currentRule` claim current candidate files while `validate_v2_source_identity` hashes `COMPLETED_V2_CLOSURE_COMMIT`. v3 does read current disk, but only `V3_GATE_INPUT_PATHS` (six files), not the 24 `EXPECTED_CURRENT_BOUND_PATHS`. `Oq8PlatformClosureTests` still has no `ChangedOrDeletedBoundCapabilityPathFailsClosed` / `HiddenBoundCapabilityPathFailsClosed`; `NonDescendantCurrentHeadDoesNotReplaceHistoricalV1Snapshot` and `ChangedOrDeletedLaterWorktreePathDoesNotRewriteHistoricalV1` expect exit 0. This is the 2026-08-30 Group A HEAD-proof finding, now ambiguous after v2 was switched to historical Git and v3 became the current-source layer. Any validator edit still reseals v2/v3 gate inputs and burns existing receipts.
+- [ ] [Review][Decision] Full validator requires Story 4.15 tracking already `review`/`done` before the packet can pass — `validate_platform_closure(..., current_source=True)` always calls `validate_status_and_documents(final=True)`, which requires sprint `4-15-oq8-platform-closure-and-handoff: review` and spec frontmatter `done`. Frozen Always says advance tracking only when the fail-closed validator passes. Isolated `--lifecycle-mode final` is a test seam (CI does not use it) and is not itself the bypass; the chicken-and-egg is the default consumer command.
+- [ ] [Review][Patch] `--historical-v1-only` still hashes live `--root` Dapr YAML and public docs [tools/validate-oq8-platform-evidence.py:3759-3771,3198-3200]
+- [ ] [Review][Patch] `run_subprocess_bounded` and `sha256_git_file` duplicate drainers have diverged: combined output cap 131072 vs blob cap 8 MiB [tools/validate-oq8-platform-evidence.py:813-880,913-990]
+- [ ] [Review][Patch] Non-`EvidenceError`/`OSError` exceptions do not kill the Git child before `finally` closes pipes [tools/validate-oq8-platform-evidence.py:865-878,974-987]
+- [ ] [Review][Patch] v2/v3 successor `Path.rglob("*")` omits hidden names, so extra dotfiles bypass the exact file-set check [tools/validate-oq8-platform-evidence.py:2199-2203,2758-2760]
+- [ ] [Review][Patch] v1 closure directory is not an exact set — only manifest paths are hashed and scanned [tools/validate-oq8-platform-evidence.py:2018-2046]
+- [ ] [Review][Patch] `scan_json_protected_content` has no depth/size bound and skips `PLACEHOLDER_RE` / `FORBIDDEN_CLAIM_RE` [tools/validate-oq8-platform-evidence.py:757-774]
+- [ ] [Review][Patch] `validate_pyyaml_dependency` workflow wiring is an unscoped substring search [tools/validate-oq8-platform-evidence.py:3324-3334]
+- [ ] [Review][Patch] `extract_v2_workflow_image` accepts exactly one step named `Pull PostgreSQL container image` and ignores other `docker pull` steps [tools/validate-oq8-platform-evidence.py:2255-2266]
+- [ ] [Review][Patch] SDK successor directory and identity file are not required to be non-symlinks [tools/validate-oq8-platform-evidence.py:1496-1508]
+- [ ] [Review][Patch] Observation `schemaVersion` uses `== 1`, so JSON `true` passes [tools/validate-oq8-platform-evidence.py:1104]
+- [ ] [Review][Patch] `except Exception` in `main()` reports only the exception type [tools/validate-oq8-platform-evidence.py:4001-4004]
+- [x] [Review][Defer] TOCTOU between `require_no_symlink_components` and `stat()`/`open()` in `read_bounded_regular_snapshot` [tools/validate-oq8-platform-evidence.py:1049-1063] — deferred: pre-existing, already DW-454; same single-writer CI trust boundary
+
+### Rejected (2026-09-06 Group A)
+
+- false: Fresh capture `POSTGRES_IMAGE` vs committed `POSTGRES_TAG` — intentional v1-tag / v2-digest era split; current integration capture already passes `--expected-runtime-version` and the digest.
+- false: Frozen `fresh-capture-validator` command lacks `--expected-runtime-version` — that string is Story 4.14 `commands.json` identity; rewriting it would fail the immutable capture. Current CI already uses the flag (`integration.yml`).
+- false: CTRF sanitize writes xUnit 4 `-result-ctrf` while committed `test-results.json` still validates `FOCUSED_LEGACY_COMMAND` — two eras by design (fresh capture vs frozen 4.14 document).
+- false: Isolated `--lifecycle-mode final` can pass without the packet — help text says isolation; CI never uses the flag; consumer `verifyCommand` is the default full validator.
+- false: `--historical-v1-only` still requires v2/v3 packets — `HistoricalV1EvidencePassesWithoutAuthorizingCurrentSource` deletes the v2 directory and expects exit 0; `current_source=False` skips `validate_v2_successor` / `validate_v3_successor`.
+- false: v3 dropping v2 `postgres-image-governance` / `actionlint` execution — v3 hashes those paths as current gate inputs; v2 already recorded the executions.
+- false: `GIT_DIR` / replace-objects retarget of Git identity — `--no-replace-objects` is set; ambient `GIT_*` retarget is not a demonstrated everyday path, and pinning env would add complexity without a shown caller.
+- low: POSIX-only `os.set_blocking` — validator CI and this workspace are Linux/WSL; a Windows-native I/O rewrite is more than a direct correction.
+- low: `retained_paths | REPLACED_PRIOR_BOUND_PATHS == capability_paths` — equivalent subset check with no everyday mis-validation.
+
 ## Spec Change Log
 
 - 2026-08-10: Implemented the checksummed source-only closure, exact landed-source proof, content-bound architecture/security/test approvals, fail-closed validator/tests, documentation reconciliation, and truthful lifecycle handoff.
