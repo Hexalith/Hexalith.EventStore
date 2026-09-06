@@ -3820,3 +3820,63 @@ decision: 2026-09-06 Accept focused-lane evidence — Administrator accepted the
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Assembler restore runs only for incomplete verifier children (`TimeoutExpired` / spawn failure), not for a completed wait with a negative `returncode`.
   evidence: Unverified whether a signal-killed verifier is reachable for operators. If true, a success-shaped `closure.json` could remain after an incomplete run; severity would be medium. Settle by reproducing a negative `returncode` from the pinned verifier child.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 timeout cleanup treats every nonzero container-inspect result as if no container exists and lacks exception-path coverage.
+  evidence: The current helper returns cleanup success for daemon, permission, spawn, and timeout failures as well as not-found; BH-04, EH-01, VG-03, and VG-O2 verified the shared cause.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 performs only one immediate inspect after timeout, so a late-created container can escape cleanup.
+  evidence: BH-05 and EH-02 found no polling or cleanup-budget window between verifier timeout and the sole inspect.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 discards the force-remove return code and stderr when timed-out container cleanup fails.
+  evidence: BH-06 verified that the removal result is reduced to a Boolean, leaving operators without the failing command's diagnostics.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 inspects a container by name, discards the inspected ID, and then removes by name, permitting a replacement race.
+  evidence: EH-03 identified a window in which the name can be rebound and the replacement container can be force-removed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 can leave a new success-shaped closure after rollback restoration fails, and its test does not assert the resulting file state.
+  evidence: BH-07, BH-09, EH-04, VG-01, and VG-O1 verified that the restore `OSError` path returns without removing or quarantining the new closure and the test checks only exit/text.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 rollback restores only `closure.json`, not the registry, inventory, or subject artifacts rewritten before verification.
+  evidence: BH-08 verified that an incomplete verifier can leave a packet whose closure and supporting provenance artifacts come from different assembly attempts.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15's off-bound-path test validates the repository closure instead of the temporary packet supplied to the assembler.
+  evidence: BH-10 traced the postcondition hash to the untouched repository artifact while the exercised assembler writes the fixture packet.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 lets a signal-terminated verifier bypass incomplete-child rollback.
+  evidence: BH-11 and EH-05 verified that a negative child return code follows the completed-run branch and keeps the newly written unverified closure.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 does not provenance-bind the executed deployed-runtime parity handler package initializer.
+  evidence: BH-13 verified that Python executes `tools/deployed_runtime_parity_handlers/__init__.py` before `v1.py`, while the closure and dispatch bind only `v1.py`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 lifecycle records disagree: its spec says done, sprint status says review, and the packet remains 0/3.
+  evidence: BH-14 verified the contradictory status sources and incomplete approval count.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 remint, subject, and receipt-less-subject counts were not advanced after subject `a5c07d17`.
+  evidence: BH-15 and EH-07 verified that the records still report eight remints, nine subjects, and five receipt-less subjects.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15's recorded assembler output names prior subject `84dee6e5` while the canonical validator record names `a5c07d17`.
+  evidence: BH-16 and EH-08 verified the adjacent provenance records disagree on the assembled subject.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 binds the current capture producer digest to retained August smoke bytes that producer cannot reproduce.
+  evidence: BH-17 verified that the canonical smokes predate later capture hardening and therefore cannot be regenerated byte-for-byte by the bound producer.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 assemblers have no packet lock, allowing overlapping rewrites and cross-invocation timeout rollback.
+  evidence: EH-06 verified that concurrent invocations can mutate the same packet and one invocation can overwrite another's verified output during rollback.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-all-hexalith-packages-to-latest.md`
+  summary: Story 3.15 lacks timeout-removal coverage for first-time assembly when no previous closure exists.
+  evidence: VG-02 verified that every timeout fixture begins with prior closure bytes, leaving the `previous_bytes is None` deletion branch untested.
