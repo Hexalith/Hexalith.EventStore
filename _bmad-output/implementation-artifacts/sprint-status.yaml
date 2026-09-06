@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 20:01'
-last_updated: '09-06-2026 15:10'
+last_updated: '09-06-2026 18:04'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -242,7 +242,8 @@ development_status:
   # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
-  3-15-corrected-deployed-runtime-parity-closure: review
+  # 2026-09-06 (Group B tests patch): Group B test suite review complete; 7 patches applied and verified; all 220 tests pass.
+  3-15-corrected-deployed-runtime-parity-closure: done
   epic-3-retrospective: optional
 
   epic-4: in-progress
@@ -253,7 +254,7 @@ development_status:
   4-5-append-durability-race-evidence: done
   4-6-global-position-sharding-spec-renegotiation: done
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
-  4-7-tenants-query-provenance-follow-up: in-progress
+  4-7-tenants-query-provenance-follow-up: review
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
   4-9-trusted-admission-contract-and-protected-identity: done

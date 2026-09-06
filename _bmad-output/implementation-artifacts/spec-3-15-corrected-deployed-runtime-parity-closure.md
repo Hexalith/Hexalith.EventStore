@@ -1057,13 +1057,13 @@ Scope: `94591f35...HEAD` narrowed to Story 3.15 test files (`CorrectedDeployedRu
 
 **patch (unambiguous fix; no human input needed):**
 
-- [ ] [Review][Patch] Missing Windows OS check in SymbolicLinksCannotEvadeClosedInventory [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:1274]
-- [ ] [Review][Patch] Negative coverage for nested durable source and stray fields omits the Test Architect role [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2187, :3157]
-- [ ] [Review][Patch] Platform smoke execution interval containment within aggregate window is unverified [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2915-2925, :3524-3580]
-- [ ] [Review][Patch] Receipt claim divergence from retained GitHub acceptance comment payload is unverified [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3474-3522]
-- [ ] [Review][Patch] Vacuous test execution in BytesRepositoryPathsAreRecognisedRatherThanSilentlyDropped due to interpreter bootstrap re-exec [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3025-3042]
-- [ ] [Review][Patch] Malformed XML doc comment on Utc and missing doc on MutateRegistrySourceBody [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4313-4325]
-- [ ] [Review][Patch] Brittle byte offset calculation in StaleBytecodeCannotStandInForVerifiedSource [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2417-2422]
+- [x] [Review][Patch] Missing Windows OS check in SymbolicLinksCannotEvadeClosedInventory [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:1274]
+- [x] [Review][Patch] Negative coverage for nested durable source and stray fields omits the Test Architect role [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2187, :3157]
+- [x] [Review][Patch] Platform smoke execution interval containment within aggregate window is unverified [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2915-2925, :3524-3580]
+- [x] [Review][Patch] Receipt claim divergence from retained GitHub acceptance comment payload is unverified [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3474-3522]
+- [x] [Review][Patch] Vacuous test execution in BytesRepositoryPathsAreRecognisedRatherThanSilentlyDropped due to interpreter bootstrap re-exec [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3025-3042]
+- [x] [Review][Patch] Malformed XML doc comment on Utc and missing doc on MutateRegistrySourceBody [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4313-4325]
+- [x] [Review][Patch] Brittle byte offset calculation in StaleBytecodeCannotStandInForVerifiedSource [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2417-2422]
 
 **Rejected**
 
