@@ -270,6 +270,26 @@ public class AdminApiAccessTokenProviderRoleTests {
         handler.RequestCount.ShouldBe(0);
     }
 
+    [Theory]
+    [InlineData("password", "Password")]
+    [InlineData("client_credentials", "ClientSecret")]
+    public async Task GetAccessTokenAsync_WhenProfileCredentialIsMissing_FailsBeforeSendingCredentials(
+        string grantType,
+        string missingSetting)
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values["EventStore:Authentication:GrantType"] = grantType;
+        values.Remove($"EventStore:Authentication:{missingSetting}");
+        var handler = new RecordingTokenHandler();
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain(missingSetting);
+        handler.RequestCount.ShouldBe(0);
+    }
+
     [Fact]
     public async Task GetAccessTokenAsync_WhenAudienceParameterIsOnlyPartiallyConfigured_Fails()
     {

@@ -1,5 +1,7 @@
 namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
+using System.Text.Json;
+
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
@@ -7,6 +9,58 @@ using Microsoft.Extensions.Configuration;
 
 public sealed class KeycloakRealmTemplateTests
 {
+    [Fact]
+    public void Render_ProducesValidRealmJson()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+
+        try
+        {
+            using KeycloakRealmTemplate renderedRealm = KeycloakRealmTemplate.Render(
+                GetRealmSourceDirectory(),
+                CreateCredentials(),
+                temporaryRoot: temporaryRoot);
+
+            using JsonDocument document = JsonDocument.Parse(
+                File.ReadAllText(Path.Combine(renderedRealm.ImportDirectory, "hexalith-realm.json")));
+
+            document.RootElement.ValueKind.ShouldBe(JsonValueKind.Object);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Render_WhenReplacementContainsAnotherPlaceholder_DoesNotReplaceItInASecondPass()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        string placeholder = string.Concat("__", "HEXALITH", "_TENANT_A_PASSWORD__");
+        LocalAuthenticationCredentials credentials = CreateCredentials() with
+        {
+            AdminPassword = placeholder,
+        };
+
+        try
+        {
+            InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+                KeycloakRealmTemplate.Render(
+                    GetRealmSourceDirectory(),
+                    credentials,
+                    temporaryRoot: temporaryRoot));
+
+            exception.Message.ShouldContain("unknown inert placeholder", Case.Insensitive);
+            Directory.Exists(temporaryRoot).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
     [Fact]
     public void Render_WhenTemporaryRootIsAReparsePoint_RejectsItWithoutMutatingTheTarget()
     {
