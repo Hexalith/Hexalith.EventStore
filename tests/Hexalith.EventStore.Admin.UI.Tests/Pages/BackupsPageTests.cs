@@ -871,6 +871,222 @@ public class BackupsPageTests : AdminUITestContext {
         submitBtn.Instance.Disabled.ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData("restore", "Backup 'bk-safe'", "parallel restore stream and never overwrite original event streams", "backup-restore-bk-safe")]
+    [InlineData("import", "Imported event-stream content", "currently deferred stream-import path", "backup-import-button")]
+    public async Task DestructiveDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
+        string action,
+        string expectedTarget,
+        string impactFragment,
+        string expectedFocusId) {
+        SetupJobs([
+            CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true),
+        ]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("bk-safe"), TimeSpan.FromSeconds(5));
+
+        string selector = action == "restore" ? "#backup-restore-bk-safe" : "#backup-import-button";
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+
+        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe(expectedTarget);
+        cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain(impactFragment);
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Admin");
+
+        IRenderedComponent<FluentButton> cancel = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == "Cancel");
+        await cancel.InvokeAsync(cancel.Instance.OnClick.InvokeAsync);
+
+        _ = _mockBackupApi.DidNotReceive().TriggerRestoreAsync(
+            Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        _ = _mockBackupApi.DidNotReceive().ImportStreamAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Fact]
+    public async Task ImportDialog_AcceptsProducerCamelCaseSchemaAndRequiresEventsArray()
+    {
+        SetupJobs([]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = CreateBrowserFile(
+            """{"tenantId":"tenant-a","domain":"Counter","aggregateId":"counter-1","events":[]}""");
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            "OnImportFileSelected",
+            new Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs([file])));
+        cut.Render();
+
+        cut.Markup.ShouldContain("Tenant: tenant-a");
+        cut.Markup.ShouldContain("Events: 0");
+        GetPrivateField<string>(cut.Instance, "_importTenantId").ShouldBe("tenant-a");
+        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("Backup data for tenant 'tenant-a'");
+        cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain("currently deferred stream-import path");
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Admin");
+    }
+
+    [Theory]
+    [InlineData("{\"tenantId\":\"tenant-a\",\"domain\":\"Counter\",\"aggregateId\":\"counter-1\"}")]
+    [InlineData("{\"tenantId\":\"tenant-a\",\"domain\":\"Counter\",\"aggregateId\":\"counter-1\",\"events\":{}}")]
+    public async Task ImportDialog_InvalidEventsClosesBeforeRestoringFocusAndPerformsNoMutation(string content)
+    {
+        SetupJobs([]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = CreateBrowserFile(content);
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            "OnImportFileSelected",
+            new Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs([file])));
+
+        cut.Markup.ShouldNotContain("Select a previously exported JSON file");
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message.ShouldBe(
+            "Invalid export file format. Expected JSON with tenantId, domain, aggregateId, and an events array.");
+        _ = _mockBackupApi.DidNotReceive().ImportStreamAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-import-button");
+    }
+
+    [Fact]
+    public async Task ImportDialog_FileReadFailureUsesFixedCopyClosesAndRestoresFocus()
+    {
+        SetupJobs([]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = Substitute.For<Microsoft.AspNetCore.Components.Forms.IBrowserFile>();
+        _ = file.OpenReadStream(Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new IOException("bearer secret-value at redis://private"));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            "OnImportFileSelected",
+            new Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs([file])));
+
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe("Unable to read the selected import file.");
+        message.ShouldNotContain("secret-value");
+        cut.Markup.ShouldNotContain("Select a previously exported JSON file");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-import-button");
+    }
+
+    [Fact]
+    public async Task RestoreDialog_LocalValidationPerformsNoWorkUsesSafeCopyAndRestoresInitiator() {
+        SetupJobs([
+            CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true),
+        ]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-restore-bk-safe"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-restore-bk-safe").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_restorePointInTime", "not-an-iso-date bearer secret-value");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRestoreConfirm"));
+
+        _ = _mockBackupApi.DidNotReceive().TriggerRestoreAsync(
+            Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe("Invalid date format. Use ISO 8601 (e.g. 2026-03-20T14:30:00Z).");
+        message.ShouldNotContain("secret-value");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-restore-bk-safe");
+    }
+
+    [Fact]
+    public async Task ImportDialog_ForbiddenDoesNotExposeDetailsOrClaimCompletionAndRestoresInitiator() {
+        SetupJobs([]);
+        _ = _mockBackupApi.ImportStreamAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new ForbiddenAccessException("hidden stream exists; bearer secret-value")));
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_importTenantId", "tenant-a");
+        SetPrivateField(cut.Instance, "_importContent", "{\"safe\":true}");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnImportConfirm"));
+
+        _ = await _mockBackupApi.Received(1).ImportStreamAsync(
+            "tenant-a", "{\"safe\":true}", Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldNotContain("hidden stream");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-import-button");
+    }
+
+    [Fact]
+    public async Task RestoreDialog_ForbiddenUsesFixedCopyClosesAndRestoresExactInitiator() {
+        SetupJobs([CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true)]);
+        _ = _mockBackupApi.TriggerRestoreAsync(
+                Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new ForbiddenAccessException("hidden backup exists at redis://private; bearer secret-value")));
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-restore-bk-safe"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-restore-bk-safe").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRestoreConfirm"));
+
+        _ = await _mockBackupApi.Received(1).TriggerRestoreAsync(
+            "bk-safe", null, false, Arg.Any<CancellationToken>());
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldNotContain("hidden backup");
+        message.ShouldNotContain("secret-value");
+        cut.FindAll("fluent-dialog[aria-label='Restore from Backup']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-restore-bk-safe");
+    }
+
+    [Theory]
+    [InlineData("restore", "Restore request accepted", "backup-restore-bk-safe")]
+    [InlineData("import", "Import request accepted", "backup-import-button")]
+    public async Task AsyncOperationSuccess_UsesAcceptedNotCompletedWording(
+        string action,
+        string acceptedFragment,
+        string buttonId) {
+        SetupJobs([
+            CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true),
+        ]);
+        _ = _mockBackupApi.TriggerRestoreAsync(
+                Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "restore-op", "Accepted", null));
+        _ = _mockBackupApi.ImportStreamAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "import-op", "Accepted", null));
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find($"#{buttonId}"), TimeSpan.FromSeconds(5));
+        await cut.Find($"#{buttonId}").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        if (action == "restore") {
+            await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRestoreConfirm"));
+        }
+        else {
+            SetPrivateField(cut.Instance, "_importTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_importContent", "{\"safe\":true}");
+            await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnImportConfirm"));
+        }
+
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldContain(acceptedFragment);
+        message.ShouldNotContain("completed", Case.Insensitive);
+        message.ShouldNotContain("successfully", Case.Insensitive);
+    }
+
     // ===== Helpers =====
 
     private void SetupJobs(IReadOnlyList<BackupJob> jobs) => _ = _mockBackupApi.GetBackupJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -899,6 +1115,31 @@ public class BackupsPageTests : AdminUITestContext {
         => typeof(Backups)
             .GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .SetValue(instance, value);
+
+    private static async Task InvokePrivateAsync(Backups instance, string methodName, params object?[]? args) {
+        System.Reflection.MethodInfo method = typeof(Backups).GetMethod(
+            methodName,
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?? throw new InvalidOperationException($"Method '{methodName}' not found.");
+        await ((Task)method.Invoke(instance, args ?? [])!).ConfigureAwait(false);
+    }
+
+    private static Microsoft.AspNetCore.Components.Forms.IBrowserFile CreateBrowserFile(string content)
+    {
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = Substitute.For<Microsoft.AspNetCore.Components.Forms.IBrowserFile>();
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        file.Name.Returns("export.json");
+        file.Size.Returns(bytes.Length);
+        _ = file.OpenReadStream(Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new MemoryStream(bytes, writable: false));
+        return file;
+    }
+
+    private static T GetPrivateField<T>(object instance, string fieldName)
+        => (T)instance.GetType().GetField(
+            fieldName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(instance)!;
 
     private void SetupReadOnlyUser() {
         // Override auth state with ReadOnly user

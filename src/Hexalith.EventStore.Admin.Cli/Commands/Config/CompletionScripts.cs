@@ -68,11 +68,11 @@ public static class CompletionScripts {
         _ = sb.AppendLine("        projection)");
         _ = sb.AppendLine("            COMPREPLY=( $(compgen -W \"list status pause resume reset\" -- \"${cur}\") );;");
         _ = sb.AppendLine("        tenant)");
-        _ = sb.AppendLine("            COMPREPLY=( $(compgen -W \"list detail quotas users compare verify\" -- \"${cur}\") );;");
+        _ = sb.AppendLine("            COMPREPLY=( $(compgen -W \"list detail users verify\" -- \"${cur}\") );;");
         _ = sb.AppendLine("        snapshot)");
         _ = sb.AppendLine("            COMPREPLY=( $(compgen -W \"create policies set-policy delete-policy\" -- \"${cur}\") );;");
         _ = sb.AppendLine("        backup)");
-        _ = sb.AppendLine("            COMPREPLY=( $(compgen -W \"list trigger restore validate export-stream import-stream\" -- \"${cur}\") );;");
+        _ = sb.AppendLine("            COMPREPLY=( $(compgen -W \"create restore list\" -- \"${cur}\") );;");
         _ = sb.AppendLine("    esac");
         _ = sb.AppendLine("}");
         _ = sb.AppendLine();
@@ -115,9 +115,9 @@ public static class CompletionScripts {
         _ = sb.AppendLine("                health) compadd dapr;;");
         _ = sb.AppendLine("                stream) compadd list events event state diff causation;;");
         _ = sb.AppendLine("                projection) compadd list status pause resume reset;;");
-        _ = sb.AppendLine("                tenant) compadd list detail quotas users compare verify;;");
+        _ = sb.AppendLine("                tenant) compadd list detail users verify;;");
         _ = sb.AppendLine("                snapshot) compadd create policies set-policy delete-policy;;");
-        _ = sb.AppendLine("                backup) compadd list trigger restore validate export-stream import-stream;;");
+        _ = sb.AppendLine("                backup) compadd create restore list;;");
         _ = sb.AppendLine("            esac");
         _ = sb.AppendLine("            ;;");
         _ = sb.AppendLine("    esac");
@@ -176,9 +176,9 @@ public static class CompletionScripts {
         _ = sb.AppendLine("        'health' { 'dapr' }");
         _ = sb.AppendLine("        'stream' { 'list', 'events', 'event', 'state', 'diff', 'causation' }");
         _ = sb.AppendLine("        'projection' { 'list', 'status', 'pause', 'resume', 'reset' }");
-        _ = sb.AppendLine("        'tenant' { 'list', 'detail', 'quotas', 'users', 'compare', 'verify' }");
+        _ = sb.AppendLine("        'tenant' { 'list', 'detail', 'users', 'verify' }");
         _ = sb.AppendLine("        'snapshot' { 'create', 'policies', 'set-policy', 'delete-policy' }");
-        _ = sb.AppendLine("        'backup' { 'list', 'trigger', 'restore', 'validate', 'export-stream', 'import-stream' }");
+        _ = sb.AppendLine("        'backup' { 'create', 'restore', 'list' }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    $completions | Where-Object { $_ -like \"$wordToComplete*\" } |");
@@ -246,13 +246,13 @@ public static class CompletionScripts {
         _ = sb.AppendLine("complete -c eventstore-admin -n '__fish_seen_subcommand_from projection; and not __fish_seen_subcommand_from list status pause resume reset' -a 'list status pause resume reset'");
         _ = sb.AppendLine();
         _ = sb.AppendLine("# Tenant subcommands");
-        _ = sb.AppendLine("complete -c eventstore-admin -n '__fish_seen_subcommand_from tenant; and not __fish_seen_subcommand_from list detail quotas users compare verify' -a 'list detail quotas users compare verify'");
+        _ = sb.AppendLine("complete -c eventstore-admin -n '__fish_seen_subcommand_from tenant; and not __fish_seen_subcommand_from list detail users verify' -a 'list detail users verify'");
         _ = sb.AppendLine();
         _ = sb.AppendLine("# Snapshot subcommands");
         _ = sb.AppendLine("complete -c eventstore-admin -n '__fish_seen_subcommand_from snapshot; and not __fish_seen_subcommand_from create policies set-policy delete-policy' -a 'create policies set-policy delete-policy'");
         _ = sb.AppendLine();
         _ = sb.AppendLine("# Backup subcommands");
-        _ = sb.AppendLine("complete -c eventstore-admin -n '__fish_seen_subcommand_from backup; and not __fish_seen_subcommand_from list trigger restore validate export-stream import-stream' -a 'list trigger restore validate export-stream import-stream'");
+        _ = sb.AppendLine("complete -c eventstore-admin -n '__fish_seen_subcommand_from backup; and not __fish_seen_subcommand_from create restore list' -a 'create restore list'");
         return sb.ToString();
     }
 }

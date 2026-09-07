@@ -11,6 +11,8 @@
 @inject AdminDeadLetterApiClient DeadLetterApi
 @inject NavigationManager NavigationManager
 @inject INotificationService ToastService
+@inject IStringLocalizer<AdminResources> Text
+@inject InitiatorFocusService FocusService
 
 <PageTitle>Dead Letters - Hexalith EventStore</PageTitle>
 
@@ -127,16 +129,19 @@
                 <strong>@_selectedIds.Count</strong> <span>selected</span>
                 <AuthorizedView MinimumRole="AdminRole.Operator">
                     <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                                  id="dead-letter-retry-selected"
                                   OnClick="@(() => OpenBulkDialog("retry"))"
                                   aria-label="Retry selected entries">
                         Retry Selected
                     </FluentButton>
                     <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                  id="dead-letter-skip-selected"
                                   OnClick="@(() => OpenBulkDialog("skip"))"
                                   aria-label="Skip selected entries">
                         Skip Selected
                     </FluentButton>
                     <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                  id="dead-letter-archive-selected"
                                   OnClick="@(() => OpenBulkDialog("archive"))"
                                   aria-label="Archive selected entries">
                         Archive Selected
@@ -264,6 +269,9 @@
                 <h3 style="margin: 0;">Retry Dead Letters</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["DeadLetterTarget", _selectedIds.Count, SelectedTenantCount]"
+                                   Impact="@Text["DeadLetterRetryImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <p>Retry @_selectedIds.Count dead-letter command(s)? These commands will be resubmitted for processing.</p>
                 @if (_isOperating)
                 {
@@ -314,6 +322,9 @@
                 <h3 style="margin: 0;">Skip Dead Letters</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["DeadLetterTarget", _selectedIds.Count, SelectedTenantCount]"
+                                   Impact="@Text["DeadLetterSkipImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <p>Skip @_selectedIds.Count dead-letter command(s)? These commands will be <strong>permanently</strong> removed from the dead-letter queue and will NOT be retried.</p>
                 @if (_isOperating)
                 {
@@ -364,6 +375,9 @@
                 <h3 style="margin: 0;">Archive Dead Letters</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["DeadLetterTarget", _selectedIds.Count, SelectedTenantCount]"
+                                   Impact="@Text["DeadLetterArchiveImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <p>Archive @_selectedIds.Count dead-letter command(s)? These commands will be moved to the archive. They can be reviewed later but will no longer appear in the active queue.</p>
                 @if (_isOperating)
                 {
@@ -442,11 +456,18 @@
     private int _bulkActionAttempt;
     private BulkActionFailureState? _bulkActionFailure;
     private CancellationTokenSource? _bulkActionCts;
+    private string? _bulkInitiatorId;
 
     private bool _isAnyDialogOpen => _showRetryDialog || _showSkipDialog || _showArchiveDialog;
 
     // Computed properties
     private int TenantsAffected => _allEntries.Select(e => e.TenantId).Distinct().Count();
+
+    private int SelectedTenantCount => _allEntries
+        .Where(entry => _selectedIds.Contains(entry.MessageId))
+        .Select(entry => entry.TenantId)
+        .Distinct(StringComparer.Ordinal)
+        .Count();
 
     private string OldestEntryText => _allEntries.Count == 0
         ? "None"
@@ -830,16 +851,19 @@
         _bulkActionFailure = null;
         if (string.Equals(action, "retry", StringComparison.OrdinalIgnoreCase))
         {
+            _bulkInitiatorId = "dead-letter-retry-selected";
             _showRetryDialog = true;
             _pendingShowRetry = true;
         }
         else if (string.Equals(action, "skip", StringComparison.OrdinalIgnoreCase))
         {
+            _bulkInitiatorId = "dead-letter-skip-selected";
             _showSkipDialog = true;
             _pendingShowSkip = true;
         }
         else if (string.Equals(action, "archive", StringComparison.OrdinalIgnoreCase))
         {
+            _bulkInitiatorId = "dead-letter-archive-selected";
             _showArchiveDialog = true;
             _pendingShowArchive = true;
         }
@@ -850,6 +874,7 @@
         if (_isOperating) { return; }
         if (_retryDialog is not null) { await _retryDialog.HideAsync().ConfigureAwait(false); }
         _showRetryDialog = false;
+        await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task CloseSkipDialogAsync()
@@ -857,6 +882,7 @@
         if (_isOperating) { return; }
         if (_skipDialog is not null) { await _skipDialog.HideAsync().ConfigureAwait(false); }
         _showSkipDialog = false;
+        await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task CloseArchiveDialogAsync()
@@ -864,6 +890,7 @@
         if (_isOperating) { return; }
         if (_archiveDialog is not null) { await _archiveDialog.HideAsync().ConfigureAwait(false); }
         _showArchiveDialog = false;
+        await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnRetryConfirm() =>
@@ -904,6 +931,7 @@
 
         int successCount = 0;
         int failCount = 0;
+        bool denied = false;
         List<BulkActionFailureItem> failures = [];
 
         try
@@ -929,6 +957,13 @@
                         failCount += group.Count();
                         failures.Add(BulkActionFailureItem.FromResult(actionName, group.Key, group.Select(e => e.MessageId), result));
                     }
+                }
+                catch (ForbiddenAccessException ex)
+                {
+                    denied = true;
+                    failCount += group.Count();
+                    failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
+                    break;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -959,6 +994,10 @@
                 _selectedIds = [];
                 await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync();
+                if (denied)
+                {
+                    await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
+                }
             }
             else if (successCount > 0)
             {
@@ -973,6 +1012,10 @@
                     $"{pastTense} {successCount} commands. {failCount} failed: {failureState.Message}. {failedIds}");
                 await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync();
+                if (denied)
+                {
+                    await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
+                }
             }
             else
             {
@@ -984,6 +1027,11 @@
                 }
 
                 await ToastService.ShowErrorAsync($"Failed to {actionName} entries: {failureState.Message}");
+                if (denied)
+                {
+                    await CloseAllDialogsAsync().ConfigureAwait(false);
+                    await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -1009,6 +1057,14 @@
         _showSkipDialog = false;
         _showArchiveDialog = false;
         _bulkActionFailure = null;
+    }
+
+    private async Task RestoreBulkInitiatorFocusAsync()
+    {
+        string? focusId = _bulkInitiatorId;
+        _bulkInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     // Helpers

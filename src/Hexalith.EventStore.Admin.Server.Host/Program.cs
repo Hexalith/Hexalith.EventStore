@@ -38,8 +38,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<AdminRequestBodySizeMiddleware>();
 
-// OpenAPI/Swagger UI (gated by configuration)
-if (app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true)) {
+// Admin API discovery is a local-development aid. Configuration cannot expose it in Production.
+if (app.Environment.IsDevelopment()
+    && app.Configuration.GetValue<bool>("EventStore:Admin:OpenApi:Enabled")) {
     _ = app.MapOpenApi();
     _ = app.UseSwaggerUI(options => {
         options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore Admin API v1");

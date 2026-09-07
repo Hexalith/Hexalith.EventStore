@@ -22,7 +22,8 @@ public class BackupWriteToolsTests {
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
         doc.RootElement.GetProperty("action").GetString().ShouldBe("backup-trigger");
         doc.RootElement.GetProperty("description").GetString()!.ShouldContain("acme-corp");
-        doc.RootElement.GetProperty("warning").GetString()!.ShouldContain("backup");
+        doc.RootElement.GetProperty("warning").GetString()!.ShouldContain("currently deferred");
+        doc.RootElement.GetProperty("warning").GetString()!.ShouldContain("does not prove backup execution or completion");
         doc.RootElement.GetProperty("parameters").GetProperty("tenantId").GetString().ShouldBe("acme-corp");
         doc.RootElement.GetProperty("parameters").GetProperty("includeSnapshots").GetBoolean().ShouldBeTrue();
     }

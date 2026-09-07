@@ -11,6 +11,8 @@
 @inject AdminSnapshotApiClient SnapshotApi
 @inject NavigationManager NavigationManager
 @inject INotificationService ToastService
+@inject IStringLocalizer<AdminResources> Text
+@inject InitiatorFocusService FocusService
 
 <PageTitle>Snapshots - Hexalith EventStore</PageTitle>
 
@@ -118,6 +120,7 @@
                 <div @onclick:stopPropagation="true">
                     <AuthorizedView MinimumRole="AdminRole.Operator">
                         <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
+                                      id="@GetDeletePolicyFocusId(context)"
                                       OnClick="@(() => OpenDeleteDialog(context))"
                                       aria-label="@($"Delete policy for {context.AggregateType}")">
                             Delete
@@ -140,6 +143,9 @@
                 <h3 style="margin: 0;">Create Snapshot Policy</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["SnapshotPolicyTarget", _createTenantId ?? string.Empty, _createDomain ?? string.Empty, _createAggregateType ?? string.Empty]"
+                                   Impact="@Text["SnapshotPolicySetImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_createTenantId"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -188,6 +194,9 @@
                 <h3 style="margin: 0;">Edit Snapshot Policy</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["SnapshotPolicyTarget", _editPolicy.TenantId, _editPolicy.Domain, _editPolicy.AggregateType]"
+                                   Impact="@Text["SnapshotPolicySetImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <div style="margin-bottom: 12px;">
                     <span style="font-size: 13px; color: var(--colorNeutralForeground3);">Tenant ID</span>
                     <div class="monospace snapshot-readonly-field">@_editPolicy.TenantId</div>
@@ -236,6 +245,9 @@
                 <h3 style="margin: 0;">Delete Snapshot Policy</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["SnapshotPolicyTarget", _deletePolicy.TenantId, _deletePolicy.Domain, _deletePolicy.AggregateType]"
+                                   Impact="@Text["SnapshotPolicyDeleteImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <p style="margin: 0;">
                     This will remove the auto-snapshot policy for <strong>@_deletePolicy.AggregateType</strong>
                     in <strong>@_deletePolicy.Domain</strong> (<span class="monospace">@_deletePolicy.TenantId</span>).
@@ -273,6 +285,9 @@
                 <h3 style="margin: 0;">Create Snapshot</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["SnapshotTarget", _snapshotTenantId ?? string.Empty, _snapshotDomain ?? string.Empty, _snapshotAggregateId ?? string.Empty]"
+                                   Impact="@Text["SnapshotCreateImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_snapshotTenantId"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -338,6 +353,7 @@
     private FluentDialog? _deleteDialog;
     private bool _pendingShowDelete;
     private SnapshotPolicy? _deletePolicy;
+    private string? _deletePolicyInitiatorId;
 
     // Create snapshot dialog state
     private bool _showCreateSnapshotDialog;
@@ -516,6 +532,15 @@
         return $"{avg:N0} events";
     }
 
+    private static string GetDeletePolicyFocusId(SnapshotPolicy policy)
+        => $"snapshot-policy-delete-{EncodeFocusSegment(policy.TenantId)}.{EncodeFocusSegment(policy.Domain)}.{EncodeFocusSegment(policy.AggregateType)}";
+
+    private static string EncodeFocusSegment(string value)
+        => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+
     // Create policy dialog
     private void OpenCreateDialog()
     {
@@ -657,6 +682,7 @@
     {
         if (_isAnyDialogOpen) { return; }
         _deletePolicy = policy;
+        _deletePolicyInitiatorId = GetDeletePolicyFocusId(policy);
         _showDeleteDialog = true;
         _pendingShowDelete = true;
     }
@@ -666,6 +692,7 @@
         if (_deleteDialog is not null) { await _deleteDialog.HideAsync().ConfigureAwait(false); }
         _showDeleteDialog = false;
         _deletePolicy = null;
+        await RestoreDeletePolicyFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnDeletePolicyConfirm()
@@ -703,10 +730,12 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
+            await CloseDeleteDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
+            await CloseDeleteDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -717,6 +746,26 @@
             _isOperating = false;
             StateHasChanged();
         }
+    }
+
+    private async Task CloseDeleteDialogAndRestoreFocusAsync()
+    {
+        if (_deleteDialog is not null)
+        {
+            await _deleteDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showDeleteDialog = false;
+        _deletePolicy = null;
+        await RestoreDeletePolicyFocusAsync().ConfigureAwait(false);
+    }
+
+    private async Task RestoreDeletePolicyFocusAsync()
+    {
+        string? focusId = _deletePolicyInitiatorId;
+        _deletePolicyInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     // Create snapshot dialog

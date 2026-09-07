@@ -11,6 +11,8 @@
 @inject AdminTenantApiClient TenantApi
 @inject NavigationManager NavigationManager
 @inject INotificationService ToastService
+@inject IStringLocalizer<AdminResources> Text
+@inject InitiatorFocusService FocusService
 
 <PageTitle>Tenants - Hexalith EventStore</PageTitle>
 
@@ -24,6 +26,7 @@
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Admin">
             <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                          id="tenant-create-button"
                           OnClick="OpenCreateDialog"
                           aria-label="Create tenant">
                 Create Tenant
@@ -127,6 +130,7 @@
                         @if (context.Status == TenantStatusType.Active)
                         {
                             <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                          id="@GetTenantLifecycleFocusId("disable", context.TenantId)"
                                           OnClick="@(() => OpenDisableDialog(context))"
                                           aria-label="Disable tenant">
                                 Disable
@@ -135,6 +139,7 @@
                         else if (context.Status == TenantStatusType.Disabled)
                         {
                             <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                          id="@GetTenantLifecycleFocusId("enable", context.TenantId)"
                                           OnClick="@(() => OpenEnableDialog(context))"
                                           aria-label="Enable tenant">
                                 Enable
@@ -189,11 +194,13 @@
                                 <div @onclick:stopPropagation>
                                     <AuthorizedView MinimumRole="AdminRole.Admin">
                                         <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                                      id="@GetTenantUserFocusId("change-role", context.UserId)"
                                                       OnClick="@(() => OpenChangeRoleDialog(context))"
                                                       aria-label="Change role">
                                             Change Role
                                         </FluentButton>
                                         <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                                      id="@GetTenantUserFocusId("remove", context.UserId)"
                                                       OnClick="@(() => OpenRemoveUserDialog(context))"
                                                       aria-label="Remove user"
                                                       Style="margin-left: 4px;">
@@ -207,6 +214,7 @@
                     <div style="margin-top: 8px;">
                         <AuthorizedView MinimumRole="AdminRole.Admin">
                             <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                          id="@GetTenantUserFocusId("add", string.Empty)"
                                           OnClick="OpenAddUserDialog"
                                           aria-label="Add user">
                                 Add User
@@ -234,6 +242,9 @@
                 <h3 style="margin: 0;">Create Tenant</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["TenantTarget", _createTenantId ?? string.Empty]"
+                                   Impact="@Text["TenantCreateImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentTextInput @bind-Value="_createTenantId"
                                  Immediate="true"
                                  Label="Tenant ID" Required="true"
@@ -287,6 +298,9 @@
                 <h3 style="margin: 0;">Disable Tenant @_lifecycleTarget.TenantId?</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["TenantTarget", _lifecycleTarget.TenantId]"
+                                   Impact="@Text["TenantDisableImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <p>All command processing for this tenant will be suspended. Existing events are preserved.</p>
             </ChildContent>
             <ActionTemplate>
@@ -313,6 +327,9 @@
                 <h3 style="margin: 0;">Enable Tenant @_lifecycleTarget.TenantId?</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["TenantTarget", _lifecycleTarget.TenantId]"
+                                   Impact="@Text["TenantEnableImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <p>Command processing will resume for this tenant.</p>
             </ChildContent>
             <ActionTemplate>
@@ -339,6 +356,9 @@
                 <h3 style="margin: 0;">Add User to @_expandedTenantId</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["TenantUserTarget", _addUserId ?? string.Empty, _expandedTenantId ?? string.Empty]"
+                                   Impact="@Text["TenantAddUserImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentTextInput @bind-Value="_addUserId"
                                  Label="User ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -376,6 +396,9 @@
                 <h3 style="margin: 0;">Remove @_removeUserTarget.UserId?</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["TenantUserTarget", _removeUserTarget.UserId, _expandedTenantId ?? string.Empty]"
+                                   Impact="@Text["TenantRemoveUserImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <p>This will remove <strong>@_removeUserTarget.UserId</strong> from tenant <strong class="monospace">@_expandedTenantId</strong>.</p>
             </ChildContent>
             <ActionTemplate>
@@ -402,6 +425,9 @@
                 <h3 style="margin: 0;">Change Role for @_changeRoleTarget.UserId</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["TenantUserTarget", _changeRoleTarget.UserId, _expandedTenantId ?? string.Empty]"
+                                   Impact="@Text["TenantChangeRoleImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentSelect TOption="string" TValue="string" @bind-Value="_changeRoleNewRole"
                               Label="New Role"
                               Style="width: 100%; margin-bottom: 12px;"
@@ -485,6 +511,7 @@
     private FluentDialog? _changeRoleDialog;
     private TenantUser? _changeRoleTarget;
     private string _changeRoleNewRole = "TenantReader";
+    private string? _initiatorId;
 
     private bool _isAnyDialogOpen =>
         _showCreateDialog || _showDisableDialog || _showEnableDialog
@@ -741,6 +768,12 @@
             _ => (BadgeAppearance.Filled, ""),
         };
 
+    private static string GetTenantLifecycleFocusId(string action, string tenantId)
+        => $"tenant-{action}-{Uri.EscapeDataString(tenantId)}";
+
+    private string GetTenantUserFocusId(string action, string userId)
+        => $"tenant-{action}-{Uri.EscapeDataString(_expandedTenantId ?? string.Empty)}-{Uri.EscapeDataString(userId)}";
+
     // ---- Create Tenant ----
     private void OpenCreateDialog()
     {
@@ -748,6 +781,7 @@
         _createTenantId = string.Empty;
         _createName = string.Empty;
         _createDescription = string.Empty;
+        _initiatorId = "tenant-create-button";
         _showCreateDialog = true;
         _pendingShowCreate = true;
     }
@@ -760,6 +794,7 @@
         }
 
         _showCreateDialog = false;
+        await RestoreInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private bool IsCreateFormValid()
@@ -789,7 +824,7 @@
                 return;
             }
 
-            await ToastService.ShowSuccessAsync($"Tenant {_createTenantId} created successfully.");
+            await ToastService.ShowSuccessAsync($"Create request accepted for tenant {_createTenantId}; refresh to confirm completion.").ConfigureAwait(false);
             if (_createDialog is not null)
             {
                 await _createDialog.HideAsync().ConfigureAwait(false);
@@ -809,10 +844,17 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
+            await CloseCreateDialogAsync().ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            await CloseCreateDialogAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Failed to create tenant: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync("Failed to create tenant.").ConfigureAwait(false);
         }
         finally
         {
@@ -826,6 +868,7 @@
     {
         if (_isAnyDialogOpen) { return; }
         _lifecycleTarget = tenant;
+        _initiatorId = GetTenantLifecycleFocusId("disable", tenant.TenantId);
         _showDisableDialog = true;
         _pendingShowDisable = true;
     }
@@ -834,6 +877,7 @@
     {
         if (_isAnyDialogOpen) { return; }
         _lifecycleTarget = tenant;
+        _initiatorId = GetTenantLifecycleFocusId("enable", tenant.TenantId);
         _showEnableDialog = true;
         _pendingShowEnable = true;
     }
@@ -853,6 +897,7 @@
         _showDisableDialog = false;
         _showEnableDialog = false;
         _lifecycleTarget = null;
+        await RestoreInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnDisableConfirm()
@@ -900,9 +945,20 @@
         {
             await ToastService.ShowErrorAsync(ex.Message);
         }
+        catch (UnauthorizedAccessException)
+        {
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+            await CloseLifecycleDialogAsync().ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            await CloseLifecycleDialogAsync().ConfigureAwait(false);
+        }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"{failMsg}: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync(failMsg).ConfigureAwait(false);
         }
         finally
         {
@@ -917,6 +973,7 @@
         if (_isAnyDialogOpen) { return; }
         _addUserId = string.Empty;
         _addUserRole = "TenantReader";
+        _initiatorId = GetTenantUserFocusId("add", string.Empty);
         _showAddUserDialog = true;
         _pendingShowAddUser = true;
     }
@@ -929,6 +986,7 @@
         }
 
         _showAddUserDialog = false;
+        await RestoreInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnAddUserConfirm()
@@ -946,7 +1004,7 @@
                 _expandedTenantId, _addUserId!.Trim(), _addUserRole, _operationCts.Token);
             if (result?.Success == true)
             {
-                await ToastService.ShowSuccessAsync($"User {_addUserId} added.");
+                await ToastService.ShowSuccessAsync($"Add-user request accepted for {_addUserId}; refresh to confirm completion.").ConfigureAwait(false);
                 if (_addUserDialog is not null)
                 {
                     await _addUserDialog.HideAsync().ConfigureAwait(false);
@@ -960,9 +1018,20 @@
                 await ToastService.ShowErrorAsync(result?.Message ?? "Failed to add user.");
             }
         }
+        catch (UnauthorizedAccessException)
+        {
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+            await CloseAddUserDialogAsync().ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            await CloseAddUserDialogAsync().ConfigureAwait(false);
+        }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Failed to add user: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync("Failed to add user.").ConfigureAwait(false);
         }
         finally
         {
@@ -975,6 +1044,7 @@
     {
         if (_isAnyDialogOpen) { return; }
         _removeUserTarget = user;
+        _initiatorId = GetTenantUserFocusId("remove", user.UserId);
         _showRemoveUserDialog = true;
         _pendingShowRemoveUser = true;
     }
@@ -987,6 +1057,7 @@
         }
 
         _showRemoveUserDialog = false;
+        await RestoreInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnRemoveUserConfirm()
@@ -1004,7 +1075,7 @@
                 _expandedTenantId, _removeUserTarget.UserId, _operationCts.Token);
             if (result?.Success == true)
             {
-                await ToastService.ShowSuccessAsync($"User {_removeUserTarget.UserId} removed.");
+                await ToastService.ShowSuccessAsync($"Remove-user request accepted for {_removeUserTarget.UserId}; refresh to confirm completion.").ConfigureAwait(false);
                 if (_removeUserDialog is not null)
                 {
                     await _removeUserDialog.HideAsync().ConfigureAwait(false);
@@ -1019,9 +1090,20 @@
                 await ToastService.ShowErrorAsync(result?.Message ?? "Failed to remove user.");
             }
         }
+        catch (UnauthorizedAccessException)
+        {
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+            await CloseRemoveUserDialogAsync().ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            await CloseRemoveUserDialogAsync().ConfigureAwait(false);
+        }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Failed to remove user: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync("Failed to remove user.").ConfigureAwait(false);
         }
         finally
         {
@@ -1035,6 +1117,7 @@
         if (_isAnyDialogOpen) { return; }
         _changeRoleTarget = user;
         _changeRoleNewRole = user.Role;
+        _initiatorId = GetTenantUserFocusId("change-role", user.UserId);
         _showChangeRoleDialog = true;
         _pendingShowChangeRole = true;
     }
@@ -1047,6 +1130,7 @@
         }
 
         _showChangeRoleDialog = false;
+        await RestoreInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnChangeRoleConfirm()
@@ -1064,7 +1148,7 @@
                 _expandedTenantId, _changeRoleTarget.UserId, _changeRoleNewRole, _operationCts.Token);
             if (result?.Success == true)
             {
-                await ToastService.ShowSuccessAsync($"Role changed for {_changeRoleTarget.UserId}.");
+                await ToastService.ShowSuccessAsync($"Change-role request accepted for {_changeRoleTarget.UserId}; refresh to confirm completion.").ConfigureAwait(false);
                 if (_changeRoleDialog is not null)
                 {
                     await _changeRoleDialog.HideAsync().ConfigureAwait(false);
@@ -1079,9 +1163,20 @@
                 await ToastService.ShowErrorAsync(result?.Message ?? "Failed to change role.");
             }
         }
+        catch (UnauthorizedAccessException)
+        {
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+            await CloseChangeRoleDialogAsync().ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            await CloseChangeRoleDialogAsync().ConfigureAwait(false);
+        }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Failed to change role: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync("Failed to change role.").ConfigureAwait(false);
         }
         finally
         {
@@ -1102,6 +1197,14 @@
             // Ignore — keeps existing data
         }
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RestoreInitiatorFocusAsync()
+    {
+        string? focusId = _initiatorId;
+        _initiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     // ---- Cleanup ----

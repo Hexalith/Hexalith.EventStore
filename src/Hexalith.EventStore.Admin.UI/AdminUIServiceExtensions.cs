@@ -22,6 +22,7 @@ public static class AdminUIServiceExtensions {
     public static WebApplicationBuilder AddAdminUI(this WebApplicationBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
         _ = builder.Services.AddProblemDetails();
+        _ = builder.Services.AddLocalization();
 
         // Blazor Server with interactive server-side rendering
         _ = builder.Services.AddRazorComponents()
@@ -45,6 +46,7 @@ public static class AdminUIServiceExtensions {
         // Admin user context for role-based UI rendering
         _ = builder.Services.AddScoped<AdminUserContext>();
         _ = builder.Services.AddScoped<ThemeState>();
+        _ = builder.Services.AddScoped<InitiatorFocusService>();
 
         // Admin API clients
         _ = builder.Services.AddScoped<AdminStreamApiClient>();

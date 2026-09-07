@@ -47,17 +47,18 @@ Command groups (System.CommandLine):
 
 | Group | Subcommands |
 |-------|-------------|
-| `health` | `status`, `dapr` |
+| `health` | default health report, `dapr` |
 | `stream` | `list`, `events`, `state`, `diff`, `event`, `causation` |
 | `projection` | `list`, `status`, `pause`, `resume`, `reset` |
-| `tenant` | `list`, `detail`, `users` |
+| `tenant` | `list`, `detail`, `users`, `verify` |
 | `snapshot` | `policies`, `create`, `set-policy`, `delete-policy` |
-| `backup` | `list`, `trigger`, `validate`, `restore`, `export-stream`, `import-stream` |
-| `config` | `list`, `current`, `use`, `add`, `remove`, `completion` |
+| `backup` | `create`, `restore`, `list` — registered but unavailable in this release; each returns `ExitCodes.Error` without reporting success |
+| `config` | `current`, `use`, `completion`, plus `profile add/list/show/remove` |
 
 Output: `IOutputFormatter` (`JsonOutputFormatter`, `TableOutputFormatter`, `SafeOutputValueFormatter`
 with credential redaction). Profiles persisted to `.eventstore-admin-profiles.json`. Exit codes:
-0 success, 1 error, 2 authz failure. Distributed as a **NuGet tool**.
+0 success, 1 degraded health, 2 error. Distributed as a **NuGet tool**. Backup implementation
+classes not registered by `BackupCommand.Create` are dormant source, not callable CLI commands.
 
 ## Admin MCP (`src/Hexalith.EventStore.Admin.Mcp`) — AI-callable tools
 
@@ -68,8 +69,12 @@ Stdio JSON-RPC 2.0. Env: `EVENTSTORE_ADMIN_URL`, `EVENTSTORE_ADMIN_TOKEN`. Tools
   `causation-chain`, `projection-list`, `projection-detail`, `health-status`, `health-dapr`, `ping`,
   `consistency-list`, `consistency-detail`, `storage-overview`, `tenant-list`, `tenant-detail`,
   `tenant-users`, `types-list`.
-- **Write:** `projection-pause/resume/reset/replay`, `consistency-trigger/cancel`, `backup-trigger`,
-  `backup-export-stream`, `backup-import-stream`.
+- **Write (exact callable set):** `projection-pause`, `projection-resume`, `projection-reset`,
+  `projection-replay`, `consistency-trigger`, `consistency-cancel`, `backup-trigger`. Every write
+  requires `confirm=true` before it sends an Admin API request. An omitted or false confirmation
+  returns a non-mutating preview with the target, impact, and required permission; it sends no
+  request. Projection writes and consistency trigger require Operator permission; consistency
+  cancel and backup trigger require Admin permission.
 - **Session context:** `session-set-context`, `session-get-context`, `session-clear-context`
   (`InvestigationSession` singleton keeps agent investigation scope across calls).
 

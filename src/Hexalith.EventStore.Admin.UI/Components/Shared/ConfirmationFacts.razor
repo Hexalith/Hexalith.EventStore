@@ -1,0 +1,36 @@
+@namespace Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Resources
+@using Microsoft.Extensions.Localization
+
+@inject IStringLocalizer<AdminResources> Text
+
+<FluentCard role="note" aria-label="@Text["ConfirmationFactsLabel"]" Style="padding: 12px; margin-bottom: 12px;">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+        <FluentText Weight="TextWeight.Semibold">@Text["ConfirmationTargetLabel"]</FluentText>
+        <FluentText data-confirmation-fact="target">@Target</FluentText>
+        <FluentText Weight="TextWeight.Semibold">@Text["ConfirmationImpactLabel"]</FluentText>
+        <FluentText data-confirmation-fact="impact">@Impact</FluentText>
+        <FluentText Weight="TextWeight.Semibold">@Text["ConfirmationPermissionLabel"]</FluentText>
+        <FluentText data-confirmation-fact="permission">@RequiredPermission</FluentText>
+    </FluentStack>
+</FluentCard>
+
+@code {
+    /// <summary>
+    /// Gets or sets the support-safe target description.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Target { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the bounded impact description.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Impact { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the exact authorization level required to execute the action.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string RequiredPermission { get; set; } = string.Empty;
+}

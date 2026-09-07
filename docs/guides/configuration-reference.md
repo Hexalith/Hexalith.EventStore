@@ -378,6 +378,24 @@ Configuration section: `EventStore:OpenApi`
 }
 ```
 
+#### Admin API OpenAPI
+
+The separately hosted Admin API uses `EventStore:Admin:OpenApi:Enabled`. Its base configuration
+defaults to `false`, while `appsettings.Development.json` explicitly sets it to `true`. The Admin
+host maps `/openapi/v1.json` and `/swagger` only when both conditions are true: the hosting
+environment is `Development` and this setting is enabled. The setting is ignored in every other
+environment, so Production never exposes Admin discovery routes even if configuration attempts to
+enable them. This Admin-host gate does not change the public Command API setting above.
+
+When validating route absence, use anonymous discovery probes only; do not attach bearer tokens or
+other credentials to `/openapi/v1.json` or `/swagger` checks.
+
+Configuration section: `EventStore:Admin:OpenApi`
+
+| Setting | Type | Base default | Development | Description |
+|---------|------|--------------|-------------|-------------|
+| `Enabled` | bool | `false` | `true` | Enables Admin OpenAPI/Swagger only in the `Development` environment |
+
 ## Authentication and JWT
 
 Authentication settings configure how the Command API validates incoming JWT tokens. You must provide either an OIDC `Authority` (for production) or a `SigningKey` (for development and testing). Both `Issuer` and `Audience` are always required.

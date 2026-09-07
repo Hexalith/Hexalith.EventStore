@@ -12,7 +12,7 @@ public class StubCommandsTests {
     [InlineData("tenant", "List tenants, view quotas, and verify isolation")]
     [InlineData("snapshot", "Manage aggregate snapshots")]
     [InlineData("backup", "Trigger and manage backups")]
-    public async Task StubCommands_PrintNotImplemented_AndReturnZero(string name, string description) {
+    public async Task StubCommands_ReportUnavailable_AndReturnError(string name, string description) {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -29,8 +29,10 @@ public class StubCommandsTests {
             int exitCode = await root.Parse([name]).InvokeAsync(null, ct);
 
             // Assert
-            exitCode.ShouldBe(ExitCodes.Success);
-            stderr.ToString().ShouldContain("Not yet implemented");
+            exitCode.ShouldBe(ExitCodes.Error);
+            stderr.ToString().ShouldContain("unavailable", Case.Insensitive);
+            stderr.ToString().ShouldNotContain("success", Case.Insensitive);
+            stderr.ToString().ShouldNotContain("completed", Case.Insensitive);
         }
         finally {
             Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });

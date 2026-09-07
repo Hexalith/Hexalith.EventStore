@@ -101,21 +101,35 @@ public class CompletionScriptsTests {
         output.ShouldContain("HOME");
     }
 
-    // === Backup subcommands ===
+    // === Command-specific subcommands ===
 
     [Theory]
-    [InlineData("Bash")]
-    [InlineData("Zsh")]
-    [InlineData("PowerShell")]
-    [InlineData("Fish")]
-    public void AllShells_ContainBackupSubcommands(string shell) {
+    [InlineData(
+        "Bash",
+        "        backup)\n            COMPREPLY=( $(compgen -W \"create restore list\" -- \"${cur}\") );;",
+        "        tenant)\n            COMPREPLY=( $(compgen -W \"list detail users verify\" -- \"${cur}\") );;")]
+    [InlineData(
+        "Zsh",
+        "                backup) compadd create restore list;;",
+        "                tenant) compadd list detail users verify;;")]
+    [InlineData(
+        "PowerShell",
+        "        'backup' { 'create', 'restore', 'list' }",
+        "        'tenant' { 'list', 'detail', 'users', 'verify' }")]
+    [InlineData(
+        "Fish",
+        "complete -c eventstore-admin -n '__fish_seen_subcommand_from backup; and not __fish_seen_subcommand_from create restore list' -a 'create restore list'",
+        "complete -c eventstore-admin -n '__fish_seen_subcommand_from tenant; and not __fish_seen_subcommand_from list detail users verify' -a 'list detail users verify'")]
+    public void AllShells_PinBackupAndTenantInventoriesToTheirCommandScopes(
+        string shell,
+        string expectedBackupStanza,
+        string expectedTenantStanza) {
         string output = GenerateForShell(shell);
 
-        output.ShouldContain("trigger");
-        output.ShouldContain("restore");
-        output.ShouldContain("validate");
-        output.ShouldContain("export-stream");
-        output.ShouldContain("import-stream");
+        CountOccurrences(output, expectedBackupStanza).ShouldBe(1);
+        CountOccurrences(output, expectedTenantStanza).ShouldBe(1);
+        output.ShouldNotContain("export-stream");
+        output.ShouldNotContain("import-stream");
     }
 
     // === Helper ===
@@ -127,4 +141,7 @@ public class CompletionScriptsTests {
         "Fish" => CompletionScripts.GenerateFish(),
         _ => throw new ArgumentException($"Unknown shell: {shell}"),
     };
+
+    private static int CountOccurrences(string value, string expected)
+        => value.Split(expected, StringSplitOptions.None).Length - 1;
 }

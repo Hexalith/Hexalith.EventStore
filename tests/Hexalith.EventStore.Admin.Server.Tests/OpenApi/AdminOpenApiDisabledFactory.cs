@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
@@ -52,7 +53,8 @@ public sealed class AdminOpenApiDisabledFactory : IAsyncLifetime {
         _ = _app.UseAuthorization();
 
         // Gated: only map OpenAPI/Swagger if enabled (same logic as real host)
-        if (_app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true)) {
+        if (_app.Environment.IsDevelopment()
+            && _app.Configuration.GetValue<bool>("EventStore:Admin:OpenApi:Enabled")) {
             _ = _app.MapOpenApi();
             _ = _app.UseSwaggerUI(options => {
                 options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore Admin API v1");

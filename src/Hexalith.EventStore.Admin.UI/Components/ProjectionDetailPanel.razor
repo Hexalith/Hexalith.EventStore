@@ -8,6 +8,8 @@
 @inject AdminProjectionApiClient ApiClient
 @inject INotificationService ToastService
 @inject IDialogService DialogService
+@inject IStringLocalizer<AdminResources> Text
+@inject InitiatorFocusService FocusService
 
 <FluentCard style="padding: 16px;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
@@ -102,6 +104,7 @@
                 }
 
                 <FluentButton Appearance="ButtonAppearance.Outline"
+                              id="projection-reset-button"
                               OnClick="ShowResetDialog"
                               Disabled="@_isOperating"
                               aria-label="@($"Reset projection {_detail.Name}")">
@@ -109,6 +112,7 @@
                 </FluentButton>
 
                 <FluentButton Appearance="ButtonAppearance.Outline"
+                              id="projection-replay-button"
                               OnClick="ShowReplayDialog"
                               Disabled="@_isOperating"
                               aria-label="@($"Replay projection {_detail.Name}")">
@@ -192,6 +196,9 @@
                 <h3 style="margin: 0;">Confirm Reset</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["ProjectionTarget", _detail.Name, TenantId]"
+                                   Impact="@Text["ProjectionResetImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <p style="margin: 0 0 12px 0;">This will rebuild projection '@_detail.Name' from the specified position. This is an async operation.</p>
                 <NumericInput TValue="long" @bind-Value="_resetFromPosition"
                               Label="From Position (leave empty to reset from beginning)"
@@ -233,6 +240,9 @@
                 <h3 style="margin: 0;">Confirm Replay</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["ProjectionTarget", _detail.Name, TenantId]"
+                                   Impact="@Text["ProjectionReplayImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <p style="margin: 0 0 12px 0;">This will replay events between the specified positions for projection '@_detail.Name'.</p>
                 <NumericInput TValue="long" @bind-Value="_replayFromPosition"
                               Label="From Position (required)"
@@ -296,6 +306,7 @@
     private bool _pendingShowReset;
     private FluentDialog? _resetDialog;
     private long? _resetFromPosition;
+    private string? _resetInitiatorId;
 
     // P1: Replay dialog state
     private bool _showReplayDialog;
@@ -304,6 +315,7 @@
     private long? _replayFromPosition;
     private long? _replayToPosition;
     private string? _replayValidationError;
+    private string? _replayInitiatorId;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -443,6 +455,7 @@
     private void ShowResetDialog()
     {
         _resetFromPosition = null;
+        _resetInitiatorId = "projection-reset-button";
         _showResetDialog = true;
         _pendingShowReset = true;
     }
@@ -455,6 +468,10 @@
         }
 
         _showResetDialog = false;
+        string? focusId = _resetInitiatorId;
+        _resetInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     private async Task ConfirmResetAsync()
@@ -474,11 +491,13 @@
                 .ConfigureAwait(false);
             if (opResult?.Success == true)
             {
-                await ToastService.ShowSuccessAsync($"Reset initiated (Operation: {opResult.OperationId})");
+                await ToastService.ShowSuccessAsync($"Reset request accepted (Operation: {opResult.OperationId})").ConfigureAwait(false);
             }
             else
             {
                 await ToastService.ShowErrorAsync("Failed to reset projection");
+                await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
+                return;
             }
 
             if (_resetDialog is not null)
@@ -492,10 +511,12 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Unauthorized");
+            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ToastService.ShowErrorAsync("Forbidden — insufficient permissions");
+            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (ServiceUnavailableException)
         {
@@ -503,7 +524,9 @@
         }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Operation failed: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync("Projection operation failed. Refresh status before deciding whether to retry.").ConfigureAwait(false);
+            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         finally
         {
@@ -518,6 +541,7 @@
         _replayFromPosition = 0;
         _replayToPosition = _detail?.LastProcessedPosition;
         _replayValidationError = null;
+        _replayInitiatorId = "projection-replay-button";
         _showReplayDialog = true;
         _pendingShowReplay = true;
     }
@@ -531,6 +555,10 @@
 
         _showReplayDialog = false;
         _replayValidationError = null;
+        string? focusId = _replayInitiatorId;
+        _replayInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     private async Task ConfirmReplayAsync()
@@ -544,19 +572,19 @@
         _replayValidationError = null;
         if (_replayFromPosition is null)
         {
-            _replayValidationError = "From Position is required.";
+            await FailReplayValidationAsync("From Position is required.").ConfigureAwait(false);
             return;
         }
 
         if (_replayToPosition is null)
         {
-            _replayValidationError = "To Position is required.";
+            await FailReplayValidationAsync("To Position is required.").ConfigureAwait(false);
             return;
         }
 
         if (_replayFromPosition.Value >= _replayToPosition.Value)
         {
-            _replayValidationError = "From Position must be strictly less than To Position.";
+            await FailReplayValidationAsync("From Position must be strictly less than To Position.").ConfigureAwait(false);
             return;
         }
 
@@ -570,11 +598,13 @@
                 .ConfigureAwait(false);
             if (opResult?.Success == true)
             {
-                await ToastService.ShowSuccessAsync($"Replay initiated (Operation: {opResult.OperationId})");
+                await ToastService.ShowSuccessAsync($"Replay request accepted (Operation: {opResult.OperationId})").ConfigureAwait(false);
             }
             else
             {
                 await ToastService.ShowErrorAsync("Failed to replay projection");
+                await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
+                return;
             }
 
             if (_replayDialog is not null)
@@ -588,10 +618,12 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Unauthorized");
+            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ToastService.ShowErrorAsync("Forbidden — insufficient permissions");
+            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (ServiceUnavailableException)
         {
@@ -599,13 +631,50 @@
         }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Operation failed: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync("Projection operation failed. Refresh status before deciding whether to retry.").ConfigureAwait(false);
+            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         finally
         {
             _isOperating = false;
             _operatingAction = null;
         }
+    }
+
+    private async Task CloseResetDialogAndRestoreFocusAsync()
+    {
+        if (_resetDialog is not null)
+        {
+            await _resetDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showResetDialog = false;
+        string? focusId = _resetInitiatorId;
+        _resetInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
+    }
+
+    private async Task CloseReplayDialogAndRestoreFocusAsync()
+    {
+        if (_replayDialog is not null)
+        {
+            await _replayDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showReplayDialog = false;
+        string? focusId = _replayInitiatorId;
+        _replayInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
+    }
+
+    private async Task FailReplayValidationAsync(string message)
+    {
+        _replayValidationError = message;
+        await ToastService.ShowErrorAsync(message).ConfigureAwait(false);
+        await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
     }
 
     private async Task ExecuteOperationAsync(string action, Func<Task> operation)

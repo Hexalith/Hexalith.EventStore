@@ -133,6 +133,44 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
     }
 
     [Fact]
+    public async Task DevelopmentPipeline_WithExplicitEnablement_MapsDiscovery()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage document = await client.GetAsync(
+            "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
+        using HttpResponseMessage swagger = await client.GetAsync(
+            "/swagger/index.html",
+            TestContext.Current.CancellationToken);
+
+        document.StatusCode.ShouldBe(HttpStatusCode.OK);
+        swagger.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task DevelopmentPipeline_WithDiscoveryDisabled_OmitsDiscovery()
+    {
+        await using WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["EventStore:Admin:OpenApi:Enabled"] = "false",
+                })));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage document = await client.GetAsync(
+            "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
+        using HttpResponseMessage swagger = await client.GetAsync(
+            "/swagger/index.html",
+            TestContext.Current.CancellationToken);
+
+        document.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        swagger.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Authenticated_Admin_Request_ReturnsExpectedStreamPayload() {
         using HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(
@@ -470,6 +508,24 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         protectedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProductionPipeline_AlwaysOmitsDiscovery(bool openApiEnabled)
+    {
+        await using var factory = new ProductionAdminServerHostFactory(openApiEnabled);
+        using HttpClient client = factory.CreateClient();
+
+        foreach (string path in new[] { "/openapi/v1.json", "/swagger", "/swagger/index.html" })
+        {
+            using HttpResponseMessage response = await client.GetAsync(
+                path,
+                TestContext.Current.CancellationToken);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound, path);
+        }
+    }
+
     private static string CreateToken(params Claim[] claims) {
         return CreateTokenWithAlgorithm(SecurityAlgorithms.HmacSha256Signature, claims);
     }
@@ -635,7 +691,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         }
     }
 
-    private sealed class ProductionAdminServerHostFactory : WebApplicationFactory<Program>
+    private sealed class ProductionAdminServerHostFactory(bool openApiEnabled = true) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -650,6 +706,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
                     ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
                     ["Authentication:JwtBearer:SigningKey"] = null,
                     ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+                    ["EventStore:Admin:OpenApi:Enabled"] = openApiEnabled.ToString(),
                 }));
         }
     }

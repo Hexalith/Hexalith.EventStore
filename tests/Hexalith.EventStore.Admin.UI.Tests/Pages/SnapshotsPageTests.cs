@@ -409,6 +409,90 @@ public class SnapshotsPageTests : AdminUITestContext {
         confirmBtn.Instance.Disabled.ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task DeletePolicyDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator() {
+        SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([policy]);
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        const string initiatorId = "snapshot-policy-delete-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU";
+        cut.WaitForAssertion(() => cut.Find($"[id='{initiatorId}']"), TimeSpan.FromSeconds(5));
+
+        await cut.Find($"[id='{initiatorId}']").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Delete Snapshot Policy"), TimeSpan.FromSeconds(5));
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("Snapshot policy for 'tenant-a/orders/OrderAggregate'");
+        cut.Find("[data-confirmation-fact='impact']").TextContent
+            .ShouldContain("Delete the policy so automatic snapshots stop");
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Operator");
+
+        IRenderedComponent<FluentButton> cancel = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == "Cancel");
+        await cancel.InvokeAsync(cancel.Instance.OnClick.InvokeAsync);
+
+        _ = _mockSnapshotApi.DidNotReceive().DeleteSnapshotPolicyAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(initiatorId);
+    }
+
+    [Fact]
+    public async Task DeletePolicyDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimDeletion() {
+        SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([policy]);
+        _ = _mockSnapshotApi.DeleteSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new ForbiddenAccessException("hidden policy exists; bearer secret-value")));
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        const string initiatorId = "snapshot-policy-delete-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU";
+        cut.WaitForAssertion(() => cut.Find($"[id='{initiatorId}']"), TimeSpan.FromSeconds(5));
+        await cut.Find($"[id='{initiatorId}']").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Delete Snapshot Policy"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> confirm = cut.FindComponents<FluentButton>()
+            .Single(button => button.Markup.Contains("Delete Policy"));
+        await confirm.InvokeAsync(confirm.Instance.OnClick.InvokeAsync);
+
+        _ = await _mockSnapshotApi.Received(1).DeleteSnapshotPolicyAsync(
+            "tenant-a", "orders", "OrderAggregate", Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe("Access denied. Insufficient permissions.");
+        message.ShouldNotContain("hidden policy");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("deleted", Case.Insensitive);
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(initiatorId);
+    }
+
+    [Fact]
+    public async Task DeletePolicyDialog_CollisionProneTuplesUseDistinctIdsAndRestoreExactInitiator()
+    {
+        SnapshotPolicy first = new("a-b", "c", "D", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SnapshotPolicy second = new("a", "b-c", "D", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([first, second]);
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(
+            () => cut.FindAll("fluent-button[aria-label^='Delete policy']").Count.ShouldBe(2),
+            TimeSpan.FromSeconds(5));
+
+        IReadOnlyList<AngleSharp.Dom.IElement> buttons = cut.FindAll("fluent-button[aria-label^='Delete policy']");
+        string firstId = buttons[0].Id;
+        string secondId = buttons[1].Id;
+        firstId.ShouldNotBe(secondId);
+
+        await buttons[1].ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        IRenderedComponent<FluentButton> cancel = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == "Cancel");
+        await cancel.InvokeAsync(cancel.Instance.OnClick.InvokeAsync);
+
+        _ = _mockSnapshotApi.DidNotReceive().DeleteSnapshotPolicyAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(secondId);
+    }
+
     // ===== Recommended tests (4.12-4.21) =====
 
     [Fact]

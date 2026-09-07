@@ -28,6 +28,7 @@ public class AdminUITestContext : BunitContext {
     public AdminUITestContext() {
         // Register FluentUI components
         _ = Services.AddFluentUIComponents();
+        _ = Services.AddLocalization();
 
         // Replace the real INotificationService with a test fake to avoid requiring a FluentToastProvider
         // in the render tree for unit tests. Tests that need to inspect toasts can resolve
@@ -61,6 +62,7 @@ public class AdminUITestContext : BunitContext {
         _ = Services.AddSingleton(authStateProvider);
         _ = Services.AddScoped<AdminUserContext>();
         _ = Services.AddScoped<ThemeState>();
+        _ = Services.AddScoped<InitiatorFocusService>();
 
         // Mock AdminStreamApiClient for pages that inject it (tests can override)
         _ = Services.AddScoped(_ => Substitute.For<AdminStreamApiClient>(

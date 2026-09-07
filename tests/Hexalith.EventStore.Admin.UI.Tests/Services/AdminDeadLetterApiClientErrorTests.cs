@@ -43,9 +43,6 @@ public class AdminDeadLetterApiClientErrorTests {
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.Unauthorized, "Authentication required")]
-    [InlineData(HttpStatusCode.Forbidden, "Access denied")]
-    [InlineData(HttpStatusCode.ServiceUnavailable, "temporarily unavailable")]
     [InlineData(HttpStatusCode.InternalServerError, "Admin API returned 500")]
     public async Task RetryDeadLettersAsync_GenericFailure_PreservesStatusCategory(HttpStatusCode statusCode, string expectedMessage) {
         using var response = new HttpResponseMessage(statusCode) {
@@ -58,6 +55,30 @@ public class AdminDeadLetterApiClientErrorTests {
 
         ex.StatusCode.ShouldBe(statusCode);
         ex.Message.ShouldContain(expectedMessage);
+    }
+
+    [Theory]
+    [InlineData("retry", HttpStatusCode.Unauthorized, typeof(UnauthorizedAccessException))]
+    [InlineData("retry", HttpStatusCode.Forbidden, typeof(ForbiddenAccessException))]
+    [InlineData("skip", HttpStatusCode.Unauthorized, typeof(UnauthorizedAccessException))]
+    [InlineData("skip", HttpStatusCode.Forbidden, typeof(ForbiddenAccessException))]
+    [InlineData("archive", HttpStatusCode.Unauthorized, typeof(UnauthorizedAccessException))]
+    [InlineData("archive", HttpStatusCode.Forbidden, typeof(ForbiddenAccessException))]
+    public async Task WriteOperations_MapAuthorizationFailuresToPageDenialTypes(
+        string action,
+        HttpStatusCode statusCode,
+        Type expectedExceptionType) {
+        using var response = new HttpResponseMessage(statusCode) {
+            Content = new StringContent(string.Empty),
+        };
+        AdminDeadLetterApiClient client = CreateClient(response);
+
+        Exception exception = await Record.ExceptionAsync(
+            () => InvokeWriteAsync(client, action))
+            ?? throw new Xunit.Sdk.XunitException("Expected the write operation to throw.");
+
+        exception.GetType().ShouldBe(expectedExceptionType);
+        exception.Message.ShouldNotContain("tenant-a");
     }
 
     [Fact]
@@ -124,6 +145,14 @@ public class AdminDeadLetterApiClientErrorTests {
         });
         return new AdminDeadLetterApiClient(factory, NullLogger<AdminDeadLetterApiClient>.Instance);
     }
+
+    private static Task InvokeWriteAsync(AdminDeadLetterApiClient client, string action)
+        => action switch {
+            "retry" => client.RetryDeadLettersAsync("tenant-a", ["msg-1"]),
+            "skip" => client.SkipDeadLettersAsync("tenant-a", ["msg-1"]),
+            "archive" => client.ArchiveDeadLettersAsync("tenant-a", ["msg-1"]),
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
 
     private sealed class StubHandler(HttpResponseMessage response) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

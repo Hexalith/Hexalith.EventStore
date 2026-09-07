@@ -113,6 +113,9 @@ public class AdminDeadLetterApiClient(
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
+        catch (AdminApiProblemException ex) {
+            throw MapWriteException(ex);
+        }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
@@ -146,6 +149,9 @@ public class AdminDeadLetterApiClient(
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
+        catch (AdminApiProblemException ex) {
+            throw MapWriteException(ex);
+        }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
@@ -178,6 +184,9 @@ public class AdminDeadLetterApiClient(
             return await response.Content
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
+        }
+        catch (AdminApiProblemException ex) {
+            throw MapWriteException(ex);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
@@ -251,6 +260,13 @@ public class AdminDeadLetterApiClient(
             HttpStatusCode.Forbidden => new ForbiddenAccessException("Access denied. Insufficient permissions to access this resource.", exception),
             HttpStatusCode.ServiceUnavailable => new ServiceUnavailableException("The admin backend service is temporarily unavailable.", exception),
             _ => new ServiceUnavailableException(fallbackMessage, exception),
+        };
+
+    private static Exception MapWriteException(AdminApiProblemException exception)
+        => exception.StatusCode switch {
+            HttpStatusCode.Unauthorized => new UnauthorizedAccessException("Authentication required. Please sign in again.", exception),
+            HttpStatusCode.Forbidden => new ForbiddenAccessException("Access denied. Insufficient permissions to access this resource.", exception),
+            _ => exception,
         };
 
     private static string? SanitizeProblemField(string? value) {

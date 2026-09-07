@@ -34,7 +34,8 @@ internal static class ProjectionWriteTools {
                 $"Pause projection '{projectionName}' for tenant '{tenantId}'",
                 $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/pause",
                 new { tenantId, projectionName },
-                "This will stop the projection from processing new events until resumed.");
+                "This will stop the projection from processing new events until resumed.",
+                "Operator");
         }
 
         try {
@@ -73,7 +74,8 @@ internal static class ProjectionWriteTools {
                 $"Resume projection '{projectionName}' for tenant '{tenantId}'",
                 $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/resume",
                 new { tenantId, projectionName },
-                "This will resume event processing for the projection.");
+                "This will resume event processing for the projection.",
+                "Operator");
         }
 
         try {
@@ -113,7 +115,8 @@ internal static class ProjectionWriteTools {
                 $"Reset projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition?.ToString() ?? "beginning"}",
                 $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/reset",
                 new { tenantId, projectionName, fromPosition },
-                "This will clear projection state and rebuild from the specified position. This is a destructive operation.");
+                "This will clear projection state and rebuild from the specified position. This is a destructive operation.",
+                "Operator");
         }
 
         try {
@@ -158,7 +161,8 @@ internal static class ProjectionWriteTools {
                 $"Replay projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition} to {toPosition}",
                 $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/replay",
                 new { tenantId, projectionName, fromPosition, toPosition },
-                "This will replay events between the specified positions. The projection will reprocess these events.");
+                "This will replay events between the specified positions. The projection will reprocess these events.",
+                "Operator");
         }
 
         try {

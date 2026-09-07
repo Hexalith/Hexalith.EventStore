@@ -3967,3 +3967,6 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - Restated TOCTOU between `require_no_symlink_components` and `stat()`/`open()` in `read_bounded_regular_snapshot` (`tools/validate-oq8-platform-evidence.py:1049-1063`). Already tracked as DW-454; no new DW. Same single-writer CI trust boundary as the 2026-08-30 Group A defer.
 - DW-496: Claimed current-source proofs hash frozen Git, not HEAD or the worktree. Remint with DW-457; keep v1/v2 historical and put live proof on a reduced v3 path set — do not freeze the original 24 capability paths.
 - DW-497: Full validator requires Story 4.15 tracking already review/done before the packet can pass. Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Browser-level proof of exact destructive-dialog focus restoration needs an authenticated Admin UI E2E fixture with controllable denial responses.
+  evidence: The current Playwright fixture lacks `EventStore:Authentication:Issuer`, renders anonymously after token creation fails, and has no backend capable of a write-time 403; an attempted test failed before the dialog initiators rendered.

@@ -31,11 +31,12 @@ internal static class BackupWriteTools {
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "backup-trigger",
-                $"Trigger full backup for tenant '{tenantId}'" + (!string.IsNullOrWhiteSpace(description) ? $" ({description})" : string.Empty),
+                $"Submit deferred backup request for tenant '{tenantId}'" + (!string.IsNullOrWhiteSpace(description) ? $" ({description})" : string.Empty),
                 $"POST /api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}?includeSnapshots={includeSnapshots.ToString().ToLowerInvariant()}"
                     + (!string.IsNullOrWhiteSpace(description) ? $"&description={Uri.EscapeDataString(description)}" : string.Empty),
                 new { tenantId, description, includeSnapshots },
-                "This will initiate a full tenant backup. The operation runs asynchronously.");
+                "Confirmation submits a request to the currently deferred backup backend. It does not prove backup execution or completion.",
+                "Admin");
         }
 
         try {

@@ -5,6 +5,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -451,6 +452,160 @@ public class ConsistencyPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("Cancel");
     }
 
+    [Theory]
+    [InlineData("trigger", "Consistency checks for tenant 'tenant-populated' and domain 'orders'", "Start asynchronous integrity checks", "Operator", "consistency-trigger-button")]
+    [InlineData("cancel", "Consistency check 'check-running'", "Stop the running check", "Admin", "consistency-cancel-check-running")]
+    public async Task MutationDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
+        string action,
+        string expectedTarget,
+        string impactFragment,
+        string expectedPermission,
+        string expectedFocusId) {
+        SetupChecks(action == "cancel"
+            ? [CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]
+            : []);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        string selector = action == "trigger"
+            ? "#consistency-trigger-button"
+            : "#consistency-cancel-check-running";
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+        if (action == "trigger") {
+            SetPrivateField(cut.Instance, "_triggerTenantId", "tenant-populated");
+            SetPrivateField(cut.Instance, "_triggerDomain", "orders");
+            cut.Render();
+        }
+
+        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe(expectedTarget);
+        cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain(impactFragment);
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe(expectedPermission);
+
+        string cancelText = action == "trigger" ? "Cancel" : "Keep Running";
+        IRenderedComponent<FluentButton> cancel = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == cancelText);
+        await cancel.InvokeAsync(cancel.Instance.OnClick.InvokeAsync);
+
+        _ = _mockConsistencyApi.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        _ = _mockConsistencyApi.DidNotReceive().CancelCheckAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Fact]
+    public async Task TriggerDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimCompletion() {
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new ForbiddenAccessException("hidden tenant exists; bearer secret-value")));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            null, null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe("Access denied. Insufficient permissions.");
+        message.ShouldNotContain("hidden tenant");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-trigger-button");
+    }
+
+    [Fact]
+    public async Task CancelDialog_ForbiddenUsesSafeCopyClosesAndRestoresExactInitiator() {
+        SetupChecks([CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]);
+        _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new ForbiddenAccessException("hidden check exists; bearer secret-value")));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-cancel-check-running"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-cancel-check-running")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCancelConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).CancelCheckAsync(
+            "check-running", Arg.Any<CancellationToken>());
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldNotContain("hidden check");
+        message.ShouldNotContain("secret-value");
+        cut.FindAll("fluent-dialog[aria-label='Cancel Consistency Check']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-cancel-check-running");
+    }
+
+    [Theory]
+    [InlineData("trigger", "Consistency check request accepted")]
+    [InlineData("cancel", "Consistency cancellation request accepted")]
+    public async Task AsyncOperationSuccess_UsesAcceptedNotCompletedWording(string action, string expectedMessage) {
+        SetupChecks(action == "cancel"
+            ? [CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]
+            : []);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "trigger-op", "Accepted", null));
+        _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "cancel-op", "Accepted", null));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        string selector = action == "trigger"
+            ? "#consistency-trigger-button"
+            : "#consistency-cancel-check-running";
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "trigger" ? "OnTriggerConfirm" : "OnCancelConfirm"));
+
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe(expectedMessage + ".");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        message.ShouldNotContain("successfully", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task Trigger_PostAcceptanceUiInvalidOperationIsNotRelabeledAsInvalidRequest() {
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "trigger-op", "Accepted", null));
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        toast.SetupShowToast(_ => Task.FromException<ToastResult>(
+            new InvalidOperationException("post-acceptance renderer failure")));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm")));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            null, null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        toast.CapturedOptions.Select(option => option.Message?.ToString()).ShouldBe([
+            "Consistency check request accepted.",
+        ]);
+        toast.CapturedOptions.Any(option =>
+            (option.Message?.ToString() ?? string.Empty).Contains("invalid", StringComparison.OrdinalIgnoreCase))
+            .ShouldBeFalse();
+    }
+
     [Fact]
     public void Consistency_StatusBadge_ShowsCorrectSeverity() {
         // Arrange
@@ -756,11 +911,25 @@ public class ConsistencyPageTests : AdminUITestContext {
         return (Task)(method.Invoke(instance, [summary]) ?? throw new InvalidOperationException("OnRowClick returned null."));
     }
 
+    private static async Task InvokePrivateAsync(Consistency instance, string methodName) {
+        System.Reflection.MethodInfo method = typeof(Consistency)
+            .GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Method '{methodName}' was not found.");
+        await ((Task)method.Invoke(instance, null)!).ConfigureAwait(false);
+    }
+
     private static T GetPrivateField<T>(object instance, string name) {
         System.Reflection.FieldInfo field = typeof(Consistency)
             .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"Field {name} was not found.");
         return (T)field.GetValue(instance)!;
+    }
+
+    private static void SetPrivateField(object instance, string name, object? value) {
+        System.Reflection.FieldInfo field = typeof(Consistency)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {name} was not found.");
+        field.SetValue(instance, value);
     }
 
     private sealed class MutableAuthStateProvider(AdminRole initialRole) : AuthenticationStateProvider {

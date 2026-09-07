@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="ConfirmationFactsLabel" xml:space="preserve"><value>Confirmation safety facts</value></data>
+  <data name="ConfirmationTargetLabel" xml:space="preserve"><value>Target</value></data>
+  <data name="ConfirmationImpactLabel" xml:space="preserve"><value>Impact</value></data>
+  <data name="ConfirmationPermissionLabel" xml:space="preserve"><value>Required permission</value></data>
+  <data name="PermissionOperator" xml:space="preserve"><value>Operator</value></data>
+  <data name="PermissionAdmin" xml:space="preserve"><value>Admin</value></data>
+  <data name="ProjectionTarget" xml:space="preserve"><value>Projection '{0}' in tenant '{1}'</value></data>
+  <data name="ProjectionResetImpact" xml:space="preserve"><value>Clear projection state and rebuild it from the selected position. The request is accepted for asynchronous processing.</value></data>
+  <data name="ProjectionReplayImpact" xml:space="preserve"><value>Reprocess events in the selected position range. The request is accepted for asynchronous processing.</value></data>
+  <data name="DeadLetterTarget" xml:space="preserve"><value>{0} selected dead-letter command(s) across {1} tenant(s)</value></data>
+  <data name="DeadLetterRetryImpact" xml:space="preserve"><value>Resubmit the selected commands for processing.</value></data>
+  <data name="DeadLetterSkipImpact" xml:space="preserve"><value>Mark the selected commands as skipped without processing them.</value></data>
+  <data name="DeadLetterArchiveImpact" xml:space="preserve"><value>Move the selected commands to the archive.</value></data>
+  <data name="BackupTenantTarget" xml:space="preserve"><value>Backup data for tenant '{0}'</value></data>
+  <data name="BackupTarget" xml:space="preserve"><value>Backup '{0}'</value></data>
+  <data name="BackupCreateImpact" xml:space="preserve"><value>Submit a backup request to the currently deferred backend. Confirmation does not prove execution or completion.</value></data>
+  <data name="BackupRestoreImpact" xml:space="preserve"><value>Submit a currently deferred restore request. If implemented, restored events use a parallel restore stream and never overwrite original event streams; confirmation does not prove execution or completion.</value></data>
+  <data name="BackupImportTarget" xml:space="preserve"><value>Imported event-stream content</value></data>
+  <data name="BackupImportImpact" xml:space="preserve"><value>Submit content to the currently deferred stream-import path. Confirmation does not prove validation, execution, or completion.</value></data>
+  <data name="SnapshotTarget" xml:space="preserve"><value>Snapshot for '{0}/{1}/{2}'</value></data>
+  <data name="SnapshotPolicyTarget" xml:space="preserve"><value>Snapshot policy for '{0}/{1}/{2}'</value></data>
+  <data name="SnapshotCreateImpact" xml:space="preserve"><value>Create a snapshot at the aggregate's current version.</value></data>
+  <data name="SnapshotPolicySetImpact" xml:space="preserve"><value>Replace the snapshot policy with the entered thresholds.</value></data>
+  <data name="SnapshotPolicyDeleteImpact" xml:space="preserve"><value>Delete the policy so automatic snapshots stop for this aggregate type.</value></data>
+  <data name="TenantTarget" xml:space="preserve"><value>Tenant '{0}'</value></data>
+  <data name="TenantUserTarget" xml:space="preserve"><value>User '{0}' in tenant '{1}'</value></data>
+  <data name="TenantCreateImpact" xml:space="preserve"><value>Create a new tenant boundary and its initial configuration.</value></data>
+  <data name="TenantDisableImpact" xml:space="preserve"><value>Disable access and processing for the tenant.</value></data>
+  <data name="TenantEnableImpact" xml:space="preserve"><value>Re-enable access and processing for the tenant.</value></data>
+  <data name="TenantAddUserImpact" xml:space="preserve"><value>Grant the selected user the chosen tenant role.</value></data>
+  <data name="TenantChangeRoleImpact" xml:space="preserve"><value>Replace the user's tenant role with the selected role.</value></data>
+  <data name="TenantRemoveUserImpact" xml:space="preserve"><value>Remove the user's access to the tenant.</value></data>
+  <data name="ConsistencyTarget" xml:space="preserve"><value>Consistency checks for tenant '{0}' and domain '{1}'</value></data>
+  <data name="ConsistencyCheckTarget" xml:space="preserve"><value>Consistency check '{0}'</value></data>
+  <data name="ConsistencyTriggerImpact" xml:space="preserve"><value>Start asynchronous integrity checks over the selected scope.</value></data>
+  <data name="ConsistencyCancelImpact" xml:space="preserve"><value>Stop the running check while preserving results already collected.</value></data>
+</root>

@@ -242,6 +242,106 @@ public class DeadLettersPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("moved to the archive");
     }
 
+    [Theory]
+    [InlineData("Retry Selected", "Retry Dead Letters", "Resubmit the selected commands", "dead-letter-retry-selected")]
+    [InlineData("Skip Selected", "Skip Dead Letters", "Mark the selected commands as skipped", "dead-letter-skip-selected")]
+    [InlineData("Archive Selected", "Archive Dead Letters", "Move the selected commands to the archive", "dead-letter-archive-selected")]
+    public async Task DestructiveDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
+        string openButton,
+        string dialogTitle,
+        string impactFragment,
+        string expectedFocusId) {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+
+        ClickButton(cut, openButton);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain(dialogTitle), TimeSpan.FromSeconds(5));
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("1 selected dead-letter command(s) across 1 tenant(s)");
+        cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain(impactFragment);
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Operator");
+
+        await InvokeDialogButtonAsync(cut, "Cancel");
+
+        _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        _ = _mockDeadLetterApi.DidNotReceive().SkipDeadLettersAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        _ = _mockDeadLetterApi.DidNotReceive().ArchiveDeadLettersAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Theory]
+    [InlineData("retry", "Retry Selected", "Retry Dead Letters", "Retry", "dead-letter-retry-selected")]
+    [InlineData("skip", "Skip Selected", "Skip Dead Letters", "Skip", "dead-letter-skip-selected")]
+    [InlineData("archive", "Archive Selected", "Archive Dead Letters", "Archive", "dead-letter-archive-selected")]
+    public async Task BulkDialog_ForbiddenDoesNotClaimWorkOrExposeDetailsAndRestoresInitiator(
+        string action,
+        string openButton,
+        string dialogTitle,
+        string confirmText,
+        string expectedFocusId) {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        SetupBulkException(action, new ForbiddenAccessException("hidden-resource exists at redis://private; bearer secret-value"));
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, openButton);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain(dialogTitle), TimeSpan.FromSeconds(5));
+
+        await InvokeDialogButtonAsync(cut, confirmText);
+
+        await AssertBulkCallCountAsync(action, entries[0].TenantId, 1);
+        cut.Markup.ShouldNotContain("hidden-resource");
+        cut.Markup.ShouldNotContain("redis://private");
+        cut.Markup.ShouldNotContain("secret-value");
+        cut.Markup.ShouldNotContain(dialogTitle);
+        cut.Markup.ShouldNotContain("completed", Case.Insensitive);
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Fact]
+    public async Task RetryDialog_MixedSuccessThenDenialStopsLaterTenantsClosesAndRestoresInitiator() {
+        List<DeadLetterEntry> entries =
+        [
+            new("msg-a", "tenant-a", "counter", "agg-a", "corr-a", "Failure", DateTimeOffset.UtcNow, 1, "CommandA"),
+            new("msg-b", "tenant-b", "orders", "agg-b", "corr-b", "Failure", DateTimeOffset.UtcNow, 1, "CommandB"),
+            new("msg-c", "tenant-c", "stock", "agg-c", "corr-c", "Failure", DateTimeOffset.UtcNow, 1, "CommandC"),
+        ];
+        SetupEntries(entries, 3);
+        _ = _mockDeadLetterApi.RetryDeadLettersAsync("tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "op-a", "Accepted", null));
+        _ = _mockDeadLetterApi.RetryDeadLettersAsync("tenant-b", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new ForbiddenAccessException("hidden tenant-c at redis://private; bearer secret-value")));
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-c"), TimeSpan.FromSeconds(5));
+        SelectAllVisible(cut, true);
+        ClickButton(cut, "Retry Selected");
+
+        await InvokeDialogButtonAsync(cut, "Retry");
+
+        _ = await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
+            "tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        _ = await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
+            "tenant-b", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
+            "tenant-c", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        cut.Markup.ShouldNotContain("Retry Dead Letters");
+        cut.Markup.ShouldNotContain("secret-value");
+        cut.Markup.ShouldNotContain("redis://private");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("dead-letter-retry-selected");
+    }
+
     [Fact]
     public void DeadLetters_ShowsIssueBanner_WhenApiUnavailable() {
         // Arrange
@@ -773,7 +873,7 @@ public class DeadLettersPageTests : AdminUITestContext {
 
     private static Task InvokeDialogButtonAsync(IRenderedComponent<DeadLetters> cut, string text) {
         IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains($">{text}<"));
+            .First(b => b.Find("fluent-button").TextContent.Trim() == text);
         return confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
     }
 
@@ -800,6 +900,47 @@ public class DeadLettersPageTests : AdminUITestContext {
                     Arg.Any<CancellationToken>())
                     .Returns(Task.FromResult<AdminOperationResult?>(result));
                 break;
+        }
+    }
+
+    private void SetupBulkException(string action, Exception exception) {
+        switch (action) {
+            case "retry":
+                _ = _mockDeadLetterApi.RetryDeadLettersAsync(
+                    Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromException<AdminOperationResult?>(exception));
+                break;
+            case "skip":
+                _ = _mockDeadLetterApi.SkipDeadLettersAsync(
+                    Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromException<AdminOperationResult?>(exception));
+                break;
+            case "archive":
+                _ = _mockDeadLetterApi.ArchiveDeadLettersAsync(
+                    Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromException<AdminOperationResult?>(exception));
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown action '{action}'.");
+        }
+    }
+
+    private async Task AssertBulkCallCountAsync(string action, string tenantId, int count) {
+        switch (action) {
+            case "retry":
+                _ = await _mockDeadLetterApi.Received(count).RetryDeadLettersAsync(
+                    tenantId, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+                break;
+            case "skip":
+                _ = await _mockDeadLetterApi.Received(count).SkipDeadLettersAsync(
+                    tenantId, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+                break;
+            case "archive":
+                _ = await _mockDeadLetterApi.Received(count).ArchiveDeadLettersAsync(
+                    tenantId, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown action '{action}'.");
         }
     }
 

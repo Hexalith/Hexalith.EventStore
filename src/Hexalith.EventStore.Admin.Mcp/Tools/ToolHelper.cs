@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// Shared helper for JSON serialization and error handling across all MCP tools.
 /// </summary>
 internal static class ToolHelper {
+    private const int MaxSupportSafeTextLength = 240;
     private const int MaxSanitizeDepth = 64;
 
     /// <summary>
@@ -40,19 +41,24 @@ internal static class ToolHelper {
     /// <param name="endpoint">The HTTP endpoint that would be called.</param>
     /// <param name="parameters">The operation parameters.</param>
     /// <param name="warning">Risk context specific to the operation.</param>
+    /// <param name="requiredPermission">The exact Admin authorization level required to execute.</param>
     /// <returns>A JSON string with the preview shape.</returns>
     internal static string SerializePreview(
         string action,
         string description,
         string endpoint,
         object parameters,
-        string warning)
+        string warning,
+        string requiredPermission)
         => SerializeResult(new {
             preview = true,
-            action,
+            action = SafeText(action, "Preview action redacted."),
+            target = SafeText(description, "Preview target redacted."),
+            impact = SafeText(warning, "Preview impact redacted."),
+            requiredPermission = SafeText(requiredPermission, "Required permission redacted."),
             description = SafeText(description, "Preview description redacted."),
             endpoint = SafeText(endpoint, "Preview endpoint redacted."),
-            parameters,
+            parameters = SanitizePreviewParameters(parameters),
             warning = SafeText(warning, "Preview warning redacted."),
         });
 
@@ -63,7 +69,11 @@ internal static class ToolHelper {
     /// <param name="message">The error detail message.</param>
     /// <returns>A JSON string with error shape.</returns>
     internal static string SerializeError(string adminApiStatus, string message)
-        => JsonSerializer.Serialize(new { error = true, adminApiStatus, message = SafeText(message, "Protected diagnostic text redacted.") }, JsonOptions);
+        => JsonSerializer.Serialize(new {
+            error = true,
+            adminApiStatus = SafeText(adminApiStatus, "server-error"),
+            message = SafeText(message, "Protected diagnostic text redacted."),
+        }, JsonOptions);
 
     /// <summary>
     /// Validates that required path-segment parameters are non-empty.
@@ -177,10 +187,52 @@ internal static class ToolHelper {
                 safeNextAction: "Use safe descriptor metadata or inspect the Admin API protection status."),
             JsonOptions);
 
-    private static string SafeText(string? value, string replacement)
-        => string.IsNullOrEmpty(value)
+    private static JsonNode? SanitizePreviewParameters(object parameters)
+        => SanitizePreviewTextNode(
+            SanitizeNode(JsonSerializer.SerializeToNode(parameters, JsonOptions), "mcp-preview", propertyName: null, depth: 0),
+            depth: 0);
+
+    private static JsonNode? SanitizePreviewTextNode(JsonNode? node, int depth) {
+        if (node is null) {
+            return null;
+        }
+
+        if (depth >= MaxSanitizeDepth) {
+            return JsonValue.Create("[redacted: maximum JSON depth exceeded]");
+        }
+
+        if (node is JsonObject obj) {
+            var result = new JsonObject();
+            foreach (KeyValuePair<string, JsonNode?> property in obj) {
+                result[property.Key] = SanitizePreviewTextNode(property.Value, depth + 1);
+            }
+
+            return result;
+        }
+
+        if (node is JsonArray array) {
+            var result = new JsonArray();
+            foreach (JsonNode? item in array) {
+                result.Add(SanitizePreviewTextNode(item, depth + 1));
+            }
+
+            return result;
+        }
+
+        return node is JsonValue value && value.TryGetValue(out string? text)
+            ? JsonValue.Create(SafeText(text, "Preview parameter redacted."))
+            : node.DeepClone();
+    }
+
+    private static string SafeText(string? value, string replacement) {
+        string safe = string.IsNullOrEmpty(value)
             ? replacement
             : UnsafeMarkerDetection.ContainsUnsafeMarker(value) ? replacement : value;
+
+        return safe.Length <= MaxSupportSafeTextLength
+            ? safe
+            : safe[..(MaxSupportSafeTextLength - 3)] + "...";
+    }
 
     private static bool IsRawCapableProperty(string propertyName)
         => propertyName.Equals("payloadJson", StringComparison.OrdinalIgnoreCase)

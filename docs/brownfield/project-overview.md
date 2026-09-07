@@ -66,8 +66,10 @@ state.Apply(Event)                          // fold events back into state
 - **Core event store** — command gateway API, aggregate actors, event persistence, snapshots, pub/sub,
   query pipeline with ETag caching, projection notifications, SignalR real-time refresh.
 - **Admin suite** — Abstractions/Server/Server.Host (REST), Blazor UI, CLI tool, and an **MCP server**
-  exposing operational tools to AI agents (stream inspection, projection control, backup/restore,
-  crypto-shredding, consistency checks, dead-letter management, DAPR infra inspection).
+  exposing read tools for stream, projection, consistency, storage, tenant, type, and health
+  inspection plus seven confirmation-gated writes (four projection operations, two consistency
+  operations, and backup trigger). The CLI's registered `backup create/restore/list` commands are
+  explicitly unavailable in this release and return an error rather than implying completion.
 - **Multi-tenancy** — built into the contract layer (`TenantId:Domain:AggregateId`) with 4-layer isolation.
 - **Aspire AppHost** — full local DAPR topology (event store, admin, tenants, sample, optional Keycloak)
   and publish targets for Docker Compose, Kubernetes, and Azure Container Apps.

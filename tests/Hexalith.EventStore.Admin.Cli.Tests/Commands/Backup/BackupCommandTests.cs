@@ -4,6 +4,7 @@ using Hexalith.EventStore.Admin.Cli.Commands.Backup;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Backup;
 
+[Collection("ConsoleTests")]
 public class BackupCommandTests {
     [Fact]
     public void Create_ReturnsCommandWithCorrectName() {
@@ -33,5 +34,31 @@ public class BackupCommandTests {
         Command command = BackupCommand.Create(binding);
 
         command.Description.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Theory]
+    [InlineData("create")]
+    [InlineData("restore")]
+    [InlineData("list")]
+    public async Task RegisteredSubcommand_IsExplicitlyUnavailableAndReturnsError(string subcommand) {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var binding = GlobalOptionsBinding.Create();
+        Command command = BackupCommand.Create(binding);
+        RootCommand root = new("test");
+        root.Subcommands.Add(command);
+        StringWriter stderr = new();
+        Console.SetError(stderr);
+
+        try {
+            int exitCode = await root.Parse(["backup", subcommand]).InvokeAsync(null, cancellationToken);
+
+            exitCode.ShouldBe(ExitCodes.Error);
+            stderr.ToString().ShouldContain("unavailable", Case.Insensitive);
+            stderr.ToString().ShouldNotContain("success", Case.Insensitive);
+            stderr.ToString().ShouldNotContain("completed", Case.Insensitive);
+        }
+        finally {
+            Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+        }
     }
 }

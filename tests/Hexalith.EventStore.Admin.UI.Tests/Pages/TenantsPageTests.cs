@@ -256,6 +256,7 @@ public class TenantsPageTests : AdminUITestContext {
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());
+        AssertAcceptedToast("Create request accepted for tenant acme-corp");
     }
 
     [Fact]
@@ -586,6 +587,7 @@ public class TenantsPageTests : AdminUITestContext {
                 "user-001",
                 "TenantContributor",
                 Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
+        AssertAcceptedToast("Add-user request accepted for user-001");
     }
 
     [Fact]
@@ -618,6 +620,7 @@ public class TenantsPageTests : AdminUITestContext {
                 "t-1",
                 "user-001",
                 Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
+        AssertAcceptedToast("Remove-user request accepted for user-001");
     }
 
     [Fact]
@@ -652,6 +655,7 @@ public class TenantsPageTests : AdminUITestContext {
                 "user-001",
                 "TenantContributor",
                 Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
+        AssertAcceptedToast("Change-role request accepted for user-001");
     }
 
     [Fact]
@@ -675,6 +679,179 @@ public class TenantsPageTests : AdminUITestContext {
 
         SetPrivateField(cut.Instance, "_createName", "Acme Corp");
         InvokePrivate<bool>(cut.Instance, "IsCreateFormValid").ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("create", "Tenant 'new-tenant'", "Create a new tenant boundary", "tenant-create-button")]
+    [InlineData("disable", "Tenant 'tenant-a'", "Disable access and processing", "tenant-disable-tenant-a")]
+    [InlineData("enable", "Tenant 'tenant-disabled'", "Re-enable access and processing", "tenant-enable-tenant-disabled")]
+    [InlineData("add", "User 'new-user' in tenant 'tenant-a'", "Grant the selected user", "tenant-add-tenant-a-")]
+    [InlineData("remove", "User 'user-1' in tenant 'tenant-a'", "Remove the user's access", "tenant-remove-tenant-a-user-1")]
+    [InlineData("change-role", "User 'user-1' in tenant 'tenant-a'", "Replace the user's tenant role", "tenant-change-role-tenant-a-user-1")]
+    public async Task MutationDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
+        string action,
+        string expectedTarget,
+        string impactFragment,
+        string expectedFocusId) {
+        TenantSummary tenant = action == "enable"
+            ? CreateTenant("tenant-disabled", "Disabled Tenant", TenantStatusType.Disabled)
+            : CreateTenant("tenant-a", "Tenant A", TenantStatusType.Active);
+        TenantUser user = new("user-1", "TenantReader");
+        SetupTenants([tenant]);
+        _ = _mockTenantApi.GetTenantDetailAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new TenantDetail("tenant-a", "Tenant A", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-2)));
+        _ = _mockTenantApi.GetTenantUsersAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain(tenant.TenantId), TimeSpan.FromSeconds(5));
+
+        if (action is "add" or "remove" or "change-role") {
+            await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", tenant));
+            cut.WaitForAssertion(() => cut.Find("#tenant-add-tenant-a-"), TimeSpan.FromSeconds(5));
+        }
+
+        string selector = action switch {
+            "create" => "#tenant-create-button",
+            "disable" => "#tenant-disable-tenant-a",
+            "enable" => "#tenant-enable-tenant-disabled",
+            "add" => "#tenant-add-tenant-a-",
+            "remove" => "#tenant-remove-tenant-a-user-1",
+            "change-role" => "#tenant-change-role-tenant-a-user-1",
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+        if (action == "create") {
+            SetPrivateField(cut.Instance, "_createTenantId", "new-tenant");
+            cut.Render();
+        }
+        else if (action == "add") {
+            SetPrivateField(cut.Instance, "_addUserId", "new-user");
+            cut.Render();
+        }
+
+        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe(expectedTarget);
+        cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain(impactFragment);
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Admin");
+
+        IRenderedComponent<Microsoft.FluentUI.AspNetCore.Components.FluentButton> cancel =
+            cut.FindComponents<Microsoft.FluentUI.AspNetCore.Components.FluentButton>()
+                .Single(button => button.Find("fluent-button").TextContent.Trim() == "Cancel");
+        await cancel.InvokeAsync(cancel.Instance.OnClick.InvokeAsync);
+
+        _ = _mockTenantApi.DidNotReceive().CreateTenantAsync(
+            Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().DisableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().EnableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().AddUserToTenantAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().RemoveUserFromTenantAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().ChangeUserRoleAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Fact]
+    public async Task ChangeRoleDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimCompletion() {
+        TenantSummary tenant = CreateTenant("tenant-a", "Tenant A", TenantStatusType.Active);
+        TenantUser user = new("user-1", "TenantReader");
+        SetupTenants([tenant]);
+        _ = _mockTenantApi.GetTenantDetailAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new TenantDetail("tenant-a", "Tenant A", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-2)));
+        _ = _mockTenantApi.GetTenantUsersAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
+        _ = _mockTenantApi.ChangeUserRoleAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new ForbiddenAccessException("hidden membership exists; bearer secret-value")));
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", tenant));
+        cut.WaitForAssertion(() => cut.Find("#tenant-change-role-tenant-a-user-1"), TimeSpan.FromSeconds(5));
+        await cut.Find("#tenant-change-role-tenant-a-user-1")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnChangeRoleConfirm"));
+
+        _ = await _mockTenantApi.Received(1).ChangeUserRoleAsync(
+            "tenant-a", "user-1", "TenantReader", Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldNotContain("hidden membership");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("tenant-change-role-tenant-a-user-1");
+    }
+
+    [Theory]
+    [InlineData("create", "tenant-create-button")]
+    [InlineData("disable", "tenant-disable-tenant-a")]
+    [InlineData("enable", "tenant-enable-tenant-disabled")]
+    [InlineData("add", "tenant-add-tenant-a-")]
+    [InlineData("remove", "tenant-remove-tenant-a-user-1")]
+    public async Task IndependentTenantDenialHandlersUseSafeCopyCloseAndRestoreExactInitiator(
+        string action,
+        string expectedFocusId) {
+        TenantSummary active = CreateTenant("tenant-a", "Tenant A", TenantStatusType.Active);
+        TenantSummary disabled = CreateTenant("tenant-disabled", "Tenant Disabled", TenantStatusType.Disabled);
+        TenantUser user = new("user-1", "TenantReader");
+        SetupTenants([active, disabled]);
+        _ = _mockTenantApi.GetTenantDetailAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new TenantDetail("tenant-a", "Tenant A", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-2)));
+        _ = _mockTenantApi.GetTenantUsersAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
+        var denial = new ForbiddenAccessException("hidden tenant membership exists; bearer secret-value");
+        _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockTenantApi.DisableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockTenantApi.EnableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockTenantApi.AddUserToTenantAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockTenantApi.RemoveUserFromTenantAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-disabled"), TimeSpan.FromSeconds(5));
+
+        if (action is "add" or "remove") {
+            await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", active));
+            cut.WaitForAssertion(() => cut.Find("#tenant-add-tenant-a-"), TimeSpan.FromSeconds(5));
+        }
+
+        await cut.Find($"#{expectedFocusId}").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        if (action == "create") {
+            SetPrivateField(cut.Instance, "_createTenantId", "new-tenant");
+            SetPrivateField(cut.Instance, "_createName", "New Tenant");
+        }
+        else if (action == "add") {
+            SetPrivateField(cut.Instance, "_addUserId", "new-user");
+        }
+
+        string methodName = action switch {
+            "create" => "OnCreateTenantConfirm",
+            "disable" => "OnDisableConfirm",
+            "enable" => "OnEnableConfirm",
+            "add" => "OnAddUserConfirm",
+            "remove" => "OnRemoveUserConfirm",
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, methodName));
+
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldNotContain("hidden tenant");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        cut.FindAll("[data-confirmation-fact='target']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
     }
 
     // ===== Helper methods =====
@@ -750,4 +927,11 @@ public class TenantsPageTests : AdminUITestContext {
         string name,
         TenantStatusType status)
         => new(tenantId, name, status);
+
+    private void AssertAcceptedToast(string expectedPrefix) {
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldStartWith(expectedPrefix);
+        message.ShouldNotContain("completed", Case.Insensitive);
+        message.ShouldNotContain("successfully", Case.Insensitive);
+    }
 }

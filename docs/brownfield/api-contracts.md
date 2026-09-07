@@ -168,7 +168,11 @@ body classifications: every bound body has an enforced limit. Future actions mus
 | `GET /api/v1/admin/types/commands` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
 | `GET /api/v1/admin/types/aggregates` | `AdminReadOnly` | none | N/A (bodyless) | Operation contract — read has no request body. |
 
-> Admin API also serves OpenAPI/Swagger (gated by `EventStore:Admin:OpenApi:Enabled`).
+> Admin API serves OpenAPI/Swagger only in the `Development` environment and only when
+> `EventStore:Admin:OpenApi:Enabled` is explicitly `true`. Base configuration defaults it to
+> `false`; Production omits both discovery routes regardless of configuration. Validate route
+> existence with anonymous probes only. This Admin-host gate is independent from the public
+> gateway's `EventStore:OpenApi:Enabled` behavior.
 > See `docs/reference/admin-stream-export.md` and `docs/operations/admin-debugging-json-large-stream-hardening.md`.
 
 ## RFC 9457 Problem Types (selected)

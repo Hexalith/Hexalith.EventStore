@@ -12,6 +12,8 @@
 @inject NavigationManager NavigationManager
 @inject INotificationService ToastService
 @inject IJSRuntime JSRuntime
+@inject IStringLocalizer<AdminResources> Text
+@inject InitiatorFocusService FocusService
 
 <PageTitle>Backups - Hexalith EventStore</PageTitle>
 
@@ -22,6 +24,7 @@
             <div style="display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px;"
                  data-deferred-action="backup-create">
                 <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                              id="backup-create-button"
                               OnClick="OpenCreateBackupDialog"
                               aria-label="Create backup (currently deferred by backend)">
                     Create Backup
@@ -36,6 +39,7 @@
                 Export Stream
             </FluentButton>
             <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                          id="backup-import-button"
                           OnClick="OpenImportDialog"
                           aria-label="Import stream">
                 Import Stream
@@ -192,6 +196,7 @@
                         @if (context.Status == BackupJobStatus.Completed && context.IsValidated)
                         {
                             <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                                          id="@GetRestoreFocusId(context.BackupId)"
                                           OnClick="@(() => OpenRestoreDialog(context))"
                                           aria-label="Restore from backup">
                                 Restore
@@ -223,6 +228,9 @@
                 <h3 style="margin: 0;">Create Backup</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["BackupTenantTarget", _createTenantId ?? string.Empty]"
+                                   Impact="@Text["BackupCreateImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
                             aria-label="Deferred operation notice">
                     <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground2);">
@@ -322,6 +330,9 @@
                 <h3 style="margin: 0;">Restore from Backup @TruncateId(_restoreTarget.BackupId)</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["BackupTarget", _restoreTarget.BackupId]"
+                                   Impact="@Text["BackupRestoreImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <div style="display: flex; gap: 8px; margin-bottom: 12px;" role="group" aria-label="Restore steps">
                     <FluentBadge Appearance="@(_restoreStep == 1 ? BadgeAppearance.Filled : BadgeAppearance.Ghost)"
                                  aria-current="@(_restoreStep == 1 ? "step" : null)"
@@ -472,6 +483,9 @@
                 <h3 style="margin: 0;">Import Stream</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@(_importTenantId is null ? Text["BackupImportTarget"] : Text["BackupTenantTarget", _importTenantId])"
+                                   Impact="@Text["BackupImportImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentCard Style="padding: 16px; margin-bottom: 12px; text-align: center;">
                     <InputFile OnChange="OnImportFileSelected"
                                accept=".json"
@@ -491,8 +505,8 @@
                 }
                 <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 8px;">
                     <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
-                        Importing will append events to the target stream using new sequence numbers.
-                        Existing events are never overwritten. Duplicate events (matching EventId) are automatically skipped.
+                        If implemented, importing will append events to the target stream using new sequence numbers.
+                        Existing events will never be overwritten, and duplicate events (matching EventId) will be skipped.
                     </p>
                 </FluentCard>
             </ChildContent>
@@ -556,6 +570,7 @@
     private string? _restorePointInTime;
     private string? _restorePointInTimeError;
     private bool _restoreDryRun;
+    private string? _restoreInitiatorId;
 
     // Export dialog state
     private bool _showExportDialog;
@@ -574,6 +589,7 @@
     private string? _importTenantId;
     private string? _importPreview;
     private string? _importError;
+    private string? _importInitiatorId;
 
     private bool _isAnyDialogOpen => _showCreateDialog || _showValidateDialog || _showRestoreDialog || _showExportDialog || _showImportDialog;
 
@@ -795,6 +811,8 @@
     private static string TruncateId(string id)
         => id.Length > 8 ? id[..8] + "\u2026" : id;
 
+    private static string GetRestoreFocusId(string backupId) => $"backup-restore-{backupId}";
+
     private string FormatTotalBackupSize()
     {
         IEnumerable<BackupJob> completed = (_jobs ?? []).Where(j => j.Status == BackupJobStatus.Completed);
@@ -985,6 +1003,7 @@
         _restorePointInTime = null;
         _restorePointInTimeError = null;
         _restoreDryRun = false;
+        _restoreInitiatorId = GetRestoreFocusId(job.BackupId);
         _showRestoreDialog = true;
         _pendingShowRestore = true;
     }
@@ -993,6 +1012,7 @@
     {
         if (_restoreDialog is not null) { await _restoreDialog.HideAsync().ConfigureAwait(false); }
         _showRestoreDialog = false;
+        await RestoreInitiatorFocusAsync(isRestore: true).ConfigureAwait(false);
     }
     private void GoToRestoreStep2() => _restoreStep = 2;
     private void GoToRestoreStep1() => _restoreStep = 1;
@@ -1018,6 +1038,8 @@
                         _restorePointInTimeError = "Point-in-time cannot be in the future.";
                         _isOperating = false;
                         StateHasChanged();
+                        await ShowErrorToastBestEffortAsync(_restorePointInTimeError).ConfigureAwait(false);
+                        await CloseRestoreDialogAndRestoreFocusAsync().ConfigureAwait(false);
                         return;
                     }
 
@@ -1029,6 +1051,8 @@
                     _restorePointInTimeError = "Invalid date format. Use ISO 8601 (e.g. 2026-03-20T14:30:00Z).";
                     _isOperating = false;
                     StateHasChanged();
+                    await ShowErrorToastBestEffortAsync(_restorePointInTimeError).ConfigureAwait(false);
+                    await CloseRestoreDialogAndRestoreFocusAsync().ConfigureAwait(false);
                     return;
                 }
             }
@@ -1043,7 +1067,7 @@
 
             if (result?.Success == true)
             {
-                await ShowSuccessToastBestEffortAsync($"Restore initiated from backup {TruncateId(_restoreTarget.BackupId)}.");
+                await ShowSuccessToastBestEffortAsync($"Restore request accepted for backup {TruncateId(_restoreTarget.BackupId)}.").ConfigureAwait(false);
                 if (_restoreDialog is not null) { await _restoreDialog.HideAsync().ConfigureAwait(false); }
                 _showRestoreDialog = false;
                 await LoadDataAsync();
@@ -1056,6 +1080,16 @@
         catch (ServiceUnavailableException)
         {
             await ShowErrorToastBestEffortAsync("Admin service unavailable. Try again later.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await ShowErrorToastBestEffortAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+            await CloseRestoreDialogAndRestoreFocusAsync().ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            await ShowErrorToastBestEffortAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            await CloseRestoreDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -1140,6 +1174,7 @@
         _importTenantId = null;
         _importPreview = null;
         _importError = null;
+        _importInitiatorId = "backup-import-button";
         _showImportDialog = true;
         _pendingShowImport = true;
     }
@@ -1148,6 +1183,7 @@
     {
         if (_importDialog is not null) { await _importDialog.HideAsync().ConfigureAwait(false); }
         _showImportDialog = false;
+        await RestoreInitiatorFocusAsync(isRestore: false).ConfigureAwait(false);
     }
 
     private async Task OnImportFileSelected(InputFileChangeEventArgs e)
@@ -1168,37 +1204,48 @@
             {
                 using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(content);
                 System.Text.Json.JsonElement root = doc.RootElement;
-                string? tenantId = root.TryGetProperty("TenantId", out System.Text.Json.JsonElement tid) ? tid.GetString() : null;
-                string? domain = root.TryGetProperty("Domain", out System.Text.Json.JsonElement dom) ? dom.GetString() : null;
-                string? aggregateId = root.TryGetProperty("AggregateId", out System.Text.Json.JsonElement aid) ? aid.GetString() : null;
-                int eventCount = root.TryGetProperty("Events", out System.Text.Json.JsonElement evts) && evts.ValueKind == System.Text.Json.JsonValueKind.Array
-                    ? evts.GetArrayLength()
-                    : 0;
+                string? tenantId = root.TryGetProperty("tenantId", out System.Text.Json.JsonElement tid) ? tid.GetString() : null;
+                string? domain = root.TryGetProperty("domain", out System.Text.Json.JsonElement dom) ? dom.GetString() : null;
+                string? aggregateId = root.TryGetProperty("aggregateId", out System.Text.Json.JsonElement aid) ? aid.GetString() : null;
+                bool hasEvents = root.TryGetProperty("events", out System.Text.Json.JsonElement evts)
+                    && evts.ValueKind == System.Text.Json.JsonValueKind.Array;
 
-                if (tenantId is null || domain is null || aggregateId is null)
+                if (tenantId is null || domain is null || aggregateId is null || !hasEvents)
                 {
-                    _importError = "Invalid export file format. Expected JSON with TenantId, Domain, AggregateId, and Events array.";
+                    await FailImportFileAsync("Invalid export file format. Expected JSON with tenantId, domain, aggregateId, and an events array.").ConfigureAwait(false);
                     return;
                 }
 
                 _importTenantId = tenantId;
                 _importContent = content;
-                _importPreview = $"Tenant: {tenantId}\nDomain: {domain}\nAggregate: {aggregateId}\nEvents: {eventCount}";
+                _importPreview = $"Tenant: {tenantId}\nDomain: {domain}\nAggregate: {aggregateId}\nEvents: {evts.GetArrayLength()}";
             }
             catch (System.Text.Json.JsonException)
             {
-                _importError = "Invalid export file format. Expected JSON with TenantId, Domain, AggregateId, and Events array.";
+                await FailImportFileAsync("Invalid export file format. Expected JSON with tenantId, domain, aggregateId, and an events array.").ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _importError = $"Failed to read file: {ex.Message}";
+            _ = ex;
+            await FailImportFileAsync("Unable to read the selected import file.").ConfigureAwait(false);
         }
+    }
+
+    private async Task FailImportFileAsync(string message)
+    {
+        _importError = message;
+        await ShowErrorToastBestEffortAsync(message).ConfigureAwait(false);
+        await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnImportConfirm()
     {
-        if (_importContent is null || _importTenantId is null) return;
+        if (_importContent is null || _importTenantId is null)
+        {
+            await FocusService.RestoreAsync(_importInitiatorId).ConfigureAwait(false);
+            return;
+        }
 
         _isOperating = true;
         StateHasChanged();
@@ -1214,7 +1261,7 @@
 
             if (result?.Success == true)
             {
-                await ShowSuccessToastBestEffortAsync(result.Message ?? "Import completed successfully.");
+                await ShowSuccessToastBestEffortAsync("Import request accepted.").ConfigureAwait(false);
                 if (_importDialog is not null) { await _importDialog.HideAsync().ConfigureAwait(false); }
                 _showImportDialog = false;
                 await LoadDataAsync();
@@ -1228,6 +1275,16 @@
         {
             await ShowErrorToastBestEffortAsync("Admin service unavailable. Try again later.");
         }
+        catch (UnauthorizedAccessException)
+        {
+            await ShowErrorToastBestEffortAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+            await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
+        }
+        catch (ForbiddenAccessException)
+        {
+            await ShowErrorToastBestEffortAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+            await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
+        }
         catch (OperationCanceledException)
         {
             // Silently handle cancellation
@@ -1237,6 +1294,44 @@
             _isOperating = false;
             StateHasChanged();
         }
+    }
+
+    private async Task CloseRestoreDialogAndRestoreFocusAsync()
+    {
+        if (_restoreDialog is not null)
+        {
+            await _restoreDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showRestoreDialog = false;
+        await RestoreInitiatorFocusAsync(isRestore: true).ConfigureAwait(false);
+    }
+
+    private async Task CloseImportDialogAndRestoreFocusAsync()
+    {
+        if (_importDialog is not null)
+        {
+            await _importDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showImportDialog = false;
+        await RestoreInitiatorFocusAsync(isRestore: false).ConfigureAwait(false);
+    }
+
+    private async Task RestoreInitiatorFocusAsync(bool isRestore)
+    {
+        string? focusId = isRestore ? _restoreInitiatorId : _importInitiatorId;
+        if (isRestore)
+        {
+            _restoreInitiatorId = null;
+        }
+        else
+        {
+            _importInitiatorId = null;
+        }
+
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     private async Task ShowSuccessToastBestEffortAsync(string? message)

@@ -16,6 +16,8 @@
 @inject IJSRuntime JSRuntime
 @inject AdminUserContext UserContext
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IStringLocalizer<AdminResources> Text
+@inject InitiatorFocusService FocusService
 
 <PageTitle>Consistency - Hexalith EventStore</PageTitle>
 
@@ -29,6 +31,7 @@
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Operator">
             <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                          id="consistency-trigger-button"
                           OnClick="OpenTriggerDialog"
                           aria-label="Run consistency check">
                 Run Check
@@ -333,6 +336,9 @@
                 <h3 style="margin: 0;">Run Consistency Check</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["ConsistencyTarget", FormatTenantScope(_triggerTenantId), FormatDomainScope(_triggerDomain)]"
+                                   Impact="@Text["ConsistencyTriggerImpact"]"
+                                   RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_triggerTenantId"
                                  Label="@(_canUseOpaqueChecks ? "Tenant ID (optional, all tenants when empty)" : "Tenant ID (optional, your authorized tenant when empty)")"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -385,6 +391,9 @@
                 <h3 style="margin: 0;">Cancel Consistency Check</h3>
             </TitleTemplate>
             <ChildContent>
+                <ConfirmationFacts Target="@Text["ConsistencyCheckTarget", _cancelCheckId ?? string.Empty]"
+                                   Impact="@Text["ConsistencyCancelImpact"]"
+                                   RequiredPermission="@Text["PermissionAdmin"]" />
                 <p>Cancel this consistency check? Results collected so far will be preserved.</p>
             </ChildContent>
             <ActionTemplate>
@@ -439,6 +448,7 @@
     private bool _checkProjectionPositions = true;
     private bool _checkMetadataConsistency = true;
     private bool _isTriggering;
+    private string? _triggerInitiatorId;
 
     // Cancel dialog state
     private bool _showCancelDialog;
@@ -713,7 +723,7 @@
             _expandedCheckResult = null;
             _apiUnavailable = true;
             _apiErrorMessage = "Access denied. Administrator permission is required to view check details.";
-            await FocusElementAsync(GetCheckFocusId(check.CheckId)).ConfigureAwait(false);
+            await FocusService.RestoreAsync(GetCheckFocusId(check.CheckId)).ConfigureAwait(false);
             return;
         }
 
@@ -735,7 +745,7 @@
             _expandedCheckResult = null;
             _apiUnavailable = true;
             _apiErrorMessage = "Access denied. Administrator permission is required to view check details.";
-            await FocusElementAsync(GetCheckFocusId(check.CheckId)).ConfigureAwait(false);
+            await FocusService.RestoreAsync(GetCheckFocusId(check.CheckId)).ConfigureAwait(false);
         }
     }
 
@@ -764,6 +774,7 @@
         _checkSnapshotIntegrity = true;
         _checkProjectionPositions = true;
         _checkMetadataConsistency = true;
+        _triggerInitiatorId = "consistency-trigger-button";
         _showTriggerDialog = true;
         _pendingShowTrigger = true;
     }
@@ -772,6 +783,7 @@
     {
         if (_triggerDialog is not null) { await _triggerDialog.HideAsync().ConfigureAwait(false); }
         _showTriggerDialog = false;
+        await RestoreFocusAsync(trigger: true).ConfigureAwait(false);
     }
 
     private async Task OnTriggerConfirm()
@@ -790,11 +802,22 @@
             string? tenantId = string.IsNullOrWhiteSpace(_triggerTenantId) ? null : _triggerTenantId.Trim();
             string? domain = string.IsNullOrWhiteSpace(_triggerDomain) ? null : _triggerDomain.Trim();
 
-            AdminOperationResult? result = await ConsistencyApi.TriggerCheckAsync(tenantId, domain, checkTypes);
+            AdminOperationResult? result;
+            try
+            {
+                result = await ConsistencyApi.TriggerCheckAsync(tenantId, domain, checkTypes).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _ = ex;
+                await ToastService.ShowErrorAsync("The consistency check request is invalid.").ConfigureAwait(false);
+                await CloseTriggerDialogAndRestoreFocusAsync().ConfigureAwait(false);
+                return;
+            }
 
             if (result?.Success == true)
             {
-                await ToastService.ShowSuccessAsync("Consistency check started.");
+                await ToastService.ShowSuccessAsync("Consistency check request accepted.").ConfigureAwait(false);
                 if (_triggerDialog is not null) { await _triggerDialog.HideAsync().ConfigureAwait(false); }
                 _showTriggerDialog = false;
                 await LoadDataAsync();
@@ -804,10 +827,6 @@
                 await ToastService.ShowErrorAsync(result?.Message ?? "Failed to trigger consistency check.");
             }
         }
-        catch (InvalidOperationException ex)
-        {
-            await ToastService.ShowErrorAsync(ex.Message);
-        }
         catch (ServiceUnavailableException)
         {
             await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
@@ -815,10 +834,12 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
+            await CloseTriggerDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
+            await CloseTriggerDialogAndRestoreFocusAsync().ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -852,7 +873,7 @@
         if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
         _showCancelDialog = false;
         _cancelCheckId = null;
-        _cancelInitiatorId = null;
+        await RestoreFocusAsync(trigger: false).ConfigureAwait(false);
     }
 
     private async Task OnCancelConfirm()
@@ -871,7 +892,7 @@
 
             if (result?.Success == true)
             {
-                await ToastService.ShowSuccessAsync("Consistency check cancelled.");
+                await ToastService.ShowSuccessAsync("Consistency cancellation request accepted.").ConfigureAwait(false);
                 if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
                 _showCancelDialog = false;
                 _cancelCheckId = null;
@@ -886,19 +907,23 @@
         {
             await ToastService.ShowErrorAsync("Admin service unavailable. Try again later.");
         }
+        catch (UnauthorizedAccessException)
+        {
+            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+            if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
+            _showCancelDialog = false;
+            _pendingShowCancel = false;
+            _cancelCheckId = null;
+            await RestoreFocusAsync(trigger: false).ConfigureAwait(false);
+        }
         catch (ForbiddenAccessException)
         {
-            string? focusId = _cancelInitiatorId;
             await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
             if (_cancelDialog is not null) { await _cancelDialog.HideAsync().ConfigureAwait(false); }
             _showCancelDialog = false;
             _pendingShowCancel = false;
             _cancelCheckId = null;
-            _cancelInitiatorId = null;
-            if (focusId is not null)
-            {
-                await FocusElementAsync(focusId).ConfigureAwait(false);
-            }
+            await RestoreFocusAsync(trigger: false).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -910,6 +935,34 @@
             // Post-await completion path: continuation may resume off the renderer dispatcher.
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task CloseTriggerDialogAndRestoreFocusAsync()
+    {
+        if (_triggerDialog is not null)
+        {
+            await _triggerDialog.HideAsync().ConfigureAwait(false);
+        }
+
+        _showTriggerDialog = false;
+        _pendingShowTrigger = false;
+        await RestoreFocusAsync(trigger: true).ConfigureAwait(false);
+    }
+
+    private async Task RestoreFocusAsync(bool trigger)
+    {
+        string? focusId = trigger ? _triggerInitiatorId : _cancelInitiatorId;
+        if (trigger)
+        {
+            _triggerInitiatorId = null;
+        }
+        else
+        {
+            _cancelInitiatorId = null;
+        }
+
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     // Export
@@ -984,9 +1037,6 @@
     private static string GetCheckFocusId(string checkId) => $"consistency-check-{checkId}";
 
     private static string GetCancelFocusId(string checkId) => $"consistency-cancel-{checkId}";
-
-    private async Task FocusElementAsync(string elementId)
-        => await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusElementById", elementId).ConfigureAwait(false);
 
     private static string FormatDomainScope(string? domain)
         => string.IsNullOrWhiteSpace(domain) ? "All domains" : domain;

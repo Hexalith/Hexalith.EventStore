@@ -179,7 +179,8 @@ public class ToolHelperTests {
             "Pause projection 'OrderSummary' for tenant 'acme'",
             "POST /api/v1/admin/projections/acme/OrderSummary/pause",
             new { tenantId = "acme", projectionName = "OrderSummary" },
-            "This will stop the projection.");
+            "This will stop the projection.",
+            "Operator");
 
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
@@ -188,6 +189,9 @@ public class ToolHelperTests {
         doc.RootElement.GetProperty("endpoint").GetString()!.ShouldContain("POST");
         doc.RootElement.GetProperty("parameters").GetProperty("tenantId").GetString().ShouldBe("acme");
         doc.RootElement.GetProperty("warning").GetString()!.ShouldNotBeNullOrWhiteSpace();
+        doc.RootElement.GetProperty("target").GetString()!.ShouldContain("OrderSummary");
+        doc.RootElement.GetProperty("impact").GetString().ShouldBe("This will stop the projection.");
+        doc.RootElement.GetProperty("requiredPermission").GetString().ShouldBe("Operator");
     }
 
     [Fact]
@@ -199,19 +203,44 @@ public class ToolHelperTests {
             new {
                 payloadJson = ProtectedDataLeakSentinel.ProtectedPayloadPlaintext,
                 safeIdentifier = "backup-1",
+                nested = new {
+                    ordinaryText = ProtectedDataLeakSentinel.ProtectedProviderExceptionText,
+                },
             },
-            ProtectedDataLeakSentinel.ProtectedProviderExceptionText);
+            ProtectedDataLeakSentinel.ProtectedProviderExceptionText,
+            "Admin");
 
         ProtectedDataLeakSentinel.AssertNoLeak([result]);
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
         doc.RootElement.GetProperty("parameters").GetProperty("safeIdentifier").GetString().ShouldBe("backup-1");
+        doc.RootElement.GetProperty("parameters").GetProperty("nested").GetProperty("ordinaryText").GetString().ShouldBe("Preview parameter redacted.");
         // P15 — assert each unsafe-text field collapsed to its fallback replacement, not just sentinel-free.
         doc.RootElement.GetProperty("description").GetString().ShouldBe("Preview description redacted.");
         doc.RootElement.GetProperty("endpoint").GetString().ShouldBe("Preview endpoint redacted.");
         doc.RootElement.GetProperty("warning").GetString().ShouldBe("Preview warning redacted.");
         // P15 — assert the raw-capable key was projected to the descriptor name (not just absent).
         doc.RootElement.GetProperty("parameters").GetProperty("payload").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    [Fact]
+    public void SerializePreview_AndSerializeError_BoundEveryTextValue()
+    {
+        string longText = new('x', 500);
+
+        string preview = ToolHelper.SerializePreview(
+            longText,
+            longText,
+            longText,
+            new { ordinaryText = longText, nested = new[] { longText } },
+            longText,
+            longText);
+        string error = ToolHelper.SerializeError(longText, longText);
+
+        using JsonDocument previewDocument = JsonDocument.Parse(preview);
+        AssertAllStringsBounded(previewDocument.RootElement, 240);
+        using JsonDocument errorDocument = JsonDocument.Parse(error);
+        AssertAllStringsBounded(errorDocument.RootElement, 240);
     }
 
     [Fact]
@@ -318,5 +347,29 @@ public class ToolHelperTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("service-unavailable");
         doc.RootElement.GetProperty("message").GetString().ShouldBe("Tenant service temporarily unavailable. Retry shortly.");
+    }
+
+    private static void AssertAllStringsBounded(JsonElement element, int maxLength)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            element.GetString()!.Length.ShouldBeLessThanOrEqualTo(maxLength);
+            return;
+        }
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (JsonProperty property in element.EnumerateObject())
+            {
+                AssertAllStringsBounded(property.Value, maxLength);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement item in element.EnumerateArray())
+            {
+                AssertAllStringsBounded(item, maxLength);
+            }
+        }
     }
 }

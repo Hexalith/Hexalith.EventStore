@@ -43,7 +43,8 @@ internal static class ConsistencyWriteTools {
                     + (domain is not null ? $" in domain '{domain}'" : string.Empty),
                 "POST /api/v1/admin/consistency/checks",
                 new { tenantId, domain, checkTypes = parsedTypes },
-                "This will trigger a data integrity check. Checks run asynchronously and may take time depending on data volume.");
+                "This will trigger a data integrity check. Checks run asynchronously and may take time depending on data volume.",
+                "Operator");
         }
 
         try {
@@ -80,7 +81,8 @@ internal static class ConsistencyWriteTools {
                 $"Cancel consistency check '{checkId}'",
                 $"POST /api/v1/admin/consistency/checks/{Uri.EscapeDataString(checkId)}/cancel",
                 new { checkId },
-                "This will cancel the running consistency check. Partial results will be preserved.");
+                "This will cancel the running consistency check. Partial results will be preserved.",
+                "Admin");
         }
 
         try {
