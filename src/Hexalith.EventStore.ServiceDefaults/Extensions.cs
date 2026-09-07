@@ -181,9 +181,9 @@ public static class Extensions {
             readinessOptions.ResponseWriter = options.DevelopmentHealthResponseWriter;
         }
 
-        _ = app.MapHealthChecks(HealthEndpointPath, healthOptions);
-        _ = app.MapHealthChecks(AlivenessEndpointPath, livenessOptions);
-        _ = app.MapHealthChecks(ReadinessEndpointPath, readinessOptions);
+        _ = app.MapHealthChecks(HealthEndpointPath, healthOptions).AllowAnonymous();
+        _ = app.MapHealthChecks(AlivenessEndpointPath, livenessOptions).AllowAnonymous();
+        _ = app.MapHealthChecks(ReadinessEndpointPath, readinessOptions).AllowAnonymous();
         return app;
     }
 

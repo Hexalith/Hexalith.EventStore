@@ -45,6 +45,7 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
 
     public async ValueTask InitializeAsync() {
         SnapshotAndSet("EnableKeycloak", "false");
+        SnapshotAndSet("LocalAuthentication__SigningKey", TestJwtTokenGenerator.SigningKey);
         SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");
         SnapshotAndSet("DOTNET_ENVIRONMENT", "Development");
         SnapshotAndSet("EventStore__Actors__AggregateActorTypeName", AggregateActorTypeName);

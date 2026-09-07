@@ -1,5 +1,6 @@
 
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 using global::Aspire.Hosting;
@@ -19,6 +20,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
     private const string SecurityResourceName = "security";
 
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _userPasswords = new(StringComparer.Ordinal);
     private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
     private DistributedApplication? _app;
@@ -52,15 +54,13 @@ public class AspireTopologyFixture : IAsyncLifetime {
         // Program.cs allows disabling Keycloak via EnableKeycloak=false for standalone runs,
         // but this test suite depends on Keycloak being available.
         SnapshotAndSet("EnableKeycloak", "true");
+        SnapshotAndSet("KeycloakPersistent", "false");
+        ConfigureUser("admin-user", "AdminUsername", "AdminPassword");
+        ConfigureUser("tenant-a-user", null, "TenantAPassword");
+        ConfigureUser("tenant-b-user", null, "TenantBPassword");
+        ConfigureUser("readonly-user", null, "ReadOnlyPassword");
+        ConfigureUser("no-tenant-user", null, "NoTenantPassword");
         SnapshotAndSet("EventStore__Actors__AggregateActorTypeName", $"AggregateActorIntegration{Guid.NewGuid():N}");
-
-        // Opt-in container reuse for faster LOCAL test iteration (default OFF so CI stays
-        // cold/clean). Set KEYCLOAK_TEST_REUSE=true to keep the Keycloak container warm
-        // between `dotnet test` runs — only the first run pays the cold-start.
-        if (bool.TryParse(Environment.GetEnvironmentVariable("KEYCLOAK_TEST_REUSE")?.Trim(), out bool reuseKeycloak)
-            && reuseKeycloak) {
-            SnapshotAndSet("KeycloakPersistent", "true");
-        }
 
         try {
             // 5-minute timeout for full Aspire topology startup including container pulls,
@@ -224,18 +224,33 @@ public class AspireTopologyFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable(name, newValue);
     }
 
+    private void ConfigureUser(string username, string? usernameSetting, string passwordSetting) {
+        string password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
+        _userPasswords[username] = password;
+        if (usernameSetting is not null) {
+            SnapshotAndSet($"LocalAuthentication__{usernameSetting}", username);
+        }
+
+        SnapshotAndSet($"LocalAuthentication__{passwordSetting}", password);
+    }
+
     private void RestoreEnvironmentSnapshot() {
         foreach (KeyValuePair<string, string?> entry in _envSnapshot) {
             Environment.SetEnvironmentVariable(entry.Key, entry.Value);
         }
 
         _envSnapshot.Clear();
+        _userPasswords.Clear();
     }
 
     /// <summary>
     /// Acquires a real OIDC token from Keycloak for the specified test user (D11, Rule #16).
     /// </summary>
-    public async Task<string> GetTokenAsync(string username, string password) {
+    public async Task<string> GetTokenAsync(string username) {
+        if (!_userPasswords.TryGetValue(username, out string? password)) {
+            throw new InvalidOperationException("The requested Keycloak fixture identity is not configured.");
+        }
+
         string tokenEndpoint = $"{KeycloakBaseUrl}/realms/hexalith/protocol/openid-connect/token";
         return await KeycloakTokenHelper
             .AcquireTokenAsync(tokenEndpoint, "hexalith-eventstore", username, password)
@@ -248,7 +263,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
 
         while (DateTimeOffset.UtcNow < deadline) {
             try {
-                return await GetTokenAsync("admin-user", "admin-pass").ConfigureAwait(false);
+                return await GetTokenAsync("admin-user").ConfigureAwait(false);
             }
             catch (Exception ex) {
                 lastException = ex;

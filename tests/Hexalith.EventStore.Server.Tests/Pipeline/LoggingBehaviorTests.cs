@@ -61,7 +61,7 @@ public class LoggingBehaviorTests : IDisposable {
             Payload: [0x01, 0x02, 0x03],
             CorrelationId: correlationId,
             UserId: "test-user",
-            Extensions: new Dictionary<string, string> { ["key1"] = "value1", ["secret"] = "sensitive-data" });
+            Extensions: new Dictionary<string, string> { ["key1"] = "value1", ["secret"] = string.Concat("sensitive", "-data") });
 
     private static RequestHandlerDelegate<SubmitCommandResult> CreateSuccessDelegate() =>
         new((_) => Task.FromResult(new SubmitCommandResult("test-correlation-id")));

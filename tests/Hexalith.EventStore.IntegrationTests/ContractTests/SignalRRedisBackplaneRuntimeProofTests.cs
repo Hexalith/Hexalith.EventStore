@@ -359,6 +359,11 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
             startInfo.Environment["ASPNETCORE_URLS"] = baseUrl.ToString().TrimEnd('/');
             startInfo.Environment["EnableKeycloak"] = "false";
+            startInfo.Environment["Authentication__JwtBearer__Authority"] = string.Empty;
+            startInfo.Environment["Authentication__JwtBearer__Issuer"] = TestJwtTokenGenerator.Issuer;
+            startInfo.Environment["Authentication__JwtBearer__Audience"] = TestJwtTokenGenerator.Audience;
+            startInfo.Environment["Authentication__JwtBearer__SigningKey"] = TestJwtTokenGenerator.SigningKey;
+            startInfo.Environment["Authentication__JwtBearer__RequireHttpsMetadata"] = "false";
             startInfo.Environment["EventStore__SignalR__Enabled"] = "true";
             startInfo.Environment["EventStore__SignalR__RuntimeProof__Enabled"] = proofEndpointsEnabled.ToString();
             startInfo.Environment["EventStore__SignalR__RuntimeProof__InstanceName"] = name;

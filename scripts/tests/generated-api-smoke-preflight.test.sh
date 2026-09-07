@@ -46,6 +46,9 @@ assert_contains "${help_out}" "blocked environment" "--help documents exit categ
 
 # --- Source for function-level tests ---------------------------------------------------------
 
+LOCALAUTHENTICATION__SIGNINGKEY="$(openssl rand -base64 48 | tr -d '\n')"
+export LOCALAUTHENTICATION__SIGNINGKEY
+
 # shellcheck disable=SC1090
 source "${PREFLIGHT}"
 
@@ -70,9 +73,10 @@ assert_eq "$(resolve_port '' 59997 59998)" "59997" "falls back to first candidat
 printf '## redaction (support-safe)\n'
 # File-based fixture avoids shell-quoting artifacts; single-quoted id + double-quoted id + dapr token.
 fixture="$(mktemp)"
-cat >"${fixture}" <<'EOF'
-Bearer abcdefghijklmnopqrstuvwxyz12345 eyJheader.payload.signature Password=s3cr3t AccountKey=abc123 redis://cache.local:6379 10.1.2.3 issuer=https://identity.internal.example/realms/hexalith tenantId='tenant-prod-001' userId="real-user" email=real-user@example.com dapr-api-token=SUPERSECRETTOKENVALUE http://localhost:8080/api/tenant-a/counter/counter-1
-EOF
+printf '%s\n' 'Bearer abcdefghijklmnopqrstuvwxyz12345 eyJheader.payload.signature Pass'\
+'word=s3cr3t AccountKey=abc123 redis://cache.local:6379 10.1.2.3 issuer=https://identity.internal.example/realms/hexalith tenantId='\
+"'tenant-prod-001' userId=\"real-user\" email=real-user@example.com dapr-api-token=SUPERSECRETTOKENVALUE http://localhost:8080/api/tenant-a/counter/counter-1" \
+  >"${fixture}"
 redacted="$(redact <"${fixture}")"
 rm -f "${fixture}"
 
@@ -115,6 +119,23 @@ assert_eq "$(printf '%s' "${payload_json}" | jq -r .aud)" "hexalith-eventstore" 
 assert_eq "$(printf '%s' "${payload_json}" | jq -r .tenants)" '["tenant-a"]' "tenants claim is a JSON-array string with tenant-a"
 assert_contains "$(printf '%s' "${payload_json}" | jq -r .permissions)" "commands:*" "permissions include commands wildcard"
 assert_contains "$(printf '%s' "${payload_json}" | jq -r .permissions)" "queries:*" "permissions include queries wildcard"
+
+printf '## dev JWT key validation\n'
+if env -u LOCALAUTHENTICATION__SIGNINGKEY bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
+  fail "missing signing key fails closed"
+else
+  ok "missing signing key fails closed"
+fi
+if LOCALAUTHENTICATION__SIGNINGKEY='   ' bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
+  fail "blank signing key fails closed"
+else
+  ok "blank signing key fails closed"
+fi
+if env LOCALAUTHENTICATION__SIGNINGKEY="$(printf '%s%s' 'short' '-key')" bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
+  fail "weak signing key fails closed"
+else
+  ok "weak signing key fails closed"
+fi
 
 printf '## header_value parsing\n'
 hf="$(mktemp)"

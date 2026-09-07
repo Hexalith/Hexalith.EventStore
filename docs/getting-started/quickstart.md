@@ -37,7 +37,7 @@ $ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHo
 
 > **Note:** The first run takes longer than usual because .NET restores NuGet packages and Docker pulls container images for Redis, Keycloak, and the DAPR sidecar.
 >
-> **Tip (experimental):** For a faster inner loop, set `KeycloakPersistent=true` to reuse the Keycloak container across restarts (cold-start is then paid only once). This pins Keycloak to fixed host ports `8180`/`8543`, which must be free — if they collide, relocate them with `KeycloakHttpPort`/`KeycloakManagementPort`. After editing the realm file, remove the container so it re-imports. See [Troubleshooting → Keycloak Slow Startup](../guides/troubleshooting.md#keycloak-slow-startup-dev-fast-start).
+Local Keycloak identities and passwords are generated for each AppHost run, so persistent Keycloak container reuse is intentionally unavailable. To request tokens manually, provide your own ephemeral values before starting Aspire, for example `LocalAuthentication__AdminUsername` and `LocalAuthentication__AdminPassword`; keep the matching values in `HEXALITH_ADMIN_USERNAME` and `HEXALITH_ADMIN_PASSWORD` only in your local shell.
 
 Once the application starts, the terminal output includes the Aspire dashboard URL. Open it in your browser — the dashboard shows all running services and their endpoints.
 
@@ -47,14 +47,15 @@ Once the application starts, the terminal output includes the Aspire dashboard U
 
 The CommandAPI requires a JWT token for authentication. Keycloak runs as part of the Aspire topology and provides test accounts preconfigured for local development.
 
-Open a new terminal and request a token using the `admin-user` test account. Keycloak runs on port 8180 as part of the Aspire topology:
+Request a token using the ephemeral administrator credentials supplied when Aspire started. Discover the `security` resource URL from the running topology because Aspire may choose a different host port:
 
 ```bash
-$ curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
+$ KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
+$ curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
   -d "grant_type=password" \
   -d "client_id=hexalith-eventstore" \
-  -d "username=admin-user" \
-  -d "password=admin-pass"
+  -d "username=${HEXALITH_ADMIN_USERNAME}" \
+  -d "password=${HEXALITH_ADMIN_PASSWORD}"
 ```
 
 > **Note:** The `\` line continuation works in bash and Zsh. In PowerShell (5.x and 7+), use the single-line alternative below.
@@ -64,7 +65,8 @@ The response contains an `access_token` field. Copy its value — you need it in
 > **Tip:** On Windows PowerShell 5.x, use:
 
 ```powershell
-$ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username="admin-user"; password="admin-pass"} | Select-Object -ExpandProperty access_token
+$env:KEYCLOAK_URL = aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | ConvertFrom-Json | ForEach-Object { $_.resources | Where-Object displayName -eq "security" | ForEach-Object { $_.urls | Where-Object name -eq "http" | Select-Object -ExpandProperty url } }
+$ Invoke-RestMethod -Method Post -Uri "$env:KEYCLOAK_URL/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD} | Select-Object -ExpandProperty access_token
 ```
 
 ### Submit the command via Swagger UI

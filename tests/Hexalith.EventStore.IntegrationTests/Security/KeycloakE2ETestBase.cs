@@ -24,6 +24,6 @@ public abstract class KeycloakE2ETestBase {
     /// <summary>
     /// Acquires a real OIDC token from Keycloak for the specified test user (D11, Rule #16).
     /// </summary>
-    protected Task<string> GetTokenAsync(string username, string password)
-        => _fixture.GetTokenAsync(username, password);
+    protected Task<string> GetTokenAsync(string username)
+        => _fixture.GetTokenAsync(username);
 }

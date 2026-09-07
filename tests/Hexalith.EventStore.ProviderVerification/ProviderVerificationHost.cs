@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using FluentValidation;
@@ -64,7 +65,7 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
         {
             ["Authentication:JwtBearer:Issuer"] = "provider-verification",
             ["Authentication:JwtBearer:Audience"] = "provider-verification",
-            ["Authentication:JwtBearer:SigningKey"] = "ProviderVerificationSigningKey-AtLeast32Chars!",
+            ["Authentication:JwtBearer:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
             ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
             ["EventStore:OpenApi:Enabled"] = "false",
             ["EventStore:SignalR:Enabled"] = "false",

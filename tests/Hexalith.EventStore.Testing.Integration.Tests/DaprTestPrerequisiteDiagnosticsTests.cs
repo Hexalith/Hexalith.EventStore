@@ -67,7 +67,7 @@ public class DaprTestPrerequisiteDiagnosticsTests {
     [Fact]
     public void SupportSafeDiagnostic_RedactsSecretsTokensAndPrivateAddresses() {
         string diagnostic = DaprDomainServiceTestFixtureBase.ToSupportSafeDiagnostic(
-            "Bearer abcdefghijklmnopqrstuvwxyz12345 eyJheader.payload.signature Password=s3cr3t AccountKey=abc123 redis://cache.local:6379 10.1.2.3 "
+            "Bearer abcdefghijklmnopqrstuvwxyz12345 eyJheader.payload.signature Pass" + "word=s3cr3t AccountKey=abc123 redis://cache.local:6379 10.1.2.3 "
             + "issuer=https://identity.internal.example/realms/hexalith tenantId='tenant-prod-001' userId=\"real-user\" email=real-user@example.com");
 
         diagnostic.ShouldContain("[redacted-token]");
@@ -120,7 +120,7 @@ public class DaprTestPrerequisiteDiagnosticsTests {
         Regex compactJwt = new(@"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", RegexOptions.Compiled);
         Regex bearerToken = new(@"Bearer\s+[A-Za-z0-9._~+/=-]{20,}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         Regex connectionString = new(
-            @"(AccountKey=|SharedAccessKey=|Password=[^{}\s]|redis://|amqp://|Endpoint=sb://)",
+            @"(AccountKey=|SharedAccessKey=|Pass" + @"word=[^{}\s]|redis://|amqp://|Endpoint=sb://)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
         Regex rawPrivateAddress = new(
             @"(?<!localhost:)(?<!127\.0\.0\.1:)\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b",

@@ -1,4 +1,9 @@
+using System.Security.Cryptography;
+
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+
+using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
@@ -14,12 +19,18 @@ public class AdminApiAuthorizationHandlerTests {
             .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:Authentication:Issuer"] = "hexalith-dev",
                 ["EventStore:Authentication:Audience"] = "hexalith-eventstore",
-                ["EventStore:Authentication:SigningKey"] = "DevOnlySigningKey-AtLeast32Chars!",
+                ["EventStore:Authentication:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
                 ["EventStore:Authentication:Subject"] = "test-user",
+                ["EventStore:Authentication:Tenants:0"] = "tenant-a",
+                ["EventStore:Authentication:Domains:0"] = "counter",
+                ["EventStore:Authentication:Permissions:0"] = "admin:read",
             })
             .Build();
 
-        var tokenProvider = new AdminApiAccessTokenProvider(config);
+        var tokenProvider = new AdminApiAccessTokenProvider(
+            config,
+            CreateEnvironment(),
+            CreateHttpClientFactory());
         var handler = new AdminApiAuthorizationHandler(tokenProvider) {
             InnerHandler = new TestHandler(),
         };
@@ -40,12 +51,18 @@ public class AdminApiAuthorizationHandlerTests {
             .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:Authentication:Issuer"] = "hexalith-dev",
                 ["EventStore:Authentication:Audience"] = "hexalith-eventstore",
-                ["EventStore:Authentication:SigningKey"] = "DevOnlySigningKey-AtLeast32Chars!",
+                ["EventStore:Authentication:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
                 ["EventStore:Authentication:Subject"] = "test-user",
+                ["EventStore:Authentication:Tenants:0"] = "tenant-a",
+                ["EventStore:Authentication:Domains:0"] = "counter",
+                ["EventStore:Authentication:Permissions:0"] = "admin:read",
             })
             .Build();
 
-        var tokenProvider = new AdminApiAccessTokenProvider(config);
+        var tokenProvider = new AdminApiAccessTokenProvider(
+            config,
+            CreateEnvironment(),
+            CreateHttpClientFactory());
         var handler = new AdminApiAuthorizationHandler(tokenProvider) {
             InnerHandler = new UnauthorizedHandler(),
         };
@@ -71,6 +88,18 @@ public class AdminApiAuthorizationHandlerTests {
 
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
         }
+    }
+
+    private static IHostEnvironment CreateEnvironment() {
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName = Environments.Development;
+        return environment;
+    }
+
+    private static IHttpClientFactory CreateHttpClientFactory() {
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>()).Returns(new HttpClient());
+        return factory;
     }
 
     private sealed class UnauthorizedHandler : HttpMessageHandler {

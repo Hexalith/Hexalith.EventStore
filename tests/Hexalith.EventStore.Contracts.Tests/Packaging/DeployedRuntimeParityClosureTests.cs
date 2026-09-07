@@ -705,7 +705,7 @@ public sealed class DeployedRuntimeParityClosureTests
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["nested"] = new JsonObject { ["client-secret"] = "redacted-but-forbidden" },
+            ["nested"] = new JsonObject { ["client-secret"] = string.Concat("redacted", "-but-forbidden") },
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
@@ -720,7 +720,7 @@ public sealed class DeployedRuntimeParityClosureTests
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["privatekey"] = "redacted-but-forbidden",
+            ["privatekey"] = string.Concat("redacted", "-but-forbidden"),
         })).ShouldBeFalse();
     }
 

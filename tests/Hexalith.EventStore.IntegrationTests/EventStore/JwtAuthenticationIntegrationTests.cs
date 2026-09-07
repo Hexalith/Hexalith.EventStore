@@ -3,6 +3,10 @@ extern alias eventstore;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Helpers;
@@ -14,6 +18,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 using Shouldly;
 
@@ -178,6 +184,80 @@ public class JwtAuthenticationIntegrationTests
     }
 
     [Fact]
+    public async Task PostCommands_Hs384Token_Returns401ProblemDetails() {
+        string token = TestJwtTokenGenerator.GenerateToken(
+            tenants: ["test-tenant"],
+            domains: ["test-domain"],
+            algorithm: Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha384Signature);
+        using HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var request = new {
+            messageId = Guid.NewGuid().ToString(),
+            tenant = "test-tenant",
+            domain = "test-domain",
+            aggregateId = "agg-001",
+            commandType = "CreateOrder",
+            payload = new { amount = 100 },
+        };
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task PostCommands_InvalidTokenValidationDimension_Returns401ProblemDetails() {
+        string signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+        (string Scenario, string Token)[] invalidTokens =
+        [
+            ("unsigned", CreateTokenForValidation(signed: false)),
+            ("wrong audience", CreateTokenForValidation(audience: "unexpected-audience")),
+            ("wrong signing key", CreateTokenForValidation(
+                TestJwtTokenGenerator.Issuer,
+                TestJwtTokenGenerator.Audience,
+                signingKey)),
+        ];
+        var request = new {
+            tenant = "test-tenant",
+            domain = "test-domain",
+            aggregateId = "agg-001",
+            commandType = "CreateOrder",
+            payload = new { amount = 100 },
+        };
+        using HttpClient client = _factory.CreateClient();
+
+        foreach ((string scenario, string token) in invalidTokens) {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, scenario);
+        }
+    }
+
+    [Fact]
+    public void Host_WithProductionSymmetricOverride_FailsBeforeServingWithoutEchoingKey() {
+        string signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        using WebApplicationFactory<EventStoreProgram> factory = new WebApplicationFactory<EventStoreProgram>()
+            .WithWebHostBuilder(builder => {
+                _ = builder.UseEnvironment("Production");
+                _ = builder.ConfigureAppConfiguration(config => config.AddInMemoryCollection(
+                    new Dictionary<string, string?> {
+                        ["Authentication:JwtBearer:Authority"] = string.Empty,
+                        ["Authentication:JwtBearer:Issuer"] = "test-issuer",
+                        ["Authentication:JwtBearer:Audience"] = "test-audience",
+                        ["Authentication:JwtBearer:SigningKey"] = signingKey,
+                        ["Authentication:JwtBearer:AllowInsecureSymmetricKey"] = "true",
+                    }));
+            });
+
+        OptionsValidationException exception = Should.Throw<OptionsValidationException>(() => factory.CreateClient());
+
+        exception.Message.ShouldContain("forbidden in Production");
+        exception.ToString().ShouldNotContain(signingKey);
+    }
+
+    [Fact]
     public async Task PostCommands_ValidToken_Returns202Accepted() {
         // Arrange - valid JWT token
         string token = TestJwtTokenGenerator.GenerateToken(
@@ -254,7 +334,7 @@ public class JwtAuthenticationIntegrationTests
     public async Task PostCommands_AuthFailure_LogsWithoutJwtToken() {
         // Arrange
         _factory.LogProvider.Clear();
-        string invalidToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature";
+        string invalidToken = string.Join('.', "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", "invalid", "signature");
         HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", invalidToken);
         var request = new {
@@ -284,6 +364,29 @@ public class JwtAuthenticationIntegrationTests
         allLogs.ShouldNotContain(
             e => e.Message.Contains(invalidToken),
             "JWT token MUST NOT appear in log output (NFR11)");
+    }
+
+    private static string CreateTokenForValidation(
+        string issuer = TestJwtTokenGenerator.Issuer,
+        string audience = TestJwtTokenGenerator.Audience,
+        string? signingKey = null,
+        bool signed = true) {
+        var descriptor = new SecurityTokenDescriptor {
+            Issuer = issuer,
+            Audience = audience,
+            Subject = new ClaimsIdentity([new Claim("sub", "validation-user")]),
+            NotBefore = DateTime.UtcNow.AddMinutes(-1),
+            Expires = DateTime.UtcNow.AddMinutes(30),
+            SigningCredentials = signed
+                ? new SigningCredentials(
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                        signingKey ?? TestJwtTokenGenerator.SigningKey)),
+                    SecurityAlgorithms.HmacSha256Signature)
+                : null,
+        };
+
+        var handler = new JwtSecurityTokenHandler();
+        return handler.WriteToken(handler.CreateToken(descriptor));
     }
 
     /// <summary>

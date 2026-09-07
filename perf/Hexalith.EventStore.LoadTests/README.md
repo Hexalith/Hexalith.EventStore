@@ -59,7 +59,7 @@ Add a nightly schedule once the harness is stable across runs and you have a bas
 
 ## Auth
 
-The `nfr7` scenario uses synthetic dev-signed JWTs (`LoadTestJwtTokenGenerator`) that match the EventStore's dev signing key. This is fine for performance measurement — auth latency is in the critical path and consistent across runs — but the tokens will not validate against a Keycloak-backed deployment. For Keycloak-targeting load runs, swap in a Keycloak token issuer modeled on `tests/Hexalith.EventStore.IntegrationTests/Helpers/KeycloakTokenHelper.cs`.
+The `nfr7` scenario uses synthetic HS256 JWTs from `LoadTestJwtTokenGenerator`. Set `LOAD_TEST_JWT_SIGNING_KEY` from the same ephemeral source used to configure the target EventStore; there is no committed fallback. The tokens will not validate against a Keycloak-backed deployment. For Keycloak-targeting load runs, use a Keycloak token issuer modeled on `tests/Hexalith.EventStore.IntegrationTests/Helpers/KeycloakTokenHelper.cs`.
 
 ## Interpreting reports
 

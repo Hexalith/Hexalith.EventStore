@@ -5,6 +5,8 @@ using Hexalith.EventStore.ServiceDefaults;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -15,6 +17,23 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.HealthChecks;
 
 public sealed class DefaultHealthEndpointResponseWriterTests {
+    [Fact]
+    public async Task EveryDefaultProbe_HasExplicitAnonymousMetadata()
+    {
+        await using WebApplication app = CreateApplication(Environments.Production);
+        await app.StartAsync().ConfigureAwait(true);
+        EndpointDataSource endpoints = app.Services.GetRequiredService<EndpointDataSource>();
+
+        foreach (string path in new[] { "/health", "/alive", "/ready" })
+        {
+            RouteEndpoint endpoint = endpoints.Endpoints
+                .OfType<RouteEndpoint>()
+                .Single(candidate => string.Equals(candidate.RoutePattern.RawText, path, StringComparison.Ordinal));
+
+            endpoint.Metadata.GetMetadata<IAllowAnonymous>().ShouldNotBeNull();
+        }
+    }
+
     [Fact]
     public async Task Development_UsesCustomWriterForHealthAndReadyEndpoints() {
         await using WebApplication app = CreateApplication(

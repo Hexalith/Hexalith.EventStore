@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Hexalith.EventStore.Authentication;
@@ -20,14 +22,14 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Authentication;
 
 public class ConfigureJwtBearerOptionsTests {
-    private const string TestSigningKey = "this-is-a-test-signing-key-at-least-32-chars-long!!";
+    private static readonly string s_testSigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
     private const string TestAuthority = "https://login.example.com";
     private const string TestIssuer = "test-issuer";
     private const string TestAudience = "test-audience";
 
     private static ConfigureJwtBearerOptions CreateConfigurer() {
         IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions {
-            SigningKey = TestSigningKey,
+            SigningKey = s_testSigningKey,
             Issuer = TestIssuer,
             Audience = TestAudience,
         });
@@ -39,6 +41,7 @@ public class ConfigureJwtBearerOptionsTests {
             Authority = TestAuthority,
             Issuer = TestIssuer,
             Audience = TestAudience,
+            AllowedAlgorithms = [SecurityAlgorithms.RsaSha256],
         });
         return new ConfigureJwtBearerOptions(authOptions, NullLoggerFactory.Instance);
     }
@@ -46,7 +49,7 @@ public class ConfigureJwtBearerOptionsTests {
     private static ConfigureJwtBearerOptions CreateDualConfigurer() {
         IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions {
             Authority = TestAuthority,
-            SigningKey = TestSigningKey,
+            SigningKey = s_testSigningKey,
             Issuer = TestIssuer,
             Audience = TestAudience,
         });
@@ -68,7 +71,7 @@ public class ConfigureJwtBearerOptionsTests {
 
     private static ConfigureJwtBearerOptions CreateConfigurer(ILoggerFactory loggerFactory) {
         IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions {
-            SigningKey = TestSigningKey,
+            SigningKey = s_testSigningKey,
             Issuer = TestIssuer,
             Audience = TestAudience,
         });
@@ -389,7 +392,10 @@ public class ConfigureJwtBearerOptionsTests {
         options.TokenValidationParameters.ValidateLifetime.ShouldBeTrue();
         options.TokenValidationParameters.ClockSkew.ShouldBe(TimeSpan.FromMinutes(1));
         options.TokenValidationParameters.ValidIssuer.ShouldBe(TestIssuer);
-        options.TokenValidationParameters.ValidAudience.ShouldBe(TestAudience);
+        options.TokenValidationParameters.ValidAudiences.ShouldBe([TestAudience]);
+        options.TokenValidationParameters.RequireExpirationTime.ShouldBeTrue();
+        options.TokenValidationParameters.RequireSignedTokens.ShouldBeTrue();
+        options.TokenValidationParameters.ValidAlgorithms.ShouldBe([SecurityAlgorithms.HmacSha256]);
     }
 
     [Fact]
@@ -463,6 +469,25 @@ public class ConfigureJwtBearerOptionsTests {
     }
 
     [Fact]
+    public void ValidateToken_Hs384Jwt_IsRejected() {
+        JwtBearerOptions options = CreateConfiguredOptions();
+        var descriptor = new SecurityTokenDescriptor {
+            Issuer = TestIssuer,
+            Audience = TestAudience,
+            Subject = new ClaimsIdentity([new Claim("sub", "user-1")]),
+            Expires = DateTime.UtcNow.AddMinutes(5),
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(s_testSigningKey)),
+                SecurityAlgorithms.HmacSha384Signature),
+        };
+        var handler = new JwtSecurityTokenHandler();
+        string token = handler.WriteToken(handler.CreateToken(descriptor));
+
+        _ = Should.Throw<SecurityTokenException>(
+            () => handler.ValidateToken(token, options.TokenValidationParameters, out _));
+    }
+
+    [Fact]
     public async Task OnChallenge_MissingToken_WritesProblemDetailsWithCorrectStructure() {
         // Arrange (5.3.4 + 5.3.5 — missing token challenge: 401, ProblemDetails, WWW-Authenticate)
         JwtBearerOptions options = CreateConfiguredOptions();
@@ -489,17 +514,86 @@ public class ConfigureJwtBearerOptionsTests {
     }
 
     [Fact]
-    public void Configure_DualConfig_AuthorityTakesPrecedenceOverSigningKey() {
-        // Arrange (5.3.8 — when BOTH Authority AND SigningKey are set, Authority wins)
+    public void Configure_OidcMode_AllowsOnlyExplicitAsymmetricAlgorithms() {
         var options = new JwtBearerOptions();
 
-        // Act
-        CreateDualConfigurer().Configure(JwtBearerDefaults.AuthenticationScheme, options);
+        CreateOidcConfigurer().Configure(JwtBearerDefaults.AuthenticationScheme, options);
 
-        // Assert — OIDC path taken, symmetric key NOT set
-        options.Authority.ShouldBe(TestAuthority);
-        options.TokenValidationParameters.IssuerSigningKey.ShouldBeNull();
+        options.TokenValidationParameters.ValidAlgorithms.ShouldBe([SecurityAlgorithms.RsaSha256]);
+        options.TokenValidationParameters.ValidAlgorithms.ShouldNotContain(SecurityAlgorithms.HmacSha256);
     }
+
+    [Fact]
+    public void Configure_OidcMode_DefensivelyCopiesAudiencesAndAlgorithms()
+    {
+        string[] audiences = ["primary-audience", "additional-audience"];
+        string[] algorithms = [SecurityAlgorithms.RsaSha256];
+        IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions
+        {
+            Authority = TestAuthority,
+            Issuer = TestIssuer,
+            ValidAudiences = audiences,
+            AllowedAlgorithms = algorithms,
+        });
+        var target = new JwtBearerOptions();
+
+        new ConfigureJwtBearerOptions(authOptions, NullLoggerFactory.Instance)
+            .Configure(JwtBearerDefaults.AuthenticationScheme, target);
+        audiences[0] = "mutated-primary";
+        algorithms[0] = SecurityAlgorithms.RsaSha512;
+
+        target.TokenValidationParameters.ValidAudiences.ShouldBe(["primary-audience", "additional-audience"]);
+        target.TokenValidationParameters.ValidAlgorithms.ShouldBe([SecurityAlgorithms.RsaSha256]);
+    }
+
+    [Fact]
+    public void Configure_OidcMode_AcceptsAdditionalAudienceAndRejectsNonAllowlistedAlgorithm()
+    {
+        using RSA rsa = RSA.Create(2048);
+        IOptions<EventStoreAuthenticationOptions> authOptions = Options.Create(new EventStoreAuthenticationOptions
+        {
+            Authority = TestAuthority,
+            Issuer = TestIssuer,
+            Audience = TestAudience,
+            ValidAudiences = ["additional-audience"],
+            AllowedAlgorithms = [SecurityAlgorithms.RsaSha256],
+        });
+        var target = new JwtBearerOptions();
+        new ConfigureJwtBearerOptions(authOptions, NullLoggerFactory.Instance)
+            .Configure(JwtBearerDefaults.AuthenticationScheme, target);
+        target.TokenValidationParameters.IssuerSigningKey = new RsaSecurityKey(rsa);
+        var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+
+        string accepted = CreateRsaToken(handler, rsa, SecurityAlgorithms.RsaSha256, "additional-audience");
+        ClaimsPrincipal principal = handler.ValidateToken(
+            accepted,
+            target.TokenValidationParameters,
+            out SecurityToken validated);
+
+        validated.ShouldBeOfType<JwtSecurityToken>().Header.Alg.ShouldBe(SecurityAlgorithms.RsaSha256);
+        principal.FindFirst("sub")!.Value.ShouldBe("user-1");
+
+        string rejected = CreateRsaToken(handler, rsa, SecurityAlgorithms.RsaSha384, "additional-audience");
+        _ = Should.Throw<SecurityTokenException>(() => handler.ValidateToken(
+            rejected,
+            target.TokenValidationParameters,
+            out _));
+    }
+
+    private static string CreateRsaToken(
+        JwtSecurityTokenHandler handler,
+        RSA rsa,
+        string algorithm,
+        string audience)
+        => handler.WriteToken(handler.CreateToken(new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity([new Claim("sub", "user-1")]),
+            Issuer = TestIssuer,
+            Audience = audience,
+            NotBefore = DateTime.UtcNow.AddMinutes(-1),
+            Expires = DateTime.UtcNow.AddMinutes(5),
+            SigningCredentials = new SigningCredentials(new RsaSecurityKey(rsa), algorithm),
+        }));
 
     [Fact]
     public void Configure_WrongSchemeName_DoesNotModifyOptions() {

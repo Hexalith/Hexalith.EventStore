@@ -85,8 +85,7 @@ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost
 - Aspire dashboard: `https://localhost:17017`.
 - DAPR HTTP port fixed at **3501** (so Admin.Server can do cross-sidecar metadata queries).
 
-**`EnableKeycloak=false`** falls back to symmetric-key JWT (no Keycloak container). AppHost changes
-require restarting the Aspire app.
+**`EnableKeycloak=false`** uses one cryptographically generated, per-run symmetric JWT key (no Keycloak container). The AppHost propagates it to local issuers and validators without logging the value. AppHost changes require restarting the Aspire app.
 
 Plain local `aspire run` always provisions `tenants` and `tenants-api` from the initialized root
 Tenants checkout, even though repository dependencies remain in package mode by default. Runtime

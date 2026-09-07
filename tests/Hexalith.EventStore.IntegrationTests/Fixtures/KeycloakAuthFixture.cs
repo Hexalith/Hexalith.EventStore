@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 
@@ -18,6 +20,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     private const string SecurityResourceName = "security";
 
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _userPasswords = new(StringComparer.Ordinal);
     private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
 
     private DistributedApplication? _app;
@@ -41,20 +44,25 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     /// </summary>
     public string KeycloakTokenEndpoint {
         get => field ?? throw new InvalidOperationException(
-        "Keycloak not initialized. Ensure InitializeAsync has completed."); private set;
+            "Keycloak not initialized. Ensure InitializeAsync has completed."); private set;
     }
+
+    /// <summary>
+    /// Gets the per-run administrator subject used by the tenant-bootstrap contract.
+    /// </summary>
+    public string AdminUserId { get; private set; } = string.Empty;
 
     public async ValueTask InitializeAsync() {
         // Enable Keycloak for real OIDC auth testing.
         SnapshotAndSet("EnableKeycloak", "true");
-
-        // Opt-in container reuse for faster LOCAL test iteration (default OFF so CI stays
-        // cold/clean). Set KEYCLOAK_TEST_REUSE=true to keep the Keycloak container warm
-        // between `dotnet test` runs — only the first run pays the cold-start.
-        if (bool.TryParse(Environment.GetEnvironmentVariable("KEYCLOAK_TEST_REUSE")?.Trim(), out bool reuseKeycloak)
-            && reuseKeycloak) {
-            SnapshotAndSet("KeycloakPersistent", "true");
-        }
+        SnapshotAndSet("KeycloakPersistent", "false");
+        AdminUserId = Guid.NewGuid().ToString("D");
+        SnapshotAndSet("LocalAuthentication__AdminUserId", AdminUserId);
+        ConfigureUser("admin-user", "AdminUsername", "AdminPassword");
+        ConfigureUser("tenant-a-user", null, "TenantAPassword");
+        ConfigureUser("tenant-b-user", null, "TenantBPassword");
+        ConfigureUser("readonly-user", null, "ReadOnlyPassword");
+        ConfigureUser("no-tenant-user", null, "NoTenantPassword");
 
         SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");
         SnapshotAndSet("DOTNET_ENVIRONMENT", "Development");
@@ -180,11 +188,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
         Exception? lastException = null;
         while (!cancellationToken.IsCancellationRequested) {
             try {
-                return await KeycloakTokenHelper.AcquireTokenAsync(
-                    KeycloakTokenEndpoint,
-                    "hexalith-eventstore",
-                    "admin-user",
-                    "admin-pass").ConfigureAwait(false);
+                return await AcquireTokenAsync("admin-user", cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) {
                 lastException = ex;
@@ -205,12 +209,43 @@ public class KeycloakAuthFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable(name, newValue);
     }
 
+    /// <summary>
+    /// Acquires a token using the runtime-generated password for a named fixture identity.
+    /// </summary>
+    /// <param name="username">The non-secret fixture username.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The acquired access token.</returns>
+    public Task<string> AcquireTokenAsync(string username, CancellationToken cancellationToken = default) {
+        if (!_userPasswords.TryGetValue(username, out string? password)) {
+            throw new InvalidOperationException("The requested Keycloak fixture identity is not configured.");
+        }
+
+        return KeycloakTokenHelper.AcquireTokenAsync(
+            KeycloakTokenEndpoint,
+            "hexalith-eventstore",
+            username,
+            password,
+            cancellationToken);
+    }
+
+    private void ConfigureUser(string username, string? usernameSetting, string passwordSetting) {
+        string password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
+        _userPasswords[username] = password;
+        if (usernameSetting is not null) {
+            SnapshotAndSet($"LocalAuthentication__{usernameSetting}", username);
+        }
+
+        SnapshotAndSet($"LocalAuthentication__{passwordSetting}", password);
+    }
+
     private void RestoreEnvironmentSnapshot() {
         foreach (KeyValuePair<string, string?> entry in _envSnapshot) {
             Environment.SetEnvironmentVariable(entry.Key, entry.Value);
         }
 
         _envSnapshot.Clear();
+        _userPasswords.Clear();
+        AdminUserId = string.Empty;
     }
 }
 

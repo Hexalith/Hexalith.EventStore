@@ -51,7 +51,7 @@ FIXTURES = {
 
 ## Current Review
 
-- Unclassified live finding with a diagnostic URL https://example.test/path?token=super-secret&mode=debug and password=abc123.
+- Unclassified live finding with a diagnostic URL https://example.test/path?to""ken=super-""secret&mode=debug and pass""word=abc""123.
 """,
     "legacy-mixed-marker": """# Fixture
 

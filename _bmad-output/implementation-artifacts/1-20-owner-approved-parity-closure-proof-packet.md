@@ -2148,10 +2148,10 @@ smoke_published_platform() (
   if container_id="$(docker run --detach --rm --platform "$platform" \
       --publish 127.0.0.1::8080 \
       --env ASPNETCORE_URLS=http://+:8080 \
-      --env Authentication__JwtBearer__Issuer=hexalith-container-smoke \
+      --env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith \
+      --env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith \
       --env Authentication__JwtBearer__Audience=hexalith-eventstore \
-      --env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret \
-      --env Authentication__JwtBearer__AllowInsecureSymmetricKey=true \
+      --env Authentication__JwtBearer__RequireHttpsMetadata=true \
       "$repository@$digest" 2>> "$evidence_file")"; then
     for _ in $(seq 1 180); do
       if ! test "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null)" = 'true'; then
@@ -4531,10 +4531,10 @@ verify_container_platform_smoke() (
   if container_id="$(docker run --detach --rm --platform "$platform" \
       --publish 127.0.0.1::8080 \
       --env ASPNETCORE_URLS=http://+:8080 \
-      --env Authentication__JwtBearer__Issuer=hexalith-container-smoke \
+      --env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith \
+      --env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith \
       --env Authentication__JwtBearer__Audience=hexalith-eventstore \
-      --env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret \
-      --env Authentication__JwtBearer__AllowInsecureSymmetricKey=true \
+      --env Authentication__JwtBearer__RequireHttpsMetadata=true \
       "$repository@$digest" 2>> "$smoke_log")"; then
     for _ in $(seq 1 180); do
       if ! test "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null)" = 'true'; then

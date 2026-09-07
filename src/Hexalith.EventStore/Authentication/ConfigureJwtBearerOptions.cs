@@ -1,11 +1,11 @@
 
-using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
@@ -38,29 +38,7 @@ public class ConfigureJwtBearerOptions(
 
         EventStoreAuthenticationOptions authConfig = authOptions.Value;
 
-        // Preserve original JWT claim names (avoid Microsoft namespace mapping)
-        options.MapInboundClaims = false;
-
-        options.TokenValidationParameters = new TokenValidationParameters {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            ValidIssuer = authConfig.Issuer,
-            ValidAudience = authConfig.Audience,
-        };
-
-        if (!string.IsNullOrEmpty(authConfig.Authority)) {
-            // Production mode: OIDC discovery
-            options.Authority = authConfig.Authority;
-            options.RequireHttpsMetadata = authConfig.RequireHttpsMetadata;
-        }
-        else if (!string.IsNullOrEmpty(authConfig.SigningKey)) {
-            // Development/testing mode: symmetric key
-            options.TokenValidationParameters.IssuerSigningKey =
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authConfig.SigningKey));
-        }
+        JwtBearerAuthenticationContract.Configure(options, authConfig);
 
         // Configure events for failure logging and ProblemDetails responses
         options.Events = new JwtBearerEvents {

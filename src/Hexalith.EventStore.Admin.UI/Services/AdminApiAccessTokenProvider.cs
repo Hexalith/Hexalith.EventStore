@@ -13,13 +13,21 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public sealed class AdminApiAccessTokenProvider {
     private readonly IConfiguration _configuration;
+    private readonly IHostEnvironment _environment;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly DevelopmentAdminRoleState? _roleState;
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private int _tokenVersion;
     private AccessTokenCacheEntry? _cachedToken;
 
-    public AdminApiAccessTokenProvider(IConfiguration configuration, DevelopmentAdminRoleState? roleState = null) {
+    public AdminApiAccessTokenProvider(
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        IHttpClientFactory httpClientFactory,
+        DevelopmentAdminRoleState? roleState = null) {
         _configuration = configuration;
+        _environment = environment;
+        _httpClientFactory = httpClientFactory;
         _roleState = roleState;
         _roleState?.RoleChanged += _ => InvalidateCache();
     }
@@ -62,14 +70,12 @@ public sealed class AdminApiAccessTokenProvider {
     }
 
     private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, int version, CancellationToken cancellationToken) {
-        string clientId = _configuration["EventStore:Authentication:ClientId"] ?? "hexalith-eventstore";
-        string username = _configuration["EventStore:Authentication:Username"]
-            ?? throw new InvalidOperationException("EventStore:Authentication:Username is required when Authority is configured.");
-        string password = _configuration["EventStore:Authentication:Password"]
-            ?? throw new InvalidOperationException("EventStore:Authentication:Password is required when Authority is configured.");
+        string clientId = RequireConfiguration("ClientId");
+        string username = RequireConfiguration("Username");
+        string password = RequireConfiguration("Password");
 
-        string tokenEndpoint = authority.TrimEnd('/') + "/protocol/openid-connect/token";
-        using var client = new HttpClient();
+        Uri tokenEndpoint = BuildTokenEndpoint(authority, _environment.IsDevelopment());
+        HttpClient client = _httpClientFactory.CreateClient(nameof(AdminApiAccessTokenProvider));
         using var form = new FormUrlEncodedContent(
         [
             new KeyValuePair<string, string>("grant_type", "password"),
@@ -94,18 +100,20 @@ public sealed class AdminApiAccessTokenProvider {
     }
 
     private AccessTokenCacheEntry CreateDevelopmentToken(int version) {
-        string issuer = _configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev";
-        string audience = _configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore";
-        string signingKey = _configuration["EventStore:Authentication:SigningKey"]
-            ?? throw new InvalidOperationException("EventStore:Authentication:SigningKey is required for development token generation.");
-        string subject = _configuration["EventStore:Authentication:Subject"] ?? "admin-user";
+        if (!_environment.IsDevelopment()) {
+            throw new InvalidOperationException(
+                "Local token generation is available only in the Development environment; configure EventStore:Authentication:Authority.");
+        }
+
+        string issuer = RequireConfiguration("Issuer");
+        string audience = RequireConfiguration("Audience");
+        string signingKey = RequireConfiguration("SigningKey");
+        string subject = RequireConfiguration("Subject");
         bool globalAdmin = _configuration.GetValue("EventStore:Authentication:GlobalAdmin", defaultValue: false);
 
-        string[] tenants = _configuration.GetSection("EventStore:Authentication:Tenants").Get<string[]>()
-            ?? ["tenant-a"];
-        string[] domains = _configuration.GetSection("EventStore:Authentication:Domains").Get<string[]>() ?? ["counter"];
-        string[] permissions = _configuration.GetSection("EventStore:Authentication:Permissions").Get<string[]>()
-            ?? ["command:submit", "query:read", "admin:read", "admin:write"];
+        string[] tenants = RequireCollection("Tenants");
+        string[] domains = RequireCollection("Domains");
+        string[] permissions = RequireCollection("Permissions");
         AdminRole role = _roleState?.IsRoleSwitcherAvailable == true
             ? _roleState.SelectedRole
             : AdminRole.Admin;
@@ -154,6 +162,38 @@ public sealed class AdminApiAccessTokenProvider {
         .TrimEnd('=')
         .Replace('+', '-')
         .Replace('/', '_');
+
+    internal static Uri BuildTokenEndpoint(string authority, bool allowHttp) {
+        if (!Uri.TryCreate(authority.Trim(), UriKind.Absolute, out Uri? authorityUri)
+            || string.IsNullOrWhiteSpace(authorityUri.Host)
+            || (!string.Equals(authorityUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+                && !(allowHttp && string.Equals(authorityUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)))
+            || !string.IsNullOrEmpty(authorityUri.UserInfo)
+            || !string.IsNullOrEmpty(authorityUri.Query)
+            || !string.IsNullOrEmpty(authorityUri.Fragment)) {
+            throw new InvalidOperationException(
+                "EventStore:Authentication:Authority must be an absolute HTTPS URI without user information, a query, or a fragment. HTTP is permitted only in Development.");
+        }
+
+        return new Uri(authorityUri.AbsoluteUri.TrimEnd('/') + "/protocol/openid-connect/token", UriKind.Absolute);
+    }
+
+    private string RequireConfiguration(string name) {
+        string? value = _configuration[$"EventStore:Authentication:{name}"];
+        return !string.IsNullOrWhiteSpace(value)
+            ? value.Trim()
+            : throw new InvalidOperationException($"EventStore:Authentication:{name} must be configured explicitly.");
+    }
+
+    private string[] RequireCollection(string name) {
+        string[] values = _configuration.GetSection($"EventStore:Authentication:{name}").Get<string[]>() ?? [];
+        if (values.Length == 0 || values.Any(string.IsNullOrWhiteSpace)) {
+            throw new InvalidOperationException(
+                $"EventStore:Authentication:{name} must contain at least one non-blank value.");
+        }
+
+        return values.Select(static value => value.Trim()).ToArray();
+    }
 
     private sealed record AccessTokenCacheEntry(string Token, DateTimeOffset ExpiresAtUtc, int Version);
 }

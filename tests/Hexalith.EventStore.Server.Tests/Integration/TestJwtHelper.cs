@@ -13,11 +13,11 @@ namespace Hexalith.EventStore.Server.Tests.Integration;
 /// Uses the same signing key as appsettings.Development.json.
 /// </summary>
 internal static class TestJwtHelper {
-    private const string SigningKey = "DevOnlySigningKey-AtLeast32Chars!";
     private const string Issuer = "hexalith-dev";
     private const string Audience = "hexalith-eventstore";
 
-    private static readonly SymmetricSecurityKey s_securityKey = new(Encoding.UTF8.GetBytes(SigningKey));
+    private static readonly SymmetricSecurityKey s_securityKey = new(
+        Encoding.UTF8.GetBytes(AuthenticationTestEnvironment.SigningKey));
 
     public static string GenerateToken(
         string subject = "test-user",

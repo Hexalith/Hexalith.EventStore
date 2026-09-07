@@ -26,17 +26,19 @@ Authorization: Bearer {token}
 Acquire a token from the Keycloak development instance:
 
 ```bash
-$ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
+$ KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
+$ TOKEN=$(curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
   -d "grant_type=password" \
   -d "client_id=hexalith-eventstore" \
-  -d "username=admin-user" \
-  -d "password=admin-pass" | jq -r '.access_token')
+  -d "username=${HEXALITH_ADMIN_USERNAME}" \
+  -d "password=${HEXALITH_ADMIN_PASSWORD}" | jq -r '.access_token')
 ```
 
 > **Tip:** On Windows PowerShell 5.x, use:
 
 ```powershell
-$ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username="admin-user"; password="admin-pass"} | Select-Object -ExpandProperty access_token
+$env:KEYCLOAK_URL = aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | ConvertFrom-Json | ForEach-Object { $_.resources | Where-Object displayName -eq "security" | ForEach-Object { $_.urls | Where-Object name -eq "http" | Select-Object -ExpandProperty url } }
+$ Invoke-RestMethod -Method Post -Uri "$env:KEYCLOAK_URL/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD} | Select-Object -ExpandProperty access_token
 ```
 
 > **Note:** Keycloak development tokens expire after 5 minutes. If you receive `401 Unauthorized`, re-acquire a token using the command above.
@@ -526,11 +528,12 @@ A quick-reference recipe showing end-to-end command submission and status pollin
 **Step 1 — Acquire token:**
 
 ```bash
-$ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
+$ KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
+$ TOKEN=$(curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
   -d "grant_type=password" \
   -d "client_id=hexalith-eventstore" \
-  -d "username=admin-user" \
-  -d "password=admin-pass" | jq -r '.access_token')
+  -d "username=${HEXALITH_ADMIN_USERNAME}" \
+  -d "password=${HEXALITH_ADMIN_PASSWORD}" | jq -r '.access_token')
 ```
 
 **Step 2 — Submit command:**

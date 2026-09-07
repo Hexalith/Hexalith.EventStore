@@ -190,13 +190,13 @@ Expected CRDs:
 The Aspire AppHost includes a Kubernetes publisher that generates a Helm chart from the Aspire topology definition.
 
 ```bash
-PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 ```
 
 > **PowerShell (Windows):**
 >
 > ```powershell
-> $env:PUBLISH_TARGET='k8s'; $env:EnableKeycloak='false'; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+> $env:PUBLISH_TARGET='k8s'; $env:EnableKeycloak='false'; $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0='RS256'; $env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 > ```
 
 **Important:** `EnableKeycloak=false` is **required**. The Kubernetes publisher does not support bind mounts used by Keycloak's realm import. Production Kubernetes deployments must use an external OIDC provider.
@@ -556,7 +556,7 @@ Use the `dapr.io/env` annotation to inject environment variables directly into t
 annotations:
     dapr.io/enabled: "true"
     dapr.io/app-id: "eventstore"
-    dapr.io/env: "POSTGRES_CONNECTION_STRING=host=mydb;port=5432;username=dapr;password=secret;database=eventstore,DAPR_TRUST_DOMAIN=your-trust-domain.example.com,DAPR_NAMESPACE=hexalith"
+    dapr.io/env: "POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING},DAPR_TRUST_DOMAIN=your-trust-domain.example.com,DAPR_NAMESPACE=hexalith"
 ```
 
 > **Note:** Approach A (secretKeyRef) is recommended because it avoids exposing secrets in pod annotations and integrates with Kubernetes secret rotation.
@@ -581,7 +581,7 @@ env:
       value: "true"
 ```
 
-> **Critical:** Do **not** set `Authentication__JwtBearer__SigningKey`. If a SigningKey is present (in appsettings or environment variables), the application uses symmetric key validation and ignores the OIDC Authority. For external OIDC, the SigningKey must be cleared or omitted.
+> **Critical:** Do **not** set `Authentication__JwtBearer__SigningKey`. A simultaneous `Authority` and `SigningKey` is rejected as ambiguous, and any Production symmetric-key configuration is rejected.
 
 ## Configure SignalR Redis Backplane Isolation
 

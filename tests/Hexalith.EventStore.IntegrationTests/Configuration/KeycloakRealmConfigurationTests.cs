@@ -29,7 +29,7 @@ public class KeycloakRealmConfigurationTests {
 
     [Fact]
     public void AdminUser_HasGlobalAdminAttribute() {
-        JsonElement adminUser = FindUser("admin-user");
+        JsonElement adminUser = FindUser("__HEXALITH_ADMIN_USERNAME__");
         JsonElement attributes = adminUser.GetProperty("attributes");
         attributes.TryGetProperty("global_admin", out JsonElement globalAdmin).ShouldBeTrue(
             "admin-user must have 'global_admin' attribute for RBAC bypass.");
@@ -41,7 +41,7 @@ public class KeycloakRealmConfigurationTests {
 
     [Fact]
     public void AdminUser_HasSystemTenantClaim() {
-        JsonElement adminUser = FindUser("admin-user");
+        JsonElement adminUser = FindUser("__HEXALITH_ADMIN_USERNAME__");
         JsonElement tenants = adminUser.GetProperty("attributes").GetProperty("tenants");
         tenants.EnumerateArray().ShouldContain(
             v => v.GetString() == "system",

@@ -34,7 +34,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private const string VersionTwoKey = "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=";
     private const string AuthenticationIssuer = "hexalith-oq8-evidence";
     private const string AuthenticationAudience = "hexalith-eventstore";
-    private const string AuthenticationSigningKey = "Oq8EvidenceOnlySigningKey-AtLeast32Characters";
+    private static readonly string s_authenticationSigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
     private const int PlacementContainerPort = 50005;
     private const int SchedulerContainerPort = 50006;
     private const int HealthTimeoutSeconds = 60;
@@ -840,7 +840,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     {
         environment["Authentication__JwtBearer__Issuer"] = AuthenticationIssuer;
         environment["Authentication__JwtBearer__Audience"] = AuthenticationAudience;
-        environment["Authentication__JwtBearer__SigningKey"] = AuthenticationSigningKey;
+        environment["Authentication__JwtBearer__SigningKey"] = s_authenticationSigningKey;
         environment["Authentication__JwtBearer__RequireHttpsMetadata"] = "false";
         environment["Authentication__JwtBearer__AllowInsecureSymmetricKey"] = "true";
         environment["EventStore__Actors__AggregateActorTypeName"] = AggregateActorTypeName;
@@ -1223,7 +1223,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         }));
         string unsigned = $"{header}.{payload}";
         byte[] signature = HMACSHA256.HashData(
-            Encoding.UTF8.GetBytes(AuthenticationSigningKey),
+            Encoding.UTF8.GetBytes(s_authenticationSigningKey),
             Encoding.UTF8.GetBytes(unsigned));
         return $"{unsigned}.{Base64Url(signature)}";
     }
@@ -1336,7 +1336,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         foreach (string forbidden in new[]
         {
             ProtectedRawKeyPrefix,
-            AuthenticationSigningKey,
+            s_authenticationSigningKey,
             VersionOneKey,
             VersionTwoKey,
             "password=",
@@ -1375,7 +1375,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
     private void RegisterSensitiveTestMaterial()
     {
-        RegisterSensitive(AuthenticationSigningKey);
+        RegisterSensitive(s_authenticationSigningKey);
         RegisterSensitive(VersionOneKey);
         RegisterSensitive(VersionTwoKey);
         RegisterSensitive(AuthenticationIssuer);

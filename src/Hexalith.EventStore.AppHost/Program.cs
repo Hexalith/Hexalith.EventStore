@@ -7,6 +7,51 @@ PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
+LocalAuthenticationCredentials? localCredentials = null;
+IResourceBuilder<ParameterResource>? localSigningKey = null;
+IResourceBuilder<ParameterResource>? localAdminUserId = null;
+IResourceBuilder<ParameterResource>? localAdminUsername = null;
+IResourceBuilder<ParameterResource>? localAdminPassword = null;
+IResourceBuilder<ParameterResource>? localSampleUserId = null;
+IResourceBuilder<ParameterResource>? localSampleUsername = null;
+IResourceBuilder<ParameterResource>? localSamplePassword = null;
+IResourceBuilder<ParameterResource>? externalClientId = null;
+IResourceBuilder<ParameterResource>? externalUsername = null;
+IResourceBuilder<ParameterResource>? externalPassword = null;
+
+if (builder.ExecutionContext.IsRunMode) {
+    localCredentials = LocalAuthenticationCredentials.Create(builder.Configuration);
+    localSigningKey = builder.AddParameter(
+        "local-auth-signing-key",
+        () => localCredentials.SigningKey,
+        secret: true);
+    localAdminUserId = builder.AddParameter(
+        "local-auth-admin-user-id",
+        () => localCredentials.AdminUserId);
+    localAdminUsername = builder.AddParameter(
+        "local-auth-admin-username",
+        () => localCredentials.AdminUsername);
+    localAdminPassword = builder.AddParameter(
+        "local-auth-admin-password",
+        () => localCredentials.AdminPassword,
+        secret: true);
+    localSampleUserId = builder.AddParameter(
+        "local-auth-sample-user-id",
+        () => localCredentials.TenantAUserId);
+    localSampleUsername = builder.AddParameter(
+        "local-auth-sample-username",
+        () => "tenant-a-user");
+    localSamplePassword = builder.AddParameter(
+        "local-auth-sample-password",
+        () => localCredentials.TenantAPassword,
+        secret: true);
+}
+else if (builder.ExecutionContext.IsPublishMode) {
+    externalClientId = builder.AddParameter("external-auth-client-id");
+    externalUsername = builder.AddParameter("external-auth-username", secret: true);
+    externalPassword = builder.AddParameter("external-auth-password", secret: true);
+}
+
 // The local DAPR runtime can expose placement/scheduler on either the containerized host ports
 // (6050/6060) or the native/slim ports (50005/50006). Resolve the actual ports up front and pass
 // them to every Aspire-managed sidecar so actor routing does not depend on daprd's default guess.
@@ -65,10 +110,27 @@ ForwardEventStoreEnvironment("EventStore:RuntimeProof:ShutdownToken", "EventStor
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
 // Enabled by default for local development with real OIDC token testing.
 // Set EnableKeycloak=false in environment or appsettings to run without Keycloak
-// (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
-HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity();
-if (security is not null) {
-    _ = eventStore.WithJwtBearerSecurity(security);
+// (uses a per-run generated symmetric key shared through resource environment).
+HexalithEventStoreSecurityResources? security = null;
+bool useLocalKeycloak = builder.ExecutionContext.IsRunMode
+    && !string.Equals(builder.Configuration["EnableKeycloak"]?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
+if (useLocalKeycloak
+    && bool.TryParse(builder.Configuration["KeycloakPersistent"]?.Trim(), out bool persistentKeycloak)
+    && persistentKeycloak) {
+        throw new InvalidOperationException(
+            "KeycloakPersistent cannot be enabled because local realm identities and passwords are generated per AppHost run.");
+}
+
+using KeycloakRealmTemplate? keycloakRealm = useLocalKeycloak
+    ? KeycloakRealmTemplate.Render(
+        Path.Combine(builder.AppHostDirectory, "KeycloakRealms"),
+        localCredentials!)
+    : null;
+if (keycloakRealm is not null) {
+    security = builder.AddHexalithEventStoreSecurity(
+        new HexalithEventStoreSecurityOptions {
+            RealmImportPath = keycloakRealm.ImportDirectory,
+        });
 }
 
 // Explicit source mode keeps generated Projects.* metadata authoritative. Plain local run mode
@@ -89,14 +151,15 @@ if (builder.ExecutionContext.IsRunMode) {
 
 if (tenants is not null && tenantsApi is not null) {
     string tenantsAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.tenants.yaml");
-    _ = tenants
-        .AddEventStoreDomainModule(
-            eventStoreResources,
-            "tenants",
-            tenantsAccessControlConfigPath,
-            daprPlacementHostAddress: daprPlacementHostAddress,
-            daprSchedulerHostAddress: daprSchedulerHostAddress)
-        .WithEnvironment("Tenants__BootstrapGlobalAdminUserId", "admin-user");
+    IResourceBuilder<ProjectResource> configuredTenants = tenants.AddEventStoreDomainModule(
+        eventStoreResources,
+        "tenants",
+        tenantsAccessControlConfigPath,
+        daprPlacementHostAddress: daprPlacementHostAddress,
+        daprSchedulerHostAddress: daprSchedulerHostAddress);
+    if (localAdminUserId is not null) {
+        _ = configuredTenants.WithEnvironment("Tenants__BootstrapGlobalAdminUserId", localAdminUserId);
+    }
 
     // The external-facing Tenants REST API host reaches EventStore through DAPR service
     // invocation and receives no state-store or pub/sub component references.
@@ -164,28 +227,79 @@ IResourceBuilder<ProjectResource> sampleApi = builder.AddProject<Projects.Hexali
             SchedulerHostAddress = daprSchedulerHostAddress,
         }));
 
-if (security is not null) {
-    if (tenants is not null && tenantsApi is not null) {
+var jwtAuthentication = new HexalithEventStoreJwtAuthenticationOptions {
+    PrimaryAudience = builder.Configuration["Authentication:JwtBearer:Audience"]?.Trim()
+        ?? (security is not null ? HexalithEventStoreSecurityOptions.DefaultAudience : string.Empty),
+    ValidAudiences = builder.Configuration
+        .GetSection("Authentication:JwtBearer:ValidAudiences")
+        .GetChildren()
+        .Select(static child => child.Value)
+        .Where(static value => value is not null)
+        .Select(static value => value!)
+        .ToArray(),
+    AllowedAlgorithms = builder.Configuration
+        .GetSection("Authentication:JwtBearer:AllowedAlgorithms")
+        .GetChildren()
+        .Select(static child => child.Value)
+        .Where(static value => value is not null)
+        .Select(static value => value!)
+        .DefaultIfEmpty(security is not null ? "RS256" : string.Empty)
+        .Where(static value => !string.IsNullOrEmpty(value))
+        .ToArray(),
+    ExternalAuthority = builder.Configuration["Authentication:JwtBearer:Authority"],
+    ExternalIssuer = builder.Configuration["Authentication:JwtBearer:Issuer"],
+};
+
+if (security is not null || builder.ExecutionContext.IsPublishMode) {
+    _ = eventStore.WithEventStoreJwtAuthentication(security, jwtAuthentication);
+    _ = adminServer.WithEventStoreJwtAuthentication(security, jwtAuthentication);
+    _ = sampleApi.WithEventStoreJwtAuthentication(security, jwtAuthentication);
+
+    if (security is not null && tenants is not null && tenantsApi is not null) {
         _ = tenants.WithJwtBearerSecurity(security);
         _ = tenantsApi.WithEventStoreAuthenticationValidation(security);
     }
 
-    _ = adminServer.WithJwtBearerSecurity(security);
+    if (security is not null) {
+        _ = blazorUi.WithEventStoreClientCredentials(
+            security,
+            HexalithEventStoreSecurityOptions.DefaultEventStoreClientId,
+            localSampleUsername!,
+            localSamplePassword!);
 
-    _ = blazorUi.WithEventStoreClientCredentials(security);
-
-    // sample-api validates inbound callers against the same realm without receiving reusable service-account
-    // credentials. With EnableKeycloak=false it falls back to the symmetric signing key from
-    // appsettings.Development.json.
-    _ = sampleApi.WithEventStoreAuthenticationValidation(security);
-
-    _ = adminUI
-        .WithEventStoreClientCredentials(security)
-        .WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
+        _ = adminUI
+            .WithEventStoreClientCredentials(
+                security,
+                HexalithEventStoreSecurityOptions.DefaultEventStoreClientId,
+                localAdminUsername!,
+                localAdminPassword!);
+    }
+    else {
+        _ = blazorUi.WithExternalEventStoreClientCredentials(
+            jwtAuthentication.ExternalAuthority!,
+            jwtAuthentication.PrimaryAudience,
+            externalClientId!,
+            externalUsername!,
+            externalPassword!);
+        _ = adminUI.WithExternalEventStoreClientCredentials(
+            jwtAuthentication.ExternalAuthority!,
+            jwtAuthentication.PrimaryAudience,
+            externalClientId!,
+            externalUsername!,
+            externalPassword!);
+    }
 }
 else {
-    _ = adminUI.WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
+    ConfigureLocalSymmetricValidation(eventStore, localSigningKey!);
+    ConfigureLocalSymmetricValidation(adminServer, localSigningKey!);
+    ConfigureLocalSymmetricValidation(sampleApi, localSigningKey!);
+    ConfigureLocalTokenIssuer(adminUI, localSigningKey!, localAdminUserId!);
+    ConfigureLocalTokenIssuer(blazorUi, localSigningKey!, localSampleUserId!);
 }
+
+_ = adminUI.WithEnvironment(
+    "EventStore__AdminServer__SwaggerUrl",
+    ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
 
 // Publisher environments (only activate during `aspire publish`).
 ConfigurePublishEnvironment(builder);
@@ -279,5 +393,40 @@ void ForwardEventStoreEnvironment(string configurationKey, string environmentKey
     string? value = builder.Configuration[configurationKey];
     if (!string.IsNullOrWhiteSpace(value)) {
         _ = eventStore.WithEnvironment(environmentKey, value);
+    }
+}
+
+static void ConfigureLocalSymmetricValidation(
+    IResourceBuilder<ProjectResource> resource,
+    IResourceBuilder<ParameterResource> signingKey) {
+    _ = resource
+        .WithEnvironment("Authentication__JwtBearer__Authority", string.Empty)
+        .WithEnvironment("Authentication__JwtBearer__Issuer", "hexalith-dev")
+        .WithEnvironment("Authentication__JwtBearer__Audience", HexalithEventStoreSecurityOptions.DefaultAudience)
+        .WithEnvironment("Authentication__JwtBearer__ValidAudiences__0", HexalithEventStoreSecurityOptions.DefaultAudience)
+        .WithEnvironment("Authentication__JwtBearer__SigningKey", signingKey)
+        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false");
+}
+
+static void ConfigureLocalTokenIssuer(
+    IResourceBuilder<ProjectResource> resource,
+    IResourceBuilder<ParameterResource> signingKey,
+    IResourceBuilder<ParameterResource> subject) {
+    _ = resource
+        .WithEnvironment("EventStore__Authentication__Authority", string.Empty)
+        .WithEnvironment("EventStore__Authentication__Issuer", "hexalith-dev")
+        .WithEnvironment("EventStore__Authentication__Audience", HexalithEventStoreSecurityOptions.DefaultAudience)
+        .WithEnvironment("EventStore__Authentication__SigningKey", signingKey)
+        .WithEnvironment("EventStore__Authentication__Subject", subject)
+        .WithEnvironment("EventStore__Authentication__Tenants__0", "tenant-a")
+        .WithEnvironment("EventStore__Authentication__Domains__0", "counter")
+        .WithEnvironment("EventStore__Authentication__Permissions__0", "command:submit")
+        .WithEnvironment("EventStore__Authentication__Permissions__1", "query:read");
+
+    if (string.Equals(resource.Resource.Name, "eventstore-admin-ui", StringComparison.Ordinal)) {
+        _ = resource
+            .WithEnvironment("EventStore__Authentication__GlobalAdmin", "true")
+            .WithEnvironment("EventStore__Authentication__Permissions__2", "admin:read")
+            .WithEnvironment("EventStore__Authentication__Permissions__3", "admin:write");
     }
 }

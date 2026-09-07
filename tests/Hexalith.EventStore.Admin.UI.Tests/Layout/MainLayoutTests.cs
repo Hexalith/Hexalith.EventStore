@@ -112,7 +112,8 @@ public class MainLayoutTests : AdminUITestContext {
         IConfiguration config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:Authentication:Authority"] = authority,
-                ["EventStore:Authentication:SigningKey"] = "DevOnlySigningKey-AtLeast32Chars!",
+                ["EventStore:Authentication:SigningKey"] = Convert.ToBase64String(
+                    System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)),
             })
             .Build();
         _ = Services.AddSingleton(config);

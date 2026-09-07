@@ -9,7 +9,10 @@ namespace Hexalith.EventStore.Sample.BlazorUI.Services;
 /// Uses Keycloak direct access grants when an authority is configured, otherwise
 /// generates the development HS256 token expected by local EventStore settings.
 /// </summary>
-public sealed class EventStoreApiAccessTokenProvider(IConfiguration configuration) {
+public sealed class EventStoreApiAccessTokenProvider(
+    IConfiguration configuration,
+    IHostEnvironment environment,
+    IHttpClientFactory httpClientFactory) {
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private AccessTokenCacheEntry? _cachedToken;
 
@@ -37,14 +40,12 @@ public sealed class EventStoreApiAccessTokenProvider(IConfiguration configuratio
     }
 
     private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, CancellationToken cancellationToken) {
-        string clientId = configuration["EventStore:Authentication:ClientId"] ?? "hexalith-eventstore";
-        string username = configuration["EventStore:Authentication:Username"]
-            ?? throw new InvalidOperationException("EventStore:Authentication:Username is required when Authority is configured.");
-        string password = configuration["EventStore:Authentication:Password"]
-            ?? throw new InvalidOperationException("EventStore:Authentication:Password is required when Authority is configured.");
+        string clientId = RequireConfiguration("ClientId");
+        string username = RequireConfiguration("Username");
+        string password = RequireConfiguration("Password");
 
-        string tokenEndpoint = authority.TrimEnd('/') + "/protocol/openid-connect/token";
-        using var client = new HttpClient();
+        Uri tokenEndpoint = BuildTokenEndpoint(authority, environment.IsDevelopment());
+        HttpClient client = httpClientFactory.CreateClient(nameof(EventStoreApiAccessTokenProvider));
         using var form = new FormUrlEncodedContent(
         [
             new KeyValuePair<string, string>("grant_type", "password"),
@@ -69,17 +70,19 @@ public sealed class EventStoreApiAccessTokenProvider(IConfiguration configuratio
     }
 
     private AccessTokenCacheEntry CreateDevelopmentToken() {
-        string issuer = configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev";
-        string audience = configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore";
-        string signingKey = configuration["EventStore:Authentication:SigningKey"]
-            ?? throw new InvalidOperationException("EventStore:Authentication:SigningKey is required for development token generation.");
-        string subject = configuration["EventStore:Authentication:Subject"] ?? "sample-blazor-ui";
+        if (!environment.IsDevelopment()) {
+            throw new InvalidOperationException(
+                "Local token generation is available only in the Development environment; configure EventStore:Authentication:Authority.");
+        }
 
-        string[] tenants = configuration.GetSection("EventStore:Authentication:Tenants").Get<string[]>()
-            ?? [configuration["EventStore:Counter:TenantId"] ?? "tenant-a"];
-        string[] domains = configuration.GetSection("EventStore:Authentication:Domains").Get<string[]>() ?? ["counter"];
-        string[] permissions = configuration.GetSection("EventStore:Authentication:Permissions").Get<string[]>()
-            ?? ["command:submit", "query:read"];
+        string issuer = RequireConfiguration("Issuer");
+        string audience = RequireConfiguration("Audience");
+        string signingKey = RequireConfiguration("SigningKey");
+        string subject = RequireConfiguration("Subject");
+
+        string[] tenants = RequireCollection("Tenants");
+        string[] domains = RequireCollection("Domains");
+        string[] permissions = RequireCollection("Permissions");
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
         DateTimeOffset expiresAt = now.AddHours(1);
@@ -115,6 +118,38 @@ public sealed class EventStoreApiAccessTokenProvider(IConfiguration configuratio
         .TrimEnd('=')
         .Replace('+', '-')
         .Replace('/', '_');
+
+    internal static Uri BuildTokenEndpoint(string authority, bool allowHttp) {
+        if (!Uri.TryCreate(authority.Trim(), UriKind.Absolute, out Uri? authorityUri)
+            || string.IsNullOrWhiteSpace(authorityUri.Host)
+            || (!string.Equals(authorityUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+                && !(allowHttp && string.Equals(authorityUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)))
+            || !string.IsNullOrEmpty(authorityUri.UserInfo)
+            || !string.IsNullOrEmpty(authorityUri.Query)
+            || !string.IsNullOrEmpty(authorityUri.Fragment)) {
+            throw new InvalidOperationException(
+                "EventStore:Authentication:Authority must be an absolute HTTPS URI without user information, a query, or a fragment. HTTP is permitted only in Development.");
+        }
+
+        return new Uri(authorityUri.AbsoluteUri.TrimEnd('/') + "/protocol/openid-connect/token", UriKind.Absolute);
+    }
+
+    private string RequireConfiguration(string name) {
+        string? value = configuration[$"EventStore:Authentication:{name}"];
+        return !string.IsNullOrWhiteSpace(value)
+            ? value.Trim()
+            : throw new InvalidOperationException($"EventStore:Authentication:{name} must be configured explicitly.");
+    }
+
+    private string[] RequireCollection(string name) {
+        string[] values = configuration.GetSection($"EventStore:Authentication:{name}").Get<string[]>() ?? [];
+        if (values.Length == 0 || values.Any(string.IsNullOrWhiteSpace)) {
+            throw new InvalidOperationException(
+                $"EventStore:Authentication:{name} must contain at least one non-blank value.");
+        }
+
+        return values.Select(static value => value.Trim()).ToArray();
+    }
 
     private sealed record AccessTokenCacheEntry(string Token, DateTimeOffset ExpiresAtUtc);
 }

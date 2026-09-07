@@ -18,12 +18,14 @@ public static class KeycloakTokenHelper {
     /// <param name="clientId">The OIDC client ID (e.g., hexalith-eventstore).</param>
     /// <param name="username">The test user's username.</param>
     /// <param name="password">The test user's password.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
     /// <returns>The JWT access token string.</returns>
     public static async Task<string> AcquireTokenAsync(
         string tokenEndpoint,
         string clientId,
         string username,
-        string password) {
+        string password,
+        CancellationToken cancellationToken = default) {
         using var content = new FormUrlEncodedContent(
         [
             new KeyValuePair<string, string>("grant_type", "password"),
@@ -33,10 +35,10 @@ public static class KeycloakTokenHelper {
         ]);
 
         using HttpResponseMessage response = await SharedHttpClient
-            .PostAsync(tokenEndpoint, content)
+            .PostAsync(tokenEndpoint, content, cancellationToken)
             .ConfigureAwait(false);
         string json = await response.Content
-            .ReadAsStringAsync()
+            .ReadAsStringAsync(cancellationToken)
             .ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode) {

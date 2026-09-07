@@ -223,7 +223,7 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddMinutes(30),
             SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes("DevOnlySigningKey-AtLeast32Chars!")),
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(AuthenticationTestEnvironment.SigningKey)),
                 SecurityAlgorithms.HmacSha256Signature),
         };
 

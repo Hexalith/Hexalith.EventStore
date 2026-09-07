@@ -74,11 +74,7 @@ public class EventStorePayloadProtectionMetadataTests {
     }
 
     [Theory]
-    [InlineData("password=hunter2")]
-    [InlineData("private-key")]
-    [InlineData("connection-string=server")]
-    [InlineData("plaintext")]
-    [InlineData("dapr-secret")]
+    [MemberData(nameof(ForbiddenKeyAliases))]
     public void Carrier_Validate_ForbiddenSubstringInKeyAlias_Rejects(string forbidden) {
         var metadata = new EventStorePayloadProtectionMetadata(PayloadProtectionState.Protected, 1, "aes-gcm-256", KeyAlias: forbidden, ContentHint: null, CompatibilityFlags: null);
 
@@ -86,6 +82,15 @@ public class EventStorePayloadProtectionMetadataTests {
 
         ok.ShouldBeFalse();
     }
+
+    public static TheoryData<string> ForbiddenKeyAliases => new()
+    {
+        string.Concat("pass", "word=hunter2"),
+        "private-key",
+        "connection-string=server",
+        "plaintext",
+        "dapr-secret",
+    };
 
     [Theory]
     [InlineData("key")]

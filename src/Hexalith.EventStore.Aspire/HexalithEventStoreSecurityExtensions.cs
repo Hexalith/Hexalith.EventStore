@@ -9,6 +9,19 @@ namespace Hexalith.EventStore.Aspire;
 public static class HexalithEventStoreSecurityExtensions
 {
     private const string FalseLiteral = "false";
+    private const string Rs256 = "RS256";
+    private static readonly HashSet<string> SupportedAsymmetricAlgorithms = new(StringComparer.Ordinal)
+    {
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512",
+    };
 
     /// <summary>
     /// Adds the local Keycloak-backed security resource used by Hexalith EventStore AppHosts.
@@ -137,6 +150,7 @@ public static class HexalithEventStoreSecurityExtensions
             .WithEnvironment("Authentication__JwtBearer__Authority", security.RealmUrl)
             .WithEnvironment("Authentication__JwtBearer__Issuer", security.RealmUrl)
             .WithEnvironment("Authentication__JwtBearer__Audience", effectiveAudience)
+            .WithEnvironment("Authentication__JwtBearer__AllowedAlgorithms__0", Rs256)
             .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", ToConfigurationValue(effectiveRequireHttpsMetadata))
             // Explicitly clear SigningKey to prevent dual-mode auth conflict. If SigningKey exists in
             // appsettings/secrets, clearing it ensures ConfigureJwtBearerOptions uses OIDC discovery mode only.
@@ -173,6 +187,7 @@ public static class HexalithEventStoreSecurityExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         string[] audiences = ResolveAudiences(options);
+        string[] allowedAlgorithms = ResolveAllowedAlgorithms(options);
         bool isRunMode = resource.ApplicationBuilder.ExecutionContext.IsRunMode;
         string authority;
         string issuer;
@@ -212,6 +227,7 @@ public static class HexalithEventStoreSecurityExtensions
                 resource.WithSecurityDependency(localSecurity!),
                 localSecurity!.RealmUrl,
                 audiences,
+                allowedAlgorithms,
                 requireHttpsMetadata);
         }
 
@@ -220,6 +236,7 @@ public static class HexalithEventStoreSecurityExtensions
             authority,
             issuer,
             audiences,
+            allowedAlgorithms,
             requireHttpsMetadata);
     }
 
@@ -248,28 +265,62 @@ public static class HexalithEventStoreSecurityExtensions
     /// </summary>
     /// <param name="resource">The project resource to configure.</param>
     /// <param name="security">The security resources returned by <see cref="AddHexalithEventStoreSecurity"/>.</param>
-    /// <param name="clientId">The OIDC client id used for token acquisition.</param>
-    /// <param name="username">The service user name.</param>
-    /// <param name="password">The service user password.</param>
+    /// <param name="clientId">The explicit OIDC client id used for token acquisition.</param>
+    /// <param name="username">The per-run user-name parameter.</param>
+    /// <param name="password">The per-run password parameter.</param>
     /// <returns>The same project resource builder for chaining.</returns>
     public static IResourceBuilder<ProjectResource> WithEventStoreClientCredentials(
         this IResourceBuilder<ProjectResource> resource,
         HexalithEventStoreSecurityResources security,
-        string clientId = HexalithEventStoreSecurityOptions.DefaultEventStoreClientId,
-        string username = "admin-user",
-        string password = "admin-pass")
+        string clientId,
+        IResourceBuilder<ParameterResource> username,
+        IResourceBuilder<ParameterResource> password)
     {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentNullException.ThrowIfNull(security);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(username);
-        ArgumentException.ThrowIfNullOrWhiteSpace(password);
+        ArgumentNullException.ThrowIfNull(username);
+        ArgumentNullException.ThrowIfNull(password);
 
         return resource
             .WithEventStoreAuthenticationValidation(security)
             .WithEnvironment("EventStore__Authentication__ClientId", clientId)
             .WithEnvironment("EventStore__Authentication__Username", username)
             .WithEnvironment("EventStore__Authentication__Password", password);
+    }
+
+    /// <summary>
+    /// Wires external token-acquisition settings to a published UI without embedding credentials.
+    /// </summary>
+    /// <param name="resource">The published UI resource.</param>
+    /// <param name="authority">The external HTTPS identity authority.</param>
+    /// <param name="audience">The token audience requested by the UI.</param>
+    /// <param name="clientId">The publish parameter holding the OIDC client identifier.</param>
+    /// <param name="username">The publish secret parameter holding the user name.</param>
+    /// <param name="password">The publish secret parameter holding the password.</param>
+    /// <returns>The same resource builder for chaining.</returns>
+    public static IResourceBuilder<ProjectResource> WithExternalEventStoreClientCredentials(
+        this IResourceBuilder<ProjectResource> resource,
+        string authority,
+        string audience,
+        IResourceBuilder<ParameterResource> clientId,
+        IResourceBuilder<ParameterResource> username,
+        IResourceBuilder<ParameterResource> password)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentException.ThrowIfNullOrWhiteSpace(audience);
+        ArgumentNullException.ThrowIfNull(clientId);
+        ArgumentNullException.ThrowIfNull(username);
+        ArgumentNullException.ThrowIfNull(password);
+
+        string resolvedAuthority = ResolveExternalEndpoint(authority, nameof(authority));
+        return resource
+            .WithEnvironment("EventStore__Authentication__Authority", resolvedAuthority)
+            .WithEnvironment("EventStore__Authentication__Audience", audience.Trim())
+            .WithEnvironment("EventStore__Authentication__ClientId", clientId)
+            .WithEnvironment("EventStore__Authentication__Username", username)
+            .WithEnvironment("EventStore__Authentication__Password", password)
+            .WithEnvironment("EventStore__Authentication__SigningKey", string.Empty);
     }
 
     /// <summary>
@@ -330,18 +381,20 @@ public static class HexalithEventStoreSecurityExtensions
         string authority,
         string issuer,
         IReadOnlyList<string> audiences,
+        IReadOnlyList<string> allowedAlgorithms,
         bool requireHttpsMetadata)
     {
         _ = resource
             .WithEnvironment("Authentication__JwtBearer__Authority", authority)
             .WithEnvironment("Authentication__JwtBearer__Issuer", issuer);
 
-        return AddJwtAudienceEnvironment(resource, audiences, requireHttpsMetadata);
+        return AddJwtAudienceEnvironment(resource, audiences, allowedAlgorithms, requireHttpsMetadata);
     }
 
     private static IResourceBuilder<ProjectResource> AddJwtAudienceEnvironment(
         IResourceBuilder<ProjectResource> resource,
         IReadOnlyList<string> audiences,
+        IReadOnlyList<string> allowedAlgorithms,
         bool requireHttpsMetadata)
     {
         _ = resource.WithEnvironment("Authentication__JwtBearer__Audience", audiences[0]);
@@ -349,8 +402,15 @@ public static class HexalithEventStoreSecurityExtensions
         for (int index = 0; index < audiences.Count; index++)
         {
             _ = resource.WithEnvironment(
-                $"Authentication__JwtBearer__TokenValidationParameters__ValidAudiences__{index}",
+                $"Authentication__JwtBearer__ValidAudiences__{index}",
                 audiences[index]);
+        }
+
+        for (int index = 0; index < allowedAlgorithms.Count; index++)
+        {
+            _ = resource.WithEnvironment(
+                $"Authentication__JwtBearer__AllowedAlgorithms__{index}",
+                allowedAlgorithms[index]);
         }
 
         return resource
@@ -362,13 +422,14 @@ public static class HexalithEventStoreSecurityExtensions
         IResourceBuilder<ProjectResource> resource,
         ReferenceExpression realmUrl,
         IReadOnlyList<string> audiences,
+        IReadOnlyList<string> allowedAlgorithms,
         bool requireHttpsMetadata)
     {
         _ = resource
             .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
             .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl);
 
-        return AddJwtAudienceEnvironment(resource, audiences, requireHttpsMetadata);
+        return AddJwtAudienceEnvironment(resource, audiences, allowedAlgorithms, requireHttpsMetadata);
     }
 
     private static string[] ResolveAudiences(HexalithEventStoreJwtAuthenticationOptions options)
@@ -396,6 +457,37 @@ public static class HexalithEventStoreSecurityExtensions
                 audiences.Add(trimmedAudience);
             }
         }
+    }
+
+    private static string[] ResolveAllowedAlgorithms(HexalithEventStoreJwtAuthenticationOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options.AllowedAlgorithms);
+        if (options.AllowedAlgorithms.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one explicit asymmetric signing algorithm is required.",
+                nameof(options.AllowedAlgorithms));
+        }
+
+        var algorithms = new List<string>(options.AllowedAlgorithms.Count);
+        var uniqueAlgorithms = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string? algorithm in options.AllowedAlgorithms)
+        {
+            string trimmedAlgorithm = algorithm?.Trim() ?? string.Empty;
+            if (!SupportedAsymmetricAlgorithms.Contains(trimmedAlgorithm))
+            {
+                throw new ArgumentException(
+                    "Only supported asymmetric signing algorithms may be configured.",
+                    nameof(options.AllowedAlgorithms));
+            }
+
+            if (uniqueAlgorithms.Add(trimmedAlgorithm))
+            {
+                algorithms.Add(trimmedAlgorithm);
+            }
+        }
+
+        return [.. algorithms];
     }
 
     private static string ResolveExternalEndpoint(string? endpoint, string parameterName)

@@ -96,11 +96,14 @@ All options are bound from the `Authentication:JwtBearer` configuration section:
 | ---------------------- | --------- | --------------- | ------------------------------------------------------------------------------------------------------------- |
 | `Authority`            | `string?` | `null`          | OIDC authority URL for production (e.g., `https://login.example.com`). When set, enables OIDC discovery mode. |
 | `Audience`             | `string`  | `""` (required) | Expected `aud` claim value in the JWT.                                                                        |
+| `ValidAudiences`       | `string[]`| `[]`            | Additional accepted audiences, evaluated in configured order.                                                |
+| `AllowedAlgorithms`    | `string[]`| `[]` (required for authority mode) | Explicit supported asymmetric algorithm allow-list; no Production default is supplied.            |
 | `Issuer`               | `string`  | `""` (required) | Expected `iss` claim value in the JWT.                                                                        |
-| `SigningKey`           | `string?` | `null`          | HS256 symmetric key for development. Must be at least 32 characters (256 bits).                               |
+| `SigningKey`           | `string?` | `null`          | HS256 symmetric key for development. Must be at least 32 UTF-8 bytes (256 bits).                              |
 | `RequireHttpsMetadata` | `bool`    | `true`          | Whether OIDC metadata discovery requires HTTPS. Set to `false` for local Keycloak.                            |
+| `AllowInsecureSymmetricKey` | `bool` | `false`       | Explicit exception for symmetric validation in non-Production, non-Development environments; emits a redacted warning. |
 
-Startup validation enforces that either `Authority` or `SigningKey` is configured, and that `Issuer` and `Audience` are always set. If both `Authority` and `SigningKey` are present, the runtime takes the OIDC path (`Authority` takes precedence), so you should still clear `SigningKey` when switching to production OIDC to avoid ambiguous configuration.
+Startup validation requires exactly one of `Authority` or `SigningKey`, a non-blank `Issuer`, and at least one non-blank audience across `Audience` and `ValidAudiences`. Authority mode also requires a nonempty `AllowedAlgorithms` list containing only supported asymmetric algorithms. An authority must be absolute and contain no user information, query, or fragment. Outside Development it must use HTTPS and `RequireHttpsMetadata` must remain `true`. Production always rejects symmetric validation, including when the legacy exception flag is set.
 
 ### Per-Environment Configuration
 
@@ -108,9 +111,10 @@ Startup validation enforces that either `Authority` or `SigningKey` is configure
 
 ```yaml
 # appsettings.Docker.json (or environment variables)
-Authentication__JwtBearer__Authority: "http://localhost:8180/realms/hexalith"
+Authentication__JwtBearer__Authority: "http://security:8080/realms/hexalith"
 Authentication__JwtBearer__Audience: "hexalith-eventstore"
-Authentication__JwtBearer__Issuer: "http://localhost:8180/realms/hexalith"
+Authentication__JwtBearer__Issuer: "http://security:8080/realms/hexalith"
+Authentication__JwtBearer__AllowedAlgorithms__0: "RS256"
 Authentication__JwtBearer__RequireHttpsMetadata: "false"
 # SigningKey must NOT be set — leave it empty for OIDC mode
 ```
@@ -124,6 +128,7 @@ See the [Docker Compose Deployment Guide](deployment-docker-compose.md) for full
 Authentication__JwtBearer__Authority: "https://keycloak.example.com/realms/hexalith"
 Authentication__JwtBearer__Audience: "hexalith-eventstore"
 Authentication__JwtBearer__Issuer: "https://keycloak.example.com/realms/hexalith"
+Authentication__JwtBearer__AllowedAlgorithms__0: "RS256"
 Authentication__JwtBearer__RequireHttpsMetadata: "true"
 # CRITICAL: SigningKey must be empty/unset for OIDC mode
 ```
@@ -137,6 +142,7 @@ See the [Kubernetes Deployment Guide](deployment-kubernetes.md) for OIDC provide
 Authentication__JwtBearer__Authority: "https://login.microsoftonline.com/{tenant-id}/v2.0"
 Authentication__JwtBearer__Audience: "api://hexalith-eventstore"
 Authentication__JwtBearer__Issuer: "https://login.microsoftonline.com/{tenant-id}/v2.0"
+Authentication__JwtBearer__AllowedAlgorithms__0: "RS256"
 Authentication__JwtBearer__RequireHttpsMetadata: "true"
 # CRITICAL: SigningKey must be empty string for OIDC mode
 ```
@@ -150,7 +156,8 @@ The gateway validates every token with these parameters:
 - **Issuer validation:** Token `iss` must match configured `Issuer`
 - **Audience validation:** Token `aud` must match configured `Audience`
 - **Signing key validation:** Signature verified against OIDC-discovered keys or symmetric key
-- **Lifetime validation:** Token must not be expired (with 1-minute clock skew tolerance)
+- **Lifetime validation:** Token must contain an expiry and be currently valid (with 1-minute clock skew tolerance)
+- **Algorithm validation:** OIDC accepts only the explicit RSA/PSS/ECDSA allow-list; symmetric mode accepts only HS256
 - **Claim mapping disabled:** Original JWT claim names are preserved (`MapInboundClaims = false`) — no Microsoft namespace remapping
 
 Authentication failures return [RFC 9457](https://tools.ietf.org/html/rfc9457) ProblemDetails responses with `401 Unauthorized` status. Security-relevant events are logged with `SecurityEvent`, `CorrelationId`, `SourceIp`, and `FailureLayer` fields — the JWT token itself is never logged.

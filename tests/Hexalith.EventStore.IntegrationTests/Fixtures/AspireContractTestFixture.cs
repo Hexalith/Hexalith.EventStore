@@ -32,7 +32,10 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private string? _previousDotNetEnvironment;
     private string? _previousAggregateActorTypeName;
     private string? _previousRuntimeProofShutdownToken;
+    private string? _previousLocalAdminUserId;
+    private string? _previousLocalSigningKey;
     private string? _aggregateActorTypeName;
+    private string? _adminUserId;
     private string? _runtimeProofShutdownToken;
     private HttpClient? _eventStoreClient;
     private HttpClient? _adminServerClient;
@@ -67,10 +70,16 @@ public class AspireContractTestFixture : IAsyncLifetime {
     public string AggregateActorTypeName => _aggregateActorTypeName ?? throw new InvalidOperationException(
         "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
 
+    /// <summary>Gets the per-run administrator subject used by tenant bootstrap.</summary>
+    public string AdminUserId => _adminUserId ?? throw new InvalidOperationException(
+        "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
+
     public async ValueTask InitializeAsync() {
         // Disable Keycloak for fast contract tests -- use symmetric key JWT auth instead.
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
+        _previousLocalSigningKey = Environment.GetEnvironmentVariable("LocalAuthentication__SigningKey");
+        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", TestJwtTokenGenerator.SigningKey);
 
         // Force Development environment so AppHost children (especially EventStore)
         // load appsettings.Development.json expected by Tier 3 contract tests.
@@ -78,6 +87,10 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+
+        _previousLocalAdminUserId = Environment.GetEnvironmentVariable("LocalAuthentication__AdminUserId");
+        _adminUserId = Guid.NewGuid().ToString("D");
+        Environment.SetEnvironmentVariable("LocalAuthentication__AdminUserId", _adminUserId);
 
         _previousAggregateActorTypeName = Environment.GetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName");
         _aggregateActorTypeName = $"AggregateActorIntegration{Guid.NewGuid():N}";
@@ -402,10 +415,13 @@ public class AspireContractTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("EnableKeycloak", _previousEnableKeycloak);
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", _previousAspNetCoreEnvironment);
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
+        Environment.SetEnvironmentVariable("LocalAuthentication__AdminUserId", _previousLocalAdminUserId);
+        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", _previousLocalSigningKey);
         Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
         Environment.SetEnvironmentVariable(
             "EventStore__RuntimeProof__ShutdownToken",
             _previousRuntimeProofShutdownToken);
+        _adminUserId = null;
     }
 
     private static async Task DeleteHandlerQueryTypesStateAsync(CancellationToken cancellationToken) {

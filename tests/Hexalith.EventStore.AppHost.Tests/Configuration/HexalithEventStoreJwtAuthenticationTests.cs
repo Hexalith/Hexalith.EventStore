@@ -8,11 +8,12 @@ using Hexalith.EventStore.Aspire;
 public sealed class HexalithEventStoreJwtAuthenticationTests
 {
     private const string AuthorityKey = "Authentication__JwtBearer__Authority";
+    private const string AllowedAlgorithmPrefix = "Authentication__JwtBearer__AllowedAlgorithms__";
     private const string AudienceKey = "Authentication__JwtBearer__Audience";
     private const string IssuerKey = "Authentication__JwtBearer__Issuer";
     private const string RequireHttpsMetadataKey = "Authentication__JwtBearer__RequireHttpsMetadata";
     private const string SigningKey = "Authentication__JwtBearer__SigningKey";
-    private const string ValidAudiencePrefix = "Authentication__JwtBearer__TokenValidationParameters__ValidAudiences__";
+    private const string ValidAudiencePrefix = "Authentication__JwtBearer__ValidAudiences__";
 
     [Fact]
     public async Task WithEventStoreJwtAuthentication_WhenRunning_UsesLocalSecurityAndOrderedAudiences()
@@ -30,6 +31,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             {
                 PrimaryAudience = "hexalith-parties",
                 ValidAudiences = ["hexalith-eventstore", "hexalith-parties", "hexalith-eventstore"],
+                AllowedAlgorithms = ["RS256"],
             });
 
         KeyValuePair<string, object>[] environment = await GetJwtEnvironmentAsync(resource.Resource, builder.ExecutionContext);
@@ -41,6 +43,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             AudienceKey,
             ValidAudiencePrefix + "0",
             ValidAudiencePrefix + "1",
+            AllowedAlgorithmPrefix + "0",
             RequireHttpsMetadataKey,
             SigningKey,
         ]);
@@ -49,8 +52,9 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
         environment[2].Value.ShouldBe("hexalith-parties");
         environment[3].Value.ShouldBe("hexalith-parties");
         environment[4].Value.ShouldBe("hexalith-eventstore");
-        environment[5].Value.ShouldBe("false");
-        environment[6].Value.ShouldBe(string.Empty);
+        environment[5].Value.ShouldBe("RS256");
+        environment[6].Value.ShouldBe("false");
+        environment[7].Value.ShouldBe(string.Empty);
         GetReferencedResourceNames(resource.Resource).ShouldContain(security.Keycloak.Resource.Name);
         GetWaitedResourceNames(resource.Resource).ShouldBe([security.Keycloak.Resource.Name]);
     }
@@ -73,6 +77,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             {
                 PrimaryAudience = "hexalith-parties-mcp",
                 ValidAudiences = ["hexalith-eventstore", "hexalith-tenants"],
+                AllowedAlgorithms = ["RS256", "ES256"],
                 ExternalAuthority = "https://identity.example.com/realms/hexalith",
                 ExternalIssuer = "https://issuer.example.com/realms/hexalith",
             });
@@ -87,6 +92,8 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             ValidAudiencePrefix + "0",
             ValidAudiencePrefix + "1",
             ValidAudiencePrefix + "2",
+            AllowedAlgorithmPrefix + "0",
+            AllowedAlgorithmPrefix + "1",
             RequireHttpsMetadataKey,
             SigningKey,
         ]);
@@ -98,6 +105,8 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             "hexalith-parties-mcp",
             "hexalith-eventstore",
             "hexalith-tenants",
+            "RS256",
+            "ES256",
             "true",
             string.Empty,
         ]);
@@ -218,7 +227,32 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
 
         _ = Should.Throw<ArgumentNullException>(() => resource.WithEventStoreJwtAuthentication(
             null,
-            new HexalithEventStoreJwtAuthenticationOptions { PrimaryAudience = "hexalith-parties" }));
+            new HexalithEventStoreJwtAuthenticationOptions
+            {
+                PrimaryAudience = "hexalith-parties",
+                AllowedAlgorithms = ["RS256"],
+            }));
+
+        resource.Resource.Annotations.Count.ShouldBe(annotationCount);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("HS256")]
+    [InlineData("unknown")]
+    public void WithEventStoreJwtAuthentication_WhenAllowedAlgorithmsInvalid_FailsBeforeMutation(string? algorithm)
+    {
+        IDistributedApplicationBuilder builder = CreateBuilder(publish: true);
+        IResourceBuilder<ProjectResource> resource = builder.AddProject<EventStoreProjectMetadata>("invalid-algorithm");
+        HexalithEventStoreJwtAuthenticationOptions options = CreatePublishOptions("hexalith-parties", []) with
+        {
+            AllowedAlgorithms = algorithm is null ? [] : [algorithm],
+        };
+        int annotationCount = resource.Resource.Annotations.Count;
+
+        _ = Should.Throw<ArgumentException>(() => resource.WithEventStoreJwtAuthentication(null, options));
 
         resource.Resource.Annotations.Count.ShouldBe(annotationCount);
     }
@@ -232,7 +266,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        propertyNames.ShouldBe(["ExternalAuthority", "ExternalIssuer", "PrimaryAudience", "ValidAudiences"]);
+        propertyNames.ShouldBe(["AllowedAlgorithms", "ExternalAuthority", "ExternalIssuer", "PrimaryAudience", "ValidAudiences"]);
         propertyNames.ShouldNotContain(static name =>
             name.Contains("Password", StringComparison.OrdinalIgnoreCase)
             || name.Contains("Secret", StringComparison.OrdinalIgnoreCase)
@@ -258,14 +292,16 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             AuthorityKey,
             IssuerKey,
             AudienceKey,
+            AllowedAlgorithmPrefix + "0",
             RequireHttpsMetadataKey,
             SigningKey,
         ]);
         environment[0].Value.ShouldBeSameAs(security.RealmUrl);
         environment[1].Value.ShouldBeSameAs(security.RealmUrl);
         environment[2].Value.ShouldBe(security.Audience);
-        environment[3].Value.ShouldBe("false");
-        environment[4].Value.ShouldBe(string.Empty);
+        environment[3].Value.ShouldBe("RS256");
+        environment[4].Value.ShouldBe("false");
+        environment[5].Value.ShouldBe(string.Empty);
         GetWaitedResourceNames(resource.Resource).ShouldBe([security.Keycloak.Resource.Name]);
     }
 
@@ -276,6 +312,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
         {
             PrimaryAudience = primaryAudience,
             ValidAudiences = validAudiences,
+            AllowedAlgorithms = ["RS256"],
             ExternalAuthority = "https://identity.example.com/realms/hexalith",
             ExternalIssuer = "https://issuer.example.com/realms/hexalith",
         };

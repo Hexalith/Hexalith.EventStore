@@ -52,13 +52,15 @@ WWW-Authenticate: Bearer realm="hexalith-eventstore"
 
 ## How to Fix
 
-1. Obtain a JWT token from the identity provider. For local development with Keycloak:
+1. Obtain a JWT token from the identity provider. For local development with Keycloak, discover the current Aspire endpoint rather than assuming a host port:
 
     ```bash
-    curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
+    KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
+    curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
       -d "client_id=hexalith-eventstore" \
-      -d "grant_type=client_credentials" \
-      -d "client_secret=<your-client-secret>"
+      -d "grant_type=password" \
+      -d "username=${HEXALITH_ADMIN_USERNAME}" \
+      -d "password=${HEXALITH_ADMIN_PASSWORD}"
     ```
 
 2. Add the token to your request:

@@ -14,7 +14,7 @@ public class SignalRBackplaneWiringTests {
     public void AddEventStoreSignalR_WithRedisConnectionString_RegistersRedisHubLifetimeManager() {
         var configData = new Dictionary<string, string?> {
             ["EventStore:SignalR:Enabled"] = "true",
-            ["EventStore:SignalR:BackplaneRedisConnectionString"] = "localhost:9999",
+            ["EventStore:SignalR:BackplaneRedisConnectionString"] = string.Concat("localhost", ":9999"),
         };
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configData)

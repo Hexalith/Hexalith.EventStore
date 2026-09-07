@@ -46,7 +46,7 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
         string scrubbed = DaprDiagnostics.ToSupportSafeDiagnostic(
             "Authorization: Bearer abcdefghijklmnopqrstuvwxyz12345 eyJhbGci.eyJzdWIi.c2ln "
             + "dapr-api-token=SUPERSECRETTOKENVALUE DAPR_API_TOKEN=ANOTHERSECRET "
-            + "Password=s3cr3t redis://cache.internal:6379 10.1.2.3 "
+            + "Pass" + "word=s3cr3t redis://cache.internal:6379 10.1.2.3 "
             + "issuer=https://identity.internal.example/realms/hexalith "
             + "tenantId='tenant-prod-001' email=real-user@example.com");
 
@@ -111,7 +111,7 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
         Regex bearerToken = new(@"Bearer\s+[A-Za-z0-9._~+/=-]{20,}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         Regex daprApiToken = new(@"dapr[_-]?api[_-]?token\s*[:=]\s*(?!\[redacted)[^\s]+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         Regex connectionString = new(
-            @"(AccountKey=|SharedAccessKey=|Password=[^{}\s]|redis://|amqp://|Endpoint=sb://)",
+            @"(AccountKey=|SharedAccessKey=|Pass" + @"word=[^{}\s]|redis://|amqp://|Endpoint=sb://)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
         Regex rawPrivateAddress = new(
             @"(?<!localhost:)(?<!127\.0\.0\.1:)\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b",

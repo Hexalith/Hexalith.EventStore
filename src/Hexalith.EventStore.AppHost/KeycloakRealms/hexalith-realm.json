@@ -189,8 +189,8 @@
   ],
   "users": [
     {
-      "id": "admin-user",
-      "username": "admin-user",
+      "id": "__HEXALITH_ADMIN_USER_ID__",
+      "username": "__HEXALITH_ADMIN_USERNAME__",
       "firstName": "Admin",
       "lastName": "User",
       "enabled": true,
@@ -200,7 +200,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "admin-pass",
+          "value": "__HEXALITH_ADMIN_PASSWORD__",
           "temporary": false
         }
       ],
@@ -212,7 +212,7 @@
       }
     },
     {
-      "id": "tenant-a-user",
+      "id": "__HEXALITH_TENANT_A_USER_ID__",
       "username": "tenant-a-user",
       "firstName": "Tenant",
       "lastName": "A",
@@ -223,7 +223,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "tenant-a-pass",
+          "value": "__HEXALITH_TENANT_A_PASSWORD__",
           "temporary": false
         }
       ],
@@ -234,7 +234,7 @@
       }
     },
     {
-      "id": "tenant-b-user",
+      "id": "__HEXALITH_TENANT_B_USER_ID__",
       "username": "tenant-b-user",
       "firstName": "Tenant",
       "lastName": "B",
@@ -245,7 +245,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "tenant-b-pass",
+          "value": "__HEXALITH_TENANT_B_PASSWORD__",
           "temporary": false
         }
       ],
@@ -256,7 +256,7 @@
       }
     },
     {
-      "id": "readonly-user",
+      "id": "__HEXALITH_READ_ONLY_USER_ID__",
       "username": "readonly-user",
       "firstName": "Read",
       "lastName": "Only",
@@ -267,7 +267,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "readonly-pass",
+          "value": "__HEXALITH_READ_ONLY_PASSWORD__",
           "temporary": false
         }
       ],
@@ -278,7 +278,7 @@
       }
     },
     {
-      "id": "no-tenant-user",
+      "id": "__HEXALITH_NO_TENANT_USER_ID__",
       "username": "no-tenant-user",
       "firstName": "No",
       "lastName": "Tenant",
@@ -289,7 +289,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "no-tenant-pass",
+          "value": "__HEXALITH_NO_TENANT_PASSWORD__",
           "temporary": false
         }
       ],

@@ -38,7 +38,9 @@ set -uo pipefail
 
 readonly DEFAULT_APPHOST="src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
 readonly DEFAULT_EVENTSTORE_DAPR_PORT="3501"   # fixed in the AppHost so Admin.Server can query metadata
-readonly DEV_SIGNING_KEY="DevOnlySigningKey-AtLeast32Chars!"  # dev-only symmetric key (EnableKeycloak=false)
+# For EnableKeycloak=false, launch the AppHost and this smoke with the same ephemeral value.
+# No fallback is committed or generated independently because the issuer and validators must agree.
+readonly DEV_SIGNING_KEY="${LOCALAUTHENTICATION__SIGNINGKEY:-}"
 readonly DEV_ISSUER="hexalith-dev"
 readonly DEV_AUDIENCE="hexalith-eventstore"
 readonly SMOKE_TENANT="tenant-a"
@@ -473,6 +475,10 @@ sidecar_metadata() {
 # EventStore claims transformation reads only the first claim of each type. The token is returned on
 # stdout for capture into a variable and is NEVER logged.
 mint_dev_jwt() {
+  if ! dev_signing_key_is_valid; then
+    return 1
+  fi
+
   local now exp header payload h p sig
   now="$(date +%s)"
   exp="$((now + 3600))"
@@ -484,8 +490,15 @@ mint_dev_jwt() {
     '{sub:"smoke-test", iss:$iss, aud:$aud, tenants:$tenants, permissions:$perms, iat:$now, nbf:$now, exp:$exp}')"
   h="$(printf '%s' "${header}" | b64url)"
   p="$(printf '%s' "${payload}" | b64url)"
-  sig="$(printf '%s' "${h}.${p}" | openssl dgst -sha256 -hmac "${DEV_SIGNING_KEY}" -binary | b64url)"
+  sig="$(printf '%s' "${h}.${p}" | LOCALAUTHENTICATION__SIGNINGKEY="${DEV_SIGNING_KEY}" python3 -c \
+    'import hashlib, hmac, os, sys; sys.stdout.buffer.write(hmac.new(os.environ["LOCALAUTHENTICATION__SIGNINGKEY"].encode(), sys.stdin.buffer.read(), hashlib.sha256).digest())' \
+    | b64url)"
   printf '%s.%s.%s' "${h}" "${p}" "${sig}"
+}
+
+dev_signing_key_is_valid() {
+  [[ -n "${DEV_SIGNING_KEY//[[:space:]]/}" ]] || return 1
+  [[ "$(printf '%s' "${DEV_SIGNING_KEY}" | wc -c | tr -d ' ')" -ge 32 ]]
 }
 
 # Classify a non-success HTTP status from the generated-API smoke as environment/auth vs product,
@@ -523,6 +536,12 @@ run_sample_smoke() {
     return
   fi
   base="${base%/}"
+
+  if ! dev_signing_key_is_valid; then
+    record generated-api authentication fail "LOCALAUTHENTICATION__SIGNINGKEY must be nonblank, at least 32 UTF-8 bytes, and match the AppHost run"
+    escalate "${EX_BLOCKED}" blocked-environment
+    return
+  fi
 
   local jwt; jwt="$(mint_dev_jwt)"
   local cmd_url="${base}/api/${SMOKE_TENANT}/counter/${SMOKE_COUNTER}/increment"
@@ -702,7 +721,7 @@ main() {
 
   # Minimal tool prerequisites for the preflight itself.
   local t
-  for t in jq curl openssl; do
+  for t in jq curl openssl python3; do
     if ! have "${t}"; then
       printf 'ERROR: required tool "%s" is not installed.\n' "${t}" >&2
       exit "${EX_USAGE}"

@@ -8,18 +8,28 @@ using Microsoft.IdentityModel.Tokens;
 namespace Hexalith.EventStore.LoadTests.Helpers;
 
 /// <summary>
-/// Generates synthetic dev-signed JWTs that match the EventStore test signing key.
+/// Generates synthetic dev-signed JWTs using the caller-supplied ephemeral signing key.
 /// Mirrors tests/Hexalith.EventStore.IntegrationTests/Helpers/TestJwtTokenGenerator.cs
 /// — kept inline here to keep the perf project free of test-project dependencies.
-/// Only valid against an EventStore configured with the dev signing key.
+/// Only valid against an EventStore configured with the same ephemeral key.
 /// </summary>
 internal static class LoadTestJwtTokenGenerator {
-    public const string SigningKey = "DevOnlySigningKey-AtLeast32Chars!";
     public const string Issuer = "hexalith-dev";
     public const string Audience = "hexalith-eventstore";
 
-    private static readonly SymmetricSecurityKey s_securityKey = new(Encoding.UTF8.GetBytes(SigningKey));
+    private static readonly Lazy<SymmetricSecurityKey> s_securityKey = new(
+        static () => new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ResolveSigningKey(
+            Environment.GetEnvironmentVariable("LOAD_TEST_JWT_SIGNING_KEY")))));
     private static readonly JwtSecurityTokenHandler s_handler = new();
+
+    internal static string ResolveSigningKey(string? value) {
+        if (string.IsNullOrWhiteSpace(value) || Encoding.UTF8.GetByteCount(value) < 32) {
+            throw new InvalidOperationException(
+                "LOAD_TEST_JWT_SIGNING_KEY must be nonblank, at least 32 UTF-8 bytes, and supplied from the same ephemeral source as the target EventStore host.");
+        }
+
+        return value;
+    }
 
     public static string GenerateToken(
         string subject = "load-test-user",
@@ -50,7 +60,7 @@ internal static class LoadTestJwtTokenGenerator {
             IssuedAt = DateTime.UtcNow,
             Issuer = Issuer,
             Audience = Audience,
-            SigningCredentials = new SigningCredentials(s_securityKey, SecurityAlgorithms.HmacSha256Signature),
+            SigningCredentials = new SigningCredentials(s_securityKey.Value, SecurityAlgorithms.HmacSha256Signature),
         };
 
         SecurityToken token = s_handler.CreateToken(descriptor);

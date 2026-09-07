@@ -19,17 +19,19 @@ Authorization: Bearer {token}
 Acquire a development token from Keycloak:
 
 ```bash
-$ curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
+$ KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
+$ curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
   -d "grant_type=password" \
   -d "client_id=hexalith-eventstore" \
-  -d "username=admin-user" \
-  -d "password=admin-pass"
+  -d "username=${HEXALITH_ADMIN_USERNAME}" \
+  -d "password=${HEXALITH_ADMIN_PASSWORD}"
 ```
 
 > **Tip:** On Windows PowerShell 5.x, use:
 
 ```powershell
-$ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username="admin-user"; password="admin-pass"} | Select-Object -ExpandProperty access_token
+$env:KEYCLOAK_URL = aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | ConvertFrom-Json | ForEach-Object { $_.resources | Where-Object displayName -eq "security" | ForEach-Object { $_.urls | Where-Object name -eq "http" | Select-Object -ExpandProperty url } }
+$ Invoke-RestMethod -Method Post -Uri "$env:KEYCLOAK_URL/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD} | Select-Object -ExpandProperty access_token
 ```
 
 > **Note:** Query endpoints enforce the same 1 MB request-body limit as the command endpoints.

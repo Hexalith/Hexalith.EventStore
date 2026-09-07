@@ -21,7 +21,6 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Trait("Priority", "P0")]
 [Collection("KeycloakAuthTests")]
 public class KeycloakAuthenticationTests {
-    private const string ClientId = "hexalith-eventstore";
     private readonly KeycloakAuthFixture _fixture;
 
     public KeycloakAuthenticationTests(KeycloakAuthFixture fixture) => _fixture = fixture;
@@ -33,11 +32,7 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_ValidKeycloakToken_Returns202Accepted() {
         // Arrange: acquire real OIDC token from Keycloak for admin-user (tenant-a, tenant-b)
-        string token = await KeycloakTokenHelper.AcquireTokenAsync(
-            _fixture.KeycloakTokenEndpoint,
-            ClientId,
-            "admin-user",
-            "admin-pass");
+        string token = await _fixture.AcquireTokenAsync("admin-user");
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 
@@ -87,11 +82,7 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_CrossTenantToken_Returns403Forbidden() {
         // Arrange: tenant-b-user has claims for tenant-b only
-        string token = await KeycloakTokenHelper.AcquireTokenAsync(
-            _fixture.KeycloakTokenEndpoint,
-            ClientId,
-            "tenant-b-user",
-            "tenant-b-pass");
+        string token = await _fixture.AcquireTokenAsync("tenant-b-user");
 
         // Submit command targeting tenant-a (cross-tenant violation)
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
@@ -111,11 +102,7 @@ public class KeycloakAuthenticationTests {
     public async Task SubmitCommand_TenantScopedUser_CanAccessOwnTenant() {
         // Arrange: tenant-a-user has claims for tenant-a + domain "counter" only
         // (hexalith-realm.json seeds this user with domains=["counter"]).
-        string token = await KeycloakTokenHelper.AcquireTokenAsync(
-            _fixture.KeycloakTokenEndpoint,
-            ClientId,
-            "tenant-a-user",
-            "tenant-a-pass");
+        string token = await _fixture.AcquireTokenAsync("tenant-a-user");
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a", domain: "counter");
 
@@ -137,11 +124,7 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_NoTenantClaims_Returns403Forbidden() {
         // Arrange: no-tenant-user has no tenant/domain/permission attributes
-        string token = await KeycloakTokenHelper.AcquireTokenAsync(
-            _fixture.KeycloakTokenEndpoint,
-            ClientId,
-            "no-tenant-user",
-            "no-tenant-pass");
+        string token = await _fixture.AcquireTokenAsync("no-tenant-user");
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 
@@ -159,11 +142,7 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_ReadOnlyUser_Returns403Forbidden() {
         // Arrange: readonly-user has command:query only
-        string token = await KeycloakTokenHelper.AcquireTokenAsync(
-            _fixture.KeycloakTokenEndpoint,
-            ClientId,
-            "readonly-user",
-            "readonly-pass");
+        string token = await _fixture.AcquireTokenAsync("readonly-user");
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 
@@ -181,10 +160,8 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task ConcurrentTenantCommands_EventsRemainIsolated() {
         // Arrange: acquire tokens for two different tenants
-        string tokenA = await KeycloakTokenHelper.AcquireTokenAsync(
-            _fixture.KeycloakTokenEndpoint, ClientId, "tenant-a-user", "tenant-a-pass");
-        string tokenB = await KeycloakTokenHelper.AcquireTokenAsync(
-            _fixture.KeycloakTokenEndpoint, ClientId, "tenant-b-user", "tenant-b-pass");
+        string tokenA = await _fixture.AcquireTokenAsync("tenant-a-user");
+        string tokenB = await _fixture.AcquireTokenAsync("tenant-b-user");
 
         string aggIdA = $"kc-iso-a-{Guid.NewGuid():N}";
         string aggIdB = $"kc-iso-b-{Guid.NewGuid():N}";

@@ -299,7 +299,7 @@ In run mode, the helper requires `localSecurity`, uses its Keycloak realm for au
 adds the Keycloak reference/wait dependency, and follows the local `RequireHttpsMetadata` setting. In
 publish mode, it does not add a Keycloak dependency and requires explicit absolute HTTPS authority and
 issuer URIs without embedded user information. The primary audience is always emitted first in
-`TokenValidationParameters__ValidAudiences`; duplicate audiences are removed in first-seen order and
+`Authentication__JwtBearer__ValidAudiences`; duplicate audiences are removed in first-seen order and
 blank audiences fail before the resource model is changed. Publish mode always requires HTTPS metadata,
 and both modes clear `Authentication__JwtBearer__SigningKey` to prevent a configured symmetric key from
 competing with authority-based validation. Authority and issuer URIs containing user information, a query,

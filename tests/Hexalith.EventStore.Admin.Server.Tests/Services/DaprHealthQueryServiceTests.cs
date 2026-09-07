@@ -1,6 +1,7 @@
 #pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
 using System.Diagnostics;
+using System.Security.Cryptography;
 
 using Dapr.Client;
 
@@ -229,7 +230,8 @@ public class DaprHealthQueryServiceTests {
         // the secret. We assert (1) no string field on the response carries the secret AND
         // (2) no log record's Message or Exception text carries the secret — round 2 patched
         // the response surface but `NullLogger` was discarding the log channel entirely.
-        const string SecretConnectionDetails = "redis://my-secret-host:6379,password=p@ssw0rd";
+        string secretPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(18));
+        string secretConnectionDetails = $"redis://my-secret-host:6379,password={secretPassword}";
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
@@ -241,7 +243,7 @@ public class DaprHealthQueryServiceTests {
         _ = daprClient.GetStateAsync<string>(
             "statestore", "admin:dapr-probe",
             cancellationToken: Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException(SecretConnectionDetails));
+            .ThrowsAsync(new InvalidOperationException(secretConnectionDetails));
         _ = daprClient.CreateInvokeMethodRequest(
             Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(callInfo => new HttpRequestMessage(
@@ -264,7 +266,7 @@ public class DaprHealthQueryServiceTests {
         // Return a malformed payload that bears the secret — exercises the InvalidPayload arm
         // and forces the JSON exception text to flow through the warning logger.
         remoteHandler.SetupResponse(new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
-            Content = new StringContent($"{{ not json — secret leak: {SecretConnectionDetails}", System.Text.Encoding.UTF8, "application/json"),
+            Content = new StringContent($"{{ not json — secret leak: {secretConnectionDetails}", System.Text.Encoding.UTF8, "application/json"),
         });
         using HttpClient remoteHttpClient = new(remoteHandler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory infraHttpFactory = Substitute.For<IHttpClientFactory>();
@@ -293,23 +295,23 @@ public class DaprHealthQueryServiceTests {
 
         // (1) Walk every string field of the report to confirm the connection details are not
         // echoed back. Any new string-bearing field must be added here when the contract grows.
-        result.OverallStatus.ToString().ShouldNotContain("p@ssw0rd");
+        result.OverallStatus.ToString().ShouldNotContain(secretPassword);
         result.OverallStatus.ToString().ShouldNotContain("my-secret-host");
-        result.InventorySourceStatus.ToString().ShouldNotContain("p@ssw0rd");
+        result.InventorySourceStatus.ToString().ShouldNotContain(secretPassword);
         foreach (DaprComponentHealth c in result.DaprComponents) {
-            c.ComponentName.ShouldNotContain("p@ssw0rd");
+            c.ComponentName.ShouldNotContain(secretPassword);
             c.ComponentName.ShouldNotContain("my-secret-host");
-            c.ComponentType.ShouldNotContain("p@ssw0rd");
+            c.ComponentType.ShouldNotContain(secretPassword);
             c.ComponentType.ShouldNotContain("my-secret-host");
-            c.Source.ToString().ShouldNotContain("p@ssw0rd");
-            c.Status.ToString().ShouldNotContain("p@ssw0rd");
+            c.Source.ToString().ShouldNotContain(secretPassword);
+            c.Status.ToString().ShouldNotContain(secretPassword);
         }
 
-        result.ObservabilityLinks.TraceUrl?.ShouldNotContain("p@ssw0rd");
+        result.ObservabilityLinks.TraceUrl?.ShouldNotContain(secretPassword);
 
-        result.ObservabilityLinks.MetricsUrl?.ShouldNotContain("p@ssw0rd");
+        result.ObservabilityLinks.MetricsUrl?.ShouldNotContain(secretPassword);
 
-        result.ObservabilityLinks.LogsUrl?.ShouldNotContain("p@ssw0rd");
+        result.ObservabilityLinks.LogsUrl?.ShouldNotContain(secretPassword);
 
         // (2) Walk every recorded log entry. The probe-failure warning includes the exception
         // by design (LogWarning(ex, ...)); we want that exception detail to remain inside the
@@ -330,7 +332,7 @@ public class DaprHealthQueryServiceTests {
             // template (asserted here) never compose the secret. We do not assert on
             // record.Exception.Message because that field carries the raw exception text by
             // design; the malformed-JSON assertion below covers the parse-error flavour.
-            record.Message.ShouldNotContain("p@ssw0rd");
+            record.Message.ShouldNotContain(secretPassword);
             record.Message.ShouldNotContain("my-secret-host");
         }
 
@@ -340,7 +342,7 @@ public class DaprHealthQueryServiceTests {
         // record carries the secret-bearing exception, the test would be vacuously passing
         // without exercising the AC1 leak surface — surface that as a failure.
         bool anyRecordCapturedSecretException = infraLogger.Records.Any(r =>
-            r.Exception?.Message?.Contains(SecretConnectionDetails, StringComparison.Ordinal) == true);
+            r.Exception?.Message?.Contains(secretConnectionDetails, StringComparison.Ordinal) == true);
         anyRecordCapturedSecretException.ShouldBeTrue(
             "Probe-path leak surface was not exercised: no log record captured the secret-bearing exception. Verify StateStoreName is set and the probe runs.");
     }

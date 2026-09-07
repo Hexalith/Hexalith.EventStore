@@ -1,6 +1,7 @@
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -9,10 +10,10 @@ using Microsoft.IdentityModel.Tokens;
 namespace Hexalith.EventStore.IntegrationTests.Helpers;
 /// <summary>
 /// Generates JWT tokens for integration testing.
-/// Uses a known symmetric key that must match the test host configuration.
+/// Uses one per-process symmetric key that is propagated to the test host configuration.
 /// </summary>
 public static class TestJwtTokenGenerator {
-    public const string SigningKey = "DevOnlySigningKey-AtLeast32Chars!";
+    public static string SigningKey { get; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
     public const string Issuer = "hexalith-dev";
     public const string Audience = "hexalith-eventstore";
 
@@ -27,7 +28,8 @@ public static class TestJwtTokenGenerator {
         DateTime? expires = null,
         string? issuer = null,
         string? audience = null,
-        string? role = null) {
+        string? role = null,
+        string algorithm = SecurityAlgorithms.HmacSha256Signature) {
         var claims = new List<Claim>
         {
             new("sub", subject),
@@ -62,7 +64,7 @@ public static class TestJwtTokenGenerator {
             IssuedAt = expiresAt < DateTime.UtcNow ? expiresAt.AddHours(-2) : DateTime.UtcNow,
             Issuer = issuer ?? Issuer,
             Audience = audience ?? Audience,
-            SigningCredentials = new SigningCredentials(s_securityKey, SecurityAlgorithms.HmacSha256Signature),
+            SigningCredentials = new SigningCredentials(s_securityKey, algorithm),
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();

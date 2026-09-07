@@ -57,8 +57,8 @@ public class SampleApiLaunchSettingsTests
         sampleApiBlock.ShouldNotContain("eventStoreResources.PubSub");
         sampleApiBlock.ShouldNotContain(".WithReference(eventStoreResources");
 
-        program.ShouldContain("_ = sampleApi.WithEventStoreAuthenticationValidation(security);");
-        program.ShouldNotContain("_ = sampleApi.WithEventStoreClientCredentials(security);");
+        program.ShouldContain("_ = sampleApi.WithEventStoreJwtAuthentication(security, jwtAuthentication);");
+        program.ShouldNotContain("sampleApi.WithEventStoreClientCredentials(");
 
         // The block above ends at the security section, so it cannot see a later grant. These whole-file
         // guards keep the "zero direct infrastructure access" invariant enforced across all of Program.cs.
@@ -94,7 +94,7 @@ public class SampleApiLaunchSettingsTests
             "IResourceBuilder<ProjectResource> sampleApi =",
             "    builder.AddProject<Projects.Hexalith_EventStore_Sample_Api>(\"sample-api\");",
             string.Empty,
-            "if (security is not null)",
+            "var jwtAuthentication = new HexalithEventStoreJwtAuthenticationOptions();",
         ]);
 
         string block = ExtractBlock(
@@ -142,7 +142,7 @@ public class SampleApiLaunchSettingsTests
     {
         int start = text.IndexOf(startMarker, StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0, $"Expected to find '{startMarker}'.");
-        int end = text.IndexOf(";\n\nif (security is not null)", start, StringComparison.Ordinal);
+        int end = text.IndexOf(";\n\nvar jwtAuthentication", start, StringComparison.Ordinal);
         end.ShouldBeGreaterThan(start, "Expected sample-api resource registration assignment before the security block.");
         end += 1;
         return text[start..end];

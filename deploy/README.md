@@ -192,19 +192,34 @@ The AppHost supports three Aspire publisher targets for generating deployment ma
 **Command:**
 
 ```bash
-PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
+PUBLISH_TARGET=docker \
+Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" \
+Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" \
+Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" \
+Authentication__JwtBearer__AllowedAlgorithms__0=RS256 \
+Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" \
+Parameters__external-auth-username="${OIDC_USERNAME}" \
+Parameters__external-auth-password="${OIDC_PASSWORD}" \
+aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
 ```
 
 **PowerShell (Windows):**
 
 ```powershell
 $env:PUBLISH_TARGET="docker"
+$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY
+$env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER
+$env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE
+$env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
+$env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID
+$env:Parameters__external-auth-username=$env:OIDC_USERNAME
+$env:Parameters__external-auth-password=$env:OIDC_PASSWORD
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
 ```
 
 **Generated output:** `docker-compose.yaml` + `.env` file containing parameterized placeholders for container images, ports, and secrets.
 
-**Generated services include:** `eventstore`, `eventstore-admin`, `sample`, `security` (Keycloak-backed when `EnableKeycloak` is not `false`), and `docker-dashboard`; additional AppHost project resources are generated too.
+**Generated services include:** `eventstore`, `eventstore-admin`, `sample`, and `docker-dashboard`; additional AppHost project resources are generated too. The run-only Keycloak `security` resource is never published. Published hosts and UIs use the explicit external OIDC/client parameters above.
 
 **DAPR sidecar handling:** `CommunityToolkit.Aspire.Hosting.Dapr` is a local dev orchestration tool. The Docker Compose publisher does **NOT** generate DAPR sidecar containers. To add DAPR support:
 
@@ -279,7 +294,7 @@ Pin the DAPR sidecar image to a specific version (e.g., `1.18.0`) — avoid muta
 **Command:**
 
 ```bash
-PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 ```
 
 **PowerShell (Windows):**
@@ -287,6 +302,8 @@ PUBLISH_TARGET=k8s EnableKeycloak=false aspire publish --project src/Hexalith.Ev
 ```powershell
 $env:PUBLISH_TARGET="k8s"
 $env:EnableKeycloak="false"
+$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
+$env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\k8s
 ```
 
@@ -330,7 +347,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 **Command:**
 
 ```bash
-PUBLISH_TARGET=aca EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 ```
 
 **PowerShell (Windows):**
@@ -338,6 +355,8 @@ PUBLISH_TARGET=aca EnableKeycloak=false aspire publish --project src/Hexalith.Ev
 ```powershell
 $env:PUBLISH_TARGET="aca"
 $env:EnableKeycloak="false"
+$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
+$env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\azure
 ```
 
@@ -354,7 +373,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 
 ### External OIDC Configuration for Production
 
-Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production auth, configure an external OIDC provider via these environment variables on the `eventstore` container:
+Publisher manifests contain no local Keycloak credentials. Configure the same external OIDC contract on the `eventstore`, `eventstore-admin`, and `sample-api` containers:
 
 | Variable                                          | Description                 | Example                                           |
 | ------------------------------------------------- | --------------------------- | ------------------------------------------------- |
@@ -363,7 +382,7 @@ Publisher manifests exclude Keycloak when `EnableKeycloak=false`. For production
 | `Authentication__JwtBearer__Audience`             | Expected token audience     | `api://hexalith-eventstore`                       |
 | `Authentication__JwtBearer__RequireHttpsMetadata` | Require HTTPS for metadata  | `true` (recommended for production)               |
 
-When `Authentication__JwtBearer__Authority` is set, the application uses OIDC discovery to validate tokens. When it is not set, it falls back to symmetric key validation via `Authentication__JwtBearer__SigningKey`.
+Production startup requires exactly one authentication mode and only OIDC is permitted: set an absolute HTTPS `Authority`, keep `RequireHttpsMetadata=true`, set no `SigningKey`, and provide a non-blank issuer plus at least one audience. Both missing and dual-mode configuration fail before the host serves. Accepted signing algorithms are explicitly restricted to asymmetric RSA/PSS/ECDSA algorithms.
 
 ## CI/CD Image Tagging
 

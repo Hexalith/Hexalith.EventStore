@@ -7,7 +7,7 @@
 # Prerequisites: A PostgreSQL instance running on localhost:5432.
 # Quick start with Docker:
 #   docker run -d --name dapr-postgres -p 5432:5432 \
-#     -e POSTGRES_PASSWORD=dapr-demo -e POSTGRES_DB=daprstate \
+#     -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" -e POSTGRES_DB=daprstate \
 #     postgres:16-alpine
 
 # DAPR component manifest version. All DAPR components use the v1alpha1 schema.
@@ -31,7 +31,7 @@ spec:
     # Format: host=<host> port=<port> user=<user> password=<pass> dbname=<db> sslmode=disable
     # For local development, sslmode=disable avoids TLS certificate setup.
     - name: connectionString
-      value: "host=localhost port=5432 user=postgres password=dapr-demo dbname=daprstate sslmode=disable"
+      value: "{env:POSTGRES_CONNECTION_STRING}"
     # Required for DAPR actor state management — same requirement as Redis.
     - name: actorStateStore
       value: "true"

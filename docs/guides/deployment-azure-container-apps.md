@@ -145,13 +145,13 @@ az provider register -n Microsoft.OperationalInsights
 The Aspire AppHost includes an Azure Container Apps publisher that generates Bicep modules from the Aspire topology definition. The `Aspire.Hosting.Azure.AppContainers` package (v13.1.2) is a **stable** (GA) package — unlike the Kubernetes and Docker publishers which are preview.
 
 ```bash
-PUBLISH_TARGET=aca EnableKeycloak=false aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 ```
 
 > **PowerShell (Windows):**
 >
 > ```powershell
-> $env:PUBLISH_TARGET='aca'; $env:EnableKeycloak='false'; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+> $env:PUBLISH_TARGET='aca'; $env:EnableKeycloak='false'; $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0='RS256'; $env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 > ```
 
 **Important:** `EnableKeycloak=false` is **required**. Azure Container Apps does not support Keycloak bind mounts for realm import. Production ACA deployments must use an external OIDC provider (Entra ID recommended).
@@ -565,7 +565,7 @@ az containerapp update \
     "Authentication__JwtBearer__SigningKey="
 ```
 
-> **Critical:** The `SigningKey` must be explicitly set to an empty value. If `Authentication__JwtBearer__SigningKey` is present (from `appsettings.json` defaults), the application uses symmetric key validation and ignores the OIDC Authority. Clearing it ensures the app uses OIDC discovery mode.
+> **Critical:** The `SigningKey` must be explicitly empty or absent. A simultaneous `Authority` and `SigningKey` is rejected as ambiguous, and any Production symmetric-key configuration is rejected.
 
 ### Acquire a Token for Testing
 

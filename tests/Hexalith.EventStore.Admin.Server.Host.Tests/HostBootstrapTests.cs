@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -19,8 +21,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 
 using NSubstitute;
@@ -106,9 +112,9 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
 
         authOptions.Issuer.ShouldBe("hexalith-dev");
         authOptions.Audience.ShouldBe("hexalith-eventstore");
-        authOptions.SigningKey.ShouldBe("DevOnlySigningKey-AtLeast32Chars!");
+        authOptions.SigningKey.ShouldBe(AuthenticationTestEnvironment.SigningKey);
         options.TokenValidationParameters.ValidIssuer.ShouldBe("hexalith-dev");
-        options.TokenValidationParameters.ValidAudience.ShouldBe("hexalith-eventstore");
+        options.TokenValidationParameters.ValidAudiences.ShouldBe(["hexalith-eventstore"]);
         options.RequireHttpsMetadata.ShouldBeFalse();
         _ = options.TokenValidationParameters.IssuerSigningKey.ShouldNotBeNull();
     }
@@ -140,6 +146,159 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         string payload = await response.Content.ReadAsStringAsync();
         payload.ShouldContain("test-aggregate");
         payload.ShouldContain("test-tenant");
+    }
+
+    [Fact]
+    public async Task AdminRequest_WithHs384Token_ReturnsUnauthorized() {
+        using HttpClient client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenWithAlgorithm(
+            SecurityAlgorithms.HmacSha384Signature,
+            new Claim("sub", "admin-user"),
+            new Claim("global_admin", "true")));
+
+        using HttpResponseMessage response = await client.GetAsync(
+            "/api/v1/admin/streams/GetRecentlyActiveStreams?tenantId=test-tenant");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task AdminRequest_WithInvalidValidationDimension_ReturnsUnauthorized() {
+        Claim[] claims =
+        [
+            new Claim("sub", "admin-user"),
+            new Claim("global_admin", "true"),
+        ];
+        string signingKey = Convert.ToBase64String(
+            System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+        (string Scenario, string Token)[] invalidTokens =
+        [
+            ("unsigned", CreateTokenForValidation(claims, signed: false)),
+            ("expired", CreateTokenForValidation(claims, expires: DateTime.UtcNow.AddMinutes(-10))),
+            ("wrong issuer", CreateTokenForValidation(claims, issuer: "unexpected-issuer")),
+            ("wrong audience", CreateTokenForValidation(claims, audience: "unexpected-audience")),
+            ("wrong signing key", CreateTokenForValidation(
+                claims,
+                "hexalith-dev",
+                "hexalith-eventstore",
+                expires: null,
+                signingKey)),
+        ];
+
+        using HttpClient client = _factory.CreateClient();
+        foreach ((string scenario, string token) in invalidTokens) {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                "/api/v1/admin/streams/GetRecentlyActiveStreams?tenantId=test-tenant");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using HttpResponseMessage response = await client.SendAsync(request);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, scenario);
+        }
+    }
+
+    [Fact]
+    public async Task AdminHttpPipeline_InProductionAuthorityMode_EnforcesEveryTokenValidationDimension() {
+        const string authorityIssuer = "https://identity.example.test/realms/hexalith";
+        const string audience = "hexalith-eventstore";
+        const string additionalAudience = "hexalith-eventstore-admin";
+        using RSA rsa = RSA.Create(2048);
+        using RSA wrongRsa = RSA.Create(2048);
+        var signingKey = new RsaSecurityKey(rsa) { KeyId = Guid.NewGuid().ToString("N") };
+        var wrongSigningKey = new RsaSecurityKey(wrongRsa) { KeyId = Guid.NewGuid().ToString("N") };
+        Claim[] claims =
+        [
+            new Claim("sub", "authority-mode-admin"),
+            new Claim("global_admin", "true"),
+        ];
+
+        await using var baseFactory = new AdminServerHostFactory();
+        await using WebApplicationFactory<Program> factory = baseFactory.WithWebHostBuilder(builder => {
+            _ = builder.UseEnvironment(Environments.Production);
+            _ = builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?> {
+                    ["Authentication:JwtBearer:Authority"] = authorityIssuer,
+                    ["Authentication:JwtBearer:Issuer"] = authorityIssuer,
+                    ["Authentication:JwtBearer:Audience"] = audience,
+                    ["Authentication:JwtBearer:ValidAudiences:0"] = additionalAudience,
+                    ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
+                    ["Authentication:JwtBearer:SigningKey"] = null,
+                    ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+                }));
+        });
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost"),
+        });
+        ConfigureStaticAuthority(factory.Services, authorityIssuer, signingKey);
+
+        using (var validRequest = CreateAuthorityRequest(
+            CreateAuthorityToken(signingKey, authorityIssuer, additionalAudience, claims)))
+        using (HttpResponseMessage validResponse = await client.SendAsync(
+            validRequest,
+            TestContext.Current.CancellationToken)) {
+            validResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        string symmetricKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+        (string Scenario, string Token)[] invalidTokens =
+        [
+            ("unsigned", CreateAuthorityToken(signingKey, authorityIssuer, audience, claims, signed: false)),
+            ("missing expiry", CreateAuthorityToken(signingKey, authorityIssuer, audience, claims, includeExpiry: false)),
+            ("expired", CreateAuthorityToken(
+                signingKey,
+                authorityIssuer,
+                audience,
+                claims,
+                expires: DateTime.UtcNow.AddMinutes(-10))),
+            ("wrong issuer", CreateAuthorityToken(signingKey, "https://unexpected.example.test", audience, claims)),
+            ("wrong audience", CreateAuthorityToken(signingKey, authorityIssuer, "unexpected-audience", claims)),
+            ("wrong signing key", CreateAuthorityToken(wrongSigningKey, authorityIssuer, audience, claims)),
+            ("wrong algorithm family", CreateAuthorityToken(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(symmetricKey)),
+                authorityIssuer,
+                audience,
+                claims,
+                SecurityAlgorithms.HmacSha256Signature)),
+            ("non-allowlisted algorithm", CreateAuthorityToken(
+                signingKey,
+                authorityIssuer,
+                audience,
+                claims,
+                SecurityAlgorithms.RsaSha384)),
+            ("missing algorithm", CreateAuthorityTokenWithoutAlgorithm(authorityIssuer, audience)),
+        ];
+
+        foreach ((string scenario, string token) in invalidTokens) {
+            using HttpRequestMessage request = CreateAuthorityRequest(token);
+            using HttpResponseMessage response = await client.SendAsync(
+                request,
+                TestContext.Current.CancellationToken);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, scenario);
+        }
+    }
+
+    [Fact]
+    public void Host_WithProductionSymmetricOverride_FailsBeforeServingWithoutEchoingKey() {
+        string signingKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        using WebApplicationFactory<Program> factory = new AdminServerHostFactory().WithWebHostBuilder(builder => {
+            _ = builder.UseEnvironment("Production");
+            _ = builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?> {
+                    ["Authentication:JwtBearer:Authority"] = string.Empty,
+                    ["Authentication:JwtBearer:Issuer"] = "test-issuer",
+                    ["Authentication:JwtBearer:Audience"] = "test-audience",
+                    ["Authentication:JwtBearer:SigningKey"] = signingKey,
+                    ["Authentication:JwtBearer:AllowInsecureSymmetricKey"] = "true",
+                }));
+        });
+
+        OptionsValidationException exception = Should.Throw<OptionsValidationException>(() => factory.CreateClient());
+
+        exception.Message.ShouldContain("forbidden in Production");
+        exception.ToString().ShouldNotContain(signingKey);
     }
 
     [Fact]
@@ -290,15 +449,107 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task ProductionPipeline_LeavesProbesAnonymousAndProtectedAdminRouteChallenged()
+    {
+        await using var factory = new ProductionAdminServerHostFactory();
+        using HttpClient client = factory.CreateClient();
+
+        foreach (string path in new[] { "/health", "/alive", "/ready" })
+        {
+            using HttpResponseMessage response = await client.GetAsync(path);
+            string body = await response.Content.ReadAsStringAsync();
+
+            response.StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable);
+            body.Length.ShouldBeLessThan(64);
+            body.ShouldNotContain("results", Case.Insensitive);
+        }
+
+        using HttpResponseMessage protectedResponse = await client.GetAsync(
+            "/api/v1/admin/streams/GetRecentlyActiveStreams");
+        protectedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
     private static string CreateToken(params Claim[] claims) {
+        return CreateTokenWithAlgorithm(SecurityAlgorithms.HmacSha256Signature, claims);
+    }
+
+    private static void ConfigureStaticAuthority(
+        IServiceProvider services,
+        string issuer,
+        SecurityKey signingKey) {
+        var configuration = new OpenIdConnectConfiguration { Issuer = issuer };
+        configuration.SigningKeys.Add(signingKey);
+        services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
+            .Get(JwtBearerDefaults.AuthenticationScheme)
+            .ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
+    }
+
+    private static HttpRequestMessage CreateAuthorityRequest(string token) {
+        var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/v1/admin/streams/GetRecentlyActiveStreams?tenantId=test-tenant");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
+    private static string CreateAuthorityToken(
+        SecurityKey signingKey,
+        string issuer,
+        string audience,
+        IEnumerable<Claim> claims,
+        string algorithm = SecurityAlgorithms.RsaSha256,
+        DateTime? expires = null,
+        bool signed = true,
+        bool includeExpiry = true) {
+        DateTime expiresAt = expires ?? DateTime.UtcNow.AddMinutes(30);
+        var token = new JwtSecurityToken(
+            issuer,
+            audience,
+            claims,
+            expiresAt < DateTime.UtcNow ? expiresAt.AddMinutes(-30) : DateTime.UtcNow.AddMinutes(-1),
+            includeExpiry ? expiresAt : null,
+            signed ? new SigningCredentials(signingKey, algorithm) : null);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static string CreateAuthorityTokenWithoutAlgorithm(string issuer, string audience) {
+        string header = Base64UrlEncoder.Encode("{\"typ\":\"JWT\"}");
+        string payload = Base64UrlEncoder.Encode(JsonSerializer.Serialize(new {
+            iss = issuer,
+            aud = audience,
+            sub = "authority-mode-admin",
+            global_admin = true,
+            exp = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds(),
+        }));
+        return $"{header}.{payload}.";
+    }
+
+    private static string CreateTokenWithAlgorithm(string algorithm, params Claim[] claims) {
+        return CreateTokenForValidation(claims, algorithm: algorithm);
+    }
+
+    private static string CreateTokenForValidation(
+        IEnumerable<Claim> claims,
+        string issuer = "hexalith-dev",
+        string audience = "hexalith-eventstore",
+        DateTime? expires = null,
+        string? signingKey = null,
+        bool signed = true,
+        string algorithm = SecurityAlgorithms.HmacSha256Signature) {
+        DateTime expiresAt = expires ?? DateTime.UtcNow.AddMinutes(30);
         var descriptor = new SecurityTokenDescriptor {
-            Issuer = "hexalith-dev",
-            Audience = "hexalith-eventstore",
+            Issuer = issuer,
+            Audience = audience,
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(30),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes("DevOnlySigningKey-AtLeast32Chars!")),
-                SecurityAlgorithms.HmacSha256Signature),
+            NotBefore = expiresAt < DateTime.UtcNow ? expiresAt.AddMinutes(-30) : DateTime.UtcNow.AddMinutes(-1),
+            Expires = expiresAt,
+            SigningCredentials = signed
+                ? new SigningCredentials(
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                        signingKey ?? AuthenticationTestEnvironment.SigningKey)),
+                    algorithm)
+                : null,
         };
 
         var handler = new JwtSecurityTokenHandler();
@@ -381,6 +632,25 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
                 _ = services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
                 _ = services.AddScoped(_ => Substitute.For<ITenantQueryService>());
             });
+        }
+    }
+
+    private sealed class ProductionAdminServerHostFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            _ = builder.UseEnvironment(Environments.Production);
+            _ = builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["Authentication:JwtBearer:Authority"] = "https://login.example.test/realms/hexalith",
+                    ["Authentication:JwtBearer:Issuer"] = "https://login.example.test/realms/hexalith",
+                    ["Authentication:JwtBearer:Audience"] = "hexalith-eventstore",
+                    ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
+                    ["Authentication:JwtBearer:SigningKey"] = null,
+                    ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+                }));
         }
     }
 }

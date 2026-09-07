@@ -88,7 +88,7 @@ public class TenantBootstrapHealthTests {
             string correlationId = envelope.RootElement.GetProperty("correlationId").GetString()!;
             string payloadBase64 = envelope.RootElement.GetProperty("payload").GetString()!;
             using JsonDocument payload = JsonDocument.Parse(Convert.FromBase64String(payloadBase64));
-            payload.RootElement.GetProperty("UserId").GetString().ShouldBe("admin-user");
+            payload.RootElement.GetProperty("UserId").GetString().ShouldBe(_fixture.AdminUserId);
 
             using DaprClient daprClient = new DaprClientBuilder()
                 .UseHttpEndpoint(_fixture.EventStoreDaprHttpEndpoint.ToString())

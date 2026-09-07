@@ -51,7 +51,7 @@ The Counter Sample domain service runs in a separate container with its own DAPR
 
 A DAPR Placement Service container manages actor assignment, ensuring each aggregate identity is processed by exactly one actor instance at a time.
 
-An optional `security` service, implemented by a Keycloak container, provides OIDC authentication. It listens on container target port 8080 and is published to host port 8180 in the example below. The HTTP Client obtains JWT tokens from it before calling the Command API Gateway. The service can be disabled by setting `EnableKeycloak=false`, in which case the system falls back to symmetric key authentication.
+An optional `security` service, implemented by a Keycloak container, provides OIDC authentication. It listens on container target port 8080 and is published to host port 8180 in the example below. The HTTP Client obtains JWT tokens from it before calling the Command API Gateway. A local `aspire run` with `EnableKeycloak=false` receives one generated symmetric key shared by issuers and validators; published non-Development deployments must provide the external HTTPS OIDC contract explicitly.
 
 All containers run within the Docker Compose network boundary.
 
@@ -103,19 +103,21 @@ You should see three DAPR containers running: `dapr_placement`, `dapr_zipkin`, a
 The Aspire AppHost includes a Docker Compose publisher that generates `docker-compose.yaml` and `.env` files from the Aspire topology definition.
 
 ```bash
-$ PUBLISH_TARGET=docker aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
+$ PUBLISH_TARGET=docker Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
 ```
 
 > **PowerShell (Windows):**
 >
 > ```powershell
 > $env:PUBLISH_TARGET="docker"
+> $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
+> $env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD
 > $ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
 > ```
 
 This generates:
 
-- `publish-output/docker/docker-compose.yaml` — service definitions including `eventstore`, `sample`, `security` (Keycloak-backed when enabled), and an Aspire dashboard; additional AppHost project resources are generated too
+- `publish-output/docker/docker-compose.yaml` — service definitions including `eventstore`, `sample`, and an Aspire dashboard; additional AppHost project resources are generated too. The run-only Keycloak `security` resource is not published; the explicit external OIDC inputs above are used instead
 - `publish-output/docker/.env` — parameterized placeholders for container images, ports, and secrets
 
 > **Important:** The generated `docker-compose.yaml` does **not** include DAPR sidecar containers. The `CommunityToolkit.Aspire.Hosting.Dapr` package is a local development orchestration tool — its DAPR configuration does not carry through to Docker Compose publishing. You must add DAPR sidecars manually, as described in the next sections.
@@ -504,17 +506,17 @@ If Keycloak is running (default), obtain a JWT token:
 $ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
   -d "grant_type=password" \
   -d "client_id=hexalith-eventstore" \
-  -d "username=admin-user" \
-  -d "password=admin-pass" | jq -r '.access_token')
+  -d "username=${HEXALITH_ADMIN_USERNAME}" \
+  -d "password=${HEXALITH_ADMIN_PASSWORD}" | jq -r '.access_token')
 ```
 
 > **PowerShell:**
 >
 > ```powershell
-> $token = (Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username="admin-user"; password="admin-pass"}).access_token
+> $response = Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD}; $response.access_token
 > ```
 
-If Keycloak is disabled (`EnableKeycloak=false`), the system uses symmetric key authentication. Set the `Authentication__JwtBearer__SigningKey` environment variable and generate a token using that key.
+If Keycloak is disabled (`EnableKeycloak=false`), the AppHost generates one symmetric key per run and shares it with the local token issuers and validators. For a manual external smoke, set `LocalAuthentication__SigningKey` before starting the AppHost and give the same ephemeral value to the smoke process; there is no committed fallback.
 
 ### Submit a Command
 
@@ -598,7 +600,7 @@ One of DAPR's core benefits is infrastructure portability. You can switch from R
                 - "5432:5432"
             environment:
                 POSTGRES_USER: dapr
-                POSTGRES_PASSWORD: dapr-secret
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
                 POSTGRES_DB: eventstore
             volumes:
                 - pgdata:/var/lib/postgresql/data
@@ -616,7 +618,7 @@ One of DAPR's core benefits is infrastructure portability. You can switch from R
 3. Set the connection string in `.env`:
 
     ```bash
-    POSTGRES_CONNECTION_STRING=host=postgres;port=5432;username=dapr;password=dapr-secret;database=eventstore
+    POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING_FROM_SECRET_STORE}
     ```
 
 4. Restart the DAPR sidecars to pick up the new component:

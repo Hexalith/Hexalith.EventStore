@@ -25,6 +25,7 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     private string? _previousDotNetEnvironment;
     private string? _previousAggregateActorTypeName;
     private string? _previousProjectionFaultFlag;
+    private string? _previousLocalSigningKey;
     private HttpClient? _eventStoreClient;
 
     public HttpClient EventStoreClient => _eventStoreClient ?? throw new InvalidOperationException(
@@ -36,6 +37,8 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     public async ValueTask InitializeAsync() {
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
+        _previousLocalSigningKey = Environment.GetEnvironmentVariable("LocalAuthentication__SigningKey");
+        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", TestJwtTokenGenerator.SigningKey);
 
         _previousAspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
@@ -181,5 +184,6 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
         Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
         Environment.SetEnvironmentVariable("EventStore__SampleFaults__MalformedProjectResponse", _previousProjectionFaultFlag);
+        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", _previousLocalSigningKey);
     }
 }

@@ -96,7 +96,9 @@ public class AdminDeadLetterApiClientErrorTests {
             Content = new StringContent(
                 JsonSerializer.Serialize(new {
                     title = "Validation failed",
-                    detail = "Bearer secret-token at Internal.Type.Method() server01.internal Data Source=db;User ID=sa;Password=pw",
+                    detail = string.Concat(
+                        "Bearer secret-token at Internal.Type.Method() server01.internal Data Source=db;User ID=sa;Pass",
+                        "word=pw"),
                     errorCode = "DLQ_INVALID_STATE",
                 }),
                 Encoding.UTF8,

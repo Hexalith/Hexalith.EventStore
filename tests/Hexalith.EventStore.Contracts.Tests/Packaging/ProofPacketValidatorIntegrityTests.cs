@@ -63,11 +63,11 @@ public sealed class ProofPacketValidatorIntegrityTests
             $"\"-p:ContainerRuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"");
         packet.ShouldContain("-p:ContainerImageFormat=OCI");
         packet.ShouldNotContain("\"-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64\"");
-        packet.ShouldContain("--env Authentication__JwtBearer__Issuer=hexalith-container-smoke");
+        packet.ShouldContain("--env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith");
+        packet.ShouldContain("--env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith");
         packet.ShouldContain("--env Authentication__JwtBearer__Audience=hexalith-eventstore");
-        packet.ShouldContain(
-            "--env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret");
-        packet.ShouldContain("--env Authentication__JwtBearer__AllowInsecureSymmetricKey=true");
+        packet.ShouldContain("--env Authentication__JwtBearer__RequireHttpsMetadata=true");
+        packet.ShouldNotContain("Authentication__JwtBearer__SigningKey=");
         packet.ShouldContain("for _ in $(seq 1 180); do");
         packet.ShouldContain(".publish_properties.runtime_identifiers ==");
         packet.ShouldContain(".publish_properties.container_image_format == \"OCI\"");
@@ -114,10 +114,10 @@ public sealed class ProofPacketValidatorIntegrityTests
         string[] requiredStartupEnvironment =
         [
             "--env ASPNETCORE_URLS=http://+:8080",
-            "--env Authentication__JwtBearer__Issuer=hexalith-container-smoke",
+            "--env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith",
+            "--env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith",
             "--env Authentication__JwtBearer__Audience=hexalith-eventstore",
-            "--env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret",
-            "--env Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
+            "--env Authentication__JwtBearer__RequireHttpsMetadata=true",
         ];
 
         foreach (string setting in requiredStartupEnvironment)

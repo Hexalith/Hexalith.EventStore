@@ -170,7 +170,7 @@ the same label, SignalR pub/sub will silently merge.
 
 ```bash
 EventStore__SignalR__Enabled=true
-EventStore__SignalR__BackplaneRedisConnectionString="redis-shared:6379,channelPrefix=hesr.test.eventstore.blue"
+EventStore__SignalR__BackplaneRedisConnectionString=<redis-connection-string>
 ```
 
 ```bash

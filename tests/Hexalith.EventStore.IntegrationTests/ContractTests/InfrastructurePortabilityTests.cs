@@ -48,7 +48,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 ///   version: v1
 ///   metadata:
 ///     - name: connectionString
-///       value: "host=localhost;port=5432;database=eventstore;user=dapr;password=dapr"
+///       value: "<postgres-connection-string>"
 ///     - name: actorStateStore
 ///       value: "true"
 /// </code>
