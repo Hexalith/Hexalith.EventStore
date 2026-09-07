@@ -44,7 +44,7 @@ DEFAULT_SMOKE_TIMEOUT_SECONDS = "180"
 SMOKE_HOSTING_ENVIRONMENT = "Development"
 SMOKE_JWT_ISSUER = "hexalith-container-smoke"
 SMOKE_JWT_AUDIENCE = "hexalith-eventstore"
-SMOKE_JWT_SIGNING_KEY = "hexalith-container-smoke-only-key-not-a-secret"
+SMOKE_JWT_SIGNING_KEY = os.environ.get("SMOKE_JWT_SIGNING_KEY", "")
 
 
 class SmokeFailure(Exception):  # noqa: D203,D211

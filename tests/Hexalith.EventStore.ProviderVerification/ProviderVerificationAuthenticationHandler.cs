@@ -13,7 +13,7 @@ internal sealed class ProviderVerificationAuthenticationHandler(
     ProviderStateCoordinator coordinator)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    internal const string ExpectedAuthorization = "Bearer FC_CONTRACT_TOKEN";
+    internal const string ExpectedTokenMarker = "FC_CONTRACT_TOKEN";
     public const string SchemeName = "ProviderVerification";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -26,7 +26,10 @@ internal sealed class ProviderVerificationAuthenticationHandler(
 
         string state = SupportedProviderStates.RequireActive(coordinator);
         if (string.Equals(state, "command-unauthorized", StringComparison.Ordinal)
-            || !string.Equals(Request.Headers.Authorization, ExpectedAuthorization, StringComparison.Ordinal))
+            || !string.Equals(
+                Request.Headers.Authorization,
+                string.Concat("Bearer", " ", ExpectedTokenMarker),
+                StringComparison.Ordinal))
         {
             return Task.FromResult(AuthenticateResult.Fail("provider-state-authentication-denied"));
         }

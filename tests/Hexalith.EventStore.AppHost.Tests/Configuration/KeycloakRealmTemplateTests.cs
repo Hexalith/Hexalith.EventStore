@@ -1,0 +1,239 @@
+namespace Hexalith.EventStore.AppHost.Tests.Configuration;
+
+using Hexalith.EventStore.AppHost;
+using Hexalith.EventStore.Aspire;
+
+using Microsoft.Extensions.Configuration;
+
+public sealed class KeycloakRealmTemplateTests
+{
+    [Fact]
+    public void Render_WhenTemporaryRootIsAReparsePoint_RejectsItWithoutMutatingTheTarget()
+    {
+        string testDirectory = CreateTestDirectory();
+        string targetDirectory = Path.Combine(testDirectory, "target");
+        string temporaryRoot = Path.Combine(testDirectory, "root-link");
+        Directory.CreateDirectory(targetDirectory);
+        UnixFileMode originalMode = default;
+        if (!OperatingSystem.IsWindows())
+        {
+            originalMode = File.GetUnixFileMode(targetDirectory);
+        }
+
+        _ = Directory.CreateSymbolicLink(temporaryRoot, targetDirectory);
+
+        try
+        {
+            InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+                KeycloakRealmTemplate.Render(
+                    GetRealmSourceDirectory(),
+                    CreateCredentials(),
+                    temporaryRoot: temporaryRoot));
+
+            exception.Message.ShouldContain("reparse point", Case.Insensitive);
+            Directory.EnumerateFileSystemEntries(targetDirectory).ShouldBeEmpty();
+            if (!OperatingSystem.IsWindows())
+            {
+                File.GetUnixFileMode(targetDirectory).ShouldBe(originalMode);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(temporaryRoot))
+            {
+                Directory.Delete(temporaryRoot);
+            }
+
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Render_WhenMalformedPlaceholderRemains_RejectsItBeforeCreatingTemporaryContent()
+    {
+        string testDirectory = CreateTestDirectory();
+        string sourceDirectory = Path.Combine(testDirectory, "source");
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        Directory.CreateDirectory(sourceDirectory);
+        string unresolvedMarker = string.Concat("__", "HEXALITH", "_UNRESOLVED");
+        File.WriteAllText(
+            Path.Combine(sourceDirectory, "hexalith-realm.json"),
+            File.ReadAllText(Path.Combine(GetRealmSourceDirectory(), "hexalith-realm.json")) + unresolvedMarker);
+
+        try
+        {
+            InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+                KeycloakRealmTemplate.Render(
+                    sourceDirectory,
+                    CreateCredentials(),
+                    temporaryRoot: temporaryRoot));
+
+            exception.Message.ShouldContain("unknown inert placeholder", Case.Insensitive);
+            Directory.Exists(temporaryRoot).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Render_WhenCallbackAddsUnrelatedContentAndFails_RemovesOnlyRendererCreatedFiles()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        string? importDirectory = null;
+        string? unrelatedPath = null;
+
+        try
+        {
+            _ = Should.Throw<InvalidOperationException>(() => KeycloakRealmTemplate.Render(
+                GetRealmSourceDirectory(),
+                CreateCredentials(),
+                temporaryPath =>
+                {
+                    importDirectory = Path.GetDirectoryName(temporaryPath);
+                    unrelatedPath = Path.Combine(importDirectory!, "unrelated.txt");
+                    File.WriteAllText(unrelatedPath, "unrelated");
+                    throw new InvalidOperationException("Injected render failure.");
+                },
+                temporaryRoot));
+
+            importDirectory.ShouldNotBeNull();
+            unrelatedPath.ShouldNotBeNull();
+            Directory.Exists(importDirectory).ShouldBeTrue();
+            File.Exists(unrelatedPath).ShouldBeTrue();
+            Directory.EnumerateFileSystemEntries(importDirectory).ShouldBe([unrelatedPath]);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CleanupStaleOwnedRunDirectories_WhenOwnerLeaseIsActive_PreservesTheLiveRun()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        KeycloakRealmTemplate? renderedRealm = null;
+
+        try
+        {
+            renderedRealm = KeycloakRealmTemplate.Render(
+                GetRealmSourceDirectory(),
+                CreateCredentials(),
+                temporaryRoot: temporaryRoot);
+            Directory.SetLastWriteTimeUtc(renderedRealm.ImportDirectory, DateTime.UtcNow.AddDays(-2));
+
+            KeycloakRealmTemplate.CleanupStaleOwnedRunDirectories(
+                temporaryRoot,
+                DateTimeOffset.UtcNow.AddDays(-1));
+
+            Directory.Exists(renderedRealm.ImportDirectory).ShouldBeTrue();
+        }
+        finally
+        {
+            renderedRealm?.Dispose();
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Dispose_WhenOwnedFileDeletionFails_PreservesTheMarkerAndCanBeRetried()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        bool failDeletion = true;
+        KeycloakRealmTemplate renderedRealm = KeycloakRealmTemplate.Render(
+            GetRealmSourceDirectory(),
+            CreateCredentials(),
+            temporaryRoot: temporaryRoot,
+            beforeDelete: path =>
+            {
+                if (failDeletion && string.Equals(Path.GetFileName(path), "hexalith-realm.json", StringComparison.Ordinal))
+                {
+                    failDeletion = false;
+                    throw new IOException("Injected file deletion failure.");
+                }
+            });
+        string importDirectory = renderedRealm.ImportDirectory;
+
+        try
+        {
+            _ = Should.Throw<IOException>(renderedRealm.Dispose);
+
+            File.Exists(Path.Combine(importDirectory, ".hexalith-owned")).ShouldBeTrue(
+                "The ownership marker must remain until every renderer-created secret file is removed.");
+            File.Exists(Path.Combine(importDirectory, "hexalith-realm.json")).ShouldBeTrue();
+
+            renderedRealm.Dispose();
+
+            Directory.Exists(importDirectory).ShouldBeFalse();
+        }
+        finally
+        {
+            renderedRealm.Dispose();
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Dispose_WhenDirectoryDeletionFailsAfterMarkerRemoval_CanBeRetried()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        string? importDirectory = null;
+        bool failDeletion = true;
+        KeycloakRealmTemplate renderedRealm = KeycloakRealmTemplate.Render(
+            GetRealmSourceDirectory(),
+            CreateCredentials(),
+            temporaryRoot: temporaryRoot,
+            beforeDelete: path =>
+            {
+                if (failDeletion && string.Equals(path, importDirectory, StringComparison.Ordinal))
+                {
+                    failDeletion = false;
+                    throw new UnauthorizedAccessException("Injected directory deletion failure.");
+                }
+            });
+        importDirectory = renderedRealm.ImportDirectory;
+
+        try
+        {
+            _ = Should.Throw<UnauthorizedAccessException>(renderedRealm.Dispose);
+
+            Directory.Exists(importDirectory).ShouldBeTrue();
+            File.Exists(Path.Combine(importDirectory, ".hexalith-owned")).ShouldBeFalse(
+                "The directory failure occurs only after the owner marker is deleted last.");
+
+            renderedRealm.Dispose();
+
+            Directory.Exists(importDirectory).ShouldBeFalse();
+        }
+        finally
+        {
+            renderedRealm.Dispose();
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    private static LocalAuthenticationCredentials CreateCredentials()
+        => LocalAuthenticationCredentials.Create(new ConfigurationBuilder().Build());
+
+    private static string CreateTestDirectory()
+    {
+        string directory = Path.Combine(
+            Path.GetTempPath(),
+            $"hexalith-realm-lifecycle-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    private static string GetRealmSourceDirectory()
+        => Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "src",
+            "Hexalith.EventStore.AppHost",
+            "KeycloakRealms");
+}

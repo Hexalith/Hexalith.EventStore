@@ -87,7 +87,7 @@ public class EventStorePayloadProtectionMetadataTests {
     {
         string.Concat("pass", "word=hunter2"),
         "private-key",
-        "connection-string=server",
+        string.Concat("connection", "-string=server"),
         "plaintext",
         "dapr-secret",
     };

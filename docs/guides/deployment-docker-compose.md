@@ -516,7 +516,10 @@ $ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-
 > $response = Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD}; $response.access_token
 > ```
 
-If Keycloak is disabled (`EnableKeycloak=false`), the AppHost generates one symmetric key per run and shares it with the local token issuers and validators. For a manual external smoke, set `LocalAuthentication__SigningKey` before starting the AppHost and give the same ephemeral value to the smoke process; there is no committed fallback.
+If Keycloak is disabled (`EnableKeycloak=false`), the AppHost generates one symmetric key per run and
+shares it only with its local token issuers and validators. There is no configuration override that
+reveals or replaces that key. Use the authenticated `sample-blazor-ui` flow for a local smoke, or
+configure the published external-identity contract for an external client.
 
 ### Submit a Command
 

@@ -23,7 +23,7 @@ Your authentication token has expired. The JWT token included in the `Authorizat
 POST /api/v1/commands HTTP/1.1
 Host: localhost:7275
 Content-Type: application/json
-Authorization: Bearer eyJhbGci...expired
+Authorization: Bearer <expired-token>
 
 {
     "messageId": "increment-01",

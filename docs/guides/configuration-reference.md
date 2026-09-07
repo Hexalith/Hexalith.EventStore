@@ -393,6 +393,7 @@ Configuration section: `Authentication:JwtBearer`
 | `SigningKey` | string | `""` | Symmetric signing key for development/testing. Must be at least 32 UTF-8 bytes for HS256 |
 | `RequireHttpsMetadata` | bool | `true` | Require HTTPS when fetching OIDC metadata. Set to `false` only for local development |
 | `AllowInsecureSymmetricKey` | bool | `false` | Permits a redacted/audited symmetric exception only in a non-Production environment |
+| `AllowedAlgorithms` | string[] | `[]` | Required nonempty supported asymmetric algorithm allow-list in authority mode; symmetric modes accept HS256 only |
 
 ```json
 {
@@ -401,6 +402,7 @@ Configuration section: `Authentication:JwtBearer`
       "Authority": "https://keycloak.example.com/realms/hexalith",
       "Audience": "hexalith-eventstore",
       "Issuer": "https://keycloak.example.com/realms/hexalith",
+      "AllowedAlgorithms": ["RS256"],
       "RequireHttpsMetadata": true
     }
   }
@@ -745,6 +747,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `Authentication:JwtBearer:Issuer` | string | `""` | Non-empty string | Authentication |
 | `Authentication:JwtBearer:SigningKey` | string | `""` | Empty string or length `>= 32` | Authentication |
 | `Authentication:JwtBearer:RequireHttpsMetadata` | bool | `true` | `true` or `false` | Authentication |
+| `Authentication:JwtBearer:AllowedAlgorithms` | string[] | `[]` | Nonempty supported asymmetric list in authority mode | Authentication |
 | `EventStoreOptions.EnableRegistrationDiagnostics` | bool | `false` | `true` or `false` | Fluent SDK |
 | `EventStoreOptions.DefaultStateStoreSuffix` | string | `"eventstore"` | `null` or non-empty string | Fluent SDK |
 | `EventStoreOptions.DefaultTopicSuffix` | string | `"events"` | `null` or non-empty string | Fluent SDK |

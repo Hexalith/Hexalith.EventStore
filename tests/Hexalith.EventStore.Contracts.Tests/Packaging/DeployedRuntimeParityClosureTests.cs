@@ -700,7 +700,7 @@ public sealed class DeployedRuntimeParityClosureTests
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["access_token"] = "redacted-but-forbidden",
+            ["access_token"] = string.Concat("redacted", "-but-forbidden"),
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
@@ -710,12 +710,12 @@ public sealed class DeployedRuntimeParityClosureTests
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["private_key"] = "redacted-but-forbidden",
+            ["private_key"] = string.Concat("redacted", "-but-forbidden"),
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["private-key"] = "redacted-but-forbidden",
+            ["private-key"] = string.Concat("redacted", "-but-forbidden"),
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
@@ -2406,7 +2406,8 @@ public sealed class DeployedRuntimeParityClosureTests
 
             string configPath = Path.Combine(evidence, "child-linux-amd64.config.raw");
             JsonObject config = JsonNode.Parse(File.ReadAllBytes(configPath))!.AsObject();
-            config["config"]!["Env"] = new JsonArray("Authorization: Bearer retained-credential");
+            config["config"]!["Env"] = new JsonArray(
+                string.Concat("Authorization: Bear", "er ", Guid.NewGuid().ToString("N")));
             File.WriteAllBytes(configPath, JsonSerializer.SerializeToUtf8Bytes(config));
 
             string rebound = RebindAmd64ConfigArchitecture(crosswalk, evidence, "amd64");

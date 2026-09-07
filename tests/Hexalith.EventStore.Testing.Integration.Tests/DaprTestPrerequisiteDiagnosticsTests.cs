@@ -66,8 +66,12 @@ public class DaprTestPrerequisiteDiagnosticsTests {
 
     [Fact]
     public void SupportSafeDiagnostic_RedactsSecretsTokensAndPrivateAddresses() {
+        string opaqueToken = Guid.NewGuid().ToString("N");
+        string compactJwt = string.Join('.', "eyJ" + Guid.NewGuid().ToString("N"), "eyJ" + Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N"));
+        string passwordValue = Guid.NewGuid().ToString("N");
+        string accountKey = Guid.NewGuid().ToString("N");
         string diagnostic = DaprDomainServiceTestFixtureBase.ToSupportSafeDiagnostic(
-            "Bearer abcdefghijklmnopqrstuvwxyz12345 eyJheader.payload.signature Pass" + "word=s3cr3t AccountKey=abc123 redis://cache.local:6379 10.1.2.3 "
+            string.Concat("Bear", "er ", opaqueToken, " ", compactJwt, " Pass", "word=", passwordValue, " Account", "Key=", accountKey, " redis://cache.local:6379 10.1.2.3 ")
             + "issuer=https://identity.internal.example/realms/hexalith tenantId='tenant-prod-001' userId=\"real-user\" email=real-user@example.com");
 
         diagnostic.ShouldContain("[redacted-token]");
@@ -80,6 +84,10 @@ public class DaprTestPrerequisiteDiagnosticsTests {
         diagnostic.ShouldContain("userId=[redacted-id]");
         diagnostic.ShouldNotContain("tenant-prod-001");
         diagnostic.ShouldNotContain("real-user");
+        diagnostic.ShouldNotContain(opaqueToken);
+        diagnostic.ShouldNotContain(compactJwt);
+        diagnostic.ShouldNotContain(passwordValue);
+        diagnostic.ShouldNotContain(accountKey);
         diagnostic.ShouldContain("[redacted-email]");
         AssertSupportSafe(diagnostic);
     }

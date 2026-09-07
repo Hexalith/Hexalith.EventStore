@@ -1,6 +1,7 @@
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
 
+using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 using Hexalith.EventStore.IntegrationTests.Security;
 
@@ -25,7 +26,8 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     private string? _previousDotNetEnvironment;
     private string? _previousAggregateActorTypeName;
     private string? _previousProjectionFaultFlag;
-    private string? _previousLocalSigningKey;
+    private string? _previousLocalTestInvocationId;
+    private LocalAuthenticationTestInvocation? _localAuthenticationTestInvocation;
     private HttpClient? _eventStoreClient;
 
     public HttpClient EventStoreClient => _eventStoreClient ?? throw new InvalidOperationException(
@@ -37,8 +39,13 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     public async ValueTask InitializeAsync() {
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
-        _previousLocalSigningKey = Environment.GetEnvironmentVariable("LocalAuthentication__SigningKey");
-        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", TestJwtTokenGenerator.SigningKey);
+        _previousLocalTestInvocationId = Environment.GetEnvironmentVariable(
+            "LocalAuthentication__TestInjection__InvocationId");
+        _localAuthenticationTestInvocation = LocalAuthenticationCredentials.RegisterTestInvocation(
+            TestJwtTokenGenerator.SigningKey);
+        Environment.SetEnvironmentVariable(
+            "LocalAuthentication__TestInjection__InvocationId",
+            _localAuthenticationTestInvocation.InvocationId.ToString("D"));
 
         _previousAspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
@@ -184,6 +191,10 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
         Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
         Environment.SetEnvironmentVariable("EventStore__SampleFaults__MalformedProjectResponse", _previousProjectionFaultFlag);
-        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", _previousLocalSigningKey);
+        Environment.SetEnvironmentVariable(
+            "LocalAuthentication__TestInjection__InvocationId",
+            _previousLocalTestInvocationId);
+        _localAuthenticationTestInvocation?.Dispose();
+        _localAuthenticationTestInvocation = null;
     }
 }

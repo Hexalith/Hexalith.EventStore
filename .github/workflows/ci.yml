@@ -61,6 +61,9 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Run generated API smoke preflight regression
+        run: bash scripts/tests/generated-api-smoke-preflight.test.sh
+
       - name: Install pinned OQ8 validator dependency
         run: |
           python3 -m venv "${RUNNER_TEMP}/oq8-python"

@@ -16,12 +16,12 @@ public class Dw4RedactionRulesAtddTests {
     [Fact(Skip = _baseSkip + "AC#5 — JWT-shaped bearer token outside redaction marker must fail. Remove Skip when implementing.")]
     public void Redaction_BearerTokenInDiagnosticsText_Fails() => AssertFixture(
             "query-invalid-redaction-bearer-token.md",
-            Dw4RuleVocabulary.RedactionUnsafeBearerToken);
+            Dw4RuleVocabulary.RedactionUnsafeAuthorization);
 
     [Fact(Skip = _baseSkip + "AC#5 — connection-string keyword must fail. Remove Skip when implementing.")]
     public void Redaction_ConnectionStringKeyword_Fails() => AssertFixture(
             "query-invalid-redaction-connection-string.md",
-            Dw4RuleVocabulary.RedactionUnsafeConnectionString);
+            Dw4RuleVocabulary.RedactionUnsafeConnectionDetails);
 
     [Fact(Skip = _baseSkip + "AC#5 — production hostname pattern must fail. Remove Skip when implementing.")]
     public void Redaction_ProductionHostname_Fails() => AssertFixture(
@@ -41,7 +41,7 @@ public class Dw4RedactionRulesAtddTests {
     [Fact(Skip = _baseSkip + "AC#5 — SignalR fixture with bearer token must also fail. Remove Skip when implementing.")]
     public void Redaction_SignalrBearerToken_Fails() => AssertFixture(
             "signalr-invalid-redaction-bearer-token.md",
-            Dw4RuleVocabulary.RedactionUnsafeBearerToken);
+            Dw4RuleVocabulary.RedactionUnsafeAuthorization);
 
     [Fact(Skip = _baseSkip + "AC#5 — documented synthetic markers under Redaction must NOT trigger false positives. Remove Skip when implementing.")]
     public void Redaction_DocumentedSyntheticMarkers_Pass() {

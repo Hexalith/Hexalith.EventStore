@@ -122,6 +122,7 @@ if want_tier 1; then
   echo ""
   echo "=== Tier 1 — Unit Tests (${#TIER1_PROJECTS[@]} projects) ==="
   CURRENT_STAGE="Tier 1 unit tests"
+  bash scripts/tests/generated-api-smoke-preflight.test.sh
   for project in "${TIER1_PROJECTS[@]}"; do
     run_test_project "${project}" "test-results.trx"
   done

@@ -264,7 +264,7 @@ export const test = base.extend({
 
   authToken: async ({ request }, use) => {
     const response = await request.post('/api/auth/login', {
-      data: { email: 'test@example.com', password: 'password' },
+      data: { email: 'test@example.com', password: '${TEST_USER_PASSWORD}' },
     });
     const { token } = await response.json();
 

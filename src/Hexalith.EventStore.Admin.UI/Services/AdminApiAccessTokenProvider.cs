@@ -8,10 +8,12 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 
 /// <summary>
 /// Acquires bearer tokens for the protected Admin.Server REST API endpoints.
-/// Uses Keycloak direct access grants when an authority is configured, otherwise
+/// Uses the configured or discovered OIDC token endpoint when an authority is configured, otherwise
 /// generates a development HS256 token.
 /// </summary>
 public sealed class AdminApiAccessTokenProvider {
+    private const string ClientCredentialsGrantType = "client_credentials";
+    private const string PasswordGrantType = "password";
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -52,7 +54,7 @@ public sealed class AdminApiAccessTokenProvider {
 
                 string? authority = _configuration["EventStore:Authentication:Authority"];
                 AccessTokenCacheEntry newToken = !string.IsNullOrWhiteSpace(authority)
-                    ? await RequestKeycloakTokenAsync(authority, observedVersion, cancellationToken).ConfigureAwait(false)
+                    ? await RequestAuthorityTokenAsync(authority, observedVersion, cancellationToken).ConfigureAwait(false)
                     : CreateDevelopmentToken(observedVersion);
 
                 if (observedVersion != Volatile.Read(ref _tokenVersion)) {
@@ -69,29 +71,56 @@ public sealed class AdminApiAccessTokenProvider {
         }
     }
 
-    private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, int version, CancellationToken cancellationToken) {
-        string clientId = RequireConfiguration("ClientId");
-        string username = RequireConfiguration("Username");
-        string password = RequireConfiguration("Password");
+    private async Task<AccessTokenCacheEntry> RequestAuthorityTokenAsync(
+        string authority,
+        int version,
+        CancellationToken cancellationToken) {
+        bool allowHttp = _environment.IsDevelopment();
+        Uri authorityUri = ValidateEndpoint(authority, allowHttp, "Authority");
+        string grantType = RequireTextConfiguration("GrantType");
+        string clientId = RequireTextConfiguration("ClientId");
+        string scope = RequireTextConfiguration("Scope");
+        var formValues = new List<KeyValuePair<string, string>> {
+            new("grant_type", grantType),
+            new("client_id", clientId),
+            new("scope", scope),
+        };
 
-        Uri tokenEndpoint = BuildTokenEndpoint(authority, _environment.IsDevelopment());
+        switch (grantType) {
+            case PasswordGrantType:
+                formValues.Add(new("username", RequireTextConfiguration("Username")));
+                formValues.Add(new("password", RequireOpaqueConfiguration("Password")));
+                break;
+            case ClientCredentialsGrantType:
+                formValues.Add(new("client_secret", RequireOpaqueConfiguration("ClientSecret")));
+                break;
+            default:
+                throw new InvalidOperationException(
+                    "EventStore:Authentication:GrantType must be either 'password' or 'client_credentials'.");
+        }
+
+        AddOptionalAudienceParameter(formValues);
+
         HttpClient client = _httpClientFactory.CreateClient(nameof(AdminApiAccessTokenProvider));
-        using var form = new FormUrlEncodedContent(
-        [
-            new KeyValuePair<string, string>("grant_type", "password"),
-            new KeyValuePair<string, string>("client_id", clientId),
-            new KeyValuePair<string, string>("username", username),
-            new KeyValuePair<string, string>("password", password),
-        ]);
+        Uri tokenEndpoint = await ResolveTokenEndpointAsync(
+            client,
+            authorityUri,
+            allowHttp,
+            cancellationToken).ConfigureAwait(false);
+        using var form = new FormUrlEncodedContent(formValues);
 
         using HttpResponseMessage response = await client.PostAsync(tokenEndpoint, form, cancellationToken).ConfigureAwait(false);
         _ = response.EnsureSuccessStatusCode();
 
         using JsonDocument document = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("Keycloak token response was empty.");
+            ?? throw new InvalidOperationException("OIDC token response was empty.");
 
-        string token = document.RootElement.GetProperty("access_token").GetString()
-            ?? throw new InvalidOperationException("Keycloak token response did not contain access_token.");
+        string? token = document.RootElement.TryGetProperty("access_token", out JsonElement tokenElement)
+            ? tokenElement.GetString()
+            : null;
+        if (string.IsNullOrWhiteSpace(token)) {
+            throw new InvalidOperationException("OIDC token response did not contain a non-blank access_token.");
+        }
         int expiresIn = document.RootElement.TryGetProperty("expires_in", out JsonElement expiresElement)
             ? expiresElement.GetInt32()
             : 3600;
@@ -105,10 +134,10 @@ public sealed class AdminApiAccessTokenProvider {
                 "Local token generation is available only in the Development environment; configure EventStore:Authentication:Authority.");
         }
 
-        string issuer = RequireConfiguration("Issuer");
-        string audience = RequireConfiguration("Audience");
-        string signingKey = RequireConfiguration("SigningKey");
-        string subject = RequireConfiguration("Subject");
+        string issuer = RequireTextConfiguration("Issuer");
+        string audience = RequireTextConfiguration("Audience");
+        string signingKey = RequireOpaqueConfiguration("SigningKey");
+        string subject = RequireTextConfiguration("Subject");
         bool globalAdmin = _configuration.GetValue("EventStore:Authentication:GlobalAdmin", defaultValue: false);
 
         string[] tenants = RequireCollection("Tenants");
@@ -163,25 +192,109 @@ public sealed class AdminApiAccessTokenProvider {
         .Replace('+', '-')
         .Replace('/', '_');
 
-    internal static Uri BuildTokenEndpoint(string authority, bool allowHttp) {
-        if (!Uri.TryCreate(authority.Trim(), UriKind.Absolute, out Uri? authorityUri)
-            || string.IsNullOrWhiteSpace(authorityUri.Host)
-            || (!string.Equals(authorityUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-                && !(allowHttp && string.Equals(authorityUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)))
-            || !string.IsNullOrEmpty(authorityUri.UserInfo)
-            || !string.IsNullOrEmpty(authorityUri.Query)
-            || !string.IsNullOrEmpty(authorityUri.Fragment)) {
+    internal static Uri BuildTokenEndpoint(string endpoint, bool allowHttp)
+        => ValidateEndpoint(endpoint, allowHttp, "OIDC endpoint");
+
+    private void AddOptionalAudienceParameter(List<KeyValuePair<string, string>> formValues) {
+        string? configuredName = _configuration["EventStore:Authentication:AudienceParameterName"];
+        string? configuredValue = _configuration["EventStore:Authentication:AudienceParameterValue"];
+        bool hasName = !string.IsNullOrWhiteSpace(configuredName);
+        bool hasValue = !string.IsNullOrWhiteSpace(configuredValue);
+        if (hasName != hasValue) {
             throw new InvalidOperationException(
-                "EventStore:Authentication:Authority must be an absolute HTTPS URI without user information, a query, or a fragment. HTTP is permitted only in Development.");
+                "EventStore:Authentication:AudienceParameterName and AudienceParameterValue must be configured together.");
         }
 
-        return new Uri(authorityUri.AbsoluteUri.TrimEnd('/') + "/protocol/openid-connect/token", UriKind.Absolute);
+        if (!hasName) {
+            return;
+        }
+
+        string parameterName = configuredName!.Trim();
+        if (parameterName is not "audience" and not "resource") {
+            throw new InvalidOperationException(
+                "EventStore:Authentication:AudienceParameterName must be either 'audience' or 'resource'.");
+        }
+
+        formValues.Add(new(parameterName, configuredValue!.Trim()));
     }
 
-    private string RequireConfiguration(string name) {
+    private async Task<Uri> ResolveTokenEndpointAsync(
+        HttpClient client,
+        Uri authorityUri,
+        bool allowHttp,
+        CancellationToken cancellationToken) {
+        string? configuredEndpoint = _configuration["EventStore:Authentication:TokenEndpoint"];
+        if (!string.IsNullOrWhiteSpace(configuredEndpoint)) {
+            return ValidateEndpoint(configuredEndpoint, allowHttp, "TokenEndpoint");
+        }
+
+        Uri discoveryEndpoint = new(
+            authorityUri.AbsoluteUri.TrimEnd('/') + "/.well-known/openid-configuration",
+            UriKind.Absolute);
+        using HttpResponseMessage response = await client.GetAsync(discoveryEndpoint, cancellationToken).ConfigureAwait(false);
+        _ = response.EnsureSuccessStatusCode();
+        using JsonDocument document = await response.Content
+            .ReadFromJsonAsync<JsonDocument>(cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException("OIDC discovery response was empty.");
+        string? issuer = document.RootElement.TryGetProperty("issuer", out JsonElement issuerElement)
+            ? issuerElement.GetString()
+            : null;
+        if (string.IsNullOrWhiteSpace(issuer)) {
+            throw new InvalidOperationException("OIDC discovery did not contain a non-blank issuer.");
+        }
+
+        Uri discoveredIssuer = ValidateEndpoint(issuer, allowHttp, "discovery issuer");
+        if (!string.Equals(
+            NormalizeEndpointForComparison(authorityUri),
+            NormalizeEndpointForComparison(discoveredIssuer),
+            StringComparison.Ordinal)) {
+            throw new InvalidOperationException(
+                "OIDC discovery issuer must match EventStore:Authentication:Authority.");
+        }
+
+        string? tokenEndpoint = document.RootElement.TryGetProperty("token_endpoint", out JsonElement tokenEndpointElement)
+            ? tokenEndpointElement.GetString()
+            : null;
+        if (string.IsNullOrWhiteSpace(tokenEndpoint)) {
+            throw new InvalidOperationException("OIDC discovery did not contain a non-blank token_endpoint.");
+        }
+
+        return ValidateEndpoint(tokenEndpoint, allowHttp, "discovery token_endpoint");
+    }
+
+    private static string NormalizeEndpointForComparison(Uri endpoint)
+        => endpoint.GetComponents(
+                UriComponents.SchemeAndServer | UriComponents.Path,
+                UriFormat.UriEscaped)
+            .TrimEnd('/');
+
+    private static Uri ValidateEndpoint(string endpoint, bool allowHttp, string settingName) {
+        if (!Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out Uri? endpointUri)
+            || string.IsNullOrWhiteSpace(endpointUri.Host)
+            || (!string.Equals(endpointUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+                && !(allowHttp && string.Equals(endpointUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)))
+            || !string.IsNullOrEmpty(endpointUri.UserInfo)
+            || !string.IsNullOrEmpty(endpointUri.Query)
+            || !string.IsNullOrEmpty(endpointUri.Fragment)) {
+            throw new InvalidOperationException(
+                $"EventStore:Authentication:{settingName} must be an absolute HTTPS URI without user information, a query, or a fragment. HTTP is permitted only in Development.");
+        }
+
+        return new Uri(endpointUri.AbsoluteUri.TrimEnd('/'), UriKind.Absolute);
+    }
+
+    private string RequireTextConfiguration(string name) {
         string? value = _configuration[$"EventStore:Authentication:{name}"];
         return !string.IsNullOrWhiteSpace(value)
             ? value.Trim()
+            : throw new InvalidOperationException($"EventStore:Authentication:{name} must be configured explicitly.");
+    }
+
+    private string RequireOpaqueConfiguration(string name) {
+        string? value = _configuration[$"EventStore:Authentication:{name}"];
+        return !string.IsNullOrWhiteSpace(value)
+            ? value
             : throw new InvalidOperationException($"EventStore:Authentication:{name} must be configured explicitly.");
     }
 

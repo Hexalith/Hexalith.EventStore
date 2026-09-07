@@ -206,6 +206,8 @@ def capture_platform(output_root, platform, child_digest):
                 "--env",
                 "Authentication__JwtBearer__Audience=hexalith-eventstore",
                 "--env",
+                "Authentication__JwtBearer__AllowedAlgorithms__0=RS256",
+                "--env",
                 "Authentication__JwtBearer__RequireHttpsMetadata=true",
                 immutable_image,
             )

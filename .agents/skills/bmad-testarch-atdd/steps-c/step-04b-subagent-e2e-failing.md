@@ -110,7 +110,7 @@ test.describe('[Story Name] E2E User Journey (ATDD)', () => {
 
     // Expect registration form but will get 404 or missing elements
     await page.getByLabel('Email').fill('newuser@example.com');
-    await page.getByLabel('Password').fill('SecurePass123!');
+    await page.getByLabel('Password').fill('${TEST_USER_PASSWORD}');
     await page.getByRole('button', { name: 'Register' }).click();
 
     const { status } = await registerCall;
@@ -136,7 +136,7 @@ test.describe('[Story Name] E2E User Journey (ATDD)', () => {
       await page.goto('/register');
 
       await page.getByLabel('Email').fill('existing@example.com');
-      await page.getByLabel('Password').fill('SecurePass123!');
+      await page.getByLabel('Password').fill('${TEST_USER_PASSWORD}');
       await page.getByRole('button', { name: 'Register' }).click();
 
       await conflictCall;
@@ -159,7 +159,7 @@ test.describe('[Story Name] E2E User Journey (ATDD)', () => {
     await page.goto('/register');
 
     await page.getByLabel('Email').fill('newuser@example.com');
-    await page.getByLabel('Password').fill('SecurePass123!');
+    await page.getByLabel('Password').fill('${TEST_USER_PASSWORD}');
     await page.getByRole('button', { name: 'Register' }).click();
 
     await expect(page.getByText('Registration successful!')).toBeVisible();

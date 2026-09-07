@@ -142,7 +142,7 @@ public class SampleApiLaunchSettingsTests
     {
         int start = text.IndexOf(startMarker, StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0, $"Expected to find '{startMarker}'.");
-        int end = text.IndexOf(";\n\nvar jwtAuthentication", start, StringComparison.Ordinal);
+        int end = text.IndexOf(";\n\n", start, StringComparison.Ordinal);
         end.ShouldBeGreaterThan(start, "Expected sample-api resource registration assignment before the security block.");
         end += 1;
         return text[start..end];

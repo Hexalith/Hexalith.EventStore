@@ -135,7 +135,7 @@ export default defineConfig({
 ```bash
 # .env.example - Template for developers
 TEST_ENV=local
-API_KEY=your_api_key_here
+API_KEY=${API_KEY}
 DATABASE_URL=postgresql://localhost:5432/test_db
 ```
 

@@ -22,11 +22,12 @@ public sealed class SampleApiGatewayHandlerTests
     [Fact]
     public async Task InboundBearerForwardingHandler_WhenAuthorizationHeaderExists_ForwardsBearer()
     {
+        string bearerToken = Guid.NewGuid().ToString("N");
         var accessor = new HttpContextAccessor
         {
             HttpContext = new DefaultHttpContext(),
         };
-        accessor.HttpContext.Request.Headers.Authorization = "Bearer sample-token";
+        accessor.HttpContext.Request.Headers.Authorization = $"Bearer {bearerToken}";
         var terminal = new CaptureHandler();
         using var handler = new InboundBearerForwardingHandler(accessor)
         {
@@ -41,16 +42,17 @@ public sealed class SampleApiGatewayHandlerTests
         HttpRequestMessage request = terminal.Request.ShouldNotBeNull();
         request.Headers.Authorization.ShouldNotBeNull();
         request.Headers.Authorization.Scheme.ShouldBe("Bearer");
-        request.Headers.Authorization.Parameter.ShouldBe("sample-token");
+        request.Headers.Authorization.Parameter.ShouldBe(bearerToken);
     }
 
     [Fact]
     public async Task DaprServiceInvocationExtension_AddsEventStoreRoutingHeaders()
     {
+        string daprApiToken = Guid.NewGuid().ToString("N");
         var terminal = new CaptureHandler();
         var services = new ServiceCollection();
         _ = services.AddHttpClient("dapr", client => client.BaseAddress = new Uri("http://localhost:3500"))
-            .AddEventStoreDaprServiceInvocation("eventstore", "secret-token")
+            .AddEventStoreDaprServiceInvocation("eventstore", daprApiToken)
             .ConfigurePrimaryHttpMessageHandler(() => terminal);
 
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -63,12 +65,14 @@ public sealed class SampleApiGatewayHandlerTests
 
         HttpRequestMessage request = terminal.Request.ShouldNotBeNull();
         request.Headers.GetValues("dapr-app-id").ShouldBe(["eventstore"]);
-        request.Headers.GetValues("dapr-api-token").ShouldBe(["secret-token"]);
+        request.Headers.GetValues("dapr-api-token").ShouldBe([daprApiToken]);
     }
 
     [Fact]
     public async Task GatewayClient_WhenRegisteredLikeSampleApi_UsesSidecarBaseAddressAndHandlers()
     {
+        string bearerToken = Guid.NewGuid().ToString("N");
+        string daprApiToken = Guid.NewGuid().ToString("N");
         string statusId = UniqueIdHelper.GenerateSortableUniqueStringId();
         var terminal = new CaptureHandler(new HttpResponseMessage(HttpStatusCode.Accepted)
         {
@@ -81,14 +85,14 @@ public sealed class SampleApiGatewayHandlerTests
         {
             HttpContext = new DefaultHttpContext(),
         };
-        accessor.HttpContext.Request.Headers.Authorization = "Bearer sample-token";
+        accessor.HttpContext.Request.Headers.Authorization = $"Bearer {bearerToken}";
 
         var services = new ServiceCollection();
         _ = services.AddSingleton<IHttpContextAccessor>(accessor);
         _ = services.AddTransient<InboundBearerForwardingHandler>();
         _ = services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri("http://localhost:3500"))
             .AddHttpMessageHandler<InboundBearerForwardingHandler>()
-            .AddEventStoreDaprServiceInvocation("eventstore", "secret-token")
+            .AddEventStoreDaprServiceInvocation("eventstore", daprApiToken)
             .ConfigurePrimaryHttpMessageHandler(() => terminal);
 
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -109,9 +113,9 @@ public sealed class SampleApiGatewayHandlerTests
         request.RequestUri.ShouldBe(new Uri("http://localhost:3500/api/v1/commands"));
         request.Headers.Authorization.ShouldNotBeNull();
         request.Headers.Authorization.Scheme.ShouldBe("Bearer");
-        request.Headers.Authorization.Parameter.ShouldBe("sample-token");
+        request.Headers.Authorization.Parameter.ShouldBe(bearerToken);
         request.Headers.GetValues("dapr-app-id").ShouldBe(["eventstore"]);
-        request.Headers.GetValues("dapr-api-token").ShouldBe(["secret-token"]);
+        request.Headers.GetValues("dapr-api-token").ShouldBe([daprApiToken]);
     }
 
     private sealed class CaptureHandler : HttpMessageHandler

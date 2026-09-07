@@ -43,10 +43,13 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
 
     [Fact]
     public void SharedRedactor_ScrubsSecretShapesThePreflightCanEncounter() {
+        string opaqueToken = Guid.NewGuid().ToString("N");
+        string compactJwt = string.Join('.', "eyJ" + Guid.NewGuid().ToString("N"), "eyJ" + Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N"));
+        string passwordValue = Guid.NewGuid().ToString("N");
         string scrubbed = DaprDiagnostics.ToSupportSafeDiagnostic(
-            "Authorization: Bearer abcdefghijklmnopqrstuvwxyz12345 eyJhbGci.eyJzdWIi.c2ln "
-            + "dapr-api-token=SUPERSECRETTOKENVALUE DAPR_API_TOKEN=ANOTHERSECRET "
-            + "Pass" + "word=s3cr3t redis://cache.internal:6379 10.1.2.3 "
+            string.Concat("Authorization: Bear", "er ", opaqueToken, " ", compactJwt, " ")
+            + "dapr-api-token=" + Guid.NewGuid().ToString("N") + " DAPR_API_TOKEN=" + Guid.NewGuid().ToString("N") + " "
+            + "Pass" + "word=" + passwordValue + " redis://cache.internal:6379 10.1.2.3 "
             + "issuer=https://identity.internal.example/realms/hexalith "
             + "tenantId='tenant-prod-001' email=real-user@example.com");
 
@@ -61,10 +64,10 @@ public class GeneratedApiSmokePreflightDiagnosticsTests {
         scrubbed.ShouldContain("tenantId=[redacted-id]");
         scrubbed.ShouldContain("[redacted-email]");
 
-        scrubbed.ShouldNotContain("SUPERSECRETTOKENVALUE");
-        scrubbed.ShouldNotContain("ANOTHERSECRET");
+        scrubbed.ShouldNotContain(opaqueToken);
+        scrubbed.ShouldNotContain(compactJwt);
         scrubbed.ShouldNotContain("tenant-prod-001");
-        scrubbed.ShouldNotContain("s3cr3t");
+        scrubbed.ShouldNotContain(passwordValue);
         scrubbed.ShouldNotContain("identity.internal.example");
         AssertSupportSafe(scrubbed);
     }

@@ -142,7 +142,7 @@ await provider
   .withRequest({
     method: 'GET',
     path: '/movies/5',
-    headers: { Authorization: MatchersV3.like('Bearer token') },
+    headers: { Authorization: MatchersV3.like('Bearer <test-token>') },
   })
   .willRespondWith({ status: 200, body: MatchersV3.like({ id: 5 }) })
   .executeTest(async (mockServer) => {

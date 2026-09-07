@@ -192,14 +192,18 @@ The AppHost supports three Aspire publisher targets for generating deployment ma
 **Command:**
 
 ```bash
-PUBLISH_TARGET=docker \
+env PUBLISH_TARGET=docker \
 Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" \
 Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" \
 Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" \
 Authentication__JwtBearer__AllowedAlgorithms__0=RS256 \
-Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" \
-Parameters__external-auth-username="${OIDC_USERNAME}" \
-Parameters__external-auth-password="${OIDC_PASSWORD}" \
+Authentication__JwtBearer__Scope="${OIDC_SCOPE}" \
+"Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" \
+"Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" \
+"Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" \
+"Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" \
+"Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" \
+"Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" \
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
 ```
 
@@ -211,9 +215,13 @@ $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY
 $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER
 $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE
 $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
-$env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID
-$env:Parameters__external-auth-username=$env:OIDC_USERNAME
-$env:Parameters__external-auth-password=$env:OIDC_PASSWORD
+$env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE
+Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID
+Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME
+Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD
+Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID
+Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME
+Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
 ```
 
@@ -294,7 +302,7 @@ Pin the DAPR sidecar image to a specific version (e.g., `1.18.0`) — avoid muta
 **Command:**
 
 ```bash
-PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+env PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__Scope="${OIDC_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" "Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 ```
 
 **PowerShell (Windows):**
@@ -302,8 +310,8 @@ PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${
 ```powershell
 $env:PUBLISH_TARGET="k8s"
 $env:EnableKeycloak="false"
-$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
-$env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD
+$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"; $env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE
+Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME; Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\k8s
 ```
 
@@ -347,7 +355,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 **Command:**
 
 ```bash
-PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+env PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__Scope="${OIDC_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" "Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 ```
 
 **PowerShell (Windows):**
@@ -355,8 +363,8 @@ PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${
 ```powershell
 $env:PUBLISH_TARGET="aca"
 $env:EnableKeycloak="false"
-$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
-$env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD
+$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"; $env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE
+Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME; Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\azure
 ```
 

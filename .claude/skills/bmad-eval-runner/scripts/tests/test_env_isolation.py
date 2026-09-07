@@ -23,8 +23,8 @@ BUILDERS = [run_evals.build_case_env, run_triggers.build_case_env]
 HOST_ENV = {
     "PATH": "/usr/bin:/bin",
     "HOME": "/Users/host",
-    "ANTHROPIC_API_KEY": "sk-test-123",
-    "AWS_SECRET_ACCESS_KEY": "host-secret-must-not-leak",
+    "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+    "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}",
     "CLAUDE_CONFIG_DIR": "/Users/host/.claude",
     "EXTRA_VAR": "extra",
 }
@@ -41,7 +41,7 @@ def test_minimal_env_keys():
         assert env["PATH"] == HOST_ENV["PATH"]
         assert env["HOME"] == str(HOME), "HOME must be the fresh case home"
         assert env["CLAUDE_CONFIG_DIR"] == str(HOME / ".claude")
-        assert env["ANTHROPIC_API_KEY"] == "sk-test-123"
+        assert env["ANTHROPIC_API_KEY"] == HOST_ENV["ANTHROPIC_API_KEY"]
         assert "AWS_SECRET_ACCESS_KEY" not in env, "host secrets leaked"
 
 

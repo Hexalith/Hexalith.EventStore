@@ -53,7 +53,7 @@ describe('User API Contract', () => {
           path: '/users/1',
           headers: {
             Accept: 'application/json',
-            Authorization: like('Bearer token123'), // Matcher: any string
+            Authorization: like('Bearer <test-token>'), // Matcher: any string
           },
         })
         .willRespondWith({
@@ -73,7 +73,7 @@ describe('User API Contract', () => {
           // Act: Call consumer code against mock server
           const user = await getUserById(1, {
             baseURL: mockServer.url,
-            headers: { Authorization: 'Bearer token123' },
+            headers: { Authorization: 'Bearer <test-token>' },
           });
 
           // Assert: Validate consumer behavior
@@ -262,7 +262,7 @@ describe('Pact Provider Verification', () => {
       requestFilter: (req, res, next) => {
         // Mock authentication for verification
         req.headers['x-user-id'] = 'test-user';
-        req.headers['authorization'] = 'Bearer valid-test-token';
+        req.headers['authorization'] = 'Bearer <test-token>';
         next();
       },
 
@@ -1026,7 +1026,7 @@ Document what was found from provider source and/or OpenAPI spec as a block comm
  * - Response type: UserResponseDto (server/src/types/user.ts:12)
  * - Status: 200 (line 52), 404 (line 48)
  * - Fields: { id: number, name: string, email: string, role: "user" | "admin", createdAt: string }
- * - Required request headers: Authorization (Bearer token)
+ * - Required request headers: Authorization (Bearer <test-token>)
  * - Validation: Zod schema at server/src/validation/user.ts:8
  */
 ```

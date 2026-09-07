@@ -15,9 +15,12 @@ IResourceBuilder<ParameterResource>? localAdminPassword = null;
 IResourceBuilder<ParameterResource>? localSampleUserId = null;
 IResourceBuilder<ParameterResource>? localSampleUsername = null;
 IResourceBuilder<ParameterResource>? localSamplePassword = null;
-IResourceBuilder<ParameterResource>? externalClientId = null;
-IResourceBuilder<ParameterResource>? externalUsername = null;
-IResourceBuilder<ParameterResource>? externalPassword = null;
+IResourceBuilder<ParameterResource>? externalSampleClientId = null;
+IResourceBuilder<ParameterResource>? externalSampleUsername = null;
+IResourceBuilder<ParameterResource>? externalSamplePassword = null;
+IResourceBuilder<ParameterResource>? externalAdminClientId = null;
+IResourceBuilder<ParameterResource>? externalAdminUsername = null;
+IResourceBuilder<ParameterResource>? externalAdminPassword = null;
 
 if (builder.ExecutionContext.IsRunMode) {
     localCredentials = LocalAuthenticationCredentials.Create(builder.Configuration);
@@ -47,9 +50,12 @@ if (builder.ExecutionContext.IsRunMode) {
         secret: true);
 }
 else if (builder.ExecutionContext.IsPublishMode) {
-    externalClientId = builder.AddParameter("external-auth-client-id");
-    externalUsername = builder.AddParameter("external-auth-username", secret: true);
-    externalPassword = builder.AddParameter("external-auth-password", secret: true);
+    externalSampleClientId = builder.AddParameter("external-sample-auth-client-id");
+    externalSampleUsername = builder.AddParameter("external-sample-auth-username", secret: true);
+    externalSamplePassword = builder.AddParameter("external-sample-auth-password", secret: true);
+    externalAdminClientId = builder.AddParameter("external-admin-auth-client-id");
+    externalAdminUsername = builder.AddParameter("external-admin-auth-username", secret: true);
+    externalAdminPassword = builder.AddParameter("external-admin-auth-password", secret: true);
 }
 
 // The local DAPR runtime can expose placement/scheduler on either the containerized host ports
@@ -126,6 +132,12 @@ using KeycloakRealmTemplate? keycloakRealm = useLocalKeycloak
         Path.Combine(builder.AppHostDirectory, "KeycloakRealms"),
         localCredentials!)
     : null;
+if (keycloakRealm is not null
+    && bool.TryParse(builder.Configuration["AppHostTesting:FailAfterRealmRender"], out bool failAfterRealmRender)
+    && failAfterRealmRender) {
+    throw new InvalidOperationException("Injected AppHost model-construction failure after local realm rendering.");
+}
+
 if (keycloakRealm is not null) {
     security = builder.AddHexalithEventStoreSecurity(
         new HexalithEventStoreSecurityOptions {
@@ -227,16 +239,20 @@ IResourceBuilder<ProjectResource> sampleApi = builder.AddProject<Projects.Hexali
             SchedulerHostAddress = daprSchedulerHostAddress,
         }));
 
-var jwtAuthentication = new HexalithEventStoreJwtAuthenticationOptions {
-    PrimaryAudience = builder.Configuration["Authentication:JwtBearer:Audience"]?.Trim()
-        ?? (security is not null ? HexalithEventStoreSecurityOptions.DefaultAudience : string.Empty),
-    ValidAudiences = builder.Configuration
+string[] configuredValidAudiences = builder.Configuration
         .GetSection("Authentication:JwtBearer:ValidAudiences")
         .GetChildren()
         .Select(static child => child.Value)
         .Where(static value => value is not null)
         .Select(static value => value!)
-        .ToArray(),
+        .ToArray();
+string[] configuredAudiences = ResolveConfiguredAudiences(
+    builder.Configuration["Authentication:JwtBearer:Audience"],
+    configuredValidAudiences,
+    security is not null ? HexalithEventStoreSecurityOptions.DefaultAudience : null);
+var jwtAuthentication = new HexalithEventStoreJwtAuthenticationOptions {
+    PrimaryAudience = configuredAudiences.FirstOrDefault() ?? string.Empty,
+    ValidAudiences = configuredAudiences.Skip(1).ToArray(),
     AllowedAlgorithms = builder.Configuration
         .GetSection("Authentication:JwtBearer:AllowedAlgorithms")
         .GetChildren()
@@ -278,15 +294,19 @@ if (security is not null || builder.ExecutionContext.IsPublishMode) {
         _ = blazorUi.WithExternalEventStoreClientCredentials(
             jwtAuthentication.ExternalAuthority!,
             jwtAuthentication.PrimaryAudience,
-            externalClientId!,
-            externalUsername!,
-            externalPassword!);
+            builder.Configuration["Authentication:JwtBearer:TokenEndpoint"],
+            builder.Configuration["Authentication:JwtBearer:Scope"]!,
+            externalSampleClientId!,
+            externalSampleUsername!,
+            externalSamplePassword!);
         _ = adminUI.WithExternalEventStoreClientCredentials(
             jwtAuthentication.ExternalAuthority!,
             jwtAuthentication.PrimaryAudience,
-            externalClientId!,
-            externalUsername!,
-            externalPassword!);
+            builder.Configuration["Authentication:JwtBearer:TokenEndpoint"],
+            builder.Configuration["Authentication:JwtBearer:Scope"]!,
+            externalAdminClientId!,
+            externalAdminUsername!,
+            externalAdminPassword!);
     }
 }
 else {
@@ -393,6 +413,34 @@ void ForwardEventStoreEnvironment(string configurationKey, string environmentKey
     string? value = builder.Configuration[configurationKey];
     if (!string.IsNullOrWhiteSpace(value)) {
         _ = eventStore.WithEnvironment(environmentKey, value);
+    }
+}
+
+static string[] ResolveConfiguredAudiences(
+    string? primaryAudience,
+    IEnumerable<string> validAudiences,
+    string? localDefaultAudience) {
+    var audiences = new List<string>();
+    var uniqueAudiences = new HashSet<string>(StringComparer.Ordinal);
+
+    Add(primaryAudience);
+    foreach (string audience in validAudiences) {
+        Add(audience);
+    }
+
+    if (audiences.Count == 0) {
+        Add(localDefaultAudience);
+    }
+
+    return [.. audiences];
+
+    void Add(string? audience) {
+        if (!string.IsNullOrWhiteSpace(audience)) {
+            string trimmed = audience.Trim();
+            if (uniqueAudiences.Add(trimmed)) {
+                audiences.Add(trimmed);
+            }
+        }
     }
 }
 

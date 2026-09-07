@@ -193,7 +193,7 @@ import { faker } from '@faker-js/faker';
 
 export const registrationPayload = (overrides = {}) => ({
   email: faker.internet.email(),
-  password: 'SecurePass123!',
+  password: '${TEST_USER_PASSWORD}',
   ...overrides,
 });
 ```
@@ -204,7 +204,7 @@ export const registrationPayload = (overrides = {}) => ({
 // tests/fixtures/test-data.ts
 export const testUserData = {
   email: 'test@example.com',
-  password: 'SecurePass123!',
+  password: '${TEST_USER_PASSWORD}',
 };
 ```
 

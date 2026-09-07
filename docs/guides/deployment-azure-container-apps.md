@@ -145,13 +145,13 @@ az provider register -n Microsoft.OperationalInsights
 The Aspire AppHost includes an Azure Container Apps publisher that generates Bicep modules from the Aspire topology definition. The `Aspire.Hosting.Azure.AppContainers` package (v13.1.2) is a **stable** (GA) package — unlike the Kubernetes and Docker publishers which are preview.
 
 ```bash
-PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+env PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__Scope="${OIDC_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" "Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 ```
 
 > **PowerShell (Windows):**
 >
 > ```powershell
-> $env:PUBLISH_TARGET='aca'; $env:EnableKeycloak='false'; $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0='RS256'; $env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+> $env:PUBLISH_TARGET='aca'; $env:EnableKeycloak='false'; $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0='RS256'; $env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE; Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME; Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 > ```
 
 **Important:** `EnableKeycloak=false` is **required**. Azure Container Apps does not support Keycloak bind mounts for realm import. Production ACA deployments must use an external OIDC provider (Entra ID recommended).
@@ -596,7 +596,7 @@ TOKEN=$(curl -s -X POST "https://login.microsoftonline.com/{tenant-id}/oauth2/v2
 If you receive 401 Unauthorized, check:
 
 1. **Is the Authority URL reachable?** The container app must be able to reach the OIDC discovery endpoint at `{Authority}/.well-known/openid-configuration`
-2. **Is SigningKey cleared?** If `Authentication__JwtBearer__SigningKey` is set, the app uses symmetric key validation and ignores OIDC. Set it to an empty string explicitly
+2. **Is SigningKey cleared?** If `Authentication__JwtBearer__SigningKey` is set together with Authority, startup rejects the ambiguous dual-mode configuration. Remove it or set it to an empty string.
 3. **Does the token `aud` claim match the Audience?** Decode the JWT at [jwt.ms](https://jwt.ms) and verify the `aud` claim matches `Authentication__JwtBearer__Audience`
 4. **Is the Entra ID app registration configured correctly?** Verify the Application ID URI matches the Audience, and that the app registration has the correct API permissions
 

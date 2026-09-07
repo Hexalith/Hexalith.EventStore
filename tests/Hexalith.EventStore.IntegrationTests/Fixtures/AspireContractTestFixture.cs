@@ -2,6 +2,7 @@ using System.Runtime.ExceptionServices;
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.ApplicationModel;
 using global::Aspire.Hosting.Testing;
+using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 using Hexalith.EventStore.IntegrationTests.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,8 +33,8 @@ public class AspireContractTestFixture : IAsyncLifetime {
     private string? _previousDotNetEnvironment;
     private string? _previousAggregateActorTypeName;
     private string? _previousRuntimeProofShutdownToken;
-    private string? _previousLocalAdminUserId;
-    private string? _previousLocalSigningKey;
+    private string? _previousLocalTestInvocationId;
+    private LocalAuthenticationTestInvocation? _localAuthenticationTestInvocation;
     private string? _aggregateActorTypeName;
     private string? _adminUserId;
     private string? _runtimeProofShutdownToken;
@@ -78,8 +79,15 @@ public class AspireContractTestFixture : IAsyncLifetime {
         // Disable Keycloak for fast contract tests -- use symmetric key JWT auth instead.
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
-        _previousLocalSigningKey = Environment.GetEnvironmentVariable("LocalAuthentication__SigningKey");
-        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", TestJwtTokenGenerator.SigningKey);
+        _previousLocalTestInvocationId = Environment.GetEnvironmentVariable(
+            "LocalAuthentication__TestInjection__InvocationId");
+        _adminUserId = Guid.NewGuid().ToString("D");
+        _localAuthenticationTestInvocation = LocalAuthenticationCredentials.RegisterTestInvocation(
+            TestJwtTokenGenerator.SigningKey,
+            _adminUserId);
+        Environment.SetEnvironmentVariable(
+            "LocalAuthentication__TestInjection__InvocationId",
+            _localAuthenticationTestInvocation.InvocationId.ToString("D"));
 
         // Force Development environment so AppHost children (especially EventStore)
         // load appsettings.Development.json expected by Tier 3 contract tests.
@@ -87,10 +95,6 @@ public class AspireContractTestFixture : IAsyncLifetime {
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
-
-        _previousLocalAdminUserId = Environment.GetEnvironmentVariable("LocalAuthentication__AdminUserId");
-        _adminUserId = Guid.NewGuid().ToString("D");
-        Environment.SetEnvironmentVariable("LocalAuthentication__AdminUserId", _adminUserId);
 
         _previousAggregateActorTypeName = Environment.GetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName");
         _aggregateActorTypeName = $"AggregateActorIntegration{Guid.NewGuid():N}";
@@ -415,8 +419,11 @@ public class AspireContractTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("EnableKeycloak", _previousEnableKeycloak);
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", _previousAspNetCoreEnvironment);
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
-        Environment.SetEnvironmentVariable("LocalAuthentication__AdminUserId", _previousLocalAdminUserId);
-        Environment.SetEnvironmentVariable("LocalAuthentication__SigningKey", _previousLocalSigningKey);
+        Environment.SetEnvironmentVariable(
+            "LocalAuthentication__TestInjection__InvocationId",
+            _previousLocalTestInvocationId);
+        _localAuthenticationTestInvocation?.Dispose();
+        _localAuthenticationTestInvocation = null;
         Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
         Environment.SetEnvironmentVariable(
             "EventStore__RuntimeProof__ShutdownToken",

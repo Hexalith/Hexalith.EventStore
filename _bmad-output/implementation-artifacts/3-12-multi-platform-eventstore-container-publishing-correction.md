@@ -472,7 +472,7 @@ mark Story 1.20/Epic 1 done.
   [references/Hexalith.Builds/Github/publish-containers/oci_registry_validator.py].
 - [x] [Review][Defer] Support-safe log redaction misses JSON-shaped secrets; evidence retained 30 days
   [LOW] — deferred, Builds-owned. `_support_safe` redacts only `Bearer`/`key=value`, not
-  `"password": "…"` JSON; low exposure today (smoke container carries only the non-secret JWT key)
+`"password": "[redacted]"` JSON; low exposure today (smoke container carries only the non-secret JWT key)
   [references/Hexalith.Builds/Github/publish-containers/smoke_container_platforms.py].
 
 **Dismissed as noise / refuted (7):** identity gate "non-functional" (refuted — v3.77.2 gate step

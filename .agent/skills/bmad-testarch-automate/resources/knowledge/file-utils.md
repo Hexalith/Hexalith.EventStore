@@ -225,7 +225,7 @@ test('should download via API', async ({ page, request }) => {
     downloadDir: DOWNLOAD_DIR,
     trigger: async () => {
       const response = await request.get('/api/export/csv', {
-        headers: { Authorization: 'Bearer token' },
+        headers: { Authorization: 'Bearer <test-token>' },
       });
 
       if (!response.ok()) {

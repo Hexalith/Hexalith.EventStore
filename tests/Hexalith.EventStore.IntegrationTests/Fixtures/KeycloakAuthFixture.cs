@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 
+using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 using Hexalith.EventStore.IntegrationTests.Security;
 
@@ -26,6 +27,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
     private HttpClient? _eventStoreClient;
+    private LocalAuthenticationTestInvocation? _localAuthenticationTestInvocation;
 
     /// <summary>
     /// Gets the HTTP client for the EventStore service.
@@ -57,12 +59,14 @@ public class KeycloakAuthFixture : IAsyncLifetime {
         SnapshotAndSet("EnableKeycloak", "true");
         SnapshotAndSet("KeycloakPersistent", "false");
         AdminUserId = Guid.NewGuid().ToString("D");
-        SnapshotAndSet("LocalAuthentication__AdminUserId", AdminUserId);
-        ConfigureUser("admin-user", "AdminUsername", "AdminPassword");
-        ConfigureUser("tenant-a-user", null, "TenantAPassword");
-        ConfigureUser("tenant-b-user", null, "TenantBPassword");
-        ConfigureUser("readonly-user", null, "ReadOnlyPassword");
-        ConfigureUser("no-tenant-user", null, "NoTenantPassword");
+        _localAuthenticationTestInvocation = LocalAuthenticationCredentials.RegisterTestInvocation(
+            Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)),
+            AdminUserId,
+            "admin-user");
+        SnapshotAndSet(
+            "LocalAuthentication__TestInjection__InvocationId",
+            _localAuthenticationTestInvocation.InvocationId.ToString("D"));
+        ConfigureUsers(_localAuthenticationTestInvocation.Credentials);
 
         SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");
         SnapshotAndSet("DOTNET_ENVIRONMENT", "Development");
@@ -228,14 +232,12 @@ public class KeycloakAuthFixture : IAsyncLifetime {
             cancellationToken);
     }
 
-    private void ConfigureUser(string username, string? usernameSetting, string passwordSetting) {
-        string password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
-        _userPasswords[username] = password;
-        if (usernameSetting is not null) {
-            SnapshotAndSet($"LocalAuthentication__{usernameSetting}", username);
-        }
-
-        SnapshotAndSet($"LocalAuthentication__{passwordSetting}", password);
+    private void ConfigureUsers(LocalAuthenticationCredentials credentials) {
+        _userPasswords[credentials.AdminUsername] = credentials.AdminPassword;
+        _userPasswords["tenant-a-user"] = credentials.TenantAPassword;
+        _userPasswords["tenant-b-user"] = credentials.TenantBPassword;
+        _userPasswords["readonly-user"] = credentials.ReadOnlyPassword;
+        _userPasswords["no-tenant-user"] = credentials.NoTenantPassword;
     }
 
     private void RestoreEnvironmentSnapshot() {
@@ -245,6 +247,8 @@ public class KeycloakAuthFixture : IAsyncLifetime {
 
         _envSnapshot.Clear();
         _userPasswords.Clear();
+        _localAuthenticationTestInvocation?.Dispose();
+        _localAuthenticationTestInvocation = null;
         AdminUserId = string.Empty;
     }
 }

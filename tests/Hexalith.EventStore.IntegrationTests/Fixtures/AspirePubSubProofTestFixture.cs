@@ -1,6 +1,7 @@
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.Testing;
 
+using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 using Hexalith.EventStore.IntegrationTests.Security;
 
@@ -23,6 +24,7 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
     private HttpClient? _eventStoreClient;
     private HttpClient? _subscriberClient;
     private IConnectionMultiplexer? _redis;
+    private LocalAuthenticationTestInvocation? _localAuthenticationTestInvocation;
 
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
 
@@ -45,7 +47,11 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
 
     public async ValueTask InitializeAsync() {
         SnapshotAndSet("EnableKeycloak", "false");
-        SnapshotAndSet("LocalAuthentication__SigningKey", TestJwtTokenGenerator.SigningKey);
+        _localAuthenticationTestInvocation = LocalAuthenticationCredentials.RegisterTestInvocation(
+            TestJwtTokenGenerator.SigningKey);
+        SnapshotAndSet(
+            "LocalAuthentication__TestInjection__InvocationId",
+            _localAuthenticationTestInvocation.InvocationId.ToString("D"));
         SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");
         SnapshotAndSet("DOTNET_ENVIRONMENT", "Development");
         SnapshotAndSet("EventStore__Actors__AggregateActorTypeName", AggregateActorTypeName);
@@ -240,5 +246,7 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
         }
 
         _envSnapshot.Clear();
+        _localAuthenticationTestInvocation?.Dispose();
+        _localAuthenticationTestInvocation = null;
     }
 }

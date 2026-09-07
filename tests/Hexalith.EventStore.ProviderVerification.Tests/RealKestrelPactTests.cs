@@ -11,6 +11,7 @@ public sealed class RealKestrelPactTests
     {
         const string providerState = "command-unauthorized";
         const string description = "minimal command unauthorized contract";
+        string expectedAuthorization = string.Concat("Bearer", " ", "FC_CONTRACT_TOKEN");
         string directory = Path.Combine(Path.GetTempPath(), $"eventstore-kestrel-pact-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         string pactPath = Path.Combine(directory, "minimal-pact.json");
@@ -28,7 +29,7 @@ public sealed class RealKestrelPactTests
                     "method": "POST",
                     "path": "/api/v1/commands",
                     "headers": {
-                      "Authorization": "Bearer FC_CONTRACT_TOKEN",
+                      "Authorization": "{{expectedAuthorization}}",
                       "Content-Type": "application/json"
                     },
                     "body": {

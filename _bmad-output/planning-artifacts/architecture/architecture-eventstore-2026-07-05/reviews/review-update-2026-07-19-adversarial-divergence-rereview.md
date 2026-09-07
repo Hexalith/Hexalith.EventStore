@@ -66,7 +66,7 @@ Neither unit changes provider/component identity, catalog names or map keys, sco
 
 **Impact:** mixed secret generations across replicas, avoidable readiness loss, failed state-store/broker/application authentication after early revocation, an indefinitely delayed cutover within an otherwise “bounded” but unspecified cache/recheck interval, or a permanently failing bulk-read implementation.
 
-**Disposition: mandatory AD-24 tightening.** Extend `openbao-secret-contract.yaml` with the consumer-visible retrieval/rotation contract for every logical secret:
+**Disposition: mandatory AD-24 tightening.** Extend `openbao-secret-contract.yaml` with the consumer-visible retrieval/rotation contract for every logical secret. Record:
 
 1. allowed DAPR operation (`GetSecret` only while `vaultKVUsePrefix: true`; explicitly forbid `BulkGetSecret` unless the architecture changes the prefix decision);
 2. version policy (latest-only, or named pinned-version protocol with one owner);

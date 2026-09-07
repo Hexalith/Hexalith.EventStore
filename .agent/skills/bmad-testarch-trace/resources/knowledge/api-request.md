@@ -38,7 +38,7 @@ test('should fetch user data', async ({ apiRequest }) => {
   const { status, body } = await apiRequest<User>({
     method: 'GET',
     path: '/api/users/123',
-    headers: { Authorization: 'Bearer token' },
+    headers: { Authorization: 'Bearer <test-token>' },
   });
 
   expect(status).toBe(200);
@@ -125,7 +125,7 @@ test('should create user', async ({ apiRequest }) => {
     method: 'POST',
     path: '/api/users',
     body: newUser, // Automatically sent as JSON
-    headers: { Authorization: 'Bearer token' },
+    headers: { Authorization: 'Bearer <test-token>' },
   });
 
   expect(status).toBe(201);

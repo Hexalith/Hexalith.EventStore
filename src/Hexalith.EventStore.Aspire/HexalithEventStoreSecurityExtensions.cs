@@ -265,6 +265,37 @@ public static class HexalithEventStoreSecurityExtensions
     /// </summary>
     /// <param name="resource">The project resource to configure.</param>
     /// <param name="security">The security resources returned by <see cref="AddHexalithEventStoreSecurity"/>.</param>
+    /// <returns>The same project resource builder for chaining.</returns>
+    /// <remarks>
+    /// This source-compatible overload creates required parameter resources instead of restoring
+    /// reusable user-name or password defaults. Consumers must supply the parameter values per run.
+    /// </remarks>
+    public static IResourceBuilder<ProjectResource> WithEventStoreClientCredentials(
+        this IResourceBuilder<ProjectResource> resource,
+        HexalithEventStoreSecurityResources security)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentNullException.ThrowIfNull(security);
+
+        string parameterPrefix = $"{resource.Resource.Name}-eventstore-auth";
+        IResourceBuilder<ParameterResource> username = resource.ApplicationBuilder.AddParameter(
+            $"{parameterPrefix}-username",
+            secret: true);
+        IResourceBuilder<ParameterResource> password = resource.ApplicationBuilder.AddParameter(
+            $"{parameterPrefix}-password",
+            secret: true);
+        return resource.WithEventStoreClientCredentials(
+            security,
+            HexalithEventStoreSecurityOptions.DefaultEventStoreClientId,
+            username,
+            password);
+    }
+
+    /// <summary>
+    /// Wires service credentials for EventStore client token acquisition against the security realm.
+    /// </summary>
+    /// <param name="resource">The project resource to configure.</param>
+    /// <param name="security">The security resources returned by <see cref="AddHexalithEventStoreSecurity"/>.</param>
     /// <param name="clientId">The explicit OIDC client id used for token acquisition.</param>
     /// <param name="username">The per-run user-name parameter.</param>
     /// <param name="password">The per-run password parameter.</param>
@@ -284,6 +315,10 @@ public static class HexalithEventStoreSecurityExtensions
 
         return resource
             .WithEventStoreAuthenticationValidation(security)
+            .WithEnvironment(
+                "EventStore__Authentication__TokenEndpoint",
+                ReferenceExpression.Create($"{security.RealmUrl}/protocol/openid-connect/token"))
+            .WithEnvironment("EventStore__Authentication__Scope", "openid")
             .WithEnvironment("EventStore__Authentication__ClientId", clientId)
             .WithEnvironment("EventStore__Authentication__Username", username)
             .WithEnvironment("EventStore__Authentication__Password", password);
@@ -306,21 +341,59 @@ public static class HexalithEventStoreSecurityExtensions
         IResourceBuilder<ParameterResource> clientId,
         IResourceBuilder<ParameterResource> username,
         IResourceBuilder<ParameterResource> password)
+        => resource.WithExternalEventStoreClientCredentials(
+            authority,
+            audience,
+            tokenEndpoint: null,
+            scope: "openid",
+            clientId,
+            username,
+            password);
+
+    /// <summary>
+    /// Wires provider-neutral external token-acquisition settings to a published UI.
+    /// </summary>
+    /// <param name="resource">The published UI resource.</param>
+    /// <param name="authority">The external HTTPS identity authority.</param>
+    /// <param name="audience">The token audience requested by the UI.</param>
+    /// <param name="tokenEndpoint">An optional explicit HTTPS token endpoint; when absent the UI uses OIDC discovery.</param>
+    /// <param name="scope">The explicit OAuth scope request.</param>
+    /// <param name="clientId">The publish parameter holding the OIDC client identifier.</param>
+    /// <param name="username">The publish secret parameter holding the user name.</param>
+    /// <param name="password">The publish secret parameter holding the password.</param>
+    /// <returns>The same resource builder for chaining.</returns>
+    public static IResourceBuilder<ProjectResource> WithExternalEventStoreClientCredentials(
+        this IResourceBuilder<ProjectResource> resource,
+        string authority,
+        string audience,
+        string? tokenEndpoint,
+        string scope,
+        IResourceBuilder<ParameterResource> clientId,
+        IResourceBuilder<ParameterResource> username,
+        IResourceBuilder<ParameterResource> password)
     {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentException.ThrowIfNullOrWhiteSpace(audience);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scope);
         ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(username);
         ArgumentNullException.ThrowIfNull(password);
 
         string resolvedAuthority = ResolveExternalEndpoint(authority, nameof(authority));
-        return resource
+        IResourceBuilder<ProjectResource> configured = resource
             .WithEnvironment("EventStore__Authentication__Authority", resolvedAuthority)
             .WithEnvironment("EventStore__Authentication__Audience", audience.Trim())
+            .WithEnvironment("EventStore__Authentication__Scope", scope.Trim())
             .WithEnvironment("EventStore__Authentication__ClientId", clientId)
             .WithEnvironment("EventStore__Authentication__Username", username)
             .WithEnvironment("EventStore__Authentication__Password", password)
             .WithEnvironment("EventStore__Authentication__SigningKey", string.Empty);
+
+        return string.IsNullOrWhiteSpace(tokenEndpoint)
+            ? configured.WithEnvironment("EventStore__Authentication__TokenEndpoint", string.Empty)
+            : configured.WithEnvironment(
+                "EventStore__Authentication__TokenEndpoint",
+                ResolveExternalEndpoint(tokenEndpoint, nameof(tokenEndpoint)));
     }
 
     /// <summary>
@@ -434,16 +507,25 @@ public static class HexalithEventStoreSecurityExtensions
 
     private static string[] ResolveAudiences(HexalithEventStoreJwtAuthenticationOptions options)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(options.PrimaryAudience);
         ArgumentNullException.ThrowIfNull(options.ValidAudiences);
 
         var audiences = new List<string>(options.ValidAudiences.Count + 1);
         var uniqueAudiences = new HashSet<string>(StringComparer.Ordinal);
-        AddAudience(options.PrimaryAudience);
+        if (!string.IsNullOrWhiteSpace(options.PrimaryAudience))
+        {
+            AddAudience(options.PrimaryAudience);
+        }
 
         foreach (string audience in options.ValidAudiences)
         {
             AddAudience(audience);
+        }
+
+        if (audiences.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one non-blank primary or valid audience is required.",
+                nameof(options.ValidAudiences));
         }
 
         return [.. audiences];

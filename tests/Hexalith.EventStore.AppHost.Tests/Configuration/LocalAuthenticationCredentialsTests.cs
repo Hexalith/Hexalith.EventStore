@@ -28,6 +28,65 @@ public sealed class LocalAuthenticationCredentialsTests
     }
 
     [Fact]
+    public void Create_WithOrdinaryCredentialConfiguration_StillGeneratesFreshValues()
+    {
+        string configuredKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+        string configuredUserId = Guid.NewGuid().ToString("D");
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LocalAuthentication:SigningKey"] = configuredKey,
+                ["LocalAuthentication:AdminUserId"] = configuredUserId,
+            })
+            .Build();
+
+        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(configuration);
+
+        credentials.SigningKey.ShouldNotBe(configuredKey);
+        credentials.AdminUserId.ShouldNotBe(configuredUserId);
+    }
+
+    [Fact]
+    public void Create_WithUnregisteredInvocationId_FailsWithoutUsingConfiguredCredentialValues()
+    {
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LocalAuthentication:TestInjection:InvocationId"] = Guid.NewGuid().ToString("D"),
+                ["LocalAuthentication:TestInjection:SigningKey"] = Guid.NewGuid().ToString("N"),
+            })
+            .Build();
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => LocalAuthenticationCredentials.Create(configuration));
+
+        exception.Message.ShouldContain("InvocationId");
+        exception.Message.ShouldNotContain(configuration["LocalAuthentication:TestInjection:SigningKey"]!);
+    }
+
+    [Fact]
+    public void Create_WithCallerHeldTestInvocation_ConsumesRegisteredValuesExactlyOnce()
+    {
+        string signingKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+        string adminUserId = Guid.NewGuid().ToString("D");
+        using LocalAuthenticationTestInvocation invocation =
+            LocalAuthenticationCredentials.RegisterTestInvocation(signingKey, adminUserId);
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LocalAuthentication:TestInjection:InvocationId"] = invocation.InvocationId.ToString("D"),
+            })
+            .Build();
+
+        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(configuration);
+
+        credentials.ShouldBeSameAs(invocation.Credentials);
+        credentials.SigningKey.ShouldBe(signingKey);
+        credentials.AdminUserId.ShouldBe(adminUserId);
+        _ = Should.Throw<InvalidOperationException>(() => LocalAuthenticationCredentials.Create(configuration));
+    }
+
+    [Fact]
     public void Render_ReplacesEveryInertRealmPlaceholder_AndDeletesTemporaryContent()
     {
         LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(

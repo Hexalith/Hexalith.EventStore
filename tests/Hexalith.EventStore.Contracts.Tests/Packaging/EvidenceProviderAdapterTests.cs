@@ -45,6 +45,7 @@ public sealed class EvidenceProviderAdapterTests
             string fakeCurl = Path.Combine(temporary, "curl");
             string downloaded = Path.Combine(temporary, "downloaded.tar.gz");
             string proof = Path.Combine(temporary, "proof.json");
+            string syntheticToken = Guid.NewGuid().ToString("N");
 
             await File.WriteAllTextAsync(
                 fakeAz,
@@ -52,7 +53,7 @@ public sealed class EvidenceProviderAdapterTests
                 #!/usr/bin/env bash
                 set -euo pipefail
                 test "$1 $2" = 'account get-access-token'
-                printf '%s\n' 'contract-test-token'
+                printf '%s\n' '{{{syntheticToken}}}'
                 """.Replace("\r\n", "\n", StringComparison.Ordinal));
             File.SetUnixFileMode(fakeAz, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await File.WriteAllTextAsync(
@@ -69,7 +70,7 @@ public sealed class EvidenceProviderAdapterTests
                   done
                   return 1
                 }
-                test "$(value_after --header "$@" | head -n 1)" = 'Authorization: Bearer contract-test-token'
+                test "$(value_after --header "$@" | head -n 1)" = 'Authorization: Bearer {{{syntheticToken}}}'
                 [[ "${!#}" == *'versionid=2026-07-19T20%3A00%3A00.0000000Z' ]]
                 output="$(value_after --output "$@")"
                 if [[ " $* " == *' --head '* ]]; then

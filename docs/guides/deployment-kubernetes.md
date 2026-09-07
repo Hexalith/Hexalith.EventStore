@@ -190,13 +190,13 @@ Expected CRDs:
 The Aspire AppHost includes a Kubernetes publisher that generates a Helm chart from the Aspire topology definition.
 
 ```bash
-PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+env PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__Scope="${OIDC_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" "Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 ```
 
 > **PowerShell (Windows):**
 >
 > ```powershell
-> $env:PUBLISH_TARGET='k8s'; $env:EnableKeycloak='false'; $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0='RS256'; $env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+> $env:PUBLISH_TARGET='k8s'; $env:EnableKeycloak='false'; $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0='RS256'; $env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE; Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME; Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD; aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 > ```
 
 **Important:** `EnableKeycloak=false` is **required**. The Kubernetes publisher does not support bind mounts used by Keycloak's realm import. Production Kubernetes deployments must use an external OIDC provider.
@@ -473,8 +473,8 @@ This approach uses DAPR's built-in Kubernetes secret store to reference Kubernet
 #### Step 1: Create a Kubernetes Secret
 
 ```bash
-kubectl create secret generic dapr-secrets \
-  --from-literal=postgres-connection-string='host=mydb.postgres.database.azure.com;port=5432;username=dapr;password=<secret>;database=eventstore;sslmode=require' \
+  kubectl create secret generic dapr-secrets \
+    --from-literal=postgres-connection-string="${POSTGRES_CONNECTION_STRING}" \
   --from-literal=dapr-trust-domain='your-trust-domain.example.com' \
   --from-literal=dapr-namespace='hexalith' \
   -n hexalith
@@ -674,7 +674,7 @@ If you receive **401 Unauthorized** on all requests, check:
 
 3. **Does the token `aud` claim match the Audience?** Decode the JWT at [jwt.ms](https://jwt.ms) and verify the `aud` claim matches the `Authentication__JwtBearer__Audience` environment variable.
 
-4. **Is `RequireHttpsMetadata=true` but the OIDC endpoint uses a self-signed certificate?** If deploying behind a proxy or using a private CA, you may need to add the CA certificate to the container's trust store or temporarily set `RequireHttpsMetadata=false` for testing.
+4. **Is `RequireHttpsMetadata=true` but the OIDC endpoint uses a self-signed certificate?** Add the issuing CA certificate to the container trust store. Outside Development, disabling HTTPS metadata is rejected during startup.
 
 ## Deploy the Application
 

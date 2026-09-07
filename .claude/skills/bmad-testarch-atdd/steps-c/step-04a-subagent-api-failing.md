@@ -112,7 +112,7 @@ import { test, expect } from '@playwright/test';
 test.describe('[Story Name] API Tests (ATDD)', () => {
   test.skip('[P0] should register new user successfully', async ({ request }) => {
     const response = await request.post('/api/users/register', {
-      data: { email: 'newuser@example.com', password: 'SecurePass123!' },
+      data: { email: 'newuser@example.com', password: '${TEST_USER_PASSWORD}' },
     });
 
     expect(response.status()).toBe(201);
@@ -193,7 +193,7 @@ test.skip('[P0] should generate consumer contract for user registration', async 
       method: 'POST',
       path: '/api/v2/users/register',
       headers: { 'Content-Type': 'application/json' },
-      body: { email: 'newuser@example.com', password: 'SecurePass123!' },
+      body: { email: 'newuser@example.com', password: '${TEST_USER_PASSWORD}' },
     })
     .willRespondWith({
       status: 201,
@@ -205,7 +205,7 @@ test.skip('[P0] should generate consumer contract for user registration', async 
       }),
     })
     .executeTest(async (mockServer) => {
-      const result = await registerUser({ email: 'newuser@example.com', password: 'SecurePass123!' }, { baseUrl: mockServer.url });
+      const result = await registerUser({ email: 'newuser@example.com', password: '${TEST_USER_PASSWORD}' }, { baseUrl: mockServer.url });
       expect(result.id).toEqual(expect.any(Number));
     });
 });

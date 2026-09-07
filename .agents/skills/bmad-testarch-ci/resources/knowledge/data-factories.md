@@ -314,7 +314,7 @@ test('admin can delete user', async ({ page }) => {
 ```typescript
 // ✅ GOOD: Factory-based data
 test('user can login', async ({ page, apiRequest }) => {
-  const user = createUser({ email: 'unique@example.com', password: 'secure123' });
+  const user = createUser({ email: 'unique@example.com', password: '${TEST_USER_PASSWORD}' });
 
   // Seed via API (fast, parallel-safe)
   await apiRequest({ method: 'POST', url: '/api/users', data: user });

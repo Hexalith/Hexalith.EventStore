@@ -211,7 +211,7 @@ The seven points to verify for each interaction:
  * - Response type: UserResponseDto (server/src/types/user.ts:12)
  * - Status: 201 for creation (line 52), 400 for validation error (line 48)
  * - Fields: { id: number, name: string, email: string, role: "user" | "admin" }
- * - Required request headers: Authorization (Bearer token)
+ * - Required request headers: Authorization (Bearer <test-token>)
  */
 ```
 

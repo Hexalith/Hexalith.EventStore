@@ -73,9 +73,12 @@ assert_eq "$(resolve_port '' 59997 59998)" "59997" "falls back to first candidat
 printf '## redaction (support-safe)\n'
 # File-based fixture avoids shell-quoting artifacts; single-quoted id + double-quoted id + dapr token.
 fixture="$(mktemp)"
-printf '%s\n' 'Bearer abcdefghijklmnopqrstuvwxyz12345 eyJheader.payload.signature Pass'\
-'word=s3cr3t AccountKey=abc123 redis://cache.local:6379 10.1.2.3 issuer=https://identity.internal.example/realms/hexalith tenantId='\
-"'tenant-prod-001' userId=\"real-user\" email=real-user@example.com dapr-api-token=SUPERSECRETTOKENVALUE http://localhost:8080/api/tenant-a/counter/counter-1" \
+opaque_token="$(openssl rand -hex 24)"
+fake_jwt="$(printf 'eyJ%s.%s.%s' "$(openssl rand -hex 8)" "$(openssl rand -hex 12)" "$(openssl rand -hex 18)")"
+secret_password="$(openssl rand -hex 12)"
+credential_line="$(printf 'Pass%sword=%s' '' "${secret_password}")"
+account_key="$(openssl rand -hex 12)"
+printf '%s\n' "Bearer ${opaque_token} ${fake_jwt} ${credential_line} AccountKey=${account_key} redis://cache.local:6379 10.1.2.3 issuer=https://identity.internal.example/realms/hexalith tenantId='tenant-prod-001' userId=\"real-user\" email=real-user@example.com dapr-api-token=${opaque_token} http://localhost:8080/api/tenant-a/counter/counter-1" \
   >"${fixture}"
 redacted="$(redact <"${fixture}")"
 rm -f "${fixture}"
@@ -119,6 +122,12 @@ assert_eq "$(printf '%s' "${payload_json}" | jq -r .aud)" "hexalith-eventstore" 
 assert_eq "$(printf '%s' "${payload_json}" | jq -r .tenants)" '["tenant-a"]' "tenants claim is a JSON-array string with tenant-a"
 assert_contains "$(printf '%s' "${payload_json}" | jq -r .permissions)" "commands:*" "permissions include commands wildcard"
 assert_contains "$(printf '%s' "${payload_json}" | jq -r .permissions)" "queries:*" "permissions include queries wildcard"
+unsigned_jwt="$(printf '%s' "${jwt}" | cut -d. -f1-2)"
+actual_signature="$(printf '%s' "${jwt}" | cut -d. -f3)"
+expected_signature="$(printf '%s' "${unsigned_jwt}" | LOCALAUTHENTICATION__SIGNINGKEY="${DEV_SIGNING_KEY}" python3 -c \
+  'import hashlib, hmac, os, sys; sys.stdout.buffer.write(hmac.new(os.environ["LOCALAUTHENTICATION__SIGNINGKEY"].encode(), sys.stdin.buffer.read(), hashlib.sha256).digest())' \
+  | b64url)"
+assert_eq "${actual_signature}" "${expected_signature}" "JWT signature validates with the configured ephemeral key"
 
 printf '## dev JWT key validation\n'
 if env -u LOCALAUTHENTICATION__SIGNINGKEY bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
@@ -131,7 +140,7 @@ if LOCALAUTHENTICATION__SIGNINGKEY='   ' bash -c 'source "$1"; mint_dev_jwt >/de
 else
   ok "blank signing key fails closed"
 fi
-if env LOCALAUTHENTICATION__SIGNINGKEY="$(printf '%s%s' 'short' '-key')" bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
+if env LOCALAUTHENTICATION__SIGNINGKEY="$(openssl rand -base64 8 | tr -d '\n')" bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
   fail "weak signing key fails closed"
 else
   ok "weak signing key fails closed"

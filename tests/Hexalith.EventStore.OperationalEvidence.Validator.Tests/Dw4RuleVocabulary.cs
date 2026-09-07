@@ -33,8 +33,8 @@ internal static class Dw4RuleVocabulary {
 
     // --- Redaction family ---------------------------------------------
     public const string RedactionSectionMissing = "redaction-section-missing";
-    public const string RedactionUnsafeBearerToken = "redaction-unsafe-bearer-token";
-    public const string RedactionUnsafeConnectionString = "redaction-unsafe-connection-string";
+    public const string RedactionUnsafeAuthorization = "redaction-unsafe-bearer-token";
+    public const string RedactionUnsafeConnectionDetails = "redaction-unsafe-connection-string";
     public const string RedactionUnsafeProductionHostname = "redaction-unsafe-production-hostname";
     public const string RedactionRawSecretMarker = "redaction-raw-secret-marker";
 
@@ -69,8 +69,8 @@ internal static class Dw4RuleVocabulary {
         ControlLinkageMissing,
         ControlLinkageUnrelated,
         RedactionSectionMissing,
-        RedactionUnsafeBearerToken,
-        RedactionUnsafeConnectionString,
+        RedactionUnsafeAuthorization,
+        RedactionUnsafeConnectionDetails,
         RedactionUnsafeProductionHostname,
         RedactionRawSecretMarker,
         NotApplicableReasonMissing,

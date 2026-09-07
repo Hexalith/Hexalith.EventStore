@@ -2151,6 +2151,7 @@ smoke_published_platform() (
       --env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith \
       --env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith \
       --env Authentication__JwtBearer__Audience=hexalith-eventstore \
+      --env Authentication__JwtBearer__AllowedAlgorithms__0=RS256 \
       --env Authentication__JwtBearer__RequireHttpsMetadata=true \
       "$repository@$digest" 2>> "$evidence_file")"; then
     for _ in $(seq 1 180); do
@@ -4534,6 +4535,7 @@ verify_container_platform_smoke() (
       --env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith \
       --env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith \
       --env Authentication__JwtBearer__Audience=hexalith-eventstore \
+      --env Authentication__JwtBearer__AllowedAlgorithms__0=RS256 \
       --env Authentication__JwtBearer__RequireHttpsMetadata=true \
       "$repository@$digest" 2>> "$smoke_log")"; then
     for _ in $(seq 1 180); do

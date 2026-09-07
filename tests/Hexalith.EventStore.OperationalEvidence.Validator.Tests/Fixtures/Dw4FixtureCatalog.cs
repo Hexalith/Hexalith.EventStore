@@ -111,14 +111,14 @@ internal static class Dw4FixtureCatalog {
             SchemaSlot: Dw4RuleVocabulary.SchemaQueryV1,
             Verdict.Fail,
             ExpectedRuleIds: new HashSet<string>(StringComparer.Ordinal) {
-                Dw4RuleVocabulary.RedactionUnsafeBearerToken,
+                Dw4RuleVocabulary.RedactionUnsafeAuthorization,
             },
             Notes: "JWT-shaped bearer token (eyJ...) left in diagnostics text."),
         new("query-invalid-redaction-connection-string.md",
             SchemaSlot: Dw4RuleVocabulary.SchemaQueryV1,
             Verdict.Fail,
             ExpectedRuleIds: new HashSet<string>(StringComparer.Ordinal) {
-                Dw4RuleVocabulary.RedactionUnsafeConnectionString,
+                Dw4RuleVocabulary.RedactionUnsafeConnectionDetails,
             },
             Notes: "Connection-string keyword 'Server=...; Password=...' present unredacted."),
         new("query-invalid-redaction-production-hostname.md",
@@ -227,7 +227,7 @@ internal static class Dw4FixtureCatalog {
             SchemaSlot: Dw4RuleVocabulary.SchemaSignalrV1,
             Verdict.Fail,
             ExpectedRuleIds: new HashSet<string>(StringComparer.Ordinal) {
-                Dw4RuleVocabulary.RedactionUnsafeBearerToken,
+                Dw4RuleVocabulary.RedactionUnsafeAuthorization,
             },
             Notes: "JWT-shaped bearer token in Authenticated Join logs."),
 

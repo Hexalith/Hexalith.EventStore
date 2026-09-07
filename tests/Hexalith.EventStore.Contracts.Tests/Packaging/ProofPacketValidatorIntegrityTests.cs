@@ -66,6 +66,7 @@ public sealed class ProofPacketValidatorIntegrityTests
         packet.ShouldContain("--env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith");
         packet.ShouldContain("--env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith");
         packet.ShouldContain("--env Authentication__JwtBearer__Audience=hexalith-eventstore");
+        packet.ShouldContain("--env Authentication__JwtBearer__AllowedAlgorithms__0=RS256");
         packet.ShouldContain("--env Authentication__JwtBearer__RequireHttpsMetadata=true");
         packet.ShouldNotContain("Authentication__JwtBearer__SigningKey=");
         packet.ShouldContain("for _ in $(seq 1 180); do");
@@ -117,6 +118,7 @@ public sealed class ProofPacketValidatorIntegrityTests
             "--env Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith",
             "--env Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith",
             "--env Authentication__JwtBearer__Audience=hexalith-eventstore",
+            "--env Authentication__JwtBearer__AllowedAlgorithms__0=RS256",
             "--env Authentication__JwtBearer__RequireHttpsMetadata=true",
         ];
 

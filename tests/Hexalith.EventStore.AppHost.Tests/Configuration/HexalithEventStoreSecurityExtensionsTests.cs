@@ -189,7 +189,10 @@ public class HexalithEventStoreSecurityExtensionsTests {
             "Hexalith.EventStore.Aspire",
             "HexalithEventStoreSecurityExtensions.cs"));
 
-        string method = ExtractMethod(source, "public static IResourceBuilder<ProjectResource> WithEventStoreClientCredentials");
+        const string marker = "public static IResourceBuilder<ProjectResource> WithEventStoreClientCredentials";
+        int firstOverload = source.IndexOf(marker, StringComparison.Ordinal);
+        firstOverload.ShouldBeGreaterThanOrEqualTo(0);
+        string method = ExtractMethod(source[(firstOverload + marker.Length)..], marker);
 
         method.ShouldContain(".WithEventStoreAuthenticationValidation(security)");
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__ClientId\", clientId)");

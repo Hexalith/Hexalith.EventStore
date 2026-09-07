@@ -37,70 +37,26 @@ $ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHo
 
 > **Note:** The first run takes longer than usual because .NET restores NuGet packages and Docker pulls container images for Redis, Keycloak, and the DAPR sidecar.
 >
-Local Keycloak identities and passwords are generated for each AppHost run, so persistent Keycloak container reuse is intentionally unavailable. To request tokens manually, provide your own ephemeral values before starting Aspire, for example `LocalAuthentication__AdminUsername` and `LocalAuthentication__AdminPassword`; keep the matching values in `HEXALITH_ADMIN_USERNAME` and `HEXALITH_ADMIN_PASSWORD` only in your local shell.
+Local Keycloak identities and passwords are generated for each AppHost run, so persistent Keycloak
+container reuse is intentionally unavailable. Generated credentials stay inside Aspire resource
+environment wiring; the quickstart neither prints them nor asks you to configure matching values.
 
 Once the application starts, the terminal output includes the Aspire dashboard URL. Open it in your browser — the dashboard shows all running services and their endpoints.
 
 ## Send a Command
 
-### Get an access token
+The public command API requires authentication. For the clean-clone local flow, use the sample UI:
+Aspire supplies that resource with its generated tenant identity and the UI obtains and caches its
+token without displaying the password or signing key.
 
-The CommandAPI requires a JWT token for authentication. Keycloak runs as part of the Aspire topology and provides test accounts preconfigured for local development.
+1. In the Aspire dashboard, open the `sample-blazor-ui` resource.
+2. Open any of the three counter pattern pages.
+3. In **Send Commands**, select **Increment**.
+4. Confirm that the page shows the green `Last command: increment-counter` acknowledgement.
 
-Request a token using the ephemeral administrator credentials supplied when Aspire started. Discover the `security` resource URL from the running topology because Aspire may choose a different host port:
-
-```bash
-$ KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
-$ curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
-  -d "grant_type=password" \
-  -d "client_id=hexalith-eventstore" \
-  -d "username=${HEXALITH_ADMIN_USERNAME}" \
-  -d "password=${HEXALITH_ADMIN_PASSWORD}"
-```
-
-> **Note:** The `\` line continuation works in bash and Zsh. In PowerShell (5.x and 7+), use the single-line alternative below.
-
-The response contains an `access_token` field. Copy its value — you need it in the next step.
-
-> **Tip:** On Windows PowerShell 5.x, use:
-
-```powershell
-$env:KEYCLOAK_URL = aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | ConvertFrom-Json | ForEach-Object { $_.resources | Where-Object displayName -eq "security" | ForEach-Object { $_.urls | Where-Object name -eq "http" | Select-Object -ExpandProperty url } }
-$ Invoke-RestMethod -Method Post -Uri "$env:KEYCLOAK_URL/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD} | Select-Object -ExpandProperty access_token
-```
-
-### Submit the command via Swagger UI
-
-Find the `eventstore` service in the Aspire dashboard and open its URL. Append `/swagger` to the URL to open the Swagger UI.
-
-1. Click the **Authorize** button at the top of the page
-2. In the **Value** field, paste the `access_token` you copied earlier — do not include the `Bearer` prefix, Swagger adds it automatically
-3. Click **Authorize**, then **Close**
-
-Expand the **POST /api/v1/commands** endpoint, click **Try it out**, and use this request body:
-
-```json
-{
-    "messageId": "increment-01",
-    "tenant": "tenant-a",
-    "domain": "counter",
-    "aggregateId": "counter-1",
-    "commandType": "IncrementCounter",
-    "payload": {}
-}
-```
-
-The `messageId` is the idempotency key. Reuse the same value only when retrying the same logical command, and use a new value for a new command.
-
-Click **Execute**. The API returns `202 Accepted` with a response containing the correlation ID:
-
-```json
-{
-    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-}
-```
-
-The response also includes a `Location` header containing the full URL to the status endpoint. To check whether the command has been processed, open that URL from the Aspire dashboard's `eventstore` service — it follows the pattern `/api/v1/commands/status/{correlationId}` — or query it directly with curl using the same Bearer token.
+The UI generates a fresh sortable message identifier and submits the typed `IncrementCounter`
+command for `tenant-a`, domain `counter`, aggregate `counter-1`. The acknowledgement means that the
+authenticated command submission was accepted; use the next section to observe downstream work.
 
 ## See the Event
 
@@ -113,7 +69,8 @@ Go back to the Aspire dashboard and open the **Traces** tab. You should see a tr
 5. The event was persisted to the state store
 6. The event was published to the pub/sub topic
 
-The correlation ID from your command response links the request to all downstream processing. Click the trace to expand it and see timing for each stage.
+Open the matching command trace to see timing for each stage and correlate it with the UI submission
+time.
 
 You can also check the **Structured Logs** tab in the Aspire dashboard to see detailed log entries from each service.
 

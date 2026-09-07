@@ -187,16 +187,34 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
         resource.Resource.Annotations.Count.ShouldBe(annotationCount);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void WithEventStoreJwtAuthentication_WhenPrimaryAudienceBlank_FailsBeforeMutation(string? audience)
+    [Fact]
+    public async Task WithEventStoreJwtAuthentication_WhenPrimaryAudienceBlank_CanonicalizesFirstValidAudience()
+    {
+        IDistributedApplicationBuilder builder = CreateBuilder(publish: true);
+        IResourceBuilder<ProjectResource> resource = builder.AddProject<EventStoreProjectMetadata>("invalid-primary-audience");
+        HexalithEventStoreJwtAuthenticationOptions options = CreatePublishOptions(
+            string.Empty,
+            [" first-audience ", "second-audience"]);
+
+        _ = resource.WithEventStoreJwtAuthentication(null, options);
+
+        KeyValuePair<string, object>[] environment = await GetJwtEnvironmentAsync(
+            resource.Resource,
+            builder.ExecutionContext);
+        environment.Single(static entry => entry.Key == AudienceKey).Value.ShouldBe("first-audience");
+        environment
+            .Where(static entry => entry.Key.StartsWith(ValidAudiencePrefix, StringComparison.Ordinal))
+            .Select(static entry => entry.Value)
+            .ShouldBe(["first-audience", "second-audience"]);
+    }
+
+    [Fact]
+    public void WithEventStoreJwtAuthentication_WhenEveryAudienceBlank_FailsBeforeMutation()
     {
         IDistributedApplicationBuilder builder = CreateBuilder(publish: true);
         IResourceBuilder<ProjectResource> resource = builder.AddProject<EventStoreProjectMetadata>("invalid-primary-audience");
         int annotationCount = resource.Resource.Annotations.Count;
-        HexalithEventStoreJwtAuthenticationOptions options = CreatePublishOptions(audience!, []);
+        HexalithEventStoreJwtAuthenticationOptions options = CreatePublishOptions("   ", []);
 
         _ = Should.Throw<ArgumentException>(() => resource.WithEventStoreJwtAuthentication(null, options));
 

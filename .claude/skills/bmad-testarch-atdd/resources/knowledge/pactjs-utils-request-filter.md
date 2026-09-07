@@ -9,7 +9,7 @@ Use `createRequestFilter` and `noOpRequestFilter` from `@seontechnologies/pactjs
 ### Problems with manual request filters
 
 - **Express type gymnastics**: Pact's `requestFilter` expects `(req, res, next) => void` with Express-compatible types — but Pact doesn't re-export these types
-- **Double-Bearer bug**: Easy to write `Authorization: Bearer Bearer ${token}` when the token generator already includes the prefix
+- **Double-Bearer bug**: Easy to write `Authorization: <duplicated-bearer-token>` when the token generator already includes the prefix
 - **Inline complexity**: Auth logic mixed with verifier config makes tests harder to read
 - **No-op boilerplate**: Providers without auth still need a pass-through function or `undefined`
 
@@ -35,12 +35,12 @@ const opts = buildVerifierOptions({
   },
   requestFilter: createRequestFilter({
     // tokenGenerator returns raw token — filter adds "Bearer " prefix
-    tokenGenerator: () => 'test-auth-token-123',
+    tokenGenerator: () => '<test-token>',
   }),
 });
 
 // Every request during verification will have:
-// Authorization: Bearer test-auth-token-123
+// Authorization: Bearer <test-token>
 ```
 
 **Key Points**:
@@ -160,7 +160,7 @@ await new Verifier(opts).verifyProvider();
 ### Wrong: Manual Bearer prefix with double-prefix risk
 
 ```typescript
-// ❌ Risk of double-prefix: "Bearer Bearer token"
+// ❌ Risk of double-prefix: "Bearer Bearer <test-token>"
 requestFilter: (req, res, next) => {
   const token = getToken(); // What if getToken() returns "Bearer abc123"?
   req.headers['authorization'] = `Bearer ${token}`;

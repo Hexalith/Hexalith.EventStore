@@ -13,11 +13,12 @@ public class HttpContextAdminAuthContextTests {
 
     [Fact]
     public void GetToken_ReturnsBearerToken_WhenAuthorizationHeaderPresent() {
-        IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Bearer eyJhbGciOiJSUzI1NiJ9.test");
+        string expectedToken = Guid.NewGuid().ToString("N");
+        IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Bearer " + expectedToken);
 
         var sut = new HttpContextAdminAuthContext(accessor);
 
-        sut.GetToken().ShouldBe("eyJhbGciOiJSUzI1NiJ9.test");
+        sut.GetToken().ShouldBe(expectedToken);
     }
 
     [Fact]
