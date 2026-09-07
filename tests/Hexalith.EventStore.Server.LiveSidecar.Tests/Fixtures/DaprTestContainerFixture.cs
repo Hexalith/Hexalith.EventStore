@@ -1540,7 +1540,7 @@ internal sealed class LiveIncrementCounterIdempotencyIntentAdapter : IIdempotenc
 
     public IdempotencyReplayRetentionTier RetentionTier => IdempotencyReplayRetentionTier.Mutation;
 
-    public IdempotencyCanonicalIntent CreateIntent(SubmitCommand command)
+    public IdempotencyCanonicalIntent CreateIntent(IdempotencyIntentCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
         return new IdempotencyCanonicalIntent(

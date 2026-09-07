@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
@@ -168,7 +169,7 @@ public class TrustedIdempotencyIntentTests
         IIdempotencyIntentAdapter adapter = CreateAdapter(
             "CreateFolderCommand",
             "{\"name\":\"demo\"}");
-        adapter.CreateIntent(Arg.Any<SubmitCommand>()).Returns(
+        adapter.CreateIntent(Arg.Any<IdempotencyIntentCommand>()).Returns(
             new IdempotencyCanonicalIntent(
                 "folders/folder-1",
                 "{}"u8.ToArray(),
@@ -303,7 +304,7 @@ public class TrustedIdempotencyIntentTests
         adapter.OperationId.Returns("create-folder");
         adapter.DescriptorVersion.Returns(1);
         adapter.RetentionTier.Returns(IdempotencyReplayRetentionTier.Mutation);
-        adapter.CreateIntent(Arg.Any<SubmitCommand>()).Returns(
+        adapter.CreateIntent(Arg.Any<IdempotencyIntentCommand>()).Returns(
             new IdempotencyCanonicalIntent(
                 canonicalTarget,
                 Encoding.UTF8.GetBytes(semanticJson),

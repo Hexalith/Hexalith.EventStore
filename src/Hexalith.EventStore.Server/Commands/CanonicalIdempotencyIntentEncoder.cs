@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.DomainService;
 
 namespace Hexalith.EventStore.Server.Commands;
 

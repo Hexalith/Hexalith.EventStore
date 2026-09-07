@@ -1,6 +1,8 @@
-namespace Hexalith.EventStore.Server.Commands;
+namespace Hexalith.EventStore.DomainService;
 
-/// <summary>Contains server-trusted semantic fields used to derive canonical mutation intent.</summary>
+/// <summary>
+/// Contains server-trusted semantic fields used to derive canonical mutation intent.
+/// </summary>
 /// <param name="CanonicalTarget">The schema-normalized target identity.</param>
 /// <param name="SemanticPayload">The schema-normalized semantic JSON payload.</param>
 /// <param name="SemanticOptions">Optional schema-declared behavior-affecting options. Correlation, bearer/provider tokens, clocks, traces, delivery attempts, and retry metadata are excluded.</param>

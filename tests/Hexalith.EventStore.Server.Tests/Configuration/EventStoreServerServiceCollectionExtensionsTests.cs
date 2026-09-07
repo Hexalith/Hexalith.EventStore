@@ -4,6 +4,7 @@ using Dapr.Actors.Runtime;
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;

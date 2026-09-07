@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 
 namespace Hexalith.EventStore.Server.Commands;
@@ -66,7 +67,14 @@ public sealed class IdempotencyIntentAdapterRegistry : IIdempotencyIntentAdapter
                 "No trusted idempotency adapter is registered for the command type.");
         }
 
-        IdempotencyCanonicalIntent intent = registration.Adapter.CreateIntent(command)
+        IdempotencyCanonicalIntent intent = registration.Adapter.CreateIntent(
+            new IdempotencyIntentCommand(
+                command.CommandType,
+                command.Tenant,
+                command.Domain,
+                command.AggregateId,
+                command.Payload,
+                command.Extensions))
             ?? throw new InvalidOperationException("The trusted idempotency adapter returned no canonical intent.");
         ValidateIntent(intent);
         return new TrustedIdempotencyDescriptor(
