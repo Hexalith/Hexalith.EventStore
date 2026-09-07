@@ -105,12 +105,13 @@ public class AdminApiAccessTokenProviderRoleTests {
     [Fact]
     public async Task GetAccessTokenAsync_WithProductionAuthority_PostsExpectedFormAndCachesResponse()
     {
-        Dictionary<string, string?> values = CreateConfigValues();
-        values["EventStore:Authentication:Authority"] = "https://identity.example.test/realms/hexalith";
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
         values["EventStore:Authentication:ClientId"] = "admin-ui";
         values["EventStore:Authentication:Username"] = "runtime-admin";
-        string expectedPassword = string.Concat("runtime", "-password");
+        string expectedPassword = " " + Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) + " ";
         values["EventStore:Authentication:Password"] = expectedPassword;
+        values["EventStore:Authentication:AudienceParameterName"] = "resource";
+        values["EventStore:Authentication:AudienceParameterValue"] = "https://api.example.test";
         IConfiguration config = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
         var handler = new RecordingTokenHandler();
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
@@ -123,14 +124,180 @@ public class AdminApiAccessTokenProviderRoleTests {
         string first = await provider.GetAccessTokenAsync();
         string second = await provider.GetAccessTokenAsync();
 
-        first.ShouldBe("issued-token");
+        first.ShouldBe(handler.AccessToken);
         second.ShouldBe(first);
         handler.RequestCount.ShouldBe(1);
-        handler.RequestUri.ShouldBe(new Uri("https://identity.example.test/realms/hexalith/protocol/openid-connect/token"));
-        handler.Form.ShouldContain("grant_type=password");
-        handler.Form.ShouldContain("client_id=admin-ui");
-        handler.Form.ShouldContain("username=runtime-admin");
-        handler.Form.ShouldContain("password=" + expectedPassword);
+        handler.RequestUri.ShouldBe(new Uri("https://tokens.example.test/oauth/token"));
+        handler.FormValues.ShouldBe(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["grant_type"] = "password",
+            ["client_id"] = "admin-ui",
+            ["scope"] = "api.read",
+            ["username"] = "runtime-admin",
+            ["password"] = expectedPassword,
+            ["resource"] = "https://api.example.test",
+        }, ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WithClientCredentials_SendsOnlyProfileFieldsAndCachesResponse()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        string clientSecret = " " + Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) + " ";
+        values["EventStore:Authentication:GrantType"] = "client_credentials";
+        values["EventStore:Authentication:ClientSecret"] = clientSecret;
+        values["EventStore:Authentication:Username"] = "must-not-be-sent";
+        values["EventStore:Authentication:Password"] = "must-not-be-sent";
+        var handler = new RecordingTokenHandler();
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(handler));
+        var provider = new AdminApiAccessTokenProvider(
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
+            new TestHostEnvironment(Environments.Production),
+            factory);
+
+        string first = await provider.GetAccessTokenAsync();
+        string second = await provider.GetAccessTokenAsync();
+
+        first.ShouldBe(handler.AccessToken);
+        second.ShouldBe(first);
+        handler.RequestCount.ShouldBe(1);
+        handler.FormValues.ShouldBe(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = "ui-client",
+            ["scope"] = "api.read",
+            ["client_secret"] = clientSecret,
+        }, ignoreOrder: true);
+    }
+
+    [Theory]
+    [InlineData("identity.example.test")]
+    [InlineData("http://identity.example.test")]
+    [InlineData("https://user@identity.example.test")]
+    [InlineData("https://identity.example.test?tenant=x")]
+    [InlineData("https://identity.example.test#tenant")]
+    public async Task GetAccessTokenAsync_WithExplicitEndpoint_StillRejectsUnsafeAuthority(string authority)
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values["EventStore:Authentication:Authority"] = authority;
+        var handler = new RecordingTokenHandler();
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("Authority");
+        handler.RequestCount.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("tokens.example.test/oauth/token")]
+    [InlineData("http://tokens.example.test/oauth/token")]
+    [InlineData("https://user@tokens.example.test/oauth/token")]
+    [InlineData("https://tokens.example.test/oauth/token?tenant=x")]
+    [InlineData("https://tokens.example.test/oauth/token#tenant")]
+    public async Task GetAccessTokenAsync_WithUnsafeExplicitTokenEndpoint_FailsBeforeSendingCredentials(string endpoint)
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values["EventStore:Authentication:TokenEndpoint"] = endpoint;
+        var handler = new RecordingTokenHandler();
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("TokenEndpoint");
+        handler.RequestCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WithoutExplicitEndpoint_UsesMatchingIssuerDiscoveryAndCachesResponse()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values.Remove("EventStore:Authentication:TokenEndpoint");
+        values["EventStore:Authentication:Authority"] = "https://identity.example.test/tenant/";
+        var handler = new RecordingTokenHandler(discoveryIssuer: "https://identity.example.test/tenant");
+        var provider = CreateAuthorityProvider(values, handler);
+
+        string first = await provider.GetAccessTokenAsync();
+        string second = await provider.GetAccessTokenAsync();
+
+        first.ShouldBe(handler.AccessToken);
+        second.ShouldBe(first);
+        handler.RequestUris.ShouldBe(
+        [
+            new Uri("https://identity.example.test/tenant/.well-known/openid-configuration"),
+            new Uri("https://tokens.example.test/oauth/token"),
+        ]);
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WhenDiscoveryIssuerDoesNotMatchAuthority_RejectsBeforeSendingCredentials()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values.Remove("EventStore:Authentication:TokenEndpoint");
+        var handler = new RecordingTokenHandler(discoveryIssuer: "https://other.example.test/tenant");
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("issuer");
+        exception.Message.ShouldContain("Authority");
+        handler.RequestUris.ShouldBe(
+        [
+            new Uri("https://identity.example.test/tenant/.well-known/openid-configuration"),
+        ]);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("authorization_code")]
+    [InlineData("PASSWORD")]
+    public async Task GetAccessTokenAsync_WhenGrantProfileIsNotExplicitlySupported_Fails(string? grantType)
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values["EventStore:Authentication:GrantType"] = grantType;
+        var handler = new RecordingTokenHandler();
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("GrantType");
+        handler.RequestCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WhenAudienceParameterIsOnlyPartiallyConfigured_Fails()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values["EventStore:Authentication:AudienceParameterName"] = "audience";
+        var handler = new RecordingTokenHandler();
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("configured together");
+        handler.RequestCount.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"access_token\":\"\"}")]
+    [InlineData("{\"access_token\":\"   \"}")]
+    public async Task GetAccessTokenAsync_WhenProviderReturnsBlankToken_FailsClosed(string responseJson)
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        var provider = CreateAuthorityProvider(values, new RecordingTokenHandler(tokenResponseJson: responseJson));
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("non-blank access_token");
     }
 
     private static IConfiguration CreateDevelopmentConfig()
@@ -148,6 +315,30 @@ public class AdminApiAccessTokenProviderRoleTests {
             ["EventStore:Authentication:Permissions:0"] = "admin:read",
             ["EventStore:Authentication:Permissions:1"] = "admin:write",
         };
+
+    private static Dictionary<string, string?> CreateAuthorityConfigValues()
+        => new()
+        {
+            ["EventStore:Authentication:Authority"] = "https://identity.example.test/tenant",
+            ["EventStore:Authentication:TokenEndpoint"] = "https://tokens.example.test/oauth/token",
+            ["EventStore:Authentication:GrantType"] = "password",
+            ["EventStore:Authentication:Scope"] = "api.read",
+            ["EventStore:Authentication:ClientId"] = "ui-client",
+            ["EventStore:Authentication:Username"] = "runtime-user",
+            ["EventStore:Authentication:Password"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)),
+        };
+
+    private static AdminApiAccessTokenProvider CreateAuthorityProvider(
+        Dictionary<string, string?> values,
+        RecordingTokenHandler handler)
+    {
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(handler));
+        return new AdminApiAccessTokenProvider(
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
+            new TestHostEnvironment(Environments.Production),
+            factory);
+    }
 
     private static IHttpClientFactory CreateHttpClientFactory() {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
@@ -171,11 +362,31 @@ public class AdminApiAccessTokenProviderRoleTests {
 
     private sealed class RecordingTokenHandler : HttpMessageHandler
     {
+        private readonly string _discoveryIssuer;
+        private readonly string _tokenResponseJson;
+
+        public RecordingTokenHandler(
+            string? discoveryIssuer = null,
+            string? tokenResponseJson = null)
+        {
+            AccessToken = Guid.NewGuid().ToString("N");
+            _discoveryIssuer = discoveryIssuer ?? "https://identity.example.test/tenant";
+            _tokenResponseJson = tokenResponseJson
+                ?? JsonSerializer.Serialize(new { access_token = AccessToken, expires_in = 3600 });
+        }
+
+        public string AccessToken { get; }
+
         public int RequestCount { get; private set; }
 
         public Uri? RequestUri { get; private set; }
 
+        public List<Uri> RequestUris { get; } = [];
+
         public string Form { get; private set; } = string.Empty;
+
+        public IReadOnlyDictionary<string, string> FormValues { get; private set; }
+            = new Dictionary<string, string>(StringComparer.Ordinal);
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -183,10 +394,29 @@ public class AdminApiAccessTokenProviderRoleTests {
         {
             RequestCount++;
             RequestUri = request.RequestUri;
+            RequestUris.Add(request.RequestUri!);
+            if (request.Method == HttpMethod.Get)
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(new
+                    {
+                        issuer = _discoveryIssuer,
+                        token_endpoint = "https://tokens.example.test/oauth/token",
+                    })),
+                };
+            }
+
             Form = await request.Content!.ReadAsStringAsync(cancellationToken);
+            FormValues = Form.Split('&', StringSplitOptions.RemoveEmptyEntries)
+                .Select(static component => component.Split('=', 2))
+                .ToDictionary(
+                    static pair => Uri.UnescapeDataString(pair[0].Replace('+', ' ')),
+                    static pair => Uri.UnescapeDataString(pair[1].Replace('+', ' ')),
+                    StringComparer.Ordinal);
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("{\"access_token\":\"issued-token\",\"expires_in\":3600}"),
+                Content = new StringContent(_tokenResponseJson),
             };
         }
     }

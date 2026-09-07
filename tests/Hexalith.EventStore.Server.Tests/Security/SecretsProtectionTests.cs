@@ -461,10 +461,35 @@ public sealed partial class SecretsProtectionTests
         }
 
         bool inside = false;
+        int rawDelimiterLength = 0;
         for (int position = 0; position < index; position++)
         {
             if (content[position] != '"')
             {
+                continue;
+            }
+
+            int quoteCount = 1;
+            while (position + quoteCount < index && content[position + quoteCount] == '"')
+            {
+                quoteCount++;
+            }
+
+            if (rawDelimiterLength > 0)
+            {
+                if (quoteCount >= rawDelimiterLength)
+                {
+                    rawDelimiterLength = 0;
+                }
+
+                position += quoteCount - 1;
+                continue;
+            }
+
+            if (!inside && quoteCount >= 3)
+            {
+                rawDelimiterLength = quoteCount;
+                position += quoteCount - 1;
                 continue;
             }
 
@@ -478,9 +503,11 @@ public sealed partial class SecretsProtectionTests
             {
                 inside = !inside;
             }
+
+            position += quoteCount - 1;
         }
 
-        return inside;
+        return inside || rawDelimiterLength > 0;
     }
 
     private static bool IsInertPlaceholder(string value)
@@ -609,6 +636,15 @@ public sealed partial class SecretsProtectionTests
             }
             else if (character == '}' && objectStarts.TryPop(out int start))
             {
+                ReadOnlySpan<char> objectContent = content.AsSpan(start, index - start + 1);
+                if (objectContent.IndexOf("\"sub\"", StringComparison.OrdinalIgnoreCase) < 0
+                    || objectContent.IndexOf("\"iss\"", StringComparison.OrdinalIgnoreCase) < 0
+                    || objectContent.IndexOf("\"aud\"", StringComparison.OrdinalIgnoreCase) < 0
+                    || objectContent.IndexOf("\"exp\"", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    continue;
+                }
+
                 try
                 {
                     using JsonDocument document = JsonDocument.Parse(content.AsMemory(start, index - start + 1));
