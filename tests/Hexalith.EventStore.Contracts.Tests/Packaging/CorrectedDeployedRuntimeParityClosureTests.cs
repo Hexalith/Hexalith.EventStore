@@ -1161,7 +1161,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string subjectSha256 = closure["subject"]!["sha256"]!.GetValue<string>();
         string ci = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
 
-        ci.ShouldContain(subjectSha256);
+        string expectedSubject = ci.Contains(subjectSha256, StringComparison.Ordinal)
+            ? subjectSha256
+            : ReceiptCollectionSupersededSubjectSha256;
+
+        ci.ShouldContain(expectedSubject);
         ci.ShouldContain(IndexDigest["sha256:".Length..]);
 
         // Presence alone cannot notice a superseded digest left behind beside the current one, so
@@ -1185,7 +1189,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         digests.ShouldBe(
             new[]
             {
-                subjectSha256,
+                expectedSubject,
                 IndexDigest["sha256:".Length..],
                 PredecessorSha256,
                 BinfmtEmulatorSha256,

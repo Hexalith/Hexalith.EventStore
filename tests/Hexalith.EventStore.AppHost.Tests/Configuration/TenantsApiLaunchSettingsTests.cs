@@ -178,9 +178,30 @@ public class TenantsApiLaunchSettingsTests
     [Fact]
     public async Task AppHostModel_PublishMode_DoesNotRegisterPathDiscoveredTenantsHosts()
     {
-        string? originalSkipPrerequisiteCheck = Environment.GetEnvironmentVariable("SKIP_PREREQUISITE_CHECK");
-        string? originalEnableKeycloak = Environment.GetEnvironmentVariable(
-            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey);
+        Dictionary<string, string?> previous = new(StringComparer.Ordinal);
+        string[] variableNames =
+        [
+            "SKIP_PREREQUISITE_CHECK",
+            HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+            "Authentication__JwtBearer__Authority",
+            "Authentication__JwtBearer__Issuer",
+            "Authentication__JwtBearer__ValidAudiences__0",
+            "Authentication__JwtBearer__ValidAudiences__1",
+            "Authentication__JwtBearer__AllowedAlgorithms__0",
+            "Authentication__JwtBearer__TokenEndpoint",
+            "Authentication__JwtBearer__Scope",
+            "Parameters__external-sample-auth-client-id",
+            "Parameters__external-sample-auth-username",
+            "Parameters__external-sample-auth-password",
+            "Parameters__external-admin-auth-client-id",
+            "Parameters__external-admin-auth-username",
+            "Parameters__external-admin-auth-password",
+        ];
+
+        foreach (string name in variableNames)
+        {
+            previous[name] = Environment.GetEnvironmentVariable(name);
+        }
 
         try
         {
@@ -188,6 +209,19 @@ public class TenantsApiLaunchSettingsTests
             Environment.SetEnvironmentVariable(
                 HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
                 "false");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__Authority", "https://identity.example.test/tenant");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__Issuer", "https://issuer.example.test/tenant");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__ValidAudiences__0", "primary-api");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__ValidAudiences__1", "secondary-api");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__AllowedAlgorithms__0", "RS256");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__TokenEndpoint", "https://tokens.example.test/oauth/token");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__Scope", "api.read");
+            Environment.SetEnvironmentVariable("Parameters__external-sample-auth-client-id", "sample-ui");
+            Environment.SetEnvironmentVariable("Parameters__external-sample-auth-username", "sample-user");
+            Environment.SetEnvironmentVariable("Parameters__external-sample-auth-password", Guid.NewGuid().ToString("N"));
+            Environment.SetEnvironmentVariable("Parameters__external-admin-auth-client-id", "admin-ui");
+            Environment.SetEnvironmentVariable("Parameters__external-admin-auth-username", "admin-user");
+            Environment.SetEnvironmentVariable("Parameters__external-admin-auth-password", Guid.NewGuid().ToString("N"));
 
             await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
                 .CreateAsync<Projects.Hexalith_EventStore_AppHost>(["--AppHost:Operation=publish"])
@@ -208,10 +242,10 @@ public class TenantsApiLaunchSettingsTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", originalSkipPrerequisiteCheck);
-            Environment.SetEnvironmentVariable(
-                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
-                originalEnableKeycloak);
+            foreach ((string name, string? value) in previous)
+            {
+                Environment.SetEnvironmentVariable(name, value);
+            }
         }
     }
 

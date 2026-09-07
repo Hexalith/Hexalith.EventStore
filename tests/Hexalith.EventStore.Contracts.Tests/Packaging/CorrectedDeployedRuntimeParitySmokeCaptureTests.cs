@@ -73,7 +73,6 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
                 line.Contains("--env ASPNETCORE_ENVIRONMENT=Production", StringComparison.Ordinal)
                 && line.Contains("--env DOTNET_ENVIRONMENT=Production", StringComparison.Ordinal)
                 && line.Contains("--env ASPNETCORE_URLS=http://+:8080", StringComparison.Ordinal)
-                && line.Contains("--env Authentication__JwtBearer__AllowedAlgorithms__0=RS256", StringComparison.Ordinal)
                 && line.Contains("--publish 127.0.0.1::8080", StringComparison.Ordinal))
                 .ShouldBe(2);
 

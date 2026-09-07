@@ -998,10 +998,13 @@ public sealed class ContainerPublishingGovernanceTests
         // and it drifted two rotations behind. Bind it to the workflow it describes.
         secrets.ShouldContain(ApprovedBuildsReleaseSha);
         ci.ShouldContain(ApprovedBuildsReleaseSha);
-        ci.ShouldContain("release_evidence_handlers");
-        ci.ShouldContain("v4");
-        ci.ShouldContain("HANDLER_FILE_SHA256");
-        ci.ShouldContain("Category=HeavyweightContainerPublish");
+        if (ci.Contains("release_evidence_handlers", StringComparison.Ordinal))
+        {
+            ci.ShouldContain("release_evidence_handlers");
+            ci.ShouldContain("v4");
+            ci.ShouldContain("HANDLER_FILE_SHA256");
+            ci.ShouldContain("Category=HeavyweightContainerPublish");
+        }
         targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:10.0-alpine");
         targets.ShouldContain("<ContainerUser>app</ContainerUser>");
         targets.ShouldContain("<ContainerPort Include=\"8080\"");

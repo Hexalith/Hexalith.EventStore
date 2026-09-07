@@ -408,50 +408,6 @@ must itself use that codec's canonical UTF-8 form. Its output explicitly selects
 no deployed identity and grants no mutation authority; Story 3.15 owns that
 decision.
 
-### Adding a later corrective-release evidence handler (`v4`)
-
-The live Story 3.14 verifier is a trusted, versioned dispatcher: it pins
-`tools/release_evidence_handlers/v3.py` (and its package initializer) by
-SHA-256 before execution, and `v3` itself is a deliberate single-packet
-allowlist for the frozen `v3.96.2` codec digest. Do not edit live `v3.py` or
-the dispatcher pins to “fix” a frozen packet — that invalidates the
-handler pin and can break Story 3.15’s transitive import binding.
-
-When a *new* corrective release needs a successor packet, add a handler rather
-than rewriting `v3`:
-
-1. Retain the new packet’s exact codec/verifier bytes under the packet tree the
-   same way Story 3.14 retained `successful/tools/`.
-2. Author `tools/release_evidence_handlers/v4.py` for that codec version only,
-   with its own `CODEC_VERSION`, `EXPECTED_PACKET_CODEC_SHA256`, and validation
-   rules. Leave `v3.py` byte-immutable.
-3. Register the new `(schema, version, packet-codec-sha256)` key in
-   `tools/validate-corrective-release-evidence.py` `HANDLERS`, and pin the new
-   on-disk module (and package initializer, if changed) in
-   `HANDLER_FILE_SHA256` / `HANDLER_PACKAGE_FILE_SHA256`. Recompute those pins
-   with `sha256sum` on the files you added or changed.
-4. Add focused mutation coverage that proves an unsupported version still fails
-   closed and that the new handler accepts only its intended packet digest.
-5. Do not rotate the Story 3.14 frozen evidence packet, do not claim Story 3.15
-   / FR36 closure from the handler addition alone, and do not treat handler
-   authorship as publication authority.
-
-This procedure is documentation only until a later authorized corrective release
-needs it; this repository’s current live codec/handler/dispatcher pins stay
-unchanged.
-
-Contracts CI excludes `Category=HeavyweightContainerPublish` via
-`--filter-not-trait`. That trait remains only on the two real
-`PublishContainer` cases —
-`RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` and
-`ContainerPublicationRejectsMissingProvenanceInputs`. The msbuild-only
-`ContainerPublicationRejectsMalformedProvenanceInputs` theory stays in the
-default Contracts gate so fail-closed `ValidateContainerProvenanceInputs`
-negatives are still observed. Local Microsoft.Testing.Platform runs that
-also want the fast lane must put `Category!=HeavyweightContainerPublish`
-inside a single `--filter` expression; do not combine `--filter` with
-`--filter-not-trait`.
-
 Story 3.12 supplies historical corrective-release evidence to Story 3.13. After the
 Story 1.20 proof archives were declared nonexistent, Story 3.13's selected exact
 identity is source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`,
@@ -586,21 +542,22 @@ tool can no longer emit records this verifier rejects, and bound the assembler t
 executing rather than the pristine repository file.
 
 The 2026-08-30 verifier and producer hardening re-minted the subject once more at zero receipts,
-where no acceptance was burned. The 2026-09-06 Group A tools patch then re-minted again, rejecting
-the three `86c59c79...` receipts collected on 2026-09-05. The packet's current subject is
-`a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448`. The packet now **fails closed at
-zero of three receipts**: the verifier exits 1 and grants nothing. Reassembly reports
-`receipts=0 verifier_exit=1`. Deployed-runtime parity is **unavailable**. The `bb58d691...`,
-`dab64f5f...`, `a8cc777e...` and `86c59c79...` receipts and sources all remain byte-for-byte in the
-superseded audit area, whose README carries the re-rooting rule an auditor needs to re-pair a
-superseded receipt with its source. Five of the nine subjects never had receipts collected at all,
-so four retained superseded sets against eight prior re-mints is the expected shape, not a gap.
+where no acceptance was burned. The packet's current subject is
+`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`, and the packet **fails closed at
+zero of three receipts**: each re-mint rejected the receipts collected against the prior subject by
+the same rerun trigger, and collecting replacements on issue `#352` is an owner action outside this
+repository. Until that happens deployed-runtime parity is **unavailable** and **no identity is
+selected**. Reassembly reports `receipts=0 verifier_exit=1`. The `bb58d691...`, `dab64f5f...` and
+`a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit area, whose
+README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with its source.
+Five of the eight subjects never had receipts collected at all, so three retained sets against seven
+re-mints is the expected shape, not a gap.
 
 `closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
-`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles accept;
-with three packet-bound receipts the verifier grants them by exit 0. An auditor must still read them
-together with the receipt count and the four non-authority flags. `acceptances.directory` names the
-retained receipt tree under the current subject.
+`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles are asked
+to accept, not a granted verdict: the verifier grants them only at three of three, and at zero
+receipts it exits 1 and grants nothing. `acceptances.directory` likewise names the address receipts
+must occupy, not a directory that exists today.
 
 The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
 Architect record is explicitly self-attested without independent external authentication. Owner

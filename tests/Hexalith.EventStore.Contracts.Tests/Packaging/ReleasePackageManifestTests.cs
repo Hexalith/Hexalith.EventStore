@@ -1508,6 +1508,7 @@ public sealed class ReleasePackageManifestTests
             [
                 "Hexalith.EventStore.Client",
                 "Hexalith.EventStore.Contracts",
+                "Hexalith.EventStore.DomainService",
             ],
             "Hexalith.EventStore.SignalR" => ["Hexalith.EventStore.Contracts"],
             "Hexalith.EventStore.Testing" =>

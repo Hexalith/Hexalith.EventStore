@@ -200,15 +200,13 @@ def capture_platform(output_root, platform, child_digest):
                 "--env",
                 "ASPNETCORE_URLS=http://+:8080",
                 "--env",
-                "Authentication__JwtBearer__Authority=https://identity.invalid/realms/hexalith",
-                "--env",
-                "Authentication__JwtBearer__Issuer=https://identity.invalid/realms/hexalith",
+                "Authentication__JwtBearer__Issuer=hexalith-container-smoke",
                 "--env",
                 "Authentication__JwtBearer__Audience=hexalith-eventstore",
                 "--env",
-                "Authentication__JwtBearer__AllowedAlgorithms__0=RS256",
+                "Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret",
                 "--env",
-                "Authentication__JwtBearer__RequireHttpsMetadata=true",
+                "Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
                 immutable_image,
             )
         except subprocess.TimeoutExpired:

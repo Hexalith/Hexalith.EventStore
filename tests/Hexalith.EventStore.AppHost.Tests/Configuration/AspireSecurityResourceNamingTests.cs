@@ -116,9 +116,9 @@ public sealed class AspireSecurityResourceNamingTests
             {
                 ["eventstore"] = 3,
                 ["eventstore-admin"] = 3,
-                ["eventstore-admin-ui"] = 2,
-                ["sample-api"] = 2,
-                ["sample-blazor-ui"] = 2,
+                ["eventstore-admin-ui"] = 3,
+                ["sample-api"] = 3,
+                ["sample-blazor-ui"] = 3,
                 ["tenants"] = 3,
                 ["tenants-api"] = 2,
             };
