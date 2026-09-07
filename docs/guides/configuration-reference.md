@@ -380,7 +380,7 @@ Configuration section: `EventStore:OpenApi`
 
 ## Authentication and JWT
 
-Authentication settings configure how the Command API validates incoming JWT tokens. You must provide exactly one of an OIDC `Authority` (required in production) or a `SigningKey` (development, or an explicitly approved non-production exception). `Issuer` and at least one value across `Audience` and `ValidAudiences` are always required.
+Authentication settings configure how the Command API validates incoming JWT tokens. You must provide either an OIDC `Authority` (for production) or a `SigningKey` (for development and testing). Both `Issuer` and `Audience` are always required.
 
 Configuration section: `Authentication:JwtBearer`
 
@@ -388,12 +388,9 @@ Configuration section: `Authentication:JwtBearer`
 |---------|------|---------|-------------|
 | `Authority` | string | `""` | OIDC authority URL (e.g., `https://keycloak.example.com/realms/hexalith`). Used in production for automatic key discovery |
 | `Audience` | string | `""` | Expected JWT audience claim. **Required** |
-| `ValidAudiences` | string[] | `[]` | Additional accepted audiences; every entry must be non-blank |
 | `Issuer` | string | `""` | Expected JWT issuer claim. **Required** |
-| `SigningKey` | string | `""` | Symmetric signing key for development/testing. Must be at least 32 UTF-8 bytes for HS256 |
+| `SigningKey` | string | `""` | Symmetric signing key for development/testing. Must be at least 32 characters for HS256 |
 | `RequireHttpsMetadata` | bool | `true` | Require HTTPS when fetching OIDC metadata. Set to `false` only for local development |
-| `AllowInsecureSymmetricKey` | bool | `false` | Permits a redacted/audited symmetric exception only in a non-Production environment |
-| `AllowedAlgorithms` | string[] | `[]` | Required nonempty supported asymmetric algorithm allow-list in authority mode; symmetric modes accept HS256 only |
 
 ```json
 {
@@ -402,7 +399,6 @@ Configuration section: `Authentication:JwtBearer`
       "Authority": "https://keycloak.example.com/realms/hexalith",
       "Audience": "hexalith-eventstore",
       "Issuer": "https://keycloak.example.com/realms/hexalith",
-      "AllowedAlgorithms": ["RS256"],
       "RequireHttpsMetadata": true
     }
   }
@@ -413,12 +409,10 @@ Configuration section: `Authentication:JwtBearer`
 
 **Validation rules:**
 
-- Exactly one of `Authority` or `SigningKey` must be set
-- `Issuer` and at least one value across `Audience` and `ValidAudiences` are required
+- Either `Authority` or `SigningKey` must be set (not both empty)
+- `Issuer` and `Audience` are always required
 - When `Authority` is set, the system uses OIDC discovery to fetch signing keys automatically
-- Outside Development, `Authority` must be absolute HTTPS without user information, query, or fragment and HTTPS metadata cannot be disabled
-- When `SigningKey` is set, it must be at least 32 UTF-8 bytes; Production rejects it even when the exception flag is enabled
-- Signed tokens require an expiry and must use the mode-specific explicit algorithm allow-list
+- When `SigningKey` is set (development mode), it must be at least 32 characters
 
 ## Fluent Client SDK Configuration
 
@@ -578,8 +572,8 @@ export REDIS_HOST="redis:6379"
 export REDIS_PASSWORD=""
 
 # Production (Kubernetes)
-export POSTGRES_CONNECTION_STRING="${POSTGRES_CONNECTION_STRING_FROM_SECRET_STORE}"
-export RABBITMQ_CONNECTION_STRING="${RABBITMQ_CONNECTION_STRING_FROM_SECRET_STORE}"
+export POSTGRES_CONNECTION_STRING="Host=db.internal;Database=eventstore;Username=app;Password=secret"
+export RABBITMQ_CONNECTION_STRING="amqp://user:pass@rabbitmq.internal:5672"
 export DAPR_TRUST_DOMAIN="mycompany.io"
 export DAPR_NAMESPACE="production"
 ```
@@ -620,7 +614,7 @@ boundary. If an approved shared-Redis exception is used, set
 
 ```bash
 EventStore__SignalR__Enabled=true
-EventStore__SignalR__BackplaneRedisConnectionString=<redis-connection-string>
+EventStore__SignalR__BackplaneRedisConnectionString="redis-shared:6379,channelPrefix=hesr.test.eventstore.blue"
 ```
 
 The connection string is parsed by StackExchange.Redis, so `channelPrefix` is
@@ -747,7 +741,6 @@ This table lists every configurable setting for quick scanning, including explic
 | `Authentication:JwtBearer:Issuer` | string | `""` | Non-empty string | Authentication |
 | `Authentication:JwtBearer:SigningKey` | string | `""` | Empty string or length `>= 32` | Authentication |
 | `Authentication:JwtBearer:RequireHttpsMetadata` | bool | `true` | `true` or `false` | Authentication |
-| `Authentication:JwtBearer:AllowedAlgorithms` | string[] | `[]` | Nonempty supported asymmetric list in authority mode | Authentication |
 | `EventStoreOptions.EnableRegistrationDiagnostics` | bool | `false` | `true` or `false` | Fluent SDK |
 | `EventStoreOptions.DefaultStateStoreSuffix` | string | `"eventstore"` | `null` or non-empty string | Fluent SDK |
 | `EventStoreOptions.DefaultTopicSuffix` | string | `"events"` | `null` or non-empty string | Fluent SDK |
