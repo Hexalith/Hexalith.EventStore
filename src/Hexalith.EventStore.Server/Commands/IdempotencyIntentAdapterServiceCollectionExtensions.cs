@@ -1,5 +1,6 @@
+using Hexalith.EventStore.DomainService;
+
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Hexalith.EventStore.Server.Commands;
 
@@ -12,10 +13,6 @@ public static class IdempotencyIntentAdapterServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddIdempotencyIntentAdapter<TAdapter>(this IServiceCollection services)
         where TAdapter : class, IIdempotencyIntentAdapter
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.TryAddEnumerable(
-            ServiceDescriptor.Singleton<IIdempotencyIntentAdapter, TAdapter>());
-        return services;
-    }
+        => global::Hexalith.EventStore.DomainService.IdempotencyIntentAdapterServiceCollectionExtensions
+            .AddIdempotencyIntentAdapter<TAdapter>(services);
 }

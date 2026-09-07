@@ -1,3 +1,4 @@
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.AspNetCore.Hosting;

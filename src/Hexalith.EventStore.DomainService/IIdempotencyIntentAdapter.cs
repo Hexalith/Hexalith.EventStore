@@ -1,11 +1,9 @@
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.Server.Pipeline.Commands;
 
-namespace Hexalith.EventStore.Server.Commands;
+namespace Hexalith.EventStore.DomainService;
 
 /// <summary>Builds server-trusted canonical mutation intent after authorization and validation.</summary>
-public interface IIdempotencyIntentAdapter
-{
+public interface IIdempotencyIntentAdapter {
     /// <summary>Gets the exact command type handled by this adapter.</summary>
     string CommandType { get; }
 
@@ -24,5 +22,5 @@ public interface IIdempotencyIntentAdapter
     /// <summary>Creates schema-normalized semantic intent for an authorized and validated command.</summary>
     /// <param name="command">The authorized and structurally validated command.</param>
     /// <returns>The trusted semantic intent fields.</returns>
-    IdempotencyCanonicalIntent CreateIntent(SubmitCommand command);
+    IdempotencyCanonicalIntent CreateIntent(IdempotencyIntentCommand command);
 }
