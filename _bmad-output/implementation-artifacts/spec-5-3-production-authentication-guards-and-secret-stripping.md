@@ -2,7 +2,7 @@
 title: 'Story 5.3: Production Authentication Guards And Secret Stripping'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 1
 followup_review_recommended: false
 baseline_revision: '3c6a5e33f9fbaf8469047ba3de72f70ab4425e66'
