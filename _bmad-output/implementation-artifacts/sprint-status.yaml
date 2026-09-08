@@ -40,12 +40,26 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
+# GUARDED COMMENT BLOCKS -- READ THIS BEFORE EDITING ANY COMMENT IN THIS FILE:
+# =============================================================================
+# Some comment blocks below are executable contract, not prose. Contracts.Tests reads
+# this file as TEXT and asserts on their exact wording, order and adjacency. They are
+# fenced inline with '>>> GUARDED ... <<<' markers.
+#
+# They are not decoration and not stale notes: one is the recorded output of a frozen
+# proof-packet transform, the other binds this tracker to a canonical subject digest so
+# it cannot silently narrate a superseded one. Deleting them does not 'clean up' the
+# file, it deletes evidence and turns the build red -- see commit d45206f7 (2026-09-07).
+#
+# After ANY comment edit in this file, run:
+#   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
+
 generated: '07-05-2026 20:01'
-last_updated: '09-07-2026 10:22'
+last_updated: '09-07-2026 23:07'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
-story_location:
+story_location: 
   /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
@@ -68,8 +82,19 @@ development_status:
   1-16-complete-projection-freshness-lifecycle: done
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
+  # >>> GUARDED BLOCK -- DO NOT EDIT THE NEXT 5 LINES <<<
+  # Those 5 lines are the declared output of the frozen awk transform in
+  # 1-20-owner-approved-parity-closure-proof-packet.md, and
+  # ProofPacketValidatorIntegrityTests asserts them as ONE exact, ordered, CONTIGUOUS
+  # block. Do not reflow, reorder, reword or insert into them. Commit d45206f7 deleted
+  # three of them as 'outdated comments' on 2026-09-07 and turned the suite red.
+  # The failure message names only the FIRST missing line -- check all five.
   1-19-correct-paged-rebuild-and-replay-equivalence: done
+  # Story 1.20 owner-approved parity closure is complete; authorizing commit C
+  # verified every pinned artifact, approval, prerequisite, and migration decision.
+  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.
   1-20-owner-approved-parity-closure-and-runtime-pin: done
+  # >>> END GUARDED BLOCK <<<
   1-21-frozen-story-1-20-evidence-integrity-repair: done
   epic-1-retrospective: done
 
@@ -103,8 +128,32 @@ development_status:
   3-12-multi-platform-eventstore-container-publishing-correction: done
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
-  3-15-corrected-deployed-runtime-parity-closure: done
-  epic-3-retrospective: optional
+  # >>> GUARDED COMMENTS -- DO NOT DELETE (see GUARDED COMMENT BLOCKS in the header) <<<
+  # CorrectedDeployedRuntimeParityClosureTests.SubjectRestatingSurfacesNameTheCurrentSubject
+  # requires this file to restate Story 3.15's CURRENT canonical subject digest from
+  # closure.json, and to name it BEFORE any superseded subject digest. It is a drift guard:
+  # it exists so this tracker cannot keep naming a stale subject while the suite stays green.
+  # Change the digest only when the packet subject is legitimately re-minted.
+  # 2026-09-06 (Group A tools patch): the packet fails closed at 0 of 3 receipts and grants nothing.
+  # The Group A re-mint rejected the three 86c59c79... receipts collected on 2026-09-05; those
+  # bytes remain under evidence/story-3-15/superseded-acceptances/. Collecting three fresh receipts
+  # on issue #352 is an Ask First owner action and was not performed.
+  # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
+  # lineages. The current canonical subject is
+  # a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448; the packet
+  # subject has now been re-minted eight times across nine subjects; receipts existed for only four
+  # of them, and all four sets are retained byte-for-byte under
+  # evidence/story-3-15/superseded-acceptances/.
+  # closure.json's deployed_runtime_parity/selected_deployed_identity are the claim the three roles
+  # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
+  # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
+  # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
+  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
+  # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
+  # it excludes non-Hexalith, .NET and Aspire upgrades, which epics.md:2849 requires.
+  3-16-latest-compatible-dependency-and-root-submodule-refresh: backlog
+  epic-3-retrospective: done
 
   epic-4: in-progress
   4-1-event-identity-and-duplicate-result-fidelity: done
@@ -114,7 +163,7 @@ development_status:
   4-5-append-durability-race-evidence: done
   4-6-global-position-sharding-spec-renegotiation: done
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
-  4-7-tenants-query-provenance-follow-up: review
+  4-7-tenants-query-provenance-follow-up: in-progress
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
   4-9-trusted-admission-contract-and-protected-identity: done
@@ -355,3 +404,144 @@ action_items:
       gateway enforcement is now Story 2.8; Tenants producer conformance remains Story
       4.7 follow-up. Deferred-work ledger and the D6 read-model-freshness handoff
       were updated on 2026-07-07."
+  - id: "epic-3-retro-item-21-track-story-3-16-in-sprint-status-yaml-o"
+    epic: 3
+    action: "Track Story 3.16 in sprint-status.yaml, or record an approved scope change
+      removing it from Epic 3. The 2026-09-06 chore spec does not satisfy its acceptance
+      criteria."
+    owner: "John (Product Manager)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-22-reconcile-story-3-15-s-done-status-with"
+    epic: 3
+    action: "Reconcile Story 3.15's done status with its fail-closed packet: collect
+      the three owner receipts on issue #352 and re-run the assembler, or move 3-15
+      off done."
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-23-fix-the-red-contracts-tests-build-at-hea"
+    epic: 3
+    action: "Fix the red Contracts.Tests build at HEAD: restore the two sprint-status
+      comment lines deleted by d45206f7, or rebind the two guards that assert on them."
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-24-make-deployed_runtime_parity-a-computed"
+    epic: 3
+    action: "Make deployed_runtime_parity a computed verdict or delete the field;
+      it is written and asserted as the literal 'available' so its guard cannot fail."
+    owner: "Winston (System Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-25-observe-the-running-container-rather-tha"
+    epic: 3
+    action: "Observe the running container rather than the image's own declared metadata
+      for observed_runtime_platform, so deployed-runtime parity is not registry-metadata
+      parity."
+    owner: "Murat (Test Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-26-bind-the-validating-codec-bytes-to-the-p"
+    epic: 3
+    action: "Bind the validating codec bytes to the producing codec bytes in the 3.14
+      packet, and pin the retained verifier's sha256 rather than only its path."
+    owner: "Winston (System Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-27-collapse-canonical_bytes-to-one-implemen"
+    epic: 3
+    action: "Collapse canonical_bytes to one implementation and add a cross-encoder
+      equivalence test; allow_nan diverges between v1/capture and v3 today."
+    owner: "Winston (System Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-28-derive-the-assembler-s-repository-root-i"
+    epic: 3
+    action: "Derive the assembler's repository root independently of __file__, and
+      add a layout-preserving copy test row that the current flat-temp test never
+      exercises."
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-29-document-the-release_evidence_handlers-m"
+    epic: 3
+    action: "Document the release_evidence_handlers model in docs/ci.md and make the
+      ContainerPublishingGovernanceTests documentation contract unconditional; it
+      is currently a dead block containing a tautology."
+    owner: "Paige (Technical Writer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-30-run-the-category-heavyweightcontainerpub"
+    epic: 3
+    action: "Run the Category=HeavyweightContainerPublish tests in some named workflow;
+      they are currently excluded from CI and executed nowhere."
+    owner: "Murat (Test Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-31-decide-the-release-bypass-validation-que"
+    epic: 3
+    action: "Decide the release bypass-validation question: remove the input, or constrain
+      it in a way the governance tests can hold. The suite currently requires it to
+      exist."
+    owner: "Administrator"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-32-restore-set-equality-for-the-test-projec"
+    epic: 3
+    action: "Restore set-equality for the test-project manifest; the substring-scan
+      replacement has a demonstrated prefix collision and is position-blind."
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-33-correct-the-story-3-8-builds-pin-in-epic"
+    epic: 3
+    action: "Correct the Story 3.8 Builds pin in epics.md from f75daebd to the 22a578b5
+      the release caller and its governance test actually use."
+    owner: "John (Product Manager)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-34-repair-the-three-deferred-work-anchors-p"
+    epic: 3
+    action: "Repair the three deferred-work anchors pointing into release_evidence_codec.py,
+      which is now an 11-line facade, and update DW-360's encoder count."
+    owner: "Amelia (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-35-give-story-3-8-a-story-artifact-archive"
+    epic: 3
+    action: "Give Story 3.8 a story artifact, archive the stale pre-renumber 3-8 twin,
+      and correct the three action-item notes that say 'tracked as Story 3.8' to name
+      Story 3.10."
+    owner: "John (Product Manager)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-36-require-the-story-key-in-commit-subjects"
+    epic: 3
+    action: "Require the story key in commit subjects; six of sixteen Epic 3 stories
+      have zero commits naming them and their production changes are untraceable from
+      history."
+    owner: "Administrator"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-37-add-a-check-reconciling-the-epics-md-sto"
+    epic: 3
+    action: "Add a check reconciling the epics.md story set against sprint-status.yaml,
+      so a story added to the spec cannot silently reach no machine consumer."
+    owner: "Administrator"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-38-stop-binding-executable-guards-to-commen"
+    epic: 3
+    action: "Stop binding executable guards to comment prose in generated status files;
+      bind to a structured field instead."
+    owner: "Winston (System Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
+  - id: "epic-3-retro-item-39-adopt-falsify-by-observation-as-the-bar"
+    epic: 3
+    action: "Adopt 'falsify by observation' as the bar for every new guard: name the
+      mutation to production source that makes it fail, and show it failing."
+    owner: "Murat (Test Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
