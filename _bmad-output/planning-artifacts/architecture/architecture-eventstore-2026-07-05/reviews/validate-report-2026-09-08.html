@@ -1,0 +1,290 @@
+<title>EventStore Spine Gate</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F4F6F8; --surface:#FFFFFF; --surface-2:#EDF0F3; --ink:#1B1F26; --muted:#5B6470; --line:#D6DCE3;
+  --accent:#0E6E6A; --accent-ink:#0B5552; --accent-soft:#DDEFEE;
+  --crit:#A0203A; --crit-soft:#F7E3E8; --high:#B85C0A; --high-soft:#F9EAD9; --med:#2F5FA8; --med-soft:#E1E9F6; --low:#5A6B58; --low-soft:#E5EAE3;
+  --pass:#2F7A4C; --pass-soft:#DFEFE4;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif; --body:"IBM Plex Sans","Segoe UI",Roboto,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#12151A; --surface:#1A1F26; --surface-2:#222932; --ink:#E6E9EE; --muted:#98A2B0; --line:#2C343E;
+    --accent:#3FB5AE; --accent-ink:#7ED3CD; --accent-soft:#173634;
+    --crit:#F07C95; --crit-soft:#3A1A22; --high:#F0A050; --high-soft:#3A2814; --med:#7FA6E6; --med-soft:#1B2A42; --low:#A6B8A3; --low-soft:#232B22;
+    --pass:#79C494; --pass-soft:#1B3325;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#12151A; --surface:#1A1F26; --surface-2:#222932; --ink:#E6E9EE; --muted:#98A2B0; --line:#2C343E;
+  --accent:#3FB5AE; --accent-ink:#7ED3CD; --accent-soft:#173634;
+  --crit:#F07C95; --crit-soft:#3A1A22; --high:#F0A050; --high-soft:#3A2814; --med:#7FA6E6; --med-soft:#1B2A42; --low:#A6B8A3; --low-soft:#232B22;
+  --pass:#79C494; --pass-soft:#1B3325;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);padding:.05em .35em;border-radius:3px;word-break:break-word}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+h1{font-size:2rem;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+h2{font-size:1.25rem;font-weight:600;margin:0 0 .75rem}
+h3{font-size:1.02rem;font-weight:600;line-height:1.3}
+p{margin:0 0 .8rem}
+.wrap{max-width:1040px;margin:0 auto;padding:2rem 1.25rem 4rem;display:flex;flex-direction:column;gap:2.25rem}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1.5rem 2.5rem;align-items:start}
+header .lede{max-width:64ch;margin-top:.9rem;color:var(--ink)}
+header .meta{margin-top:.6rem;font-size:.86rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:.35rem 1.2rem}
+.verdict{border-left:4px solid var(--crit);background:var(--surface);padding:1rem 1.25rem;border-radius:0 6px 6px 0}
+.verdict strong{font-family:var(--display);font-size:1.05rem}
+.counts{display:grid;grid-template-columns:repeat(4,minmax(78px,1fr));gap:.5rem;min-width:340px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.7rem .8rem;display:flex;flex-direction:column;gap:.15rem}
+.tile .n{font-family:var(--display);font-size:1.7rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.tile .l{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tile .r{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tile.crit .n{color:var(--crit)}.tile.high .n{color:var(--high)}.tile.med .n{color:var(--med)}.tile.low .n{color:var(--low)}
+.lenses{display:flex;flex-wrap:wrap;gap:.4rem}
+.lens{font-size:.78rem;padding:.2rem .55rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted)}
+.ledger{display:flex;flex-direction:column;gap:1rem}
+article.f{background:var(--surface);border:1px solid var(--line);border-left-width:5px;border-radius:6px;padding:1rem 1.25rem 1.1rem}
+article.f.crit{border-left-color:var(--crit)}article.f.high{border-left-color:var(--high)}
+.fh{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.3rem .9rem;align-items:baseline;margin-bottom:.7rem}
+.fid{font-family:var(--mono);font-size:.82rem;color:var(--muted);white-space:nowrap}
+.chip{display:inline-block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:.15rem .5rem;border-radius:3px;font-weight:600;vertical-align:middle}
+.chip.crit{background:var(--crit-soft);color:var(--crit)}.chip.high{background:var(--high-soft);color:var(--high)}.chip.med{background:var(--med-soft);color:var(--med)}.chip.low{background:var(--low-soft);color:var(--low)}.chip.pass{background:var(--pass-soft);color:var(--pass)}
+.raised{grid-column:2;font-size:.82rem;color:var(--muted)}
+dl{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:.45rem 1rem;margin:0}
+dt{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:.15rem}
+dd{margin:0;max-width:78ch}
+dd ul{margin:.1rem 0 0;padding-left:1.1rem}
+dd li{margin-bottom:.2rem}
+.disp{border-top:1px dashed var(--line);margin-top:.7rem;padding-top:.6rem}
+.disp .tag{font-family:var(--mono);font-size:.78rem;color:var(--accent-ink);margin-right:.5rem}
+section.tail .item{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:.4rem 1rem;padding:.65rem 0;border-top:1px solid var(--line)}
+section.tail .item:last-child{border-bottom:1px solid var(--line)}
+section.tail .item .id{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+section.tail .item p{margin:0;max-width:80ch}
+.passes{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1rem 1.25rem}
+.passes ul{margin:.2rem 0 0;padding-left:1.1rem;columns:2;column-gap:2rem}
+.passes li{break-inside:avoid;margin-bottom:.35rem;max-width:44ch}
+.next{background:var(--accent-soft);border-radius:6px;padding:1rem 1.25rem;max-width:none}
+.next p{max-width:78ch;margin:0 0 .5rem}
+.next ul{margin:0;padding-left:1.1rem}
+.files{font-size:.84rem;color:var(--muted)}
+.files code{background:transparent;padding:0}
+details summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:1.02rem;padding:.3rem 0}
+@media (max-width:760px){header{grid-template-columns:1fr}.counts{min-width:0}.passes ul{columns:1}dl{grid-template-columns:1fr}dt{padding-top:.4rem}.fh{grid-template-columns:1fr}.raised{grid-column:1}section.tail .item{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:no-preference){article.f{transition:border-color .15s}}
+</style>
+
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">bmad-architecture · validate · 2026-09-08</div>
+    <h1>EventStore Spine Gate</h1>
+    <p class="lede">Reviewer Gate result for <code>_bmad-output/planning-artifacts/architecture.md</code> (the Phase 4 readiness-recovery spine, 25 ADs, <code>status: final</code>, updated 2026-08-29). The spine was not changed. Five independent lenses ran in parallel on top of the deterministic lint.</p>
+    <div class="meta"><span>Lint: 0 findings</span><span>FR1-FR37 / NFR1-NFR19: all bound</span><span>Sources: 27 of 27 exist</span><span>Raw findings: 53 → 29 clusters</span></div>
+    <div class="lenses" style="margin-top:.8rem">
+      <span class="lens">Rubric walker</span><span class="lens">Technology currentness</span><span class="lens">Adversarial divergence</span><span class="lens">Security / data integrity</span><span class="lens">Brownfield ratification + inputs</span>
+    </div>
+  </div>
+  <div class="counts" aria-label="Consolidated findings by severity">
+    <div class="tile crit"><span class="n">2</span><span class="l">Critical</span><span class="r">2 raw</span></div>
+    <div class="tile high"><span class="n">10</span><span class="l">High</span><span class="r">16 raw</span></div>
+    <div class="tile med"><span class="n">8</span><span class="l">Medium</span><span class="r">20 raw</span></div>
+    <div class="tile low"><span class="n">9</span><span class="l">Low</span><span class="r">15 raw</span></div>
+  </div>
+</header>
+
+<div class="verdict">
+  <strong>Does not pass the gate as it stands.</strong>
+  <p style="margin:.4rem 0 0;max-width:80ch">Both critical findings were raised by two or three lenses independently and are already visible in the source tree, so the level below is diverging today, not hypothetically. Most high findings share one shape: an AD names a property ("attributable", "application-layer credential", "tenant authorization", "ProjectionVersion") without fixing the single rule two builders would need to agree on. The mechanical floor is clean and the release-identity and secrets closures from the July and August gates still hold.</p>
+</div>
+
+<section>
+  <h2>Critical</h2>
+  <div class="ledger">
+
+  <article class="f crit">
+    <div class="fh">
+      <span class="fid">V-C1</span>
+      <h3><span class="chip crit">Critical</span> Production actor state-store provider is undecided while the AppHost default is the provider with a proven silent overwrite</h3>
+      <span class="raised">Raised by Security C1 · Adversarial H3 · Rubric H1</span>
+    </div>
+    <dl>
+      <dt>Spine</dt><dd>AD-5 <code>:121</code> disclaims physical write-once enforcement. AD-25 <code>:452-458</code> names <code>oq8-postgresql-v1</code> only as an <em>evidence profile</em>. Deferred <code>:606</code> records the Redis <code>state.redis</code> durable write at sequence 1 silently overwritten and says "no behavior is inferred for another state-store provider". The Stack table has no state-store, broker, orchestrator, or environment row. <code>:396</code> disqualifies Azure Container Apps and names no conforming target.</dd>
+      <dt>Tree</dt><dd><code>AppHost/DaprComponents/statestore.yaml:26</code> is <code>state.redis</code>. <code>deploy/dapr/</code> ships <code>statestore-postgresql.yaml</code> and <code>statestore-cosmosdb.yaml</code> both as production <code>statestore</code>; the Cosmos one carries an inline <code>masterKey</code>, already non-conforming with AD-24. <code>ProductionDaprComponentValidationTests.cs:201-209</code> asserts only the name and <code>actorStateStore</code>.</dd>
+      <dt>Divergence</dt><dd>Stories 4.14/4.15 prove admission on PostgreSQL. An Epic 7 deployment slice ships Cosmos or Redis, changes AppHost + YAML + tests together (AD-9), routes its key through OpenBao (AD-24), and cites the PostgreSQL packet as AD-12 evidence because the spine calls it "production-equivalent". Both compliant. The AD-25 fence is explicitly not a storage fence, so the second-writer window is open on whichever provider gets picked.</dd>
+    </dl>
+    <div class="disp"><span class="tag">discuss → autofix</span>Owner decision on the provider first. Then a Stack row ("Actor state store (production): <code>state.postgresql</code> v1, <code>oq8-postgresql-v1</code>; <code>state.redis</code> is Development/AppHost-only; any other provider is non-conforming until it passes the Story 4.5 race capture and an AD-25 evidence profile"), a matching Convention row, and a topology test that asserts provider <em>type</em>. If the owner will not decide now, add an <strong>Open Questions</strong> section, which the spine currently lacks, listing state store, broker, target, and environment matrix.</div>
+  </article>
+
+  <article class="f crit">
+    <div class="fh">
+      <span class="fid">V-C2</span>
+      <h3><span class="chip crit">Critical</span> Tenant identity has no canonical source or normalized form; the tree already holds three incompatible readings</h3>
+      <span class="raised">Raised by Adversarial C1 · Security H2 · Rubric M7</span>
+    </div>
+    <dl>
+      <dt>Spine</dt><dd>The State-keys row <code>:468</code> says where tenant identity <em>appears</em>, never where it comes from, who validates it, or its canonical string form. AD-10 <code>:151</code>, AD-25 <code>:406</code>, AD-7 <code>:133</code>, and AD-8 <code>:139</code> all depend on the answer.</dd>
+      <dt>Tree</dt><dd>
+        <ul>
+          <li><code>Contracts/Identity/AggregateIdentity.cs:28-29</code> lowercases tenant and domain; every actor ID and state key is built from that form.</li>
+          <li><code>ClaimsTenantValidator.cs:44-45</code> and <code>AdminTenantAuthorizationFilter.cs:46-49</code> compare Ordinal against <code>eventstore:tenant</code>.</li>
+          <li><code>Admin.Server/Services/DaprProjectionQueryService.cs:77-79,205-206</code> compares OrdinalIgnoreCase and adds a <code>TenantAllSentinel</code>.</li>
+          <li>SignalR groups use the raw string (<code>ProjectionChangedHub.cs:79-82</code>): a client in <code>Proj:Acme</code> never receives a broadcast keyed <code>Proj:acme</code>.</li>
+          <li>Admin.Server defaults an omitted tenant to the caller's <em>first</em> grant (<code>AdminBackupsController.cs:538-547</code>, <code>AdminConsistencyController.cs:148-182</code>); the gateway rejects. MCP defaults to session context. Admin.UI mints its own JWT with a <code>tenants</code> array from configuration.</li>
+          <li>Generated REST <code>RestTenantSource.System</code> emits the literal <code>"system"</code>, unnormalized.</li>
+        </ul>
+      </dd>
+      <dt>Divergence</dt><dd>Story 7.2 (ordinal canonical claims) vs the Story 4.7 / 1.9 lineage (lowercase read-model addresses). A principal with claim <code>Acme</code> is authorized for <code>Acme</code>, stores under <code>acme</code>, subscribes to group <code>Acme</code>, and admission partitions on whichever string the adapter passes. Under NFR2, "omit the tenant, receive the first grant" is compliant with the text as written.</dd>
+    </dl>
+    <div class="disp"><span class="tag">autofix</span>One Convention row, <em>Tenant identity</em>: explicit in the request and never defaulted from grants, session, or configuration; authorized once at the first application boundary via the single claim type <code>eventstore:tenant</code>; canonical form is the <code>AggregateIdentity</code> form produced by one platform normalizer in <code>Contracts</code>; every downstream hop carries the validated value and never re-derives it; <code>system</code> is reserved. Plus an AD-10 clause that authorization compares canonical identity only.</div>
+  </article>
+
+  </div>
+</section>
+
+<section>
+  <h2>High</h2>
+  <div class="ledger">
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H1</span><h3><span class="chip high">High</span> The "application-layer credential" for sidecar-to-application hops is unnamed; code has three answers and domain-service hosts have none</h3><span class="raised">Security H1</span></div>
+    <dl>
+      <dt>Evidence</dt><dd>AD-10 <code>:149-151</code> requires it for internal, domain-service, projection-notification, and admin-computation endpoints and says DAPR ACLs are insufficient; AD-18 and the Conventions row cover outbound only. Gateway trusts the <code>dapr-caller-app-id</code> header (<code>DaprInternalAuthenticationHandler.cs:11-27</code>); Operations checks <code>dapr-api-token</code> against <code>APP_API_TOKEN</code>; the DomainService SDK maps <code>/process</code>, <code>/project</code>, <code>/project/v2</code>, <code>/project/rebuild/*</code> with no authentication at all and relies on <code>accesscontrol.sample.yaml</code>. AD-16's deny evidence runs on the gateway host only.</dd>
+    </dl>
+    <div class="disp"><span class="tag">autofix</span>AD-10 clause: sidecar-to-app hops authenticate with the DAPR app-channel token through a platform <code>ServiceDefaults</code> middleware installed by <code>UseEventStoreDomainService()</code>; a domain-service host without a configured token fails readiness outside Development; caller-app-id and ACLs are attribution and defense-in-depth only; AD-16 evidence runs on every host kind.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H2</span><h3><span class="chip high">High</span> Deny-by-default is optional in AD-16.3 and no host has a FallbackPolicy; a new endpoint without <code>[Authorize]</code> is fail-open by construction</h3><span class="raised">Security H5</span></div>
+    <dl>
+      <dt>Evidence</dt><dd><code>:249</code> reads "any host that <em>introduces</em> a global fallback authorization policy…"; <code>:253</code> and <code>:473</code> presume a fallback that does not exist. <code>grep FallbackPolicy src/</code> returns nothing; the gateway and the generator rely on per-controller <code>[Authorize]</code>. AD-16's single-endpoint deny test cannot detect an omitted attribute.</dd>
+    </dl>
+    <div class="disp"><span class="tag">autofix</span>Replace AD-16.3 with a requirement: every EventStore host sets <code>FallbackPolicy = RequireAuthenticatedUser</code> through <code>ServiceDefaults</code>; anonymous endpoints are an explicit allowlist (the three probes and the static <code>/problems</code> catalog); AD-16 evidence adds a structural scan for endpoints outside the allowlist that lack authorization metadata.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H3</span><h3><span class="chip high">High</span> "Attributable" admin mutations have no identity model or audit-record contract, and the delegated-write subject at the gateway is unspecified</h3><span class="raised">Security H4 · Adversarial H5 · Security M4</span></div>
+    <dl>
+      <dt>Evidence</dt><dd><code>:151</code> is the only sentence. <code>:609</code> defers audit-record <em>deletion</em> for a record the spine never defines. Memlog line 29 recorded "audit authenticated user/tenant/action/outcome/correlation" but it never reached AD-10. The diagrams at <code>:78</code> and <code>:577</code> show delegated writes without saying whose identity crosses. Admin.Server forwards the operator's bearer token, but also takes <code>DecisionActorId</code> from the request body and falls back to <code>"anonymous"</code> (<code>DaprBackupCommandService.cs:255,358,379,491</code>); <code>AdminProjectionRebuildController.cs:403-415</code> uses the authenticated <code>NameIdentifier</code>. Admin.UI is a de facto HS256 token issuer and CLI/MCP are bound by no AD as clients.</dd>
+      <dt>Divergence</dt><dd>Story 7.3 (durable audit intent) picks operator identity plus a service credential with on-behalf-of for continuation; Story 5.5 (gateway trust boundary) treats any caller-supplied on-behalf-of claim as a forbidden administrator flag. Both obey AD-10/AD-12/AD-21/AD-24. Outcome: every delegated write denied, or two audit trails naming different actors for one mutation.</dd>
+    </dl>
+    <div class="disp"><span class="tag">autofix</span>AD-10 clause: one audit record per admin mutation with the authenticated <code>sub</code> (never a body field, never a placeholder), tenant, action, target, outcome, correlation, timestamp, and delegating surface; Admin Server, CLI, and MCP hold no standing gateway credential and present the operator's own token unchanged; an unresolvable principal is rejected; a service-principal path needs its own AD first.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H4</span><h3><span class="chip high">High</span> AD-25 digest-key custody is not bound to AD-24, the two rotation clocks conflict, and the digest-key / adapter / retention catalog has no deployment-wide owner</h3><span class="raised">Security H3 · Adversarial H2</span></div>
+    <dl>
+      <dt>Evidence</dt><dd>AD-24 <code>:398</code> disclaims only pdenc-v2 KEK custody and is silent on the admission digest key; the contract file <code>deploy/dapr/openbao-secret-contract.yaml</code> does not exist. <code>ConfigurationIdempotencyDigestKeyProvider</code> (keys in app configuration) is selectable outside Development. <code>IdempotencyAdmissionOptions.ActiveDigestKeyVersion</code> / <code>ReaderDigestKeyVersions</code> are per-host; the adapter registry is keyed by bare <code>CommandType</code> with no domain; each adapter picks its own <code>DescriptorVersion</code> and <code>RetentionTier</code>.</dd>
+      <dt>Divergence</dt><dd>Host A active=<code>v2</code> readers=<code>[v1]</code>, Host B active=<code>v1</code>: both pass the <code>:437</code> readiness rule and the same key gets two "single prior authorities". AD-24's revoke-after-acknowledge makes old-alias records unreachable before AD-25 promotion completes, which is the fail-open duplicate execution AD-25 exists to prevent.</dd>
+    </dl>
+    <div class="disp"><span class="tag">autofix</span>AD-24: the digest key ring is a <code>runtime-required</code> OpenBao logical secret; the configuration source is Development-only and fails options validation elsewhere. AD-25: revocation is gated by AD-25 retirement (zero records, tombstones, aliases, or holds on the retired version); active/reader set, retention catalog, and adapter registry are one deployment-overlay-owned catalog validated at readiness; adapters register by <code>(Domain, CommandType)</code>.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H5</span><h3><span class="chip high">High</span> Correlation identity is load-bearing (AD-17 status key) but unowned, and no AD binds telemetry naming, propagation, or hygiene</h3><span class="raised">Adversarial H1 · Security M2 · Rubric M5</span></div>
+    <dl>
+      <dt>Evidence</dt><dd><code>:263</code> and <code>:466</code> name no header, validator, generator, or propagation rule. Gateway middleware accepts <code>[A-Za-z0-9-]{≤128}</code> and mints a ULID; the Admin host middleware accepts only <code>Guid.TryParse</code> (the forbidden API per <code>:466</code>) and mints a GUID. ActivitySources are <code>Hexalith.EventStore</code> vs <code>Hexalith.EventStore.Domain.{domain}</code>. Leak prohibitions are AD-25-local and cursor/ETag-local; there is no general "no secrets or tenant payloads in telemetry" rule. Story 5.4 (in review) is about to document an Admin-local "compatibility rule" the gateway may reject, breaking Story 7.3 audit-to-status joins.</dd>
+    </dl>
+    <div class="disp"><span class="tag">autofix</span>Identity row: <code>X-Correlation-ID</code>, one platform validator in <code>Contracts</code>, ULID minted on rejection, echoed and forwarded unchanged on every hop, recorded as <code>CorrelationId</code> in envelopes, status, audit, and logs; <code>traceparent</code> is additive. New Telemetry row: ActivitySource and Meter prefixes, and a general rule that raw keys, secrets, cursors, ETags, and tenant payloads never enter logs, traces, metrics, or problem details.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H6</span><h3><span class="chip high">High</span> Erasure has two authorities, and key invalidation stalls AD-20 rebuilds forever</h3><span class="raised">Adversarial H6 · Security M3</span></div>
+    <dl>
+      <dt>Evidence</dt><dd>AD-7 <code>:133</code> (read-model + checkpoint erasure), AD-23 <code>:374</code> (<code>IErasureStateProvider</code> key invalidation), AD-25 <code>:408-410</code>, and Deferred <code>:610</code> never order or couple the two mechanisms or say what a projection does with events it can no longer decrypt.</dd>
+      <dt>Divergence</dt><dd>Story 8.5/8.7 erasure = key invalidation, plaintext read models untouched. Story 1.9 lineage erasure = read-model + checkpoint deletion, events untouched. Neither is complete and no single state says whether a scope is erased. After key invalidation, an AD-20 paged rebuild hits unreadable payloads, AD-19 normalizes them to <code>Indeterminate/NotAdvanced</code>, and the projection stays <code>Rebuilding</code> forever.</dd>
+    </dl>
+    <div class="disp"><span class="tag">discuss (cross-repo with Parties) → amend AD-7 / AD-23</span>One erasure-state authority per domain; AD-7 erasure is an ordered step before <code>Invalidated</code>; delivery and rebuild treat erased-scope events as an explicit <code>Erased</code> outcome that advances the checkpoint, reserving <code>Indeterminate</code> for transient failure.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H7</span><h3><span class="chip high">High</span> <code>ProjectionVersion</code> has a source (AD-15) but no meaning or owner; companion state-key schemes are restated per project</h3><span class="raised">Adversarial H4</span></div>
+    <dl>
+      <dt>Evidence</dt><dd><code>:235</code>, <code>:198</code>, <code>:315</code>, <code>:133</code> never say what a projection version <em>is</em> (aggregate sequence, projection checkpoint, global position), who assigns it, or whether it is comparable across projections. <code>IReadModelFreshness.ProjectionVersion</code> is a free <code>string?</code>; Tenants uses a prefix plus the aggregate sequence; EventStore checkpoints are projection-scoped; Admin restates the command-status key format locally. AD-20's "versions equal replay" is untestable because no unit knows which value replay should reproduce.</dd>
+    </dl>
+    <div class="disp"><span class="tag">discuss → autofix</span>AD-15/AD-20 clause: a platform-defined monotonic version per <code>(tenant, domain, aggregate, projection)</code> rendered by one platform formatter; companion checkpoint, marker, rebuild, and status key schemes are owned by <code>Server</code> and consumed through seams, never restated.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H8</span><h3><span class="chip high">High</span> The poison / dead-letter delivery contract is silent, and the dead-letter host that already exists is governed by nothing</h3><span class="raised">Rubric H2 · Brownfield H2</span></div>
+    <dl>
+      <dt>Evidence</dt><dd>Zero hits for poison or dead-letter; AD-8 <code>:135-140</code> fixes at-least-once and dedup but not retry bound, DLQ topic naming and tenant scoping, DLQ consumer ownership, or checkpoint behavior on poison. Every subscription in <code>deploy/</code> and <code>samples/dapr-components</code> already sets <code>enableDeadLetter</code> with broker-specific mechanics. <code>src/Hexalith.EventStore.Operations</code> (landed <code>cd52ef2c</code>, 2026-08-28) has <code>ContainerRepository=eventstore-operations</code>, its own DAPR actor writing state directly, subscribes <code>deadletter.work.events</code>, and replays to a default app-id <code>works</code> on route <code>work/events</code>, consumer-domain defaults inside the platform. It is guarded only by a DAPR app-channel token and is absent from the seed, both diagrams, AppHost, ACL/scopes, <code>container-projects</code>, brownfield docs, epics, and sprint-status. Admin.Server already invokes it.</dd>
+    </dl>
+    <div class="disp"><span class="tag">discuss</span>Minimal: a Deferred row parking the contract under Story 7.1 with an interim rule (same <code>{tenant}-{domain}</code> scoping for DLQ topics; no checkpoint advances past an undelivered event); a seed row and topology node for Operations; AD-11 <code>:159</code> naming <code>eventstore-admin</code> and <code>eventstore-operations</code> as declared-but-unreleased container repositories; an AD-2/AD-19 clause that replay targets are configuration, never platform defaults naming a consumer domain.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H9</span><h3><span class="chip high">High</span> AD-19's normalized result is a phantom: three named types exist in zero files</h3><span class="raised">Brownfield H1</span></div>
+    <dl>
+      <dt>Evidence</dt><dd><code>:290</code>, <code>:292</code>, <code>:480</code> bind <code>ProjectionDispatchResult</code>, <code>ProjectionDispatchResultEntry</code>, <code>ProjectionCheckpointAdvanceState</code> (<code>Advanced</code>/<code>NotAdvanced</code>). Code has <code>ProjectionDispatchResponse</code> / <code>ProjectionDispatchOutcome</code> and the checkpoint decision inside <code>NamedProjectionDispatchCoordinator</code>. The <code>ProjectionDispatchStatus</code> values, <code>MaxOutcomes</code> 32, and <code>/project/v2</code> do match. A Server contributor already made the decision under different names; a domain-service author following the spine will look for, or invent, the phantom.</dd>
+    </dl>
+    <div class="disp"><span class="tag">discuss</span>Either mark the shape PLANNED with an owning story (none exists; Stories 6.3/6.4 are nearest, both backlog) or re-ratify AD-19 around the code: keep the wire contract and the matrix, drop the phantom names, delete the reference at <code>:480</code>.</div>
+  </article>
+
+  <article class="f high">
+    <div class="fh"><span class="fid">V-H10</span><h3><span class="chip high">High</span> AD-11 hard-binds the ASP.NET/runtime security baseline at <code>10.0.11</code>; Microsoft published the <code>10.0.12</code> security servicing release today</h3><span class="raised">Technology currentness H1</span></div>
+    <dl>
+      <dt>Evidence</dt><dd><code>:157</code> and <code>:502</code>. The repository is still internally consistent (catalog 10.0.11, SDK <code>10.0.400</code>); only the spine's fixed patch number is behind the vendor, reopening the same class of finding the 2026-08-16 gate closed. Propagation lag at fetch time: releases.json and nuget.org still show 10.0.11; the paired SDK number is not yet verifiable.</dd>
+    </dl>
+    <div class="disp"><span class="tag">autofix wording · defer catalog move</span>Make <code>:157</code> band-relative with a dated literal ("<code>10.0.11</code> at 2026-08-29; <code>10.0.12</code> published 2026-09-08; catalog, <code>global.json</code>, and this row move as one validated unit") and route the actual move to Story 3.16 under AD-11's refresh contract.</div>
+  </article>
+
+  </div>
+</section>
+
+<section class="tail">
+  <h2>Medium</h2>
+  <div class="item"><span class="id">V-M1</span><p><strong>Stack drift and "which catalog wins".</strong> FrontComposer row says <code>4.1.1</code>; the committed Builds gitlink <code>35c3d1e5</code> pins <code>4.3.0</code>; the worktree <code>a32cb422</code> pins <code>4.4.0</code>; the committed FrontComposer submodule is already <code>v4.4.0-2</code>. Third recurrence of this row drifting. "DAPR seed <code>1.18.0</code>" conflates the CI runtime <code>1.18.2</code> (CLI <code>1.18.0</code>) with <code>deploy/README.md</code>'s <code>daprd:1.18.0</code>; upstream stable is <code>1.18.3</code>. The spine never says whether "the Builds catalog" is the committed gitlink, the worktree checkout, or the published package. <span class="chip med">Tech M1 M2 · Security M1 · Rubric L5</span></p></div>
+  <div class="item"><span class="id">V-M2</span><p><strong>Structural Seed omits real projects.</strong> <code>AppHost</code>, <code>SignalR</code>, <code>Testing</code>, <code>Testing.Integration</code>, <code>Operations</code>, <code>Admin.Server.Host</code>, and <code>samples/Sample.Tests</code>, <code>dapr-components</code>, <code>deploy</code>. Three are release-inventory packages. Autofix rows are in both reviews. <span class="chip med">Rubric M2 · Brownfield M1</span></p></div>
+  <div class="item"><span class="id">V-M3</span><p><strong>Planned work written as present state.</strong> AD-21's FrontComposer composition and <code>event-store-admin</code> identity: Admin.UI references no FrontComposer package, the string appears nowhere, Stories 7.14/7.19/7.20 are backlog. AD-24: no <code>openbao</code> component, contract file, or AppHost provisioning; Story 7.6 backlog. AD-23's "Story 8.2 is blocked until the spec records named approvals" is stale: the spec is <code>approved-authorized</code>. AD-25's "active Stories 4.9-4.15": 4.9-4.14 done, 4.15 in review. <span class="chip med">Brownfield M2 M3 M4 L1</span></p></div>
+  <div class="item"><span class="id">V-M4</span><p><strong>AD Rules carry story scheduling, dated exceptions, and evidence procedure.</strong> AD-22 alone is 1095 words; <code>:337</code> and <code>:339-366</code> are dated exceptions and errata. This is what forced the 08-29 reopen and undermines <code>status: final</code>. Move to memlog and story specs, leave one sentence per exception. <span class="chip med">Rubric M1 L2 L4</span></p></div>
+  <div class="item"><span class="id">V-M5</span><p><strong>Diagrams grant Admin.Server direct state-store reads that AD-3 forbids</strong> (<code>:576</code>, <code>:78</code> vs <code>:109</code>). Add an explicit AD-3 carve-out for support-safe, read-only operational reads against scoped components. <span class="chip med">Rubric M3</span></p></div>
+  <div class="item"><span class="id">V-M6</span><p><strong>The Conventions table duplicates ten ADs and the copies already drift</strong> (the Release row first). Keep only rows adding a convention absent from any AD; reduce the rest to "See AD-n". <span class="chip med">Rubric M6</span></p></div>
+  <div class="item"><span class="id">V-M7</span><p><strong>Run hygiene.</strong> <code>companions:</code> lists the spine itself (<code>:53</code>). The memlog stopped at 2026-08-16 while the spine is <code>updated: 2026-08-29</code>; the SDK moved to <code>10.0.400</code> with no memlog entry, so the memlog still says 10.0.302. The <code>epics.md:15</code> architecture digest <code>623bc23e…</code> no longer matches the committed bytes <code>2b96a810…</code>, the same drift the 08-29 proposal repaired. The 2026-09-07 proposal and the Epic 3 retro are not in <code>sources:</code>; they confirm the spine, but the retro's AGG-8 shows AD-11's single <code>ReleaseEvidenceCodec</code> is unratified (identifier absent, two codec generations coexist). <span class="chip med">Rubric M4 · Tech L3 · Brownfield L2</span></p></div>
+  <div class="item"><span class="id">V-M8</span><p><strong>AD-25 naming and wiring.</strong> "Admission" names two layers; the fence's wire carrier across the domain-service hop is unnamed; host-to-domain ownership is a convention (<code>appId ?? command.Domain</code>) and <code>(Domain, ProjectionType)</code> uniqueness is not bound across hosts. <span class="chip med">Adversarial M1 M2 M3</span></p></div>
+</section>
+
+<section>
+  <details>
+    <summary>Low (9)</summary>
+    <div class="tail" style="margin-top:.5rem">
+      <div class="item"><span class="id">Rubric</span><p>L1 "<strong>ADD,</strong>" editing artifact at <code>:606</code>. L2 erratum narrative inside AD-22. L3 FR17/FR18 bound only by AD-1's blanket range.</p></div>
+      <div class="item"><span class="id">Currentness</span><p>L1 CodeCoverage 18.11.0 on nuget (catalog-governed). L2 CommunityToolkit Dapr 13.5.1-beta.748 (channel choice is a Builds decision).</p></div>
+      <div class="item"><span class="id">Security</span><p>L1 <code>Guid.TryParse</code> still in the <code>Admin.Server.Host</code> correlation middleware, route to a story. L2 deployment docs use tags where the convention says digest.</p></div>
+      <div class="item"><span class="id">Brownfield</span><p>L3 sprint-status guarded comment lines are AD-12 evidence mechanics, not an architecture invariant. L4 <code>docs/brownfield/architecture.md</code> claims write-once events, which the Deferred row disclaims.</p></div>
+      <div class="item"><span class="id">Adversarial</span><p>L1 Cosmos component inline <code>masterKey</code> (repository, not spine).</p></div>
+    </div>
+  </details>
+</section>
+
+<section class="passes">
+  <h2><span class="chip pass">Held</span> What passed</h2>
+  <ul>
+    <li>Lint: 0 findings. No placeholders, duplicate IDs, missing Binds/Prevents/Rule, or unpinned Stack rows.</li>
+    <li>Every FR1-FR37 and NFR1-NFR19 is bound and matches the PRD inventory; Epic 5/6/7 stories all have a home except 7.1, 5.10, 7.2.</li>
+    <li>Every Deferred row has a real "why it can wait"; the Stack table is correctly treated as seed.</li>
+    <li>All 27 cited sources exist; the 2026-09-07 proposal's "no architecture change" claim verified true.</li>
+    <li>Currentness confirmed: OpenBao is <code>secretstores.hashicorp.vault</code> v1, Stable since DAPR 1.16, with every named metadata field including <code>version_id</code>; Azure Container Apps still excludes OpenBao and lists the Configuration spec as unsupported; OCI annotations as stated.</li>
+    <li>Aspire 13.5.3 is current (no 13.6/14); FluentUI still rc.5; Dapr SDK 1.18.5; xunit.v3 4.0.0, Shouldly 4.3.0, NSubstitute 6.2.0, MediatR 14.2.0, FluentValidation 12.1.1, OTel 1.18.0, CodeAnalysis 5.9.0, NBomber 6.6.0/6.2.1, UniqueIds 2.30.0 all match nuget latest.</li>
+    <li>Brownfield ratified: AD-2 host seams, AD-4/17/18 client types, AD-7 cursor and read-model seams, AD-14/15 metadata and provenance types, AD-16 probes, AD-11's 14-package inventory and <code>container-projects</code>, AD-25 concepts substantially in code.</li>
+    <li>Prior closures hold: the AD-11/AD-22 release-identity graph, and the 2026-07-19 adversarial rereview's remaining H4 (runtime-required secret version, cache, refresh) is closed by current AD-24 <code>:390-392</code>.</li>
+  </ul>
+</section>
+
+<section class="next">
+  <h2>Recommended next step</h2>
+  <p>Roll the findings into an <strong>Update</strong> run (<code>/bmad-architecture update</code>), keeping AD IDs stable. The likely additions are AD-26 (production runtime envelope) and a Tenant-identity / Telemetry convention pair.</p>
+  <ul>
+    <li><strong>Owner decision first:</strong> V-C1 production provider.</li>
+    <li><strong>Autofixable from the lens wording:</strong> V-C2, V-H1 to V-H5, V-H10, V-M1, V-M2, V-M3, V-M5, V-M6, V-M7.</li>
+    <li><strong>Short discussion each:</strong> V-H6 (cross-repo with Parties), V-H7, V-H8, V-H9, V-M4, V-M8.</li>
+  </ul>
+</section>
+
+<p class="files">Markdown twin: <code>reviews/validate-report-2026-09-08.md</code>. Full lens texts: <code>reviews/review-validate-2026-09-08-{rubric-walker, technology-currentness, adversarial-divergence, security-data-integrity, brownfield-ratification}.md</code>, all under <code>_bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/</code>. Gate event appended to <code>.memlog.md</code>.</p>
+</div>

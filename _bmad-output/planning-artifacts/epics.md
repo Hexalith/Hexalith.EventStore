@@ -108,9 +108,9 @@ NFR1: Security must fail closed for public, internal, domain-service, projection
 
 NFR2: Tenant isolation must be preserved across state keys, actor IDs, topics, admin queries, generated REST APIs, SignalR groups, and deployment configuration. Tenant provisioning must reject the reserved `system` tenant name.
 
-NFR3: Production authentication must reject insecure symmetric-key mode unless explicitly break-glassed, require HTTPS metadata where appropriate, and pin accepted JWT algorithms.
+NFR3: Authentication must fail closed on signing-key posture in every host that binds the platform JWT contract: the EventStore gateway, the Admin Server Host, and the Sample API. Production must always reject symmetric-key mode, including when `AllowInsecureSymmetricKey` is enabled; the break-glass option admits symmetric mode only in environments that are neither Development nor Production. Authority/OIDC discovery must require HTTPS metadata outside Development. `AllowedAlgorithms` must be a nonempty, explicitly configured allowlist with no implicit default: asymmetric mode accepts only the approved RS256/RS384/RS512, PS256/PS384/PS512, and ES256/ES384/ES512 set, and Development or break-glass symmetric mode accepts only HS256. Issuer, audience, signature, and lifetime validation remain mandatory in every mode, with clock skew fixed at 60 seconds. Role and tenant validation also remain mandatory in every mode and are owned by NFR1 and NFR2.
 
-NFR4: Committed configuration must not contain forgeable administrator signing keys, credentials, bearer tokens, decoded JWT payloads, or other operational secrets.
+NFR4: No committed configuration, including clearly named Development configuration, may contain a forgeable administrator signing key, username, password, credential, bearer token, decoded JWT payload, or other operational secret. Development and test credentials are injected only through this closed list of channels - .NET user-secrets, environment variables, runtime-generated test fixtures, and the Aspire AppHost parameter/secret mechanism - and cannot be loaded as a non-Development fallback. Adding a channel to this list requires a proposal.
 
 NFR5: SignalR detail metadata must remain bounded and metadata-only; framework logs must not expose metadata values above Debug level.
 
@@ -383,7 +383,11 @@ Domain modules can opt into an EventStore-owned, provider-neutral payload-protec
 
 **External-authority rule:** When release, security, platform, test, consumer-owner, or provider/operator approval is unavailable, the story records the exact approval as an explicit gate or blocker. Planning never assumes that future approval will be granted and never substitutes self-declared roles, booleans, or story completion for authenticated authority.
 
-**Primary-ownership rule:** Every FR, NFR, and UX-DR has exactly one primary story owner. Supporting stories identify themselves as supporting coverage and cannot independently close the requirement; duplicated cross-cutting evidence never creates ambiguous completion authority.
+**Primary-ownership rule:** Every FR, NFR, and UX-DR has exactly one primary story owner. Where a requirement is genuinely multi-part it may be partitioned into explicitly named, disjoint slices, each with exactly one primary owner and a stated completion rule saying that no slice closes the whole requirement; an unqualified primary claim on a requirement another story also claims unqualified is forbidden. Supporting stories identify themselves as supporting coverage and cannot independently close the requirement; duplicated cross-cutting evidence never creates ambiguous completion authority.
+
+**FR12 completion rule:** FR12 is partitioned into two disjoint slices with distinct primary owners: the generator discovery, controller-emission, gateway-delegation, and query-metadata-header slice (Story 2.2) and the accepted-command `Location` slice (Story 2.9). FR12 is complete only when both slices close under their own evidence. Neither slice closes the whole requirement, and no story outside this pair may claim primary FR12 ownership.
+
+**FR15 completion rule:** FR15 is partitioned into five disjoint slices with distinct primary owners: Tenants contract metadata and routes (Story 2.4), the dedicated external Tenants API host (Story 2.5), Tenants UI client-library alignment and UX evidence (Story 2.6), Tenants query-provenance consumption (Story 2.11), and Tenants runtime identity and package-mode validation (Story 2.12). FR15 is complete only when all five slices close under their own evidence. No single slice closes the whole requirement.
 
 **Dependency rule:** Every story declares explicit backward-only prerequisites, including cross-epic safety prerequisites where required. Epic numbers are organizational labels and must not be interpreted as the dependency graph.
 
@@ -1384,7 +1388,7 @@ As a domain contract author,
 I want command and query messages to declare their generated REST surface explicitly,
 So that external API hosts can generate typed endpoints without convention-only discovery or copied contract types.
 
-**Requirements coverage:** Primary FR11.
+**Requirements coverage:** Sole primary FR11. Stories 2.4 and later apply this seam as supporting coverage and cannot close FR11.
 
 **Architecture constraints:** AD-3 and AD-4; contract metadata is explicit and generated controllers remain external-host concerns.
 
@@ -1429,7 +1433,7 @@ As an external API host developer,
 I want a Roslyn generator to emit typed REST controllers from domain contracts,
 So that external applications get OpenAPI-visible endpoints without hand-written per-message controllers.
 
-**Requirements coverage:** Primary FR12; supports UX-DR42 and the shared query-evidence presentation boundary.
+**Requirements coverage:** Primary ownership of FR12's generator discovery, controller-emission, gateway-delegation, and query-metadata-header slice; supports UX-DR42 and the shared query-evidence presentation boundary. Does not own FR12's command-status `Location` clause, which is Story 2.9.
 
 **Architecture constraints:** AD-3, AD-4, AD-14, and AD-17; emitted controllers use only the gateway client and support-safe HTTP contracts.
 
@@ -1479,7 +1483,7 @@ As an external application developer,
 I want the Sample domain to expose generated REST endpoints through a dedicated API host,
 So that I can see the intended integration pattern without coupling it to the interactive Sample UI.
 
-**Requirements coverage:** Primary FR13 and FR14; supports NFR14 and UX-DR42.
+**Requirements coverage:** Sole primary FR13 and primary FR14; supports NFR14 and UX-DR42. FR13's external-host boundary rule is established and proved here once for every module; Stories 2.5 and 2.6 apply it as supporting coverage.
 
 **Architecture constraints:** AD-3, AD-4, and AD-18; external API, interactive UI, and domain-service hosts retain distinct responsibilities.
 
@@ -1530,7 +1534,7 @@ As a Tenants contract maintainer,
 I want command and query contracts to declare the external REST surface,
 So that generated tenant APIs remain stable without duplicating controller logic.
 
-**Requirements coverage:** Primary FR11 and FR15; supporting NFR13.
+**Requirements coverage:** Primary ownership of FR15's Tenants contract-metadata and route slice; supporting FR11 and NFR13. Primary FR11 ownership stays with Story 2.1, which defines the seam this story applies.
 
 **Architecture constraints:** AD-4, AD-10, and AD-12; contract identity is explicit and the Tenants repository remains owner-controlled.
 
@@ -1575,7 +1579,7 @@ As an external tenant-management integrator,
 I want generated Tenants controllers in one dedicated external API host,
 So that gateway policy remains the front door and domain/UI hosts expose no per-message API surface.
 
-**Requirements coverage:** Primary FR13 and FR15; supporting NFR2, NFR14, and UX-DR42.
+**Requirements coverage:** Primary ownership of FR15's dedicated external Tenants API-host slice; supporting FR13, NFR2, NFR14, and UX-DR42. Primary FR13 ownership stays with Story 2.3, which establishes and proves the external-host boundary.
 
 **Architecture constraints:** AD-3, AD-4, AD-10, and AD-18; inbound auth stays host-owned while platform routing headers are authoritative.
 
@@ -1626,7 +1630,7 @@ As a Tenants operator,
 I want the interactive UI to consume typed client libraries and display honest evidence states,
 So that it remains an interactive host rather than a second external API surface.
 
-**Requirements coverage:** Primary FR15; supporting FR13, FR34, NFR14, NFR15, UX-DR20, UX-DR25–UX-DR27, UX-DR30, UX-DR38, UX-DR40, and UX-DR42.
+**Requirements coverage:** Primary ownership of FR15's Tenants UI client-library and UX-evidence slice; supporting FR13, FR34, NFR14, NFR15, UX-DR20, UX-DR25–UX-DR27, UX-DR30, UX-DR38, UX-DR40, and UX-DR42.
 
 **Architecture constraints:** AD-4, AD-14, and AD-15; this story owns presentation and host alignment, while Story 2.11 exclusively owns production provenance/lifecycle classification.
 
@@ -1768,7 +1772,7 @@ As an external API consumer,
 I want a generated command's `202 Accepted` response to point to a status resource I can actually reach—or to omit the link,
 So that I never poll a dangling route or use the external host as the wrong authority.
 
-**Requirements coverage:** Primary FR12; supports FR27 without claiming its re-keying scope, NFR13, UX-DR26, and UX-DR42.
+**Requirements coverage:** Primary ownership of FR12's accepted-command `Location` clause – the absolute, gateway-authoritative command-status URI and its fail-closed omission; supports FR27 without claiming its re-keying scope, NFR13, UX-DR26, and UX-DR42. Does not own FR12's generator discovery/emission slice, which is Story 2.2.
 
 **Architecture constraints:** AD-3, AD-4, AD-12, and AD-17; generated status locations are absolute, runtime-resolved, gateway-authoritative, and fail-closed.
 
@@ -1865,7 +1869,7 @@ As an external API and Tenants UI consumer,
 I want route provenance preserved and classified safely across generated REST and interactive workflows,
 So that opaque validators or handler-computed responses are never presented as projection-backed lifecycle evidence.
 
-**Requirements coverage:** Primary FR12 and FR15; supporting FR4, FR34, NFR8, NFR14–NFR16, UX-DR20, UX-DR21, UX-DR25–UX-DR27, UX-DR38, and UX-DR40.
+**Requirements coverage:** Primary ownership of FR15's Tenants query-provenance consumption slice; supporting FR12, FR4, FR34, NFR8, NFR14–NFR16, UX-DR20, UX-DR21, UX-DR25–UX-DR27, UX-DR38, and UX-DR40. FR12's two primary slices stay with Stories 2.2 and 2.9.
 
 **Architecture constraints:** AD-3, AD-4, AD-12, AD-14, and AD-15; this is consumer-only scope and never infers lifecycle from ETag, HTTP success, payload fields, or SignalR.
 
@@ -1916,7 +1920,7 @@ As a Tenants release maintainer,
 I want Tenants to adopt an authorized EventStore dependency graph in independently verified source and package modes,
 So that consumer migration is reproducible, maintainer-approved, and honest about the exact identities each mode measures.
 
-**Requirements coverage:** Primary FR15; supports FR21, FR22, and FR36 without claiming Epic 3 deployed-parity closure; supporting NFR9, NFR12, and NFR16.
+**Requirements coverage:** Primary ownership of FR15's Tenants runtime-identity and package-mode-validation slice; supports FR21, FR22, and FR36 without claiming Epic 3 deployed-parity closure; supporting NFR9, NFR12, and NFR16.
 
 **Architecture constraints:** AD-2–AD-4, AD-9–AD-12, AD-14, AD-15, AD-18, and the approved Story 2.12-scoped AD-22 exception; source and package identity evidence remain distinct and no UX redesign is permitted.
 
@@ -2592,7 +2596,7 @@ As an EventStore release owner,
 I want the shared release path to publish an exact two-platform OCI index,
 So that an immutable corrective release can restore the required container shape without overwriting a failed historical release or broadening the governed package scope.
 
-**Requirements coverage:** Primary FR22 and FR25; supporting NFR9, NFR11, NFR16, and NFR17.
+**Requirements coverage:** Supporting FR22 and FR25 as a corrective release; primary FR22 ownership stays with Story 3.6 and primary FR25 ownership with Story 3.7. Re-proving a corrected publication does not re-establish either requirement. Supporting NFR9, NFR11, NFR16, and NFR17.
 
 **Architecture constraints:** AD-11, AD-12, and AD-22; publication is an externally visible, authority-bearing mutation and all registry evidence is bound to immutable raw bytes and digests.
 
@@ -2694,7 +2698,7 @@ As an EventStore release owner,
 I want a new semantic release whose package, workflow, OCI graph, and config provenance bind to one exact source SHA,
 So that Story 3.15 can independently validate a deployment-grade candidate without mutating v3.94.1.
 
-**Requirements coverage:** Primary FR22 and FR25; supports FR36; primary NFR9, NFR11, NFR16, and NFR17.
+**Requirements coverage:** Supporting FR22 and FR25 as a corrective release; primary FR22 ownership stays with Story 3.6 and primary FR25 ownership with Story 3.7. Re-proving a corrected publication does not re-establish either requirement. Supports FR36; primary NFR9, NFR11, NFR16, and NFR17.
 
 **Architecture constraints:** AD-11 and AD-12, with the release identity and authority boundaries required by AD-22. EventStore remains a thin release caller; label emission and raw-config validation are owned by the EventStore release configuration and the SHA-pinned shared Builds publisher/validator.
 
@@ -2812,7 +2816,7 @@ As a platform maintainer,
 I want the shared NuGet catalog and root-declared submodule revisions refreshed from authoritative upstream evidence,
 So that current development uses the latest compatible dependency set without weakening reproducibility or overwriting in-flight work.
 
-Requirements coverage: Primary maintenance ownership of FR19 and FR21; supporting NFR9, NFR11, and NFR12.
+Requirements coverage: Supporting FR19 and FR21 as scheduled maintenance; primary FR19 ownership stays with Story 3.3 and primary FR21 ownership with Story 3.5. A refresh re-exercises those requirements and cannot independently close either. Supporting NFR9, NFR11, and NFR12.
 
 Architecture constraints: AD-11 through AD-13. Builds remains the sole NuGet version authority; stable, prerelease, framework-coupled, and major families move only with compatible evidence; root gitlinks use exact reachable commits; nested submodules are excluded.
 
@@ -3109,7 +3113,7 @@ So that provider-portable concurrency design is based on observed production-pat
 
 **Dependencies:** Completed Stories 4.1 and 4.4 provide stable event identity, production allocator behavior, and recovery seams; the live evidence lane remains outside deterministic release gates.
 
-**Current reconciliation:** Story 4.5 remains in progress. The initial DAPR 1.18.1 `state.redis`/Redis 6 capture observed `same-key-overwrite-raw-durable-write-lost`: a raw same-sequence write was proven durable, then silently replaced by the accepted actor write without an exception or retry. The sealed packet later drifted from its bound source files, is not enforced by CI, and cannot be refreshed until the DAPR test fixture's placement/scheduler ports and actual runtime identity are reconciled. No fencing implementation is authorized by the partial evidence.
+**Current reconciliation:** Story 4.5 is done (`spec-4-5` status `done` at review loop 4, sealed 2026-08-26; reconciled 2026-09-08, correct-course OR3 - this paragraph previously said "remains in progress" and was stale). Its delivered outcome is race evidence only. The initial DAPR 1.18.1 `state.redis`/Redis 6 capture observed `same-key-overwrite-raw-durable-write-lost`: a raw same-sequence write was proven durable, then silently replaced by the accepted actor write without an exception or retry. The sealed packet later drifted from its bound source files, is not enforced by CI, and cannot be refreshed until the DAPR test fixture's placement/scheduler ports and actual runtime identity are reconciled. **Story completion grants no fencing authority.** No fencing implementation is authorized by this evidence; the provider-portable fence remains a separately approved implementation story tracked as an unowned gap by DW-326, and NFR7 class (c) stays undelivered in the Phase 4 MVP.
 
 **Acceptance Criteria:**
 
@@ -3167,7 +3171,7 @@ So that ordering metadata can scale without silently violating the frozen global
 
 **Dependencies:** Completed Story 4.1 establishes the current non-zero, unique, gappy global-position and stable MessageId contracts. Story 4.5 becomes a prerequisite only if the selected design also changes append fencing or provider write semantics.
 
-**Current reconciliation:** Story 4.6 remains backlog. The existing frozen `spec-dapr-global-event-ordering.md` is completed authority for the single global allocator and cannot be edited or superseded through implementation convenience.
+**Current reconciliation:** Story 4.6 is awaiting operator approval, not backlog and not done (reconciled 2026-09-08, correct-course OR3). The renegotiated successor `spec-dapr-global-event-ordering-v2.md` is complete at review loop 5, but `spec-4-6` records `approval_state: absent` and `implementation_authorized: false` with three outstanding operator actions: bind every architecture-owner approval to the exact committed successor identity, commission the successor's section 7 production-provider and topology evidence, and only then authorize a separately reviewed implementation story. `sprint-status.yaml` recorded this row `done` between commit 8d6f7dac and 2026-09-08; that row has been corrected to `awaiting-operator`. The existing frozen `spec-dapr-global-event-ordering.md` remains completed authority for the single global allocator until the successor is approved, and cannot be edited or superseded through implementation convenience.
 
 **Acceptance Criteria:**
 
@@ -3705,7 +3709,7 @@ So that a rejected outcome cannot accidentally flush partially staged events or 
 
 **Dependencies:** None; this is a Phase 0 safe-fix gate. Later actor, Admin, or topology stories cannot substitute for its state-safety proof.
 
-**Current reconciliation:** Story 5.1 remains backlog. The current baseline calls `ClearCacheAsync()` in infrastructure-failure and exhausted conflict paths and contains focused assertions, but completion is not inherited from Story 4.2 or source inspection; this story must verify ordering and persisted state independently.
+**Current reconciliation:** Story 5.1 is done (`spec-5-1` status `done` at review loop 7; reconciled 2026-09-08, correct-course OR3 - this paragraph previously said "remains backlog" and was stale planning text written before the story ran). The requirement it states was met rather than waived: completion was not inherited from Story 4.2 or from source inspection. Commit 57fa0909 added `AggregateActorInfrastructureFailureTests` and the surrounding drain/recovery lanes, which verify clearing order and persisted end-state independently through the actor path. One bookkeeping defect remains and is recorded here rather than silently fixed: the `## Auto Run Result` section appended to `spec-5-1` names story key `5-2-admin-endpoint-authorization-and-tenant-filters`, because the orchestrator's missing-marker repair synthesized it from the sibling spec. The marker is mislabelled; the frontmatter status, the review loop count, and the test evidence are Story 5.1's own.
 
 **Acceptance Criteria:**
 
@@ -3807,7 +3811,7 @@ So that development-only credentials or insecure token validation cannot leak in
 
 **Dependencies:** Story 5.2 establishes the Admin endpoint matrix this host-level posture protects. This story is the authentication prerequisite for Story 5.5's internal/domain-service boundary.
 
-**Current reconciliation:** Story 5.3 remains backlog. The Admin UI base configuration is currently free of development identity values, but committed Development configuration still carries fixed signing-key and administrator credential values. Admin Server Host already validates development symmetric-key versus non-development authority posture. Completion is not established: accepted JWT algorithms are not visibly pinned, `MapDefaultEndpoints()` does not attach explicit anonymous metadata to each probe, and real-pipeline evidence has not proved the protected-endpoint/probe contract under Production configuration.
+**Current reconciliation:** Story 5.3 is in progress, neither backlog nor done (reconciled 2026-09-08, correct-course OR2). `spec-5-3` records status `in-progress` at review loop 3 with fourteen of twenty implementation items complete, six open, and no `## Auto Run Result` marker. The secret-stripping half has landed: committed Development configuration no longer carries fixed signing-key or administrator credential values, the AppHost provisions a per-run credential set, and the repository-level tracked-content guard exists. The production-authentication half has not closed. Six items remain open, including the local credential/test seam and quickstart flow, realm-lifecycle hardening, the UI authority/grant contract, the Aspire run/publish model proof, the repository scanner grammar, and reusable fixture/smoke redaction with evidence supersession. Real-pipeline evidence has not proved the protected-endpoint/probe contract under Production configuration. `sprint-status.yaml` recorded this row `done` from commit c83cc4c3 - a test-only change whose subject and body never mention a status change, and which this story's own Boundaries forbid it from making - until the row was corrected to `in-progress` on 2026-09-08. **No NFR3 or NFR4 coverage may be claimed from this story until it closes.**
 
 **Planning directive:** Treat this complete Story 5.3 definition and its acceptance criteria unchanged as the authoritative input for a fresh planning pass. Materialize a frozen implementation spec from this input before development is dispatched; this directive changes or waives no requirement.
 

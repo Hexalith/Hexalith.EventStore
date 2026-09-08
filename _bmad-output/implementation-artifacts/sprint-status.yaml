@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '07-05-2026 20:01'
-last_updated: '09-07-2026 23:07'
+last_updated: '09-08-2026 00:00'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -161,7 +161,12 @@ development_status:
   4-3-deterministic-replay-dispatch-and-serialization: done
   4-4-committed-event-publication-recovery: done
   4-5-append-durability-race-evidence: done
-  4-6-global-position-sharding-spec-renegotiation: done
+  # Corrected 2026-09-08 (correct-course OR3). Commit 8d6f7dac flipped this row
+  # 'awaiting-operator' -> 'done' while spec-4-6 frontmatter still records
+  # approval_state: absent and implementation_authorized: false, with three
+  # outstanding operator_actions. The renegotiated successor spec is complete at
+  # review loop 5; the block is external operator approval, not development work.
+  4-6-global-position-sharding-spec-renegotiation: awaiting-operator
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
   4-7-tenants-query-provenance-follow-up: in-progress
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
@@ -178,7 +183,13 @@ development_status:
   epic-5: in-progress
   5-1-infrastructure-failure-cache-clear: done
   5-2-admin-endpoint-authorization-and-tenant-filters: done
-  5-3-production-authentication-guards-and-secret-stripping: done
+  # Corrected 2026-09-08 (correct-course OR2). Commit c83cc4c3 flipped this row
+  # 'backlog' -> 'done' in a test-only change whose subject and body never mention
+  # a status change, and whose story spec forbids it from touching this file.
+  # spec-5-3 is 'in-progress' at review loop 3 with 14 of 20 checklist items done
+  # and no Auto Run Result marker; the committed-secret strip has landed, the
+  # production JWT guard and its real-pipeline evidence have not.
+  5-3-production-authentication-guards-and-secret-stripping: in-progress
   5-4-admin-surface-safety-hygiene: review
   5-5-internal-and-domain-service-trust-boundary: backlog
   5-6-apphost-component-loading-and-sidecar-argument-parity: backlog
