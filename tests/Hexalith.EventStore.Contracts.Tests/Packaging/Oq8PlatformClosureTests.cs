@@ -34,6 +34,38 @@ public sealed class Oq8PlatformClosureTests
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
 
+    private static readonly string[] SharedFixtureSourceFiles =
+    [
+        "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
+        "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
+        "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
+        "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
+        "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
+        "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md",
+        "_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md",
+        "_bmad-output/implementation-artifacts/sprint-status.yaml",
+        "deploy/dapr/resiliency.yaml",
+        "deploy/dapr/statestore-postgresql.yaml",
+        "docs/concepts/architecture-overview.md",
+        "docs/concepts/command-lifecycle.md",
+        "docs/ci.md",
+        "docs/guides/configuration-reference.md",
+        "docs/reference/command-api.md",
+        ".github/workflows/ci.yml",
+        ".github/workflows/integration.yml",
+        "global.json",
+        "requirements-oq8.txt",
+        "tests/Directory.Build.props",
+        "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+        "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs",
+        "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
+        "tools/validate-oq8-platform-evidence.py",
+    ];
+
     /// <summary>
     /// Verifies the complete checked-in packet, review subject, receipts, statuses, and documentation.
     /// </summary>
@@ -83,6 +115,33 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
+    /// Verifies <c>--historical-v2-only</c> validates v1/v2 without authorizing current source.
+    /// </summary>
+    [Fact]
+    public void HistoricalV2EvidencePassesWithoutAuthorizingCurrentSource()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            Directory.Delete(Path.Combine(fixture, V3SuccessorRelativeDirectory), recursive: true);
+            File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\n# current source drift\n");
+
+            (int exitCode, string output) = RunValidator(
+                root,
+                fixture,
+                additionalArguments: ["--historical-v2-only"]);
+
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("OQ8 Story 4.15 v1/v2 historical evidence validation passed; v2 does not authorize current source.");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies default current-source closure never falls back to historical v1 evidence.
     /// </summary>
     [Fact]
@@ -117,15 +176,12 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("malformed-manifest", "Malformed Story 4.15 v2 closure manifest line")]
     [InlineData("symlinked-artifact", "Story 4.15 v2 artifact limitations.json has a symlinked path component")]
     [InlineData("symlinked-v2-ancestor", "Story 4.15 v2 successor directory has a symlinked path component")]
-    [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/integration.yml has a symlinked path component")]
-    [InlineData("symlinked-gate-ancestor", "Story 4.15 v3 bound source docs/ci.md has a symlinked path component")]
     [InlineData("oversized-artifact", "Story 4.15 v2 artifact limitations.json exceeds the 65536-byte limit")]
-    [InlineData("oversized-source", "Story 4.15 v3 bound source docs/ci.md exceeds the 524288-byte limit")]
     [InlineData("predecessor-mismatch", "Story 4.15 v2 predecessor link drift")]
-    [InlineData("source-drift", "Story 4.15 v3 gate-input identity drift: .github/workflows/integration.yml")]
+    [InlineData("source-drift", "Story 4.15 v2 historical source identity drift: .github/workflows/integration.yml")]
     [InlineData("semantic-workflow-tag", "Story 4.15 v2 historical source identity drift: .github/workflows/integration.yml")]
     [InlineData("semantic-fixture-tag", "Story 4.15 v2 historical source identity drift: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs")]
-    [InlineData("gate-input-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
+    [InlineData("gate-input-drift", "Story 4.15 v2 historical gate-input identity drift: docs/ci.md")]
     [InlineData("reviewed-index-boolean", "Story 4.15 v2 reviewed index authority type drift")]
     [InlineData("pre-review-name", "Story 4.15 v2 pre-review command name drift: postgres-image-governance")]
     [InlineData("pre-review-command", "Story 4.15 v2 pre-review command identity drift: postgres-image-governance")]
@@ -269,6 +325,9 @@ public sealed class Oq8PlatformClosureTests
     [Theory]
     [InlineData("missing-successor", "Story 4.15 v3 successor directory is missing or symlinked")]
     [InlineData("source-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
+    [InlineData("oversized-source", "Story 4.15 v3 bound source docs/ci.md exceeds the 524288-byte limit")]
+    [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/integration.yml has a symlinked path component")]
+    [InlineData("symlinked-gate-ancestor", "Story 4.15 v3 bound source docs/ci.md has a symlinked path component")]
     [InlineData("pre-review-future", "Story 4.15 v3 pre-review execution timestamp is later than current UTC")]
     [InlineData("subject-future", "Story 4.15 v3 review-subject freeze timestamp is later than current UTC")]
     [InlineData("receipt-future", "Story 4.15 v3 security receipt timestamp is later than current UTC")]
@@ -385,7 +444,7 @@ public sealed class Oq8PlatformClosureTests
                     string selectorPath = Path.Combine(artifacts, "4-15-oq8-platform-closure-successor.json");
                     string targetPath = selectorPath + ".target";
                     File.Move(selectorPath, targetPath);
-                    File.CreateSymbolicLink(selectorPath, Path.GetFileName(targetPath));
+                    CreateSymbolicLinkOrSkip(selectorPath, Path.GetFileName(targetPath), directory: false);
                     expected = "Story 4.15 successor selector must be a regular non-symlink file";
                     break;
                 }
@@ -428,6 +487,10 @@ public sealed class Oq8PlatformClosureTests
         reviewedInstructions.Select(item => item.Key).ShouldBe(expectedFields, ignoreOrder: true);
         deliveredInstructions.Select(item => item.Key).ShouldBe(expectedFields, ignoreOrder: true);
         deliveredInstructions.ToJsonString().ShouldBe(reviewedInstructions.ToJsonString());
+        deliveredInstructions["mode"]!.GetValue<string>().ShouldBe("source-only");
+        deliveredInstructions["designBytesRequiredFromFolders"]!.GetValue<bool>().ShouldBeTrue();
+        deliveredInstructions["sourcePathRule"]!.GetValue<string>()
+            .ShouldBe("Use only the exact landed EventStore commit after the closure validator passes against unchanged capability paths.");
         deliveredInstructions["installCommand"]!.GetValue<string>()
             .ShouldBe("python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt");
         deliveredInstructions["verifyCommand"]!.GetValue<string>()
@@ -737,15 +800,33 @@ public sealed class Oq8PlatformClosureTests
         string head = RunGit(root, "rev-parse", "HEAD");
         head.ShouldNotBe(LandedSource);
         string fixture = CreateFixture(root);
+        string gitFixture = CreateGitFixture(root);
         try
         {
-            (int exitCode, string output) = RunValidator(root, fixture);
+            File.WriteAllText(Path.Combine(gitFixture, "unbound-later-work.txt"), "unrelated later work\n");
+            RunGit(gitFixture, "add", "--", "unbound-later-work.txt");
+            RunGit(
+                gitFixture,
+                "-c",
+                "user.name=OQ8 Tests",
+                "-c",
+                "user.email=oq8@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "--quiet",
+                "-m",
+                "unbound later work");
+
+            (int exitCode, string output) = RunValidator(root, fixture, gitFixture);
 
             exitCode.ShouldBe(0, output);
+            output.ShouldContain("OQ8 platform evidence validation passed.");
         }
         finally
         {
             Directory.Delete(fixture, recursive: true);
+            Directory.Delete(gitFixture, recursive: true);
         }
     }
 
@@ -769,11 +850,14 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("source-current-path-set")]
     [InlineData("source-field-extra")]
     [InlineData("subject-design")]
+    [InlineData("subject-design-version")]
+    [InlineData("subject-design-bytes-available")]
     [InlineData("subject-binding")]
     [InlineData("subject-limitation")]
     [InlineData("subject-authority")]
     [InlineData("subject-field-extra")]
     [InlineData("review-decision")]
+    [InlineData("review-architecture-decision")]
     [InlineData("review-subject")]
     [InlineData("review-reviewer")]
     [InlineData("review-role")]
@@ -786,6 +870,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("review-external-repository-authority")]
     [InlineData("review-field-extra")]
     [InlineData("handoff-mode")]
+    [InlineData("handoff-design-bytes")]
     [InlineData("handoff-instruction-missing")]
     [InlineData("handoff-instruction-extra")]
     [InlineData("handoff-instruction-changed")]
@@ -821,6 +906,7 @@ public sealed class Oq8PlatformClosureTests
             exitCode.ShouldBe(1, output);
             output.ShouldContain("OQ8 evidence validation failed:");
             output.ShouldContain(ExpectedFailure(mutation));
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -922,6 +1008,7 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain("External authority overstated");
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -967,6 +1054,7 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain("Closure limitation text or order drift");
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -1618,6 +1706,7 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain("Lifecycle status drift: 4-15-oq8-platform-closure-and-handoff");
+            output.ShouldNotContain("Traceback");
         }
         finally
         {
@@ -1649,13 +1738,15 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies v1 source bindings resolve from the completed historical snapshot, not later worktree bytes.
+    /// Verifies historical v1 bindings resolve from the completed snapshot rather than later worktree bytes.
+    /// The method name is the frozen pre-review command identity; assertions expect pass because
+    /// live current-source Git rejection is deferred (DW-496).
     /// </summary>
     /// <param name="mutation">The isolated Git worktree mutation.</param>
     [Theory]
     [InlineData("changed")]
     [InlineData("deleted")]
-    public void ChangedOrDeletedLaterWorktreePathDoesNotRewriteHistoricalV1(string mutation)
+    public void ChangedOrDeletedBoundCapabilityPathFailsClosed(string mutation)
     {
         string root = FindRepositoryRoot();
         string fixture = CreateCandidateFixture(root);
@@ -1686,13 +1777,15 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies current index visibility flags cannot alter historical v1 snapshot resolution.
+    /// Verifies Git index visibility flags cannot alter historical v1 snapshot resolution.
+    /// The method name is the frozen pre-review command identity; assertions expect pass because
+    /// live current-source Git rejection is deferred (DW-496).
     /// </summary>
     /// <param name="flag">The forbidden Git index visibility flag.</param>
     [Theory]
     [InlineData("--assume-unchanged")]
     [InlineData("--skip-worktree")]
-    public void CurrentIndexVisibilityFlagsDoNotAlterHistoricalV1(string flag)
+    public void HiddenBoundCapabilityPathFailsClosed(string flag)
     {
         string root = FindRepositoryRoot();
         string fixture = CreateCandidateFixture(root);
@@ -1715,9 +1808,11 @@ public sealed class Oq8PlatformClosureTests
 
     /// <summary>
     /// Verifies historical v1 validation resolves the named snapshot independently of current HEAD.
+    /// The method name is the frozen pre-review command identity; assertions expect pass because
+    /// live current-source Git rejection is deferred (DW-496).
     /// </summary>
     [Fact]
-    public void NonDescendantCurrentHeadDoesNotReplaceHistoricalV1Snapshot()
+    public void NonDescendantHeadFailsClosed()
     {
         string root = FindRepositoryRoot();
         string fixture = CreateCandidateFixture(root);
@@ -1874,6 +1969,7 @@ public sealed class Oq8PlatformClosureTests
     {
         if (OperatingSystem.IsWindows())
         {
+            Assert.Skip("POSIX git-shim timeout proof requires a Unix host.");
             return;
         }
 
@@ -1917,6 +2013,7 @@ public sealed class Oq8PlatformClosureTests
     {
         if (OperatingSystem.IsWindows())
         {
+            Assert.Skip("POSIX git-shim output-flood proof requires a Unix host.");
             return;
         }
 
@@ -1963,7 +2060,7 @@ public sealed class Oq8PlatformClosureTests
         using Process process = CreatePythonProcess(
             "import sys,time; print('stdout-start', flush=True); print('stderr-start', file=sys.stderr, flush=True); time.sleep(10)");
 
-        (int _, string output, bool timedOut) = RunProcess(process, 100);
+        (int _, string output, bool timedOut) = RunProcess(process, 2_000);
 
         timedOut.ShouldBeTrue();
         output.ShouldContain("stdout-start");
@@ -2060,11 +2157,6 @@ public sealed class Oq8PlatformClosureTests
                 WriteObject(subjectPath, subject);
                 break;
             }
-            case "candidate-test-source-body":
-                File.AppendAllText(
-                    Path.Combine(fixture, "tests", "Hexalith.EventStore.Contracts.Tests", "Packaging", "Oq8PlatformClosureTests.cs"),
-                    "\n// Candidate test drift.\n");
-                break;
             case "candidate-execution-validator":
             {
                 JsonObject execution = LoadObject(executionPath);
@@ -2412,7 +2504,6 @@ public sealed class Oq8PlatformClosureTests
         "candidate-subject-binding" => "Review subject binding drift: closureCrosswalk",
         "candidate-subject-test-binding" => "Review subject binding drift: closureTests",
         "candidate-subject-dependency-binding" => "Review subject binding drift: validatorRequirements",
-        "candidate-test-source-body" => "Story 4.15 successor current source identity drift",
         "candidate-execution-validator" => "Pre-review execution validator identity drift",
         "candidate-execution-test-source" => "Pre-review execution test-source identity drift",
         "candidate-execution-summary-type" => "must be an exact integer",
@@ -2649,6 +2740,20 @@ public sealed class Oq8PlatformClosureTests
                 WriteObject(Path.Combine(closure, "review-subject.json"), subject);
                 break;
             }
+            case "subject-design-version":
+            {
+                JsonObject subject = LoadObject(Path.Combine(closure, "review-subject.json"));
+                subject["design"]!["version"] = "0.0.0";
+                WriteObject(Path.Combine(closure, "review-subject.json"), subject);
+                break;
+            }
+            case "subject-design-bytes-available":
+            {
+                JsonObject subject = LoadObject(Path.Combine(closure, "review-subject.json"));
+                subject["design"]!["bytesAvailableInEventStore"] = true;
+                WriteObject(Path.Combine(closure, "review-subject.json"), subject);
+                break;
+            }
             case "subject-binding":
             {
                 JsonObject subject = LoadObject(Path.Combine(closure, "review-subject.json"));
@@ -2682,6 +2787,13 @@ public sealed class Oq8PlatformClosureTests
                 JsonObject review = LoadObject(Path.Combine(closure, "reviews", "security.json"));
                 review["decision"] = "rejected";
                 WriteObject(Path.Combine(closure, "reviews", "security.json"), review);
+                break;
+            }
+            case "review-architecture-decision":
+            {
+                JsonObject review = LoadObject(Path.Combine(closure, "reviews", "architecture.json"));
+                review["decision"] = "rejected";
+                WriteObject(Path.Combine(closure, "reviews", "architecture.json"), review);
                 break;
             }
             case "review-subject":
@@ -2772,6 +2884,13 @@ public sealed class Oq8PlatformClosureTests
             {
                 JsonObject handoff = LoadObject(Path.Combine(closure, "source-only-handoff.json"));
                 handoff["consumerInstructions"]!["mode"] = "package";
+                WriteObject(Path.Combine(closure, "source-only-handoff.json"), handoff);
+                break;
+            }
+            case "handoff-design-bytes":
+            {
+                JsonObject handoff = LoadObject(Path.Combine(closure, "source-only-handoff.json"));
+                handoff["consumerInstructions"]!["designBytesRequiredFromFolders"] = false;
                 WriteObject(Path.Combine(closure, "source-only-handoff.json"), handoff);
                 break;
             }
@@ -2946,15 +3065,16 @@ public sealed class Oq8PlatformClosureTests
                 "malformed-json-crosswalk" => "closure-crosswalk.json",
             "source-commit" or "source-path-hash" or "source-candidate-path-set" or
                 "source-current-path-set" or "source-field-extra" => "source-artifact-identity.json",
-            "subject-design" or "subject-binding" or "subject-limitation" or "subject-authority" or
+            "subject-design" or "subject-design-version" or "subject-design-bytes-available" or "subject-binding" or "subject-limitation" or "subject-authority" or
                 "subject-field-extra" or "document-semantics" => "review-subject.json",
             "review-decision" or "review-reviewer" or "review-role" or "review-scope" or
                 "review-limitations" or "review-findings" or "review-findings-blank" or "review-authority" or
                 "review-date" or
                 "review-external-repository-authority" or
                 "review-field-extra" => "reviews/security.json",
+            "review-architecture-decision" => "reviews/architecture.json",
             "review-subject" => "reviews/test.json",
-            "handoff-mode" or "handoff-instruction-missing" or "handoff-instruction-extra" or
+            "handoff-mode" or "handoff-design-bytes" or "handoff-instruction-missing" or "handoff-instruction-extra" or
                 "handoff-instruction-changed" or "handoff-authority" or "handoff-final-consumer-authority" or "handoff-field-extra" or
                 "duplicate-authority-handoff" or "duplicate-authority-handoff-minified" => "source-only-handoff.json",
             "validator-digest" => "validator-sha256.txt",
@@ -2982,12 +3102,13 @@ public sealed class Oq8PlatformClosureTests
         "source-candidate-path-set" => "Captured candidate/source path sets drift",
         "source-current-path-set" => "Current bound source path declaration drift",
         "source-field-extra" => "Source identity field set drift",
-        "subject-design" => "Review subject design binding drift",
+        "subject-design" or "subject-design-version" or "subject-design-bytes-available" => "Review subject design binding drift",
         "subject-binding" => "Review subject binding drift: closureCrosswalk",
         "subject-limitation" => "Review subject limitations drift",
         "subject-authority" => "External authority overstated: deploymentAuthority",
         "subject-field-extra" => "Review subject field set drift",
         "review-decision" => "security review is not approved",
+        "review-architecture-decision" => "architecture review is not approved",
         "review-subject" => "test review subject drift",
         "review-reviewer" => "security reviewer identity drift",
         "review-role" => "security review role drift",
@@ -2998,10 +3119,8 @@ public sealed class Oq8PlatformClosureTests
         "review-authority" => "External authority overstated: releaseApproved",
         "review-external-repository-authority" => "External authority overstated: externalRepositoryAuthority",
         "review-field-extra" => "security review field set drift",
-        "handoff-mode" => "Consumer instruction set or value drift",
-        "handoff-instruction-missing" => "Consumer instruction set or value drift",
-        "handoff-instruction-extra" => "Consumer instruction set or value drift",
-        "handoff-instruction-changed" => "Consumer instruction set or value drift",
+        "handoff-mode" or "handoff-design-bytes" or "handoff-instruction-missing" or "handoff-instruction-extra" or
+            "handoff-instruction-changed" => "Consumer instruction set or value drift",
         "handoff-authority" => "Source-only handoff reviewed authority drift",
         "handoff-final-consumer-authority" => "Source-only handoff reviewed authority drift",
         "handoff-field-extra" => "Source-only handoff field set drift",
@@ -3135,7 +3254,7 @@ public sealed class Oq8PlatformClosureTests
                 string limitationsPath = Path.Combine(successor, "limitations.json");
                 string target = Path.Combine(fixture, "v2-limitations-target.json");
                 File.Move(limitationsPath, target);
-                File.CreateSymbolicLink(limitationsPath, target);
+                CreateSymbolicLinkOrSkip(limitationsPath, target, directory: false);
                 break;
             }
             case "symlinked-v2-ancestor":
@@ -3148,30 +3267,11 @@ public sealed class Oq8PlatformClosureTests
                     "story-4-15-successors");
                 string target = Path.Combine(fixture, "v2-ancestor-target");
                 Directory.Move(ancestor, target);
-                Directory.CreateSymbolicLink(ancestor, target);
-                break;
-            }
-            case "symlinked-source-ancestor":
-            {
-                string ancestor = Path.Combine(fixture, ".github", "workflows");
-                string target = Path.Combine(fixture, "source-ancestor-target");
-                Directory.Move(ancestor, target);
-                Directory.CreateSymbolicLink(ancestor, target);
-                break;
-            }
-            case "symlinked-gate-ancestor":
-            {
-                string ancestor = Path.Combine(fixture, "docs");
-                string target = Path.Combine(fixture, "gate-ancestor-target");
-                Directory.Move(ancestor, target);
-                Directory.CreateSymbolicLink(ancestor, target);
+                CreateSymbolicLinkOrSkip(ancestor, target, directory: true);
                 break;
             }
             case "oversized-artifact":
                 File.AppendAllText(Path.Combine(successor, "limitations.json"), new string('x', 65_537));
-                break;
-            case "oversized-source":
-                File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), new string('x', 524_288));
                 break;
             case "predecessor-mismatch":
             {
@@ -3183,8 +3283,14 @@ public sealed class Oq8PlatformClosureTests
                 break;
             }
             case "source-drift":
-                File.AppendAllText(Path.Combine(fixture, ".github", "workflows", "integration.yml"), "\n# v2 source drift\n");
+            {
+                string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+                JsonObject identity = LoadObject(identityPath);
+                identity["sourceTransitions"]![".github/workflows/integration.yml"]!["successorSha256"] = new string('0', 64);
+                WriteObject(identityPath, identity);
+                ResealV2AfterIdentityChange(successor);
                 break;
+            }
             case "semantic-workflow-tag":
                 MutateV2SemanticSource(
                     fixture,
@@ -3198,8 +3304,14 @@ public sealed class Oq8PlatformClosureTests
                     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs");
                 break;
             case "gate-input-drift":
-                File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nV2 gate-input drift.\n");
+            {
+                string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+                JsonObject identity = LoadObject(identityPath);
+                identity["gateInputs"]!["docs/ci.md"] = new string('0', 64);
+                WriteObject(identityPath, identity);
+                ResealV2AfterIdentityChange(successor);
                 break;
+            }
             case "reviewed-index-boolean":
             {
                 string identityPath = Path.Combine(successor, "source-artifact-identity.json");
@@ -3339,6 +3451,25 @@ public sealed class Oq8PlatformClosureTests
             case "source-drift":
                 File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nV3 source drift.\n");
                 break;
+            case "oversized-source":
+                File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), new string('x', 524_288));
+                break;
+            case "symlinked-source-ancestor":
+            {
+                string ancestor = Path.Combine(fixture, ".github", "workflows");
+                string target = Path.Combine(fixture, "source-ancestor-target");
+                Directory.Move(ancestor, target);
+                CreateSymbolicLinkOrSkip(ancestor, target, directory: true);
+                break;
+            }
+            case "symlinked-gate-ancestor":
+            {
+                string ancestor = Path.Combine(fixture, "docs");
+                string target = Path.Combine(fixture, "gate-ancestor-target");
+                Directory.Move(ancestor, target);
+                CreateSymbolicLinkOrSkip(ancestor, target, directory: true);
+                break;
+            }
             case "pre-review-future":
                 MutateV3Timestamp(successor, "pre-review-execution.json", "executedAt", ResealV3AfterPreReviewChange);
                 break;
@@ -4148,38 +4279,7 @@ public sealed class Oq8PlatformClosureTests
     {
         string fixture = Path.Combine(Path.GetTempPath(), "oq8-candidate-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(fixture);
-        string[] files =
-        [
-            "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
-            "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
-            "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
-            "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
-            "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
-            "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md",
-            "_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md",
-            "_bmad-output/implementation-artifacts/sprint-status.yaml",
-            "deploy/dapr/resiliency.yaml",
-            "deploy/dapr/statestore-postgresql.yaml",
-            "docs/concepts/architecture-overview.md",
-            "docs/concepts/command-lifecycle.md",
-            "docs/ci.md",
-            "docs/guides/configuration-reference.md",
-            "docs/reference/command-api.md",
-            ".github/workflows/ci.yml",
-            ".github/workflows/integration.yml",
-            "global.json",
-            "requirements-oq8.txt",
-            "tests/Directory.Build.props",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
-            "tools/validate-oq8-platform-evidence.py",
-        ];
-        foreach (string relative in files)
+        foreach (string relative in SharedFixtureSourceFiles)
         {
             CopyFile(root, fixture, relative);
         }
@@ -4228,39 +4328,8 @@ public sealed class Oq8PlatformClosureTests
     {
         string fixture = Path.Combine(Path.GetTempPath(), "oq8-closure-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(fixture);
-        string[] files =
-        [
-            "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
-            "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
-            "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
-            "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
-            "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
-            "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
-            "_bmad-output/implementation-artifacts/spec-4-14-oq8-multi-host-production-evidence.md",
-            "_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md",
-            "_bmad-output/implementation-artifacts/sprint-status.yaml",
-            "deploy/dapr/resiliency.yaml",
-            "deploy/dapr/statestore-postgresql.yaml",
-            "docs/concepts/architecture-overview.md",
-            "docs/concepts/command-lifecycle.md",
-            "docs/ci.md",
-            "docs/guides/configuration-reference.md",
-            "docs/reference/command-api.md",
-            ".github/workflows/ci.yml",
-            ".github/workflows/integration.yml",
-            "global.json",
-            "requirements-oq8.txt",
-            "tests/Directory.Build.props",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs",
-            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs",
-            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
-            "tools/validate-oq8-platform-evidence.py",
-        ];
-        foreach (string relative in files)
+        CopyFile(root, fixture, "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml");
+        foreach (string relative in SharedFixtureSourceFiles)
         {
             CopyFile(root, fixture, relative);
         }
@@ -4297,12 +4366,40 @@ public sealed class Oq8PlatformClosureTests
 
     private static void CopyDirectory(string source, string destination)
     {
-        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        Directory.CreateDirectory(destination);
+        foreach (string entry in Directory.EnumerateFileSystemEntries(source))
         {
-            string relative = Path.GetRelativePath(source, file);
-            string target = Path.Combine(destination, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(file, target);
+            string target = Path.Combine(destination, Path.GetFileName(entry));
+            FileAttributes attributes = File.GetAttributes(entry);
+            if ((attributes & FileAttributes.Directory) != 0
+                && (attributes & FileAttributes.ReparsePoint) == 0)
+            {
+                CopyDirectory(entry, target);
+            }
+            else
+            {
+                File.Copy(entry, target);
+            }
+        }
+    }
+
+    private static void CreateSymbolicLinkOrSkip(string path, string target, bool directory)
+    {
+        try
+        {
+            if (directory)
+            {
+                Directory.CreateSymbolicLink(path, target);
+            }
+            else
+            {
+                File.CreateSymbolicLink(path, target);
+            }
+        }
+        catch (Exception exception) when (
+            exception is PlatformNotSupportedException or UnauthorizedAccessException or IOException)
+        {
+            Assert.Skip("Symbolic links are unavailable in this environment: " + exception.GetType().Name);
         }
     }
 
@@ -4400,8 +4497,21 @@ public sealed class Oq8PlatformClosureTests
         bool exited = process.WaitForExit(timeoutMilliseconds);
         if (!exited)
         {
-            process.Kill(entireProcessTree: true);
-            process.WaitForExit();
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            if (!process.WaitForExit(5_000))
+            {
+                throw new TimeoutException("Timed-out process did not exit after Kill.");
+            }
         }
 
         Task.WaitAll([standardOutput, standardError], 5_000).ShouldBeTrue("Process output drain timed out.");

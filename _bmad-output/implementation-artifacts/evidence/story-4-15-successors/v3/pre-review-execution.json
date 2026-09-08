@@ -1,16 +1,16 @@
 {
   "schema": "hexalith.eventstore.story-4-15-successor-pre-review-execution/v3",
-  "executedAt": "2026-09-04T11:00:00Z",
+  "executedAt": "2026-09-08T06:00:00Z",
   "scope": "receipt-independent-candidate",
   "candidateInputs": {
     "sourceTransitions": {
       "tools/validate-oq8-platform-evidence.py": {
         "predecessorSha256": "8934e82022535a3f1d4855202e8008341f99f0abce0331ab5c59616ce3ea8767",
-        "successorSha256": "2764e05752c17ac11fcfcc9096407377bc39050bef6c6b303d44089c05d15393"
+        "successorSha256": "60bb3f51b44eed1cdc52de794135434a0f0de3363d8850e5becab05f5452fb49"
       },
       "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": {
         "predecessorSha256": "434c1ad3ecb7d0bfe7390ce24b47919550b434c5f69db35d4e5b983d9b5864e0",
-        "successorSha256": "350a7b0d93c9beb2a8f21eb21653e1a4ada736ee337b76d76feb658729eb5c22"
+        "successorSha256": "29ed082f32edd24d213fdb41980686e3c454d6643a0cd794ce2258a6ecb14bf4"
       },
       "docs/ci.md": {
         "predecessorSha256": "f37a5f0ef6058a339b7f5a47375ab9bed195fe548969523a6155e77765fea46c",
@@ -21,8 +21,8 @@
       ".github/workflows/integration.yml": "4bed16f86037c7eb8f5bcbfc370b5b3ae60fec3d40880605660eba6722974ca1",
       "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "d5ac6c48917787c9249fe4257a639bf7077b09b88b19d2f327dbf8093e45f936",
       "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs": "d87abfcb82c7fc1b9dad1cbb26720f5c637a5dba6a1c4a2e8549d8c65e44a70b",
-      "tools/validate-oq8-platform-evidence.py": "2764e05752c17ac11fcfcc9096407377bc39050bef6c6b303d44089c05d15393",
-      "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "350a7b0d93c9beb2a8f21eb21653e1a4ada736ee337b76d76feb658729eb5c22",
+      "tools/validate-oq8-platform-evidence.py": "60bb3f51b44eed1cdc52de794135434a0f0de3363d8850e5becab05f5452fb49",
+      "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "29ed082f32edd24d213fdb41980686e3c454d6643a0cd794ce2258a6ecb14bf4",
       "docs/ci.md": "80b09abe87384382ca9e1db3e486fb8fbcf7de4fa6f8a01401e08518a755db46"
     }
   },

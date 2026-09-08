@@ -2,14 +2,14 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "issuedAt": "2026-09-04T11:00:15Z",
+  "issuedAt": "2026-09-08T06:00:15Z",
   "decision": "approved",
-  "subjectSha256": "f0a656c15d9dfdec4f56b5e9addbc1bd8cb1536c9410058afab982da5483b714",
+  "subjectSha256": "33eb4ee3e195c0101c01be4522d4852d9d4533e70027f37419056fdeefedb922",
   "limitationsSha256": "d298f5dd8b35e5b8bf269d8190f698492b3147ab77f827820b2ff036a2dd7884",
   "acceptedScope": "immutable predecessor lineage, fail-closed source and timestamp drift detection, receipt binding, and external-authority exclusions",
   "findings": [
-    "Generic exact-UTC parsing rejects malformed or genuinely future instants without relying on a calendar date embedded in executable source.",
-    "V3 retains the immutable PostgreSQL index, content-bound inputs, subject-addressed receipts, strict chronology, and every external-authority exclusion."
+    "This remint keeps the validator-pinned reviewer roster and records Administrator-authorized Group B closure of Oq8PlatformClosureTests.cs; it does not claim a new independent security-review conversation.",
+    "V3 still fail-closes source and timestamp drift, binds receipts to the frozen subject, and excludes every external authority."
   ],
   "authority": {
     "eventStorePlatformComplete": true,
