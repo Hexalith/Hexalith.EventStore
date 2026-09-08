@@ -1,83 +1,96 @@
-# Spine Pair Review - eventstore
+# Spine Pair Review — eventstore
+
+Run: 2026-09-08 (fresh validation of the 2026-08-01 `status: final` pair; the 2026-07-05 rubric was read only to confirm which old findings closed).
 
 ## Overall verdict
 
-The spine pair is directionally sound for the brownfield EventStore Admin UX: it commits to the single `Event Store Admin` module entry, tabbed child dashboard, FrontComposer/Fluent UI V5, projection-confirmed success, and support-safe operational states. It is not yet readiness-clean as a downstream contract because token definitions are not concrete enough, component names do not line up across the two spines, visual references are not promoted or linked, and source-required Sample/Tenants UI coverage is still implicit.
+The pair is structurally sound and now traceable: every required section is present in canonical order, all 16 component names match across both spines, all 7 `{token}` references in `EXPERIENCE.md` resolve, the five `sources` paths exist, and the six Key Flows each carry a named protagonist, numbered steps, a climax beat and a failure path — the 2026-07-05 blockers (missing `ux.md`, orphaned visuals, taxonomy drift, absent Sample/Tenants flows) are closed. It is not yet a clean extraction contract on the token side: the `colors` frontmatter names the Fluent v4/FAST recipe family (`accentFill`, `neutralLayer1`, `neutralStroke`, `focusStroke`) that `DESIGN.md:180` and `UX-DR6` forbid, two named Fluent V5 API surfaces do not exist in the pinned `5.0.0-rc.5` package (`FluentDrawer`, `BadgeColor.Neutral`) and one of them has already propagated into `epics.md` UX-DR18, and the promoted mockups bind the same forbidden legacy CSS variables while claiming to be "Fluent-emitted". A Blazor developer can build the behaviour from `EXPERIENCE.md` today; they cannot bind the visual tokens from `DESIGN.md` without re-deriving the Fluent 2 names themselves.
 
-## 1. Flow coverage - thin
+## 1. Flow coverage — adequate
 
-Checked PRD UI artifact requirements, architecture UI decisions, epics/stories, and the IA and Key Flows in `EXPERIENCE.md`.
-
-### Findings
-
-- **high** Source-required Sample UI and Tenants UI behavior is not covered by explicit key flows (`prd.md:48`, `prd.md:243-244`, `prd.md:352`; `EXPERIENCE.md:156-203`). The current flows focus on the consolidated admin dashboard. Story-driving UI requirements for Sample accepted-submission behavior and Tenants projection-confirmed success are present only as generic state rules or an admin tenant-access flow. *Fix:* Add named key flows for "Sample accepted submission" and "Tenants projection-confirmed update" or add an explicit UI-surface coverage table that maps these source requirements to concrete steps, climax, and failure states.
-- **medium** Several dashboard tabs have IA placement but no representative operator journey (`EXPERIENCE.md:35-46`, `EXPERIENCE.md:156-203`). Topology, Storage & Snapshots, Settings, and Projections are important support surfaces, but only Recovery, Tenants & Access, Commands, and Deferred operations get full flows. *Fix:* Add short journeys or a tab-to-flow coverage matrix for every dashboard tab so implementation agents can see which states and actions are expected.
-
-## 2. Token completeness - broken
-
-Checked YAML tokens in `DESIGN.md`, `{path.to.token}` references, and whether load-bearing color and contrast choices can be implemented without guesswork.
+Extracted UX requirements from `prd.md` §8.3 (`prd.md:312-319`) and glossary (`prd.md:127-129`), `architecture.md` AD-4/AD-8/AD-10/AD-14/AD-15/AD-21 and the UI consistency row (`architecture.md:482`), `epics.md` UX-DR1–UX-DR42 (`epics.md:190-272`) plus the UI-bearing stories 2.3, 2.6, 7.4, 7.14, 7.19, 7.20, and the readiness report UX section (`implementation-readiness-report-2026-07-05.md:337-372`). Mapped each to `EXPERIENCE.md` Key Flows (`EXPERIENCE.md:225-296`). Covered by a full flow: incident recovery (UX-DR39 → Flow 1), tenant access (UX-DR40 → Flows 2 and 6), command investigation (UX-DR41 → Flow 3), deferred discovery (UX-DR22/NFR15 → Flow 4), Sample accepted submission and Tenants projection-confirmed (UX-DR42 / `prd.md:317-318` → Flows 5 and 6). All six flows have protagonist, numbered steps, bold climax, and a failure line.
 
 ### Findings
+- **medium** The projection lifecycle (rebuild / degraded / unavailable / local-only) is the most heavily specified behaviour in the sources (Story 1.16 `epics.md:1050`, UX-DR20/21/31 `epics.md:228-230,250`, Story 7.19 AC `epics.md:5863-5866`) but has no Key Flow; it exists only as State Pattern rows (`EXPERIENCE.md:126-129`) and a component row (`EXPERIENCE.md:105`). A story-dev has no worked sequence for "operator watches a rebuild while a mutation is open and the gate closes". *Fix:* add Flow 7 — Projections tab, rebuild in progress, mutation disabled, last complete model retained, evidence returns `Current`, gate re-opens.
+- **medium** The IA closure rule asserts "every target surface supports an administrator/operator journey" (`EXPERIENCE.md:54`), but Overview (only as a waypoint in Flow 1 step 2), Topology, Storage & Snapshots and Settings have no journey at all (`EXPERIENCE.md:41,46,47,50` vs `EXPERIENCE.md:225-296`). The tab-state matrix (`EXPERIENCE.md:131-144`) mitigates but does not satisfy the rule the spine itself states. *Fix:* either add short triage journeys for those four tabs or soften the closure rule to "every mutating surface".
+- **low** Legacy-route migration (UX-DR4 `epics.md:196`, Story 7.14 AC `epics.md:5573-5581`) is covered only by Flow 4's failure line for `/backups` (`EXPERIENCE.md:272`); the general "bookmarked legacy deep link lands on the canonical tab with module entry selected" case has no flow step. *Fix:* add one step to Flow 3 (Lea arrives via a bookmarked `/streams/{tenant}/{domain}/{aggregate}` link).
 
-- **critical** Color tokens do not provide hex values or light/dark token pairs (`DESIGN.md:14-27`). The rubric treats missing hex or applicable light/dark color pairs as critical because downstream code mirrors the spine. The prose says to inherit Fluent, which is correct, but the token contract still leaves implementers to guess exact variables or runtime aliases. *Fix:* Define each color token as a concrete Fluent UI V5/Fluent 2 design-token reference with resolved light/dark values where available, or explicitly mark the token as an inherited CSS variable with its exact variable name and fallback.
-- **medium** Radius and spacing tokens are partly semantic rather than implementable dimensions (`DESIGN.md:38-48`). Examples include "Fluent default small radius" and "Fluent/FrontComposer shell default content padding." *Fix:* Convert the load-bearing values to exact token names, CSS variables, or fixed dimensions such as `8px`, while keeping platform-native dynamic behavior where it is truly owned by Fluent or FrontComposer.
-- **medium** Contrast targets for load-bearing state combinations are not stated (`DESIGN.md:88-98`, `EXPERIENCE.md:114-127`). Accessibility inherits from Fluent, but status badges, warning banners, disabled/deferred actions, and stale states need minimum contrast expectations. *Fix:* Add a short contrast contract: WCAG 2.2 AA for text and non-text indicators, badge text not color-only, and Fluent token combinations that satisfy the target.
+## 2. Token completeness — broken
 
-## 3. Component coverage - thin
-
-Checked component names in `DESIGN.md` frontmatter/prose and `EXPERIENCE.md` Component Patterns.
-
-### Findings
-
-- **high** The component taxonomy is not normalized across the two spines (`DESIGN.md:49-77`, `DESIGN.md:130-142`, `EXPERIENCE.md:67-83`). `EXPERIENCE.md` defines behavioral components such as Detail panel, Command lifecycle tracker, Projection freshness indicator, Deferred operation placeholder, and Command palette that do not all have matching visual rows in `DESIGN.md.Components`. `DESIGN.md` names Dashboard header, Filter bar, Status badge, and Multi-section panel, but these are absent or differently named in `EXPERIENCE.md.Component Patterns`. *Fix:* Create one canonical component matrix with identical names in both spines and a visual plus behavioral rule for each component.
-- **low** Naming alternates between singular/plural and UI-system names (`DESIGN.md:72`, `DESIGN.md:140`, `EXPERIENCE.md:81`). `operations-dialog` and "Operation dialog" likely mean the same component, but downstream agents should not have to infer that. *Fix:* Use one slug and one display name everywhere.
-
-## 4. State coverage - adequate
-
-Checked IA surfaces against expected cold load, empty, stale/offline, permission-denied, validation, and terminal failure states.
+Extracted all frontmatter tokens (`DESIGN.md:14-155`: 18 colors, 4 typography roles, 4 radii, 6 spacing, 16 components) and every `{path}` reference in both spines (30 distinct in `DESIGN.md`, 7 in `EXPERIENCE.md`). Every reference resolves to a defined key. Per the project UX policy (`references/Hexalith.AI.Tools/hexalith-ux-instructions.md` "No theme redefinition"; memlog last decision) tokens were judged on concrete resolvability to a Fluent 2 token, component parameter, or CSS variable a Blazor developer can bind — not on hex presence. Verified the pinned library (`Microsoft.FluentUI.AspNetCore.Components 5.0.0-rc.5-26219.1`, `references/Hexalith.Builds/Props/Directory.Packages.props:226`) via its component catalogue and the existing `src/Hexalith.EventStore.Admin.UI` code, which already binds `--colorNeutralForeground3`, `--colorNeutralBackground1/2`, `--colorNeutralStroke1`, `--colorBrandBackground`, `--colorNeutralForegroundOnBrand`, `--colorStrokeFocus2`, `BadgeColor.Success|Warning|Danger|Subtle`.
 
 ### Findings
+- **critical** Ten colour tokens name the Fluent v4/FAST recipe family, not Fluent 2 tokens: `accentFill`, `foregroundOnAccent`, `neutralLayer1`, `neutralLayer2`, `neutralForeground`, `neutralForegroundHint`, `neutralStroke`, `neutralFill`, `neutralFillLayer`, `focusStroke` (`DESIGN.md:15-23,32`). Those are exactly the `--accent-fill-rest` / `--neutral-layer-1` / `--neutral-stroke-rest` variables that `DESIGN.md:180` ("do not use legacy Fluent v4/FAST tokens"), UX-DR6 (`epics.md:200`) and the UX policy forbid, and V5 does not emit them. A developer who follows the frontmatter literally reintroduces the token family Story 7.20 must scan out (`epics.md:5939`). *Fix:* rename each value to its Fluent 2 token: `app-bar-background: '--colorBrandBackground'`, `app-bar-foreground: '--colorNeutralForegroundOnBrand'`, `canvas: '--colorNeutralBackground1'`, `navigation-background: '--colorNeutralBackground2'`, `content-foreground: '--colorNeutralForeground1'`, `secondary-foreground: '--colorNeutralForeground3'`, `border-subtle: '--colorNeutralStroke1'`, `surface-subtle: '--colorNeutralBackground3'`, `callout-info-background: '--colorNeutralBackground4'` (or `FluentMessageBar Intent=Info`), `focus-ring: '--colorStrokeFocus2'`.
+- **high** `status-neutral-background/foreground` resolve to `FluentBadge Color=Neutral` (`DESIGN.md:30-31`), but V5 `BadgeColor` has no `Neutral` member (values: Brand, Danger, Important, Informative, Severe, Subtle, Success, Warning). Five component tokens depend on it (`DESIGN.md:114-115,143,146-147,149-150`) — the whole `Rebuilding`/`LocalOnly`/`Unknown`/deferred rendering has no bindable colour. *Fix:* commit to `BadgeColor.Subtle` (what Admin.UI already uses) or `BadgeColor.Informative`, and rename the token or keep the name with the corrected value.
+- **medium** `typography.page-title` = 34px and `typography.section-title` = 18px (`DESIGN.md:42,48`) do not exist on the Fluent 2 ramp exposed by `FluentText Size` (Size100=10 … Size300=14, Size400=16, Size500=20, Size600=24, Size700=28, Size800=32, Size900=40). The prose forbids a CSS heading ramp (`DESIGN.md:188`; UX policy), so these two values are unreachable by allowed means. `body` 14px (Size300) and `metadata` 12px (Size200) are fine. *Fix:* express roles as component parameters — `page-title: { note: 'FluentText As=H1 Size=Size800 Weight=Semibold' }`, `section-title: { note: 'FluentText As=H2 Size=Size500 Weight=Semibold' }` — and drop the pixel/lineHeight literals.
+- **medium** `issue-banner` binds `FluentBadge` colour tokens (`DESIGN.md:119-121` → `{colors.status-*-background}` = "FluentBadge Color=… background"), but `FluentMessageBar` is styled by `Intent` (Info/Warning/Error/Success), not by badge colours; `EXPERIENCE.md:25,100` then references `{components.issue-banner.warning-background}` as if it were bindable. *Fix:* replace the three colour keys with `intent-info: 'MessageBarIntent.Info'`, `intent-warning: 'MessageBarIntent.Warning'`, `intent-danger: 'MessageBarIntent.Error'`.
+- **medium** Three component `component:` values are uncommitted alternatives: `evidence-grid: 'FluentDataGrid or FrontComposer grid primitive'` (`DESIGN.md:102`), `detail-panel: 'FluentDrawer, FluentDialog, or FrontComposer panel primitive'` (`DESIGN.md:128`), `command-palette: '… and list primitives'` (`DESIGN.md:153`), plus `focus-ring: 'Fluent theme focusStroke / accent focus treatment'` (`DESIGN.md:32`). A consumer cannot source-extract an "or". *Fix:* commit (e.g. `FluentDataGrid`; `FluentDialog` via `DialogService.ShowDrawerAsync` with `DialogAlignment.End`; `FluentListbox`) and move the FrontComposer fallback into prose as the documented exception path.
+- **low** Contrast target covers text and state labels only (`DESIGN.md:178`). Non-text load-bearing combinations — focus ring on canvas, `border-subtle` on `canvas`, lifecycle-tracker step fills (`DESIGN.md:137-139`) which name a background with no paired foreground — have no stated 3:1 floor. *Fix:* add one sentence: "non-text indicators (focus, borders, tracker steps) meet WCAG 2.2 AA 3:1; tracker steps pair each background with the matching `status-*-foreground`."
+- **low** Six frontmatter tokens are never referenced by any component or prose: `colors.secondary-foreground`, `colors.focus-ring`, `typography.section-title`, `spacing.density-unit`, `spacing.page-padding-x`, `spacing.page-padding-y` (`DESIGN.md:20,32,46,64,68,69`). *Fix:* reference them from `dashboard-header`/`dashboard-shell` or delete them.
 
-- **medium** State patterns are strong globally but thin per surface (`EXPERIENCE.md:85-101`). Topology, Storage & Snapshots, Settings, and Deferred & Backlog have unique empty, partial-permission, degraded, and read-only cases that are not named by tab. *Fix:* Add a compact tab-state matrix that shows the required cold, empty, stale/offline, denied, and terminal states for each dashboard tab.
+## 3. Component coverage — strong
 
-## 5. Visual reference coverage - broken
-
-Checked `mockups/`, `wireframes/`, `imports/`, `.working/`, and inline references from the spines.
-
-### Findings
-
-- **high** Visual references are orphaned in `.working/` and are not linked from either spine (`.memlog.md:8`, `.memlog.md:22`; `DESIGN.md`, `EXPERIENCE.md`). The run folder contains rendered Fluent reference screenshots and key mock screenshots, but no `mockups/` or `wireframes/` assets and no inline links explaining what each visual illustrates. *Fix:* Promote accepted screenshots to `mockups/` or `wireframes/`, link them from the relevant sections, and state that `DESIGN.md` and `EXPERIENCE.md` win on conflicts.
-- **medium** The key mocks are raw standalone HTML artifacts (`.working/key-dashboard-overview.html`, `.working/key-command-investigation.html`). This is acceptable as validation scaffolding, but it can be mistaken for implementation guidance in a repo that requires FrontComposer and Fluent components. *Fix:* Label raw HTML mocks as non-implementation artifacts or replace them with FrontComposer/Fluent-oriented mock descriptions.
-
-## 6. Bloat & overspecification - adequate
-
-The spines are compact and mostly decision-oriented. They avoid decorative narrative and do not restate the entire PRD. The biggest risk is underspecification in some matrices, not bloat.
+Extracted all component names from `DESIGN.md` frontmatter (`DESIGN.md:71-155`), `DESIGN.md` Components prose (`DESIGN.md:216-231`), `EXPERIENCE.md` Component Patterns (`EXPERIENCE.md:92-107`), and every other mention in State Patterns, Accessibility Floor, and Key Flows. The 16 canonical components (Module entry, Dashboard shell, Dashboard header, Dashboard tabs, Stat summary, Filter bar, Evidence grid, Status badge, Issue banner, Operation dialog, Detail panel, Multi-section panel, Command lifecycle tracker, Projection freshness indicator, Deferred operation placeholder, Command palette) appear with identical names in all three places, and every row carries real rules on both sides (the prior high finding is closed).
 
 ### Findings
+- **high** `FluentDrawer` is named as a detail-panel implementation (`DESIGN.md:128,226`) and has already been inherited verbatim into `epics.md` UX-DR18 (`epics.md:224`) and Story 7.19's owner text. No `FluentDrawer` component exists in V5 (196-component catalogue; drawers are `IDialogService.ShowDrawerAsync<T>()` / `FluentDialog Alignment=End`). A story-dev searching the API will stall or hand-roll one. *Fix:* replace with "`FluentDialog` in drawer mode (`DialogService.ShowDrawerAsync`, `DialogAlignment.End`)" in both spine locations and raise a one-line correction to UX-DR18.
+- **low** Two behaviours are specified without a component home: loading skeletons (`EXPERIENCE.md:113`, UX-DR24) and inline validation (`EXPERIENCE.md:124,179`, UX-DR30). Both map to concrete V5 primitives (`FluentSkeleton`, `FluentField` + `FluentValidationMessage`). *Fix:* add `skeleton` and `inline-validation` rows to both component tables, or note explicitly that they inherit Fluent defaults with no delta.
 
-- **low** The `Deferred & Backlog` tab could become a catch-all planning page rather than an operational surface (`EXPERIENCE.md:45`, `EXPERIENCE.md:195-203`). *Fix:* Keep it limited to honest unavailable-operation discovery, role-gated where appropriate, and link to backlog status without turning the admin UI into planning documentation.
+## 4. State coverage — adequate
 
-## 7. Inheritance discipline - thin
-
-Checked frontmatter source resolution, glossary/requirement naming, component naming, and whether `EXPERIENCE.md` resolves its visual references through `DESIGN.md`.
-
-### Findings
-
-- **medium** `EXPERIENCE.md` references `DESIGN.md` generally but does not use resolved token references for visual dependencies (`EXPERIENCE.md:19`, `EXPERIENCE.md:67-83`, `EXPERIENCE.md:114-127`). *Fix:* Where behavioral rules depend on visual tokens, reference the exact `DESIGN.md` token path, such as `{colors.status-warning}` or `{components.status-badge}`.
-- **medium** Source requirement names are paraphrased rather than mapped verbatim (`prd.md:76-79`, `prd.md:212-213`, `EXPERIENCE.md:85-101`). The meaning is mostly preserved, but traceability would be stronger if "Projection-Confirmed Success", "Support-Safe State", `NFR14`, and `NFR15` appeared in a source coverage table. *Fix:* Add a traceability table that maps source terms and NFRs to UX sections and flows.
-
-## 8. Shape fit - adequate
-
-`DESIGN.md` uses the required section order. `EXPERIENCE.md` includes Foundation, Information Architecture, Voice and Tone, Component Patterns, State Patterns, Interaction Primitives, Accessibility Floor, Key Flows, plus applicable Responsive and Inspiration/Anti-pattern sections.
+Walked every IA surface (`EXPERIENCE.md:31-50`): 10 EventStore tabs plus the Sample and Tenants dashboards. Compared against State Patterns (`EXPERIENCE.md:111-129`), the tab-state matrix (`EXPERIENCE.md:133-144`), Support-Safe visibility policy (`EXPERIENCE.md:209-214`), and the state inventories demanded by Stories 7.14 (`epics.md:5598-5601`), 7.19 (`epics.md:5868-5886`) and 7.20. Covered for every tab: cold-load, stale/offline, permission-denied, empty, deferred/501, protected payload, validation, oversized, all seven lifecycle states, dead letters, SignalR disconnect. The prior "thin per surface" finding is closed by the matrix.
 
 ### Findings
+- **medium** Shell-level failure states required by Story 7.14 — FrontComposer composition unavailable, unknown route, failed tab load (`epics.md:5598-5601`) — have no State Pattern row; only "Admin API unavailable" (`EXPERIENCE.md:114`) exists. *Fix:* add a `Shell/route failure` row: accessible support-safe state, bounded navigation choices, no false selected tab, no stale authorization.
+- **medium** Timeout and cancelled outcomes are named as must-not-collapse states by Story 7.19 (`epics.md:5871`: "unavailable/timeout/cancelled never becomes empty or success") and Story 7.4 (`epics.md:4918`), but appear only inside Flow 5's failure line (`EXPERIENCE.md:284`). *Fix:* add a `Request timeout / cancelled` row to State Patterns with the evidence-pending-or-stale treatment.
+- **medium** The tab-state matrix covers only EventStore tabs; the Sample and Tenants surfaces (`EXPERIENCE.md:34-35`) have no empty / cold / denied rows — Tenants is partially reached via the "Projections / Tenants" rows, Sample only via "Command accepted" (`EXPERIENCE.md:117`). Story 2.6 AC requires empty collections to expose the snapshot lifecycle (`epics.md:1658`). *Fix:* add two rows to the matrix for Sample dashboard and Tenants dashboard.
+- **low** Command palette has no state rows (no matches, denied/filtered, deferred-hidden) although UX-DR23 and Story 7.14 AC (`epics.md:5593-5596`) enumerate them. *Fix:* one `Command palette` row in State Patterns.
 
-- **low** Both spines remain marked `status: draft` (`DESIGN.md:4`, `EXPERIENCE.md:3`). That is fine for review, but not for readiness handoff. *Fix:* After addressing validation findings, promote the status to `reviewed` or the repository's accepted final status.
+## 5. Visual reference coverage — adequate
+
+Inventoried `imports/` (2 PNG), `mockups/` (2 HTML + 2 PNG), `wireframes/` (absent), `.working/` (10 files). Both spines link the two imports and the two HTML mocks (`DESIGN.md:166`, `EXPERIENCE.md:25`) and state spines-win-on-conflict; `index.md:22-30` and `ux.md` repeat both. `.working` PNG twins are byte-identical to the promoted files; the promoted HTML mocks differ from `.working` only by the hex→`var()` swap and the governance comment. The prior "orphaned in `.working/`" high finding is closed.
+
+### Findings
+- **high** Both promoted mocks bind the forbidden Fluent v4/FAST variables — `var(--accent-fill-rest)`, `--neutral-layer-1/2`, `--neutral-foreground-rest`, `--neutral-stroke-rest`, `--neutral-fill-*` (`mockups/dashboard-overview.html:16-27`, `mockups/command-investigation.html:16-26`) — under a comment claiming they "reference Fluent-emitted tokens when present" (`mockups/dashboard-overview.html:12-13`). V5 emits none of these; the comment is false and the mock is a copy-paste trap for exactly the tokens `DESIGN.md:180` bans. *Fix:* swap to the `--color*` names from finding 2.1 (same names Admin.UI already uses) or strip the `var()` layer and label the mock "system-colour fallback only".
+- **medium** The four references are linked in one blob at Brand & Style / Foundation rather than inline at the section each illustrates, and each is named only by its file title. `dashboard-overview` illustrates the IA tab row, stat-summary evidence badges and the stale banner (`EXPERIENCE.md:37-50,96,113-115`); `command-investigation` illustrates the lifecycle tracker and Flow 3 (`EXPERIENCE.md:104,252-262`). *Fix:* move each link beside its section with one clause naming what to look at; keep a single spines-win statement.
+- **low** `mockups/dashboard-overview.png` and `mockups/command-investigation.png` are linked from nowhere (`index.md:28-29` and both spines link only the `.html`). *Fix:* link the PNG as the "rendered capture" beside each HTML link, or delete the PNGs.
+- **low** The overview mock's tab row omits the Settings tab (9 tabs at `mockups/dashboard-overview.html:283-291` vs 10 at `EXPERIENCE.md:41-50`, UX-DR3). Spines win, but the mock now contradicts the closed IA. *Fix:* add the tab or note the omission in the mock header comment.
+- **low** `.working/` still holds never-promoted leftovers: the two hex-coded `key-*.html` originals, two `*-rendered.json` DOM extracts, and two thumbnail `fluent-ui-v5-home-*.png` (6 KB / 2.7 KB). *Fix:* delete `.working/` or add a one-line note in `index.md` that it is scratch and non-canonical.
+
+## 6. Bloat & overspecification — adequate
+
+Both spines are compact (243 / 302 lines) and decision-dense. No persona or FR restatement; `EXPERIENCE.md` prose is neutral. The three invented `EXPERIENCE.md` sections (Source Traceability, Support-Safe Operations, Non-Blocking Assumptions) each earn their place — the readiness report cites the traceability table (`implementation-readiness-report-2026-07-05.md:350-355`).
+
+### Findings
+- **low** The 110-character `fontFamily` stack is repeated verbatim four times (`DESIGN.md:35,41,47,53`) where the shadcn example pattern (`design-example-shadcn.md`) states inheritance once. Combined with finding 2.3 the whole typography block would collapse to four `note:` lines. *Fix:* single `font-family` inheritance note in prose; roles as `FluentText` parameter notes.
+- **low** The deferred-operation policy is stated in four places (`EXPERIENCE.md:63,106,122,143,207-214`) and the "single host / no second host" decision in five (`DESIGN.md:164`, `EXPERIENCE.md:21,300`, `index.md`, `ux.md`). *Fix:* keep the Support-Safe visibility table (`EXPERIENCE.md:209-214`) as the single source and reduce the others to a cross-reference.
+- **low** Spines-win-on-conflict is stated four times across the workspace (`DESIGN.md:166`, `EXPERIENCE.md:25`, `index.md:19-20`, `ux.md`). Harmless, but the rubric asks for once. *Fix:* keep it in `index.md` and one spine.
+
+## 7. Inheritance discipline — adequate
+
+All five `sources` paths resolve (`docs/brownfield/architecture.md`, `prd.md`, `architecture.md`, `epics.md`, `implementation-readiness-report-2026-07-05.md`); the sixth is the Fluent V5 docs URL. PRD glossary terms "Projection-Confirmed Success" and "Support-Safe State" appear verbatim (`EXPERIENCE.md:60-61` vs `prd.md:127,129`). Lifecycle vocabulary (`Current`…`Unknown`) and `CommandStatus` names match `architecture.md:476` and `docs/brownfield/architecture.md:152` exactly. Component names are identical across all six tables. `EXPERIENCE.md` token references resolve 7/7. No version numbers are pinned in the spines (correct — the Builds catalog owns them). The spines pre-date `epics.md` UX-DR1–42, and the epics inherit from them, so the inheritance edge of concern is spine → epics.
+
+### Findings
+- **high** (same defect as 3.1, recorded here for the inheritance edge) The nonexistent `FluentDrawer` name has propagated downstream into `epics.md:224` (UX-DR18) and Story 7.19's owner text (`epics.md:5851` "approved drawer/dialog/panel"). Fixing the spine alone leaves the epics contract stale. *Fix:* correct both spines and file the UX-DR18 wording change with the epics owner in the same change.
+- **low** Casing drift on the fail-safe state: `EXPERIENCE.md:66` renders "`unknown`" while every other occurrence (`EXPERIENCE.md:65,67,105`, `DESIGN.md:229`, `architecture.md:476`) uses `Unknown`. Test selectors keyed on state identifiers (UX-DR34) will diverge. *Fix:* `Unknown`.
+- **low** `EXPERIENCE.md` Foundation references `{colors.app-bar-background}` and `{colors.canvas}` as "visual dependencies" (`EXPERIENCE.md:25`), but those are the two tokens that currently resolve to forbidden v4 names (finding 2.1); the cross-spine reference is mechanically fine and semantically broken until 2.1 lands. No separate fix.
+
+## 8. Shape fit — strong
+
+`DESIGN.md` sections run Brand & Style → Colors → Typography → Layout & Spacing → Elevation & Depth → Shapes → Components → Do's and Don'ts (`DESIGN.md:158,168,182,190,204,208,212,233`) — canonical order, none omitted. `EXPERIENCE.md` carries all eight required defaults (Foundation `:17`, Information Architecture `:27`, Voice and Tone `:71`, Component Patterns `:86`, State Patterns `:109`, Interaction Primitives `:146`, Accessibility Floor `:157`, Key Flows `:225`) plus both required-when-applicable sections, correctly triggered: Responsive & Platform (`:189`, three breakpoints, multi-surface) and Inspiration & Anti-patterns (`:216`, memlog names the Fluent docs site as reference product and legacy route sprawl as reject). Both spines are `status: final` (prior low finding closed). Frontmatter carries `name`, `status`, `created`, `updated`, `sources`; `DESIGN.md` also carries `description`.
+
+### Findings
+- **low** `EXPERIENCE.md` frontmatter has no `description` line while `DESIGN.md:3` does; the examples pair them. Cosmetic. *Fix:* copy the one-liner.
 
 ## Mechanical notes
 
-- Sources in frontmatter resolve.
-- `imports/` exists but is empty.
-- No `mockups/` or `wireframes/` directory exists in the run folder.
-- `.working/` contains useful evidence but is not part of the formal visual reference set.
-- No non-ASCII characters were found in the generated spine and mock files during validation.
+- No Mermaid blocks in either spine; nothing to lint.
+- No non-ASCII characters in either spine.
+- `{path}` reference resolution: 30/30 in `DESIGN.md`, 7/7 in `EXPERIENCE.md`; frontmatter-internal references (`components.* → colors/typography/rounded/spacing`) 100% resolve.
+- Colour-token *type* rule (`design-md-spec.md`: hex strings) is intentionally not met by project policy; judged on resolvability instead — see 2.1/2.2 for the values that fail even that bar.
+- Name consistency: 16/16 component names identical across `DESIGN.md` frontmatter slugs, `DESIGN.md` prose, and `EXPERIENCE.md` Component Patterns. The prior `operations-dialog` / "Operation dialog" drift is gone.
+- Vocabulary drift: `unknown` vs `Unknown` at `EXPERIENCE.md:66` (7.2).
+- Nonexistent V5 API names in the spines: `FluentDrawer` (`DESIGN.md:128,226`), `BadgeColor.Neutral` (`DESIGN.md:30-31`). Every other named primitive (`FluentTabs`, `FluentDataGrid`, `FluentBadge`, `FluentMessageBar`, `FluentDialog`, `FluentAccordion`, `FluentTextInput`, `FluentSelect`, `FluentCheckbox`, `FluentButton`, `FluentStack`, `FluentGrid`, `FluentText`, `FluentSkeleton`) exists in the pinned package.
+- Cross-refs: `index.md` → `../../archive/ux-superseded-2026-07-05.md` resolves; `index.md` and `ux.md` still point at the 2026-07-05 `validation-report.md` / `review-*.md`, which the readiness report already flags as historical (`implementation-readiness-report-2026-07-05.md:371`); this file supersedes `review-rubric.md` only.
+- Architecture Stack table pins `HexalithFrontComposerVersion 4.1.1` (`architecture.md:506`) while the live catalog is `4.4.0` (`Directory.Packages.props:9`); the spines correctly pin nothing, so no spine action.
+- `.working/` contains 10 files; 6 are duplicates/originals of promoted assets, 4 were never promoted (see 5.5).

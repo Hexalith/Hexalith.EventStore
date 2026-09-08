@@ -483,7 +483,6 @@ Review pass 9 (2026-09-07, `bmad-code-review`). Group 1 Tenants Code Map `d2b7ed
 - `low` — `ConnectAsync` ignores cancellation until `ConnectTimeout` (5 s).
 - `low` — `RedisTimeoutException` is not wrapped as `TimeoutException`; failing the persistence proof is correct.
 - `low` — bootstrap `PublishFailed` is not skipped; the already-bootstrapped path dominates and create already skips.
-
 Review pass 10 (2026-09-08, `bmad-code-review`). Chunked Code Map + EventStore spec/gitlink; four layers ran; none failed.
 
 **Patch**
