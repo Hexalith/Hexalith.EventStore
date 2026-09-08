@@ -2,14 +2,14 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "architecture",
   "reviewer": "Winston (System Architect)",
-  "issuedAt": "2026-09-04T11:00:10Z",
+  "issuedAt": "2026-09-08T06:00:10Z",
   "decision": "approved",
-  "subjectSha256": "f0a656c15d9dfdec4f56b5e9addbc1bd8cb1536c9410058afab982da5483b714",
+  "subjectSha256": "33eb4ee3e195c0101c01be4522d4852d9d4533e70027f37419056fdeefedb922",
   "limitationsSha256": "d298f5dd8b35e5b8bf269d8190f698492b3147ab77f827820b2ff036a2dd7884",
   "acceptedScope": "v2 historical preservation, v3 current-source succession, deterministic UTC validation, and source-only authority boundaries",
   "findings": [
-    "The v2 packet remains byte-for-byte closed by its original manifest and resolves its bound source from the completed-v2 Git snapshot.",
-    "The additive v3 subject binds every current image-authority input plus the evolved validator, closure tests, and operator guidance without expanding authority."
+    "Administrator authorized a 2026-09-08 Group B remint of the v3 successor after applying sealed Git-identity method names and the remaining Oq8PlatformClosureTests.cs patches. V2 historical preservation and source-only authority boundaries are unchanged.",
+    "The additive v3 subject still binds every current image-authority input plus the evolved validator, closure tests, and operator guidance without expanding authority."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

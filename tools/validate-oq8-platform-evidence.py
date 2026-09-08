@@ -281,8 +281,9 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V3_FINAL_CLOSURE_TEST_COUNT = 375
-V3_FULL_CONTRACTS_TEST_COUNT = 1896
+V3_REVIEW_DATE = "2026-09-08"
+V3_FINAL_CLOSURE_TEST_COUNT = 380
+V3_FULL_CONTRACTS_TEST_COUNT = 1901
 V3_TEST_RECEIPT_VERIFICATION = [
     ("oq8-platform-closure", V2_CLOSURE_COMMAND, V3_FINAL_CLOSURE_TEST_COUNT),
     ("contracts-full", V3_CONTRACTS_TEST_COMMAND, V3_FULL_CONTRACTS_TEST_COUNT),
@@ -2825,7 +2826,7 @@ def validate_v3_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
         identity.get("schema") == "hexalith.eventstore.story-4-15-successor-source-identity/v3",
         "Story 4.15 v3 source identity schema drift",
     )
-    require(identity.get("reviewedOn") == "2026-09-04", "Story 4.15 v3 source identity review date drift")
+    require(identity.get("reviewedOn") == V3_REVIEW_DATE, "Story 4.15 v3 source identity review date drift")
     require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Story 4.15 v3 source identity repository drift")
     require(identity.get("predecessor") == expected_v3_predecessor(), "Story 4.15 v3 predecessor link drift")
     require(

@@ -3965,8 +3965,8 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-07)
 
 - `git_diff_is_clean` in `tools/validate-oq8-platform-evidence.py:893` has no callers. Group B tests that dirty a worktree therefore cannot be backed by a production current-bound-source proof. Pre-existing validator gap; already tracked as DW-496. Not caused by `Oq8PlatformClosureTests.cs`.
-- Owner accepted renaming `ChangedOrDeletedLaterWorktreePathDoesNotRewriteHistoricalV1`, `CurrentIndexVisibilityFlagsDoNotAlterHistoricalV1`, and `NonDescendantCurrentHeadDoesNotReplaceHistoricalV1Snapshot` to the sealed `FailsClosed` command names, keeping pass assertions. Not applied: `Oq8PlatformClosureTests.cs` is a v3 live gate input (`gateInputs` SHA-256 `350a7b0d93c9beb2a8f21eb21653e1a4ada736ee337b76d76feb658729eb5c22`). Apply on the next v3 remint (DW-457).
-- Owner accepted deleting unused `candidate-test-source-body` from `ApplyCandidateMutation` / `ExpectedCandidateFailure`. Not applied: same v3 gate-input remint blocker. `candidate-subject-test-binding` and `candidate-execution-test-source` still cover the hash fields.
+- Owner accepted renaming `ChangedOrDeletedLaterWorktreePathDoesNotRewriteHistoricalV1`, `CurrentIndexVisibilityFlagsDoNotAlterHistoricalV1`, and `NonDescendantCurrentHeadDoesNotReplaceHistoricalV1Snapshot` to the sealed `FailsClosed` command names, keeping pass assertions. Applied 2026-09-08 during the authorized v3 remint. Live fail-closed Git identity remains DW-496.
+- Owner accepted deleting unused `candidate-test-source-body` from `ApplyCandidateMutation` / `ExpectedCandidateFailure`. Applied 2026-09-08 during the authorized v3 remint. `candidate-subject-test-binding` and `candidate-execution-test-source` still cover the hash fields.
 - `PreReviewModeRejectsCaptureAndSupportArguments` does not send `--lifecycle-mode`. Deferred: capture/support already hit the exclusivity branch; a third sealed case is not worth a remint.
 
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-06)
