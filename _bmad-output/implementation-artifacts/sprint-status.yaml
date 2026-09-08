@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '07-05-2026 20:01'
-last_updated: '09-08-2026 00:00'
+last_updated: '09-08-2026 12:22'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -168,7 +168,7 @@ development_status:
   # review loop 5; the block is external operator approval, not development work.
   4-6-global-position-sharding-spec-renegotiation: awaiting-operator
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
-  4-7-tenants-query-provenance-follow-up: in-progress
+  4-7-tenants-query-provenance-follow-up: done
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
   4-9-trusted-admission-contract-and-protected-identity: done
@@ -199,9 +199,9 @@ development_status:
   5-10-reserved-system-tenant-provisioning-guard: backlog
   epic-5-retrospective: optional
 
-  epic-6: backlog
+  epic-6: in-progress
   # Architecture/readiness gate; authorizes 6.2 but does not count as runtime implementation progress.
-  6-1-folded-snapshot-frozen-spec: backlog
+  6-1-folded-snapshot-frozen-spec: in-progress
   6-2-folded-snapshot-implementation: backlog
   # Architecture/readiness gate; authorizes 6.4 but does not count as runtime implementation progress.
   6-3-projection-delivery-cost-and-sequence-guard-spec: backlog

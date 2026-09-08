@@ -2,9 +2,10 @@
 title: 'Story 6.1: Folded Snapshot Frozen Spec'
 type: 'feature'
 created: '2026-09-08'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: '7598f67cc94a47734c0f21ae7669b29a931d386c'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
 ---
@@ -19,9 +20,9 @@ context:
 
 ## Boundaries & Constraints
 
-**Always:** Keep `AggregateActor` the sole snapshot-mutation coordinator and `SaveStateAsync` owner. Keep the event stream as replay authority. Reuse one fold seam (`IAggregateStateReconstructor` / `AggregateReplayer` / `/replay-state`) for automatic and manual writes. Measure folded-state bytes as UTF-8 JSON of unprotected `SnapshotRecord.State` and snapshot size as UTF-8 JSON of the full persisted `SnapshotRecord` under actor `JsonSerializerOptions` (fallback `JsonSerializerOptions.Web`). The bound covers Unprotected and Legacy no-op protection only. Legacy blobs stay retained. Support-safe operator evidence may name sequence, size/bound, age, protection/readability, and failure class — never raw state, events, secrets, or stack traces.
+**Always:** Keep `AggregateActor` the sole snapshot-mutation coordinator and `SaveStateAsync` owner. Keep the event stream as replay authority. Reuse one fold seam (`IAggregateStateReconstructor` / `AggregateReplayer` / `/replay-state`) for automatic and manual writes. Automatic snapshots cover the post-command sequence (`persistResult.NewSequenceNumber`); 6.2 folds by applying the just-persisted events onto the already-rehydrated pre-command state (same `Apply` path), not a second full replay. Legacy `DomainServiceCurrentState` blobs are safe-bypass: detect the `currentSequence`+`events` shape, treat as non-authoritative, retain, full-replay; the next successful write overwrites the key. `MaxSnapshotEnvelopeOverheadBytes` is 4096. Measure folded-state bytes as UTF-8 JSON of unprotected `SnapshotRecord.State` and snapshot size as UTF-8 JSON of the full persisted `SnapshotRecord` under actor `JsonSerializerOptions` (fallback `JsonSerializerOptions.Web`). The bound covers Unprotected and Legacy no-op protection only. Support-safe operator evidence may name sequence, size/bound, age, protection/readability, and failure class — never raw state, events, secrets, or stack traces. The named approver of `spec-folded-snapshot.md` is the human who approves this Story 6.1 spec; name, date, and explicit 6.2 authorization are written onto that artifact when it is complete.
 
-**Never:** Do not change runtime, tests, public contracts, or `sprint-status.yaml` in this story. Do not persist event history, `DomainServiceCurrentState`, nested snapshots, command/result payloads, publication state, or a mutable runtime graph. Do not invent a second fold algorithm. Do not claim Epic 8 encryption, physical erasure, production key custody, or crypto-shred. Do not treat a snapshot as authority for an uncommitted append. Do not self-approve or authorize 6.2 without a named human approver, approval date, content digest, numeric bound, and explicit 6.2 authorization line.
+**Never:** Do not change runtime, tests, public contracts, or `sprint-status.yaml` in this story. Do not persist event history, `DomainServiceCurrentState`, nested snapshots, command/result payloads, publication state, or a mutable runtime graph. Do not invent a second fold algorithm or keep DSCS as a first-class 6.2 read format. Do not fail-closed on legacy snapshots. Do not claim Epic 8 encryption, physical erasure, production key custody, or crypto-shred. Do not treat a snapshot as authority for an uncommitted append. Do not self-approve or authorize 6.2 without a named human approver, approval date, content digest, numeric bound, and explicit 6.2 authorization line.
 
 ## I/O & Edge-Case Matrix
 
@@ -29,19 +30,12 @@ context:
 |----------|--------------|---------------------------|----------------|
 | Inventory | Current auto and manual snapshot paths | `spec-folded-snapshot.md` names every producer, reader, overwrite path, key, `SnapshotRecord` field, serializer, protection hook, commit boundary, failure path, operator surface, and test seam, plus `DomainServiceCurrentState` vs folded `/replay-state` divergence | Missing inventory item keeps 6.1 backlog |
 | Target payload | Approved automatic snapshot | Folded aggregate state at one exact sequence plus minimal versioned envelope/protection metadata | History-bearing or DSCS payload is rejected |
-| Byte bound | Identical folded state, different event counts | Same folded-state bytes; `snapshot size <= folded-state size + MaxSnapshotEnvelopeOverheadBytes` | Bound or serializer/mode omitted keeps 6.1 backlog |
-| Sequence | Snapshot around a command that appends events | Covered sequence, tail boundary, key overwrite, actor fence, staging order, and advisory vs fail-closed are unambiguous | Snapshot must not claim missing events, omit events at or below its sequence, or commit outside the actor batch |
-| Rehydrate | Folded snapshot plus later events | State and sequence equal canonical full replay for that prefix | Absent/legacy/corrupt/opaque/unreadable/cancelled/infra paths have typed retain-or-bypass rules; partial state is never authoritative |
+| Byte bound | Identical folded state, different event counts | Same folded-state bytes; `snapshot size <= folded-state size + 4096` for Unprotected/Legacy | Bound or serializer/mode omitted keeps 6.1 backlog |
+| Sequence | Snapshot around a command that appends events | Covered sequence is `persistResult.NewSequenceNumber`; tail after the snapshot is empty at write time; same-batch fence, staging, and advisory vs fail-closed stay unambiguous | Snapshot must not claim missing events, omit events at or below its sequence, or commit outside the actor batch |
+| Rehydrate | Folded snapshot plus later events | State and sequence equal canonical full replay for that prefix | Absent, corrupt plaintext (delete), opaque/unreadable/cancelled/infra, and legacy DSCS (retain, bypass, full-replay) are typed; partial state is never authoritative |
 | Approval | Completion requested | Artifact records scope, digest, numeric bound, invariants, migration, validation matrix, rejected alternatives, empty open decisions, named approver, date, and explicit 6.2 authorization | Missing, stale, self-declared, or conditional approval leaves 6.1 backlog and 6.2 unauthorized |
 
 </frozen-after-approval>
-
-## Open Questions
-
-- Covered sequence for automatic snapshots — options: Post-command (fold through `persistResult.NewSequenceNumber` so the snapshot includes the just-committed events and matches head) / Pre-command (keep today's `preEventSequence` so the snapshot is the pre-command fold and the new events remain tail).
-- Legacy `DomainServiceCurrentState` blobs — options: Safe-bypass (treat as non-authoritative, retain, full-replay) / Dual-read unwrap (keep `DomainProcessorStateRehydrator` nested unwrap until 6.2 rewrites the key) / Fail-closed (refuse processing when only a legacy envelope exists).
-- `MaxSnapshotEnvelopeOverheadBytes` — options: 4096 (tight; likely enough for current identity + no-op protection JSON) / 16384 (room for a version field and modest metadata growth without claiming Epic 8) / 65536 (loose cost signal).
-- Named approver of `spec-folded-snapshot.md` — options: This session's approver is also the named approver once the artifact is complete / A separately named architecture owner must sign after the artifact is written; 6.1 stays incomplete until then.
 
 ## Code Map
 
@@ -60,12 +54,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- write the complete frozen specification: inventory, payload contract, byte measurements and numeric bound, sequence/atomicity, typed rehydration failures, shared fold seam, protection/lifecycle, compatibility and rejected alternatives, content digest, named approval, and explicit 6.2 authorization -- this is the only Story 6.1 deliverable; 6.2 stays unauthorized until the approval block is complete
+- [ ] `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` -- write the complete frozen specification: inventory, folded payload, `MaxSnapshotEnvelopeOverheadBytes` 4096, post-command sequence, DSCS safe-bypass, typed rehydration failures, shared fold seam, protection/lifecycle, compatibility and rejected alternatives, content digest, this session's approver as named approval, and explicit 6.2 authorization -- this is the only Story 6.1 deliverable; 6.2 stays unauthorized until the approval block is complete
 
 **Acceptance Criteria:**
 - Given current automatic and manual snapshot paths, when the artifact is written, then it names every producer, reader, overwrite path, key, field, serializer, protection hook, commit boundary, failure path, operator surface, and test seam, and records where `DomainServiceCurrentState`, prior snapshots, tail events, `/replay-state`, and `SnapshotRecord` diverge.
 - Given the frozen target automatic snapshot, when its payload is read, then it is folded aggregate state at one exact sequence plus minimal versioned envelope/protection metadata, with no event history, `DomainServiceCurrentState`, nested snapshot, command/result payload, publication state, or mutable runtime graph.
-- Given identical folded state under the same schema and serializer, when event counts differ, then folded-state bytes match and every full snapshot satisfies `snapshot size <= folded-state size + MaxSnapshotEnvelopeOverheadBytes` for the named Unprotected/Legacy modes.
+- Given identical folded state under the same schema and serializer, when event counts differ, then folded-state bytes match and every full snapshot satisfies `snapshot size <= folded-state size + 4096` for Unprotected and Legacy no-op modes.
 - Given Story 6.1 completion is requested, when the artifact is reviewed, then it records accepted scope, content digest, numeric bound, invariants, migration posture, validation matrix, rejected alternatives, no leftover open decisions, named approver, approval date, and explicit 6.2 authorization; otherwise 6.1 stays backlog and 6.2 stays unauthorized.
 
 ## Implementation Notes
@@ -76,7 +70,7 @@ context:
 
 ## Design Notes
 
-Automatic writes persist `DomainServiceCurrentState` at `preEventSequence`; manual writes persist `/replay-state` JSON at `CurrentSequence`. EventStore load is schema-agnostic; `DomainProcessorStateRehydrator` still unwraps nested `DomainServiceCurrentState`. The artifact must pick one covered-sequence rule and one legacy policy, then require 6.2 to write the same fold bytes through the reconstructor on both paths. Rejected alternatives already closed by planning: keep embedding `DomainServiceCurrentState`; two fold algorithms; snapshot as append authority; Epic 8 as a 6.2 dependency.
+Today automatic writes persist `DomainServiceCurrentState` at `preEventSequence`; manual writes persist `/replay-state` JSON at `CurrentSequence`. The frozen target is post-command folded state at `NewSequenceNumber` on both paths, with legacy DSCS safe-bypassed (retain, full-replay). Rejected alternatives: keep embedding `DomainServiceCurrentState`; pre-command covered sequence; dual-read unwrap; fail-closed on legacy; two fold algorithms; snapshot as append authority; Epic 8 as a 6.2 dependency.
 
 ## Verification
 

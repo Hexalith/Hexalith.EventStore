@@ -457,29 +457,25 @@ Review pass 6 (2026-09-06, `bmad-code-review`). Reviewed range corrected mid-rev
 - `low` — "Brace style inconsistent within the changeset": the new code matches the pre-existing same-line style of the files it edits; only the wholesale Allman reformat of `TenantQueryFreshnessTests` differs, and it matches `.editorconfig`.
 - `low` — "Changeset ships no positive control for header emission": the emission side has blocking coverage in `tests/Hexalith.EventStore.RestApi.Generators.Tests/` and `QueryResponseProvenanceE2ETests`.
 
-Review pass 9 (2026-09-07, `bmad-code-review`). Group 1 Tenants Code Map `d2b7ede3..e7f36662` (10 files, +777/−147). Blind Hunter, Edge Case Hunter, and Acceptance Auditor completed. Verification Gap Reviewer returned empty results.
+Review pass 10 (2026-09-08, `bmad-code-review`). Chunked Code Map + EventStore spec/gitlink; four layers ran; none failed.
 
 **Patch**
 
-- [ ] [Review][Patch] Balanced-quote `NormalizeETag` can return a leftover `"` as a validator ETag (`"`, `"""`) [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:52-56]
-
-**Deferred**
-
-- [x] [Review][Defer] Generated-controller and topology proofs do not plant or pin `ServedAt`/`IsDegraded`; the emitter still emits those headers without a provenance gate [tests/Hexalith.Tenants.IntegrationTests/TenantsApiGeneratedControllerTests.cs:117] — deferred: DW-488 (already recorded; not written again)
-- [x] [Review][Defer] Six-argument `FromPayload` still discards freshness inputs while host options stay operator-configurable [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:37-44] — deferred: DW-493 (already recorded; not written again)
+- [x] [Review][Patch] Quote-only ETags remain as producer validator metadata after balanced unwrap [references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/TenantQueryResult.cs:46-56] — applied 2026-09-08: leftover quote-only tokens omit metadata; factory/handler theories gained `"` and `"""`; `TenantQueryResultTests` + `TenantQueryFreshnessTests` 49/49, 0 skipped.
 
 **Rejected**
 
-- `false` — "Matching persisted validator / Redis HASH version not proved": AC3 specifies a conflicting validator and HTTP 200.
-- `false` — "EventStore `IsNotModified: null` vs typed-client `false` is an undocumented split": EventStore strips the producer validator; the client records the HTTP 304 flag (P8-BH-04).
-- `false` — "Header suppression covers only GetTenant": AC3 is one persisted tenant; six-route coverage is the factory/handler matrices (P8-BH-02).
-- `false` — "Redis helper hardcodes localhost, skips poorly, and assumes `tenants||`": it binds `DaprDiagnostics.DefaultRedisPort` and the checked-in keyPrefix; Redis unavailability must fail the persistence proof.
-- `false` — "`SharedClientRelayHandler` drops Content/Options and does not dispose the clone": GET-only typed `GetTenantAsync` has no body; isolation is the cloned Authorization header (P7-BH-12).
-- `false` — "`tenants-api` on the shared fixture stalls other tests": `WaitForAliveness: false` already keeps `/alive` off fixture startup.
-- `false` — "Nested quotes and six-route degenerate ETags are uncovered": the while-loop already unwraps nested quotes; both factory overloads pin degenerate omission (P2-BH-09).
-- `false` — "ETag tests plant no `ProjectionVersion`": the freshness matrix stamps `tenant-sequence:42` on every primary row.
-- `false` — "Null `Members`/`Configuration` after deserialize throws NRE": this proof creates a new tenant whose persisted collections are initialized.
-- `low` — leftover `CommandStatus` alias after Redis type aliases removed the clash.
-- `low` — `ConnectAsync` ignores cancellation until `ConnectTimeout` (5 s).
-- `low` — `RedisTimeoutException` is not wrapped as `TimeoutException`; failing the persistence proof is correct.
-- `low` — bootstrap `PublishFailed` is not skipped; the already-bootstrapped path dominates and create already skips.
+- `false` — "Handler still calls `GetUtcNow()` after freshness authorship was removed": spec Code Map forbids changing `TenantQueryHandlerBase` call sites; `TimeProvider.System.GetUtcNow()` does not fail closed on the success path.
+- `false` — "Synthetic generated-controller test never inspects JSON for leaked metadata fields": `EnqueueQueryResult` serializes a `TenantDetail` that cannot carry those properties; the live raw `JsonDocument` scan already covers the real body.
+- `false` — "Synthetic test omits `X-Hexalith-Is-Degraded` / `ServedAt` pinning": planted metadata leaves both null; live proof asserts `Is-Degraded` absent; `ServedAt` is gateway timing (P2-BH-08) and emitter emission is DW-488.
+- `false` — "EventStore `SubmitQueryResponse`/`TenantDetail` deserialize drops smuggled payload properties": handler payload is `TenantDetail` without those fields; provenance claims live on sibling `Metadata`, which the EventStore leg already asserts.
+- `false` — "`AssertTenantDetailMatchesPersisted` skips `GetConcreteMembers`": equal Redis/HTTP member counts cannot silently accept a filtered payload; a fresh `CreateTenant` row has only concrete roles.
+- `false` — "Live proof builds tenant ids with `Guid.NewGuid()`": Tenants aggregate ids are caller-supplied strings, not ULIDs; the same file already uses this uniqueness pattern.
+- `false` — "`PublishFailed` → `Assert.Skip` lets a pub/sub outage pass AC3": skip is not a passed result (P7-BH-08 / P8-BH-01); pass-6 approved it as environment triage, and recorded live runs executed 0 skips.
+- rejected — "Frontmatter `review_loop_iteration: 6` / unchecked gitlink vs pass-9 notes and `e7f36662` pointer": the only fix is to edit the spec under review.
+- `low` — "Six-argument `FromPayload` lacks XML `<param>` notes that `readModel`/`thresholds`/`now` are discarded": the file has no XML on either factory; Design Notes already froze the compatibility seam (DW-493).
+- `low` — "`SharedClientRelayHandler` is a second type in `AspireTopologyTests.cs`": the file already nests several test helpers; extracting a new file adds surface.
+- `low` — "Relay handler never disposes the cloned `HttpRequestMessage`": clone has no `Content`; one-shot test request.
+- `low` — "`WaitForPersistedTenantAsync` uses 60s `SampleProjectionTimeout` instead of the 5-minute test CTS": recorded proofs finish in ~26s; the cap also prevents a hung Redis poll from consuming the whole budget.
+- `low` — "Proof never deletes the `provenance-*` Redis/aggregate tenant": leftover test data; cleanup would add persistence plumbing the spec forbids.
+- `low` — "Shared fixture waits for `tenants-api` Running on every topology test": Code Map requires exposing that existing resource; `WaitForAliveness` is already false so only client creation waits for Running.
