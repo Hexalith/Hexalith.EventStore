@@ -427,3 +427,26 @@ Review pass 6 (2026-09-06, `bmad-code-review`). Reviewed range corrected mid-rev
 - `low` — "Header assertions use raw string literals": no shared constant exists, so the fix adds new public surface for a rename hazard that has not occurred.
 - `low` — "Brace style inconsistent within the changeset": the new code matches the pre-existing same-line style of the files it edits; only the wholesale Allman reformat of `TenantQueryFreshnessTests` differs, and it matches `.editorconfig`.
 - `low` — "Changeset ships no positive control for header emission": the emission side has blocking coverage in `tests/Hexalith.EventStore.RestApi.Generators.Tests/` and `QueryResponseProvenanceE2ETests`.
+
+Review pass 10 (2026-09-08, `bmad-code-review`). Chunked Code Map + EventStore spec/gitlink; four layers ran; none failed.
+
+**Patch**
+
+- [ ] [Review][Patch] Quote-only ETags remain as producer validator metadata after balanced unwrap [references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/TenantQueryResult.cs:46-56]
+
+**Rejected**
+
+- `false` — "Handler still calls `GetUtcNow()` after freshness authorship was removed": spec Code Map forbids changing `TenantQueryHandlerBase` call sites; `TimeProvider.System.GetUtcNow()` does not fail closed on the success path.
+- `false` — "Synthetic generated-controller test never inspects JSON for leaked metadata fields": `EnqueueQueryResult` serializes a `TenantDetail` that cannot carry those properties; the live raw `JsonDocument` scan already covers the real body.
+- `false` — "Synthetic test omits `X-Hexalith-Is-Degraded` / `ServedAt` pinning": planted metadata leaves both null; live proof asserts `Is-Degraded` absent; `ServedAt` is gateway timing (P2-BH-08) and emitter emission is DW-488.
+- `false` — "EventStore `SubmitQueryResponse`/`TenantDetail` deserialize drops smuggled payload properties": handler payload is `TenantDetail` without those fields; provenance claims live on sibling `Metadata`, which the EventStore leg already asserts.
+- `false` — "`AssertTenantDetailMatchesPersisted` skips `GetConcreteMembers`": equal Redis/HTTP member counts cannot silently accept a filtered payload; a fresh `CreateTenant` row has only concrete roles.
+- `false` — "Live proof builds tenant ids with `Guid.NewGuid()`": Tenants aggregate ids are caller-supplied strings, not ULIDs; the same file already uses this uniqueness pattern.
+- `false` — "`PublishFailed` → `Assert.Skip` lets a pub/sub outage pass AC3": skip is not a passed result (P7-BH-08 / P8-BH-01); pass-6 approved it as environment triage, and recorded live runs executed 0 skips.
+- rejected — "Frontmatter `review_loop_iteration: 6` / unchecked gitlink vs pass-9 notes and `e7f36662` pointer": the only fix is to edit the spec under review.
+- `low` — "Six-argument `FromPayload` lacks XML `<param>` notes that `readModel`/`thresholds`/`now` are discarded": the file has no XML on either factory; Design Notes already froze the compatibility seam (DW-493).
+- `low` — "`SharedClientRelayHandler` is a second type in `AspireTopologyTests.cs`": the file already nests several test helpers; extracting a new file adds surface.
+- `low` — "Relay handler never disposes the cloned `HttpRequestMessage`": clone has no `Content`; one-shot test request.
+- `low` — "`WaitForPersistedTenantAsync` uses 60s `SampleProjectionTimeout` instead of the 5-minute test CTS": recorded proofs finish in ~26s; the cap also prevents a hung Redis poll from consuming the whole budget.
+- `low` — "Proof never deletes the `provenance-*` Redis/aggregate tenant": leftover test data; cleanup would add persistence plumbing the spec forbids.
+- `low` — "Shared fixture waits for `tenants-api` Running on every topology test": Code Map requires exposing that existing resource; `WaitForAliveness` is already false so only client creation waits for Running.
