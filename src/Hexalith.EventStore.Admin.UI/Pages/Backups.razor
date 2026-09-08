@@ -553,6 +553,7 @@
     private string? _createTenantId;
     private string? _createDescription;
     private bool _createIncludeSnapshots = true;
+    private string? _createInitiatorId;
 
     // Validate dialog state
     private bool _showValidateDialog;
@@ -887,6 +888,7 @@
         _createTenantId = string.Empty;
         _createDescription = string.Empty;
         _createIncludeSnapshots = true;
+        _createInitiatorId = "backup-create-button";
         _showCreateDialog = true;
         _pendingShowCreate = true;
     }
@@ -895,6 +897,7 @@
     {
         if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
         _showCreateDialog = false;
+        await RestoreCreateInitiatorFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnCreateBackupConfirm()
@@ -924,10 +927,12 @@
         catch (UnauthorizedAccessException)
         {
             await ShowErrorToastBestEffortAsync("Authentication required. Please sign in again.");
+            await CloseCreateDialogAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ShowErrorToastBestEffortAsync("Access denied. Insufficient permissions.");
+            await CloseCreateDialogAsync().ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -1210,7 +1215,7 @@
                 bool hasEvents = root.TryGetProperty("events", out System.Text.Json.JsonElement evts)
                     && evts.ValueKind == System.Text.Json.JsonValueKind.Array;
 
-                if (tenantId is null || domain is null || aggregateId is null || !hasEvents)
+                if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(domain) || string.IsNullOrWhiteSpace(aggregateId) || !hasEvents)
                 {
                     await FailImportFileAsync("Invalid export file format. Expected JSON with tenantId, domain, aggregateId, and an events array.").ConfigureAwait(false);
                     return;
@@ -1243,7 +1248,7 @@
     {
         if (_importContent is null || _importTenantId is null)
         {
-            await FocusService.RestoreAsync(_importInitiatorId).ConfigureAwait(false);
+            await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
 
@@ -1330,6 +1335,14 @@
             _importInitiatorId = null;
         }
 
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
+    }
+
+    private async Task RestoreCreateInitiatorFocusAsync()
+    {
+        string? focusId = _createInitiatorId;
+        _createInitiatorId = null;
         await InvokeAsync(StateHasChanged).ConfigureAwait(false);
         await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }

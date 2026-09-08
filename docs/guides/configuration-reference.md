@@ -378,6 +378,28 @@ Configuration section: `EventStore:OpenApi`
 }
 ```
 
+### Admin API discovery
+
+The Admin host maps OpenAPI and Swagger only in the `Development` environment and only when `EventStore:Admin:OpenApi:Enabled` is `true`. Production never maps `/openapi/v1.json` or `/swagger/*`, regardless of this setting. This gate is independent from the public gateway's `EventStore:OpenApi`.
+
+Configuration section: `EventStore:Admin:OpenApi`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `Enabled` | bool | `false` | Enable Admin `/openapi/v1.json` and `/swagger` in Development only |
+
+```json
+{
+  "EventStore": {
+    "Admin": {
+      "OpenApi": {
+        "Enabled": true
+      }
+    }
+  }
+}
+```
+
 ## Authentication and JWT
 
 Authentication settings configure how the Command API validates incoming JWT tokens. You must provide either an OIDC `Authority` (for production) or a `SigningKey` (for development and testing). Both `Issuer` and `Audience` are always required.
@@ -736,6 +758,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:DomainServices:MaxEventSizeBytes` | int | `1048576` | Integer `> 0` | Application |
 | `EventStore:DomainServices:Registrations:{key}` | object | - | Object keyed by `tenant|domain|version`, `tenant:domain:version`, `*|domain|version`, or `wildcard_{domain}_{version}` | Application |
 | `EventStore:OpenApi:Enabled` | bool | `true` | `true` or `false` | Application |
+| `EventStore:Admin:OpenApi:Enabled` | bool | `false` | `true` or `false`; mapped only in Development | Application |
 | `Authentication:JwtBearer:Authority` | string | `""` | Empty string or absolute OIDC URL | Authentication |
 | `Authentication:JwtBearer:Audience` | string | `""` | Non-empty string | Authentication |
 | `Authentication:JwtBearer:Issuer` | string | `""` | Non-empty string | Authentication |

@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -112,6 +112,35 @@ deferred:
 | VG-04 | `medium` — Pre-verified gap: changed bounded fallback catches lack sentinel-bearing exception tests. | patch |
 | VG-05 | `medium` — Pre-verified gap: denial cleanup is duplicated per handler but tests cover only sibling actions, allowing independent regressions. | patch |
 | VG-06 | `medium` — Pre-verified duplicate of BH-16: no test or implementation restores focus after a mixed dead-letter success/denial. | patch |
+| BH2-01 | `medium` — Verified: the baseline-window `sprint-status.yaml` rewrite comes from Epic 3 tracking commits, not Admin hygiene. | defer |
+| BH2-02 | `medium` — Verified: `docs/guides/configuration-reference.md` still documented only public `EventStore:OpenApi` after the Admin Development-only gate shipped. | patch |
+| BH2-03 | `medium` — Verified: Create Backup gained facts and `backup-create-button` but cancel/401/403 did not capture or restore that initiator. | patch |
+| BH2-04 | `medium` — Verified: snapshot create/edit/create-snapshot mounted facts without initiator ids or cancel/denial restore. Completed-toast half is `false`: storage writes return HTTP 200. | patch |
+| BH2-05 | `false` — Product export uses `JsonSerializerDefaults.Web` camelCase and the import error text teaches that schema. | reject |
+| BH2-06 | `false` — Closing on local validation and restoring the initiator is the story AC; the toast presents the error. | reject |
+| BH2-07 | `medium` — Verified: dead-letter batching broke only on `ForbiddenAccessException`, so `UnauthorizedAccessException` continued later tenants and skipped focus. | patch |
+| BH2-08 | `false` — Skip controller docs say the command is removed from the queue; both copy lines describe that outcome. | reject |
+| BH2-09 | `false` — Completions list registered stub commands; invocation already returns `ExitCodes.Error`. | reject |
+| BH2-10 | `false` — Production does not map discovery routes, so 404 cannot carry an OpenAPI/Swagger document. | reject |
+| BH2-11 | `medium` — Verified: OQ8 validator/test remints and submodule gitlinks are later-story/other-work in the same baseline window. | defer |
+| BH2-12 | `medium` — Verified: `epic-3-retrospective: done` versus a rejected retro file is Epic 3 tracking, not Admin hygiene. | defer |
+| BH2-13 | `maybe-false` — `RestoreAsync` has no after-render wait; whether Fluent's trap still owns focus after `HideAsync` needs the deferred browser fixture. | defer |
+| BH2-14 | `false` — Intent requires focus restore after cancel, validation, or denial; unexpected errors keep the dialog for retry. | reject |
+| BH2-15 | `false` — Every current write tool matches the `bool confirm=false` inventory filter; a different future signature is not present. | reject |
+| BH2-16 | `low` — Rejected: Development `Enabled=true` is already supplied by `appsettings.Development.json`; no user-facing defect. | reject |
+| EC2-01 | `medium` — Verified duplicate of BH2-07: unauthorized write exceptions continued later tenant groups. | patch |
+| EC2-02 | `medium` — Verified: `OnImportConfirm` restored focus while the import modal stayed mounted. | patch |
+| EC2-03 | `medium` — Verified: whitespace identifiers passed import validation because only `null` was rejected. | patch |
+| EC2-04 | `low` — Rejected: a UTF-16 cut at the 240-character bound is unlikely in everyday support-safe preview use. | reject |
+| EC2-05 | `medium` — Verified duplicate of BH2-03: Create Backup cancel did not restore the create control. | patch |
+| EC2-06 | `medium` — Verified duplicate of BH2-04: snapshot cancel paths did not restore their initiators. | patch |
+| EC2-07 | `medium` — Verified duplicate of BH2-02: configuration-reference omitted Admin discovery. | patch |
+| EC2-08 | `medium` — Verified duplicate of BH2-01: sprint-status mutation is outside this story. | defer |
+| VG2-01 | `medium` — Pre-verified gap: Create Backup facts had no populated-state assertion. | patch |
+| VG2-02 | `medium` — Pre-verified gap: Create Backup cancel did not assert `backup-create-button` focus restore. | patch |
+| VG2-03 | `medium` — Pre-verified gap: snapshot create/edit/create-snapshot facts were unpinned. | patch |
+| VG2-04 | `medium` — Pre-verified gap: tenant generic-exception redaction lacked sentinel tests. | patch |
+| VG2-05 | `medium` — Pre-verified gap: consistency API `InvalidOperationException` lacked a trigger test. | patch |
 
 ## Design Notes
 

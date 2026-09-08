@@ -436,6 +436,52 @@ public class SnapshotsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe(initiatorId);
     }
 
+    [Theory]
+    [InlineData("create-policy", "[id='snapshot-policy-create-button']", "Snapshot policy for 'tenant-a/orders/OrderAggregate'", "Replace the snapshot policy", "snapshot-policy-create-button")]
+    [InlineData("edit-policy", "[id='snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']", "Snapshot policy for 'tenant-a/orders/OrderAggregate'", "Replace the snapshot policy", "snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU")]
+    [InlineData("create-snapshot", "[id='snapshot-create-button']", "Snapshot for 'tenant-a/orders/agg-1'", "Create a snapshot at the aggregate", "snapshot-create-button")]
+    public async Task MutationDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
+        string action,
+        string selector,
+        string expectedTarget,
+        string impactFragment,
+        string expectedFocusId) {
+        SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([policy]);
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+        if (action == "create-policy") {
+            SetPrivateField(cut.Instance, "_createTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_createDomain", "orders");
+            SetPrivateField(cut.Instance, "_createAggregateType", "OrderAggregate");
+            cut.Render();
+        }
+        else if (action == "create-snapshot") {
+            SetPrivateField(cut.Instance, "_snapshotTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_snapshotDomain", "orders");
+            SetPrivateField(cut.Instance, "_snapshotAggregateId", "agg-1");
+            cut.Render();
+        }
+
+        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe(expectedTarget);
+        cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain(impactFragment);
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Operator");
+
+        IRenderedComponent<FluentButton> cancel = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == "Cancel");
+        await cancel.InvokeAsync(cancel.Instance.OnClick.InvokeAsync);
+
+        _ = _mockSnapshotApi.DidNotReceive().SetSnapshotPolicyAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        _ = _mockSnapshotApi.DidNotReceive().CreateSnapshotAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
     [Fact]
     public async Task DeletePolicyDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimDeletion() {
         SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
@@ -653,4 +699,9 @@ public class SnapshotsPageTests : AdminUITestContext {
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>
         Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+    private static void SetPrivateField(object instance, string fieldName, object? value)
+        => instance.GetType()
+            .GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(instance, value);
 }

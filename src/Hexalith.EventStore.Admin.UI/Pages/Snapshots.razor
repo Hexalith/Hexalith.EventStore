@@ -21,11 +21,13 @@
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Operator">
             <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                          id="snapshot-policy-create-button"
                           OnClick="OpenCreateDialog"
                           aria-label="Add snapshot policy">
                 Add Policy
             </FluentButton>
             <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                          id="snapshot-create-button"
                           OnClick="OpenCreateSnapshotDialog"
                           aria-label="Create snapshot for aggregate">
                 Create Snapshot
@@ -119,6 +121,12 @@
             <TemplateColumn Title="Actions">
                 <div @onclick:stopPropagation="true">
                     <AuthorizedView MinimumRole="AdminRole.Operator">
+                        <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
+                                      id="@GetEditPolicyFocusId(context)"
+                                      OnClick="@(() => OpenEditDialog(context))"
+                                      aria-label="@($"Edit policy for {context.AggregateType}")">
+                            Edit
+                        </FluentButton>
                         <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
                                       id="@GetDeletePolicyFocusId(context)"
                                       OnClick="@(() => OpenDeleteDialog(context))"
@@ -340,6 +348,7 @@
     private string? _createDomain;
     private string? _createAggregateType;
     private int? _createIntervalEvents = 100;
+    private string? _createPolicyInitiatorId;
 
     // Edit dialog state
     private bool _showEditDialog;
@@ -347,6 +356,7 @@
     private bool _pendingShowEdit;
     private SnapshotPolicy? _editPolicy;
     private int? _editIntervalEvents;
+    private string? _editPolicyInitiatorId;
 
     // Delete dialog state
     private bool _showDeleteDialog;
@@ -362,6 +372,7 @@
     private string? _snapshotTenantId;
     private string? _snapshotDomain;
     private string? _snapshotAggregateId;
+    private string? _createSnapshotInitiatorId;
 
     private bool _isAnyDialogOpen => _showCreateDialog || _showEditDialog || _showDeleteDialog || _showCreateSnapshotDialog;
 
@@ -502,6 +513,7 @@
         {
             _showCreateDialog = true;
             _pendingShowCreate = true;
+            _createPolicyInitiatorId = "snapshot-policy-create-button";
             _createTenantId = query["tenant"] ?? string.Empty;
             _createDomain = query["domain"] ?? string.Empty;
             _createAggregateType = query["aggregateType"] ?? string.Empty;
@@ -535,6 +547,9 @@
     private static string GetDeletePolicyFocusId(SnapshotPolicy policy)
         => $"snapshot-policy-delete-{EncodeFocusSegment(policy.TenantId)}.{EncodeFocusSegment(policy.Domain)}.{EncodeFocusSegment(policy.AggregateType)}";
 
+    private static string GetEditPolicyFocusId(SnapshotPolicy policy)
+        => $"snapshot-policy-edit-{EncodeFocusSegment(policy.TenantId)}.{EncodeFocusSegment(policy.Domain)}.{EncodeFocusSegment(policy.AggregateType)}";
+
     private static string EncodeFocusSegment(string value)
         => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value))
             .TrimEnd('=')
@@ -549,6 +564,7 @@
         _createDomain = string.Empty;
         _createAggregateType = string.Empty;
         _createIntervalEvents = 100;
+        _createPolicyInitiatorId = "snapshot-policy-create-button";
         _showCreateDialog = true;
         _pendingShowCreate = true;
     }
@@ -557,6 +573,7 @@
     {
         if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
         _showCreateDialog = false;
+        await RestoreCreatePolicyFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnCreatePolicyConfirm()
@@ -588,10 +605,12 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
+            await CloseCreateDialogAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
+            await CloseCreateDialogAsync().ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -615,6 +634,7 @@
         if (_isAnyDialogOpen) { return; }
         _editPolicy = policy;
         _editIntervalEvents = policy.IntervalEvents;
+        _editPolicyInitiatorId = GetEditPolicyFocusId(policy);
         _showEditDialog = true;
         _pendingShowEdit = true;
     }
@@ -624,6 +644,7 @@
         if (_editDialog is not null) { await _editDialog.HideAsync().ConfigureAwait(false); }
         _showEditDialog = false;
         _editPolicy = null;
+        await RestoreEditPolicyFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnEditPolicyConfirm()
@@ -661,10 +682,12 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
+            await CloseEditDialogAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
+            await CloseEditDialogAsync().ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -775,6 +798,7 @@
         _snapshotTenantId = string.Empty;
         _snapshotDomain = string.Empty;
         _snapshotAggregateId = string.Empty;
+        _createSnapshotInitiatorId = "snapshot-create-button";
         _showCreateSnapshotDialog = true;
         _pendingShowCreateSnapshot = true;
     }
@@ -783,6 +807,7 @@
     {
         if (_createSnapshotDialog is not null) { await _createSnapshotDialog.HideAsync().ConfigureAwait(false); }
         _showCreateSnapshotDialog = false;
+        await RestoreCreateSnapshotFocusAsync().ConfigureAwait(false);
     }
 
     private async Task OnCreateSnapshotConfirm()
@@ -812,10 +837,12 @@
         catch (UnauthorizedAccessException)
         {
             await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
+            await CloseCreateSnapshotDialogAsync().ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
             await ToastService.ShowErrorAsync("Access denied. Insufficient permissions.");
+            await CloseCreateSnapshotDialogAsync().ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -826,6 +853,30 @@
             _isOperating = false;
             StateHasChanged();
         }
+    }
+
+    private async Task RestoreCreatePolicyFocusAsync()
+    {
+        string? focusId = _createPolicyInitiatorId;
+        _createPolicyInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
+    }
+
+    private async Task RestoreEditPolicyFocusAsync()
+    {
+        string? focusId = _editPolicyInitiatorId;
+        _editPolicyInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
+    }
+
+    private async Task RestoreCreateSnapshotFocusAsync()
+    {
+        string? focusId = _createSnapshotInitiatorId;
+        _createSnapshotInitiatorId = null;
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await FocusService.RestoreAsync(focusId).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()

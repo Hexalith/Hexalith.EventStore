@@ -524,6 +524,33 @@ public class ConsistencyPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task TriggerDialog_ApiInvalidOperationUsesFixedCopyClosesAndRestoresFocus() {
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new InvalidOperationException("hidden tenant exists; bearer secret-value")));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            null, null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe("The consistency check request is invalid.");
+        message.ShouldNotContain("hidden tenant");
+        message.ShouldNotContain("secret-value");
+        cut.FindAll("fluent-dialog[aria-label='Run Consistency Check']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-trigger-button");
+    }
+
+    [Fact]
     public async Task CancelDialog_ForbiddenUsesSafeCopyClosesAndRestoresExactInitiator() {
         SetupChecks([CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]);
         _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
