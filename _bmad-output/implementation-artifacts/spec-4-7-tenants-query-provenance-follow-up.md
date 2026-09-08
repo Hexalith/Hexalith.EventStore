@@ -432,7 +432,7 @@ Review pass 10 (2026-09-08, `bmad-code-review`). Chunked Code Map + EventStore s
 
 **Patch**
 
-- [ ] [Review][Patch] Quote-only ETags remain as producer validator metadata after balanced unwrap [references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/TenantQueryResult.cs:46-56]
+- [x] [Review][Patch] Quote-only ETags remain as producer validator metadata after balanced unwrap [references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/TenantQueryResult.cs:46-56] — applied 2026-09-08: leftover quote-only tokens omit metadata; factory/handler theories gained `"` and `"""`; `TenantQueryResultTests` + `TenantQueryFreshnessTests` 49/49, 0 skipped.
 
 **Rejected**
 
