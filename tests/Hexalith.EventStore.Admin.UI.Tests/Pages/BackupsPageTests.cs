@@ -874,6 +874,7 @@ public class BackupsPageTests : AdminUITestContext {
     [Theory]
     [InlineData("restore", "Backup 'bk-safe'", "parallel restore stream and never overwrite original event streams", "backup-restore-bk-safe")]
     [InlineData("import", "Imported event-stream content", "currently deferred stream-import path", "backup-import-button")]
+    [InlineData("create", "Backup data for tenant 'tenant-a'", "currently deferred backend", "backup-create-button")]
     public async Task DestructiveDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
         string action,
         string expectedTarget,
@@ -885,9 +886,17 @@ public class BackupsPageTests : AdminUITestContext {
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("bk-safe"), TimeSpan.FromSeconds(5));
 
-        string selector = action == "restore" ? "#backup-restore-bk-safe" : "#backup-import-button";
+        string selector = action switch {
+            "restore" => "#backup-restore-bk-safe",
+            "import" => "#backup-import-button",
+            _ => "#backup-create-button",
+        };
         await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+        if (action == "create") {
+            SetPrivateField(cut.Instance, "_createTenantId", "tenant-a");
+            cut.Render();
+        }
 
         cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe(expectedTarget);
         cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain(impactFragment);
@@ -901,6 +910,8 @@ public class BackupsPageTests : AdminUITestContext {
             Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
         _ = _mockBackupApi.DidNotReceive().ImportStreamAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockBackupApi.DidNotReceive().TriggerBackupAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
         JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
             .Arguments[0].ShouldBe(expectedFocusId);
     }
@@ -932,6 +943,7 @@ public class BackupsPageTests : AdminUITestContext {
     [Theory]
     [InlineData("{\"tenantId\":\"tenant-a\",\"domain\":\"Counter\",\"aggregateId\":\"counter-1\"}")]
     [InlineData("{\"tenantId\":\"tenant-a\",\"domain\":\"Counter\",\"aggregateId\":\"counter-1\",\"events\":{}}")]
+    [InlineData("{\"tenantId\":\"   \",\"domain\":\"Counter\",\"aggregateId\":\"counter-1\",\"events\":[]}")]
     public async Task ImportDialog_InvalidEventsClosesBeforeRestoringFocusAndPerformsNoMutation(string content)
     {
         SetupJobs([]);
@@ -948,6 +960,24 @@ public class BackupsPageTests : AdminUITestContext {
         cut.Markup.ShouldNotContain("Select a previously exported JSON file");
         Services.GetRequiredService<TestToastService>().LastOptions!.Message.ShouldBe(
             "Invalid export file format. Expected JSON with tenantId, domain, aggregateId, and an events array.");
+        _ = _mockBackupApi.DidNotReceive().ImportStreamAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-import-button");
+    }
+
+    [Fact]
+    public async Task ImportDialog_ConfirmWithoutContentClosesBeforeRestoringFocusAndPerformsNoMutation()
+    {
+        SetupJobs([]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Select a previously exported JSON file"), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnImportConfirm"));
+
+        cut.Markup.ShouldNotContain("Select a previously exported JSON file");
         _ = _mockBackupApi.DidNotReceive().ImportStreamAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
