@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '07-05-2026 20:01'
-last_updated: '09-07-2026 23:07'
+last_updated: '09-08-2026 16:10'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -188,9 +188,9 @@ development_status:
   5-10-reserved-system-tenant-provisioning-guard: backlog
   epic-5-retrospective: optional
 
-  epic-6: backlog
+  epic-6: in-progress
   # Architecture/readiness gate; authorizes 6.2 but does not count as runtime implementation progress.
-  6-1-folded-snapshot-frozen-spec: backlog
+  6-1-folded-snapshot-frozen-spec: review
   6-2-folded-snapshot-implementation: backlog
   # Architecture/readiness gate; authorizes 6.4 but does not count as runtime implementation progress.
   6-3-projection-delivery-cost-and-sequence-guard-spec: backlog

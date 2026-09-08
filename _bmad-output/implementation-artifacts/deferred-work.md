@@ -3989,3 +3989,15 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: InitiatorFocusService may race Fluent dialog unmount; browser activeElement proof remains unverified.
   evidence: RestoreAsync invokes hexalithAdmin.focusElementById immediately after HideAsync/StateHasChanged. A Playwright run with an authenticated Admin UI and a write-time 403 would settle whether the trap still owns focus.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-folded-snapshot-frozen-spec.md`
+  summary: Story 5.4 Create Backup and Snapshots 401/403 confirm paths close dialogs and restore focus, but page tests only cover cancel and delete-policy denial.
+  evidence: Blind-hunter BH-11, edge-case EC-3–EC-8, and verification-gap VG-1/VG-2 cite `Backups.razor` and `Snapshots.razor` confirm catches with no `TriggerBackupAsync`/`SetSnapshotPolicyAsync`/`CreateSnapshotAsync` Forbidden theory. Those files are not Story 6.1's deliverable.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-folded-snapshot-frozen-spec.md`
+  summary: OQ8 remint, symlink-skip, and process-kill harness gaps remain Story 4.15 work.
+  evidence: BH-12, BH-14, EC-1, and EC-2 cite `Oq8PlatformClosureTests.cs` and the v3 packet. Story 6.1 forbids runtime and test edits.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-folded-snapshot-frozen-spec.md`
+  summary: Neighboring 5.4 and 4.7 story-status ledgers disagree with sprint-status in the same baseline-wide diff.
+  evidence: BH-13 notes `spec-5-4` done vs tracker review, and `spec-4-7` moving to in-progress. Not caused by the folded-snapshot artifact.
