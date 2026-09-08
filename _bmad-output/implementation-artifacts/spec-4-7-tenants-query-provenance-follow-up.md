@@ -2,7 +2,7 @@
 title: 'Tenants Query Provenance Follow-Up'
 type: 'bugfix'
 created: '2026-09-05'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 6
 followup_review_recommended: true
@@ -372,6 +372,35 @@ deferred: ['DW-487', 'DW-488', 'DW-489', 'DW-490', 'DW-491', 'DW-492', 'DW-493',
   - `[low]` `[defer]` Misnamed Operator trigger test: P8-VG-O1.
 - loopback: none; no intent gap, bad spec, or Story 4.7 patch survived. Carried deferrals were not written again.
 
+### 2026-09-07 — Review pass 9 (bmad-code-review)
+
+- subject: Group 1 Tenants Code Map `d2b7ede3..e7f36662` (10 files, +777/−147, 1256 lines). `TenantQueryHandlerBase.cs` unchanged.
+- failed_layers: Verification Gap Reviewer (empty results)
+- verdicts: 17 findings — high 0, medium 4, low 4, false 9
+- routes: intent_gap 0, bad_spec 0, patch 1, defer 2, reject 13
+- findings:
+  - `[medium]` `[patch]` `[P9-ECH-01]` After the balanced-quote loop, a leftover `"` is returned as a validator ETag (`"`, `"""`). The I/O matrix requires quote-only tokens to yield null metadata.
+  - `[medium]` `[defer]` `[P9-BH-02]` `[P9-BH-03]` Carried from DW-488: generated-controller and topology proofs do not plant or pin `ServedAt`/`IsDegraded`; the emitter still emits those headers without a provenance gate. Not written again.
+  - `[medium]` `[defer]` `[P9-BH-05]` Carried from DW-493: the six-argument `FromPayload` still discards freshness inputs under the frozen signature. Not written again.
+  - `[false]` `[reject]` `[P9-BH-01]` AC3 specifies a conflicting validator and HTTP 200; not reading Redis HASH `version` does not falsify that proof.
+  - `[false]` `[reject]` `[P9-BH-04]` EventStore `IsNotModified: null` is stripped producer metadata; typed-client `false` is the HTTP 304 flag. Same split as P8-BH-04.
+  - `[false]` `[reject]` `[P9-BH-06]` Six-route HandlerComputed coverage is the factory/handler matrices; AC3 is one persisted `get-tenant` path. Same as P8-BH-02.
+  - `[false]` `[reject]` `[P9-BH-07]` Redis proof already binds `DaprDiagnostics.DefaultRedisPort` and `tenants||`; failing closed on Redis unavailability is required persistence evidence, not a skip.
+  - `[false]` `[reject]` `[P9-BH-08]` `SharedClientRelayHandler` serves GET-only `GetTenantAsync` with no body; isolation is the cloned Authorization header. Same as P7-BH-12.
+  - `[false]` `[reject]` `[P9-BH-09]` `WaitForAliveness: false` already keeps `/alive` off the shared startup budget; remaining Running/HTTPS wait is required to obtain `TenantsApiClient`.
+  - `[false]` `[reject]` `[P9-BH-10]` Nested wrapping is already collapsed by the while-loop; degenerate metadata omission is pinned on both factory overloads. Six-route degenerate cross-product remains P2-BH-09.
+  - `[false]` `[reject]` `[P9-BH-11]` Freshness tests plant `tenant-sequence:42` on every primary row; the ETag suite asserts validator-only metadata on the ETag seam.
+  - `[low]` `[reject]` `[P9-BH-12]` `CommandStatus` alias is leftover after replacing `using StackExchange.Redis` with type aliases; no remaining name clash.
+  - `[low]` `[reject]` `[P9-ECH-02]` `ConnectAsync` is bounded by `ConnectTimeout = 5_000`; adding `WaitAsync` is not everyday-path.
+  - `[low]` `[reject]` `[P9-ECH-03]` Uncaught `RedisTimeoutException` fails the persistence proof, which is the correct fail-closed outcome.
+  - `[low]` `[reject]` `[P9-ECH-04]` Bootstrap `PublishFailed` is dominated by the already-bootstrapped rejection path; create already skips `PublishFailed`.
+  - `[false]` `[reject]` `[P9-ECH-05]` This proof creates a new tenant whose persisted `Members`/`Configuration` are initialized dictionaries, not JSON null.
+- grouped survivors:
+  - `[medium]` `[patch]` Quote-only leftover ETag: P9-ECH-01.
+  - `[medium]` `[defer]` Ungated ServedAt/IsDegraded headers: P9-BH-02 and P9-BH-03, already DW-488.
+  - `[medium]` `[defer]` Inert freshness overload: P9-BH-05, already DW-493.
+- loopback: none. Apply P9-ECH-01 if the Administrator chooses patch handling.
+
 ## Design Notes
 
 Keep the active freshness overload signature so all handler constructors and call sites stay stable, but delegate it to the validator-only factory. The persisted read model still stores timestamp and sequence for replay/idempotency; only query-response authority changes. The Tier-3 proof must inspect Redis before both raw HTTP and typed-client assertions because a completed command or successful response does not establish projection origin.
@@ -427,6 +456,33 @@ Review pass 6 (2026-09-06, `bmad-code-review`). Reviewed range corrected mid-rev
 - `low` — "Header assertions use raw string literals": no shared constant exists, so the fix adds new public surface for a rename hazard that has not occurred.
 - `low` — "Brace style inconsistent within the changeset": the new code matches the pre-existing same-line style of the files it edits; only the wholesale Allman reformat of `TenantQueryFreshnessTests` differs, and it matches `.editorconfig`.
 - `low` — "Changeset ships no positive control for header emission": the emission side has blocking coverage in `tests/Hexalith.EventStore.RestApi.Generators.Tests/` and `QueryResponseProvenanceE2ETests`.
+
+Review pass 9 (2026-09-07, `bmad-code-review`). Group 1 Tenants Code Map `d2b7ede3..e7f36662` (10 files, +777/−147). Blind Hunter, Edge Case Hunter, and Acceptance Auditor completed. Verification Gap Reviewer returned empty results.
+
+**Patch**
+
+- [ ] [Review][Patch] Balanced-quote `NormalizeETag` can return a leftover `"` as a validator ETag (`"`, `"""`) [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:52-56]
+
+**Deferred**
+
+- [x] [Review][Defer] Generated-controller and topology proofs do not plant or pin `ServedAt`/`IsDegraded`; the emitter still emits those headers without a provenance gate [tests/Hexalith.Tenants.IntegrationTests/TenantsApiGeneratedControllerTests.cs:117] — deferred: DW-488 (already recorded; not written again)
+- [x] [Review][Defer] Six-argument `FromPayload` still discards freshness inputs while host options stay operator-configurable [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:37-44] — deferred: DW-493 (already recorded; not written again)
+
+**Rejected**
+
+- `false` — "Matching persisted validator / Redis HASH version not proved": AC3 specifies a conflicting validator and HTTP 200.
+- `false` — "EventStore `IsNotModified: null` vs typed-client `false` is an undocumented split": EventStore strips the producer validator; the client records the HTTP 304 flag (P8-BH-04).
+- `false` — "Header suppression covers only GetTenant": AC3 is one persisted tenant; six-route coverage is the factory/handler matrices (P8-BH-02).
+- `false` — "Redis helper hardcodes localhost, skips poorly, and assumes `tenants||`": it binds `DaprDiagnostics.DefaultRedisPort` and the checked-in keyPrefix; Redis unavailability must fail the persistence proof.
+- `false` — "`SharedClientRelayHandler` drops Content/Options and does not dispose the clone": GET-only typed `GetTenantAsync` has no body; isolation is the cloned Authorization header (P7-BH-12).
+- `false` — "`tenants-api` on the shared fixture stalls other tests": `WaitForAliveness: false` already keeps `/alive` off fixture startup.
+- `false` — "Nested quotes and six-route degenerate ETags are uncovered": the while-loop already unwraps nested quotes; both factory overloads pin degenerate omission (P2-BH-09).
+- `false` — "ETag tests plant no `ProjectionVersion`": the freshness matrix stamps `tenant-sequence:42` on every primary row.
+- `false` — "Null `Members`/`Configuration` after deserialize throws NRE": this proof creates a new tenant whose persisted collections are initialized.
+- `low` — leftover `CommandStatus` alias after Redis type aliases removed the clash.
+- `low` — `ConnectAsync` ignores cancellation until `ConnectTimeout` (5 s).
+- `low` — `RedisTimeoutException` is not wrapped as `TimeoutException`; failing the persistence proof is correct.
+- `low` — bootstrap `PublishFailed` is not skipped; the already-bootstrapped path dominates and create already skips.
 
 Review pass 10 (2026-09-08, `bmad-code-review`). Chunked Code Map + EventStore spec/gitlink; four layers ran; none failed.
 

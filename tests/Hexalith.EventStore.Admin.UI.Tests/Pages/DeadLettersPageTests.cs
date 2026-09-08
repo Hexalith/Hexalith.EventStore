@@ -308,8 +308,10 @@ public class DeadLettersPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe(expectedFocusId);
     }
 
-    [Fact]
-    public async Task RetryDialog_MixedSuccessThenDenialStopsLaterTenantsClosesAndRestoresInitiator() {
+    [Theory]
+    [InlineData("forbidden")]
+    [InlineData("unauthorized")]
+    public async Task RetryDialog_MixedSuccessThenDenialStopsLaterTenantsClosesAndRestoresInitiator(string denialKind) {
         List<DeadLetterEntry> entries =
         [
             new("msg-a", "tenant-a", "counter", "agg-a", "corr-a", "Failure", DateTimeOffset.UtcNow, 1, "CommandA"),
@@ -319,9 +321,11 @@ public class DeadLettersPageTests : AdminUITestContext {
         SetupEntries(entries, 3);
         _ = _mockDeadLetterApi.RetryDeadLettersAsync("tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(true, "op-a", "Accepted", null));
+        Exception denial = denialKind == "unauthorized"
+            ? new UnauthorizedAccessException("hidden tenant-c at redis://private; bearer secret-value")
+            : new ForbiddenAccessException("hidden tenant-c at redis://private; bearer secret-value");
         _ = _mockDeadLetterApi.RetryDeadLettersAsync("tenant-b", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden tenant-c at redis://private; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-c"), TimeSpan.FromSeconds(5));
         SelectAllVisible(cut, true);

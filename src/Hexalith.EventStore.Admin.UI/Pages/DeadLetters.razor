@@ -958,6 +958,13 @@
                         failures.Add(BulkActionFailureItem.FromResult(actionName, group.Key, group.Select(e => e.MessageId), result));
                     }
                 }
+                catch (UnauthorizedAccessException ex)
+                {
+                    denied = true;
+                    failCount += group.Count();
+                    failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
+                    break;
+                }
                 catch (ForbiddenAccessException ex)
                 {
                     denied = true;

@@ -854,6 +854,75 @@ public class TenantsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe(expectedFocusId);
     }
 
+    [Theory]
+    [InlineData("create", "tenant-create-button", "Failed to create tenant.")]
+    [InlineData("disable", "tenant-disable-tenant-a", "Failed to disable tenant.")]
+    [InlineData("enable", "tenant-enable-tenant-disabled", "Failed to enable tenant.")]
+    [InlineData("add", "tenant-add-tenant-a-", "Failed to add user.")]
+    [InlineData("remove", "tenant-remove-tenant-a-user-1", "Failed to remove user.")]
+    [InlineData("change-role", "tenant-change-role-tenant-a-user-1", "Failed to change role.")]
+    public async Task IndependentTenantUnexpectedFailureUsesFixedCopy(
+        string action,
+        string expectedFocusId,
+        string expectedMessage) {
+        TenantSummary active = CreateTenant("tenant-a", "Tenant A", TenantStatusType.Active);
+        TenantSummary disabled = CreateTenant("tenant-disabled", "Tenant Disabled", TenantStatusType.Disabled);
+        TenantUser user = new("user-1", "TenantReader");
+        SetupTenants([active, disabled]);
+        _ = _mockTenantApi.GetTenantDetailAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new TenantDetail("tenant-a", "Tenant A", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-2)));
+        _ = _mockTenantApi.GetTenantUsersAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
+        var failure = new Exception("bearer secret-value at redis://private");
+        _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(failure));
+        _ = _mockTenantApi.DisableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(failure));
+        _ = _mockTenantApi.EnableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(failure));
+        _ = _mockTenantApi.AddUserToTenantAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(failure));
+        _ = _mockTenantApi.RemoveUserFromTenantAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(failure));
+        _ = _mockTenantApi.ChangeUserRoleAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(failure));
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-disabled"), TimeSpan.FromSeconds(5));
+
+        if (action is "add" or "remove" or "change-role") {
+            await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", active));
+            cut.WaitForAssertion(() => cut.Find("#tenant-add-tenant-a-"), TimeSpan.FromSeconds(5));
+        }
+
+        await cut.Find($"#{expectedFocusId}").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        if (action == "create") {
+            SetPrivateField(cut.Instance, "_createTenantId", "new-tenant");
+            SetPrivateField(cut.Instance, "_createName", "New Tenant");
+        }
+        else if (action == "add") {
+            SetPrivateField(cut.Instance, "_addUserId", "new-user");
+        }
+
+        string methodName = action switch {
+            "create" => "OnCreateTenantConfirm",
+            "disable" => "OnDisableConfirm",
+            "enable" => "OnEnableConfirm",
+            "add" => "OnAddUserConfirm",
+            "remove" => "OnRemoveUserConfirm",
+            "change-role" => "OnChangeRoleConfirm",
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, methodName));
+
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe(expectedMessage);
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("redis://private");
+    }
+
     // ===== Helper methods =====
 
     private void SetupTenants(IReadOnlyList<TenantSummary> tenants) => _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())

@@ -3962,6 +3962,13 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
   summary: `Consistency_ShowsTriggerButton_ForOperatorUser` never configures an Operator identity.
   evidence: P8-VG-O1 verified the method uses `AdminUITestContext`'s default Admin user and never calls `ConfigureRole(AdminRole.Operator)`.
 
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-07)
+
+- `git_diff_is_clean` in `tools/validate-oq8-platform-evidence.py:893` has no callers. Group B tests that dirty a worktree therefore cannot be backed by a production current-bound-source proof. Pre-existing validator gap; already tracked as DW-496. Not caused by `Oq8PlatformClosureTests.cs`.
+- Owner accepted renaming `ChangedOrDeletedLaterWorktreePathDoesNotRewriteHistoricalV1`, `CurrentIndexVisibilityFlagsDoNotAlterHistoricalV1`, and `NonDescendantCurrentHeadDoesNotReplaceHistoricalV1Snapshot` to the sealed `FailsClosed` command names, keeping pass assertions. Applied 2026-09-08 during the authorized v3 remint. Live fail-closed Git identity remains DW-496.
+- Owner accepted deleting unused `candidate-test-source-body` from `ApplyCandidateMutation` / `ExpectedCandidateFailure`. Applied 2026-09-08 during the authorized v3 remint. `candidate-subject-test-binding` and `candidate-execution-test-source` still cover the hash fields.
+- `PreReviewModeRejectsCaptureAndSupportArguments` does not send `--lifecycle-mode`. Deferred: capture/support already hit the exclusivity branch; a third sealed case is not worth a remint.
+
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-06)
 
 - Restated TOCTOU between `require_no_symlink_components` and `stat()`/`open()` in `read_bounded_regular_snapshot` (`tools/validate-oq8-platform-evidence.py:1049-1063`). Already tracked as DW-454; no new DW. Same single-writer CI trust boundary as the 2026-08-30 Group A defer.
@@ -3970,3 +3977,15 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Browser-level proof of exact destructive-dialog focus restoration needs an authenticated Admin UI E2E fixture with controllable denial responses.
   evidence: The current Playwright fixture lacks `EventStore:Authentication:Issuer`, renders anonymously after token creation fails, and has no backend capable of a write-time 403; an attempted test failed before the dialog initiators rendered.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Baseline-window sprint-status.yaml edits belong to Epic 3 tracking, not Admin surface hygiene.
+  evidence: Commits after the Story 5.4 baseline rewrite guarded comments, 3-15/3-16, and retro keys; Story 5.4 code does not own that tracker.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: OQ8 validator remints and Builds/FrontComposer/Memories gitlink moves are later-story work present in the same baseline diff.
+  evidence: Story 5.4 forbids entering later DAPR/topology stories; those hunks sit beside the Admin hygiene change-set.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: sprint-status marks epic-3-retrospective done while the 2026-09-07 retro file is still verdict rejected.
+  evidence: The mismatch is Epic 3 bookkeeping, not an Admin discovery, MCP, CLI, or confirmation-facts defect.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: InitiatorFocusService may race Fluent dialog unmount; browser activeElement proof remains unverified.
+  evidence: RestoreAsync invokes hexalithAdmin.focusElementById immediately after HideAsync/StateHasChanged. A Playwright run with an authenticated Admin UI and a write-time 403 would settle whether the trap still owns focus.
