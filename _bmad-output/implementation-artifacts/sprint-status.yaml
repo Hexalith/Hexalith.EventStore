@@ -201,7 +201,7 @@ development_status:
 
   epic-6: in-progress
   # Architecture/readiness gate; authorizes 6.2 but does not count as runtime implementation progress.
-  6-1-folded-snapshot-frozen-spec: in-progress
+  6-1-folded-snapshot-frozen-spec: review
   6-2-folded-snapshot-implementation: backlog
   # Architecture/readiness gate; authorizes 6.4 but does not count as runtime implementation progress.
   6-3-projection-delivery-cost-and-sequence-guard-spec: backlog
