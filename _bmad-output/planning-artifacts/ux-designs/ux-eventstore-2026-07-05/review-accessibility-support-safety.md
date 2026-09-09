@@ -1,69 +1,197 @@
-# Accessibility & Support-Safety Review — eventstore
+# Accessibility & Support-Safety Review — Hexalith.EventStore Admin
 
 Reviewed: 2026-09-09
 
-Scope: `DESIGN.md`, `EXPERIENCE.md`, `.memlog.md`, both promoted HTML/PNG mockups, both imported Fluent reference captures, the Hexalith UX baseline, and accessibility/security-relevant frontmatter sources. This is a contract review, not an assertion that the current implementation has each defect.
+## Overall assessment
 
-## Verdict
+**Thin and unsafe as the sole WCAG 2.2 AA implementation contract for a regulated/support-critical administration surface.** The spines establish the right posture—FrontComposer/Fluent UI V5 inheritance, text-plus-color status, fail-closed authorization, accepted-versus-confirmed separation, support-safe disclosure, focus restoration, reduced motion, and differentiated announcements—but they do not make several load-bearing behaviors testable. The most consequential omissions are mutation scope freezing, component semantics, auto-refresh control, retry fencing, typed redaction outcomes, responsive reflow, and evidence-expiry behavior.
 
-**Thin and not yet safe as a WCAG 2.2 AA implementation contract for regulated/support-critical use.** The spines commit to several correct outcomes: WCAG 2.2 AA, text-plus-color status, fail-closed denial, focus restoration after failures, bounded disclosure, reduced motion, and differentiated live-region priorities. But those principles stop short of testable component semantics, auto-refresh control, responsive/reflow behavior, timeout/retry fencing, and assistive-technology-safe redaction. The referenced mocks also model keyboard-inoperable controls.
+The contract is also stale by construction. Both spines say `status: final` and `updated: 2026-08-01`, but use unversioned moving source paths; the current source now contains Story 7.20's substantially more exact accessibility, localization, viewport, and retained-evidence obligations. The product mocks are illustrative, yet they are the only product-specific visual references and model keyboard-inoperable primary controls.
 
-The gap is now source drift as well as underspecification. `DESIGN.md` and `EXPERIENCE.md` were last updated on 2026-08-01 (`DESIGN.md:4-6`, `EXPERIENCE.md:3-5`), while current Story 7.20 requires a closed accessibility/locale/viewport matrix, exact name-role-value relationships, throttled announcements, zoom/reflow evidence, and full locale coverage (`../../epics.md:5917-6003`).
+## Finding counts
 
-Severity counts: **critical 1 · high 9 · medium 6 · low 1**.
+- **Critical:** 1
+- **High:** 10
+- **Medium:** 7
+- **Low:** 1
+- **Total:** 19
 
 ## Findings
 
 ### Critical
 
-1. **Cross-scope destructive confirmation is not safe enough to prevent a wrong-tenant operation.** The contract requires an exact target, effect, permission context, confirmation, and cancellation, but it does not require the dialog to freeze and lead with the current tenant/environment, show the acting principal, state blast radius/reversibility, detect a changed target, or require a second acknowledgement for irreversible actions (`EXPERIENCE.md:94-101`, `EXPERIENCE.md:154`, `EXPERIENCE.md:203-205`). Both mocks visibly allow an “All tenants” context (`mockups/dashboard-overview.html:303-307`, `mockups/command-investigation.html:258-262`). Current source requirements are stricter: they require tenant/environment, risk, stable retry identity, cleared transient state on revocation, and no background retry (`../../epics.md:5877-5885`). **Impact:** an operator working quickly across tenants could retry/archive/replay/change access against the wrong subject, creating regulated data or authorization harm without an adequately reviewable checkpoint. **Fix:** make every mutation dialog expose a fixed labelled block containing acting principal/role, environment, tenant, domain, target identifier, current authoritative state, effect, reversibility, blast radius, and audit reason/reference. Freeze those facts at open time; revalidate them at submit; turn any change into a non-submitting conflict state. For irreversible or cross-scope actions require an explicit acknowledgement, and prohibit multi-tenant bulk selection.
+#### 1. A destructive or privileged operation can be confirmed against stale or wrong scope
+
+**Location:** `EXPERIENCE.md:94-105`, `EXPERIENCE.md:153-155`, `EXPERIENCE.md:203-214`, `mockups/dashboard-overview.html:302-307`, `mockups/command-investigation.html:258-263`, `../../epics.md:5877-5885`.
+
+**Note:** “Exact target,” permission context, confirmation, and auditability are insufficient for a multi-tenant operations surface. The contract does not require the dialog to freeze and lead with current environment/tenant, acting principal, authoritative state, blast radius, or reversibility; it does not revalidate those facts at submit; and it does not define what happens if authorization, scope, or freshness changes while the dialog is open. Both mocks normalize an “All tenants” context. A fast-moving operator can therefore confirm a retry, archive, replay, snapshot, or role change after context drift and affect the wrong tenant.
+
+**Fix:** Require every mutation dialog to show a fixed labelled block containing acting principal/role, environment, tenant, domain, exact target, authoritative pre-state and observation time, effect, reversibility, blast radius, expected evidence, and audit reason/reference. Freeze these facts at open, revalidate at submit, and turn any mismatch, revocation, expiry, or scope change into a non-submitting conflict state that clears protected/transient input. Require explicit acknowledgement for irreversible or cross-scope actions and prohibit multi-tenant bulk mutation unless separately specified and approved.
 
 ### High
 
-2. **“Accessible names and roles” is not an implementable semantic contract for the named Fluent components.** The only general requirement is that tabs, grids, dialogs, accordions, and inputs expose names/roles, plus generic row context (`EXPERIENCE.md:161-168`). Component Patterns adds keyboard-operable tabs and row click, but no required relationships or state values (`EXPERIENCE.md:95`, `EXPERIENCE.md:98-105`). It never pins tablist/tab/tabpanel ownership and selection, accordion heading/button/expanded relationships, grid sort/selection/index/busy semantics, dialog label/description/modality, or how badges become status text without every badge becoming a live region. **Impact:** teams can claim “we used Fluent” while shipping broken relationships under custom composition, virtualization, responsive column removal, or wrappers (WCAG 1.3.1, 2.1.1, 4.1.2). **Fix:** add a component semantics matrix: tab roving focus with Arrow/Home/End and `aria-selected`/`aria-controls`; accordion header buttons with `aria-expanded`/`aria-controls`; grid header/sort state, stable row labels, selection state, row/action keyboard activation and virtualization position; modal label/description, initial focus, Escape/cancel and inert background; badges as persistent text associated with the value they qualify; and toast/status semantics separately.
+#### 2. The “final” spines are not revision-bound and no longer cover their current sources
 
-3. **Live-region priority exists, but announcement scope and deduplication do not.** The table classifies polite versus assertive transitions (`EXPERIENCE.md:172-180`), while the refresh model combines SignalR nudges, polling, and explicit refresh (`EXPERIENCE.md:151`). Nothing defines one owning status region, suppresses initial-load announcements, coalesces repeated poll results, or prevents every badge/grid row from re-announcing. Current source explicitly requires repeated polling/SignalR events to be deduplicated or throttled (`../../epics.md:5955-5958`). **Impact:** a screen-reader operator could be flooded by stale/current flips and row rerenders during an incident, obscuring the terminal failure that matters (WCAG 4.1.3). **Fix:** define one scoped status region per active view plus one operation-specific region. Announce only meaningful transitions; summarize background refresh once per changed cycle; never announce unchanged polls or every row; preserve terminal messages in-page; specify exact dedupe/throttle rules and tests.
+**Location:** `DESIGN.md:4-13`, `EXPERIENCE.md:3-12`, `EXPERIENCE.md:157-197`, `../../epics.md:5917-6003`.
 
-4. **Automatic polling has no pause, cadence, or reading-state preservation contract.** Polling is the fallback and last-known data can update (`EXPERIENCE.md:113-116`, `EXPERIENCE.md:151`), but no user control or maximum cadence is specified. Nothing prevents refresh from resetting focus, row selection, sort, scroll, expanded accordion items, or facts in an open dialog. **Impact:** auto-updating evidence can replace content an assistive-technology user is reading and trigger WCAG 2.2.1/2.2.2 obligations without a defined pause/extend mechanism. **Fix:** specify a visible keyboard-operable pause/resume control and refresh interval; preserve focus, scroll, filters, selection, expansion, and open dialogs; mark changed in-dialog facts as conflict; expose refresh progress non-disruptively; and warn/extend adjustable timeouts.
+**Note:** The source references are mutable paths with no commit, digest, or reviewed-at revision. Current Story 7.20 requires closed component/state matrices, exact name-role-value relationships, throttled announcements, locale/pseudo-locale coverage, reflow/zoom evidence, and retained evidence identity; the spines still offer only principles and breakpoints. Downstream consumers cannot know which source revision the `final` label attests to, and old validation can be mistaken for current conformance.
 
-5. **The evidence-pending timeout exposes an unsafe “retry” without distinguishing refresh from resubmission.** The state machine correctly separates accepted from confirmed (`EXPERIENCE.md:117-118`, `EXPERIENCE.md:153`), yet Sample Flow 5 says a timed-out accepted command offers “retry/refresh” (`EXPERIENCE.md:274-284`). No evidence budget, stable operation identity, or terminal precondition for resubmission is defined. AD-25 now makes durable admission/fencing load-bearing and prohibits raw idempotency material in status/evidence (`../../architecture.md:400-415`); current epics require retries to preserve stable operation identity (`../../epics.md:5877-5880`). **Impact:** a late-but-successful mutation can be submitted twice, while “Retry” is ambiguous to assistive-technology users. **Fix:** use distinct actions: “Refresh status” never submits; “Retry operation” appears only after authoritative terminal non-persistence/retryability evidence and reuses the approved stable operation identity. After a bounded wait, persist and announce “Outcome unknown—do not resubmit,” show the safe tracking reference, and offer status navigation/support escalation.
+**Fix:** Add source revision/digest and validation timestamp metadata, regenerate traceability against the current PRD/architecture/epics, and make `final` conditional on a closed Story 7.20 matrix. Retained evidence must identify exact repository revision, browser/tool, viewport, locale, theme, assistive-technology mode, and every skip/quarantine/exception with owner and expiry.
 
-6. **State coverage is not closed for Sample and Tenants, and critical states are conflated.** The matrix covers only EventStore dashboard tabs (`EXPERIENCE.md:131-145`), although the IA includes Sample and Tenants dashboards (`EXPERIENCE.md:31-35`) and both have mutations (`EXPERIENCE.md:274-296`). There is no per-surface cold-load, refreshing, offline, authentication-expired/revoked, provider-unavailable, malformed/unknown evidence, conflict, or terminal error contract. “Stale/offline” is one column even though stale data can remain readable and offline blocks authoritative refresh. Story 7.20 requires every canonical loading/empty/denied/unavailable/error state (`../../epics.md:5935-5938`). **Impact:** unsupported states can fall through to empty, stale, generic error, or optimistic success. **Fix:** add Sample and Tenants rows and split state dimensions. For every surface define cold load, refresh, empty-visible-scope, stale, offline/disconnected, unavailable, unauthenticated/expired, denied/wrong scope, unknown/malformed evidence, conflict, accepted/pending, terminal failure, focus target, announcement priority, mutation gate, disclosure, and recovery.
+#### 3. Named Fluent components have no implementable semantic contract
 
-7. **Protected data is banned visually but not specified as an accessible redaction outcome.** The spine says to show a redacted/protected status and never expose raw protected data (`EXPERIENCE.md:123`, `EXPERIENCE.md:199-203`), but it does not say raw content must also be absent from the accessibility tree, DOM attributes, descriptions, tooltips, clipboard, URLs, client logs, or export. It collapses deleted, missing, denied, unavailable, malformed, tampered, and opaque into one protected state even though FR37/NFR19 require bounded typed outcomes (`../../prd.md:309`, `../../prd.md:335`) and AD-23 makes stable compatibility/fail-closed behavior explicit (`../../architecture.md:370-378`). **Impact:** masked payloads can still be spoken/copied, and conflated states can make support treat tampering/unavailability as deliberate protection. **Fix:** define resource-backed, non-secret replacements for every typed unreadable outcome with consequence and safe next action. Require sensitive bytes to be absent from rendered DOM/accessibility properties/clipboard/export/URLs/telemetry, not merely hidden. Preserve a safe invariant reason code beside the localized label when cross-locale support needs it.
+**Location:** `EXPERIENCE.md:90-107`, `EXPERIENCE.md:146-170`, `../../epics.md:5950-5953`.
 
-8. **Responsive behavior is breakpoint-only, not WCAG reflow and zoom behavior.** The contract names three bands (`EXPERIENCE.md:189-197`) but does not require 320 CSS-pixel reflow, 400% zoom, text spacing, enlarged system text, logical reading order, visible focus, or isolation of necessary two-dimensional scrolling to a labelled grid region. Current source requirements now spell these out (`../../epics.md:5970-5988`). The imported mobile image is a generic Fluent reference, and neither product mock has a mobile capture. **Impact:** dense grids, horizontal tabs, dialogs, and filters can clip evidence or create whole-page two-axis scrolling (WCAG 1.4.10 and 2.4.11). **Fix:** bind acceptance to 320 CSS px/400% zoom, 200% text sizing/text-spacing overrides, one-dimensional page flow, labelled horizontal grid regions, active-tab visibility, no off-screen focus, and no loss of tenant/environment/freshness/confirmation context. Produce narrow product evidence for Overview, Commands/detail, Recovery, and both mutation flows.
+**Note:** “Keyboard-operable” and “expose accessible names and roles” do not pin the relationships and state values that wrappers, virtualization, responsive column removal, and custom composition routinely break. The spine never specifies tablist/tab/tabpanel ownership and selection, accordion heading/button/panel relationships, data-grid sort/selection/index/busy semantics, dialog labelling/modality, or whether a status badge is persistent text versus a live status message.
 
-9. **The promoted mocks contradict the keyboard and semantic contract at every primary interaction.** Tabs, filters, Search, navigation, and selectable rows are non-focusable `<div>` elements (`mockups/dashboard-overview.html:275-292`, `mockups/dashboard-overview.html:302-339`, `mockups/command-investigation.html:246-286`). Responsive CSS simply hides navigation (`mockups/dashboard-overview.html:249-265`, `mockups/command-investigation.html:224-240`); the visible hamburger is hidden from assistive technology and is not a button (`mockups/dashboard-overview.html:269-277`). **Impact:** these are the only product-specific visual references, so implementers can copy a rendered but inaccessible interaction model. **Fix:** make mocks semantic and keyboard-operable (`button`/`input`/`select`, tab relationships, explicit row actions, labelled nav toggle), or add adjacent callouts naming the exact Fluent component and semantics. Include visible focus and narrow captures.
+**Fix:** Add a component semantics matrix. At minimum: tabs use roving focus, Arrow/Home/End, selection and panel ownership; accordions expose heading/button/expanded/control relationships; grids expose headers, sort, selection, row identity/context, virtualization position, busy state, and explicit row-action activation; dialogs expose label/description/modality, initial focus, contained tab sequence, Escape/cancel, inert background, and deterministic focus return; badges remain persistent text associated with the value they qualify and are not automatically live regions.
 
-10. **Toasts are ungoverned despite being an explicit false-success risk.** Neither Component Patterns (`EXPERIENCE.md:90-107`) nor the announcement table (`EXPERIENCE.md:172-180`) defines toast purpose, duration, dismiss/pause behavior, focus, or persistence. Current epics explicitly say a toast cannot prove completion (`../../epics.md:5860`). **Impact:** a transient “Command sent” success toast can collapse acceptance into completion, vanish before reading, or duplicate a live announcement. **Fix:** add a toast contract: mutation evidence/terminal state never exists only in a toast; accepted uses neutral/pending treatment; persistent row/dialog/status evidence remains authoritative; toasts are dismissible, pause on hover/focus when timed, never steal focus, and deduplicate with live regions. Reserve success for non-evidence actions such as “Link copied.”
+#### 4. Live-region priority lacks ownership, deduplication, and persistence rules
+
+**Location:** `EXPERIENCE.md:151`, `EXPERIENCE.md:172-180`, `../../epics.md:5955-5958`.
+
+**Note:** The priority table distinguishes polite and assertive events but defines neither the owning regions nor how SignalR, polling, row rerenders, and dialogs coordinate. Nothing suppresses initial-load chatter, unchanged polls, or per-row announcements; nothing guarantees that terminal messages remain visible after the announcement. During an incident, refresh floods can obscure the failure that matters.
+
+**Fix:** Define one scoped status region per active view and one operation-specific region. Announce only meaningful state transitions, summarize a changed refresh cycle once, suppress initial population and unchanged polls, coalesce repeated SignalR/poll events by canonical state/operation identity, and specify throttle intervals. Keep terminal outcomes persistently visible in the owning dialog/row/banner and prevent badges or virtualized rows from each becoming live regions.
+
+#### 5. Auto-refresh can disrupt reading and has no user control
+
+**Location:** `EXPERIENCE.md:113-116`, `EXPERIENCE.md:146-155`, `EXPERIENCE.md:172-180`, `../../epics.md:5872-5875`.
+
+**Note:** Polling is an authoritative fallback, but the spine sets no cadence, pause/resume or frequency control, and no preservation rule for focus, scroll, row selection, sort, expanded accordion items, or an open dialog. Auto-updating evidence can replace what an assistive-technology user is reading and can silently invalidate confirmation facts.
+
+**Fix:** Specify a visible keyboard-operable pause/resume control or user-controlled refresh frequency, the default/max cadence, and a manual refresh path. Background refresh must preserve focus, scroll, filters, selection, expansion, and open dialogs; changed dialog facts become a conflict, never a silent update. Expose refreshing non-disruptively and make any session/operation timeout adjustable or extendable where WCAG requires it.
+
+#### 6. Timeout recovery makes refresh and mutation retry dangerously ambiguous
+
+**Location:** `EXPERIENCE.md:104-105`, `EXPERIENCE.md:117-118`, `EXPERIENCE.md:153`, `EXPERIENCE.md:274-284`, `../../architecture.md:400-415`, `../../epics.md:5877-5880`.
+
+**Note:** Flow 5 offers “retry/refresh” after an accepted command times out without defining authoritative non-persistence, retryability, or stable operation identity. A late-but-successful command can be submitted twice, while an ambiguous “Retry” label gives screen-reader users no reliable action consequence.
+
+**Fix:** Split the actions. “Refresh status” must never submit. “Retry operation” may appear only after authoritative terminal retryable evidence and must preserve the approved stable operation identity. After a bounded wait, announce and persist “Outcome unknown—do not resubmit,” provide the support-safe tracking reference and evidence timestamp, and route to status/support escalation. Raw idempotency material must never enter UI evidence.
+
+#### 7. State coverage excludes source-owned hosts and conflates materially different failures
+
+**Location:** `EXPERIENCE.md:31-35`, `EXPERIENCE.md:109-145`, `EXPERIENCE.md:274-296`, `../../epics.md:5935-5938`.
+
+**Note:** The per-surface matrix covers only Event Store Admin tabs although the IA and flows include Sample and Tenants dashboards. It merges stale/offline and omits per-surface refreshing, unauthenticated/expired/revoked, provider unavailable, malformed/unknown evidence, conflict, timeout/cancelled, and terminal error states. These states have different disclosure, authority, mutation, focus, and recovery consequences; collapsing them invites empty-state or optimistic-success fallthrough.
+
+**Fix:** Add Sample and Tenants and split the dimensions. For every canonical surface define cold load, refresh, empty-visible-scope, stale, offline/disconnected, unavailable, unauthenticated/expired, denied/wrong scope, revoked mid-action, unknown/malformed evidence, conflict, accepted/pending, timeout/cancelled, terminal failure, focus target, announcement priority, mutation gate, disclosure policy, and recovery action.
+
+#### 8. Redaction is visual language, not an assistive-technology-safe data boundary
+
+**Location:** `EXPERIENCE.md:98`, `EXPERIENCE.md:123`, `EXPERIENCE.md:199-205`, `../../prd.md:309`, `../../prd.md:335`, `../../architecture.md:370-378`.
+
+**Note:** “Protected” and “redacted” do not require sensitive bytes to be absent from the accessibility tree, DOM attributes, hidden descriptions, tooltips, URLs, clipboard, export, or client logs/telemetry. The contract also collapses deleted, missing, denied, unavailable, malformed, tampered, and opaque payload outcomes, although current source contracts require bounded typed outcomes. A masked secret may still be spoken or copied, and a tamper/unavailable result can be misdiagnosed as intentional protection.
+
+**Fix:** Define a resource-backed, non-secret label, consequence, and safe next action for every typed unreadable outcome. Require sensitive bytes to be absent—not merely visually hidden—from rendered DOM, accessible properties, descriptions, clipboard/export, URLs, analytics, logs, and telemetry. Preserve a safe invariant reason code next to localized copy only when cross-locale support requires it and authorization permits it.
+
+#### 9. Breakpoints do not constitute a WCAG reflow and zoom contract
+
+**Location:** `EXPERIENCE.md:189-197`, `../../epics.md:5970-5988`, `imports/fluent-ui-v5-home-mobile.png`, `mockups/dashboard-overview.html:249-265`, `mockups/command-investigation.html:224-240`.
+
+**Note:** Three width bands do not require 320 CSS-pixel reflow, 400% zoom, text-spacing overrides, enlarged system text, logical reading order, visible/unobscured focus, or containment of necessary two-dimensional scrolling to a labelled grid. The imported mobile image is generic Fluent documentation; neither product mock provides narrow product evidence. Dense grids, tabs, dialogs, and filters can therefore clip or drop critical context while still satisfying the stated breakpoint table.
+
+**Fix:** Bind acceptance to 320 CSS px and 400% zoom, 200% text sizing and WCAG text-spacing overrides, one-dimensional page flow, labelled horizontal grid regions, active-tab visibility, no off-screen/obscured focus, and no loss of tenant/environment/freshness/confirmation context. Produce narrow product references for Overview, Commands/detail, Recovery, tenant access, and destructive/recovery mutation dialogs.
+
+#### 10. The only product mocks contradict the keyboard and semantic contract
+
+**Location:** `DESIGN.md:166`, `EXPERIENCE.md:25`, `mockups/dashboard-overview.html:269-339`, `mockups/command-investigation.html:244-315`.
+
+**Note:** Tabs, filters, Search, navigation, and selectable rows are non-focusable `div` elements. The dashboard hamburger is hidden from assistive technology and is not a button; responsive CSS simply removes navigation. These mocks are labelled reference-only, but they are the sole product-specific visual examples, so downstream implementers can copy an interaction model that is inoperable by keyboard and lacks tab/panel, input, button, and row-action semantics.
+
+**Fix:** Replace primary controls in the mocks with semantic keyboard-operable equivalents and explicit relationships, or add adjacent callouts naming the exact Fluent component and mandatory behavior. Include skip-link, visible focus, accessible navigation toggle, real labels, row action controls, status-region behavior, and narrow-screen captures. Keep the “spines win” note, but remove contradictory implementation cues.
+
+#### 11. Authoritative evidence can remain “Current” without an expiry or observation contract
+
+**Location:** `DESIGN.md:140-147`, `EXPERIENCE.md:96`, `EXPERIENCE.md:104-105`, `EXPERIENCE.md:113-129`, `../../epics.md:5857-5870`.
+
+**Note:** `Current` enables otherwise-authorized mutation, yet the spine does not require every lifecycle/freshness presentation to expose authoritative evidence source, observation time, freshness horizon, clock basis, or transition to `Unknown`/`Stale` when evidence ages out. A long-open tab can retain an apparently current state and permit action after its evidence is no longer safe.
+
+**Fix:** For every evidence-derived status, require canonical source, observed-at time, last-successful-refresh time, and route-owned freshness/expiry semantics. Expired, unparseable, clock-invalid, or provenance-mismatched evidence becomes `Unknown` or `Stale` and disables mutation before submit. Refresh and submit must re-evaluate the same canonical state; local time, ETag, cursor, SignalR, and elapsed UI time must never synthesize authority.
 
 ### Medium
 
-11. **Focus movement is underdefined for tabs, deep links, drawers, and dynamic errors.** The spine promises a focusable page title and focus return after dialogs/failures (`EXPERIENCE.md:150`, `EXPERIENCE.md:162-168`) but not whether tab activation keeps focus on the tab, where deep links land, whether opening a non-modal panel focuses its heading, or how focus returns when the initiating row disappears. **Impact:** implementations may break roving tab navigation, strand focus, or repeatedly jump users to the title. **Fix:** Arrow-key tab changes keep focus in the tablist; route entry focuses the selected title; opening a panel focuses its heading; close returns to the row action or nearest stable grid control; validation-summary links focus the first invalid field; background updates never move focus.
+#### 12. Focus rules do not close navigation, panel, and disappearing-trigger cases
 
-12. **Contrast commitments omit non-text contrast and theme-state evidence.** `DESIGN.md` promises AA for text/state labels and bans color-only status (`DESIGN.md:168-180`), but not WCAG 1.4.11 contrast for focus indicators, active-tab borders, grid boundaries, icons, and lifecycle graphics across light, dark, system, and forced-color themes. Mocks use legacy token names prohibited by the spine (`mockups/dashboard-overview.html:15-28`, `mockups/command-investigation.html:15-27`; `DESIGN.md:180`). **Impact:** Fluent inheritance does not prove custom combinations/wrappers preserve focus and state visibility. **Fix:** require 3:1 adjacent-color contrast for required non-text UI/state indicators and contrast/forced-color checks for every state/theme. Replace legacy mock tokens with Fluent 2 roles or mark them non-copyable fallbacks.
+**Location:** `EXPERIENCE.md:148-150`, `EXPERIENCE.md:162-168`.
 
-13. **There is no target-size floor.** Some tokens set 36–40 px heights (`DESIGN.md:71-105`), but icon utilities, dismiss buttons, compact badges, row actions, accordion toggles, tab overflow, and mobile nav triggers have no minimum target. Mocks render primary controls at 32 px (`mockups/dashboard-overview.html:202-210`, `mockups/command-investigation.html:113-121`). **Impact:** the dense UI may fail WCAG 2.5.8. **Fix:** require at least 24×24 CSS px or the WCAG spacing/equivalent exception, with 44×44 preferred for touch-critical narrow actions; test icon, close, row, and overflow controls.
+**Note:** The spine promises a focusable title and return after dialogs/failures but not whether tab activation retains focus, where deep links land, whether a non-modal detail panel receives focus, or what replaces the initiator when refresh removes its row. Implementations can strand focus or overcorrect by jumping to the page title on every tab change.
 
-14. **Reduced-motion and timing language is too narrow.** The sole rule says state-change transitions show final state directly (`EXPERIENCE.md:169`), while cold loading uses skeletons (`EXPERIENCE.md:113`). It omits shimmer, progress animation, drawer/dialog transitions, auto-scrolling tabs, focus animation, and the need to retain progress when motion is disabled. **Impact:** reduced-motion users can still receive continuous animation, or lose progress information. **Fix:** require `prefers-reduced-motion` to disable nonessential shimmer, scrolling, and transitions while preserving static progress/state text; prohibit motion as sole meaning; document timeouts independently; test the Story 7.20 transition matrix (`../../epics.md:5955-5958`).
+**Fix:** Specify: Arrow-key tab changes retain focus in the tablist; route/deep-link entry focuses the selected view title; opening a non-modal panel focuses its heading; close returns to the row action or nearest stable grid control; validation-summary links focus the first invalid field; background updates never move focus; removal of the initiating row uses a documented stable fallback.
 
-15. **Disabled safety reasons may be inaccessible because the owning control is not focusable.** Many actions are disabled with stale/unknown/desktop-required reasons (`EXPERIENCE.md:105`, `EXPERIENCE.md:128-144`, `EXPERIENCE.md:155`, `EXPERIENCE.md:207-214`), but the reason need not remain visible/programmatically associated. **Impact:** keyboard and screen-reader users cannot learn why an action is unavailable or what safe next step exists. **Fix:** render adjacent persistent reason text or an issue banner and associate it from an enabled explanatory wrapper/control with `aria-describedby`; provide a reachable next action; never rely only on hover, `title`, color, or a disabled control's description.
+#### 13. Contrast requirements omit non-text indicators and forced-color behavior
 
-16. **Localization rules do not explicitly cover accessible-only strings or support-safe formatting.** Resource-backed visible copy is required (`EXPERIENCE.md:182-187`), but accessible names/descriptions, live announcements, dialog summaries, grid sort announcements, and hidden helper text are not named. Time zones, durations, plurals, pseudo-locale expansion, RTL/LTR identifiers, and accessible expansion of truncation are omitted. Story 7.20 explicitly includes accessible names, announcements, dates/numbers, pseudo-locale, and culture-aware formatting (`../../epics.md:5965-5968`). **Impact:** visual copy can be translated while screen-reader output remains English, malformed, time-zone ambiguous, or leaks a full sensitive value. **Fix:** include accessibility-tree/live-region copy in the resource inventory; use culture-aware date/number/duration/plural formatting with explicit operations time zone; keep identifiers invariant/LTR and separately labelled; test pseudo-locale/RTL expansion; expose full truncated values only when support-safe and authorized.
+**Location:** `DESIGN.md:168-180`, `mockups/dashboard-overview.html:15-28`, `mockups/command-investigation.html:15-27`, `../../epics.md:5940-5943`.
+
+**Note:** Text/status contrast and non-color meaning are covered, but not non-text contrast for focus indicators, active tabs, grid boundaries, icons, lifecycle graphics, or disabled-state affordances across light, dark, system, and forced-color themes. The mocks also use legacy Fluent v4/FAST-style token names that the baseline explicitly forbids.
+
+**Fix:** Require WCAG non-text contrast for required controls/state indicators and verify every state in light, dark, system, and forced colors. Specify forced-color fallbacks for focus and lifecycle distinctions. Replace legacy mock tokens with Fluent 2 roles or mark each fallback as static/non-copyable and point to the required Fluent V5 component parameter.
+
+#### 14. Dense controls have no target-size floor
+
+**Location:** `DESIGN.md:71-105`, `mockups/dashboard-overview.html:202-210`, `mockups/command-investigation.html:113-121`.
+
+**Note:** Some rows/tabs have 36–40 px heights, but icon utilities, dismiss buttons, row actions, accordion toggles, tab overflow, and mobile navigation have no minimum target. The mocks normalize 32 px primary controls. Dense UI can therefore meet tokens while failing WCAG 2.5.8 for compact actions.
+
+**Fix:** Require at least 24×24 CSS px or a documented WCAG spacing/equivalent exception for every pointer target, with 44×44 preferred for touch-critical narrow-screen actions. Include icon-only, dismiss, row, accordion, tab-overflow, and navigation controls in conformance evidence.
+
+#### 15. Reduced-motion covers transitions but not loading and movement primitives
+
+**Location:** `EXPERIENCE.md:113`, `EXPERIENCE.md:169`, `../../epics.md:5955-5958`.
+
+**Note:** “Show final state directly” omits skeleton shimmer, progress animation, drawer/dialog transitions, auto-scrolling tabs, focus animation, and maintaining static progress when animation is removed. Reduced-motion users can still receive continuous motion, or lose the only progress cue.
+
+**Fix:** Require `prefers-reduced-motion` to disable nonessential shimmer, auto-scroll, and transitions while retaining static progress/state text. Motion may never carry sole meaning. Test loading, accepted, pending, confirmed, freshness, denial, validation, and terminal failure transitions with reduced motion enabled.
+
+#### 16. Disabled safety reasons can become inaccessible dead ends
+
+**Location:** `EXPERIENCE.md:105-106`, `EXPERIENCE.md:126-144`, `EXPERIENCE.md:155`, `EXPERIENCE.md:207-214`, `../../epics.md:5950-5953`.
+
+**Note:** Many actions are disabled for stale, unknown, unsupported, or narrow-screen reasons, but the explanation need not be visible and programmatically associated. A native disabled control is usually not focusable, so keyboard and screen-reader operators may never learn the reason or reach the next safe action.
+
+**Fix:** Render persistent adjacent reason text or an issue banner, associate it through an enabled explanatory control/wrapper and `aria-describedby`, and provide a reachable next action. Never rely only on hover, `title`, color, or a disabled control's accessible description.
+
+#### 17. Localization omits accessibility-only copy and support-safe formatting details
+
+**Location:** `EXPERIENCE.md:71-84`, `EXPERIENCE.md:182-187`, `../../epics.md:5965-5968`.
+
+**Note:** Resource-backed visible strings are required, but accessible names/descriptions, live announcements, validation summaries, sort/state announcements, and visually hidden helper text are not explicitly included. Time zones, durations, plurals, pseudo-locale expansion, RTL/LTR identifiers, and accessible expansion of truncated values are also ungoverned.
+
+**Fix:** Include all accessibility-tree and live-region text in the closed resource inventory. Require culture-aware date, number, duration, and plural formatting with explicit operations time zone; keep identifiers invariant, direction-isolated, and separately labelled; test supported locales, fallback, pseudo-locale, and RTL expansion. Reveal a full truncated value only when support-safe and authorized.
+
+#### 18. Toast behavior is absent despite explicit false-success risk
+
+**Location:** `EXPERIENCE.md:90-107`, `EXPERIENCE.md:172-180`, `../../epics.md:5857-5860`, `../../epics.md:5877-5880`.
+
+**Note:** Neither component/state patterns nor the announcement table governs toast purpose, duration, dismissal, pause, focus, or persistence. Source requirements explicitly say a toast cannot prove completion. A transient “Command sent” success toast can collapse acceptance into success, vanish before reading, or duplicate a live-region message.
+
+**Fix:** Add a toast contract: evidence and terminal operation state never exist only in a toast; accepted uses neutral/pending language; persistent dialog/row/status evidence remains authoritative; timed toasts pause on hover/focus, are dismissible, never steal focus, and deduplicate with live regions. Reserve success toasts for non-authoritative convenience actions such as “Link copied.”
 
 ### Low
 
-17. **Stable test IDs risk being mistaken for accessibility semantics.** `data-testid` is in the Accessibility Floor (`EXPERIENCE.md:170`) although it provides no accessible name, role, relationship, or state. **Impact:** tests can stay green while the accessibility tree regresses. **Fix:** move selector policy to testing/conformance and pair each selector assertion with user-facing semantic assertions for role, name, state, relationship, focus, and live-message behavior.
+#### 19. `data-testid` is presented as accessibility evidence
 
-## Existing strengths
+**Location:** `EXPERIENCE.md:157-170`, `../../epics.md:5960-5963`.
 
-- Status/lifecycle meaning is textual, not color-only (`DESIGN.md:162`, `DESIGN.md:178`; `EXPERIENCE.md:99`, `EXPERIENCE.md:165`).
-- Denial fails closed without confirming hidden-resource existence (`EXPERIENCE.md:119`, `EXPERIENCE.md:167-168`).
-- Accepted, evidence-pending, and projection-confirmed are distinct (`EXPERIENCE.md:117-118`, `EXPERIENCE.md:153`).
-- The support-safe ban covers raw payloads, tokens, claims, stack traces, cursors, ETags, secrets, and unbounded SignalR metadata (`EXPERIENCE.md:199-203`).
-- FrontComposer/Fluent UI V5 inheritance matches the repository baseline (`DESIGN.md:168-180`, `references/Hexalith.AI.Tools/hexalith-ux-instructions.md:3-34`).
+**Note:** Stable selectors belong in testing/conformance, not the Accessibility Floor. A `data-testid` carries no accessible name, role, relationship, value, state, focus, or announcement behavior; selector-only tests can remain green while the accessibility tree regresses.
 
-## Required closure evidence
+**Fix:** Move selector policy to testing/conformance and require each selector-based checkpoint to assert user-facing semantics: role, accessible name, value/state, relationships, focus behavior, and live message where applicable.
 
-Do not claim WCAG 2.2 AA readiness from prose alone. Close the findings with the current Story 7.20 matrix: component semantic tests; keyboard-only critical journeys; screen-reader-oriented name/role/value/relationship and announcement assertions; axe or equivalent scans; light/dark/system/forced-color checks; reduced-motion checks; 320 CSS px/400% zoom/reflow and text-expansion runs; pseudo-locale/RTL checks; per-surface state fixtures; and destructive/retry/redaction negative tests. Retained results must identify revision, browser/tool, viewport, locale, theme, and unexpected skip/quarantine state (`../../epics.md:5990-6003`).
+## What is already strong
+
+- The spines distinguish command acceptance, evidence pending, and projection-confirmed success; HTTP 202 and SignalR are not presented as proof (`EXPERIENCE.md:117-118`, `EXPERIENCE.md:151-153`, `EXPERIENCE.md:274-284`).
+- Denial is explicitly fail-closed and must not confirm hidden resource existence (`EXPERIENCE.md:119-120`, `EXPERIENCE.md:167-168`, `EXPERIENCE.md:241-250`, `EXPERIENCE.md:286-296`).
+- Status and lifecycle meaning is textual rather than color-only (`DESIGN.md:162`, `DESIGN.md:178-180`, `EXPERIENCE.md:99`, `EXPERIENCE.md:165`).
+- The support-safe ban already covers bearer tokens, decoded claims, raw payloads and metadata, cursors, ETags, stack traces, secrets, and unbounded SignalR metadata (`DESIGN.md:242`, `EXPERIENCE.md:199-205`).
+- Failure paths exist for all six named journeys and generally preserve non-success honestly (`EXPERIENCE.md:227-296`).
+- FrontComposer and Blazor Fluent UI V5 inheritance matches the repository baseline and correctly rejects a local design system (`DESIGN.md:168-180`, `references/Hexalith.AI.Tools/hexalith-ux-instructions.md:5-39`).
+- The spine explicitly covers focus return after denial/failure, reduced motion, status announcements, resource-backed complete strings, and three responsive bands (`EXPERIENCE.md:157-197`).
+
+## Reviewer scope
+
+This lens reviewed `DESIGN.md`, `EXPERIENCE.md`, `.memlog.md`, `index.md`, all files under `imports/` and `mockups/`, the Hexalith UX baseline at `references/Hexalith.AI.Tools/hexalith-ux-instructions.md`, and accessibility/support-safety requirements in the frontmatter sources. It checked contract sufficiency for downstream architecture, story development, and conformance evidence—not implementation code and not a claim that the running product currently has each defect.
+
+Behavioral interpretation was grounded in WCAG 2.2 AA and the WAI-ARIA Authoring Practices for tabs, grids, accordions, and modal dialogs. Particular checks included keyboard order and activation, name/role/value/relationship exposure, focus entry/return, status-message behavior, auto-updating content, target size, non-text contrast, reduced motion, 320 CSS-pixel reflow/400% zoom, localization and bidi behavior, responsive mutation disposition, failure recovery, privileged/destructive confirmation, revocation and fail-closed denial, authoritative evidence freshness, retry/idempotency safety, and support-safe disclosure.
+
+No UX spine, source, import, or mockup was modified. This file is review evidence only.
