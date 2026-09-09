@@ -134,9 +134,12 @@ Exit categories: `0` success · `1` usage · `2` blocked environment · `3` topo
 `4` generated-API product failure · `5` state-evidence failure. When it reports a `blocked`
 environment it prints the minimal bootstrap command (see the VM bootstrap above); a required
 infrastructure blocker stops the run before any generated-API check. The `--sample-api-smoke` path
-mints a dev JWT (never printed), exercises `POST .../increment` (expects `202` + `Location` +
+requests a short-lived JWT from the running `sample-api` resource's `issue-smoke-token` command
+(never printed), exercises `POST .../increment` (expects `202` + `Location` +
 `Retry-After`) and `GET` (expects `200` + `ETag`, then `304`), and confirms bounded persisted
-state in Redis. Shell validation lives in `scripts/tests/generated-api-smoke-preflight.test.sh`;
+state in Redis. This token command is present only for a local AppHost run with
+`EnableKeycloak=false`; the signing key stays inside the AppHost model and is never exported to the
+script. Shell validation lives in `scripts/tests/generated-api-smoke-preflight.test.sh`;
 the shared support-safe redaction/classification contract is tested in
 `tests/Hexalith.EventStore.Testing.Integration.Tests/GeneratedApiSmokePreflightDiagnosticsTests.cs`.
 

@@ -109,18 +109,19 @@ public sealed class AspireSecurityResourceNamingTests
             // `WithSecurityDependency`'s own `WithReference`, plus one per environment variable
             // whose value is a `ReferenceExpression` over the realm URL. `WithJwtBearerSecurity`
             // supplies two such variables (authority and issuer) and
-            // `WithEventStoreAuthenticationValidation` one (authority) -- hence 3 and 2. Adding or
-            // removing a realm-URL-valued variable legitimately changes these numbers; update them
-            // deliberately rather than assuming identity drift.
+            // `WithEventStoreAuthenticationValidation` supplies the same two; local UI credentials
+            // add a token-endpoint expression over that realm URL -- hence 3 and 4. Adding or removing
+            // a realm-URL-valued variable legitimately changes these numbers; update them deliberately
+            // rather than assuming identity drift.
             Dictionary<string, int> expectedReferenceCounts = new(StringComparer.Ordinal)
             {
                 ["eventstore"] = 3,
                 ["eventstore-admin"] = 3,
-                ["eventstore-admin-ui"] = 3,
+                ["eventstore-admin-ui"] = 4,
                 ["sample-api"] = 3,
-                ["sample-blazor-ui"] = 3,
+                ["sample-blazor-ui"] = 4,
                 ["tenants"] = 3,
-                ["tenants-api"] = 2,
+                ["tenants-api"] = 3,
             };
 
             string[] expectedDependents = expectedReferenceCounts.Keys.Order(StringComparer.Ordinal).ToArray();

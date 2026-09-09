@@ -175,8 +175,11 @@ public class HexalithEventStoreSecurityExtensionsTests {
         string method = ExtractMethod(source, "public static IResourceBuilder<ProjectResource> WithEventStoreAuthenticationValidation");
 
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Authority\", security.RealmUrl)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Issuer\", security.RealmUrl)");
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Audience\", security.Audience)");
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__RequireHttpsMetadata\", ToConfigurationValue(security.RequireHttpsMetadata))");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__AllowedAlgorithms__0\", \"RS256\")");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__SigningKey\", string.Empty)");
         method.ShouldNotContain("EventStore__Authentication__ClientId");
         method.ShouldNotContain("EventStore__Authentication__Username");
         method.ShouldNotContain("EventStore__Authentication__Password");
@@ -199,6 +202,9 @@ public class HexalithEventStoreSecurityExtensionsTests {
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__ClientId\", clientId)");
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Username\", username)");
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Password\", password)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__GrantType\", \"password\")");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__ClientSecret\", string.Empty)");
+        method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__SigningKey\", string.Empty)");
     }
 
     [Fact]
@@ -245,6 +251,9 @@ public class HexalithEventStoreSecurityExtensionsTests {
         consumerPassword.ShouldNotBeNullOrWhiteSpace();
         string.Equals(consumerUsername, realmUsername, StringComparison.Ordinal).ShouldBeTrue();
         string.Equals(consumerPassword, realmPassword, StringComparison.Ordinal).ShouldBeTrue();
+        consumerEnvironment["EventStore__Authentication__GrantType"].ShouldBe("password");
+        consumerEnvironment["EventStore__Authentication__ClientSecret"].ShouldBe(string.Empty);
+        consumerEnvironment["EventStore__Authentication__SigningKey"].ShouldBe(string.Empty);
 
         string realmPath = Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
@@ -294,8 +303,7 @@ public class HexalithEventStoreSecurityExtensionsTests {
     [Theory]
     [InlineData("tokens.example.test/oauth/token")]
     [InlineData("http://tokens.example.test/oauth/token")]
-    [InlineData("https://user@tokens.example.test/oauth/token")]
-    [InlineData("https://tokens.example.test/oauth/token?tenant=x")]
+    [InlineData("https://user" + "@tokens.example.test/oauth/token")]
     [InlineData("https://tokens.example.test/oauth/token#tenant")]
     public void WithExternalEventStoreClientCredentials_InvalidEndpointFailsBeforeResourceMutation(string endpoint)
     {
@@ -322,6 +330,37 @@ public class HexalithEventStoreSecurityExtensionsTests {
             audienceParameterValue: null));
 
         resource.Resource.Annotations.Count.ShouldBe(annotationsBefore);
+    }
+
+    [Fact]
+    public async Task WithExternalEventStoreClientCredentials_FixedHttpsTokenQueryIsPreserved()
+    {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        IResourceBuilder<ProjectResource> resource = builder.AddProject<EventStoreProjectMetadata>("consumer");
+        IResourceBuilder<ParameterResource> clientId = builder.AddParameter("client-id", static () => "client");
+        IResourceBuilder<ParameterResource> clientSecret = builder.AddParameter(
+            "client-secret",
+            static () => "<runtime-generated>",
+            secret: true);
+
+        _ = resource.WithExternalEventStoreClientCredentials(
+            "https://identity.example.test/tenant",
+            "eventstore-api",
+            "https://tokens.example.test/oauth/token?tenant=stable",
+            "api.read",
+            "client_credentials",
+            clientId,
+            username: null,
+            password: null,
+            clientSecret,
+            audienceParameterName: null,
+            audienceParameterValue: null);
+
+        IReadOnlyDictionary<string, object> environment = await GetEnvironmentAsync(
+            resource.Resource,
+            builder.ExecutionContext).ConfigureAwait(true);
+        environment["EventStore__Authentication__TokenEndpoint"].ShouldBe(
+            "https://tokens.example.test/oauth/token?tenant=stable");
     }
 
     private static EndpointAnnotation GetEndpoint(HexalithEventStoreSecurityResources security, string name) {

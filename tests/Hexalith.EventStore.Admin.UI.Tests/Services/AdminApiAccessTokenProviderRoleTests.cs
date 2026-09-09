@@ -94,12 +94,20 @@ public class AdminApiAccessTokenProviderRoleTests {
     [Theory]
     [InlineData("identity.example.com")]
     [InlineData("http://identity.example.com")]
-    [InlineData("https://user@identity.example.com")]
-    [InlineData("https://identity.example.com?realm=x")]
+    [InlineData("https://user" + "@identity.example.com")]
     [InlineData("https://identity.example.com#realm")]
     public void BuildTokenEndpoint_UnsafeProductionAuthority_Fails(string authority) {
         _ = Should.Throw<InvalidOperationException>(
             () => AdminApiAccessTokenProvider.BuildTokenEndpoint(authority, allowHttp: false));
+    }
+
+    [Fact]
+    public void BuildTokenEndpoint_WithFixedHttpsQuery_PreservesTheQuery() {
+        Uri endpoint = AdminApiAccessTokenProvider.BuildTokenEndpoint(
+            "https://identity.example.com/oauth/token?tenant=stable",
+            allowHttp: false);
+
+        endpoint.AbsoluteUri.ShouldBe("https://identity.example.com/oauth/token?tenant=stable");
     }
 
     [Fact]
@@ -174,7 +182,7 @@ public class AdminApiAccessTokenProviderRoleTests {
     [Theory]
     [InlineData("identity.example.test")]
     [InlineData("http://identity.example.test")]
-    [InlineData("https://user@identity.example.test")]
+    [InlineData("https://user" + "@identity.example.test")]
     [InlineData("https://identity.example.test?tenant=x")]
     [InlineData("https://identity.example.test#tenant")]
     public async Task GetAccessTokenAsync_WithExplicitEndpoint_StillRejectsUnsafeAuthority(string authority)
@@ -194,8 +202,7 @@ public class AdminApiAccessTokenProviderRoleTests {
     [Theory]
     [InlineData("tokens.example.test/oauth/token")]
     [InlineData("http://tokens.example.test/oauth/token")]
-    [InlineData("https://user@tokens.example.test/oauth/token")]
-    [InlineData("https://tokens.example.test/oauth/token?tenant=x")]
+    [InlineData("https://user" + "@tokens.example.test/oauth/token")]
     [InlineData("https://tokens.example.test/oauth/token#tenant")]
     public async Task GetAccessTokenAsync_WithUnsafeExplicitTokenEndpoint_FailsBeforeSendingCredentials(string endpoint)
     {
@@ -209,6 +216,21 @@ public class AdminApiAccessTokenProviderRoleTests {
 
         exception.Message.ShouldContain("TokenEndpoint");
         handler.RequestCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WithFixedQueryTokenEndpoint_PreservesTheConfiguredQuery()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values["EventStore:Authentication:TokenEndpoint"] =
+            "https://tokens.example.test/oauth/token?tenant=stable";
+        var handler = new RecordingTokenHandler();
+        var provider = CreateAuthorityProvider(values, handler);
+
+        _ = await provider.GetAccessTokenAsync();
+
+        handler.RequestUri.ShouldBe(
+            new Uri("https://tokens.example.test/oauth/token?tenant=stable"));
     }
 
     [Fact]

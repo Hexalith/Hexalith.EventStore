@@ -346,6 +346,14 @@ if (security is not null || builder.ExecutionContext.IsPublishMode) {
             externalAdminClientSecret,
             builder.Configuration["Authentication:JwtBearer:AudienceParameterName"],
             builder.Configuration["Authentication:JwtBearer:AudienceParameterValue"]);
+        ConfigureExternalUiAuthenticationValidation(
+            blazorUi,
+            jwtAuthentication.ExternalIssuer!,
+            jwtAuthentication.AllowedAlgorithms);
+        ConfigureExternalUiAuthenticationValidation(
+            adminUI,
+            jwtAuthentication.ExternalIssuer!,
+            jwtAuthentication.AllowedAlgorithms);
     }
 }
 else {
@@ -354,6 +362,7 @@ else {
     ConfigureLocalSymmetricValidation(sampleApi, localSigningKey!);
     ConfigureLocalTokenIssuer(adminUI, localSigningKey!, localAdminUserId!);
     ConfigureLocalTokenIssuer(blazorUi, localSigningKey!, localSampleUserId!);
+    _ = sampleApi.WithLocalAuthenticationTokenCommand(localSigningKey!, localSampleUserId!);
 }
 
 _ = adminUI.WithEnvironment(
@@ -503,6 +512,7 @@ static void ConfigureLocalSymmetricValidation(
         .WithEnvironment("Authentication__JwtBearer__Issuer", "hexalith-dev")
         .WithEnvironment("Authentication__JwtBearer__Audience", HexalithEventStoreSecurityOptions.DefaultAudience)
         .WithEnvironment("Authentication__JwtBearer__ValidAudiences__0", HexalithEventStoreSecurityOptions.DefaultAudience)
+        .WithEnvironment("Authentication__JwtBearer__AllowedAlgorithms__0", "HS256")
         .WithEnvironment("Authentication__JwtBearer__SigningKey", signingKey)
         .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false");
 }
@@ -527,5 +537,19 @@ static void ConfigureLocalTokenIssuer(
             .WithEnvironment("EventStore__Authentication__GlobalAdmin", "true")
             .WithEnvironment("EventStore__Authentication__Permissions__2", "admin:read")
             .WithEnvironment("EventStore__Authentication__Permissions__3", "admin:write");
+    }
+}
+
+static void ConfigureExternalUiAuthenticationValidation(
+    IResourceBuilder<ProjectResource> resource,
+    string issuer,
+    IReadOnlyList<string> allowedAlgorithms) {
+    _ = resource
+        .WithEnvironment("EventStore__Authentication__Issuer", issuer)
+        .WithEnvironment("EventStore__Authentication__RequireHttpsMetadata", "true");
+    for (int index = 0; index < allowedAlgorithms.Count; index++) {
+        _ = resource.WithEnvironment(
+            $"EventStore__Authentication__AllowedAlgorithms__{index}",
+            allowedAlgorithms[index]);
     }
 }

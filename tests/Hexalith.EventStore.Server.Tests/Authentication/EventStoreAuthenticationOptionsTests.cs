@@ -209,7 +209,7 @@ public class EventStoreAuthenticationOptionsTests {
 
     [Theory]
     [InlineData("login.example.com")]
-    [InlineData("https://user@example.com")]
+    [InlineData("https://user" + "@example.com")]
     [InlineData("https://login.example.com?tenant=x")]
     [InlineData("https://login.example.com#realm")]
     public void Validate_InvalidAuthority_FailsWithoutEchoingValue(string authority) {

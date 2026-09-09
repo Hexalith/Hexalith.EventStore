@@ -24,7 +24,8 @@ internal static class ProviderVerificationApplication
         ProviderVerificationOptions options,
         CancellationToken cancellationToken,
         Func<ProviderStateCoordinator, string, TimeSpan, CancellationToken, ProviderVerificationTimeline, ProviderVerificationCredential, Task<ProviderVerificationHost>>? startHostAsync = null,
-        Func<string>? findRepositoryRoot = null)
+        Func<string>? findRepositoryRoot = null,
+        Action<string>? deleteNormalizedPact = null)
     {
         var timeline = new ProviderVerificationTimeline();
         var hostMetadata = new ProviderHostMetadata(
@@ -99,7 +100,8 @@ internal static class ProviderVerificationApplication
                     host.BaseAddress,
                     coordinator,
                     options.RequestTimeout,
-                    credential.AccessToken).ConfigureAwait(false);
+                    credential.AccessToken,
+                    deleteNormalizedPact).ConfigureAwait(false);
                 interactions.Add(result);
                 if (result.ResultCode != "interaction.passed")
                 {
@@ -111,7 +113,12 @@ internal static class ProviderVerificationApplication
         catch (ProviderVerificationInputException exception)
         {
             reasons.Add(exception.Code);
-            exitCode = InputFailureExitCode;
+            exitCode = string.Equals(
+                exception.Code,
+                "interaction.normalized-pact-cleanup-failed",
+                StringComparison.Ordinal)
+                ? CleanupFailureExitCode
+                : InputFailureExitCode;
         }
         catch (OperationCanceledException)
         {

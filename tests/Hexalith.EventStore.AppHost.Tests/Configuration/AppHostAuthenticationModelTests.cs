@@ -6,6 +6,19 @@ using global::Aspire.Hosting.Testing;
 
 using Hexalith.EventStore.Aspire;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
+
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+
 [Collection(AspireEnvironmentMutationCollection.Name)]
 public sealed class AppHostAuthenticationModelTests
 {
@@ -77,6 +90,40 @@ public sealed class AppHostAuthenticationModelTests
                 adminUi,
                 builder.ExecutionContext).ConfigureAwait(true);
 
+            ReferenceExpression localAuthority = sampleEnvironment["EventStore__Authentication__Authority"]
+                .ShouldBeOfType<ReferenceExpression>();
+            localAuthority.ValueExpression.ShouldEndWith("/realms/hexalith");
+            Project(builder, "sample-api").Annotations
+                .OfType<ResourceCommandAnnotation>()
+                .ShouldNotContain(static annotation => string.Equals(
+                    annotation.Name,
+                    LocalAuthenticationTokenCommand.CommandName,
+                    StringComparison.Ordinal));
+            foreach (string resourceName in new[] { "eventstore", "eventstore-admin", "sample-api" })
+            {
+                ProjectResource resource = Project(builder, resourceName);
+                IReadOnlyDictionary<string, object> environment = await GetEnvironmentAsync(
+                    resource,
+                    builder.ExecutionContext).ConfigureAwait(true);
+                environment["Authentication__JwtBearer__Authority"].ShouldBeSameAs(localAuthority);
+                environment["Authentication__JwtBearer__Issuer"].ShouldBeSameAs(localAuthority);
+                environment["Authentication__JwtBearer__RequireHttpsMetadata"].ShouldBe("false");
+                environment["Authentication__JwtBearer__AllowedAlgorithms__0"].ShouldBe("RS256");
+                environment["Authentication__JwtBearer__SigningKey"].ShouldBe(string.Empty);
+            }
+
+            foreach ((ProjectResource resource, IReadOnlyDictionary<string, object> environment) in
+                new[] { (sampleUi, sampleEnvironment), (adminUi, adminEnvironment) })
+            {
+                environment["EventStore__Authentication__Authority"].ShouldBeSameAs(localAuthority);
+                environment["EventStore__Authentication__Issuer"].ShouldBeSameAs(localAuthority);
+                environment["EventStore__Authentication__RequireHttpsMetadata"].ShouldBe("false");
+                environment["EventStore__Authentication__AllowedAlgorithms__0"].ShouldBe("RS256");
+                environment["EventStore__Authentication__SigningKey"].ShouldBe(string.Empty);
+                environment["EventStore__Authentication__GrantType"].ShouldBe("password");
+                environment["EventStore__Authentication__ClientSecret"].ShouldBe(string.Empty);
+            }
+
             string sampleUsername = await ResolveAsync(
                 sampleEnvironment["EventStore__Authentication__Username"],
                 sampleUi,
@@ -98,8 +145,8 @@ public sealed class AppHostAuthenticationModelTests
             adminUsername.ShouldNotBe(sampleUsername);
             samplePasswordValue.ShouldNotBe(adminPasswordValue);
             ownedDirectory = GetOwnedRunDirectories().Except(before, StringComparer.Ordinal).ShouldHaveSingleItem();
-
             application = await builder.BuildAsync().ConfigureAwait(true);
+
         }
         finally
         {
@@ -150,6 +197,12 @@ public sealed class AppHostAuthenticationModelTests
                 .ConfigureAwait(true);
 
             builder.Resources.OfType<KeycloakResource>().ShouldBeEmpty();
+            Project(builder, "sample-api").Annotations
+                .OfType<ResourceCommandAnnotation>()
+                .ShouldNotContain(static annotation => string.Equals(
+                    annotation.Name,
+                    LocalAuthenticationTokenCommand.CommandName,
+                    StringComparison.Ordinal));
             Parameter(builder, "external-sample-auth-client-id").Secret.ShouldBeFalse();
             Parameter(builder, "external-sample-auth-username").Secret.ShouldBeTrue();
             Parameter(builder, "external-sample-auth-password").Secret.ShouldBeTrue();
@@ -166,6 +219,10 @@ public sealed class AppHostAuthenticationModelTests
                 environment["Authentication__JwtBearer__ValidAudiences__0"].ShouldBe("primary-api");
                 environment["Authentication__JwtBearer__ValidAudiences__1"].ShouldBe("secondary-api");
                 environment["Authentication__JwtBearer__AllowedAlgorithms__0"].ShouldBe("RS256");
+                environment["Authentication__JwtBearer__Authority"].ShouldBe("https://identity.example.test/tenant");
+                environment["Authentication__JwtBearer__Issuer"].ShouldBe("https://issuer.example.test/tenant");
+                environment["Authentication__JwtBearer__RequireHttpsMetadata"].ShouldBe("true");
+                environment["Authentication__JwtBearer__SigningKey"].ShouldBe(string.Empty);
             }
 
             IReadOnlyDictionary<string, object> sampleEnvironment = await GetEnvironmentAsync(
@@ -176,6 +233,16 @@ public sealed class AppHostAuthenticationModelTests
                 builder.ExecutionContext).ConfigureAwait(true);
             sampleEnvironment["EventStore__Authentication__Audience"].ShouldBe("primary-api");
             adminEnvironment["EventStore__Authentication__Audience"].ShouldBe("primary-api");
+            sampleEnvironment["EventStore__Authentication__Authority"].ShouldBe("https://identity.example.test/tenant");
+            adminEnvironment["EventStore__Authentication__Authority"].ShouldBe("https://identity.example.test/tenant");
+            sampleEnvironment["EventStore__Authentication__Issuer"].ShouldBe("https://issuer.example.test/tenant");
+            adminEnvironment["EventStore__Authentication__Issuer"].ShouldBe("https://issuer.example.test/tenant");
+            sampleEnvironment["EventStore__Authentication__RequireHttpsMetadata"].ShouldBe("true");
+            adminEnvironment["EventStore__Authentication__RequireHttpsMetadata"].ShouldBe("true");
+            sampleEnvironment["EventStore__Authentication__AllowedAlgorithms__0"].ShouldBe("RS256");
+            adminEnvironment["EventStore__Authentication__AllowedAlgorithms__0"].ShouldBe("RS256");
+            sampleEnvironment["EventStore__Authentication__SigningKey"].ShouldBe(string.Empty);
+            adminEnvironment["EventStore__Authentication__SigningKey"].ShouldBe(string.Empty);
             sampleEnvironment["EventStore__Authentication__TokenEndpoint"]
                 .ShouldBe("https://tokens.example.test/oauth/token");
             adminEnvironment["EventStore__Authentication__TokenEndpoint"]
@@ -223,6 +290,101 @@ public sealed class AppHostAuthenticationModelTests
             samplePassword.ShouldBe(Environment.GetEnvironmentVariable("Parameters__external-sample-auth-password"));
             adminClientSecret.ShouldBe(Environment.GetEnvironmentVariable("Parameters__external-admin-auth-client-secret"));
             samplePassword.ShouldNotBe(adminClientSecret);
+        }
+        finally
+        {
+            RestoreEnvironment(original);
+        }
+    }
+
+    [Fact]
+    public async Task RunModel_WithoutKeycloak_ExposesOnlyATokenCommand_ThatAuthorizesAProtectedRequest()
+    {
+        Dictionary<string, string?> original = CaptureEnvironment();
+        string signingKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+        using LocalAuthenticationTestInvocation invocation =
+            LocalAuthenticationCredentials.RegisterTestInvocation(signingKey);
+        try
+        {
+            ClearEnvironment();
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                "false");
+            invocation.Activate();
+
+            await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
+                .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
+                .ConfigureAwait(true);
+
+            builder.Resources.OfType<KeycloakResource>().ShouldBeEmpty();
+            ProjectResource sampleApi = Project(builder, "sample-api");
+            ParameterResource signingKeyParameter = Parameter(builder, "local-auth-signing-key");
+            IReadOnlyDictionary<string, object> environment = await GetEnvironmentAsync(
+                sampleApi,
+                builder.ExecutionContext).ConfigureAwait(true);
+            environment["Authentication__JwtBearer__SigningKey"].ShouldBeSameAs(signingKeyParameter);
+            environment.Values.OfType<string>().ShouldNotContain(signingKey);
+            environment["Authentication__JwtBearer__AllowedAlgorithms__0"].ShouldBe("HS256");
+
+            ResourceCommandAnnotation command = sampleApi.Annotations
+                .OfType<ResourceCommandAnnotation>()
+                .ShouldHaveSingleItem();
+            command.Name.ShouldBe(LocalAuthenticationTokenCommand.CommandName);
+            var logger = new RecordingLogger();
+            ExecuteCommandResult commandResult = await command.ExecuteCommand(
+                new ExecuteCommandContext
+                {
+                    Services = new ServiceCollection().BuildServiceProvider(),
+                    ResourceName = sampleApi.Name,
+                    CancellationToken = TestContext.Current.CancellationToken,
+                    Logger = logger,
+                    Arguments = new InteractionInputCollection([]),
+                }).ConfigureAwait(true);
+
+            commandResult.Success.ShouldBeTrue();
+            commandResult.Message.ShouldBe(string.Empty);
+            commandResult.Data.ShouldNotBeNull();
+            commandResult.Data.Format.ShouldBe(CommandResultFormat.Text);
+            string token = commandResult.Data.Value;
+            token.Split('.').Length.ShouldBe(3);
+            token.ShouldNotContain(signingKey);
+            logger.Messages.ShouldBeEmpty();
+
+            WebApplicationBuilder webBuilder = WebApplication.CreateSlimBuilder();
+            webBuilder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
+            _ = webBuilder.Services
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = "hexalith-dev",
+                    ValidateAudience = true,
+                    ValidAudience = HexalithEventStoreSecurityOptions.DefaultAudience,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
+                });
+            _ = webBuilder.Services.AddAuthorization();
+            await using WebApplication webApplication = webBuilder.Build();
+            _ = webApplication.UseAuthentication();
+            _ = webApplication.UseAuthorization();
+            _ = webApplication.MapGet("/protected", static () => string.Empty)
+                .RequireAuthorization();
+            await webApplication.StartAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+            string address = webApplication.Services.GetRequiredService<IServer>()
+                .Features.Get<IServerAddressesFeature>()!
+                .Addresses.Single();
+            using var client = new HttpClient { BaseAddress = new Uri(address) };
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using HttpResponseMessage response = await client
+                .GetAsync("/protected", TestContext.Current.CancellationToken)
+                .ConfigureAwait(true);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
         }
         finally
         {
@@ -325,5 +487,24 @@ public sealed class AppHostAuthenticationModelTests
         return Directory.Exists(root)
             ? Directory.GetDirectories(root, "run-*", SearchOption.TopDirectoryOnly)
             : [];
+    }
+
+    private sealed class RecordingLogger : ILogger
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 }

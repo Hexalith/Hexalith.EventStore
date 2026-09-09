@@ -459,7 +459,7 @@ public class EventStoreSignalRClientTests {
         var logEntries = new List<LogEntry>();
         var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
         try {
-            const string secretValue = "secret-value-that-must-not-appear";
+            string secretValue = Guid.NewGuid().ToString("N");
             await sut.SubscribeDetailAsync("counter", "acme", "counter-1", _ => { }).ConfigureAwait(true);
 
             InvokeProjectionChangedDetail(

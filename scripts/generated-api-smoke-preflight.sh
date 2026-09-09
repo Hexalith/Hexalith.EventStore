@@ -28,7 +28,7 @@
 # The default mode is READ-ONLY: it starts no Docker containers, placement, scheduler, or Aspire.
 # Only --start-control-plane starts processes, and it prints the exact command it runs.
 #
-# Support-safe: every emitted line passes through redact(); the minted dev JWT, DAPR API tokens,
+# Support-safe: every emitted line passes through redact(); the AppHost-issued JWT, DAPR API tokens,
 # raw payloads, and raw traces are never printed. The redaction categories mirror the shared C#
 # contract Hexalith.EventStore.Testing.Integration.DaprDiagnostics.ToSupportSafeDiagnostic.
 
@@ -38,11 +38,6 @@ set -uo pipefail
 
 readonly DEFAULT_APPHOST="src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
 readonly DEFAULT_EVENTSTORE_DAPR_PORT="3501"   # fixed in the AppHost so Admin.Server can query metadata
-# For EnableKeycloak=false, launch the AppHost and this smoke with the same ephemeral value.
-# No fallback is committed or generated independently because the issuer and validators must agree.
-readonly DEV_SIGNING_KEY="${LOCALAUTHENTICATION__SIGNINGKEY:-}"
-readonly DEV_ISSUER="hexalith-dev"
-readonly DEV_AUDIENCE="hexalith-eventstore"
 readonly SMOKE_TENANT="tenant-a"
 readonly SMOKE_COUNTER="counter-1"
 readonly REDIS_PORT="6379"
@@ -119,9 +114,6 @@ redact() {
     -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[redacted-email]/g' \
     -e "s/\\b([Tt]enant[Ii]d|[Tt]enant|[Uu]ser[Ii]d|[Uu]ser|sub|subject)([[:space:]]*[:=][[:space:]]*)['\"]?[A-Za-z0-9._@%+-]{3,}['\"]?/\\1=[redacted-id]/g"
 }
-
-# base64url without padding — used only for JWT assembly.
-b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 
 # Probe a TCP endpoint for reachability within a short timeout (bash /dev/tcp).
 port_reachable() {
@@ -471,34 +463,18 @@ sidecar_metadata() {
 
 # --- Optional generated Sample API smoke (AC5, AC6) ------------------------------------------
 
-# Mint a dev JWT (HS256). tenants/permissions are single string claims (JSON-array-encoded), as the
-# EventStore claims transformation reads only the first claim of each type. The token is returned on
-# stdout for capture into a variable and is NEVER logged.
-mint_dev_jwt() {
-  if ! dev_signing_key_is_valid; then
+# Requests one short-lived token from the running AppHost. The command retains the per-run key;
+# this function deliberately accepts only a token-only stdout value and never prints it.
+request_apphost_smoke_token() {
+  local token
+  if ! token="$(aspire resource sample-api issue-smoke-token \
+      --apphost "${APPHOST}" --non-interactive --nologo --log-level Error 2>/dev/null)"; then
     return 1
   fi
 
-  local now exp header payload h p sig
-  now="$(date +%s)"
-  exp="$((now + 3600))"
-  header='{"alg":"HS256","typ":"JWT"}'
-  payload="$(jq -cn --argjson now "${now}" --argjson exp "${exp}" \
-    --arg iss "${DEV_ISSUER}" --arg aud "${DEV_AUDIENCE}" \
-    --arg tenants "[\"${SMOKE_TENANT}\"]" \
-    --arg perms '["commands:*","queries:*"]' \
-    '{sub:"smoke-test", iss:$iss, aud:$aud, tenants:$tenants, permissions:$perms, iat:$now, nbf:$now, exp:$exp}')"
-  h="$(printf '%s' "${header}" | b64url)"
-  p="$(printf '%s' "${payload}" | b64url)"
-  sig="$(printf '%s' "${h}.${p}" | LOCALAUTHENTICATION__SIGNINGKEY="${DEV_SIGNING_KEY}" python3 -c \
-    'import hashlib, hmac, os, sys; sys.stdout.buffer.write(hmac.new(os.environ["LOCALAUTHENTICATION__SIGNINGKEY"].encode(), sys.stdin.buffer.read(), hashlib.sha256).digest())' \
-    | b64url)"
-  printf '%s.%s.%s' "${h}" "${p}" "${sig}"
-}
-
-dev_signing_key_is_valid() {
-  [[ -n "${DEV_SIGNING_KEY//[[:space:]]/}" ]] || return 1
-  [[ "$(printf '%s' "${DEV_SIGNING_KEY}" | wc -c | tr -d ' ')" -ge 32 ]]
+  [[ "${token}" != *$'\n'* ]] || return 1
+  [[ "${token}" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]] || return 1
+  printf '%s' "${token}"
 }
 
 # Classify a non-success HTTP status from the generated-API smoke as environment/auth vs product,
@@ -537,13 +513,13 @@ run_sample_smoke() {
   fi
   base="${base%/}"
 
-  if ! dev_signing_key_is_valid; then
-    record generated-api authentication fail "LOCALAUTHENTICATION__SIGNINGKEY must be nonblank, at least 32 UTF-8 bytes, and match the AppHost run"
+  local jwt
+  if ! jwt="$(request_apphost_smoke_token)"; then
+    record generated-api authentication fail "AppHost token command unavailable; run with EnableKeycloak=false and keep the AppHost running"
     escalate "${EX_BLOCKED}" blocked-environment
     return
   fi
 
-  local jwt; jwt="$(mint_dev_jwt)"
   local cmd_url="${base}/api/${SMOKE_TENANT}/counter/${SMOKE_COUNTER}/increment"
   local qry_url="${base}/api/${SMOKE_TENANT}/counter/${SMOKE_COUNTER}"
 

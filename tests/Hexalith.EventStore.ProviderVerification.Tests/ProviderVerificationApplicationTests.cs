@@ -123,6 +123,64 @@ public sealed class ProviderVerificationApplicationTests
         }
     }
 
+    [Fact]
+    public async Task RunAsync_WhenNormalizedPactCleanupIsExhausted_ReportsCleanupFailure()
+    {
+        string eventStoreRoot = FindRepositoryRoot();
+        string frontComposerRoot = Path.Combine(eventStoreRoot, "references", "Hexalith.FrontComposer");
+        string pactDirectory = Path.Combine(
+            frontComposerRoot,
+            "tests",
+            "Hexalith.FrontComposer.Shell.Tests",
+            "Pact");
+        string reportDirectory = Path.Combine(Path.GetTempPath(), $"eventstore-cleanup-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(reportDirectory);
+        string reportPath = Path.Combine(reportDirectory, "report.json");
+        var normalizedPaths = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            var options = new ProviderVerificationOptions(
+                ProviderVerificationMode.LiveCompatibility,
+                pactDirectory,
+                Path.Combine(pactDirectory, "interaction-manifest.json"),
+                Path.Combine(pactDirectory, "provider-state-catalog.json"),
+                string.Empty,
+                string.Empty,
+                reportPath,
+                TimeSpan.FromSeconds(15),
+                TimeSpan.FromSeconds(15),
+                TimeSpan.FromSeconds(15));
+
+            int exitCode = await ProviderVerificationApplication.RunAsync(
+                options,
+                TestContext.Current.CancellationToken,
+                deleteNormalizedPact: path =>
+                {
+                    _ = normalizedPaths.Add(path);
+                    throw new IOException("injected-persistent-delete-failure");
+                });
+
+            exitCode.ShouldBe(ProviderVerificationApplication.CleanupFailureExitCode);
+            normalizedPaths.Count.ShouldBe(1);
+            using JsonDocument report = JsonDocument.Parse(File.ReadAllBytes(reportPath));
+            JsonElement root = report.RootElement;
+            root.GetProperty("finalVerdict").GetString().ShouldBe("failed");
+            root.GetProperty("reasonCodes").EnumerateArray().ShouldContain(
+                item => item.GetString() == "interaction.normalized-pact-cleanup-failed");
+            root.GetProperty("interactions").EnumerateArray().ShouldAllBe(
+                interaction => interaction.GetProperty("resultCode").GetString() != "interaction.passed");
+        }
+        finally
+        {
+            foreach (string path in normalizedPaths)
+            {
+                File.Delete(path);
+            }
+
+            Directory.Delete(reportDirectory, recursive: true);
+        }
+    }
+
     private static string FindRepositoryRoot()
     {
         foreach (string start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })

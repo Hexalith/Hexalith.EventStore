@@ -62,6 +62,72 @@ public sealed class KeycloakRealmTemplateTests
     }
 
     [Fact]
+    public void Render_WhenApprovedPlaceholderIsDuplicated_RejectsBeforeCreatingTemporaryContent()
+    {
+        string testDirectory = CreateTestDirectory();
+        string sourceDirectory = Path.Combine(testDirectory, "source");
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        Directory.CreateDirectory(sourceDirectory);
+        string template = File.ReadAllText(Path.Combine(GetRealmSourceDirectory(), "hexalith-realm.json"));
+        string placeholder = string.Concat("__", "HEXALITH", "_ADMIN_USER_ID__");
+        File.WriteAllText(
+            Path.Combine(sourceDirectory, "hexalith-realm.json"),
+            template.Replace(
+                $"\"id\": \"{placeholder}\"",
+                $"\"id\": \"{placeholder}\", \"duplicate\": \"{placeholder}\"",
+                StringComparison.Ordinal));
+
+        try
+        {
+            InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+                KeycloakRealmTemplate.Render(
+                    sourceDirectory,
+                    CreateCredentials(),
+                    temporaryRoot: temporaryRoot));
+
+            exception.Message.ShouldContain("exactly once", Case.Insensitive);
+            Directory.Exists(temporaryRoot).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Render_WhenApprovedPlaceholderIsRelocated_RejectsBeforeCreatingTemporaryContent()
+    {
+        string testDirectory = CreateTestDirectory();
+        string sourceDirectory = Path.Combine(testDirectory, "source");
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        Directory.CreateDirectory(sourceDirectory);
+        string template = File.ReadAllText(Path.Combine(GetRealmSourceDirectory(), "hexalith-realm.json"));
+        string placeholder = string.Concat("__", "HEXALITH", "_ADMIN_USERNAME__");
+        File.WriteAllText(
+            Path.Combine(sourceDirectory, "hexalith-realm.json"),
+            template.Replace(
+                $"\"username\": \"{placeholder}\"",
+                $"\"username\": \"admin\", \"relocated\": \"{placeholder}\"",
+                StringComparison.Ordinal));
+
+        try
+        {
+            InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+                KeycloakRealmTemplate.Render(
+                    sourceDirectory,
+                    CreateCredentials(),
+                    temporaryRoot: temporaryRoot));
+
+            exception.Message.ShouldContain("approved JSON path", Case.Insensitive);
+            Directory.Exists(temporaryRoot).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Render_WhenTemporaryRootIsAReparsePoint_RejectsItWithoutMutatingTheTarget()
     {
         string testDirectory = CreateTestDirectory();
@@ -157,10 +223,92 @@ public sealed class KeycloakRealmTemplateTests
             unrelatedPath.ShouldNotBeNull();
             Directory.Exists(importDirectory).ShouldBeTrue();
             File.Exists(unrelatedPath).ShouldBeTrue();
-            Directory.EnumerateFileSystemEntries(importDirectory).ShouldBe([unrelatedPath]);
+            File.Exists(Path.Combine(importDirectory, ".hexalith-owned")).ShouldBeTrue();
+            File.Exists(Path.Combine(importDirectory, ".hexalith-owner-lease")).ShouldBeTrue();
         }
         finally
         {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Dispose_WhenDirectoryContainsUnownedEntry_RefusesCleanupAndCanBeRetried()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        KeycloakRealmTemplate renderedRealm = KeycloakRealmTemplate.Render(
+            GetRealmSourceDirectory(),
+            CreateCredentials(),
+            temporaryRoot: temporaryRoot);
+        string importDirectory = renderedRealm.ImportDirectory;
+        string unrelatedPath = Path.Combine(importDirectory, "unrelated.txt");
+        File.WriteAllText(unrelatedPath, "unrelated");
+
+        try
+        {
+            IOException exception = Should.Throw<IOException>(renderedRealm.Dispose);
+
+            exception.Message.ShouldContain("ownership boundary", Case.Insensitive);
+            File.Exists(unrelatedPath).ShouldBeTrue();
+            File.Exists(Path.Combine(importDirectory, ".hexalith-owned")).ShouldBeTrue();
+            File.Exists(Path.Combine(importDirectory, ".hexalith-owner-lease")).ShouldBeTrue();
+
+            File.Delete(unrelatedPath);
+            renderedRealm.Dispose();
+
+            Directory.Exists(importDirectory).ShouldBeFalse();
+        }
+        finally
+        {
+            renderedRealm.Dispose();
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Dispose_WhenImportPathBecomesReparsePoint_DoesNotRestoreLeaseThroughIt()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        string targetDirectory = Path.Combine(testDirectory, "target");
+        string parkedDirectory = Path.Combine(testDirectory, "parked");
+        Directory.CreateDirectory(targetDirectory);
+        KeycloakRealmTemplate renderedRealm = KeycloakRealmTemplate.Render(
+            GetRealmSourceDirectory(),
+            CreateCredentials(),
+            temporaryRoot: temporaryRoot);
+        string importDirectory = renderedRealm.ImportDirectory;
+        Directory.Move(importDirectory, parkedDirectory);
+        _ = Directory.CreateSymbolicLink(importDirectory, targetDirectory);
+
+        try
+        {
+            IOException exception = Should.Throw<IOException>(renderedRealm.Dispose);
+
+            exception.Message.ShouldContain("ownership boundary", Case.Insensitive);
+            Directory.EnumerateFileSystemEntries(targetDirectory).ShouldBeEmpty();
+
+            Directory.Delete(importDirectory);
+            Directory.Move(parkedDirectory, importDirectory);
+            renderedRealm.Dispose();
+
+            Directory.Exists(importDirectory).ShouldBeFalse();
+        }
+        finally
+        {
+            if (Directory.Exists(importDirectory) &&
+                (File.GetAttributes(importDirectory) & FileAttributes.ReparsePoint) != 0)
+            {
+                Directory.Delete(importDirectory);
+            }
+
+            if (Directory.Exists(parkedDirectory) && !Directory.Exists(importDirectory))
+            {
+                Directory.Move(parkedDirectory, importDirectory);
+            }
+
+            renderedRealm.Dispose();
             Directory.Delete(testDirectory, recursive: true);
         }
     }

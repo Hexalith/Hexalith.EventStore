@@ -76,7 +76,7 @@ public sealed class AdminApiAccessTokenProvider {
         int version,
         CancellationToken cancellationToken) {
         bool allowHttp = _environment.IsDevelopment();
-        Uri authorityUri = ValidateEndpoint(authority, allowHttp, "Authority");
+        Uri authorityUri = ValidateEndpoint(authority, allowHttp, "Authority", allowQuery: false);
         string grantType = RequireTextConfiguration("GrantType");
         string clientId = RequireTextConfiguration("ClientId");
         string scope = RequireTextConfiguration("Scope");
@@ -193,7 +193,7 @@ public sealed class AdminApiAccessTokenProvider {
         .Replace('/', '_');
 
     internal static Uri BuildTokenEndpoint(string endpoint, bool allowHttp)
-        => ValidateEndpoint(endpoint, allowHttp, "OIDC endpoint");
+        => ValidateEndpoint(endpoint, allowHttp, "OIDC endpoint", allowQuery: true);
 
     private void AddOptionalAudienceParameter(List<KeyValuePair<string, string>> formValues) {
         string? configuredName = _configuration["EventStore:Authentication:AudienceParameterName"];
@@ -225,7 +225,7 @@ public sealed class AdminApiAccessTokenProvider {
         CancellationToken cancellationToken) {
         string? configuredEndpoint = _configuration["EventStore:Authentication:TokenEndpoint"];
         if (!string.IsNullOrWhiteSpace(configuredEndpoint)) {
-            return ValidateEndpoint(configuredEndpoint, allowHttp, "TokenEndpoint");
+            return ValidateEndpoint(configuredEndpoint, allowHttp, "TokenEndpoint", allowQuery: true);
         }
 
         Uri discoveryEndpoint = new(
@@ -244,7 +244,7 @@ public sealed class AdminApiAccessTokenProvider {
             throw new InvalidOperationException("OIDC discovery did not contain a non-blank issuer.");
         }
 
-        Uri discoveredIssuer = ValidateEndpoint(issuer, allowHttp, "discovery issuer");
+        Uri discoveredIssuer = ValidateEndpoint(issuer, allowHttp, "discovery issuer", allowQuery: false);
         if (!string.Equals(
             NormalizeEndpointForComparison(authorityUri),
             NormalizeEndpointForComparison(discoveredIssuer),
@@ -260,7 +260,7 @@ public sealed class AdminApiAccessTokenProvider {
             throw new InvalidOperationException("OIDC discovery did not contain a non-blank token_endpoint.");
         }
 
-        return ValidateEndpoint(tokenEndpoint, allowHttp, "discovery token_endpoint");
+        return ValidateEndpoint(tokenEndpoint, allowHttp, "discovery token_endpoint", allowQuery: true);
     }
 
     private static string NormalizeEndpointForComparison(Uri endpoint)
@@ -269,16 +269,22 @@ public sealed class AdminApiAccessTokenProvider {
                 UriFormat.UriEscaped)
             .TrimEnd('/');
 
-    private static Uri ValidateEndpoint(string endpoint, bool allowHttp, string settingName) {
+    private static Uri ValidateEndpoint(
+        string endpoint,
+        bool allowHttp,
+        string settingName,
+        bool allowQuery) {
         if (!Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out Uri? endpointUri)
             || string.IsNullOrWhiteSpace(endpointUri.Host)
             || (!string.Equals(endpointUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
                 && !(allowHttp && string.Equals(endpointUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)))
             || !string.IsNullOrEmpty(endpointUri.UserInfo)
-            || !string.IsNullOrEmpty(endpointUri.Query)
+            || (!allowQuery && !string.IsNullOrEmpty(endpointUri.Query))
             || !string.IsNullOrEmpty(endpointUri.Fragment)) {
             throw new InvalidOperationException(
-                $"EventStore:Authentication:{settingName} must be an absolute HTTPS URI without user information, a query, or a fragment. HTTP is permitted only in Development.");
+                allowQuery
+                    ? $"EventStore:Authentication:{settingName} must be an absolute HTTPS URI without user information or a fragment. HTTP is permitted only in Development."
+                    : $"EventStore:Authentication:{settingName} must be an absolute HTTPS URI without user information, a query, or a fragment. HTTP is permitted only in Development.");
         }
 
         return new Uri(endpointUri.AbsoluteUri.TrimEnd('/'), UriKind.Absolute);

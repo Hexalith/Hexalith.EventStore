@@ -12,7 +12,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
     private const string AudienceKey = "Authentication__JwtBearer__Audience";
     private const string IssuerKey = "Authentication__JwtBearer__Issuer";
     private const string RequireHttpsMetadataKey = "Authentication__JwtBearer__RequireHttpsMetadata";
-    private const string SigningKey = "Authentication__JwtBearer__SigningKey";
+    private const string SigningKeyConfigurationKey = "Authentication__JwtBearer__SigningKey";
     private const string ValidAudiencePrefix = "Authentication__JwtBearer__ValidAudiences__";
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             ValidAudiencePrefix + "1",
             AllowedAlgorithmPrefix + "0",
             RequireHttpsMetadataKey,
-            SigningKey,
+            SigningKeyConfigurationKey,
         ]);
         environment[0].Value.ShouldBeSameAs(security.RealmUrl);
         environment[1].Value.ShouldBeSameAs(security.RealmUrl);
@@ -95,7 +95,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             AllowedAlgorithmPrefix + "0",
             AllowedAlgorithmPrefix + "1",
             RequireHttpsMetadataKey,
-            SigningKey,
+            SigningKeyConfigurationKey,
         ]);
         environment.Select(static entry => entry.Value).ShouldBe(
         [
@@ -312,7 +312,7 @@ public sealed class HexalithEventStoreJwtAuthenticationTests
             AudienceKey,
             AllowedAlgorithmPrefix + "0",
             RequireHttpsMetadataKey,
-            SigningKey,
+            SigningKeyConfigurationKey,
         ]);
         environment[0].Value.ShouldBeSameAs(security.RealmUrl);
         environment[1].Value.ShouldBeSameAs(security.RealmUrl);

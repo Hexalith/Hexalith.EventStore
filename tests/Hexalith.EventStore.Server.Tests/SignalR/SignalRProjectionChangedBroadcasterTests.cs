@@ -344,7 +344,7 @@ public class SignalRProjectionChangedBroadcasterTests {
 
     [Fact]
     public async Task BroadcastChangedAsync_Detail_DoesNotLogMetadataValuesAboveDebug() {
-        const string secretValue = "SUPER_SECRET_METADATA_VALUE";
+        string secretValue = Guid.NewGuid().ToString("N");
         IProjectionChangedClient scopedClient = Substitute.For<IProjectionChangedClient>();
         IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
         _ = clients.Group("order-list:acme:conv-1").Returns(scopedClient);

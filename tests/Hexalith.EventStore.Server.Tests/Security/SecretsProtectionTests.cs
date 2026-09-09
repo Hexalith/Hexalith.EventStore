@@ -272,6 +272,164 @@ public sealed partial class SecretsProtectionTests
         FindViolations("docs/control-heavy.txt", recovered).ShouldBe(["docs/control-heavy.txt:2"]);
     }
 
+    [Theory]
+    [InlineData("config/settings.toml")]
+    [InlineData("views/Index.razor")]
+    [InlineData("tools/config.cjs")]
+    [InlineData("tools/config.mjs")]
+    [InlineData("ui/component.tsx")]
+    [InlineData("config/runtime")]
+    [InlineData("fixtures/textual.dat")]
+    public void TrackedTextExtensionsAndExtensionlessConfig_AreRecoveredAndScanned(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        string content = Assignment("Client" + "Secret", "\"" + RandomSecret() + "\"");
+
+        string? recovered = DecodeTrackedText(path, Encoding.UTF8.GetBytes(content));
+
+        recovered.ShouldNotBeNull();
+        FindViolations(path, recovered).ShouldBe([$"{path}:1"]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BomlessUtf16TrackedText_IsRecoveredAndScanned(bool bigEndian)
+    {
+        string content = Assignment("Signing" + "Key", RandomSecret());
+        byte[] bytes = new UnicodeEncoding(bigEndian, byteOrderMark: false).GetBytes(content);
+
+        string? recovered = DecodeTrackedText("config/runtime.dat", bytes);
+
+        recovered.ShouldNotBeNull();
+        FindViolations("config/runtime.dat", recovered).ShouldBe(["config/runtime.dat:1"]);
+    }
+
+    [Fact]
+    public void BinaryExclusion_RequiresAKnownContentSignature()
+    {
+        string content = Assignment("Pass" + "word", RandomSecret());
+
+        DecodeTrackedText("image.png", Encoding.UTF8.GetBytes(content)).ShouldBe(content);
+        DecodeTrackedText("image.png", [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+            .ShouldBeNull();
+    }
+
+    [Fact]
+    public void RuntimeDefaultsAndLiteralOperands_AreRejectedRegardlessOfLength()
+    {
+        string[] values =
+        [
+            "configuration[\"JWT_SIGNING_KEY\"] + \"x\"",
+            "configuration.GetValue<string>(\"JWT_SIGNING_KEY\", \"x\")",
+            "runtimeValue ?? \"x\"",
+        ];
+
+        foreach (string value in values)
+        {
+            FindViolations("tests/fixture.cs", Assignment("Signing" + "Key", value))
+                .ShouldBe(["tests/fixture.cs:1"]);
+        }
+    }
+
+    [Fact]
+    public void AppHostTokenCommand_IsRecognizedAsARuntimeCredentialSource()
+        => FindViolations(
+            "scripts/fixture.sh",
+            Assignment("TO" + "KEN", "$(aspire resource sample-api issue-smoke-token --apphost \"${APPHOST}\")"))
+            .ShouldBeEmpty();
+
+    [Fact]
+    public void ConfigurationKeysAndBracketPlaceholders_RequireStructuralContextAndVocabulary()
+    {
+        string configurationPath = "Authentication__JwtBearer__SigningKey";
+        FindViolations(
+            "tests/fixture.cs",
+            Assignment("Signing" + "KeyConfigurationKey", configurationPath)).ShouldBeEmpty();
+        FindViolations(
+            "tests/fixture.cs",
+            Assignment("Signing" + "Key", configurationPath)).ShouldBe(["tests/fixture.cs:1"]);
+        FindViolations(
+            "config/fixture.json",
+            Assignment("Pass" + "word", "<YOUR_PASSWORD>")).ShouldBeEmpty();
+        FindViolations(
+            "config/fixture.json",
+            Assignment("Pass" + "word", "<arbitrarycredentialmaterial>"))
+            .ShouldBe(["config/fixture.json:1"]);
+    }
+
+    [Fact]
+    public void PackageVersionExemption_IsLimitedToDependencyObjects()
+    {
+        string name = "registry-auth-" + "token";
+        string dependency = "{\"dependencies\":{\"" + name + "\":\"1.2.3\"}}";
+        string topLevel = "{\"" + name + "\":\"1.2.3\"}";
+
+        FindViolations("package.json", dependency).ShouldBeEmpty();
+        FindViolations("package.json", topLevel).ShouldBe(["package.json:1"]);
+    }
+
+    [Fact]
+    public void UriUserInfoColonKeysAndSuffixedNames_AreRejected()
+    {
+        string credential = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+        string[] uriValues =
+        [
+            "postgresql://" + credential + "@database.example.test/store",
+            "postgresql://:" + credential + "@database.example.test/store",
+        ];
+        foreach (string value in uriValues)
+        {
+            FindViolations("docs/database.md", value).ShouldBe(["docs/database.md:1"]);
+        }
+
+        string[] names = ["client" + "SecretValue", "pass" + "wordBytes", "api" + "TokenText"];
+        foreach (string name in names)
+        {
+            FindViolations("config/runtime.json", Assignment(name, credential))
+                .ShouldBe(["config/runtime.json:1"]);
+        }
+
+        string colonKey = "{\"auth:" + "password\":\"" + credential + "\"}";
+        FindViolations("config/runtime.json", colonKey).ShouldBe(["config/runtime.json:1"]);
+    }
+
+    [Fact]
+    public void XmlCredentialShapesAndJavaScriptDestructuringDefaults_AreRejected()
+    {
+        string credential = RandomSecret();
+        string element = "<" + "Password>" + credential + "</" + "Password>";
+        string keyName = "Signing" + "Key";
+        string attribute = "<add key=\"" + keyName + "\" value=\"" + credential + "\" />";
+        string destructuring = "const { " + "pass" + "word = \"x\" } = runtimeConfig;";
+
+        FindViolations("config/runtime.xml", element).ShouldBe(["config/runtime.xml:1"]);
+        FindViolations("config/runtime.xml", attribute).ShouldBe(["config/runtime.xml:1"]);
+        FindViolations("tools/runtime.mjs", destructuring).ShouldBe(["tools/runtime.mjs:1"]);
+    }
+
+    [Fact]
+    public void MinimalJwtAndInlineCredentialConstructors_AreRejected()
+    {
+        string payload = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["iss"] = "issuer",
+            ["aud"] = "audience",
+            ["exp"] = 9999999999,
+        });
+        FindViolations("docs/token.json", payload).ShouldBe(["docs/token.json:1"]);
+
+        string compact = Base64Url(Encoding.UTF8.GetBytes("{\"alg\":\"HS256\"}"))
+            + "." + Base64Url(Encoding.UTF8.GetBytes(payload))
+            + "." + Base64Url(RandomNumberGenerator.GetBytes(16));
+        FindViolations("docs/token.txt", compact).ShouldBe(["docs/token.txt:1"]);
+
+        string networkFixture = "new Network" + "Credential(\"runtime-user\", \"x\")";
+        string symmetricFixture = "new Symmetric" + "SecurityKey(Encoding.UTF8.GetBytes(\"x\"))";
+        FindViolations("tests/fixture.cs", networkFixture).ShouldBe(["tests/fixture.cs:1"]);
+        FindViolations("tests/fixture.cs", symmetricFixture).ShouldBe(["tests/fixture.cs:1"]);
+    }
+
     [Fact]
     public void RetirementAndGeneratedExemptions_AreConstrainedToGovernedPaths()
     {
@@ -346,15 +504,51 @@ public sealed partial class SecretsProtectionTests
             }
         }
 
+        foreach (Match match in CredentialConstructorPattern().Matches(content))
+        {
+            string invocation = ExtractBalancedInvocation(content, match.Index, match.Length);
+            foreach ((int literalIndex, _, string literal) in EnumerateQuotedLiterals(
+                invocation,
+                includeBackticks: false))
+            {
+                if (!IsInertPlaceholder(literal)
+                    && !IsRuntimeSourceLookupLiteral(invocation, literalIndex))
+                {
+                    Record(match.Index + literalIndex, "credential-constructor");
+                    break;
+                }
+            }
+        }
+
         foreach (Match match in CredentialUriPattern().Matches(content))
         {
-            string password = match.Groups["password"].Value;
-            string effectivePath = GetEffectiveSourcePath(relativePath, content, match.Groups["password"].Index);
-            if (!IsInertPlaceholder(password)
+            string userInfo = match.Groups["userinfo"].Value;
+            string effectivePath = GetEffectiveSourcePath(relativePath, content, match.Groups["userinfo"].Index);
+            if (!IsInertUriUserInfo(userInfo)
                 && !(effectivePath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-                    && ContainsRuntimeCSharpInterpolation(password)))
+                    && ContainsRuntimeCSharpInterpolation(userInfo)))
             {
-                Record(match.Groups["password"].Index, "credential-uri");
+                Record(match.Groups["userinfo"].Index, "credential-uri");
+            }
+        }
+
+        foreach (Match match in XmlSecretElementPattern().Matches(content))
+        {
+            string name = match.Groups["name"].Value;
+            string value = match.Groups["value"].Value.Trim();
+            if (IsCredentialName(name) && IsUsableLiteral(relativePath, name, value, isBare: false))
+            {
+                Record(match.Groups["value"].Index, "xml-secret-element");
+            }
+        }
+
+        foreach (Match match in XmlKeyValueSecretPattern().Matches(content))
+        {
+            string name = match.Groups["name"].Value;
+            string value = match.Groups["value"].Value.Trim();
+            if (IsCredentialName(name) && IsUsableLiteral(relativePath, name, value, isBare: false))
+            {
+                Record(match.Groups["value"].Index, "xml-secret-attribute");
             }
         }
 
@@ -393,7 +587,12 @@ public sealed partial class SecretsProtectionTests
             string value = GetAssignmentValue(match);
             if (IsArgparseMetavar(content, match.Groups["name"].Index)
                 || IsJavaScriptDestructuringAlias(effectivePath, content, match.Groups["name"].Index)
-                || IsPackageDependencyMetadata(effectivePath, match.Groups["name"].Value, value))
+                || IsPackageDependencyMetadata(
+                    effectivePath,
+                    content,
+                    match.Groups["name"].Index,
+                    match.Groups["name"].Value,
+                    value))
             {
                 continue;
             }
@@ -560,7 +759,7 @@ public sealed partial class SecretsProtectionTests
             return string.Empty;
         }
 
-        if (IsExplicitBinaryPath(path))
+        if (HasKnownBinarySignature(bytes))
         {
             return null;
         }
@@ -579,22 +778,24 @@ public sealed partial class SecretsProtectionTests
 
         if (bytes.Length >= 3 && bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf)
         {
-            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true, throwOnInvalidBytes: false)
-                .GetString(bytes, 3, bytes.Length - 3);
+            return ReplaceControlCharacters(
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: true, throwOnInvalidBytes: false)
+                    .GetString(bytes, 3, bytes.Length - 3));
+        }
+
+        if (TryDecodeBomlessUtf16(bytes, out string? utf16Text))
+        {
+            return ReplaceControlCharacters(utf16Text);
         }
 
         try
         {
-            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
-                .GetString(bytes);
+            return ReplaceControlCharacters(
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                    .GetString(bytes));
         }
         catch (DecoderFallbackException)
         {
-            if (!IsKnownTextPath(path) && IsPredominantlyBinary(bytes))
-            {
-                return null;
-            }
-
             string recovered = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false)
                 .GetString(bytes);
             return ReplaceControlCharacters(recovered);
@@ -632,70 +833,55 @@ public sealed partial class SecretsProtectionTests
         => GovernedEvidenceCapturePathPattern().IsMatch(path)
             || OwnerApprovedProofPacketPathPattern().IsMatch(path);
 
-    private static bool IsExplicitBinaryPath(string path)
+    private static bool HasKnownBinarySignature(ReadOnlySpan<byte> bytes)
     {
-        string extension = Path.GetExtension(path);
-        return extension.Equals(".dll", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".exe", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".pdb", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".png", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".gif", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".ico", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".zip", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".gz", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".tar", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".dat", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".nupkg", StringComparison.OrdinalIgnoreCase);
+        return bytes.StartsWith("MZ"u8)
+            || bytes.StartsWith("BSJB"u8)
+            || bytes.StartsWith("Microsoft C/C++ MSF"u8)
+            || bytes.StartsWith(new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a })
+            || bytes.StartsWith(new byte[] { 0xff, 0xd8, 0xff })
+            || bytes.StartsWith("GIF87a"u8)
+            || bytes.StartsWith("GIF89a"u8)
+            || bytes.StartsWith(new byte[] { 0x00, 0x00, 0x01, 0x00 })
+            || bytes.StartsWith("%PDF-"u8)
+            || bytes.StartsWith(new byte[] { 0x50, 0x4b, 0x03, 0x04 })
+            || bytes.StartsWith(new byte[] { 0x50, 0x4b, 0x05, 0x06 })
+            || bytes.StartsWith(new byte[] { 0x50, 0x4b, 0x07, 0x08 })
+            || bytes.StartsWith(new byte[] { 0x1f, 0x8b })
+            || bytes.Length >= 262 && bytes[257..].StartsWith("ustar"u8);
     }
 
     private static bool IsExplicitGeneratedPath(string path)
         => ExplicitUiTestArtifactPathPattern().IsMatch(path)
             || path.StartsWith(".playwright-cli/traces/", StringComparison.Ordinal);
 
-    private static bool IsKnownTextPath(string path)
+    private static bool TryDecodeBomlessUtf16(byte[] bytes, out string text)
     {
-        string extension = Path.GetExtension(path);
-        if (extension.Equals(".cs", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".props", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".targets", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".json", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".txt", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".yml", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".xml", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".config", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".sh", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".bash", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".ps1", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".py", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".js", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".ts", StringComparison.OrdinalIgnoreCase))
+        text = string.Empty;
+        if (bytes.Length < 8 || bytes.Length % 2 != 0)
         {
-            return true;
+            return false;
         }
 
-        string fileName = Path.GetFileName(path);
-        return fileName is "Dockerfile" or "LICENSE" or "NOTICE" or "README"
-            || fileName.StartsWith(".", StringComparison.Ordinal);
-    }
-
-    private static bool IsPredominantlyBinary(ReadOnlySpan<byte> bytes)
-    {
-        int controls = 0;
-        foreach (byte value in bytes)
+        int evenNulls = 0;
+        int oddNulls = 0;
+        for (int index = 0; index < bytes.Length; index += 2)
         {
-            if (value == 0 || (value < 0x20 && value is not (byte)'\r' and not (byte)'\n' and not (byte)'\t'))
-            {
-                controls++;
-            }
+            evenNulls += bytes[index] == 0 ? 1 : 0;
+            oddNulls += bytes[index + 1] == 0 ? 1 : 0;
         }
 
-        return controls > Math.Max(2, bytes.Length / 50);
+        int pairs = bytes.Length / 2;
+        bool littleEndian = oddNulls >= Math.Max(3, pairs / 3) && evenNulls <= pairs / 10;
+        bool bigEndian = evenNulls >= Math.Max(3, pairs / 3) && oddNulls <= pairs / 10;
+        if (!littleEndian && !bigEndian)
+        {
+            return false;
+        }
+
+        text = new UnicodeEncoding(bigEndian, byteOrderMark: false, throwOnInvalidBytes: false)
+            .GetString(bytes);
+        return true;
     }
 
     private static string ReplaceControlCharacters(string content)
@@ -736,6 +922,16 @@ public sealed partial class SecretsProtectionTests
         if (IsInertPlaceholder(candidate))
         {
             return false;
+        }
+
+        if (IsConfigurationKeyReference(name, candidate))
+        {
+            return false;
+        }
+
+        if (ConfigurationKeyPattern().IsMatch(candidate))
+        {
+            return true;
         }
 
         if (isBare && IsCredentialFactoryExpression(relativePath, candidate))
@@ -853,10 +1049,66 @@ public sealed partial class SecretsProtectionTests
         return cursor < content.Length && content[cursor] == '=';
     }
 
-    private static bool IsPackageDependencyMetadata(string path, string name, string value)
-        => Path.GetFileName(path) is "package.json" or "package-lock.json"
-            && string.Equals(name, "registry-auth-token", StringComparison.Ordinal)
-            && PackageVersionRangePattern().IsMatch(value);
+    private static bool IsPackageDependencyMetadata(
+        string path,
+        string content,
+        int nameIndex,
+        string name,
+        string value)
+    {
+        if (Path.GetFileName(path) is not ("package.json" or "package-lock.json")
+            || !PackageVersionRangePattern().IsMatch(value))
+        {
+            return false;
+        }
+
+        try
+        {
+            byte[] utf8 = Encoding.UTF8.GetBytes(content);
+            long targetByteIndex = Encoding.UTF8.GetByteCount(content.AsSpan(0, nameIndex));
+            var reader = new Utf8JsonReader(
+                utf8,
+                new JsonReaderOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            var contexts = new Stack<string?>();
+            string? pendingProperty = null;
+            while (reader.Read())
+            {
+                if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray)
+                {
+                    contexts.Push(pendingProperty);
+                    pendingProperty = null;
+                }
+                else if (reader.TokenType is JsonTokenType.EndObject or JsonTokenType.EndArray)
+                {
+                    _ = contexts.Pop();
+                    pendingProperty = null;
+                }
+                else if (reader.TokenType == JsonTokenType.PropertyName)
+                {
+                    string propertyName = reader.GetString() ?? string.Empty;
+                    if (targetByteIndex >= reader.TokenStartIndex
+                        && targetByteIndex <= reader.BytesConsumed
+                        && string.Equals(propertyName, name, StringComparison.Ordinal))
+                    {
+                        return contexts.TryPeek(out string? context)
+                            && context is "dependencies" or "devDependencies" or "peerDependencies" or "optionalDependencies";
+                    }
+
+                    pendingProperty = propertyName;
+                }
+                else
+                {
+                    pendingProperty = null;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        return false;
+    }
 
     private static bool IsJavaScriptDestructuringAlias(string path, string content, int nameIndex)
     {
@@ -876,6 +1128,13 @@ public sealed partial class SecretsProtectionTests
         int open = content.LastIndexOf('{', nameIndex, nameIndex - lineStart + 1);
         int close = content.IndexOf('}', nameIndex, lineEnd - nameIndex);
         if (open < lineStart || close < 0)
+        {
+            return false;
+        }
+
+        int segmentEnd = content.IndexOf(',', nameIndex, close - nameIndex);
+        segmentEnd = segmentEnd < 0 ? close : segmentEnd;
+        if (content.AsSpan(nameIndex, segmentEnd - nameIndex).Contains('='))
         {
             return false;
         }
@@ -915,6 +1174,12 @@ public sealed partial class SecretsProtectionTests
         }
 
         string last = words[^1];
+        if (last is "VALUE" or "TEXT" or "BYTES" or "CHARS" or "DATA" or "MATERIAL"
+            && words.Length > 1)
+        {
+            words = words[..^1];
+            last = words[^1];
+        }
         bool uppercaseEnvironmentStyle = name.Any(char.IsLetter)
             && string.Equals(name, name.ToUpperInvariant(), StringComparison.Ordinal);
         return last is "PASSWORD" or "PASSWORDS" or "PASSWD" or "PWD"
@@ -967,7 +1232,6 @@ public sealed partial class SecretsProtectionTests
             || RealmPlaceholderPattern().IsMatch(value)
             || RedactedPlaceholderPattern().IsMatch(value)
             || SourcePlaceholderPattern().IsMatch(value)
-            || ConfigurationKeyPattern().IsMatch(value)
             || ProtectedMarkerPattern().IsMatch(value)
             || MarkdownFencePattern().IsMatch(value);
 
@@ -993,13 +1257,34 @@ public sealed partial class SecretsProtectionTests
             .Where(static word => word.Length > 0)
             .Select(static word => word.ToUpperInvariant())
             .ToArray();
-        return words.Any(static word => word is
+        return words.Length > 0 && words.All(static word => word is
             "PASSWORD" or "PASS" or "SECRET" or "TOKEN" or "KEY" or "CREDENTIAL"
             or "CONNECTION" or "STRING" or "REDACTED"
             or "USERNAME" or "USER" or "CLIENT" or "AUTH" or "AUTHORIZATION"
             or "VALUE" or "NAME" or "ID" or "AUTHORITY" or "ISSUER" or "AUDIENCE"
             or "HOST" or "PORT" or "URL" or "ENDPOINT" or "TENANT" or "ENV"
-            or "INPUT" or "REPLACE" or "EXAMPLE" or "GENERATED" or "RUNTIME");
+            or "INPUT" or "REPLACE" or "EXAMPLE" or "GENERATED" or "RUNTIME"
+            or "YOUR" or "ENTER" or "INSERT" or "PLACEHOLDER" or "HERE"
+            or "REQUIRED" or "OPTIONAL" or "CURRENT" or "NEW" or "OLD"
+            or "TEST" or "SAMPLE" or "DEV" or "LOCAL" or "SERVICE" or "DATABASE"
+            or "INVALID" or "API" or "AT" or "CACHED" or "SESSION" or "RABBITMQ");
+    }
+
+    private static bool IsConfigurationKeyReference(string name, string value)
+    {
+        string normalizedName = string.Concat(name.Where(char.IsLetterOrDigit));
+        return (normalizedName.EndsWith("ConfigurationKey", StringComparison.OrdinalIgnoreCase)
+                || normalizedName.EndsWith("EnvironmentKey", StringComparison.OrdinalIgnoreCase)
+                || normalizedName.EndsWith("SettingKey", StringComparison.OrdinalIgnoreCase)
+                || normalizedName.EndsWith("KeyName", StringComparison.OrdinalIgnoreCase))
+            && ConfigurationKeyPattern().IsMatch(value);
+    }
+
+    private static bool IsInertUriUserInfo(string userInfo)
+    {
+        int separator = userInfo.IndexOf(':');
+        string credential = separator >= 0 ? userInfo[(separator + 1)..] : userInfo;
+        return IsInertPlaceholder(credential);
     }
 
     private static bool IsCredentialFactoryExpression(string relativePath, string value)
@@ -1090,6 +1375,15 @@ public sealed partial class SecretsProtectionTests
             }
         }
 
+        foreach (Match operand in RuntimeLiteralOperandPattern().Matches(value))
+        {
+            string literal = operand.Groups["literal"].Value;
+            if (!IsInertPlaceholder(literal))
+            {
+                return true;
+            }
+        }
+
         if (isJavaScript)
         {
             foreach ((_, char delimiter, string literal) in EnumerateQuotedLiterals(value, includeBackticks: true))
@@ -1114,6 +1408,67 @@ public sealed partial class SecretsProtectionTests
         }
 
         return false;
+    }
+
+    private static string ExtractBalancedInvocation(string content, int matchIndex, int matchLength)
+    {
+        int open = content.IndexOf('(', matchIndex, matchLength);
+        if (open < 0)
+        {
+            return content[matchIndex..Math.Min(content.Length, matchIndex + matchLength)];
+        }
+
+        bool insideString = false;
+        bool insideCharacter = false;
+        bool escaped = false;
+        int depth = 0;
+        for (int index = open; index < content.Length; index++)
+        {
+            char character = content[index];
+            if (insideString || insideCharacter)
+            {
+                if (escaped)
+                {
+                    escaped = false;
+                }
+                else if (character == '\\')
+                {
+                    escaped = true;
+                }
+                else if ((insideString && character == '"') || (insideCharacter && character == '\''))
+                {
+                    insideString = false;
+                    insideCharacter = false;
+                }
+
+                continue;
+            }
+
+            if (character == '"')
+            {
+                insideString = true;
+            }
+            else if (character == '\'')
+            {
+                insideCharacter = true;
+            }
+            else if (character == '(')
+            {
+                depth++;
+            }
+            else if (character == ')' && --depth == 0)
+            {
+                return content[matchIndex..(index + 1)];
+            }
+        }
+
+        return content[matchIndex..];
+    }
+
+    private static bool IsRuntimeSourceLookupLiteral(string invocation, int literalIndex)
+    {
+        string prefix = invocation[..literalIndex];
+        return RuntimeSourceLookupPrefixPattern().IsMatch(prefix);
     }
 
     private static IEnumerable<(int Index, char Delimiter, string Literal)> EnumerateQuotedLiterals(
@@ -1417,6 +1772,7 @@ public sealed partial class SecretsProtectionTests
             string command = candidate[2..^1].TrimStart();
             if (command.StartsWith("curl ", StringComparison.Ordinal)
                 || command.StartsWith("az account get-access-token ", StringComparison.Ordinal)
+                || command.StartsWith("aspire resource sample-api issue-smoke-token ", StringComparison.Ordinal)
                 || command.StartsWith("openssl rand ", StringComparison.Ordinal)
                 || command.StartsWith("head -c ", StringComparison.Ordinal)
                 || command.StartsWith("dd if=/dev/urandom", StringComparison.Ordinal)
@@ -1818,8 +2174,7 @@ public sealed partial class SecretsProtectionTests
                 StringComparer.OrdinalIgnoreCase);
             if (names.Contains("iss")
                 && names.Contains("aud")
-                && names.Contains("exp")
-                && (names.Contains("sub") || names.Contains("iat") || names.Contains("nbf")))
+                && names.Contains("exp"))
             {
                 return true;
             }
@@ -1870,6 +2225,9 @@ public sealed partial class SecretsProtectionTests
     private static string RandomSecret()
         => Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
 
+    private static string Base64Url(byte[] bytes)
+        => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
     private static string CreateDecodedJwtPayload(bool nested, string? padding = null)
     {
         object payload = new Dictionary<string, object>
@@ -1904,9 +2262,24 @@ public sealed partial class SecretsProtectionTests
     private static partial Regex AuthenticationHeaderValuePattern();
 
     [GeneratedRegex(
-        @"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s/@:]+:(?<password>[^\s/@]+)@[^\s/]+",
+        @"\b[A-Za-z][A-Za-z0-9+.-]*://(?<userinfo>[^\s/@]*)@[^\s/]+",
         RegexOptions.CultureInvariant)]
     private static partial Regex CredentialUriPattern();
+
+    [GeneratedRegex(
+        @"<(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)\b[^>]*>(?<value>[^<\r\n]*)</\k<name>\s*>",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex XmlSecretElementPattern();
+
+    [GeneratedRegex(
+        @"\b(?:key|name)\s*=\s*[\""'](?<name>[A-Za-z_][A-Za-z0-9_.:-]*)[\""'][^>\r\n]*?\bvalue\s*=\s*[\""'](?<value>[^\""'\r\n]*)[\""']",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex XmlKeyValueSecretPattern();
+
+    [GeneratedRegex(
+        @"\bnew\s+(?:NetworkCredential|SymmetricSecurityKey)\s*\(",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex CredentialConstructorPattern();
 
     [GeneratedRegex(@"(?:Password|Pwd|SharedAccessKey)\s*=\s*(?<password>[^;\""']+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ConnectionStringPasswordPattern();
@@ -1915,7 +2288,7 @@ public sealed partial class SecretsProtectionTests
     private static partial Regex CurlUserCredentialPattern();
 
     [GeneratedRegex(
-        @"(?<![A-Za-z0-9_.-])(?=(?:\[[\t ]*)?[\""']?(?<name>[A-Za-z_][A-Za-z0-9_.-]*)[\""']?(?:[\t ]*\])?[\t ]*(?::(?![-+?])|=(?![=>]))\s*(?<value>(?:\""(?<double>(?:\\.|[^\""\\])*)\""|'(?<single>(?:\\.|[^'\\])*)'|`(?<template>(?:\\.|[^`\\])*)`|(?<bare>[^\s,;#`)\""']+))))",
+        @"(?<![A-Za-z0-9_.:-])(?=(?:\[[\t ]*)?[\""']?(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)[\""']?(?:[\t ]*\])?[\t ]*(?::(?![-+?])|=(?![=>]))\s*(?<value>(?:\""(?<double>(?:\\.|[^\""\\])*)\""|'(?<single>(?:\\.|[^'\\])*)'|`(?<template>(?:\\.|[^`\\])*)`|(?<bare>[^\s,;#`)\""']+))))",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex SecretAssignmentPattern();
 
@@ -1979,8 +2352,14 @@ public sealed partial class SecretsProtectionTests
     [GeneratedRegex(@"\$\{[^{}]+\}", RegexOptions.CultureInvariant)]
     private static partial Regex JavaScriptInterpolationPattern();
 
-    [GeneratedRegex(@"(?:\?\?|\|\||os\.environ\.get\([^,\r\n]+,|(?:Resolve|Decode)\s*\([^,\r\n]+,)\s*[\""'](?<literal>[^\""'\r\n]+)[\""']", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?:\?\?|\|\||os\.environ\.get\([^,\r\n]+,|(?:Resolve|Decode)\s*\([^,\r\n]+,|GetValue(?:<[^>]+>)?\s*\([^,\r\n]+,)\s*[\""'](?<literal>[^\""'\r\n]+)[\""']", RegexOptions.CultureInvariant)]
     private static partial Regex RuntimeLiteralFallbackPattern();
+
+    [GeneratedRegex(@"(?:\+|\?\?|\|\|)\s*[\""'](?<literal>[^\""'\r\n]+)[\""']", RegexOptions.CultureInvariant)]
+    private static partial Regex RuntimeLiteralOperandPattern();
+
+    [GeneratedRegex(@"(?:Environment\.GetEnvironmentVariable|\b[A-Za-z_][A-Za-z0-9_]*\s*\[|GetValue(?:<[^>]+>)?\s*\(|RequireOpaqueConfiguration\s*\()\s*$", RegexOptions.CultureInvariant)]
+    private static partial Regex RuntimeSourceLookupPrefixPattern();
 
     [GeneratedRegex(@"^(?:[A-Za-z0-9+/]{20,}={0,2}|[0-9A-Fa-f]{24,})$", RegexOptions.CultureInvariant)]
     private static partial Regex RuntimeCredentialMaterialPattern();

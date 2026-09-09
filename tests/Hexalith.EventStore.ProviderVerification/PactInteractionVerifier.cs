@@ -18,7 +18,8 @@ internal static class PactInteractionVerifier
         Uri baseAddress,
         ProviderStateCoordinator coordinator,
         TimeSpan requestTimeout,
-        string acceptedToken)
+        string acceptedToken,
+        Action<string>? deleteNormalizedPact = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(acceptedToken);
         coordinator.BeginInteraction(interaction.ProviderState);
@@ -38,7 +39,10 @@ internal static class PactInteractionVerifier
             }
             finally
             {
-                if (!TryDeleteNormalizedPact(normalizedPact, out string cleanupCode))
+                if (!TryDeleteNormalizedPact(
+                    normalizedPact,
+                    out string cleanupCode,
+                    deleteNormalizedPact))
                 {
                     throw new ProviderVerificationInputException(cleanupCode);
                 }

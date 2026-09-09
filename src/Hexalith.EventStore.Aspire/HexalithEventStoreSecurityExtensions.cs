@@ -296,8 +296,11 @@ public static class HexalithEventStoreSecurityExtensions
         return resource
             .WithSecurityDependency(security)
             .WithEnvironment("EventStore__Authentication__Authority", security.RealmUrl)
+            .WithEnvironment("EventStore__Authentication__Issuer", security.RealmUrl)
             .WithEnvironment("EventStore__Authentication__Audience", security.Audience)
-            .WithEnvironment("EventStore__Authentication__RequireHttpsMetadata", ToConfigurationValue(security.RequireHttpsMetadata));
+            .WithEnvironment("EventStore__Authentication__RequireHttpsMetadata", ToConfigurationValue(security.RequireHttpsMetadata))
+            .WithEnvironment("EventStore__Authentication__AllowedAlgorithms__0", "RS256")
+            .WithEnvironment("EventStore__Authentication__SigningKey", string.Empty);
     }
 
     /// <summary>
@@ -358,9 +361,12 @@ public static class HexalithEventStoreSecurityExtensions
                 "EventStore__Authentication__TokenEndpoint",
                 ReferenceExpression.Create($"{security.RealmUrl}/protocol/openid-connect/token"))
             .WithEnvironment("EventStore__Authentication__Scope", "openid")
+            .WithEnvironment("EventStore__Authentication__GrantType", "password")
             .WithEnvironment("EventStore__Authentication__ClientId", clientId)
             .WithEnvironment("EventStore__Authentication__Username", username)
-            .WithEnvironment("EventStore__Authentication__Password", password);
+            .WithEnvironment("EventStore__Authentication__Password", password)
+            .WithEnvironment("EventStore__Authentication__ClientSecret", string.Empty)
+            .WithEnvironment("EventStore__Authentication__SigningKey", string.Empty);
     }
 
     /// <summary>
@@ -466,7 +472,7 @@ public static class HexalithEventStoreSecurityExtensions
         string resolvedAuthority = ResolveExternalEndpoint(authority, nameof(authority));
         string resolvedTokenEndpoint = string.IsNullOrWhiteSpace(tokenEndpoint)
             ? string.Empty
-            : ResolveExternalEndpoint(tokenEndpoint, nameof(tokenEndpoint));
+            : ResolveExternalEndpoint(tokenEndpoint, nameof(tokenEndpoint), allowQuery: true);
         string resolvedGrantType = grantType.Trim();
         if (resolvedGrantType is not "password" and not "client_credentials")
         {
@@ -708,7 +714,10 @@ public static class HexalithEventStoreSecurityExtensions
         return [.. algorithms];
     }
 
-    private static string ResolveExternalEndpoint(string? endpoint, string parameterName)
+    private static string ResolveExternalEndpoint(
+        string? endpoint,
+        string parameterName,
+        bool allowQuery = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(endpoint, parameterName);
         string trimmedEndpoint = endpoint.Trim();
@@ -716,11 +725,13 @@ public static class HexalithEventStoreSecurityExtensions
             || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
             || string.IsNullOrWhiteSpace(uri.Host)
             || !string.IsNullOrEmpty(uri.UserInfo)
-            || !string.IsNullOrEmpty(uri.Query)
+            || (!allowQuery && !string.IsNullOrEmpty(uri.Query))
             || !string.IsNullOrEmpty(uri.Fragment))
         {
             throw new ArgumentException(
-                "The endpoint must be an absolute HTTPS URI without user information, a query, or a fragment.",
+                allowQuery
+                    ? "The endpoint must be an absolute HTTPS URI without user information or a fragment."
+                    : "The endpoint must be an absolute HTTPS URI without user information, a query, or a fragment.",
                 parameterName);
         }
 

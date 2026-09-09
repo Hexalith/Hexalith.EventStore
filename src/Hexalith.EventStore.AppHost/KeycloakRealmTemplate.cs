@@ -22,6 +22,21 @@ internal sealed class KeycloakRealmTemplate : IDisposable
     private static readonly Regex PlaceholderPattern = new(
         "__HEXALITH_[A-Z0-9_]+__",
         RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
+    private static readonly IReadOnlyDictionary<string, string> ApprovedPathPlaceholders =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["users.0.id"] = "__HEXALITH_ADMIN_USER_ID__",
+            ["users.0.username"] = "__HEXALITH_ADMIN_USERNAME__",
+            ["users.0.credentials.0.value"] = "__HEXALITH_ADMIN_PASSWORD__",
+            ["users.1.id"] = "__HEXALITH_TENANT_A_USER_ID__",
+            ["users.1.credentials.0.value"] = "__HEXALITH_TENANT_A_PASSWORD__",
+            ["users.2.id"] = "__HEXALITH_TENANT_B_USER_ID__",
+            ["users.2.credentials.0.value"] = "__HEXALITH_TENANT_B_PASSWORD__",
+            ["users.3.id"] = "__HEXALITH_READ_ONLY_USER_ID__",
+            ["users.3.credentials.0.value"] = "__HEXALITH_READ_ONLY_PASSWORD__",
+            ["users.4.id"] = "__HEXALITH_NO_TENANT_USER_ID__",
+            ["users.4.credentials.0.value"] = "__HEXALITH_NO_TENANT_PASSWORD__",
+        };
     private static readonly UnixFileMode SecureFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
     private readonly Action<string>? _beforeDelete;
     private readonly string _directory;
@@ -89,7 +104,26 @@ internal sealed class KeycloakRealmTemplate : IDisposable
             ["__HEXALITH_NO_TENANT_USER_ID__"] = credentials.NoTenantUserId,
             ["__HEXALITH_NO_TENANT_PASSWORD__"] = credentials.NoTenantPassword,
         };
-        var replacedPlaceholders = new HashSet<string>(StringComparer.Ordinal);
+        MatchCollection placeholderMatches = PlaceholderPattern.Matches(template);
+        if (PlaceholderPattern.Replace(template, string.Empty).Contains("__HEXALITH_", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "The Keycloak realm template contains an unknown inert placeholder.");
+        }
+
+        if (placeholderMatches.Count != replacements.Count
+            || placeholderMatches.Any(match => !replacements.ContainsKey(match.Value))
+            || replacements.Keys.Any(placeholder =>
+                placeholderMatches.Count(match => string.Equals(
+                    match.Value,
+                    placeholder,
+                    StringComparison.Ordinal)) != 1))
+        {
+            throw new InvalidOperationException(
+                "The Keycloak realm template must contain every approved inert placeholder exactly once.");
+        }
+
+        ValidatePlaceholderLocations(template);
 
         string rendered = PlaceholderPattern.Replace(template, match =>
         {
@@ -99,15 +133,8 @@ internal sealed class KeycloakRealmTemplate : IDisposable
                     "The Keycloak realm template contains an unknown inert placeholder.");
             }
 
-            _ = replacedPlaceholders.Add(match.Value);
             return JsonSerializer.Serialize(value)[1..^1];
         });
-
-        if (replacements.Keys.Any(placeholder => !replacedPlaceholders.Contains(placeholder)))
-        {
-            throw new InvalidOperationException(
-                "The Keycloak realm template is missing a required inert placeholder.");
-        }
 
         if (rendered.Contains("__HEXALITH_", StringComparison.Ordinal))
         {
@@ -158,7 +185,7 @@ internal sealed class KeycloakRealmTemplate : IDisposable
         {
             ownerLease?.Dispose();
             bool markerDeleted = false;
-            DeleteOwnedDirectory(
+            _ = DeleteOwnedDirectory(
                 directory,
                 ownedFiles,
                 requireMarker: false,
@@ -216,7 +243,7 @@ internal sealed class KeycloakRealmTemplate : IDisposable
             using (cleanupLease)
             {
                 bool markerDeleted = false;
-                DeleteOwnedDirectory(
+                _ = DeleteOwnedDirectory(
                     candidate,
                     GetCompletedRenderOwnedFiles(candidate),
                     requireMarker: true,
@@ -238,23 +265,28 @@ internal sealed class KeycloakRealmTemplate : IDisposable
         _ownerLease = null;
         try
         {
-            DeleteOwnedDirectory(
+            if (!DeleteOwnedDirectory(
                 _directory,
                 GetCompletedRenderOwnedFiles(_directory),
                 requireMarker: true,
                 _beforeDelete,
-                ref _ownerMarkerDeleted);
+                ref _ownerMarkerDeleted))
+            {
+                throw new IOException(
+                    "The generated Keycloak realm directory could not be removed without crossing its ownership boundary.");
+            }
+
             _disposed = true;
             _ = LiveOwnedDirectories.TryRemove(_directory, out _);
         }
         catch (IOException)
         {
-            _ownerLease = TryRestoreOwnerLease(_directory);
+            _ownerLease = TryRestoreOwnerLease(_directory, _ownerMarkerDeleted);
             throw;
         }
         catch (UnauthorizedAccessException)
         {
-            _ownerLease = TryRestoreOwnerLease(_directory);
+            _ownerLease = TryRestoreOwnerLease(_directory, _ownerMarkerDeleted);
             throw;
         }
     }
@@ -345,29 +377,36 @@ internal sealed class KeycloakRealmTemplate : IDisposable
         stream.Flush(flushToDisk: true);
     }
 
-    private static void DeleteOwnedDirectory(
+    private static bool DeleteOwnedDirectory(
         string directory,
         IReadOnlyCollection<string> ownedFiles,
         bool requireMarker,
         Action<string>? beforeDelete,
         ref bool markerDeleted)
     {
-        if (!Directory.Exists(directory)
-            || IsReparsePoint(directory))
+        if (!Directory.Exists(directory))
         {
-            return;
+            return true;
+        }
+
+        if (IsReparsePoint(directory))
+        {
+            return false;
         }
 
         string markerPath = Path.Combine(directory, OwnerMarkerFileName);
+        string leasePath = Path.Combine(directory, OwnerLeaseFileName);
         if (requireMarker
             && !markerDeleted
             && (!File.Exists(markerPath)
                 || !string.Equals(File.ReadAllText(markerPath), OwnerMarker, StringComparison.Ordinal)))
         {
-            return;
+            return false;
         }
 
-        foreach (string file in ownedFiles.Where(file => !string.Equals(file, markerPath, StringComparison.Ordinal)))
+        foreach (string file in ownedFiles.Where(file =>
+            !string.Equals(file, markerPath, StringComparison.Ordinal)
+            && !string.Equals(file, leasePath, StringComparison.Ordinal)))
         {
             if (!File.Exists(file))
             {
@@ -376,18 +415,36 @@ internal sealed class KeycloakRealmTemplate : IDisposable
 
             if (IsReparsePoint(file))
             {
-                return;
+                return false;
             }
 
             beforeDelete?.Invoke(file);
             File.Delete(file);
         }
 
+        if (Directory.EnumerateFileSystemEntries(directory).Any(path =>
+            !string.Equals(path, markerPath, StringComparison.Ordinal)
+            && !string.Equals(path, leasePath, StringComparison.Ordinal)))
+        {
+            return false;
+        }
+
+        if (File.Exists(leasePath))
+        {
+            if (IsReparsePoint(leasePath))
+            {
+                return false;
+            }
+
+            beforeDelete?.Invoke(leasePath);
+            File.Delete(leasePath);
+        }
+
         if (!markerDeleted && File.Exists(markerPath))
         {
             if (IsReparsePoint(markerPath))
             {
-                return;
+                return false;
             }
 
             beforeDelete?.Invoke(markerPath);
@@ -397,11 +454,12 @@ internal sealed class KeycloakRealmTemplate : IDisposable
 
         if (Directory.EnumerateFileSystemEntries(directory).Any())
         {
-            return;
+            return false;
         }
 
         beforeDelete?.Invoke(directory);
         Directory.Delete(directory, recursive: false);
+        return !Directory.Exists(directory);
     }
 
     private static IReadOnlyCollection<string> GetCompletedRenderOwnedFiles(string directory)
@@ -491,17 +549,33 @@ internal sealed class KeycloakRealmTemplate : IDisposable
         }
     }
 
-    private static FileStream? TryRestoreOwnerLease(string directory)
+    private static FileStream? TryRestoreOwnerLease(string directory, bool markerDeleted)
     {
+        if (!Directory.Exists(directory) || IsReparsePoint(directory))
+        {
+            return null;
+        }
+
+        string markerPath = Path.Combine(directory, OwnerMarkerFileName);
+        if (!markerDeleted
+            && (!File.Exists(markerPath)
+                || IsReparsePoint(markerPath)
+                || !string.Equals(File.ReadAllText(markerPath), OwnerMarker, StringComparison.Ordinal)))
+        {
+            return null;
+        }
+
         string leasePath = Path.Combine(directory, OwnerLeaseFileName);
-        if (!File.Exists(leasePath) || IsReparsePoint(leasePath))
+        if (IsReparsePoint(leasePath))
         {
             return null;
         }
 
         try
         {
-            return OpenOwnerLease(leasePath, FileMode.Open);
+            return OpenOwnerLease(
+                leasePath,
+                File.Exists(leasePath) ? FileMode.Open : FileMode.CreateNew);
         }
         catch (IOException)
         {
@@ -510,6 +584,28 @@ internal sealed class KeycloakRealmTemplate : IDisposable
         catch (UnauthorizedAccessException)
         {
             return null;
+        }
+    }
+
+    private static void ValidatePlaceholderLocations(string template)
+    {
+        using JsonDocument document = JsonDocument.Parse(template);
+        foreach (KeyValuePair<string, string> entry in ApprovedPathPlaceholders)
+        {
+            JsonElement current = document.RootElement;
+            foreach (string segment in entry.Key.Split('.'))
+            {
+                current = int.TryParse(segment, out int index)
+                    ? current[index]
+                    : current.GetProperty(segment);
+            }
+
+            if (current.ValueKind != JsonValueKind.String
+                || !string.Equals(current.GetString(), entry.Value, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The Keycloak realm template contains an inert placeholder outside its approved JSON path.");
+            }
         }
     }
 }

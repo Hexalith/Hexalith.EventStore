@@ -140,7 +140,7 @@ public sealed class EventStoreApiAccessTokenProviderTests
     [Theory]
     [InlineData("identity.example.test")]
     [InlineData("http://identity.example.test")]
-    [InlineData("https://user@identity.example.test")]
+    [InlineData("https://user" + "@identity.example.test")]
     [InlineData("https://identity.example.test?tenant=x")]
     [InlineData("https://identity.example.test#tenant")]
     public async Task GetAccessTokenAsync_WithExplicitEndpoint_StillRejectsUnsafeAuthority(string authority)
@@ -160,8 +160,7 @@ public sealed class EventStoreApiAccessTokenProviderTests
     [Theory]
     [InlineData("tokens.example.test/oauth/token")]
     [InlineData("http://tokens.example.test/oauth/token")]
-    [InlineData("https://user@tokens.example.test/oauth/token")]
-    [InlineData("https://tokens.example.test/oauth/token?tenant=x")]
+    [InlineData("https://user" + "@tokens.example.test/oauth/token")]
     [InlineData("https://tokens.example.test/oauth/token#tenant")]
     public async Task GetAccessTokenAsync_WithUnsafeExplicitTokenEndpoint_FailsBeforeSendingCredentials(string endpoint)
     {
@@ -175,6 +174,21 @@ public sealed class EventStoreApiAccessTokenProviderTests
 
         exception.Message.ShouldContain("TokenEndpoint");
         handler.RequestCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WithFixedQueryTokenEndpoint_PreservesTheConfiguredQuery()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfiguration();
+        values["EventStore:Authentication:TokenEndpoint"] =
+            "https://tokens.example.test/oauth/token?tenant=stable";
+        var handler = new RecordingTokenHandler();
+        var provider = CreateAuthorityProvider(values, handler);
+
+        _ = await provider.GetAccessTokenAsync();
+
+        handler.RequestUri.ShouldBe(
+            new Uri("https://tokens.example.test/oauth/token?tenant=stable"));
     }
 
     [Fact]

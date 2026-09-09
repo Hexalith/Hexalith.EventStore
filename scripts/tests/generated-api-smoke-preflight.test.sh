@@ -3,7 +3,7 @@
 #
 # Sources the preflight so its functions are testable without side effects (the preflight only runs
 # main when executed directly), then exercises: argument parsing, read-only defaults, support-safe
-# redaction, dev-JWT minting (no secret leakage), control-plane port resolution, and HTTP header
+# redaction, AppHost token-command handoff, control-plane port resolution, and HTTP header
 # parsing. Run standalone: `bash scripts/tests/generated-api-smoke-preflight.test.sh`.
 
 set -uo pipefail
@@ -45,9 +45,6 @@ assert_contains "${help_out}" "--sample-api-smoke" "--help documents the smoke f
 assert_contains "${help_out}" "blocked environment" "--help documents exit categories"
 
 # --- Source for function-level tests ---------------------------------------------------------
-
-LOCALAUTHENTICATION__SIGNINGKEY="$(openssl rand -base64 48 | tr -d '\n')"
-export LOCALAUTHENTICATION__SIGNINGKEY
 
 # shellcheck disable=SC1090
 source "${PREFLIGHT}"
@@ -104,48 +101,30 @@ assert_not_contains "${redacted}" "${secret_password}" "no generated password le
 assert_not_contains "${redacted}" "${account_key}" "no generated account key leaks"
 assert_not_contains "${redacted}" "identity.internal.example" "no internal issuer host leaks"
 
-printf '## dev JWT minting (never leaks the signing key)\n'
-jwt="$(mint_dev_jwt)"
-parts="$(printf '%s' "${jwt}" | awk -F. '{print NF}')"
-assert_eq "${parts}" "3" "minted JWT has three dot-separated parts"
-assert_not_contains "${jwt}" "${DEV_SIGNING_KEY}" "signing key never appears in the token"
-# Decode header + payload (base64url) and check claims.
-b64url_decode() {
-  local s="$1"; s="${s//-/+}"; s="${s//_//}"
-  local pad=$(( (4 - ${#s} % 4) % 4 )) eq="" i
-  for ((i = 0; i < pad; i++)); do eq+="="; done
-  printf '%s%s' "${s}" "${eq}" | base64 -d 2>/dev/null
+printf '## AppHost token command handoff\n'
+mock_token="$(openssl rand -hex 8).$(openssl rand -hex 12).$(openssl rand -hex 16)"
+mock_args="$(mktemp)"
+aspire() {
+  printf '%s\n' "$*" >"${mock_args}"
+  printf '%s' "${mock_token}"
 }
-header_json="$(b64url_decode "$(printf '%s' "${jwt}" | cut -d. -f1)")"
-payload_json="$(b64url_decode "$(printf '%s' "${jwt}" | cut -d. -f2)")"
-assert_eq "$(printf '%s' "${header_json}" | jq -r .alg)" "HS256" "JWT header alg is HS256"
-assert_eq "$(printf '%s' "${payload_json}" | jq -r .iss)" "hexalith-dev" "JWT issuer is hexalith-dev"
-assert_eq "$(printf '%s' "${payload_json}" | jq -r .aud)" "hexalith-eventstore" "JWT audience is hexalith-eventstore"
-assert_eq "$(printf '%s' "${payload_json}" | jq -r .tenants)" '["tenant-a"]' "tenants claim is a JSON-array string with tenant-a"
-assert_contains "$(printf '%s' "${payload_json}" | jq -r .permissions)" "commands:*" "permissions include commands wildcard"
-assert_contains "$(printf '%s' "${payload_json}" | jq -r .permissions)" "queries:*" "permissions include queries wildcard"
-unsigned_jwt="$(printf '%s' "${jwt}" | cut -d. -f1-2)"
-actual_signature="$(printf '%s' "${jwt}" | cut -d. -f3)"
-expected_signature="$(printf '%s' "${unsigned_jwt}" | LOCALAUTHENTICATION__SIGNINGKEY="${DEV_SIGNING_KEY}" python3 -c \
-  'import hashlib, hmac, os, sys; sys.stdout.buffer.write(hmac.new(os.environ["LOCALAUTHENTICATION__SIGNINGKEY"].encode(), sys.stdin.buffer.read(), hashlib.sha256).digest())' \
-  | b64url)"
-assert_eq "${actual_signature}" "${expected_signature}" "JWT signature validates with the configured ephemeral key"
+jwt="$(request_apphost_smoke_token)"
+assert_eq "${jwt}" "${mock_token}" "token-only AppHost command result is captured"
+assert_contains "$(cat "${mock_args}")" "resource sample-api issue-smoke-token" "sample-api owns the token command"
+assert_contains "$(cat "${mock_args}")" "--apphost ${APPHOST}" "token command targets the configured AppHost"
+rm -f "${mock_args}"
 
-printf '## dev JWT key validation\n'
-if env -u LOCALAUTHENTICATION__SIGNINGKEY bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
-  fail "missing signing key fails closed"
+aspire() { printf 'diagnostic\n%s' "${mock_token}"; }
+if request_apphost_smoke_token >/dev/null; then
+  fail "non-token command stdout fails closed"
 else
-  ok "missing signing key fails closed"
+  ok "non-token command stdout fails closed"
 fi
-if LOCALAUTHENTICATION__SIGNINGKEY='   ' bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
-  fail "blank signing key fails closed"
+aspire() { return 1; }
+if request_apphost_smoke_token >/dev/null; then
+  fail "failed AppHost token command fails closed"
 else
-  ok "blank signing key fails closed"
-fi
-if env LOCALAUTHENTICATION__SIGNINGKEY="$(openssl rand -base64 8 | tr -d '\n')" bash -c 'source "$1"; mint_dev_jwt >/dev/null' _ "${PREFLIGHT}"; then
-  fail "weak signing key fails closed"
-else
-  ok "weak signing key fails closed"
+  ok "failed AppHost token command fails closed"
 fi
 
 printf '## header_value parsing\n'

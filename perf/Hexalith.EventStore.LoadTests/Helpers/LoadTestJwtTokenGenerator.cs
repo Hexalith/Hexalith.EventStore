@@ -18,8 +18,7 @@ internal static class LoadTestJwtTokenGenerator {
     public const string Audience = "hexalith-eventstore";
 
     private static readonly Lazy<SymmetricSecurityKey> s_securityKey = new(
-        static () => new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ResolveSigningKey(
-            Environment.GetEnvironmentVariable("LOAD_TEST_JWT_SIGNING_KEY")))));
+        static () => new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ResolveSigningKeyFromEnvironment())));
     private static readonly JwtSecurityTokenHandler s_handler = new();
 
     internal static string ResolveSigningKey(string? value) {
@@ -30,6 +29,9 @@ internal static class LoadTestJwtTokenGenerator {
 
         return value;
     }
+
+    private static string ResolveSigningKeyFromEnvironment()
+        => ResolveSigningKey(Environment.GetEnvironmentVariable("LOAD_TEST_JWT_SIGNING_KEY"));
 
     public static string GenerateToken(
         string subject = "load-test-user",
