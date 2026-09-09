@@ -26,9 +26,10 @@ sources:
 
 > **Current verdict: BLOCKED for implementation readiness and production authority.** Existing
 > spec and story identities remain valid, but `epics.md` has not reconciled AD-26 through AD-33 and
-> still contains rules superseded by amended AD-16 and new AD-28. Production promotion, traffic,
-> consumer migration, and readiness claims are separately blocked by AD-26 until its content-bound
-> profile and every applicable evidence gate pass.
+> still contains rules superseded by amended AD-16 and new AD-28. The governing architecture is
+> draft and AD-26 remains an unratified assumption. Production promotion, traffic, consumer
+> migration, and readiness claims stay blocked until owners adopt a production profile and every
+> applicable content-bound evidence gate passes.
 
 # EventStore Phase 4 Implementation Readiness Recovery
 
@@ -82,10 +83,10 @@ spec must follow the same architecture before readiness or production authority 
 ### Authority and readiness
 
 - The PRD owns FR/NFR truth; `architecture.md` owns component, integration, topology, and AD gates; UX owns interaction rules; `epics.md` owns story slicing and handoff.
-- The governing architecture has SHA-256 `2678116099e3d1c1f68ee38ef344b9bef5a58a82062a800e5a89b8b0f5774395`; its decision-authority memlog has SHA-256 `5b6fa6ec60261de4be496a8350b048e8cf5381d6cd0a8681cc475e69cbd4f793`. Exactly AD-1 through AD-33 govern; later wording under an existing ID supersedes earlier wording without changing the ID.
+- The governing draft architecture has SHA-256 `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51`; its decision-authority memlog has SHA-256 `7fc7acfbc3f5ae838a9922eab9553f15a95a4f3b788ef044f82c1e09119a98df`. Exactly AD-1 through AD-33 govern; AD-1 through AD-25 and AD-27 through AD-33 are adopted, AD-26 is an assumption, and later wording under an existing ID supersedes earlier wording without changing the ID.
 - Prior specifications and evidence retain their identities and historical conclusions only within the environment and claim they actually proved. Architecture changes narrow future authority; they do not rewrite historical bytes or silently promote a completed story.
-- AD-26 selects one self-managed Kubernetes production profile: independent DAPR sidecars, `statestore` using stable `state.postgresql` v1 with `actorStateStore: true`, the production resiliency policy, an approved durable broker, AD-24 OpenBao, and OQ8 profile `oq8-postgresql-v1`. Redis is Development/test only; Cosmos and other templates are non-authorizing alternatives.
-- The Platform deployment owner must publish one canonical `deploy/dapr/production-profile.yaml` whose retained-byte digest binds runtime, topology, components, identities, ACLs, resiliency, OpenBao, catalogs, restore posture, and required evidence. A separately authorized candidate can produce evidence but cannot authorize production.
+- AD-26 provisionally proposes self-managed Kubernetes with independent DAPR sidecars, `statestore` using stable `state.postgresql` v1 with `actorStateStore: true`, the production resiliency policy, an approved durable broker, AD-24 OpenBao, and OQ8 profile `oq8-postgresql-v1`. Redis remains Development/test only; Cosmos and other templates remain non-authorizing. The proposed actor-state provider and profile require owner ratification before they can authorize production.
+- If AD-26 is ratified, the Platform deployment owner must publish one canonical `deploy/dapr/production-profile.yaml` whose retained-byte digest binds runtime, topology, components, identities, ACLs, resiliency, OpenBao, catalogs, restore posture, and required evidence. A separately authorized candidate can produce evidence but cannot authorize production.
 - Story 3.13 remains the rejected `v3.94.1` disposition; Story 3.14 owns a separately authorized corrective release; Story 3.15 remains the independent positive deployed-runtime gate. None authorizes deployment or consumer removal by status alone.
 - `architecture-reconciliation.md` records the PRD and epic changes still required. Until those owners reconcile and validate their artifacts, the architecture governs any disagreement and readiness remains blocked.
 
@@ -95,6 +96,7 @@ spec must follow the same architecture before readiness or production authority 
 - Every production aggregate mutation or side effect requires a nonempty opaque idempotency key, successful AD-25 admission, and the current nonzero fence before domain, persistence, projection, audit, provider, repository, or scheduling work. Unfenced compatibility seams fail closed or remain unmapped outside Development.
 - AD-25 and AD-33 share one deployable `deploy/dapr/eventstore-routing-catalog.json` envelope. Stable route-entry IDs join command/query/projection routing and idempotency facets under one root digest and generation; activation is prepare/ready/commit with rollback to the prior complete generation.
 - Commands and queries map by `(Domain, MessageType)` and projections by `(Domain, ProjectionType)` to one app ID, method, and contract version. Exact keys precede bounded cataloged fallbacks; duplicate, missing, ambiguous, partial, untrusted, or mismatched entries fail readiness, and runtime overrides are Development-only.
+- Every sidecar-routed gateway client explicitly chains `.AddEventStoreDaprServiceInvocation(appId, apiToken)` last so its platform handler is innermost and replaces, never appends, `dapr-app-id` and `dapr-api-token`. Omission is currently fail-open, so structural host scans must reject non-Development readiness when the call is absent or reimplemented per host.
 - Read models use `IReadModelStore` plus `ReadModelWritePolicy`; cursors use `IQueryCursorCodec` plus `QueryCursorScope`; projection lifecycle, opaque route-bound version tokens, and rebuild checkpoints remain persisted authorities.
 - `ProjectionDispatchResponse` v2 with `ProjectionDispatchOutcome` is the only cross-service projection carrier. The server owns the persisted normalized per-route outcome and checkpoint matrix; no separate public `ProjectionDispatchResult` family is implied.
 - Pub/sub is at-least-once and unordered. A poison or terminally rejected message is acknowledged only after the AD-31 tenant/domain durable sink accepts a record keyed by stable `MessageId`; unknown, failed, conflicting, or unretainable capture remains retryable or enters separately proven durable quarantine.
@@ -117,8 +119,10 @@ spec must follow the same architecture before readiness or production authority 
 - AD-7 owns only typed, idempotent, read-back-proven MVP projection read-model/checkpoint removal. It makes no GDPR, event, broker, backup, audit, or cryptographic-erasure claim.
 - AD-30 is a distinct post-MVP domain-policy-owned workflow. It freezes the canonical subject scope and records logical, projection, cryptographic, broker, backup, restore-point, cache, export, replica, and legal-hold facets separately; overall completion is impossible while any required facet is pending, unknown, or failed.
 - AD-23 payload protection remains optional and separately gated. OpenBao operational secrets are not `pdenc-v2` KEK custody, and key invalidation alone is not complete erasure.
-- Release remains manifest-governed; canonical retained bytes, exact OCI lineage, provenance, platform smokes, release authority, parity approval, deployment authority, and Consumer-owner removal authority remain separate fail-closed decisions.
-- Cost, sequence, snapshot, and upcaster changes remain spec-first. Existing paged-rebuild correctness remains binding, but Redis proof is Development/test evidence and cannot satisfy AD-26 production readiness.
+- Release remains manifest-governed; canonical retained bytes, exact OCI lineage, provenance, platform smokes, release authority, parity approval, deployment authority, and Consumer-owner removal authority remain separate fail-closed decisions. Published success and failure tags are immutable and are corrected only by a later semantic version, never by deletion or repointing.
+- The release inventory remains 14 packages until Story 8.8 atomically creates, inventories, and proves the approved 16-package payload-protection set; package presence or a partial inventory change grants no release or production authority.
+- Stories 4.14-4.15 own only the EventStore source-side AD-25 platform packet. Folders owns the canonical `oq8-idempotency-evidence.yaml` and OQ8 closure; EventStore completion grants no Folders closure, package/pin, release, or consumer-migration authority.
+- Cost, sequence, snapshot, and upcaster changes remain spec-first. Existing paged-rebuild correctness remains binding, but Redis proof is Development/test evidence and cannot satisfy any ratified AD-26 production profile.
 - `Hexalith.EventStore.Admin.UI` remains the only EventStore UI host. FrontComposer and Fluent UI versions come from the live Builds catalog; a dated literal in a specification is not package authority.
 - The dated story-migration crosswalks preserve existing story identities and evidence. A split or amended story inherits no new completion claim without focused evidence and its required owner approvals.
 - Use `Hexalith.EventStore.slnx` for restore/build, run tests per project, keep package versions centralized, preserve ULID-safe envelope IDs, and do not recurse or modify submodules without explicit approval.
@@ -136,14 +140,15 @@ spec must follow the same architecture before readiness or production authority 
 
 A fresh readiness assessment can trace every FR1-FR37 and NFR1-NFR19 obligation through one
 governing AD-1 through AD-33 baseline to stable implementation-spec identities, unambiguous epic
-owners, and persisted evidence. Production authority is granted only when the exact AD-26 profile,
-AD-33 catalog generation, workload authentication, tenant, delivery, attribution, recovery, and
-release gates all pass without relying on Development-only evidence.
+owners, and persisted evidence. Production authority is granted only after owners ratify the
+production profile and its exact identity, AD-33 catalog generation, workload authentication,
+tenant, delivery, attribution, recovery, and release gates all pass without Development-only proof.
 
 ## Assumptions
 
 - Existing implementation-spec files remain historical records; reconciliation adds governing constraints and follow-up ownership rather than rewriting their completed evidence sections.
+- AD-26 is a proposed production target, not an accepted or delivered production decision.
 
 ## Open Questions
 
-- Which durable broker, retention/RTO/RPO and restore posture, OpenBao production topology, and telemetry exporter/cardinality budgets will Platform Operations bind into the AD-26 profile?
+- Will the product, architecture, Platform deployment, and Platform Operations owners ratify the AD-26 actor-state provider and production profile; if so, which durable broker, retention/RTO/RPO and restore posture, OpenBao topology, and telemetry exporter/cardinality budgets will they bind?

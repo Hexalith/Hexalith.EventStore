@@ -1,10 +1,10 @@
 # Hexalith.EventStore UX Index
 
-Status: draft update
+Status: final
 Updated: 2026-09-09
 
 This folder is the canonical UX source for Hexalith.EventStore. It is updated
-against repository revision `0825f0dcde69915a74c1b6ebcbb36f14ded04283`
+against repository revision `23a722a1ffe29099a9d87df266552be4e3addd82`
 plus current input-snapshot digests; source authority is in `EXPERIENCE.md`. The archived top-level UX handoff is retained only for audit
 history at:
 
@@ -36,8 +36,9 @@ Lens reviews in this folder are regenerated in place; superseded bodies are reco
 - [Accessibility and support-safety review](review-accessibility-support-safety.md) — regenerated 2026-09-09
 - [Rubric review](review-rubric.md) — regenerated 2026-09-09
 
-These reports describe the pre-update spines until the optional reviewer gate is
-run again.
+These reports describe the pre-update spines. The user skipped a fresh optional
+multi-lens validation when finalizing this update, so they are retained as
+historical review evidence rather than a verdict on the final spines.
 
 ## Visual References
 

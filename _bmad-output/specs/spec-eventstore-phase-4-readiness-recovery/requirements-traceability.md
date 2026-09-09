@@ -4,7 +4,8 @@ The authoritative requirement text is in [`prd.md`](../../planning-artifacts/prd
 requirements in section 6 and non-functional requirements in section 7. This companion contains
 identifiers, anchors, capability ownership, and the current story coverage only. The story tables
 are not AD-26 through AD-33 completion authority until `epics.md` is reconciled as required by
-[`architecture-reconciliation.md`](architecture-reconciliation.md).
+[`architecture-reconciliation.md`](architecture-reconciliation.md). The architecture currently
+governs as a draft; AD-26 is an unratified assumption, while the other listed decisions are adopted.
 
 ## Capability To Requirement Coverage
 
@@ -108,18 +109,18 @@ update; they do not invent story completion.
 
 ## AD-11 Release Identity And AD-22 Approval Authority
 
-The finalized architecture companion owns the complete AD-11 and AD-22 decisions. These
+The governing draft architecture companion owns the complete AD-11 and AD-22 decisions. These
 consequences are binding for the 2026-08-16 deployed-runtime correction:
 
 | Concern | Binding consequence |
 | --- | --- |
-| Architecture preservation | The adopted architecture bytes have SHA-256 `2678116099e3d1c1f68ee38ef344b9bef5a58a82062a800e5a89b8b0f5774395`; its decision-authority memlog has SHA-256 `5b6fa6ec60261de4be496a8350b048e8cf5381d6cd0a8681cc475e69cbd4f793`. Review requires exactly AD-1 through AD-33 without gaps or duplicates. |
+| Architecture preservation | The governing draft architecture bytes have SHA-256 `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51`; its decision-authority memlog has SHA-256 `7fc7acfbc3f5ae838a9922eab9553f15a95a4f3b788ef044f82c1e09119a98df`. Review requires exactly AD-1 through AD-33 without gaps or duplicates and preserves AD-26 as an assumption pending owner disposition. |
 | `v3.94.1` | Story 3.13 binds source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28` and subject `6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97`, preserves literal `https` in `source`/`url`/`documentation`, absent `revision`, null selected identity, and false deployment authorization, and requires authenticated rejection receipts from the EventStore owner, Release owner, and Test Architect. It grants no release, deployment, parity, or consumer authority. |
 | Corrective release | Story 3.14 owns provenance emission, raw-config validation, and a later semantic candidate. Every external write requires a matching, authenticated, durable, unexpired, one-use pre-publication authority reserved to one run and attempt; partial publication remains immutable and non-authorizing, and retry requires a new version and authority. This SPEC supplies none. |
 | Release identity | Complete AD-11 conformance binds exact packages, raw registry bytes and lengths, media types, OCI descriptor/configuration relations, child provenance, and both platform smokes through one canonical `ReleaseIdentity` and versioned `ReleaseEvidenceCodec`; canonical UTF-8 bytes are hashed without reserialization. |
 | Positive parity | Story 3.15 independently derives every identity edge from trusted facts and retained raw bytes and requires explicit `deployed_runtime_parity: available`. Each triad receipt binds authenticated identity, exact role, recomputed unchanged subject, explicit outcome, timestamp, and validity and is verified against the content-bound owner-role registry. |
 | Consumer removal | The parity packet binds each catalog and role registry by canonical owner, path, schema, version, and content digest, plus trusted consumer identity, every applicable mode, and exact removal subject. Empty or unknown active modes fail closed. Only a signature- or immutable-identity-verified Consumer-owner receipt binding every required digest, outcome `consumer-removal-authorized`, timestamp, and validity permits deletion. |
-| Handoff | The former missing Story 3.14/3.15 planning-set blocker is closed: Story 3.13 is `done` only on its negative disposition, Story 3.14 is `done` only on its separately authorized release evidence, and Story 3.15 is present and `in-progress`. Positive parity remains open, and the new architecture-to-epic handoff stays blocked until current PRD/architecture digests and AD-26 through AD-33 ownership are reconciled. |
+| Handoff | The former missing Story 3.14/3.15 planning-set blocker is closed: Story 3.13 is `done` only on its negative disposition, Story 3.14 is `done` only on its separately authorized release evidence, and Story 3.15 is present and `in-progress`. Positive parity remains open, and the architecture-to-epic handoff stays blocked until AD-26 receives an owner disposition and `epics.md` substantively reconciles AD-26 through AD-33; matching digest fields alone do not close OR14. |
 
 ## AD-24 Operational Secret Invariant
 

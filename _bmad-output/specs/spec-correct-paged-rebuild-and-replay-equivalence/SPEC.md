@@ -46,7 +46,7 @@ Long-stream rebuilds currently pass one bounded page to a stateless full-replay 
 
 - **CAP-7**
   - **intent:** Replay equivalence is demonstrated through persisted configured-path evidence with bounded temporary full-prefix cost and explicit environment authority.
-  - **success:** A stream larger than two pages and the required edge corpus prove semantic equality of actor/detail/index outputs, persisted freshness versions, and rebuild checkpoints; safety-limit exhaustion fails without changing live state; only evidence from the complete AD-26 profile may be labeled production-authorizing.
+  - **success:** A stream larger than two pages and the required edge corpus prove semantic equality of actor/detail/index outputs, persisted freshness versions, and rebuild checkpoints; safety-limit exhaustion fails without changing live state; production-authorizing evidence additionally requires owner ratification and complete retained proof for the AD-26 profile.
 
 ## Constraints
 
@@ -61,15 +61,16 @@ Long-stream rebuilds currently pass one bounded page to a stateless full-replay 
 - Persisted `IReadModelFreshness` is the projection-version authority. Lifecycle is never inferred from ETag, HTTP outcome, payload fields, or SignalR.
 - Aggregate sequence remains gapless per aggregate; `SequenceNumber` is never global ordering; bounded `toPosition` uses the canonical replay boundary; shared platform JSON options remain authoritative.
 - Existing immediate/poller full-replay behavior and admin rebuild control flow remain compatible. Public capability is additive.
-- The finalized architecture governs this SPEC. AD-20 owns replay equivalence; later wording within AD-1 through AD-33 supersedes earlier implementation guidance without changing this SPEC or its capability IDs.
+- The governing draft architecture at SHA-256 `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51` governs this SPEC; its decision memlog is `7fc7acfbc3f5ae838a9922eab9553f15a95a4f3b788ef044f82c1e09119a98df`. AD-20 owns replay equivalence, AD-26 remains an assumption, and later wording within AD-1 through AD-33 supersedes earlier implementation guidance without changing this SPEC or its capability IDs.
 - `ProjectionDispatchResponse` v2 with `ProjectionDispatchOutcome` is the cross-service carrier. The server-owned persisted route/checkpoint matrix is authoritative; this SPEC does not introduce a separate public `ProjectionDispatchResult` family.
 - Every boundary canonicalizes exactly one explicit tenant before route resolution, lifecycle fencing, staging, checkpoint, read-model, or state access. Missing, duplicate, conflicting, invalid, inferred, or public `system` scope fails closed.
 - Non-Development `/project` and `/project/v2` calls validate `dapr-api-token` against startup `APP_API_TOKEN` through shared constant-time middleware. Caller app ID, mTLS, and ACL success do not substitute for app-channel authentication.
+- The sidecar-routed rebuild client explicitly chains `.AddEventStoreDaprServiceInvocation(appId, apiToken)` last so the platform handler is innermost and replaces `dapr-app-id` and `dapr-api-token`; current fail-open omission blocks non-Development readiness.
 - Admin start, cancel, resume, and promotion actions preserve authenticated operator identity or a bounded validated delegation through one resumable mutation/audit unit. Audit failure cannot silently permit the action.
 - The rebuild operation and its candidates bind stable projection route-entry IDs plus one activated AD-33 root/facet catalog generation. Non-Development runtime overrides, partial generations, and fingerprint drift fail readiness.
 - The first public boundary accepts or mints the bounded `X-Correlation-ID`; every rebuild and projection hop propagates it unchanged or rejects an invalid replacement. Correlation is neither a GUID nor rebuild/status identity.
 - Story 1.14 and AD-7 own projection read-model/checkpoint removal. Rebuild behavior neither authorizes nor proves the separate AD-30 full-erasure workflow.
-- Required correctness evidence traverses the real orchestrator → `/project` → persistence path and asserts persisted state. Mock calls, HTTP status, and isolated replay tests are insufficient. Existing DAPR/Redis evidence proves Development/test replay semantics only; a production claim also requires the complete content-bound AD-26 PostgreSQL v1, durable-broker, OpenBao, resiliency, and independent-sidecar profile.
+- Required correctness evidence traverses the real orchestrator → `/project` → persistence path and asserts persisted state. Mock calls, HTTP status, and isolated replay tests are insufficient. Existing DAPR/Redis evidence proves Development/test replay semantics only; a production claim also requires owner ratification and complete retained proof for the proposed AD-26 PostgreSQL v1, durable-broker, OpenBao, resiliency, and independent-sidecar profile.
 
 ## Non-goals
 
@@ -83,8 +84,9 @@ Long-stream rebuilds currently pass one bounded page to a stateless full-replay 
 A configured-path rebuild of a fixture larger than two pages promotes persisted state, freshness
 versions, and rebuild checkpoints semantically equal to canonical replay, while cancellation and
 injected failures leave the previous complete live model intact and retry converges. The same
-result becomes production-authorizing only when reproduced through the complete AD-26 profile with
-the activated AD-33 catalog and required tenant, app-channel, attribution, and correlation gates.
+result becomes production-authorizing only after owner ratification and reproduction through the
+complete AD-26 profile with the activated AD-33 catalog and required tenant, app-channel,
+attribution, and correlation gates.
 
 ## Assumptions
 

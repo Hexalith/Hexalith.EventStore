@@ -1,9 +1,9 @@
 ---
 name: Hexalith.EventStore Admin
-status: draft
+status: final
 created: 2026-07-05
 updated: 2026-09-09
-reviewed_repository_revision: 0825f0dcde69915a74c1b6ebcbb36f14ded04283
+reviewed_repository_revision: 23a722a1ffe29099a9d87df266552be4e3addd82
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -46,9 +46,9 @@ Authority flows one way: the PRD defines product intent and the current readines
 
 The reviewed revision identifies the repository base; the input digests also capture newer in-workspace source changes. Any later digest or revision change reopens source reconciliation. Current PRD readiness is `blocked` / `reject`, and architecture is under a draft reconciliation; historical July and August readiness verdicts do not override either state.
 
-### Open assumptions
+### Finalization decisions
 
-- `[ASSUMPTION]` The live `/types` catalog, including `events`, `commands`, and `aggregates` inner tabs, belongs under Streams & Events. Current sources require preserving the route but do not authorize its destination. Story 7.14 must ratify or replace this placement before implementation.
+- The live `/types` catalog, including `events`, `commands`, and `aggregates` inner tabs, belongs under Streams & Events. Story 7.14 implements this canonical placement without creating a second route implementation.
 - The UX does not invent a numeric freshness horizon. Story 7.5 must bind the authoritative horizon and clock basis from the typed contract or configuration before dependent mutations can become available.
 
 ## Information Architecture
@@ -81,7 +81,7 @@ The router is the source of truth. On arrival, it selects the owning module, tab
 | `/streams` | Streams & Events / streams | Safe tenant/domain filters and opaque paging | Cross-tenant or malformed scope fails closed. |
 | `/streams/{tenant}/{domain}/{aggregate}` | Streams & Events / stream detail | Typed, encoded path identities; no raw payload in URL | Invalid identity shows a support-safe route error; denial does not confirm the stream. |
 | `/events` | Streams & Events / events | Allow-listed safe filters and opaque paging | Invalid filter performs no query. |
-| `/types` | Streams & Events / Type Catalog | `tab=events`, `tab=commands`, or `tab=aggregates`; omitted means the catalog default | Unknown tab falls back to the catalog default with a bounded notice. Placement is `[ASSUMPTION]`. |
+| `/types` | Streams & Events / Type Catalog | `tab=events`, `tab=commands`, or `tab=aggregates`; omitted means the catalog default | Unknown tab falls back to the catalog default with a bounded notice. |
 | `/projections` | Projections | Safe status/filter state; opaque paging | Missing authoritative provenance renders `Unknown`. |
 | `/tenants` | Tenants & Access | Authorized visible-scope filters only | Denial or wrong scope reveals no tenant existence. |
 | `/dapr` | Topology / summary | No secret-bearing state | Unavailable data is not empty or healthy. |
@@ -184,6 +184,7 @@ Behavioral rules below pair exactly with `DESIGN.md.Components`.
 | Refresh controls | **Refresh controls** separate manual status refresh, automatic-refresh pause/resume, and an approved cadence selector. Refresh never submits or retries a mutation and preserves view context. |
 | Live status regions | **Live status regions** consist of one scoped view region and one operation region. They announce transitions only, coalesce repeats, and keep terminal outcomes visible outside transient toasts. |
 | Protected outcome | **Protected outcome** maps a typed unreadable result to bounded localized copy and an authorized safe reason code while protected bytes remain absent from every client channel. |
+
 ## State Patterns
 
 ### Cross-surface states

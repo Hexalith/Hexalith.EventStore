@@ -1,6 +1,6 @@
 # UX Handoff — Hexalith.EventStore Phase 4
 
-Status: draft update
+Status: final
 Updated: 2026-09-09
 
 This is the canonical top-level UX handoff expected by `prd.md`,
@@ -17,7 +17,7 @@ Canonical UX documents:
 `DESIGN.md` and `EXPERIENCE.md` win on conflict with mockups, screenshots,
 validation artifacts, older review findings, archived UX exports, or legacy
 `Admin.UI` behavior. The current update reconciles repository revision
-`0825f0dcde69915a74c1b6ebcbb36f14ded04283` plus the input-snapshot digests recorded in
+`23a722a1ffe29099a9d87df266552be4e3addd82` plus the input-snapshot digests recorded in
 `EXPERIENCE.md`.
 
 UX document finality is not implementation readiness. The current PRD is
@@ -34,6 +34,5 @@ FrontComposer module `event-store-admin`. No second UI host or duplicate page
 implementation is created.
 
 Quantitative UI performance budgets remain a documented non-blocking follow-up
-until measured production baselines exist. The live `/types` route is preserved;
-its proposed Streams & Events placement is an explicit assumption pending Story
-7.14 ratification.
+until measured production baselines exist. The live `/types` route and its
+events, commands, and aggregates views are canonical under Streams & Events.

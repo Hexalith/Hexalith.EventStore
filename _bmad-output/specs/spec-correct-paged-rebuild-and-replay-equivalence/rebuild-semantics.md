@@ -22,9 +22,10 @@
 | --- | --- |
 | Story identity | Current Story 1.19 is the active reissue of historical rebuild Story 1.14. Historical evidence remains at its original path; current Story 1.14 is the distinct AD-7 projection-erasure story. |
 | Dispatch | AD-19 retains `ProjectionDispatchResponse` v2 and `ProjectionDispatchOutcome` as the cross-service carrier. The server persists the normalized route/checkpoint matrix; rebuild introduces no separate public result family. |
-| Production profile | Existing DAPR/Redis evidence proves Development/test replay correctness only. A production claim additionally requires the complete content-bound AD-26 PostgreSQL v1, durable-broker, OpenBao, resiliency, and independent-sidecar profile. |
+| Production profile | AD-26 is a provisional assumption, not adopted production authority. Existing DAPR/Redis evidence proves Development/test replay correctness only; a production claim additionally requires owner ratification and complete content-bound PostgreSQL v1, durable-broker, OpenBao, resiliency, and independent-sidecar evidence. |
 | Tenant | AD-27 canonicalizes exactly one explicit tenant before route, lifecycle, staging, checkpoint, model, or state access; missing, conflicting, invalid, inferred, or public `system` scope fails closed. |
 | App channel | AD-28 validates non-Development `/project` and `/project/v2` requests with `dapr-api-token` against startup `APP_API_TOKEN`; caller app ID, mTLS, and ACL success are not substitutes. |
+| Outbound invocation | AD-18 requires the rebuild client to append `.AddEventStoreDaprServiceInvocation(appId, apiToken)` last so the platform handler is innermost and replaces DAPR control-plane headers; current fail-open omission blocks non-Development readiness. |
 | Admin attribution | AD-29 applies to rebuild start, cancel, resume, and promotion. Authenticated operator or bounded delegation survives the resumable mutation/audit unit; audit failure cannot silently permit the action. |
 | Erasure | Story 1.19 rebuild neither authorizes nor proves AD-7 projection removal or the AD-30 full-erasure workflow. A typed `Erased` delivery is handled only under its separately authorized policy workflow. |
 | Correlation | AD-32 propagates the first-boundary `X-Correlation-ID` unchanged through orchestration and projection calls; correlation is not a GUID or rebuild/status identity. |
@@ -67,9 +68,9 @@ Page-read progress is not completion. A resumable boundary is safe only when ret
 
 Deterministic tests must use the real orchestrator, `/project` handler path, and captured persistent
 stores/actor state. Recorder call counts are request-shape evidence only. Live DAPR/Redis evidence
-is Development/test correctness evidence. Production-authorizing evidence must use the complete
-AD-26 profile and retain its profile/catalog digests, canonical tenant, app-channel authentication,
-Admin attribution when applicable, and propagated correlation identity.
+is Development/test correctness evidence. Production-authorizing evidence requires owner
+ratification, the complete AD-26 profile, and retained profile/catalog digests, canonical tenant,
+app-channel authentication, Admin attribution when applicable, and propagated correlation identity.
 
 ## Compatibility and sequencing gates
 
@@ -86,6 +87,6 @@ The temporary complete-prefix strategy is bounded by `ProjectionOptions.RebuildM
 ## Traceability
 
 - Active Story 1.19 acceptance criteria: FR7, FR33, FR36, NFR7, NFR8, NFR16. Historical Story 1.14 is the retained implementation/evidence source.
-- Controlling invariant: AD-20. Supporting invariants: AD-2, AD-5–AD-8, AD-12–AD-15, AD-19, AD-26–AD-30, AD-32–AD-33.
+- Controlling invariant: AD-20. Supporting invariants: AD-2, AD-5–AD-8, AD-12–AD-15, AD-18–AD-19, AD-26–AD-30, AD-32–AD-33.
 - Brownfield defect: `ProjectionUpdateOrchestrator.DeliverProjectionForRebuildAsync` currently reads bounded pages and writes page-only handler output to the actor's live `projection-state` key.
 - Canonical replay oracle: `AggregateReplayer.Replay<TState>`.

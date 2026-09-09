@@ -3,7 +3,7 @@
 ## Scope
 
 This update reconciles the UX spines against repository revision
-`0825f0dcde69915a74c1b6ebcbb36f14ded04283` plus the current input-snapshot
+`23a722a1ffe29099a9d87df266552be4e3addd82` plus the current input-snapshot
 digests for the canonical PRD, architecture, epics, the PRD's bound readiness report,
 the existing UX memlog, and the 2026-09-09 UX validation findings.
 
@@ -66,16 +66,20 @@ the existing UX memlog, and the 2026-09-09 UX validation findings.
 No qualitative user idea was dropped; the established operations-first Fluent
 direction and full administrative surface scope remain intact.
 
-## Open Assumption
+## Finalization Decisions
 
-[ASSUMPTION] The live /types route belongs to Streams & Events as the Type
-Catalog view, preserving its events, commands, and aggregates inner tabs. The
-current epics omit this route, so Story 7.14 and UX-DR4 must ratify or replace
-the placement before implementation.
+The live `/types` route belongs to Streams & Events as the Type Catalog view,
+preserving its events, commands, and aggregates inner tabs. Story 7.14 and
+UX-DR4 must implement the placement without a duplicate route implementation.
 
-## Draft Status
+Overview and Commands remain the key-screen visual set. Every other dashboard
+surface is fully specified by the design and experience spines without a
+separate mock. The optional fresh multi-lens validation was skipped; existing
+review files remain historical pre-update evidence.
+
+## Final Status
 
 The Overview and Commands key-screen artifacts have been regenerated as
-non-copyable desktop and narrow-screen references. The spines remain draft until
-the user confirms whether the spine-only surfaces need more visual references
-and decides the optional reviewer gate.
+non-copyable desktop and narrow-screen references. Both spines are final as UX
+contracts; this status authorizes no implementation, release, deployment,
+migration, or readiness claim.

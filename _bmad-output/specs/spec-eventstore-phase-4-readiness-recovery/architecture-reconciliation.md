@@ -2,11 +2,12 @@
 
 ## Authority
 
-`_bmad-output/planning-artifacts/architecture.md` is the governing architecture at SHA-256
-`2678116099e3d1c1f68ee38ef344b9bef5a58a82062a800e5a89b8b0f5774395`; its decision memlog is
-`5b6fa6ec60261de4be496a8350b048e8cf5381d6cd0a8681cc475e69cbd4f793`. Exactly AD-1 through
-AD-33 govern. Later wording within an existing AD supersedes earlier wording without renumbering
-the decision, capability, story, or implementation-spec identity.
+`_bmad-output/planning-artifacts/architecture.md` is the governing draft architecture at SHA-256
+`7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51`; its decision memlog is
+`7fc7acfbc3f5ae838a9922eab9553f15a95a4f3b788ef044f82c1e09119a98df`. Exactly AD-1 through
+AD-33 govern. AD-1 through AD-25 and AD-27 through AD-33 are adopted; AD-26 is an unratified
+assumption. Later wording within an existing AD supersedes earlier wording without renumbering the
+decision, capability, story, or implementation-spec identity.
 
 Existing implementation specifications remain historical records. Where a prior spec conflicts
 with this table, its identity and evidence stay intact but the conflicting rule cannot authorize new
@@ -16,7 +17,7 @@ implementation, completion, production readiness, deployment, or consumer migrat
 
 | Decision | Reconciled implementation-spec consequence | Upstream disposition |
 | --- | --- | --- |
-| AD-1 | CQRS, DDD, event sourcing, and DAPR remain the platform paradigm; Aspire is a local seed and AD-26 alone governs production. | Compatible; narrow any spec that treats AppHost or local DAPR success as production proof. |
+| AD-1 | CQRS, DDD, event sourcing, and DAPR remain the platform paradigm; Aspire is a local seed and only a ratified, proven production profile can govern production. Planning or story status never authorizes release, deployment, consumer removal, or positive `v3.94.1` closure. | Compatible; narrow any spec that treats AppHost, local DAPR, or lifecycle status as production proof. |
 | AD-2 | Domain modules keep behavior and contracts only; reusable hosting, routing, persistence, health, and telemetry stay in EventStore packages. | Compatible with Epic 1. |
 | AD-3 | The gateway remains the command/query policy edge; only named tenant-authorized support-safe read adapters may inspect platform operational state. | Supersedes absolute “no direct state reads” wording; mutations and generic-key access remain forbidden. |
 | AD-4 | Generated REST remains confined to dedicated external API hosts using `IEventStoreGatewayClient`. | Compatible with Epic 2. |
@@ -26,22 +27,22 @@ implementation, completion, production readiness, deployment, or consumer migrat
 | AD-8 | Delivery is at-least-once/unordered, projection success is evidence-backed, and terminal rejection is acknowledged only after AD-31 durable capture. | Story 7.1 requires an AD-31 sink and explicit unknown/no-handler policy. |
 | AD-9 | AppHost, YAML, catalogs, app IDs, scopes, ACLs, resiliency, topics, tests, and operator docs change together. | Stories 5.6-5.9 must add AD-26 and AD-33 fingerprints and reject stale deployment prose. |
 | AD-10 | Authorization stays application-layer and current; telemetry and support output exclude protected data; the shared exact JWT contract governs every binding host. | PRD NFR1/NFR3 align; Story 5.3 must use the final NFR3 contract. |
-| AD-11 | Packages and the sole current `eventstore` image remain manifest/release-identity governed; candidate identity does not grant deployment. | `eventstore-operations` needs its own immutable release identity before AD-31 production use. |
+| AD-11 | Packages and the sole current `eventstore` image remain manifest/release-identity governed; the inventory stays at 14 until Story 8.8 atomically proves the 16-package set, and successful or failed published tags are immutable. | `eventstore-operations` needs its own immutable release identity before AD-31 production use; no correction may repoint or delete a failed tag. |
 | AD-12 | High-risk closure requires persisted, topology, security, restart, and immutable release evidence. | Compatible; environment failure remains unproven rather than passed. |
 | AD-13 | Snapshot, projection-cost/sequence, and upcaster changes remain spec-first. | Compatible with Epic 6; an approved spec is authority to start, not delivery evidence. |
 | AD-14 | Query payload and platform metadata remain separate; only projection-backed routes may assert authoritative freshness. | Compatible with query/provenance specs. |
 | AD-15 | `ProjectionVersion` is an optional persisted, bounded, route-scoped opaque equality token, never ordered progress. | Supersedes specs that derive progress from the token or ETag. |
 | AD-16 | Every HTTP host installs an authenticated `FallbackPolicy`; only `/health`, `/alive`, and `/ready` are explicitly anonymous. | Direct conflict: Story 5.3 says it does not introduce a fallback policy; epic and implementation spec must be amended before closure. |
 | AD-17 | Generated `202` responses emit an absolute gateway-authoritative status location or none; `MessageId` alone selects status. | Compatible with Story 2.9; correlation remains diagnostic only. |
-| AD-18 | One outbound handler replaces DAPR control-plane headers from trusted configuration. | Story 2.10 remains valid but does not satisfy inbound AD-28 authentication. |
+| AD-18 | One outbound handler replaces DAPR control-plane headers from trusted configuration and is registered last so it is innermost. Every sidecar-routed client explicitly chains `AddEventStoreDaprServiceInvocation`; current omission is fail-open. | Story 2.10 remains valid but needs structural host scans for missing or per-host routing handlers and does not satisfy inbound AD-28 authentication. |
 | AD-19 | `ProjectionDispatchResponse` v2 and `ProjectionDispatchOutcome` are the cross-service carrier; normalized route/checkpoint state is server-owned and persisted. | Supersedes the Phase 4 SPEC’s former public `ProjectionDispatchResult` Version 1 wording; Story 1.17’s identity stays stable. |
 | AD-20 | Rebuild pages are transport units; staged output must equal canonical replay and failure keeps the last complete live model. | Focused rebuild SPEC remains valid with AD-26/27/28/32/33 production constraints added. |
 | AD-21 | The existing Admin UI remains the sole EventStore UI; dependency versions come from the Builds catalog. | Supersedes the stale FrontComposer `4.1.1` literal; do not freeze the current `4.4.0` rendering as authority either. |
 | AD-22 | Consumer removal requires an unchanged content-bound parity packet and separate authenticated Consumer-owner receipt. | Compatible; story status or EventStore approval never grants removal. |
 | AD-23 | EventStore owns the optional shared payload engine; domains own legal policy and operators own key custody. | Compatible with Epic 8; AD-30 owns full erasure workflow semantics. |
 | AD-24 | OpenBao is the production DAPR secret store; app-token rollout and digest-key retirement are coupled to cataloged consumer acknowledgement and zero references. | Story 7.6 must validate the shared AD-25/AD-33 catalog generation before retiring keys. |
-| AD-25 | Admission retains one tenant/digest authority and now consumes the idempotency facet of the AD-33 catalog envelope. | Stories 4.9-4.15 keep their identities; any separate idempotency catalog is superseded. |
-| AD-26 | Only the content-bound self-managed Kubernetes/PostgreSQL v1/durable-broker/OpenBao profile can authorize production; Redis is Development/test only and Cosmos is an alternative, not evidence. | Epic update required. Story 4.14 remains OQ8 correctness evidence; Stories 5.7-5.9 cannot offer multiple provider variants as equivalent production authorities. |
+| AD-25 | Admission retains one tenant/digest authority and consumes the idempotency facet of the AD-33 catalog envelope. Stories 4.14-4.15 produce only the EventStore source-side platform packet; Folders owns canonical OQ8 evidence and closure. | Stories 4.9-4.15 keep their identities; any separate idempotency catalog is superseded, and EventStore completion grants no Folders closure, package/pin, release, or migration authority. |
+| AD-26 | The self-managed Kubernetes/PostgreSQL v1/durable-broker/OpenBao profile is a provisional assumption, not an adopted or delivered production decision. Redis is Development/test only and Cosmos is a non-authorizing alternative. | PRD/architecture owner ratification or replacement is required before epic implementation ownership can authorize profile work. Story 4.14 remains OQ8 correctness evidence. |
 | AD-27 | `Contracts` owns one lowercase tenant grammar; every boundary requires one explicit request tenant and matching `eventstore:tenant` grant; public `system` and inferred wildcard scope are rejected. | Epic update required for Stories 5.2, 5.10, 7.2, and every tenant-facing boundary. Story 5.10’s internal `system`/global-admin wording is superseded by the distinct cataloged platform namespace. |
 | AD-28 | Every non-Development DAPR app endpoint validates `dapr-api-token` against startup `APP_API_TOKEN`; this authenticates the channel, not caller claims. | Direct conflict: Story 5.5 permits alternate workload credentials as substitutes. Amend Story 5.5 and affected domain/projection endpoint specs. |
 | AD-29 | Admin mutations preserve authenticated operator identity or exact bounded delegation and use one resumable mutation/audit state machine. | Epic update required for Story 7.3 and every Admin mutation consumer; generic actor strings or separate best-effort audit are insufficient. |
@@ -54,11 +55,14 @@ implementation, completion, production readiness, deployment, or consumer migrat
 
 ### PRD
 
-No new product capability or scope decision is required: FR1-FR37 and NFR1-NFR19 can contain all
-AD-1 through AD-33 consequences, NFR1/NFR3 already match amended AD-16/AD-10, and full erasure
-remains post-MVP. A PRD maintenance update is nevertheless required before readiness can pass:
+FR1-FR37 and NFR1-NFR19 can contain all AD-1 through AD-33 consequences, NFR1/NFR3 already match
+amended AD-16/AD-10, and full erasure remains post-MVP. The current architecture nevertheless
+records AD-26 as an assumption because the production actor-state provider and profile have not
+been accepted. A PRD/architecture decision plus PRD maintenance is required before readiness can
+pass:
 
-- close OR14 by binding the new architecture identity and then regenerating the epic input digests;
+- close OR14 by accepting, replacing, or explicitly deferring the AD-26 production target, binding
+  the resulting architecture identity, and only then regenerating epic input digests;
 - define “production-path” evidence in NFR7/NFR16 through AD-26 so Redis and isolated
   `oq8-postgresql-v1` evidence cannot be mistaken for full production-profile authority;
 - include the new AD-26 through AD-33 ownership rows in the FR/NFR-to-epic drift guard required by
@@ -71,16 +75,18 @@ change first. This reconciliation does not make that promotion.
 ### Epics and implementation specs
 
 An epic update is required before the next readiness pass. `epics.md` records zero references to
-AD-26 through AD-33 and its stored PRD and architecture digests are stale. Preserve every existing
-story and spec identity; add focused successor stories when amending a completed story would imply
-new delivery evidence.
+AD-26 through AD-33. Its currently edited frontmatter hashes match the present PRD and architecture
+bytes, but OR14 forbids that hash-only refresh until substantive reconciliation and renewed approval
+occur. Preserve every existing story and spec identity; add focused successor stories when amending
+a completed story would imply new delivery evidence.
 
 Minimum corrections:
 
 1. Amend Story 5.3 for mandatory `FallbackPolicy` and remove any Production symmetric-key
    break-glass allowance; amend Story 5.5 to require the exact AD-28 app-channel protocol.
-2. Give AD-26 one production-profile owner spanning Stories 5.6-5.9 and 7.6-7.9, or add a focused
-   successor; narrow Story 4.14 and every Redis lane to the claim actually proven.
+2. After AD-26 is ratified or replaced, give the resulting production profile one owner spanning
+   Stories 5.6-5.9 and 7.6-7.9, or add a focused successor; narrow Story 4.14 and every Redis lane to
+   the claim actually proven.
 3. Give AD-27 one Contracts implementation and migration owner, then update Stories 5.2, 5.10,
    7.2, REST, SignalR, admission, and Admin boundaries to consume it.
 4. Amend Story 7.3 for AD-29 delegation and resumable audit phases; amend Story 7.1 for the AD-31

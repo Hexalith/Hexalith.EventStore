@@ -1,10 +1,10 @@
 ---
 name: Hexalith.EventStore Admin
 description: Brownfield operations UX for administrators and platform operators, inheriting FrontComposer and Blazor Fluent UI V5.
-status: draft
+status: final
 created: 2026-07-05
 updated: 2026-09-09
-reviewed_repository_revision: 0825f0dcde69915a74c1b6ebcbb36f14ded04283
+reviewed_repository_revision: 23a722a1ffe29099a9d87df266552be4e3addd82
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -90,7 +90,7 @@ components:
 
 The brownfield target remains `src/Hexalith.EventStore.Admin.UI`. It retains `eventstore-admin-ui` as its service, resource, DAPR, and container identity and registers one FrontComposer module, `event-store-admin`, labelled **Event Store Admin**. No second host, router, or page implementation is introduced.
 
-The reviewed repository revision is `0825f0dcde69915a74c1b6ebcbb36f14ded04283`. `EXPERIENCE.md` records the input-snapshot digests and authority order. When this document returns to `status: final`, that status means only that the UX contract is finalized. It does not authorize implementation, release, deployment, migration, or a readiness verdict.
+The reviewed repository revision is `23a722a1ffe29099a9d87df266552be4e3addd82`. `EXPERIENCE.md` records the input-snapshot digests and authority order. `status: final` means only that the UX contract is finalized. It does not authorize implementation, release, deployment, migration, or a readiness verdict.
 
 Story 7.20 must inventory and retire the current local `--hexalith-status-*` and `--hexalith-brand` definitions in `wwwroot/css/app.css` plus the legacy `--neutral-stroke-rest` and `--neutral-layer-2` usage in `ProtectedContentPanel.razor`. Until then, those declarations are allow-listed brownfield migration debt, not reusable design tokens.
 

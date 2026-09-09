@@ -11,11 +11,11 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md
   - _bmad-output/planning-artifacts/ux.md
 inputDocumentDigests:
-  _bmad-output/planning-artifacts/prd.md: 8f9c88e8b8665c2ded07a6a4df88db95d04339e5c728ef361ee9fbe9c115a699
+  _bmad-output/planning-artifacts/prd.md: b99effdb414209da373433d9b4d2075072ca950e89534b22b81155236f650662
   _bmad-output/planning-artifacts/architecture.md: 7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51
-  _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md: 3be78b6b856d3bb8e76451ebbfa550d9018bd4bce05e3dc4a2968758f7abf83e
-  _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md: 6a058112512b3dcc4468bdf698d6949345ab7ba3844e1a61b725f9a0aca38a3c
-  _bmad-output/planning-artifacts/ux.md: 3c827e922c2a05559eac09ad3bff638fed0e2aca789eacd733dbb904e4a42c8c
+  _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md: 76be269737ddacb5d5680862590893cd4e69d469222fd1eba554aa4084339a4f
+  _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md: 06de15b349224772146fa279f9a61ca6c0fffe9d17774588cedd330690042eb6
+  _bmad-output/planning-artifacts/ux.md: 2927f97d4fe7262ec5886084a974d9d5c21240560e6563ab84f84b90e4dd670a
 ---
 
 # eventstore - Epic Breakdown

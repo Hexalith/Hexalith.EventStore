@@ -5,10 +5,11 @@
 **BLOCKED — the implementation baseline and production profile are not authorized.** Story 3.13
 now records the rejected `v3.94.1` disposition, Story 3.14 records the corrective release, and
 Story 3.15 is present and `in-progress`; the former missing-row blocker is superseded. Readiness
-still fails because `epics.md` has stale PRD/architecture digests, contains no AD-26 through AD-33
-ownership, and directly conflicts with amended AD-16 and new AD-28. Production promotion, traffic,
-consumer migration, and readiness claims are independently prohibited until AD-26 and all gates
-below pass. An absent, stale, or partial verdict is blocked.
+still fails because `epics.md` contains no AD-26 through AD-33 ownership and directly conflicts with
+amended AD-16 and new AD-28; its matching digest fields are an unapproved hash-only refresh under
+PRD OR14. The governing architecture is draft and AD-26 is an unratified assumption. Production
+promotion, traffic, consumer migration, and readiness claims remain prohibited until owners accept
+a production profile and all gates below pass. An absent, stale, or partial verdict is blocked.
 
 ## Deployed-Parity Authority
 
@@ -24,10 +25,10 @@ below pass. An absent, stale, or partial verdict is blocked.
 
 | Gate | Required evidence |
 | --- | --- |
-| Planning baseline | `prd.md`, finalized `architecture.md`, canonical `ux.md`, `epics.md`, this SPEC package, and both adopted story-migration crosswalks exist. The PRD owns FR/NFR wording and remains `blocked`/`reject`; architecture governs implementation decisions; `epics.md` must bind their current digests and assign every AD-26 through AD-33 consequence before handoff. |
-| Architecture preservation | The adopted `architecture.md` SHA-256 is `2678116099e3d1c1f68ee38ef344b9bef5a58a82062a800e5a89b8b0f5774395` and its memlog SHA-256 is `5b6fa6ec60261de4be496a8350b048e8cf5381d6cd0a8681cc475e69cbd4f793`. A reviewer parses exactly AD-1 through AD-33 with no gaps, duplicates, or renumbering. |
+| Planning baseline | `prd.md`, governing draft `architecture.md`, canonical `ux.md`, `epics.md`, this SPEC package, and both adopted story-migration crosswalks exist. The PRD owns FR/NFR wording and remains `blocked`/`reject`; architecture governs implementation decisions; AD-26 still requires owner disposition; `epics.md` must substantively reconcile the current inputs and assign every AD-26 through AD-33 consequence before handoff. |
+| Architecture preservation | The governing draft `architecture.md` SHA-256 is `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51` and its memlog SHA-256 is `7fc7acfbc3f5ae838a9922eab9553f15a95a4f3b788ef044f82c1e09119a98df`. A reviewer parses exactly AD-1 through AD-33 with no gaps, duplicates, or renumbering and confirms AD-26 remains an assumption until separately accepted. |
 | Architecture-to-epic handoff | `epics.md` preserves all existing story identities, resolves the conflicts in `architecture-reconciliation.md`, assigns focused ownership and evidence for AD-26 through AD-33, and records current PRD and architecture digests. Completed evidence is narrowed rather than rewritten; new obligations receive successor stories where necessary. |
-| Production profile | One versioned `deploy/dapr/production-profile.yaml` binds exact DAPR image/CLI compatibility, self-managed Kubernetes sidecars, `state.postgresql` v1 `statestore` with `actorStateStore: true`, an approved durable broker, resiliency, OpenBao, app IDs, scopes/ACLs, route/idempotency catalog digests, restore posture, and production-path evidence. Redis and Cosmos evidence cannot pass this gate. |
+| Production profile | Owners first ratify or replace the AD-26 assumption. The resulting versioned `deploy/dapr/production-profile.yaml` binds exact DAPR image/CLI compatibility, sidecars, actor state store, an approved durable broker, resiliency, OpenBao, app IDs, scopes/ACLs, route/idempotency catalog digests, restore posture, and production-path evidence. Redis and Cosmos evidence cannot pass the current proposed profile. |
 | Tenant canonicalization | One Contracts-owned canonicalizer enforces exactly one explicit lowercase 1-64-character tenant across request and `eventstore:tenant` grants, rejects missing/duplicate/conflicting/invalid/public-`system` scope before routing or state, and proves unchanged canonical propagation through every boundary. |
 | DAPR app channel | Every non-Development DAPR app endpoint validates one `dapr-api-token` against startup `APP_API_TOKEN` using shared constant-time middleware. Missing configuration, alternate credential substitution, claimed caller app ID, mTLS, or ACL success cannot pass this gate. |
 | Admin attribution | Every Admin mutation proves authenticated operator pass-through or bounded issuer-validated delegation and one resumable prepare/effect/commit/recovery mutation-audit unit; audit failure, manufactured human identity, or best-effort post-effect logging fails. |
@@ -49,7 +50,7 @@ below pass. An absent, stale, or partial verdict is blocked.
 | OQ8 platform | Stories 4.9-4.13 implement trusted admission, digest-directory rotation, state/fence behavior, expiry/tombstones, and legacy reconciliation. Story 4.14 evidence against `oq8-postgresql-v1` remains OQ8 correctness evidence, not complete AD-26 production-profile authority. Story 4.15 cannot close until its packet and lifecycle sources agree and the shared AD-25/AD-33 catalog identity is bound. The Story 4.8 ledger carries no executable status. |
 | Admin UI ownership | Stories 7.14, 7.19, and 7.20 evolve `src/Hexalith.EventStore.Admin.UI` in place under `eventstore-admin-ui`, using matching FrontComposer and Fluent UI V5 packages from the live Builds catalog. No dated literal becomes package authority, and no second UI host, duplicate legacy page implementation, or unapproved performance budget is created. |
 | Backlog story shape | Stories 7.15-7.18 independently govern GDPR-1, IAM-1, KIT-1, and REST generator hardening artifacts. |
-| Typed gateway composition | `AddEventStoreGatewayClient(...)` registers the typed client only. Callers opting into DAPR explicitly chain `.AddEventStoreDaprServiceInvocation(appId, apiToken)` last so it is the innermost transport decorator; omission must not silently select DAPR. |
+| Typed gateway composition | `AddEventStoreGatewayClient(...)` registers the typed client only. Callers opting into DAPR explicitly chain `.AddEventStoreDaprServiceInvocation(appId, apiToken)` last so it is the innermost transport decorator and replaces control-plane headers. Current fail-open omission or per-host handler reimplementation fails structural readiness. |
 | Admin request-size safety | Story 5.2 acceptance uses concrete limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`; "tested or documented" is insufficient. |
 | Epic 6 accounting | Spec stories are architecture/readiness enablers, not runtime implementation progress. Stories 6.1, 6.3, and 6.5 authorize Stories 6.2, 6.4, and 6.6 only after approval. Story 6.2 proves `snapshot size <= folded-state payload size + MaxSnapshotEnvelopeOverheadBytes` using Story 6.1's numeric bound. |
 | Story 7.6 AD-24 contract | Four BDD scenarios prove startup failure, runtime loss/recovery, acknowledged rotation, and real-OpenBao least privilege. The singleton DAPR `openbao` component uses `secretstores.hashicorp.vault` v1 and the value-free `deploy/dapr/openbao-secret-contract.yaml` drives shapes, consumers, lifecycle, component scopes, DAPR default-deny `allowedSecrets`, and matching OpenBao ACLs. Digest-key retirement additionally requires the activated AD-25/AD-33 catalog to prove zero live references. |
@@ -119,3 +120,4 @@ assigns those decisions to focused stories.
 - Do not count a manifest scan, local substitute, or mocked secret store as real-OpenBao production evidence.
 - Do not conflate AD-24 operational secrets with AD-23 or the payload-protection KEK backend.
 - Do not count Epic 6 specification enablers as runtime implementation progress.
+- Do not treat a matching input digest as substantive PRD/architecture/epic reconciliation or as acceptance of AD-26.
