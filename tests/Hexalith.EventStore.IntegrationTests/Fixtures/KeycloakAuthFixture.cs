@@ -63,9 +63,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
             Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)),
             AdminUserId,
             "admin-user");
-        SnapshotAndSet(
-            "LocalAuthentication__TestInjection__InvocationId",
-            _localAuthenticationTestInvocation.InvocationId.ToString("D"));
+        _localAuthenticationTestInvocation.Activate();
         ConfigureUsers(_localAuthenticationTestInvocation.Credentials);
 
         SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");

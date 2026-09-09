@@ -52,16 +52,7 @@ WWW-Authenticate: Bearer realm="hexalith-eventstore"
 
 ## How to Fix
 
-1. Obtain a JWT token from the identity provider. For local development with Keycloak, discover the current Aspire endpoint rather than assuming a host port:
-
-    ```bash
-    KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
-    curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
-      -d "client_id=hexalith-eventstore" \
-      -d "grant_type=password" \
-      -d "username=${HEXALITH_ADMIN_USERNAME}" \
-      -d "password=${HEXALITH_ADMIN_PASSWORD}"
-    ```
+1. Obtain a short-lived JWT from the identity provider configured for this EventStore deployment. The direct API flow requires a caller-controlled external or development/test identity; the clean-clone AppHost does not expose its generated realm-user credentials through `HEXALITH_ADMIN_USERNAME` or `HEXALITH_ADMIN_PASSWORD`. For the executable local flow, use the [quickstart sample UI](../../getting-started/quickstart.md), which authenticates internally.
 
 2. Add the token to your request:
 
@@ -71,7 +62,7 @@ WWW-Authenticate: Bearer realm="hexalith-eventstore"
 
 3. Retry the request.
 
-See the [Quickstart Guide](../../getting-started/quickstart.md) for full token acquisition steps.
+See the [Quickstart Guide](../../getting-started/quickstart.md) for the authenticated local UI flow.
 
 ## Related
 

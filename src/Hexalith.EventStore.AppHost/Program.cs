@@ -18,12 +18,18 @@ IResourceBuilder<ParameterResource>? localSamplePassword = null;
 IResourceBuilder<ParameterResource>? externalSampleClientId = null;
 IResourceBuilder<ParameterResource>? externalSampleUsername = null;
 IResourceBuilder<ParameterResource>? externalSamplePassword = null;
+IResourceBuilder<ParameterResource>? externalSampleClientSecret = null;
 IResourceBuilder<ParameterResource>? externalAdminClientId = null;
 IResourceBuilder<ParameterResource>? externalAdminUsername = null;
 IResourceBuilder<ParameterResource>? externalAdminPassword = null;
+IResourceBuilder<ParameterResource>? externalAdminClientSecret = null;
+string? externalSampleGrantType = null;
+string? externalAdminGrantType = null;
+string? externalSampleScope = null;
+string? externalAdminScope = null;
 
 if (builder.ExecutionContext.IsRunMode) {
-    localCredentials = LocalAuthenticationCredentials.Create(builder.Configuration);
+    localCredentials = LocalAuthenticationCredentials.Create();
     localSigningKey = builder.AddParameter(
         "local-auth-signing-key",
         () => localCredentials.SigningKey,
@@ -50,12 +56,35 @@ if (builder.ExecutionContext.IsRunMode) {
         secret: true);
 }
 else if (builder.ExecutionContext.IsPublishMode) {
+    externalSampleGrantType = RequireExternalGrantType(
+        builder.Configuration["Authentication:JwtBearer:SampleUi:GrantType"],
+        "Authentication:JwtBearer:SampleUi:GrantType");
+    externalAdminGrantType = RequireExternalGrantType(
+        builder.Configuration["Authentication:JwtBearer:AdminUi:GrantType"],
+        "Authentication:JwtBearer:AdminUi:GrantType");
+    externalSampleScope = RequireExternalText(
+        builder.Configuration["Authentication:JwtBearer:SampleUi:Scope"],
+        "Authentication:JwtBearer:SampleUi:Scope");
+    externalAdminScope = RequireExternalText(
+        builder.Configuration["Authentication:JwtBearer:AdminUi:Scope"],
+        "Authentication:JwtBearer:AdminUi:Scope");
     externalSampleClientId = builder.AddParameter("external-sample-auth-client-id");
-    externalSampleUsername = builder.AddParameter("external-sample-auth-username", secret: true);
-    externalSamplePassword = builder.AddParameter("external-sample-auth-password", secret: true);
     externalAdminClientId = builder.AddParameter("external-admin-auth-client-id");
-    externalAdminUsername = builder.AddParameter("external-admin-auth-username", secret: true);
-    externalAdminPassword = builder.AddParameter("external-admin-auth-password", secret: true);
+    if (externalSampleGrantType == "password") {
+        externalSampleUsername = builder.AddParameter("external-sample-auth-username", secret: true);
+        externalSamplePassword = builder.AddParameter("external-sample-auth-password", secret: true);
+    }
+    else {
+        externalSampleClientSecret = builder.AddParameter("external-sample-auth-client-secret", secret: true);
+    }
+
+    if (externalAdminGrantType == "password") {
+        externalAdminUsername = builder.AddParameter("external-admin-auth-username", secret: true);
+        externalAdminPassword = builder.AddParameter("external-admin-auth-password", secret: true);
+    }
+    else {
+        externalAdminClientSecret = builder.AddParameter("external-admin-auth-client-secret", secret: true);
+    }
 }
 
 // The local DAPR runtime can expose placement/scheduler on either the containerized host ports
@@ -151,8 +180,10 @@ if (keycloakRealm is not null) {
 IResourceBuilder<ProjectResource>? tenants = null;
 IResourceBuilder<ProjectResource>? tenantsApi = null;
 #if HEXALITH_TENANTS_SOURCE
-tenants = builder.AddProject<Projects.Hexalith_Tenants>("tenants");
-tenantsApi = builder.AddProject<Projects.Hexalith_Tenants_Api>("tenants-api");
+if (builder.ExecutionContext.IsRunMode) {
+    tenants = builder.AddProject<Projects.Hexalith_Tenants>("tenants");
+    tenantsApi = builder.AddProject<Projects.Hexalith_Tenants_Api>("tenants-api");
+}
 #else
 if (builder.ExecutionContext.IsRunMode) {
     TenantsProjectPaths tenantsProjects = TenantsProjectPaths.Resolve();
@@ -295,18 +326,26 @@ if (security is not null || builder.ExecutionContext.IsPublishMode) {
             jwtAuthentication.ExternalAuthority!,
             jwtAuthentication.PrimaryAudience,
             builder.Configuration["Authentication:JwtBearer:TokenEndpoint"],
-            builder.Configuration["Authentication:JwtBearer:Scope"]!,
+            externalSampleScope!,
+            externalSampleGrantType!,
             externalSampleClientId!,
-            externalSampleUsername!,
-            externalSamplePassword!);
+            externalSampleUsername,
+            externalSamplePassword,
+            externalSampleClientSecret,
+            builder.Configuration["Authentication:JwtBearer:AudienceParameterName"],
+            builder.Configuration["Authentication:JwtBearer:AudienceParameterValue"]);
         _ = adminUI.WithExternalEventStoreClientCredentials(
             jwtAuthentication.ExternalAuthority!,
             jwtAuthentication.PrimaryAudience,
             builder.Configuration["Authentication:JwtBearer:TokenEndpoint"],
-            builder.Configuration["Authentication:JwtBearer:Scope"]!,
+            externalAdminScope!,
+            externalAdminGrantType!,
             externalAdminClientId!,
-            externalAdminUsername!,
-            externalAdminPassword!);
+            externalAdminUsername,
+            externalAdminPassword,
+            externalAdminClientSecret,
+            builder.Configuration["Authentication:JwtBearer:AudienceParameterName"],
+            builder.Configuration["Authentication:JwtBearer:AudienceParameterValue"]);
     }
 }
 else {
@@ -443,6 +482,18 @@ static string[] ResolveConfiguredAudiences(
         }
     }
 }
+
+static string RequireExternalGrantType(string? value, string settingName) {
+    string grantType = RequireExternalText(value, settingName);
+    return grantType is "password" or "client_credentials"
+        ? grantType
+        : throw new InvalidOperationException($"{settingName} must be either 'password' or 'client_credentials'.");
+}
+
+static string RequireExternalText(string? value, string settingName)
+    => !string.IsNullOrWhiteSpace(value)
+        ? value.Trim()
+        : throw new InvalidOperationException($"{settingName} must be configured explicitly for publish mode.");
 
 static void ConfigureLocalSymmetricValidation(
     IResourceBuilder<ProjectResource> resource,

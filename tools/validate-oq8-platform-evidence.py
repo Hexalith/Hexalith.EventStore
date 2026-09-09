@@ -259,15 +259,26 @@ V3_SOURCE_PATHS = {
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
     "docs/ci.md",
 }
-V3_GATE_INPUT_PATHS = set(V2_SOURCE_PATHS) | V2_GATE_INPUT_PATHS
+V3_GATE_INPUT_PATHS = SUCCESSOR_SOURCE_PATHS | set(V2_SOURCE_PATHS) | V2_GATE_INPUT_PATHS
+V3_SELECTION_DATE = "2026-09-09"
+V3_SELECTION_REASON = (
+    "Unify the SDK, PostgreSQL image-governance, and current-source successors under one "
+    "content-bound v3 lineage while retaining every predecessor as historical evidence."
+)
+V3_BINDING_RULE = (
+    "V1, the SDK successor, and v2 remain immutable historical evidence; v3 binds the original "
+    "landed commit and tree, requires current HEAD ancestry from that commit, and resolves every "
+    "SDK and current gate input only from regular non-symlink candidate files."
+)
 V3_REVIEW_SCOPES = {
-    "architecture": "v2 historical preservation, v3 current-source succession, deterministic UTC validation, and source-only authority boundaries",
-    "security": "immutable predecessor lineage, fail-closed source and timestamp drift detection, receipt binding, and external-authority exclusions",
-    "test": "historical v2 validation, active v3 success and drift coverage, runtime-relative future mutations, and the full Contracts lane",
+    "architecture": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, and source-only authority boundaries",
+    "security": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
+    "test": "historical v1/v2 validation, active v3 selector and bootstrap coverage, rejected or incomplete receipt mutations, and the full Contracts lane",
 }
 V3_LIMITATIONS = [
-    "Story 4.15 v1 and v2 remain immutable historical evidence and do not authorize source bytes changed after completed-v2 closure commit 83b32fcfad7bb608098aebccdc15002636ffb431.",
+    "Story 4.15 v1, the SDK 10.0.400 successor, and v2 remain immutable historical evidence and do not authorize source bytes changed after completed-v2 closure commit 83b32fcfad7bb608098aebccdc15002636ffb431.",
     "The active v3 successor validates exact current repository source bytes while preserving the reviewed PostgreSQL multi-platform index authority recorded by v2.",
+    "The v3 landed-commit, landed-tree, and HEAD-ancestry proofs resolve through the local Git object store, so a shallow or history-rewritten clone that lacks commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 fails closed rather than validating.",
     "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
     "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority.",
 ]
@@ -281,9 +292,9 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V3_REVIEW_DATE = "2026-09-08"
-V3_FINAL_CLOSURE_TEST_COUNT = 380
-V3_FULL_CONTRACTS_TEST_COUNT = 1901
+V3_REVIEW_DATE = "2026-09-09"
+V3_FINAL_CLOSURE_TEST_COUNT = 398
+V3_FULL_CONTRACTS_TEST_COUNT = 1966
 V3_TEST_RECEIPT_VERIFICATION = [
     ("oq8-platform-closure", V2_CLOSURE_COMMAND, V3_FINAL_CLOSURE_TEST_COUNT),
     ("contracts-full", V3_CONTRACTS_TEST_COMMAND, V3_FULL_CONTRACTS_TEST_COUNT),
@@ -1490,27 +1501,10 @@ def validate_manifest() -> dict[str, str]:
 
 
 def validate_successor_source_identity() -> dict[str, Any]:
-    require(
-        SUCCESSOR_SELECTOR.is_file() and not SUCCESSOR_SELECTOR.is_symlink(),
-        "Story 4.15 successor selector must be a regular non-symlink file",
-    )
     require(SUCCESSOR.is_dir(), "Story 4.15 successor directory is missing")
-    selector = load_candidate_json(SUCCESSOR_SELECTOR)
-    require(isinstance(selector, dict), "Story 4.15 successor selector must be an object")
-    require(
-        selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v1",
-        "Story 4.15 successor selector schema drift",
-    )
-    successor = selector.get("successor")
-    require(isinstance(successor, dict), "Story 4.15 successor selection is missing")
-    require(successor.get("directory") == SUCCESSOR_DIRECTORY, "Story 4.15 successor directory selection drift")
 
     identity_path = SUCCESSOR / "source-artifact-identity.json"
     require(identity_path.is_file(), "Story 4.15 successor source identity is missing")
-    require(
-        successor.get("sourceIdentitySha256") == sha256_file(identity_path),
-        "Story 4.15 successor source identity selection drift",
-    )
     identity = load_candidate_json(identity_path)
     require(isinstance(identity, dict), "Story 4.15 successor source identity must be an object")
     require(
@@ -1758,51 +1752,55 @@ def validate_successor_handoff(
     return sha256_file(SUCCESSOR / "source-only-handoff.json")
 
 
-def validate_successor_selector(
-    selector: Any,
-    prior_manifest: dict[str, str],
-    successor_manifest: dict[str, str],
-    subject_sha256: str,
-    identity_sha256: str,
-    handoff_sha256: str,
-) -> None:
+def load_successor_selector() -> dict[str, Any]:
+    require(
+        SUCCESSOR_SELECTOR.is_file() and not SUCCESSOR_SELECTOR.is_symlink(),
+        "Story 4.15 successor selector must be a regular non-symlink file",
+    )
+    selector = load_candidate_json_bytes(
+        read_bounded_regular_snapshot(SUCCESSOR_SELECTOR, MAX_V2_ARTIFACT_BYTES, "Story 4.15 successor selector"),
+        "Story 4.15 successor selector",
+    )
     require(isinstance(selector, dict), "Story 4.15 successor selector must be an object")
     require(
-        set(selector) == {"schema", "selectedOn", "reason", "prior", "successor", "authority"},
+        set(selector) == {"schema", "selectedOn", "reason", "historical", "successor", "authority"},
         "Story 4.15 successor selector field set drift",
     )
     require(
-        selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v1",
+        selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v2",
         "Story 4.15 successor selector schema drift",
     )
-    require(selector.get("selectedOn") == "2026-08-29", "Story 4.15 successor selection date drift")
+    require(selector.get("selectedOn") == V3_SELECTION_DATE, "Story 4.15 successor selection date drift")
+    require(selector.get("reason") == V3_SELECTION_REASON, "Story 4.15 successor selection reason drift")
+    return selector
+
+
+def validate_successor_selector_historical(
+    selector: dict[str, Any],
+    prior_manifest: dict[str, str],
+    historical_successor_manifest: dict[str, str],
+) -> None:
     require(
-        selector.get("reason")
-        == "SDK 10.0.400 requires Microsoft.Testing.Platform, xUnit 4 serialization metadata, and Linux-safe OQ8 control-plane discovery.",
-        "Story 4.15 successor selection reason drift",
-    )
-    require(
-        selector.get("prior")
+        selector.get("historical")
         == {
-            "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
-            "packetSha256": PRIOR_PACKET_SHA256,
-            "closureDirectory": CLOSURE_DIRECTORY,
-            "closureManifestSha256": PRIOR_CLOSURE_MANIFEST_SHA256,
-            "closureFiles": prior_manifest,
+            "v1Closure": {
+                "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
+                "packetSha256": PRIOR_PACKET_SHA256,
+                "directory": CLOSURE_DIRECTORY,
+                "manifestSha256": PRIOR_CLOSURE_MANIFEST_SHA256,
+                "files": prior_manifest,
+            },
+            "sdkSuccessor": {
+                "directory": SUCCESSOR_DIRECTORY,
+                "manifestSha256": sha256_file(SUCCESSOR / "successor-sha256.txt"),
+                "files": historical_successor_manifest,
+            },
+            "v2Successor": {
+                "directory": V2_SUCCESSOR_DIRECTORY,
+                "manifestSha256": V2_CLOSURE_MANIFEST_SHA256,
+            },
         },
-        "Story 4.15 successor prior selection drift",
-    )
-    require(
-        selector.get("successor")
-        == {
-            "directory": SUCCESSOR_DIRECTORY,
-            "manifestSha256": sha256_file(SUCCESSOR / "successor-sha256.txt"),
-            "files": successor_manifest,
-            "sourceIdentitySha256": identity_sha256,
-            "reviewSubjectSha256": subject_sha256,
-            "handoffSha256": handoff_sha256,
-        },
-        "Story 4.15 successor selection drift",
+        "Story 4.15 successor historical selection drift",
     )
     require(sha256_file(PACKET) == PRIOR_PACKET_SHA256, "Story 4.15 prior packet byte identity drift")
     require(
@@ -1812,7 +1810,29 @@ def validate_successor_selector(
     validate_authority(selector.get("authority"))
 
 
-def validate_successor_closure(prior_manifest: dict[str, str]) -> None:
+def validate_successor_selector(
+    selector: dict[str, Any],
+    v3_manifest: dict[str, str],
+    v3_manifest_sha256: str,
+    subject_sha256: str,
+    identity_sha256: str,
+    handoff_sha256: str,
+) -> None:
+    require(
+        selector.get("successor")
+        == {
+            "directory": V3_SUCCESSOR_DIRECTORY,
+            "manifestSha256": v3_manifest_sha256,
+            "files": v3_manifest,
+            "sourceIdentitySha256": identity_sha256,
+            "reviewSubjectSha256": subject_sha256,
+            "handoffSha256": handoff_sha256,
+        },
+        "Story 4.15 successor selection drift",
+    )
+
+
+def validate_successor_closure() -> dict[str, str]:
     identity = validate_successor_source_identity()
     identity_sha256 = sha256_file(SUCCESSOR / "source-artifact-identity.json")
     successor_manifest = validate_successor_manifest()
@@ -1827,14 +1847,7 @@ def validate_successor_closure(prior_manifest: dict[str, str]) -> None:
         identity_sha256,
         receipts,
     )
-    validate_successor_selector(
-        load_candidate_json(SUCCESSOR_SELECTOR),
-        prior_manifest,
-        successor_manifest,
-        subject_sha256,
-        identity_sha256,
-        handoff_sha256,
-    )
+    return successor_manifest
 
 
 def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) -> None:
@@ -2775,7 +2788,7 @@ def capture_v3_snapshots() -> dict[str, bytes]:
             MAX_V2_ARTIFACT_BYTES,
             f"Story 4.15 v3 artifact {relative}",
         )
-    for relative in V3_GATE_INPUT_PATHS:
+    for relative in sorted(V3_GATE_INPUT_PATHS):
         path = ROOT / relative
         snapshots[v3_snapshot_key(path)] = read_bounded_regular_snapshot(
             path,
@@ -2819,7 +2832,19 @@ def validate_v3_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
     identity = v3_snapshot_json(snapshots, "source-artifact-identity.json")
     require(isinstance(identity, dict), "Story 4.15 v3 source identity must be an object")
     require(
-        set(identity) == {"schema", "reviewedOn", "repository", "predecessor", "sourceTransitions", "gateInputs", "bindingRule"},
+        set(identity)
+        == {
+            "schema",
+            "reviewedOn",
+            "repository",
+            "predecessor",
+            "historicalSdkSuccessor",
+            "landedSource",
+            "headAncestry",
+            "sourceTransitions",
+            "gateInputs",
+            "bindingRule",
+        },
         "Story 4.15 v3 source identity field set drift",
     )
     require(
@@ -2830,8 +2855,28 @@ def validate_v3_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
     require(identity.get("repository") == "Hexalith/Hexalith.EventStore", "Story 4.15 v3 source identity repository drift")
     require(identity.get("predecessor") == expected_v3_predecessor(), "Story 4.15 v3 predecessor link drift")
     require(
-        identity.get("bindingRule")
-        == "V1 and v2 source, validator, test, documentation, and evidence bytes resolve only against immutable historical Git snapshots and manifests; v3 gate inputs resolve only against current regular non-symlink candidate files.",
+        identity.get("historicalSdkSuccessor")
+        == {
+            "directory": SUCCESSOR_DIRECTORY,
+            "manifestSha256": sha256_file(SUCCESSOR / "successor-sha256.txt"),
+        },
+        "Story 4.15 v3 historical SDK successor link drift",
+    )
+    require(
+        identity.get("landedSource") == {"commit": LANDED_SOURCE, "tree": LANDED_TREE},
+        "Story 4.15 v3 landed source identity drift",
+    )
+    require(
+        identity.get("headAncestry") == {"baseCommit": LANDED_SOURCE, "required": True},
+        "Story 4.15 v3 HEAD ancestry declaration drift",
+    )
+    landed_commit = run_git("rev-parse", "--verify", f"{LANDED_SOURCE}^{{commit}}").decode("ascii").strip()
+    landed_tree = run_git("rev-parse", "--verify", f"{LANDED_SOURCE}^{{tree}}").decode("ascii").strip()
+    require(landed_commit == LANDED_SOURCE, "Story 4.15 v3 landed commit Git identity drift")
+    require(landed_tree == LANDED_TREE, "Story 4.15 v3 landed tree Git identity drift")
+    run_git("merge-base", "--is-ancestor", LANDED_SOURCE, "HEAD")
+    require(
+        identity.get("bindingRule") == V3_BINDING_RULE,
         "Story 4.15 v3 source binding rule drift",
     )
 
@@ -2918,7 +2963,13 @@ def validate_v3_pre_review_execution(
     require(document.get("scope") == "receipt-independent-candidate", "Story 4.15 v3 pre-review execution scope drift")
     require(
         document.get("candidateInputs")
-        == {"sourceTransitions": identity.get("sourceTransitions"), "gateInputs": identity.get("gateInputs")},
+        == {
+            "historicalSdkSuccessor": identity.get("historicalSdkSuccessor"),
+            "landedSource": identity.get("landedSource"),
+            "headAncestry": identity.get("headAncestry"),
+            "sourceTransitions": identity.get("sourceTransitions"),
+            "gateInputs": identity.get("gateInputs"),
+        },
         "Story 4.15 v3 pre-review candidate-input binding drift",
     )
     authority = document.get("authority")
@@ -2960,7 +3011,21 @@ def validate_v3_review_subject(
 ) -> tuple[str, datetime]:
     require(isinstance(subject, dict), "Story 4.15 v3 review subject must be an object")
     require(
-        set(subject) == {"schema", "frozenAt", "proposedDecision", "predecessor", "sourceTransitions", "gateInputs", "bindings", "requiredReviews", "authority"},
+        set(subject)
+        == {
+            "schema",
+            "frozenAt",
+            "proposedDecision",
+            "predecessor",
+            "historicalSdkSuccessor",
+            "landedSource",
+            "headAncestry",
+            "sourceTransitions",
+            "gateInputs",
+            "bindings",
+            "requiredReviews",
+            "authority",
+        },
         "Story 4.15 v3 review subject field set drift",
     )
     require(subject.get("schema") == "hexalith.eventstore.story-4-15-successor-review-subject/v3", "Story 4.15 v3 review subject schema drift")
@@ -2968,6 +3033,12 @@ def validate_v3_review_subject(
     require(execution_at < frozen_at, "Story 4.15 v3 pre-review execution is not strictly before subject freeze")
     require(subject.get("proposedDecision") == "active-current-source-closure-complete", "Story 4.15 v3 proposed decision drift")
     require(subject.get("predecessor") == expected_v3_predecessor(), "Story 4.15 v3 review predecessor drift")
+    require(
+        subject.get("historicalSdkSuccessor") == identity.get("historicalSdkSuccessor"),
+        "Story 4.15 v3 review historical SDK successor drift",
+    )
+    require(subject.get("landedSource") == identity.get("landedSource"), "Story 4.15 v3 review landed source drift")
+    require(subject.get("headAncestry") == identity.get("headAncestry"), "Story 4.15 v3 review HEAD ancestry drift")
     require(subject.get("sourceTransitions") == identity.get("sourceTransitions"), "Story 4.15 v3 review source transition drift")
     require(subject.get("gateInputs") == identity.get("gateInputs"), "Story 4.15 v3 review gate-input drift")
     require(
@@ -3045,12 +3116,13 @@ def validate_v3_reviews(
 
 def validate_v3_handoff(
     document: Any,
+    snapshots: dict[str, bytes],
     subject_sha256: str,
     limitations_sha256: str,
     receipts: dict[str, str],
     receipt_times: list[datetime],
     now: datetime,
-) -> None:
+) -> str:
     require(isinstance(document, dict), "Story 4.15 v3 handoff must be an object")
     require(
         set(document) == {"schema", "assembledAt", "story", "predecessor", "reviewSubjectSha256", "limitationsSha256", "reviewReceipts", "consumerInstructions", "authority"},
@@ -3068,24 +3140,28 @@ def validate_v3_handoff(
         document.get("consumerInstructions")
         == {
             "mode": "source-only",
-            "verifyCommand": "python3 tools/validate-oq8-platform-evidence.py",
-            "historicalRule": "Validate Story 4.15 v1 and v2 only against their immutable historical artifacts and Git snapshots.",
+            "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+            "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
+            "historicalRule": "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable historical artifacts and Git snapshots.",
             "currentRule": "Treat current source as closed only when this complete v3 successor validates against the current candidate bytes.",
         },
         "Story 4.15 v3 consumer instructions drift",
     )
     validate_authority(document.get("authority"))
+    return sha256_bytes(v3_snapshot(snapshots, V3_SUCCESSOR / "source-only-handoff.json"))
 
 
 def validate_v3_successor(
     snapshots: dict[str, bytes] | None = None,
     now: datetime | None = None,
-) -> None:
+) -> tuple[dict[str, str], str, str, str, str]:
     current_snapshots = capture_v3_snapshots() if snapshots is None else snapshots
     current_utc = datetime.now(timezone.utc) if now is None else now
     require(current_utc.tzinfo is not None, "Story 4.15 v3 current UTC must be timezone-aware")
-    validate_v3_manifest(current_snapshots)
+    manifest = validate_v3_manifest(current_snapshots)
+    manifest_sha256 = sha256_bytes(v3_snapshot(current_snapshots, V3_SUCCESSOR / "closure-sha256.txt"))
     identity = validate_v3_source_identity(current_snapshots)
+    identity_sha256 = sha256_bytes(v3_snapshot(current_snapshots, V3_SUCCESSOR / "source-artifact-identity.json"))
     limitations_sha256 = validate_v3_limitations(current_snapshots)
     validator_sha256 = validate_v3_validator_identity(current_snapshots)
     execution_sha256, execution_at = validate_v3_pre_review_execution(
@@ -3111,14 +3187,16 @@ def validate_v3_successor(
         current_snapshots,
         current_utc,
     )
-    validate_v3_handoff(
+    handoff_sha256 = validate_v3_handoff(
         v3_snapshot_json(current_snapshots, "source-only-handoff.json"),
+        current_snapshots,
         subject_sha256,
         limitations_sha256,
         receipts,
         receipt_times,
         current_utc,
     )
+    return manifest, manifest_sha256, identity_sha256, subject_sha256, handoff_sha256
 
 
 def validate_limitations(document: Any) -> dict[str, Any]:
@@ -3568,7 +3646,22 @@ def validate_pre_review_candidate() -> None:
     validate_pre_review_execution(execution)
     validate_review_subject(subject, crosswalk, identity, limitations)
     validate_successor_source_identity()
+    validate_successor_selector_sdk_link(load_successor_selector())
     validate_status_and_documents(final=False)
+
+
+def validate_successor_selector_sdk_link(selector: dict[str, Any]) -> None:
+    historical = selector.get("historical")
+    require(isinstance(historical, dict), "Story 4.15 successor historical selection is missing")
+    sdk_successor = historical.get("sdkSuccessor")
+    require(isinstance(sdk_successor, dict), "Story 4.15 successor historical SDK selection is missing")
+    require(sdk_successor.get("directory") == SUCCESSOR_DIRECTORY, "Story 4.15 successor directory selection drift")
+    files = sdk_successor.get("files")
+    require(
+        isinstance(files, dict)
+        and files.get("source-artifact-identity.json") == sha256_file(SUCCESSOR / "source-artifact-identity.json"),
+        "Story 4.15 successor source identity selection drift",
+    )
 
 
 def validate_pre_review_execution(document: Any) -> None:
@@ -3694,10 +3787,20 @@ def validate_platform_closure(platform: dict[str, Any], *, current_source: bool 
     require(platform.get("closureFiles") == manifest, "Platform closure file identities drift")
     require(platform.get("reviewSubjectSha256") == subject_sha256, "Platform closure subject drift")
     validate_authority(platform.get("authority"))
-    validate_successor_closure(manifest)
+    historical_successor_manifest = validate_successor_closure()
+    selector = load_successor_selector()
+    validate_successor_selector_historical(selector, manifest, historical_successor_manifest)
     if current_source:
         validate_v2_successor()
-        validate_v3_successor()
+        v3_manifest, v3_manifest_sha256, identity_sha256, subject_sha256, handoff_sha256 = validate_v3_successor()
+        validate_successor_selector(
+            selector,
+            v3_manifest,
+            v3_manifest_sha256,
+            subject_sha256,
+            identity_sha256,
+            handoff_sha256,
+        )
         validate_status_and_documents(final=True)
 
 

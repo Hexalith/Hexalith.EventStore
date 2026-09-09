@@ -12,9 +12,10 @@ namespace Hexalith.EventStore.Server.Tests.Integration;
 public class SignalRBackplaneWiringTests {
     [Fact]
     public void AddEventStoreSignalR_WithRedisConnectionString_RegistersRedisHubLifetimeManager() {
+        const string localRedisEndpoint = "localhost:9999";
         var configData = new Dictionary<string, string?> {
             ["EventStore:SignalR:Enabled"] = "true",
-            ["EventStore:SignalR:BackplaneRedisConnectionString"] = string.Concat("localhost", ":9999"),
+            ["EventStore:SignalR:BackplaneRedisConnectionString"] = localRedisEndpoint,
         };
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configData)

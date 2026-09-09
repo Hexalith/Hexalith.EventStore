@@ -31,7 +31,8 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     [Fact]
     public async Task AdminUser_SubmitCommand_ReturnsAcceptedAsync() {
         // Arrange
-        string token = await GetTokenAsync("admin-user");
+        string username = "admin-user";
+        string token = await GetTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(
             token,
@@ -59,7 +60,8 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// </summary>
     [Fact]
     public async Task TenantAUser_SubmitCommandForOwnTenant_ReturnsAcceptedAsync() {
-        string token = await GetTokenAsync("tenant-a-user");
+        string username = "tenant-a-user";
+        string token = await GetTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(
             token,
@@ -88,7 +90,8 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// </summary>
     [Fact]
     public async Task TenantAUser_SubmitCommandForTenantB_Returns403Async() {
-        string token = await GetTokenAsync("tenant-a-user");
+        string username = "tenant-a-user";
+        string token = await GetTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(
             token,
@@ -108,7 +111,8 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// </summary>
     [Fact]
     public async Task TenantBUser_SubmitCommandForTenantA_Returns403Async() {
-        string token = await GetTokenAsync("tenant-b-user");
+        string username = "tenant-b-user";
+        string token = await GetTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(
             token,
@@ -133,7 +137,8 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// </summary>
     [Fact]
     public async Task ReadonlyUser_SubmitCommand_Returns403Async() {
-        string token = await GetTokenAsync("readonly-user");
+        string username = "readonly-user";
+        string token = await GetTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(
             token,
@@ -153,7 +158,8 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
     /// </summary>
     [Fact]
     public async Task NoTenantUser_SubmitCommand_Returns403Async() {
-        string token = await GetTokenAsync("no-tenant-user");
+        string username = "no-tenant-user";
+        string token = await GetTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(
             token,

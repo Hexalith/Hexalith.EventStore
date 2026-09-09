@@ -59,20 +59,22 @@ public class HttpContextAdminAuthContextTests {
 
     [Fact]
     public void GetToken_IsCaseInsensitive_ForBearerPrefix() {
-        IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("bearer my-token-123");
+        string token = Guid.NewGuid().ToString("N");
+        IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("bearer " + token);
 
         var sut = new HttpContextAdminAuthContext(accessor);
 
-        sut.GetToken().ShouldBe("my-token-123");
+        sut.GetToken().ShouldBe(token);
     }
 
     [Fact]
     public void GetToken_TrimsWhitespace_FromToken() {
-        IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Bearer  my-token  ");
+        string token = Guid.NewGuid().ToString("N");
+        IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Bearer  " + token + "  ");
 
         var sut = new HttpContextAdminAuthContext(accessor);
 
-        sut.GetToken().ShouldBe("my-token");
+        sut.GetToken().ShouldBe(token);
     }
 
     [Fact]

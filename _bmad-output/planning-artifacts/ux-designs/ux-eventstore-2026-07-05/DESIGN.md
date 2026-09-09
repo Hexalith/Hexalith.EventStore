@@ -1,10 +1,10 @@
 ---
 name: Hexalith.EventStore Admin
 description: Brownfield operations UX for administrators and platform operators, inheriting FrontComposer and Blazor Fluent UI V5.
-status: final
+status: draft
 created: 2026-07-05
 updated: 2026-09-09
-reviewed_repository_revision: 23a722a1ffe29099a9d87df266552be4e3addd82
+reviewed_repository_revision: 0994c37814c37dac7667a209dbd0659125aac49e
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -90,7 +90,7 @@ components:
 
 The brownfield target remains `src/Hexalith.EventStore.Admin.UI`. It retains `eventstore-admin-ui` as its service, resource, DAPR, and container identity and registers one FrontComposer module, `event-store-admin`, labelled **Event Store Admin**. No second host, router, or page implementation is introduced.
 
-The reviewed repository revision is `23a722a1ffe29099a9d87df266552be4e3addd82`. `EXPERIENCE.md` records the input-snapshot digests and authority order. `status: final` means only that the UX contract is finalized. It does not authorize implementation, release, deployment, migration, or a readiness verdict.
+The reviewed repository revision is `0994c37814c37dac7667a209dbd0659125aac49e`. `EXPERIENCE.md` records the input-snapshot digests and authority order. `status: draft` means this source-safety update remains open for assumption review and finalization. It does not authorize implementation, release, deployment, migration, or a readiness verdict.
 
 Story 7.20 must inventory and retire the current local `--hexalith-status-*` and `--hexalith-brand` definitions in `wwwroot/css/app.css` plus the legacy `--neutral-stroke-rest` and `--neutral-layer-2` usage in `ProtectedContentPanel.razor`. Until then, those declarations are allow-listed brownfield migration debt, not reusable design tokens.
 
@@ -152,22 +152,22 @@ Frontmatter owns implementation bindings; this table owns visual role and unique
 | **Dashboard tabs** | Inherited selected, focus, and disabled appearances; horizontal overflow is a layout-only exception. |
 | **Stat summary** | Repeated compact metrics with visible evidence state and observation time. |
 | **Filter bar** | One compact control group directly above its evidence grid. |
-| **Evidence grid** | Dense rows, strong header hierarchy, labelled overflow, and one action location. |
+| **Evidence grid** | Dense rows, strong header hierarchy, labelled overflow, and one action location. Projection fan-out shows each route's checkpoint and `advanced`, `not advanced`, `retry`, or `failure` outcome; an aggregate success treatment is forbidden while any route is not proven advanced. |
 | **Status badge** | Inherited semantic slot with readable canonical state text. |
 | **Issue banner** | Consequence-led intent; never borrows a lifecycle badge color. |
-| **Operation dialog** | Visually separates frozen scope, effect, risk, reversibility, and confirmation. |
+| **Operation dialog** | Visually separates frozen scope, bounded human/service attribution or delegation, reason, issuer/expiry, applicable request/correlation/message identities, effect, risk, reversibility, expected evidence, and `prepare`/`effect`/`commit`/`recovery` phase. Secret, token, claim, raw idempotency, digest, and fence material remains absent. |
 | **Detail panel** | A labelled evidence aside that keeps source context visible where space permits. |
 | **Multi-section panel** | Titled sibling sections; primary evidence expanded by default. |
 | **Command lifecycle tracker** | Text-first ordered states, never decorative progress. |
 | **Projection freshness indicator** | Provenance, lifecycle, observation, and freshness; Tenants-consistent text/icon/color mapping. |
-| **Projection connection status** | A bounded connection/reconciliation message bar; never lifecycle evidence. |
+| **Projection connection status** | A bounded connection/reconciliation message bar; discarded or over-limit notification metadata leads to bounded refetch or unavailable treatment, never rendered metadata or lifecycle evidence. |
 | **Loading skeleton** | Matches the eventual summary/grid layout; no reduced-motion shimmer. |
 | **Empty state** | Names authorized scope and remains distinct from unavailable or denied. |
 | **Deferred operation placeholder** | Read-only unavailable treatment with no form-like affordance. |
 | **Command palette** | Inherited dialog/input/results styling; never replaces visible navigation. |
 | **Refresh controls** | Compact manual refresh, pause/resume, and approved-cadence group. |
 | **Live status regions** | Persistent terminal outcomes; never toast-only authority. |
-| **Protected outcome** | Bounded typed explanation without protected bytes. |
+| **Protected outcome** | Bounded typed explanation for protected, expired-idempotency, or unsafe catalog/fence evidence without protected bytes, raw keys, digests, or fence values. |
 
 The promoted [dashboard overview mock](mockups/dashboard-overview.html), [desktop render](mockups/dashboard-overview.png), and [mobile render](mockups/dashboard-overview-mobile.png) illustrate dashboard density and contained grid overflow. The [command investigation mock](mockups/command-investigation.html), [desktop render](mockups/command-investigation.png), and [mobile render](mockups/command-investigation-mobile.png) illustrate command-evidence hierarchy and the detail panel's narrow-screen move. The upstream Fluent [desktop](imports/fluent-ui-v5-home-desktop.png) and [mobile](imports/fluent-ui-v5-home-mobile.png) captures illustrate inherited shell density and responsive navigation. These artifacts are illustrative, current composition references and remain non-copyable; the two spines win on conflict.
 
@@ -178,8 +178,10 @@ The promoted [dashboard overview mock](mockups/dashboard-overview.html), [deskto
 | Inherit FrontComposer and Fluent UI V5 visual defaults | Recreate inherited colors, typography, radii, or component styling |
 | Use one `event-store-admin` module entry and `FcPageTabs` | Add host-level entries for individual EventStore features |
 | Show evidence source, time, freshness, and state in text | Treat HTTP `202`, SignalR, a toast, or elapsed time as success |
+| Show projection fan-out and checkpoints per route | Collapse partial fan-out into one aggregate success state |
 | Use the named FrontComposer component when it exists | Offer a generic list of interchangeable component choices |
 | Keep disabled reasons visible and programmatically associated | Put essential safety reasons behind inaccessible-only tooltips |
 | Preserve focus and state in forced colors and reduced motion | Use animation or color as the only state cue |
 | Keep protected and idempotency material outside every rendered channel | Place raw operational internals in DOM, URLs, clipboard, export, logs, or telemetry |
+| Show recovery mutations only when authoritative delivered and environment-ready capability evidence permits them | Expose dead-letter retry/archive because a route, DTO, or undeployed project merely exists |
 | Show deferred capabilities as hidden or read-only | Render fake forms, jobs, progress, or success for backlog work |

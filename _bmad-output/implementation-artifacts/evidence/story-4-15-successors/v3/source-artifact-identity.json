@@ -1,33 +1,52 @@
 {
   "schema": "hexalith.eventstore.story-4-15-successor-source-identity/v3",
-  "reviewedOn": "2026-09-08",
+  "reviewedOn": "2026-09-09",
   "repository": "Hexalith/Hexalith.EventStore",
   "predecessor": {
     "completedV2ClosureCommit": "83b32fcfad7bb608098aebccdc15002636ffb431",
     "reviewSubjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
     "closureManifestSha256": "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
   },
+  "historicalSdkSuccessor": {
+    "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp",
+    "manifestSha256": "fd8cc0b86d2cf4f624495c64168e6a2dc727b5aa0f830dca39c382dd28ba094d"
+  },
+  "landedSource": {
+    "commit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "tree": "96fdfbba56df41b58889bf7f3b532a64d15314bd"
+  },
+  "headAncestry": {
+    "baseCommit": "5e8f175b2ced4715f7c6f765386812cc1001dbb4",
+    "required": true
+  },
   "sourceTransitions": {
     "tools/validate-oq8-platform-evidence.py": {
       "predecessorSha256": "8934e82022535a3f1d4855202e8008341f99f0abce0331ab5c59616ce3ea8767",
-      "successorSha256": "60bb3f51b44eed1cdc52de794135434a0f0de3363d8850e5becab05f5452fb49"
+      "successorSha256": "a0b24951f1e988da9f7923daf6f5a162fc7e4006c3cdfc9e870fc53b08a6e0fc"
     },
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": {
       "predecessorSha256": "434c1ad3ecb7d0bfe7390ce24b47919550b434c5f69db35d4e5b983d9b5864e0",
-      "successorSha256": "29ed082f32edd24d213fdb41980686e3c454d6643a0cd794ce2258a6ecb14bf4"
+      "successorSha256": "d6b1e418330e0f7dcd9abfac5890997715d6ee8eb7ad409f5435cd8abdd18a17"
     },
     "docs/ci.md": {
       "predecessorSha256": "f37a5f0ef6058a339b7f5a47375ab9bed195fe548969523a6155e77765fea46c",
-      "successorSha256": "80b09abe87384382ca9e1db3e486fb8fbcf7de4fa6f8a01401e08518a755db46"
+      "successorSha256": "f429f4cb973ff64ebc2db856fcceaaf2cc1956d17eba63e7a56e13a4a5e02fd3"
     }
   },
   "gateInputs": {
+    ".github/workflows/ci.yml": "80f90b86f8f7bd76c087f3a6660540cf27dda9663e2b521502fb84057d87b628",
     ".github/workflows/integration.yml": "4bed16f86037c7eb8f5bcbfc370b5b3ae60fec3d40880605660eba6722974ca1",
-    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "d5ac6c48917787c9249fe4257a639bf7077b09b88b19d2f327dbf8093e45f936",
+    "docs/ci.md": "f429f4cb973ff64ebc2db856fcceaaf2cc1956d17eba63e7a56e13a4a5e02fd3",
+    "global.json": "715a0895da9db82e2370e7445c371c39e3a2d032fdcf7dfbc95f9fcb27ddc7c2",
+    "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "d6b1e418330e0f7dcd9abfac5890997715d6ee8eb7ad409f5435cd8abdd18a17",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs": "d87abfcb82c7fc1b9dad1cbb26720f5c637a5dba6a1c4a2e8549d8c65e44a70b",
-    "tools/validate-oq8-platform-evidence.py": "60bb3f51b44eed1cdc52de794135434a0f0de3363d8850e5becab05f5452fb49",
-    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "29ed082f32edd24d213fdb41980686e3c454d6643a0cd794ce2258a6ecb14bf4",
-    "docs/ci.md": "80b09abe87384382ca9e1db3e486fb8fbcf7de4fa6f8a01401e08518a755db46"
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "830109d2e985048c1b5b1ab103c686541b714be58719a63bce998dd63f56a687",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs": "36891fd8689ec316ab925d1fb1114eeb54b50499fdfe683cd5ebaf4b7228668c",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "76f45fa2102df293c5d28390383b8001cfa47610412262c9c3626c160694020d",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs": "cbc1be14c3a8c9c58c9951059803a706ab3a54e0ccf130db89f3609c245ed577",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "8bf77620e33501409bc890d5983e57914087bbc469a8be05208a37f5ddd59948",
+    "tools/validate-oq8-platform-evidence.py": "a0b24951f1e988da9f7923daf6f5a162fc7e4006c3cdfc9e870fc53b08a6e0fc"
   },
-  "bindingRule": "V1 and v2 source, validator, test, documentation, and evidence bytes resolve only against immutable historical Git snapshots and manifests; v3 gate inputs resolve only against current regular non-symlink candidate files."
+  "bindingRule": "V1, the SDK successor, and v2 remain immutable historical evidence; v3 binds the original landed commit and tree, requires current HEAD ancestry from that commit, and resolves every SDK and current gate input only from regular non-symlink candidate files."
 }

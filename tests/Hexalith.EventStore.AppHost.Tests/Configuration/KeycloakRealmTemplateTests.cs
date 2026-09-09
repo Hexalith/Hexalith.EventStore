@@ -273,7 +273,7 @@ public sealed class KeycloakRealmTemplateTests
     }
 
     private static LocalAuthenticationCredentials CreateCredentials()
-        => LocalAuthenticationCredentials.Create(new ConfigurationBuilder().Build());
+        => LocalAuthenticationCredentials.Create();
 
     private static string CreateTestDirectory()
     {

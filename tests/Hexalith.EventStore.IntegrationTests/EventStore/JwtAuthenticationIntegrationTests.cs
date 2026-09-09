@@ -77,7 +77,9 @@ public class JwtAuthenticationIntegrationTests
     public async Task PostCommands_InvalidToken_Returns401ProblemDetails() {
         // Arrange - garbage token
         HttpClient client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "this.is.not.a.valid.jwt");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            Guid.NewGuid().ToString("N"));
         var request = new {
             tenant = "test-tenant",
             domain = "test-domain",

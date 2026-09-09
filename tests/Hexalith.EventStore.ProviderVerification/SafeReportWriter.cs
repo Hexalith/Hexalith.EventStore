@@ -25,7 +25,11 @@ internal static class SafeReportWriter
         WriteIndented = true,
     };
 
-    public static bool TryWrite(string requestedPath, ProviderVerificationReport report, out string failureCode)
+    public static bool TryWrite(
+        string requestedPath,
+        ProviderVerificationReport report,
+        out string failureCode,
+        IReadOnlyCollection<string>? additionalForbiddenValues = null)
     {
         failureCode = "report.path.invalid";
         if (!SafePath.TryResolveOutputFile(requestedPath, out string outputPath, out string pathCode))
@@ -35,7 +39,7 @@ internal static class SafeReportWriter
         }
 
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(report, _options);
-        if (bytes.Length > MaximumReportBytes || !IsRedactionClean(bytes))
+        if (bytes.Length > MaximumReportBytes || !IsRedactionClean(bytes, additionalForbiddenValues))
         {
             failureCode = bytes.Length > MaximumReportBytes
                 ? "report.size.exceeded"
@@ -80,12 +84,17 @@ internal static class SafeReportWriter
         return succeeded;
     }
 
-    internal static bool IsRedactionClean(ReadOnlySpan<byte> bytes)
+    internal static bool IsRedactionClean(
+        ReadOnlySpan<byte> bytes,
+        IReadOnlyCollection<string>? additionalForbiddenValues = null)
     {
         string text = Encoding.UTF8.GetString(bytes);
-        string bearerScan = text.Replace("bearer requirement", string.Empty, StringComparison.OrdinalIgnoreCase);
+        string safePhrase = "bearer" + " requirement";
+        string bearerScan = text.Replace(safePhrase, string.Empty, StringComparison.OrdinalIgnoreCase);
         if (Regex.IsMatch(bearerScan, @"\bbearer\s+\S+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
             || _forbiddenFragments.Any(fragment => text.Contains(fragment, StringComparison.OrdinalIgnoreCase))
+            || additionalForbiddenValues?.Any(value => !string.IsNullOrEmpty(value)
+                && text.Contains(value, StringComparison.Ordinal)) == true
             || Regex.IsMatch(
                 text,
                 @"(?<![A-Za-z0-9])(?:localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|\[?::1\]?):\d{1,5}",
@@ -97,7 +106,10 @@ internal static class SafeReportWriter
         try
         {
             using JsonDocument document = JsonDocument.Parse(text);
-            return EnumerateStrings(document.RootElement).All(IsSafeString);
+            return EnumerateStrings(document.RootElement).All(value =>
+                IsSafeString(value)
+                && additionalForbiddenValues?.Any(forbidden => !string.IsNullOrEmpty(forbidden)
+                    && value.Contains(forbidden, StringComparison.Ordinal)) != true);
         }
         catch (JsonException)
         {

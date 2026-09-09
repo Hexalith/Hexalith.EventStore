@@ -388,8 +388,10 @@ Configuration section: `Authentication:JwtBearer`
 |---------|------|---------|-------------|
 | `Authority` | string | `""` | OIDC authority URL (e.g., `https://keycloak.example.com/realms/hexalith`). Used in production for automatic key discovery |
 | `Audience` | string | `""` | Expected JWT audience claim. **Required** |
+| `ValidAudiences` | string[] | `[]` | Additional accepted audiences. When `Audience` is empty, the first non-blank value becomes the primary audience |
 | `Issuer` | string | `""` | Expected JWT issuer claim. **Required** |
-| `SigningKey` | string | `""` | Symmetric signing key for development/testing. Must be at least 32 characters for HS256 |
+| `AllowedAlgorithms` | string[] | `[]` | Explicit non-empty asymmetric signing-algorithm allow-list for authority mode (for example, `RS256`) |
+| `SigningKey` | string | `""` | Symmetric signing key for development/testing. Must be at least 32 UTF-8 bytes for HS256 |
 | `RequireHttpsMetadata` | bool | `true` | Require HTTPS when fetching OIDC metadata. Set to `false` only for local development |
 
 ```json
@@ -399,6 +401,7 @@ Configuration section: `Authentication:JwtBearer`
       "Authority": "https://keycloak.example.com/realms/hexalith",
       "Audience": "hexalith-eventstore",
       "Issuer": "https://keycloak.example.com/realms/hexalith",
+      "AllowedAlgorithms": [ "RS256" ],
       "RequireHttpsMetadata": true
     }
   }
@@ -409,10 +412,33 @@ Configuration section: `Authentication:JwtBearer`
 
 **Validation rules:**
 
-- Either `Authority` or `SigningKey` must be set (not both empty)
-- `Issuer` and `Audience` are always required
+- Exactly one of `Authority` or `SigningKey` must be set
+- `Issuer` and at least one non-blank primary/additional audience are always required
 - When `Authority` is set, the system uses OIDC discovery to fetch signing keys automatically
-- When `SigningKey` is set (development mode), it must be at least 32 characters
+- Authority mode requires a non-empty `AllowedAlgorithms` subset of the supported asymmetric algorithms; there is no production default
+- Outside Development, authority and discovered/token endpoints must be absolute HTTPS URIs without user information, query, or fragment, and HTTPS metadata cannot be disabled
+- When `SigningKey` is set, it must be at least 32 UTF-8 bytes; Production always rejects symmetric mode
+
+### Published UI token acquisition
+
+The AppHost configures the sample and Admin UIs as distinct external service identities. Each UI
+requires an explicit grant profile and scope:
+
+| AppHost input | Required values |
+|---------------|-----------------|
+| `Authentication:JwtBearer:SampleUi:GrantType` | Exactly `password` or `client_credentials` |
+| `Authentication:JwtBearer:SampleUi:Scope` | Non-blank provider scope |
+| `Authentication:JwtBearer:AdminUi:GrantType` | Exactly `password` or `client_credentials` |
+| `Authentication:JwtBearer:AdminUi:Scope` | Non-blank provider scope |
+| `Authentication:JwtBearer:TokenEndpoint` | Optional explicit HTTPS endpoint; when absent, OIDC discovery is used and its `issuer` must match `Authority` |
+| `Authentication:JwtBearer:AudienceParameterName` / `AudienceParameterValue` | Optional pair; the name is exactly `audience` or `resource`. Omit both when the provider does not require this non-standard field |
+
+Each profile always receives its own `Parameters__external-*-auth-client-id`. A `password` profile
+also receives the matching `username` and `password` secret parameters; a `client_credentials`
+profile receives only its matching `client-secret` parameter. Supply those values from deployment
+secrets or an ephemeral publisher environment. The token request sends only fields valid for the
+selected profile, preserves opaque password/secret bytes, rejects blank token responses, and never
+shares the Admin credential resource with the sample UI.
 
 ## Fluent Client SDK Configuration
 
@@ -572,8 +598,8 @@ export REDIS_HOST="redis:6379"
 export REDIS_PASSWORD=""
 
 # Production (Kubernetes)
-export POSTGRES_CONNECTION_STRING="Host=db.internal;Database=eventstore;Username=app;Password=secret"
-export RABBITMQ_CONNECTION_STRING="amqp://user:pass@rabbitmq.internal:5672"
+export POSTGRES_CONNECTION_STRING="Host=db.internal;Database=eventstore;Username=<username>;Password=<password>"
+export RABBITMQ_CONNECTION_STRING="amqp://<username>:<password>@rabbitmq.internal:5672"
 export DAPR_TRUST_DOMAIN="mycompany.io"
 export DAPR_NAMESPACE="production"
 ```
@@ -626,15 +652,15 @@ The .NET Aspire AppHost orchestrates the full local development topology — the
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `EnableKeycloak` | `"true"` | Set to `"false"` to disable the Keycloak identity provider in the local Aspire topology. Useful when testing without authentication |
+| `EnableKeycloak` | `"true"` | Set to `"false"` to disable Keycloak in the local Aspire topology while retaining authenticated validation through a generated per-run symmetric key |
 | `PUBLISH_TARGET` | (empty) | Aspire publisher target for deployment manifest generation: `"docker"`, `"k8s"`, or `"aca"` |
 
 ```bash
-# Run without Keycloak
-EnableKeycloak=false dotnet run --project src/Hexalith.EventStore.AppHost
+# Run without Keycloak, using authenticated per-run symmetric local mode
+EnableKeycloak=false aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
 
-# Generate Kubernetes deployment manifests
-PUBLISH_TARGET=k8s dotnet run --project src/Hexalith.EventStore.AppHost -- publish
+# Generate Kubernetes manifests after exporting the required external OIDC/UI inputs above
+PUBLISH_TARGET=k8s aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 ```
 
 The Aspire AppHost also configures:
@@ -644,7 +670,7 @@ The Aspire AppHost also configures:
 - **Keycloak** as the OIDC provider (when enabled)
 - **OpenTelemetry** collection through the Aspire dashboard
 
-> **Tip:** Run `dotnet run --project src/Hexalith.EventStore.AppHost` to start the complete local topology. The Aspire dashboard at `https://localhost:17225` shows all resources, logs, traces, and metrics.
+> **Tip:** Run `aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` to start the complete local topology. Use the dashboard URL reported by Aspire to inspect resources, logs, traces, and metrics.
 
 ## Health and Observability
 
@@ -738,9 +764,15 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:OpenApi:Enabled` | bool | `true` | `true` or `false` | Application |
 | `Authentication:JwtBearer:Authority` | string | `""` | Empty string or absolute OIDC URL | Authentication |
 | `Authentication:JwtBearer:Audience` | string | `""` | Non-empty string | Authentication |
+| `Authentication:JwtBearer:ValidAudiences:{index}` | string | — | Non-empty additional audience | Authentication |
 | `Authentication:JwtBearer:Issuer` | string | `""` | Non-empty string | Authentication |
+| `Authentication:JwtBearer:AllowedAlgorithms:{index}` | string | — | Explicit supported asymmetric algorithm in authority mode | Authentication |
 | `Authentication:JwtBearer:SigningKey` | string | `""` | Empty string or length `>= 32` | Authentication |
 | `Authentication:JwtBearer:RequireHttpsMetadata` | bool | `true` | `true` or `false` | Authentication |
+| `Authentication:JwtBearer:SampleUi:GrantType` | string | — | `password` or `client_credentials` in publish mode | Authentication |
+| `Authentication:JwtBearer:SampleUi:Scope` | string | — | Non-empty external-provider scope | Authentication |
+| `Authentication:JwtBearer:AdminUi:GrantType` | string | — | `password` or `client_credentials` in publish mode | Authentication |
+| `Authentication:JwtBearer:AdminUi:Scope` | string | — | Non-empty external-provider scope | Authentication |
 | `EventStoreOptions.EnableRegistrationDiagnostics` | bool | `false` | `true` or `false` | Fluent SDK |
 | `EventStoreOptions.DefaultStateStoreSuffix` | string | `"eventstore"` | `null` or non-empty string | Fluent SDK |
 | `EventStoreOptions.DefaultTopicSuffix` | string | `"events"` | `null` or non-empty string | Fluent SDK |

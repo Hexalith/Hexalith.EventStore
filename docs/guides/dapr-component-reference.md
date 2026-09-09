@@ -1003,7 +1003,7 @@ All backends use `{env:VAR_NAME}` substitution in DAPR component YAML. Set these
 
 | Variable                       | Backend           | Example Value                                                                                      |
 | ------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------- |
-| `RABBITMQ_CONNECTION_STRING`   | RabbitMQ          | `amqp://user:pass@rabbitmq:5672/`                                                                  |
+| `RABBITMQ_CONNECTION_STRING`   | RabbitMQ          | `amqp://<username>:<password>@rabbitmq:5672/`                                                      |
 | `KAFKA_BROKERS`                | Kafka             | `broker1:9092,broker2:9092`                                                                        |
 | `KAFKA_AUTH_TYPE`              | Kafka             | `none`, `password`, `mtls`, or `oidc`                                                              |
 | `SERVICEBUS_CONNECTION_STRING` | Azure Service Bus | `Endpoint=sb://mynamespace.servicebus.windows.net/;SharedAccessKeyName=dapr;SharedAccessKey=<key>` |

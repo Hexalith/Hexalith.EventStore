@@ -284,7 +284,9 @@ public class DaprInfrastructureQueryServiceTests {
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
 
-        const string rawEndpoint = "http://user:p%40ss@localhost:3501";
+        string password = "p@" + Guid.NewGuid().ToString("N");
+        string encodedPassword = Uri.EscapeDataString(password);
+        string rawEndpoint = $"http://user:{encodedPassword}@localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = rawEndpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         FakeHandler handler = new(HttpStatusCode.OK, """{"components": [], "subscriptions": []}""");
@@ -298,18 +300,21 @@ public class DaprInfrastructureQueryServiceTests {
         _ = result.ShouldNotBeNull();
         result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
         result.RemoteEndpoint.ShouldBe("http://localhost:3501/");
-        handler.LastRequestUri.ShouldBe("http://user:p%40ss@localhost:3501/v1.0/metadata");
+        handler.LastRequestUri.ShouldBe($"http://user:{encodedPassword}@localhost:3501/v1.0/metadata");
         _ = httpClientFactory.Received(1).CreateClient("DaprSidecar");
     }
 
     [Fact]
     public void Constructor_DoesNotLogRemoteEndpointCredentials() {
         RecordingLogger<DaprInfrastructureQueryService> logger = new();
-        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = "http://user:p%40ss@localhost:3501" };
+        string password = "p@" + Guid.NewGuid().ToString("N");
+        string encodedPassword = Uri.EscapeDataString(password);
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = $"http://user:{encodedPassword}@localhost:3501" };
 
         _ = CreateService(serverOptions: options, logger: logger);
 
-        logger.Records.Any(r => r.Message.Contains("p%40ss", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        logger.Records.Any(r => r.Message.Contains(password, StringComparison.Ordinal)).ShouldBeFalse();
+        logger.Records.Any(r => r.Message.Contains(encodedPassword, StringComparison.Ordinal)).ShouldBeFalse();
         logger.Records.Any(r => r.Message.Contains("user:", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
         logger.Records.Any(r => r.Message.Contains("http://localhost:3501", StringComparison.OrdinalIgnoreCase)).ShouldBeTrue();
     }

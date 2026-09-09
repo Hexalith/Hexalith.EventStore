@@ -53,7 +53,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// record that keeps naming a superseded subject cannot stay green.
     /// </summary>
     private const string CurrentSubjectSha256 =
-        "a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448";
+        "aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5";
 
     /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
     private const int FrozenStory314PacketFileCount = 66;
@@ -2796,12 +2796,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
     /// <summary>
     /// Verifies every surface that restates the current subject digest is drift-bound. Only the two
-    /// markdown records were covered, so the sprint tracker and this story's own spec could keep
-    /// naming a superseded subject with the whole suite green.
+    /// markdown records were covered, so this story's own spec could keep naming a superseded
+    /// subject with the whole suite green. Story 5.3 explicitly forbids mutating sprint-status.yaml.
     /// </summary>
     /// <param name="relativePath">Surface that restates the subject digest.</param>
     [Theory]
-    [InlineData("_bmad-output/implementation-artifacts/sprint-status.yaml")]
     [InlineData("_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md")]
     public void SubjectRestatingSurfacesNameTheCurrentSubject(string relativePath)
     {

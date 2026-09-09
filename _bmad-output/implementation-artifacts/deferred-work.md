@@ -4048,3 +4048,69 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Four of the five `epics.md` `inputDocumentDigests` pins are stale after concurrent commit `0825f0dc`; only `architecture.md` was re-pinned.
   evidence: Measured 2026-09-09 after `0825f0dc`: `prd.md` pinned `8f9c88e8…` vs actual `b99effdb414209…`; `DESIGN.md` pinned `3be78b6b…` vs actual `d2185a22cdd9c3…`; `EXPERIENCE.md` pinned `6a058112…` vs actual `b392b7c430e42a…`; `ux.md` pinned `3c827e92…` vs actual `c839bd6a3b24ad…`. `architecture.md` was re-pinned to `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51` by code review Story 4.15 Group F. The other four were rewritten by commits outside this review's scope and the UX working files were still dirty at measurement time, so pinning them would bind a moving target. Re-pin them in the commit that settles that work. No test or tool recomputes these digests, so the drift is invisible to every check.
+
+## Deferred from: BMad Build review of Story 4.15 Group G (2026-09-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The break-glass release path can publish after commitlint alone without a successful CI conclusion.
+  evidence: `.github/workflows/release.yml` deliberately substitutes commitlint when `bypass-validation=true`; protected-environment approval mitigates but does not prove the dispatched source builds or passes tests.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The legacy release job retains unused write-scoped identity-token and attestation permissions.
+  evidence: The job grants `id-token` and attestation writes while no current step consumes them, unnecessarily increasing the impact of a compromised release dependency.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Required live-sidecar CI captures OQ8 evidence but no required context validates the committed closure packet.
+  evidence: The live-sidecar lane is capture-only, while the full closure validator runs in `ci / contracts`, which is absent from the repository's required status contexts.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Operations dead-letter authorization does not provide one end-to-end authenticated caller boundary for both HTTP and actor routes.
+  evidence: The HTTP helper accepts any nonempty bearer alongside the configured Dapr caller ID, and Dapr actor methods do not independently apply that caller policy even though the target sidecar supplies the app-channel token.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Dead-letter retention and its single global index grow without compaction and impose cumulative quadratic work.
+  evidence: Records retain raw bodies indefinitely; capture rewrites the full index, and activation/backlog observation scans all indexed entries, so storage and processing cost grow with historical traffic.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: An operator retry request waits for the sequential replay drain after durable intent has already been accepted.
+  evidence: `RetryAsync` saves state and arms its reminder, then awaits `DrainReplayRequestsAsync`, allowing large backlogs to hold the HTTP invocation open and invite duplicate operator retries after timeout.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Permanent replay HTTP failures are retried as if transient until the replay-attempt budget is exhausted.
+  evidence: HTTP 400, 401, 403, and 404 receive reason codes but follow the same requeue path as transient failures unless the numeric attempt limit has been reached.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Terminally rejected dead-letter captures can be acknowledged without any durable recovery record.
+  evidence: Oversize, empty, hash-conflicting, and unretainable messages emit telemetry but are not durably retained, so acknowledged data can be irrecoverably lost.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Exhausted startup reconciliation can leave dead-letter health and backlog telemetry falsely clear.
+  evidence: The reconciler exits after bounded retries without a durable failure state, health signal, metric, or diagnostic that distinguishes reconciliation failure from an empty backlog.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The OQ8 Python bootstrap is version-pinned but neither artifact-hash-pinned nor structurally bound to the workflow step that executes it.
+  evidence: `requirements-oq8.txt` has no hashes and pip omits `--require-hashes`; validator workflow checks are unscoped substrings that could survive in comments or unrelated steps after the actual bootstrap drifts.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Generated Playwright artifacts with browser session material are tracked in source control.
+  evidence: Tracked `.playwright-cli` network traces include antiforgery cookies and ephemeral SignalR connection tokens, exposing session material and adding generated trace bulk to repository history.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Validation performed with a dirty `Hexalith.Tenants` submodule worktree is not reproducible from the superproject diff.
+  evidence: Git reports the pinned `54fc4040dc6348e5560fffc246a27e72dc6558fe` gitlink with a dirty suffix; uncommitted nested bytes are not represented by the owning repository's patch.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Active v3 closure intentionally leaves older OQ8 capability paths outside its reduced current-source binding set.
+  evidence: Historical v1 identities remain frozen while v3 checks its explicit gate inputs; a later change to an older, unbound capability path can coexist with a passing v3 validator under the accepted DW-496 authority boundary.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Story frontmatter status parsing can miss YAML-equivalent duplicate keys.
+  evidence: `parse_unique_frontmatter_status` recognizes only the exact unquoted `status:` spelling, so a quoted key or a space before the colon can evade its ambiguity count and be interpreted differently by another YAML consumer.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Workflow guardrails can miss equivalent Server.Tests invocations and alternate Dapr-version override forms.
+  evidence: Contract tests forbid one literal `dotnet test` path and recognize narrow Dapr quoting/location patterns; path variants, solution invocations, double quoting, or job-level values can change effective execution while the expected literal remains elsewhere.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Dead-letter HTTP inputs are not consistently rejected before actor dispatch.
+  evidence: A malformed continuation token silently restarts at offset zero, while a malformed tenant identifier can reach actor construction and surface as a server error instead of a bounded client error.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Malformed blank publication-index entries can force unbounded activation scanning and repeated diagnostics.
+  evidence: Blank invalid entries do not consume the probe budget, so a corrupted index can traverse an arbitrarily large malformed prefix before reaching valid work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Provider verification lacks a real-Kestrel authorized Pact interaction that proves generated credential propagation.
+  evidence: The verifier injects a credential and the handler validates it, but the only real-Kestrel interaction is unauthorized and succeeds independently of whether the generated credential reaches the provider.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Aspire authentication tests do not prove bounded validation for partial or unsupported audience parameters.
+  evidence: Tests cover a valid audience pair and an invalid token endpoint but not either missing half of the pair or an unsupported parameter name before AppHost mutation.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-09, Group H)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The v3 test receipt's 384 / 1952 test counts are not reproducible from any recorded execution.
+  evidence: `evidence/story-4-15-successors/v3/reviews/test.json` attests `contracts-full` 1952/1952 and the validator pins `V3_FULL_CONTRACTS_TEST_COUNT = 1952`, but the spec's Completion Verification records only an isolated `Oq8PlatformClosureTests` run (384), a solution build, and a Contracts build; the live tree reports 259/384 focused failures. Unverified, would be high if false. Settle by running `V3_CONTRACTS_TEST_COMMAND` on a story-isolated worktree of the exact remint and recording the result location in `pre-review-execution.json` or the receipt findings. Settled during the Group H reseal (2026-09-09): `V3_CONTRACTS_TEST_COMMAND` ran on the story-isolated worktree of the resealed remint and reported 1966/1966 (TRX `TestResults/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.trx`), matching the resealed `V3_FULL_CONTRACTS_TEST_COUNT = 1966` and the v3 test receipt; the spec's Group H Completion Verification records the run.

@@ -66,7 +66,7 @@ context:
 - [x] Step-4 patch -- require the exact synthetic authenticated-state header and validate tenant/domain/permission claims and requested authorization values.
 - [x] Step-4 patch -- preserve accurate host-bound/stopped/port-closed facts through post-bind readiness failures and bounded cleanup.
 - [x] Step-4 patch -- require ordered unique interaction indices and exactly one matching setup then teardown callback for completeness.
-- [x] Step-4 patch -- reject arbitrary absolute paths and private/loopback endpoint forms, preserve the safe `bearer requirement` phrase only, and make temporary report cleanup failures stable.
+- [x] Step-4 patch -- reject arbitrary absolute paths and private/loopback endpoint forms, preserve only the safe requirement-for-bearer-authentication phrase, and make temporary report cleanup failures stable.
 - [x] Step-4 patch -- bound verifier timeout kill, wait, and null-stream drain behavior.
 - [x] Step-4 patch -- move repository discovery under fail-closed reporting so valid report output still receives a minimal input-failure report outside the checkout.
 - [x] Step-4 patch -- add a self-contained real-Kestrel one-interaction Pact test plus focused tests for every hardening item.

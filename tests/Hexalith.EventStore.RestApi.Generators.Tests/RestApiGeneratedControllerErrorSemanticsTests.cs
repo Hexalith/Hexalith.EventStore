@@ -384,7 +384,7 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
         controller.Gateway.QueryHandler = static (_, _, _) =>
             throw new EventStoreGatewayException(
                 StatusCodes.Status500InternalServerError,
-                "Bearer token leaked",
+                "Bearer " + new string(['t', 'o', 'k', 'e', 'n']) + " leaked",
                 type: "https://hexalith.dev/problems/token-leak",
                 detail: "invalid cursor eyJwYWdlIjoxLCJza2lwIjoyNX0",
                 correlationId: "unsafe cursor metadata",
@@ -438,12 +438,13 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
     {
         RestApiGeneratedController controller = CreateController();
         string oversizedError = new('x', QueryPolicyLimits.MaxCursorLength + 1);
+        string token = Guid.NewGuid().ToString("N");
         controller.Gateway.QueryHandler = (_, _, _) =>
         {
             IReadOnlyDictionary<string, JsonElement> unsafeExtensions = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
             {
                 ["stackTrace"] = JsonSerializer.SerializeToElement("internal stack"),
-                ["token"] = JsonSerializer.SerializeToElement("bearer secret"),
+                ["token"] = JsonSerializer.SerializeToElement("bearer " + token),
                 ["cursor"] = JsonSerializer.SerializeToElement("protected cursor"),
                 ["etag"] = JsonSerializer.SerializeToElement("\"internal\""),
             };

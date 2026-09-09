@@ -120,7 +120,7 @@ internal static class Dw4FixtureCatalog {
             ExpectedRuleIds: new HashSet<string>(StringComparer.Ordinal) {
                 Dw4RuleVocabulary.RedactionUnsafeConnectionDetails,
             },
-            Notes: "Connection-string keyword 'Server=...; Password=...' present unredacted."),
+            Notes: "Connection-string keywords with a runtime secret present unredacted."),
         new("query-invalid-redaction-production-hostname.md",
             SchemaSlot: Dw4RuleVocabulary.SchemaQueryV1,
             Verdict.Fail,

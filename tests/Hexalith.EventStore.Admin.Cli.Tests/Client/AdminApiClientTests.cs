@@ -20,11 +20,12 @@ public class AdminApiClientTests {
     [Fact]
     public async Task AdminApiClient_AddsAuthHeader_WhenTokenProvided() {
         // Arrange
+        string token = Guid.NewGuid().ToString("N");
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent("{\"name\":\"test\"}", System.Text.Encoding.UTF8, "application/json"),
         });
         using HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
-        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "my-token");
+        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         using AdminApiClient client = new(httpClient);
 
         // Act
@@ -34,16 +35,17 @@ public class AdminApiClientTests {
         _ = handler.LastRequest.ShouldNotBeNull();
         _ = handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
         handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
-        handler.LastRequest.Headers.Authorization.Parameter.ShouldBe("my-token");
+        handler.LastRequest.Headers.Authorization.Parameter.ShouldBe(token);
     }
 
     [Fact]
     public async Task AdminApiClient_AddsAuthHeader_FromGlobalOptionsConstructor() {
         // Arrange
+        string token = Guid.NewGuid().ToString("N");
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
         });
-        using AdminApiClient client = new(new GlobalOptions("http://localhost:5002", "ctor-token", "json", null), handler);
+        using AdminApiClient client = new(new GlobalOptions("http://localhost:5002", token, "json", null), handler);
 
         // Act
         _ = await client.GetAsync<object>("/test", CancellationToken.None).ConfigureAwait(true);
@@ -52,7 +54,7 @@ public class AdminApiClientTests {
         _ = handler.LastRequest.ShouldNotBeNull();
         _ = handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
         handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
-        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("ctor-token");
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe(token);
     }
 
     [Fact]

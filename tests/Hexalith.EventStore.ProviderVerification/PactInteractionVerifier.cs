@@ -17,14 +17,16 @@ internal static class PactInteractionVerifier
         string pactDirectory,
         Uri baseAddress,
         ProviderStateCoordinator coordinator,
-        TimeSpan requestTimeout)
+        TimeSpan requestTimeout,
+        string acceptedToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(acceptedToken);
         coordinator.BeginInteraction(interaction.ProviderState);
         var stopwatch = Stopwatch.StartNew();
         string resultCode;
         try
         {
-            string normalizedPact = CreateNormalizedPact(interaction, pactDirectory);
+            string normalizedPact = CreateNormalizedPact(interaction, pactDirectory, acceptedToken);
             try
             {
                 resultCode = await RunIsolatedAsync(
@@ -36,7 +38,10 @@ internal static class PactInteractionVerifier
             }
             finally
             {
-                TryDelete(normalizedPact);
+                if (!TryDeleteNormalizedPact(normalizedPact, out string cleanupCode))
+                {
+                    throw new ProviderVerificationInputException(cleanupCode);
+                }
             }
         }
         finally
@@ -105,7 +110,10 @@ internal static class PactInteractionVerifier
         }
     }
 
-    internal static string CreateNormalizedPact(InteractionDefinition interaction, string pactDirectory)
+    internal static string CreateNormalizedPact(
+        InteractionDefinition interaction,
+        string pactDirectory,
+        string? acceptedToken = null)
     {
         string pactPath = Path.Combine(pactDirectory, interaction.PactFile);
         byte[] snapshot = JsonInput.ReadSnapshot(pactPath, 2 * 1024 * 1024);
@@ -130,10 +138,121 @@ internal static class PactInteractionVerifier
             _ = interactionNode?.AsObject().Remove("metadata");
         }
 
+        if (!string.IsNullOrWhiteSpace(acceptedToken))
+        {
+            ReplaceCredentialPlaceholder(root, interaction, acceptedToken);
+        }
+
         string temporaryPath = Path.Combine(Path.GetTempPath(), $"eventstore-pact-{Guid.NewGuid():N}.json");
-        File.WriteAllText(temporaryPath, root.ToJsonString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        byte[] normalizedBytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+            .GetBytes(root.ToJsonString());
+        var options = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+            BufferSize = 4096,
+            Options = FileOptions.WriteThrough,
+        };
+        if (!OperatingSystem.IsWindows())
+        {
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        try
+        {
+            using var stream = new FileStream(temporaryPath, options);
+            stream.Write(normalizedBytes);
+            stream.Flush(flushToDisk: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            if (File.Exists(temporaryPath)
+                && !TryDeleteNormalizedPact(temporaryPath, out string cleanupCode))
+            {
+                throw new ProviderVerificationInputException(cleanupCode);
+            }
+
+            throw new ProviderVerificationInputException("input.pact.normalization-write-failed");
+        }
+
         return temporaryPath;
     }
+
+    /// <summary>
+    /// Deletes one secret-bearing normalized Pact, retrying transient file-system failures.
+    /// </summary>
+    /// <param name="path">The normalized Pact path.</param>
+    /// <param name="failureCode">A stable support-safe failure code when cleanup does not succeed.</param>
+    /// <param name="deleteFile">An optional test seam for the delete operation.</param>
+    /// <returns><see langword="true"/> when the file was deleted or no longer exists.</returns>
+    internal static bool TryDeleteNormalizedPact(
+        string path,
+        out string failureCode,
+        Action<string>? deleteFile = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        deleteFile ??= File.Delete;
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                deleteFile(path);
+                failureCode = string.Empty;
+                return true;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Retry a bounded number of times. No path or credential data is included in diagnostics.
+            }
+        }
+
+        failureCode = "interaction.normalized-pact-cleanup-failed";
+        return false;
+    }
+
+    private static void ReplaceCredentialPlaceholder(
+        JsonObject root,
+        InteractionDefinition interaction,
+        string acceptedToken)
+    {
+        JsonObject[] selectedInteractions =
+        [
+            .. (root["interactions"]?.AsArray() ?? [])
+                .OfType<JsonObject>()
+                .Where(candidate => IsSelectedInteraction(candidate, interaction)),
+        ];
+        if (selectedInteractions.Length != 1)
+        {
+            throw new ProviderVerificationInputException("input.pact.selected-interaction-invalid");
+        }
+
+        JsonObject headers = selectedInteractions[0]["request"]?["headers"]?.AsObject()
+            ?? throw new ProviderVerificationInputException("input.pact.authorization-header-invalid");
+        string[] authorizationKeys =
+        [
+            .. headers.Select(static entry => entry.Key)
+                .Where(static key => string.Equals(key, "Authorization", StringComparison.OrdinalIgnoreCase)),
+        ];
+        if (authorizationKeys.Length != 1
+            || headers[authorizationKeys[0]] is not JsonValue authorizationValue
+            || !authorizationValue.TryGetValue(out string? authorization)
+            || !string.Equals(authorization, "Bearer FC_CONTRACT_TOKEN", StringComparison.Ordinal))
+        {
+            throw new ProviderVerificationInputException("input.pact.authorization-header-invalid");
+        }
+
+        headers[authorizationKeys[0]] = string.Concat("Bearer", " ", acceptedToken);
+    }
+
+    private static bool IsSelectedInteraction(JsonObject candidate, InteractionDefinition interaction)
+        => string.Equals(candidate["description"]?.GetValue<string>(), interaction.Description, StringComparison.Ordinal)
+            && candidate["providerStates"] is JsonArray providerStates
+            && providerStates.Count == 1
+            && string.Equals(
+                providerStates[0]?["name"]?.GetValue<string>(),
+                interaction.ProviderState,
+                StringComparison.Ordinal);
 
     private static async Task<string> RunIsolatedAsync(
         string pactPath,
@@ -241,19 +360,4 @@ internal static class PactInteractionVerifier
         }
     }
 
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (IOException)
-        {
-            // Report generation never includes the temporary path; cleanup scans surface leftovers.
-        }
-        catch (UnauthorizedAccessException)
-        {
-            // Report generation never includes the temporary path; cleanup scans surface leftovers.
-        }
-    }
 }

@@ -83,7 +83,7 @@ printf '%s\n' "Bearer ${opaque_token} ${fake_jwt} ${credential_line} AccountKey=
 redacted="$(redact <"${fixture}")"
 rm -f "${fixture}"
 
-assert_contains "${redacted}" "Bearer [redacted-token]" "bearer token redacted"
+assert_contains "${redacted}" "Bearer [redacted-token]" "authorization value redacted"
 assert_contains "${redacted}" "[redacted-jwt]" "compact JWT redacted"
 assert_contains "${redacted}" "[redacted-secret]" "password/account key redacted"
 assert_contains "${redacted}" "[redacted-connection]" "redis connection string redacted"
@@ -98,8 +98,10 @@ assert_contains "${redacted}" "http://localhost:8080/api/tenant-a/counter/counte
 # Nothing sensitive leaks.
 assert_not_contains "${redacted}" "tenant-prod-001" "no concrete tenant value leaks"
 assert_not_contains "${redacted}" "real-user" "no user value leaks"
-assert_not_contains "${redacted}" "s3cr3t" "no password leaks"
-assert_not_contains "${redacted}" "SUPERSECRETTOKENVALUE" "no dapr api token leaks"
+assert_not_contains "${redacted}" "${opaque_token}" "no generated opaque token leaks"
+assert_not_contains "${redacted}" "${fake_jwt}" "no generated compact JWT leaks"
+assert_not_contains "${redacted}" "${secret_password}" "no generated password leaks"
+assert_not_contains "${redacted}" "${account_key}" "no generated account key leaks"
 assert_not_contains "${redacted}" "identity.internal.example" "no internal issuer host leaks"
 
 printf '## dev JWT minting (never leaks the signing key)\n'

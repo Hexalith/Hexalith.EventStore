@@ -47,7 +47,7 @@ public sealed class DaprHttpEndpointResolverTests
             "http://localhost:3500/v1.0",
             "http://localhost:3500?x=1",
             "http://localhost:3500#sidecar",
-            "http://user:password@localhost:3500",
+            $"http://user:{Guid.NewGuid():N}@localhost:3500",
             "http://localhost:0",
             "ftp://localhost:3500",
             "localhost:3500",

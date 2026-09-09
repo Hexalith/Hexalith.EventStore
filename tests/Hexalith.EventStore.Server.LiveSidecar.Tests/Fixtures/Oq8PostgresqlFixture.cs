@@ -30,11 +30,11 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private const string AggregateActorTypeName = "Oq8AggregateActor";
     private const string ActiveVersionOne = "oq8-v1";
     private const string ActiveVersionTwo = "oq8-v2";
-    private const string VersionOneKey = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
-    private const string VersionTwoKey = "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=";
+    private static readonly string VersionOneKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+    private static readonly string VersionTwoKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
     private const string AuthenticationIssuer = "hexalith-oq8-evidence";
     private const string AuthenticationAudience = "hexalith-eventstore";
-    private const string AuthenticationSigningKey = "Oq8EvidenceOnlySigningKey-AtLeast32Characters";
+    private static readonly string AuthenticationSigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
     private const int PlacementContainerPort = 50005;
     private const int SchedulerContainerPort = 50006;
     private const int HealthTimeoutSeconds = 60;

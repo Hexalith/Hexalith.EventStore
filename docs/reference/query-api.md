@@ -16,23 +16,9 @@ All HTTP endpoints on this page require a valid JWT Bearer token:
 Authorization: Bearer {token}
 ```
 
-Acquire a development token from Keycloak:
+For the clean-clone local experience, use the [quickstart sample UI](../getting-started/quickstart.md); it performs authentication internally. The AppHost's generated realm-user credentials are intentionally neither exposed as environment variables nor configurable as reusable defaults.
 
-```bash
-$ KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
-$ curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
-  -d "grant_type=password" \
-  -d "client_id=hexalith-eventstore" \
-  -d "username=${HEXALITH_ADMIN_USERNAME}" \
-  -d "password=${HEXALITH_ADMIN_PASSWORD}"
-```
-
-> **Tip:** On Windows PowerShell 5.x, use:
-
-```powershell
-$env:KEYCLOAK_URL = aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | ConvertFrom-Json | ForEach-Object { $_.resources | Where-Object displayName -eq "security" | ForEach-Object { $_.urls | Where-Object name -eq "http" | Select-Object -ExpandProperty url } }
-$ Invoke-RestMethod -Method Post -Uri "$env:KEYCLOAK_URL/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD} | Select-Object -ExpandProperty access_token
-```
+The direct HTTP examples in this reference assume that the caller supplies a short-lived token from an external or development/test identity provider configured for the EventStore authority, audience, and signing algorithm. Store that token in `TOKEN` (or provide it through your HTTP client's secure credential mechanism). `HEXALITH_ADMIN_USERNAME` and `HEXALITH_ADMIN_PASSWORD` are not part of the local AppHost contract.
 
 > **Note:** Query endpoints enforce the same 1 MB request-body limit as the command endpoints.
 

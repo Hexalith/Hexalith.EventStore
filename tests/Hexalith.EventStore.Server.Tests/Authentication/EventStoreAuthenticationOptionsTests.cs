@@ -59,7 +59,7 @@ public class EventStoreAuthenticationOptionsTests {
     public void Validate_ShortSigningKey_Fails() {
         // Arrange (5.4.3 — rejects SigningKey < 32 bytes)
         var options = new EventStoreAuthenticationOptions {
-            SigningKey = "too-short",
+            SigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(8)),
             Issuer = "test-issuer",
             Audience = "test-audience",
         };

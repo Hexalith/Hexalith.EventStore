@@ -2,14 +2,15 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "issuedAt": "2026-09-08T06:00:15Z",
+  "issuedAt": "2026-09-09T17:30:39Z",
   "decision": "approved",
-  "subjectSha256": "33eb4ee3e195c0101c01be4522d4852d9d4533e70027f37419056fdeefedb922",
-  "limitationsSha256": "d298f5dd8b35e5b8bf269d8190f698492b3147ab77f827820b2ff036a2dd7884",
-  "acceptedScope": "immutable predecessor lineage, fail-closed source and timestamp drift detection, receipt binding, and external-authority exclusions",
+  "subjectSha256": "84fdda8013d4c191aaa2758c80365fe798d9c09e9049a6ba0032bc89fd04a51d",
+  "limitationsSha256": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
+  "acceptedScope": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
   "findings": [
-    "This remint keeps the validator-pinned reviewer roster and records Administrator-authorized Group B closure of Oq8PlatformClosureTests.cs; it does not claim a new independent security-review conversation.",
-    "V3 still fail-closes source and timestamp drift, binds receipts to the frozen subject, and excludes every external authority."
+    "An independent security review of predecessor subject cd29ee7408c988d1af2480ec862d985295e1ad81f68d81184565f2c4f8f851ac was performed in a separate LLM agent session using a different model, run by Administrator on 2026-09-09; this receipt re-issues that approval against resealed subject 84fdda8013d4c191aaa2758c80365fe798d9c09e9049a6ba0032bc89fd04a51d, source identity df91150908ab527f915b39e1ac4abdf055ecbab9258766ff0b77145fcfa37856, pre-review execution 479aae90fb069b090057b0e3e73373ad68fe9aa791e3fd0129b8e605769ed9a8, validator record 84865c010126e2b6d7b0481f1955863e86d01bf20e32361d0e8c952f64b62f43, and validator a0b24951f1e988da9f7923daf6f5a162fc7e4006c3cdfc9e870fc53b08a6e0fc after the review-driven patches were applied and re-verified in the sealing session.",
+    "All 13 regular non-symlink gate inputs match, including closure tests d6b1e418330e0f7dcd9abfac5890997715d6ee8eb7ad409f5435cd8abdd18a17; the symlink-ancestor mutation requires failure with the v3-prefixed invariant diagnostic under deterministic sorted gate iteration.",
+    "Validator semantics changed in this reseal: the selector's regular-file guard precedes loading, selector structure and the historical block are validated in every mode, the historical SDK link is checked in pre-review mode, and gate iteration is deterministic; production runtime semantics are unchanged, and predecessor manifests, landed commit and tree, HEAD ancestry, receipt binding, snapshot-bound handoff plumbing, and every external-authority exclusion remain intact."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

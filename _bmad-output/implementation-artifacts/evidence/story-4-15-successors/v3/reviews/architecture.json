@@ -2,14 +2,14 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "architecture",
   "reviewer": "Winston (System Architect)",
-  "issuedAt": "2026-09-08T06:00:10Z",
+  "issuedAt": "2026-09-09T17:30:37Z",
   "decision": "approved",
-  "subjectSha256": "33eb4ee3e195c0101c01be4522d4852d9d4533e70027f37419056fdeefedb922",
-  "limitationsSha256": "d298f5dd8b35e5b8bf269d8190f698492b3147ab77f827820b2ff036a2dd7884",
-  "acceptedScope": "v2 historical preservation, v3 current-source succession, deterministic UTC validation, and source-only authority boundaries",
+  "subjectSha256": "84fdda8013d4c191aaa2758c80365fe798d9c09e9049a6ba0032bc89fd04a51d",
+  "limitationsSha256": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
+  "acceptedScope": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, and source-only authority boundaries",
   "findings": [
-    "Administrator authorized a 2026-09-08 Group B remint of the v3 successor after applying sealed Git-identity method names and the remaining Oq8PlatformClosureTests.cs patches. V2 historical preservation and source-only authority boundaries are unchanged.",
-    "The additive v3 subject still binds every current image-authority input plus the evolved validator, closure tests, and operator guidance without expanding authority."
+    "The unified v3 lineage preserves the v1 closure, SDK successor, and v2 successor as immutable historical evidence while making one current-source successor authoritative.",
+    "The frozen subject binds the original landed commit and tree, requires current HEAD ancestry, covers every SDK and v2 gate input as a regular non-symlink file, and does not expand source-only authority."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

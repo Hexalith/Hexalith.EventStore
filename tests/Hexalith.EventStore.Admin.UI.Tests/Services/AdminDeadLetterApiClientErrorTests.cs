@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 public class AdminDeadLetterApiClientErrorTests {
     [Fact]
     public async Task RetryDeadLettersAsync_ProblemDetails_PreservesSafeFieldsWithoutRawBody() {
+        string token = Guid.NewGuid().ToString("N");
         using var response = new HttpResponseMessage(HttpStatusCode.UnprocessableEntity) {
             Content = new StringContent(
                 JsonSerializer.Serialize(new {
@@ -22,7 +23,7 @@ public class AdminDeadLetterApiClientErrorTests {
                     errorCode = "DLQ_INVALID_STATE",
                     traceId = "trace-123",
                     operationId = "op-456",
-                    raw = "Bearer secret-token redis://internal-host:6379",
+                    raw = "Bearer " + token + " redis://internal-host:6379",
                 }),
                 Encoding.UTF8,
                 "application/problem+json"),
@@ -38,7 +39,7 @@ public class AdminDeadLetterApiClientErrorTests {
         ex.ErrorCode.ShouldBe("DLQ_INVALID_STATE");
         ex.TraceId.ShouldBe("trace-123");
         ex.OperationId.ShouldBe("op-456");
-        ex.Message.ShouldNotContain("secret-token");
+        ex.Message.ShouldNotContain(token);
         ex.Message.ShouldNotContain("redis://internal-host");
     }
 
@@ -83,8 +84,9 @@ public class AdminDeadLetterApiClientErrorTests {
 
     [Fact]
     public async Task RetryDeadLettersAsync_MalformedProblemBody_UsesBoundedDiagnostic() {
+        string token = Guid.NewGuid().ToString("N");
         using var response = new HttpResponseMessage(HttpStatusCode.InternalServerError) {
-            Content = new StringContent("Bearer secret-token raw service dump"),
+            Content = new StringContent("Bearer " + token + " raw service dump"),
         };
         AdminDeadLetterApiClient client = CreateClient(response);
 
@@ -92,7 +94,7 @@ public class AdminDeadLetterApiClientErrorTests {
             () => client.RetryDeadLettersAsync("tenant-a", ["msg-1"]));
 
         ex.Message.ShouldContain("could not be parsed");
-        ex.Message.ShouldNotContain("secret-token");
+        ex.Message.ShouldNotContain(token);
         ex.Message.ShouldNotContain("raw service dump");
     }
 
@@ -113,13 +115,15 @@ public class AdminDeadLetterApiClientErrorTests {
 
     [Fact]
     public async Task RetryDeadLettersAsync_ProblemDetailRedactsSecretsAndInternalEvidence() {
+        string token = Guid.NewGuid().ToString("N");
+        string password = Guid.NewGuid().ToString("N");
         using var response = new HttpResponseMessage(HttpStatusCode.UnprocessableEntity) {
             Content = new StringContent(
                 JsonSerializer.Serialize(new {
                     title = "Validation failed",
                     detail = string.Concat(
-                        "Bearer secret-token at Internal.Type.Method() server01.internal Data Source=db;User ID=sa;Pass",
-                        "word=pw"),
+                        "Bearer ", token,
+                        " at Internal.Type.Method() server01.internal Data Source=db;User ID=sa;Password=", password),
                     errorCode = "DLQ_INVALID_STATE",
                 }),
                 Encoding.UTF8,
@@ -132,7 +136,8 @@ public class AdminDeadLetterApiClientErrorTests {
 
         _ = ex.Detail.ShouldNotBeNull();
         ex.Detail.ShouldContain("[redacted]");
-        ex.Detail.ShouldNotContain("secret-token");
+        ex.Detail.ShouldNotContain(token);
+        ex.Detail.ShouldNotContain(password);
         ex.Detail.ShouldNotContain("server01.internal");
         ex.Detail.ShouldNotContain("Data Source=");
         ex.Detail.ShouldNotContain("Password=");

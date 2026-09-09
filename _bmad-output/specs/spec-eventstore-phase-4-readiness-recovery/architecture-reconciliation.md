@@ -51,6 +51,27 @@ implementation, completion, production readiness, deployment, or consumer migrat
 | AD-32 | `Contracts` owns `X-Correlation-ID` with the exact 1-128 ASCII alphanumeric/hyphen grammar; only the first public boundary mints and downstream hops never remint. | Epic update required for Story 5.4 and downstream integration/Admin stories; reject invalid internal replacements and never use correlation for status. |
 | AD-33 | One retained-byte routing/idempotency catalog binds gateway, admission, domain, projection, AppHost, and ACL topology through prepare/ready/commit activation. | Epic update required. Story 1.17’s projection catalog is only one facet and cannot claim unified production routing. |
 
+## Existing Implementation-Spec Overlays
+
+The following historical spec identities and evidence remain intact. Their listed claims are
+superseded only for future implementation, completion, readiness, or production authority.
+
+| Existing implementation spec | Governing overlay | Required disposition |
+| --- | --- | --- |
+| `spec-phase1-security-hardening.md` | AD-10 and AD-27 supersede Production symmetric-key break glass, first-tenant narrowing, and unscoped/global-Admin tenant bypass. | Preserve its historical security evidence; Stories 5.2, 5.3, and 5.10 or focused successors must own the stricter contracts. |
+| `spec-5-2-admin-endpoint-authorization-and-tenant-filters.md` | AD-27 rejects omitted-tenant narrowing and unscoped Admin access; every boundary requires one explicit canonical request tenant and matching grant. | Retain role, denial, and request-limit evidence; add a focused tenant-contract migration without rewriting the completed file. |
+| `spec-5-3-production-authentication-guards-and-secret-stripping.md` | Its final Production symmetric-key posture aligns with AD-10, but explicit probe anonymity does not satisfy AD-16’s mandatory authenticated `FallbackPolicy` on every HTTP host. | Amend Story 5.3 ownership or add a successor before AD-16 closure. |
+| `spec-1-1-canonical-domain-service-sdk-host.md` | Its route inventory does not prove AD-28 app-channel authentication or AD-33 catalog authorization; `/` is not an AD-16 anonymous exception. | Add a DomainService SDK successor covering shared middleware, route metadata, catalog/ACL authorization, and exact anonymous-route inventory. |
+| `spec-1-2-domain-query-handler-routing.md` | Its local handler registry and operational index remain valid Development evidence, but do not prove AD-27 tenant handling, AD-32 downstream correlation, or AD-33 activated routing. | Preserve query-metadata evidence and add unified-catalog consumption and identity propagation as a separate slice. |
+| `spec-4-11-admission-state-machine-and-current-fence-enforcement.md`, `spec-4-12-expiry-compaction-and-tombstone-retention.md`, and `spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md` | AD-25 now consumes the AD-33 idempotency facet and common root generation; the existing mechanics contain no catalog binding. | Keep their state-machine evidence; add catalog load, activation, drift, and retirement-reference proof without relabeling the completed specs. |
+| `spec-4-14-oq8-multi-host-production-evidence.md` and `spec-4-15-oq8-platform-closure-and-handoff.md` | Their PostgreSQL evidence is OQ8 correctness and EventStore source-side handoff only; it is not AD-26 production-profile authority, Folders closure, release, pin, or migration authority. | Narrow epic claims, preserve both identities, and add AD-26/AD-33 profile and catalog gates after owner disposition. |
+| `spec-1-9-read-model-and-projection-checkpoint-erasure.md` | Its erasure remains the AD-7 projection operation. AD-27 through AD-30 additionally require canonical tenant, app-channel authentication, preserved human/service attribution, and separately phased full-erasure semantics. | Preserve the projection-removal evidence; give full erasure a separately authorized post-MVP workflow and successor stories. |
+| `spec-5-4-admin-surface-safety-hygiene.md` | Confirmation and presentation safety do not implement AD-29 delegation/audit phases, AD-31 capture-before-ack, or AD-32 first-boundary correlation semantics. | Keep the completed safety evidence; assign the three missing contracts to focused successor specs. |
+
+No focused `spec-5-5`, `spec-7-1`, or `spec-7-3` artifact and no unified AD-33 catalog
+implementation spec currently exists. The epic update must create focused successors with new
+identities rather than repurposing a completed historical spec.
+
 ## Conflicts Requiring Upstream Updates
 
 ### PRD

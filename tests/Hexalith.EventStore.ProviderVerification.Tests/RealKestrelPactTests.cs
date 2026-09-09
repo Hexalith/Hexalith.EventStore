@@ -11,6 +11,7 @@ public sealed class RealKestrelPactTests
     {
         const string providerState = "command-unauthorized";
         const string description = "minimal command unauthorized contract";
+        ProviderVerificationCredential credential = ProviderVerificationCredential.Create();
         string expectedAuthorization = string.Concat("Bearer", " ", "FC_CONTRACT_TOKEN");
         string directory = Path.Combine(Path.GetTempPath(), $"eventstore-kestrel-pact-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -66,7 +67,8 @@ public sealed class RealKestrelPactTests
                 FindRepositoryRoot(),
                 TimeSpan.FromSeconds(15),
                 TestContext.Current.CancellationToken,
-                timeline);
+                timeline,
+                credential: credential);
             Uri address = host.BaseAddress;
             var interaction = new InteractionDefinition(
                 description,
@@ -82,7 +84,8 @@ public sealed class RealKestrelPactTests
                 directory,
                 address,
                 coordinator,
-                TimeSpan.FromSeconds(15));
+                TimeSpan.FromSeconds(15),
+                credential.AccessToken);
 
             await host.StopAsync(TimeSpan.FromSeconds(10));
             await host.DisposeAsync();
@@ -110,6 +113,87 @@ public sealed class RealKestrelPactTests
 
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [Theory]
+    [InlineData(true, "interaction.passed")]
+    [InlineData(false, "interaction.contract-failed")]
+    public async Task ProductionPipeline_AcceptedPactRequiresMatchingPerRunCredential(
+        bool useMatchingCredential,
+        string expectedResultCode)
+    {
+        const string providerState = "command-accepted";
+        const string description = "command dispatch accepted preserves generated message identity";
+        string repositoryRoot = FindRepositoryRoot();
+        string directory = Path.Combine(
+            repositoryRoot,
+            "references",
+            "Hexalith.FrontComposer",
+            "tests",
+            "Hexalith.FrontComposer.Shell.Tests",
+            "Pact");
+        string pactFile = "frontcomposer-eventstore-command-dispatch.json";
+        byte[] pactBytes = await File.ReadAllBytesAsync(
+            Path.Combine(directory, pactFile),
+            TestContext.Current.CancellationToken);
+        ProviderVerificationCredential hostCredential = ProviderVerificationCredential.Create();
+        ProviderVerificationCredential requestCredential = useMatchingCredential
+            ? hostCredential
+            : ProviderVerificationCredential.Create();
+        var coordinator = new ProviderStateCoordinator(
+            new HashSet<string>([providerState], StringComparer.Ordinal));
+        var timeline = new ProviderVerificationTimeline();
+        timeline.BeginStartup();
+        ProviderVerificationHost? host = null;
+        Uri? address = null;
+        try
+        {
+            host = await ProviderVerificationHost.StartAsync(
+                coordinator,
+                repositoryRoot,
+                TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken,
+                timeline,
+                credential: hostCredential);
+            address = host.BaseAddress;
+            var interaction = new InteractionDefinition(
+                description,
+                providerState,
+                "POST",
+                "/api/v1/commands",
+                pactFile,
+                VerificationInputLoader.ComputeSha256(pactBytes));
+
+            InteractionVerificationResult result = await PactInteractionVerifier.VerifyAsync(
+                1,
+                interaction,
+                directory,
+                address,
+                coordinator,
+                TimeSpan.FromSeconds(15),
+                requestCredential.AccessToken);
+
+            result.ResultCode.ShouldBe(expectedResultCode);
+        }
+        finally
+        {
+            if (host is not null)
+            {
+                try
+                {
+                    await host.StopAsync(TimeSpan.FromSeconds(5));
+                }
+                catch (Exception)
+                {
+                    // The primary test result retains the failure; disposal is still attempted.
+                }
+
+                await host.DisposeAsync();
+            }
+        }
+
+        address.ShouldNotBeNull();
+        (await ProviderVerificationHost.IsPortClosedAsync(address, TimeSpan.FromSeconds(5))).ShouldBeTrue();
     }
 
     private static string FindRepositoryRoot()

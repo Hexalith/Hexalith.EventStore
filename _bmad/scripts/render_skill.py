@@ -249,7 +249,7 @@ def _render_sources(
     token_pattern = re.compile("|".join(patterns))
 
     def replace(match: re.Match[str]) -> str:
-        token = match.group(0)
+        token = match[0]
         if token in replacements:
             return replacements[token]
         snapshot = _SNAPSHOT_TOKEN.fullmatch(token)

@@ -26,7 +26,6 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     private string? _previousDotNetEnvironment;
     private string? _previousAggregateActorTypeName;
     private string? _previousProjectionFaultFlag;
-    private string? _previousLocalTestInvocationId;
     private LocalAuthenticationTestInvocation? _localAuthenticationTestInvocation;
     private HttpClient? _eventStoreClient;
 
@@ -39,13 +38,9 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
     public async ValueTask InitializeAsync() {
         _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
         Environment.SetEnvironmentVariable("EnableKeycloak", "false");
-        _previousLocalTestInvocationId = Environment.GetEnvironmentVariable(
-            "LocalAuthentication__TestInjection__InvocationId");
         _localAuthenticationTestInvocation = LocalAuthenticationCredentials.RegisterTestInvocation(
             TestJwtTokenGenerator.SigningKey);
-        Environment.SetEnvironmentVariable(
-            "LocalAuthentication__TestInjection__InvocationId",
-            _localAuthenticationTestInvocation.InvocationId.ToString("D"));
+        _localAuthenticationTestInvocation.Activate();
 
         _previousAspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         _previousDotNetEnvironment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
@@ -191,9 +186,6 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", _previousDotNetEnvironment);
         Environment.SetEnvironmentVariable("EventStore__Actors__AggregateActorTypeName", _previousAggregateActorTypeName);
         Environment.SetEnvironmentVariable("EventStore__SampleFaults__MalformedProjectResponse", _previousProjectionFaultFlag);
-        Environment.SetEnvironmentVariable(
-            "LocalAuthentication__TestInjection__InvocationId",
-            _previousLocalTestInvocationId);
         _localAuthenticationTestInvocation?.Dispose();
         _localAuthenticationTestInvocation = null;
     }

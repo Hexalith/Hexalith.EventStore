@@ -49,9 +49,11 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
         TimeSpan startupTimeout,
         CancellationToken cancellationToken,
         ProviderVerificationTimeline timeline,
-        Func<HttpClient, CancellationToken, Task<HttpResponseMessage>>? readinessProbeAsync = null)
+        Func<HttpClient, CancellationToken, Task<HttpResponseMessage>>? readinessProbeAsync = null,
+        ProviderVerificationCredential? credential = null)
     {
         ArgumentNullException.ThrowIfNull(timeline);
+        credential ??= ProviderVerificationCredential.Create();
         string contentRoot = Path.Combine(repositoryRoot, "src", "Hexalith.EventStore");
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -81,7 +83,7 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
         builder.Services.AddEventStoreServer(builder.Configuration);
         builder.Services.AddEventStoreDomainQueryRouting();
         builder.Services.AddEventStoreSignalR(builder.Configuration);
-        ConfigureOverrides(builder.Services, coordinator);
+        ConfigureOverrides(builder.Services, coordinator, credential);
         builder.Logging.ClearProviders();
 
         WebApplication application = builder.Build();
@@ -207,9 +209,13 @@ internal sealed class ProviderVerificationHost : IAsyncDisposable
         return false;
     }
 
-    private static void ConfigureOverrides(IServiceCollection services, ProviderStateCoordinator coordinator)
+    private static void ConfigureOverrides(
+        IServiceCollection services,
+        ProviderStateCoordinator coordinator,
+        ProviderVerificationCredential credential)
     {
         services.AddSingleton(coordinator);
+        services.AddSingleton(credential);
         services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = ProviderVerificationAuthenticationHandler.SchemeName;

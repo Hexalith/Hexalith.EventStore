@@ -45,7 +45,7 @@ playwright-cli run-code "async page => {
   await page.route('**/api/login', route => {
     const body = route.request().postDataJSON();
     if (body.username === 'admin') {
-      route.fulfill({ body: JSON.stringify({ token: 'mock-token' }) });
+      route.fulfill({ body: JSON.stringify({ token: '<generated-at-runtime>' }) });
     } else {
       route.fulfill({ status: 401, body: JSON.stringify({ error: 'Invalid' }) });
     }

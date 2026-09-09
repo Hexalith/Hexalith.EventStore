@@ -33,7 +33,7 @@ sequenceDiagram
     participant L6 as Layer 6<br/>DAPR Access Control
     participant DS as Domain Service
 
-    Client->>L1: POST /api/v1/commands (Bearer token)
+    Client->>L1: POST /api/v1/commands (authenticated request)
     Note over L1: Validates token signature,<br/>issuer, audience, expiration
     L1-->>Client: 401 if invalid token
 

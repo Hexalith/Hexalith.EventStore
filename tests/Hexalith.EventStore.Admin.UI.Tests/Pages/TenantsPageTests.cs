@@ -865,6 +865,7 @@ public class TenantsPageTests : AdminUITestContext {
         string action,
         string expectedFocusId,
         string expectedMessage) {
+        string secret = Guid.NewGuid().ToString("N");
         TenantSummary active = CreateTenant("tenant-a", "Tenant A", TenantStatusType.Active);
         TenantSummary disabled = CreateTenant("tenant-disabled", "Tenant Disabled", TenantStatusType.Disabled);
         TenantUser user = new("user-1", "TenantReader");
@@ -873,7 +874,7 @@ public class TenantsPageTests : AdminUITestContext {
             .Returns(new TenantDetail("tenant-a", "Tenant A", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-2)));
         _ = _mockTenantApi.GetTenantUsersAsync("tenant-a", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
-        var failure = new Exception("bearer secret-value at redis://private");
+        var failure = new Exception("bearer " + secret + " at redis://private");
         _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<AdminOperationResult?>(failure));
         _ = _mockTenantApi.DisableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -919,7 +920,7 @@ public class TenantsPageTests : AdminUITestContext {
 
         string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
         message.ShouldBe(expectedMessage);
-        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain(secret);
         message.ShouldNotContain("redis://private");
     }
 

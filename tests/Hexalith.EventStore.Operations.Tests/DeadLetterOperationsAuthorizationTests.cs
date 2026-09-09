@@ -127,11 +127,11 @@ public sealed class DeadLetterOperationsAuthorizationTests
     [Theory]
     [InlineData(null, null, false)]
     [InlineData("eventstore-admin", null, false)]
-    [InlineData("other-app", "Bearer operator-token", false)]
-    [InlineData("eventstore-admin", "Basic operator-token", false)]
+    [InlineData("other-app", "Bearer <token>", false)]
+    [InlineData("eventstore-admin", "Basic <token>", false)]
     [InlineData("eventstore-admin", "Bearer ", false)]
     [InlineData("eventstore-admin", "Bearer     ", false)]
-    [InlineData("eventstore-admin", "Bearer operator-token", true)]
+    [InlineData("eventstore-admin", "Bearer <token>", true)]
     public void InternalAuthorizationRequiresExactCallerAndBearer(
         string? callerAppId,
         string? authorization,

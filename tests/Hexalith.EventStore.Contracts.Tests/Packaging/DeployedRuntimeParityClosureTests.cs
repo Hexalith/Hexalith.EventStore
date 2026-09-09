@@ -697,30 +697,34 @@ public sealed class DeployedRuntimeParityClosureTests
     [Fact]
     public void SupportSafeRuntimeRecordsRejectSensitiveFieldNames()
     {
+        string forbiddenValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["access_token"] = string.Concat("redacted", "-but-forbidden"),
+            ["access_token"] = forbiddenValue,
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["nested"] = new JsonObject { ["client-secret"] = string.Concat("redacted", "-but-forbidden") },
+            ["nested"] = new JsonObject
+            {
+                ["client-secret"] = forbiddenValue,
+            },
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["private_key"] = string.Concat("redacted", "-but-forbidden"),
+            ["private_key"] = forbiddenValue,
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["private-key"] = string.Concat("redacted", "-but-forbidden"),
+            ["private-key"] = forbiddenValue,
         })).ShouldBeFalse();
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject
         {
             ["result"] = "pass",
-            ["privatekey"] = string.Concat("redacted", "-but-forbidden"),
+            ["privatekey"] = forbiddenValue,
         })).ShouldBeFalse();
     }
 
@@ -756,15 +760,11 @@ public sealed class DeployedRuntimeParityClosureTests
         ValueIsSupportSafe("100.63.255.255").ShouldBeTrue();
         ValueIsSupportSafe("100.128.0.1").ShouldBeTrue();
         ValueIsSupportSafe("8.8.8.8").ShouldBeTrue();
-        ValueIsSupportSafe("-----BEGIN EC PRIVATE KEY-----\nabc\n-----END EC PRIVATE KEY-----")
-            .ShouldBeFalse();
-        ValueIsSupportSafe("-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----")
-            .ShouldBeFalse();
-        ValueIsSupportSafe(
-                "-----BEGIN ENCRYPTED PRIVATE KEY-----\nabc\n-----END ENCRYPTED PRIVATE KEY-----")
-            .ShouldBeFalse();
-        ValueIsSupportSafe("-----BEGIN DSA PRIVATE KEY-----\nabc\n-----END DSA PRIVATE KEY-----")
-            .ShouldBeFalse();
+        foreach (string label in new[] { "EC", "OPENSSH", "ENCRYPTED", "DSA" })
+        {
+            ValueIsSupportSafe($"-----BEGIN {label} PRIVATE KEY-----\nabc\n-----END {label} PRIVATE KEY-----")
+                .ShouldBeFalse();
+        }
     }
 
     /// <summary>
@@ -2940,14 +2940,27 @@ public sealed class DeployedRuntimeParityClosureTests
     /// </summary>
     /// <param name="value">The unsafe retained value.</param>
     [Theory]
-    [InlineData("Bearer abcdef")]
     [InlineData("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature")]
     [InlineData("http://127.0.0.1:8080/alive")]
     [InlineData("System.Exception: boom at System.RuntimeMethod")]
-    [InlineData("https://user:password@example.com/path")]
     public void SupportSafeRecordsRejectSensitiveValues(string value) =>
         LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject { ["message"] = value }))
             .ShouldBeFalse();
+
+    /// <summary>Verifies generated bearer and URI credentials are never support-safe.</summary>
+    [Fact]
+    public void SupportSafeRecordsRejectGeneratedCredentials()
+    {
+        string token = Guid.NewGuid().ToString("N");
+        string password = Guid.NewGuid().ToString("N");
+        string[] values = ["Bearer " + token, $"https://user:{password}@example.com/path"];
+
+        foreach (string value in values)
+        {
+            LogIsSupportSafe(JsonSerializer.SerializeToUtf8Bytes(new JsonObject { ["message"] = value }))
+                .ShouldBeFalse();
+        }
+    }
 
     /// <summary>
     /// Verifies the retained v3.94.1 disposition envelope verifies while acceptance reports 0 of 3.

@@ -1,0 +1,19 @@
+{
+    "schema": "hexalith.eventstore.retired-evidence.v1",
+    "retired": [
+        {
+            "path": "_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/successful/builds/eadddc7b5d8e9392e5931758ffb608b57b5fdc6c/Github/publish-containers/smoke_container_platforms.py",
+            "sha256": "7f1161d6f477c77ddf6a1e2f381df03451168565dd8cabc28010ab23db443491",
+            "status": "retired",
+            "authoritative": false,
+            "reason": "The immutable successful-build capture contains reusable authentication material forbidden by Story 5.3. It remains byte-preserved for provenance and authorizes no current proof."
+        },
+        {
+            "path": "_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md",
+            "sha256": "cb1ccde9d5cc5ca6cb52cbeab30fb9cd59bd89771e14f4b489e20bd5e3d46743",
+            "status": "retired",
+            "authoritative": false,
+            "reason": "The byte-preserved historical proof packet embeds a reusable symmetric smoke credential and a Production contract superseded by Story 5.3. It is retained only as provenance and no longer authorizes a current container-smoke proof."
+        }
+    ]
+}

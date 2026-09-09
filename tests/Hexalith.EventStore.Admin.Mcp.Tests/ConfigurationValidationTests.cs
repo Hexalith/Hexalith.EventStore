@@ -32,7 +32,7 @@ public class ConfigurationValidationTests {
     [Fact]
     public void OnlyUrlMissing_ErrorMentionsUrl() {
         (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?> {
-            ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
+            ["EVENTSTORE_ADMIN_TOKEN"] = Guid.NewGuid().ToString("N"),
         });
 
         exitCode.ShouldNotBe(0);
@@ -53,7 +53,7 @@ public class ConfigurationValidationTests {
     public void InvalidUri_ErrorMentionsInvalidUri() {
         (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_URL"] = "not-a-url",
-            ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
+            ["EVENTSTORE_ADMIN_TOKEN"] = Guid.NewGuid().ToString("N"),
         });
 
         exitCode.ShouldNotBe(0);
@@ -65,7 +65,7 @@ public class ConfigurationValidationTests {
     public void NonHttpScheme_ErrorMentionsInvalidUri() {
         (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_URL"] = "ftp://example.com",
-            ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
+            ["EVENTSTORE_ADMIN_TOKEN"] = Guid.NewGuid().ToString("N"),
         });
 
         exitCode.ShouldNotBe(0);
@@ -80,7 +80,7 @@ public class ConfigurationValidationTests {
         // with an error within 2 seconds, then kill it.
         using Process process = CreateProcess(new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_URL"] = "https://localhost:5443",
-            ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
+            ["EVENTSTORE_ADMIN_TOKEN"] = Guid.NewGuid().ToString("N"),
         });
 
         _ = process.Start();

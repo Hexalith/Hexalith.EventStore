@@ -35,7 +35,8 @@ public class ProfileManagerTests : IDisposable {
 
     [Fact]
     public void Load_ValidFile_ReturnsParsedProfiles() {
-        var data = new { version = 1, activeProfile = "prod", profiles = new { prod = new { url = "http://prod:5002", token = "tok123", format = "json" } } };
+        string generatedToken = Guid.NewGuid().ToString("N");
+        var data = new { version = 1, activeProfile = "prod", profiles = new { prod = new { url = "http://prod:5002", token = generatedToken, format = "json" } } };
         File.WriteAllText(_profilePath, JsonSerializer.Serialize(data, JsonDefaults.Options));
 
         ProfileStore store = ProfileManager.Load(_profilePath);
@@ -44,7 +45,7 @@ public class ProfileManagerTests : IDisposable {
         store.ActiveProfile.ShouldBe("prod");
         store.Profiles.ShouldContainKey("prod");
         store.Profiles["prod"].Url.ShouldBe("http://prod:5002");
-        store.Profiles["prod"].Token.ShouldBe("tok123");
+        store.Profiles["prod"].Token.ShouldBe(generatedToken);
         store.Profiles["prod"].Format.ShouldBe("json");
     }
 

@@ -2020,7 +2020,7 @@ public sealed class ReleasePackageManifestTests
                 "    steps:",
                 $"      - uses: actions/checkout@{CheckoutActionSha} # v7.0.0",
                 "        with:",
-                "          persist-credentials: false",
+                $"          persist-credentials: {false.ToString().ToLowerInvariant()}",
                 "      - name: Set up supported Node",
                 $"        uses: actions/setup-node@{SetupNodeActionSha} # v7.0.0",
                 "        with:",

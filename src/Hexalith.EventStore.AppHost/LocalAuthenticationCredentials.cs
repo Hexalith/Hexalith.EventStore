@@ -1,7 +1,4 @@
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
-
-using Microsoft.Extensions.Configuration;
 
 namespace Hexalith.EventStore.AppHost;
 
@@ -22,34 +19,24 @@ internal sealed record LocalAuthenticationCredentials(
     string NoTenantUserId,
     string NoTenantPassword)
 {
-    private const string TestInvocationConfigurationKey = "LocalAuthentication:TestInjection:InvocationId";
-    private static readonly ConcurrentDictionary<Guid, LocalAuthenticationCredentials> s_testInvocations = new();
+    private static readonly AsyncLocal<LocalAuthenticationTestInvocation?> ActiveTestInvocation = new();
 
     /// <summary>
-    /// Creates a fresh credential set, except when an in-process test caller has registered the exact
-    /// one-use invocation capability named by configuration. Credential values themselves are never
-    /// read from configuration.
+    /// Creates a fresh credential set, except when an in-process test caller has activated a
+    /// caller-held, one-use invocation capability. Normal AppHost configuration cannot address or
+    /// manufacture that capability.
     /// </summary>
-    /// <param name="configuration">The AppHost configuration.</param>
     /// <returns>A single credential set shared by every local authentication consumer.</returns>
-    public static LocalAuthenticationCredentials Create(IConfiguration configuration)
+    public static LocalAuthenticationCredentials Create()
     {
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        string? configuredInvocation = configuration[TestInvocationConfigurationKey];
-        if (string.IsNullOrWhiteSpace(configuredInvocation))
+        LocalAuthenticationTestInvocation? invocation = ActiveTestInvocation.Value;
+        if (invocation is null)
         {
             return Generate();
         }
 
-        if (!Guid.TryParseExact(configuredInvocation, "D", out Guid invocationId)
-            || !s_testInvocations.TryRemove(invocationId, out LocalAuthenticationCredentials? injected))
-        {
-            throw new InvalidOperationException(
-                $"{TestInvocationConfigurationKey} does not identify an active caller-held test invocation.");
-        }
-
-        return injected;
+        ActiveTestInvocation.Value = null;
+        return invocation.Consume();
     }
 
     /// <summary>
@@ -80,14 +67,36 @@ internal sealed record LocalAuthenticationCredentials(
             AdminUsername = resolvedAdminUsername,
         };
 
-        Guid invocationId;
-        do
-        {
-            invocationId = Guid.NewGuid();
-        }
-        while (!s_testInvocations.TryAdd(invocationId, generated));
+        return new LocalAuthenticationTestInvocation(generated);
+    }
 
-        return new LocalAuthenticationTestInvocation(invocationId, generated, RemoveTestInvocation);
+    /// <summary>
+    /// Activates the exact caller-held capability for the current asynchronous invocation flow.
+    /// </summary>
+    /// <param name="invocation">The unconsumed test invocation capability.</param>
+    internal static void ActivateTestInvocation(LocalAuthenticationTestInvocation invocation)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        if (ActiveTestInvocation.Value is not null)
+        {
+            throw new InvalidOperationException(
+                "A local authentication test invocation is already active for this asynchronous flow.");
+        }
+
+        ActiveTestInvocation.Value = invocation;
+    }
+
+    /// <summary>
+    /// Clears an unconsumed test capability from the current asynchronous invocation flow.
+    /// </summary>
+    /// <param name="invocation">The capability that owns the activation.</param>
+    internal static void DeactivateTestInvocation(LocalAuthenticationTestInvocation invocation)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        if (ReferenceEquals(ActiveTestInvocation.Value, invocation))
+        {
+            ActiveTestInvocation.Value = null;
+        }
     }
 
     private static LocalAuthenticationCredentials Generate()
@@ -111,43 +120,4 @@ internal sealed record LocalAuthenticationCredentials(
             .Replace('+', '-')
             .Replace('/', '_');
 
-    private static void RemoveTestInvocation(Guid invocationId)
-        => _ = s_testInvocations.TryRemove(invocationId, out _);
-}
-
-/// <summary>
-/// Caller-held lifetime for one explicitly registered AppHost test invocation.
-/// </summary>
-internal sealed class LocalAuthenticationTestInvocation : IDisposable
-{
-    private readonly Action<Guid> _remove;
-    private bool _disposed;
-
-    internal LocalAuthenticationTestInvocation(
-        Guid invocationId,
-        LocalAuthenticationCredentials credentials,
-        Action<Guid> remove)
-    {
-        InvocationId = invocationId;
-        Credentials = credentials;
-        _remove = remove;
-    }
-
-    /// <summary>Gets the opaque invocation identifier that may be placed in test configuration.</summary>
-    public Guid InvocationId { get; }
-
-    /// <summary>Gets the registered values so the test issuer can use the same ephemeral key.</summary>
-    public LocalAuthenticationCredentials Credentials { get; }
-
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _remove(InvocationId);
-        _disposed = true;
-    }
 }

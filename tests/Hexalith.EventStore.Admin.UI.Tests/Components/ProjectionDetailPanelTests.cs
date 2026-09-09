@@ -391,15 +391,17 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
         string buttonSelector,
         string expectedFocusId)
     {
+        string secret = Guid.NewGuid().ToString("N");
+        string unsafeMessage = "bearer " + secret + " at redis://private";
         _ = _mockApiClient.GetProjectionDetailAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<ProjectionDetail?>(CreateDetail()));
         _ = _mockApiClient.ResetProjectionAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(new Exception("bearer secret-value at redis://private")));
+            .Returns(Task.FromException<AdminOperationResult?>(new Exception(unsafeMessage)));
         _ = _mockApiClient.ReplayProjectionAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(new Exception("bearer secret-value at redis://private")));
+            .Returns(Task.FromException<AdminOperationResult?>(new Exception(unsafeMessage)));
         IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
             .Add(item => item.TenantId, "tenant-1")
             .Add(item => item.ProjectionName, "counter-projection"));
@@ -412,7 +414,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
 
         string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
         message.ShouldBe("Projection operation failed. Refresh status before deciding whether to retry.");
-        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain(secret);
         message.ShouldNotContain("redis://private");
         cut.FindAll(action == "reset"
             ? "fluent-dialog[aria-label='Reset projection']"

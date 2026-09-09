@@ -1,187 +1,113 @@
-# Architecture Readiness Review — Hexalith.EventStore Admin
+# Architecture Readiness and Implementability Review — Hexalith.EventStore Admin
 
-## Overall assessment
+## Overall verdict
 
-**Not architecture-ready without reconciliation.** The spine pair commits a coherent operational posture—one existing Admin UI host, FrontComposer/Fluent UI V5, typed-client boundaries, projection-backed confirmation, support-safe failures, and honest deferred operations—but a downstream architect or story developer still has to guess at load-bearing integration details. Most seriously, the source list combines an obsolete `ready` report with the current PRD's explicit `blocked` / `reject` status and provides no authority order, baseline, or digest. The remaining high-impact gaps are the FrontComposer/module identity contract, an incomplete route inventory, undefined canonical deep-link behavior, an unbound Admin evidence transport, incomplete fail-closed authentication states, and visual references that encode prohibited legacy token families.
+**Not implementation-ready.** The spine pair is unusually honest about being a target contract rather than delivery evidence, and its evidence, command-status, security, responsive, and localization principles are strong. However, the authoritative PRD is explicitly `blocked` / `reject`, the architecture is `draft`, and two route-contract conflicts plus missing per-operation bindings would force architecture and story-development consumers to invent safety-critical behavior.
 
-## Finding counts
+The UX documents can continue as planning input, but they must not authorize implementation, release, deployment, migration, or a readiness claim. Resolve the critical upstream gate and route collision first, then reconcile the high-severity contract gaps and rerun readiness against one approved source baseline.
 
-| Severity | Count |
-|---|---:|
-| Critical | 1 |
-| High | 6 |
-| Medium | 5 |
-| Low | 2 |
-| **Total** | **14** |
+## Scope checked
 
-## Findings grouped Critical/High/Medium/Low
+- `.memlog.md`, `DESIGN.md`, `EXPERIENCE.md`, the UX index/handoff, promoted mockups/imports, and the complete artifact inventory.
+- Every local source named in spine frontmatter: `docs/brownfield/architecture.md`, `prd.md`, `architecture.md`, `epics.md`, and the bound PRD validation report.
+- Repository baseline instructions and `references/Hexalith.AI.Tools/hexalith-ux-instructions.md`.
+- Tracked Admin UI host/routes, ServiceDefaults health mapping, Builds package catalog, FrontComposer 4.4.0 source/contracts, and Fluent UI V5 package APIs. Existing UX review files were not treated as authority.
 
-### Critical
+## Critical findings
 
-#### 1. The declared source baseline gives contradictory implementation authority
+### 1. The authoritative planning baseline forbids an implementation handoff
 
-- **Location:** `DESIGN.md:4-13`; `EXPERIENCE.md:3-12`; `_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md:1-12,24-34`; `_bmad-output/planning-artifacts/prd.md:3-11`; `_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md:5-13`.
-- **Note:** Both final spines, updated 2026-08-01, cite the 2026-07-05 readiness report. That report records `status: ready`, while the current PRD records `implementation_readiness_status: blocked` and `implementation_readiness_result: reject`; the current PRD validation explicitly says not to use the planning set to authorize implementation, completion, migration, or release. The spines also cite mutable paths without an authority order, reviewed baseline SHA, or content digests. A consumer cannot determine which source state governs and could treat a historical readiness decision as current authorization.
-- **Fix:** Replace the July readiness report in both frontmatter blocks with the current readiness/validation authority, add the canonical `_bmad-output/planning-artifacts/ux.md` and UX `index.md`, and record an explicit authority order plus reviewed repository SHA and source digests. State plainly that `status: final` means the UX document is finalized, not that implementation is authorized. Re-run source-drift validation before restoring an architecture-ready verdict.
+**Citations:** `_bmad-output/planning-artifacts/prd.md:3-9`, `:83-85`, `:509-511`, `:548-563`; `_bmad-output/planning-artifacts/architecture.md:8-10`, `:73-77`, `:446-465`; `EXPERIENCE.md:22`, `:35-47`.
 
-### High
+**Impact:** The PRD records `implementation_readiness_status: blocked` and `implementation_readiness_result: reject`; OR14 forbids downstream handoff until PRD, architecture, and epics are reconciled and approved, and the architecture remains `draft`. Starting Stories 7.4/7.5/7.14/7.19/7.20 from these spines would contradict the authority chain even if the UX documents themselves are `final`.
 
-#### 2. Host, service, container, and FrontComposer module identities are not separated
+**Fix:** Close the PRD's blocking refinements, approve the reconciled architecture and epics baseline, rerun implementation readiness, and bind the new result/source identities before treating this UX pair as an implementation input. Preserve the current sentence that UX finality is not readiness.
 
-- **Location:** `DESIGN.md:164,216-219`; `EXPERIENCE.md:19-21,31-35,92-95,298-301`; `_bmad-output/planning-artifacts/ux.md:30-34`; `_bmad-output/planning-artifacts/architecture.md:214-218,317-321`; `src/Hexalith.EventStore.AppHost/Program.cs:93-94`; `src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj:9-10,24-29`.
-- **Note:** The spines commit the project path, the `eventstore-admin-ui` resource/container identity, and the visible label, but omit the stable FrontComposer module id `event-store-admin` and do not distinguish it from the Admin Server resource `eventstore-admin`. They say “FrontComposer” generically rather than committing the adopted `Hexalith.FrontComposer.Shell` + `Hexalith.FrontComposer.Contracts.UI` package boundary and Builds-catalog family rule. The current Admin UI project references Fluent packages but no FrontComposer package, so this missing handoff is an actual migration prerequisite, not an implementation detail.
-- **Fix:** Add a Foundation/host-integration identity table with: project/assembly `Hexalith.EventStore.Admin.UI`; Admin Server resource `eventstore-admin`; UI resource/container `eventstore-admin-ui`; FrontComposer module id `event-store-admin`; label **Event Store Admin**. Name Shell and Contracts.UI as required dependencies, require one catalog-governed FrontComposer family version in source/package modes, and record the catalog-entry prerequisite before adoption.
+### 2. `/health` is assigned to both an anonymous probe and an authenticated dashboard page
 
-#### 3. The legacy route inventory drops the live Type Catalog
+**Citations:** `EXPERIENCE.md:60-69`, `:95-106`, `:295`; `_bmad-output/planning-artifacts/architecture.md:193-197`; `src/Hexalith.EventStore.Admin.UI/Pages/Health.razor:1`; `src/Hexalith.EventStore.Admin.UI/Program.cs:17-18`; `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs:156-186`.
 
-- **Location:** `EXPERIENCE.md:37-50,54`; `src/Hexalith.EventStore.Admin.UI/Pages/TypeCatalog.razor:1`; `src/Hexalith.EventStore.Admin.UI/Layout/NavMenu.razor:15-18`; `src/Hexalith.EventStore.Admin.UI/Components/CommandPaletteCatalog.cs:22-27`; `_bmad-output/planning-artifacts/epics.md:5553,5577-5580`.
-- **Note:** The IA claims that every legacy Admin UI feature has a destination, but `/types` is absent. The current host has a live `/types` route, a visible Types nav item, and command-palette entries for event, command, and aggregate types. Even Story 7.14 says the host has 22 routes while its route list repeats the spine's omission. Following the spine can silently delete a live operator capability or force a developer to invent an unowned tab.
-- **Fix:** Add `/types` to the canonical route inventory, choose its owning tab and detail/sub-tab disposition, define what happens to `/types?tab=events|commands|aggregates`, and propagate the same correction to UX-DR4 and Story 7.14's route manifest.
+**Impact:** The same `eventstore-admin-ui` host currently maps the Razor page and the explicitly anonymous health-check endpoint to `/health`. The exact health endpoint can shadow the UI route; resolving the ambiguity in the opposite direction could expose an authenticated operational surface anonymously. The canonical ten-tab route contract therefore cannot be implemented safely as written.
 
-#### 4. “Legacy source routes” is not a canonical routing and deep-link contract
+**Fix:** Give the Recovery dashboard view a distinct canonical UI path, reserve `/health`, `/alive`, and `/ready` exclusively for support-safe probes, and update `EXPERIENCE.md`, UX-DR4, Story 7.14's route manifest, legacy redirects, navigation/palette links, and endpoint tests atomically.
 
-- **Location:** `EXPERIENCE.md:39-54,95,148-152`; `_bmad-output/planning-artifacts/architecture.md:317-321`; `_bmad-output/planning-artifacts/epics.md:5572-5590`.
-- **Note:** The spines list old paths and say deep links “may remain,” but do not identify which URL is canonical, which old URL redirects, how a selected `FluentTabs` item maps to the URL, which tenant/domain/aggregate and filter query parameters are permitted, how malformed or denied parameters resolve, or what browser back/forward must restore. AD-21 and Story 7.14 require one canonical route table and explicit compatibility redirects. This gap leaves routing, authorization, and duplicate-page behavior to individual stories.
-- **Fix:** Add a machine-readable route matrix with legacy route, canonical URL, owning tab/detail, path/query/fragment schema and bounds, authorization behavior, redirect status/history behavior, selected-module/tab result, and unknown/malformed/denied outcomes. Commit one direction of synchronization between router state and `FluentTabs` selection.
+## High findings
 
-#### 5. Projection lifecycle semantics have no bound Admin transport contract
+### 1. `/types` is canonical in the spine but absent from Story 7.14's closed route manifest
 
-- **Location:** `DESIGN.md:140-147,228-229`; `EXPERIENCE.md:60,65-67,104-105,117-129,153`; `_bmad-output/planning-artifacts/architecture.md:227-241`; `_bmad-output/planning-artifacts/epics.md:5842-5845,5857-5870`; `src/Hexalith.EventStore.Admin.Abstractions/Models/Projections/ProjectionStatus.cs:6-22`; `src/Hexalith.EventStore.Admin.Abstractions/Models/Projections/ProjectionStatusType.cs:3-17`; `src/Hexalith.EventStore.Contracts/Queries/QueryResponseProvenance.cs:6-29`; `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecycleState.cs:6-53`.
-- **Note:** The UI behavior correctly distinguishes `ProjectionBacked`, `HandlerComputed`, lifecycle values, and fail-safe `Unknown`, but the spine does not say which typed Admin facet/DTO supplies provenance, lifecycle, evidence time, or projection version for each surface. The current Admin projection DTO instead carries the different operational vocabulary `Running`, `Paused`, `Error`, `Rebuilding`, plus lag/throughput/time. Without an explicit adapter/contract decision, a developer can conflate processing status with projection lifecycle, infer currentness from lag or time, or change a public DTO ad hoc.
-- **Fix:** Add a per-surface evidence matrix naming the Story 7.5 typed-client facet and DTO fields for provenance, lifecycle, observation/freshness time, version, and terminal command evidence. Keep `ProjectionStatusType` explicitly separate from `ProjectionLifecycleState`. Where the Admin contract lacks authoritative provenance/lifecycle, require `Unknown`, disable mutation by default, and name the owning contract-change story rather than permitting UI inference.
+**Citations:** `EXPERIENCE.md:49-52`, `:58-69`, `:77-102`; `_bmad-output/planning-artifacts/epics.md:5539-5549`, `:5577-5585`; `src/Hexalith.EventStore.Admin.UI/Pages/TypeCatalog.razor:1`.
 
-#### 6. Fail-closed behavior does not cover authentication and revocation transitions
+**Impact:** The spine says Story 7.14 implements `/types` under Streams & Events, while that story's acceptance criteria call their route list exact and omit `/types`. A developer can satisfy the story while orphaning the live Type Catalog route or creating an unreviewed duplicate/redirect.
 
-- **Location:** `EXPERIENCE.md:21-23,119,133-144,154,199-214,296`; `_bmad-output/planning-artifacts/epics.md:5660-5674,5882-5890`; `_bmad-output/planning-artifacts/architecture.md:147-151`.
-- **Note:** The spine has a good denied-resource rule, but its state table has only a generic Access denied row. It does not distinguish unauthenticated, expired session, wrong scope, permission revoked during load/action, or authentication-provider unavailable; nor does it commit clearing protected/transient state, cancelling background retries, or excluding protected values from client logs/telemetry. Current stories require those behaviors while separately keeping interactive OIDC a deferred capability. A developer must otherwise guess whether to show login, retry, empty, stale, or denied state.
-- **Fix:** Add an authentication/authorization transition matrix for unauthenticated, expired, denied, wrong-scope, revoked-during-action, and provider-unavailable outcomes. For each, specify cache/transient-state clearing, polling/SignalR cancellation, focus and route behavior, safe next action, and logging/telemetry redaction. State that interactive OIDC/login controls remain unavailable until their separately authorized implementation exists.
+**Fix:** Add `/types` and its `events` / `commands` / `aggregates` inner-tab contract to Story 7.14's machine-validated manifest and tests, or remove the spine claim through an approved source change. Keep one implementation and define compatibility redirects explicitly.
 
-#### 7. Promoted visual references encode prohibited Fluent token families
+### 2. No closed route/action/policy/evidence matrix exists
 
-- **Location:** `DESIGN.md:166,170-180`; `EXPERIENCE.md:25`; `mockups/dashboard-overview.html:8-27`; `mockups/command-investigation.html:8-26`; `references/Hexalith.AI.Tools/hexalith-ux-instructions.md:25-39`.
-- **Note:** Both spines link the HTML mocks inline as visual references, and both mocks define their colors using `--accent-fill-*`, `--foreground-on-accent-*`, `--neutral-layer-*`, `--neutral-foreground-*`, `--neutral-stroke-*`, and `--neutral-fill-*`. Repository UX policy explicitly bans these legacy Fluent v4/FAST families in favor of Fluent UI V5 component parameters or Fluent 2 tokens. The “spines win” disclaimer establishes precedence but does not stop a story developer from copying the only executable visual reference.
-- **Fix:** Regenerate the mocks using current Fluent 2 token names/component roles or remove implementation-like token declarations from them. Add an unmistakable in-artifact non-copy banner, then validate mocks and the implemented UI with the repository's legacy-token scan.
+**Citations:** `EXPERIENCE.md:77-102`, `:123-156`, `:213-242`, `:291-312`; `_bmad-output/planning-artifacts/epics.md:4822-4837`, `:4960-4993`, `:5842-5845`; `docs/brownfield/architecture.md:170-184`.
 
-### Medium
+**Impact:** The route table names safe filters and generic failure behavior, while the surface table uses open phrases such as “an approved support action” and “only explicitly implemented current operations.” It never binds each query and mutation to a Story 7.5 typed facet/outcome, `AdminReadOnly` / `AdminOperator` / `AdminFull` policy, stable operation/audit identity, authoritative terminal/projection/audit evidence, retryability, and current/deferred gate. Story 7.19 explicitly requires that per-boundary inventory, so implementers must invent security and success semantics to satisfy it.
 
-#### 8. The IA-to-flow closure assertion is false for several tabs
+**Fix:** Add a closed, story-owned operation matrix covering every canonical route and action. For each row bind typed client facet/method, authorization policy and scope, request/status/audit identities, accepted/pending/terminal outcomes, evidence required for confirmation, refresh versus retry behavior, idempotency/audit obligations, and current availability/dependency gate. Generate Story 7.5/7.19 tests from the same inventory.
 
-- **Location:** `EXPERIENCE.md:37-54,225-296`.
-- **Note:** The spine says every target surface supports an administrator/operator journey. The six flows directly cover Recovery, Tenants & Access, Commands, Streams & Events, Deferred & Backlog, and external Sample/Tenants hosts; Overview is mainly a waypoint. Projections has no complete rebuild/lag flow, and Topology, Storage & Snapshots, and Settings have no journey. Their action boundaries and climax evidence therefore cannot be derived from the Key Flows.
-- **Fix:** Add concise named-protagonist flows for projection rebuild/failure, topology diagnosis, storage/snapshot evidence, and settings—or narrow the closure claim and mark those tabs as explicitly spine-only/read-only with no independent mutation journey.
+### 3. The Sample accepted-submission flow has no precise implementation/test owner
 
-#### 9. Command and recovery terminal evidence is not source-bound
+**Citations:** `EXPERIENCE.md:71`, `:301-312`, `:357-364`; `_bmad-output/planning-artifacts/epics.md:272`, `:323-328`, `:705-743`, `:1627-1675`.
 
-- **Location:** `DESIGN.md:135-139,228`; `EXPERIENCE.md:101,104,117-118,121,153-154,227-262`; `_bmad-output/planning-artifacts/epics.md:5857-5860,5877-5880,5892-5905`.
-- **Note:** The eight command states and accepted → evidence-pending → terminal pattern are strong, but the spine does not define the authoritative producer, observation timestamp, stable operation identity, retry identity policy, or audit/evidence agreement for each terminal state. It also does not explicitly distinguish command `Completed` from a separate projection-confirmed read-model outcome. Story-dev can therefore implement internally consistent but incompatible “success” tests.
-- **Fix:** For every mutating/recovery action, specify accepted evidence, terminal command evidence, projection/read-model confirmation when applicable, audit correlation, observation time, timeout/cancellation behavior, and stable retry identity. State explicitly which user-visible outcome is allowed at command `Completed` before projection confirmation.
+**Impact:** `EXPERIENCE.md` maps UX-DR42 generically to “Epic 2 consumer stories,” but the Sample-specific Story 1.8 only asserts typed-client host boundaries; it does not accept-test `Accepted` → `EvidencePending` → authoritative read-model change, unknown timeout, or no-resubmit behavior. Story 2.6 supplies Tenants presentation evidence, not the Sample flow. A cross-module requirement can therefore remain unimplemented while all cited stories pass.
 
-#### 10. Responsive rules leave action disposition to the implementer
+**Fix:** Assign the full Sample behavior to one named story and add browser/component acceptance criteria for accepted, pending, projection-confirmed, timeout/unknown, and no-automatic-resubmit paths. Update Source Traceability to cite that story separately from the Tenants owner.
 
-- **Location:** `EXPERIENCE.md:155,189-197,300-302`; `_bmad-output/planning-artifacts/epics.md:5970-5988`; `mockups/dashboard-overview.html:249-263`; `mockups/command-investigation.html:224-234`.
-- **Note:** The three spine breakpoints are clear, but “fully usable, disabled, or desktop-required” is not resolved per mutation or tab. It also does not commit which identity/evidence columns remain visible, where two-dimensional grid scrolling is allowed, or how focus/back navigation works from a viewport-sized dialog. The mocks compound the ambiguity by switching layouts at 900px and 1000px rather than the contract's 960px boundary.
-- **Fix:** Add a per-tab responsive priority/action matrix that names retained columns/context, detail-panel migration, permitted grid overflow, and each mutation's narrow-screen disposition. Align promoted mocks to the 960/1280 contract and include zoom/reflow and focus-return acceptance evidence.
+### 4. The source snapshot is not reproducible under its own drift rule
 
-#### 11. Traceability names concepts but not the current owning requirements and stories
+**Citations:** `DESIGN.md:4-14`, `:89-95`; `EXPERIENCE.md:3-13`, `:35-47`; `_bmad-output/planning-artifacts/epics.md:7-18`.
 
-- **Location:** `EXPERIENCE.md:56-69`; `_bmad-output/planning-artifacts/epics.md:190-272,5539-5553,5824-5838,5917-5929`.
-- **Note:** Source Traceability covers a useful subset of concepts, but it does not map UX-DR1–UX-DR42 or the current owners (notably Stories 7.4, 7.5, 7.14, 7.19, and 7.20). Its “Evidence expected from stories” column contains no story identifiers, and `FR36 / AD-19 / AD-20` is presented as lifecycle authority even though FR4/AD-15 define the consumer provenance/lifecycle rule and FR36 governs parity closure. A consumer must rediscover ownership from a large mutable epic file.
-- **Fix:** Add requirement/decision and owning-story columns with exact current IDs, split provenance/lifecycle authority (FR4/AD-15) from projection execution/rebuild semantics (AD-19/AD-20) and parity proof (FR36), and record the baseline/digest from which the mapping was extracted.
+**Impact:** Both spines identify reviewed revision `23a722a…`, while current `HEAD` is `0994c378…`. `EXPERIENCE.md` records epics SHA-256 `5a5c03d1…`, but current tracked `epics.md` is `d067c8fb…`; epics now records the current spine digests. The table calls this a pre-repin capture, yet the next paragraph says any later digest change reopens reconciliation. Consumers cannot mechanically distinguish expected repinning from semantic drift, so “final” is not independently reproducible.
 
-#### 12. “Topology” names two different operator concepts
+**Fix:** Replace the cyclic document-to-document hash scheme with one immutable baseline manifest, or normalized digests that exclude provenance fields. Bind the repository revision and source bytes once and have both spines and epics reference it. Until then, mark source reconciliation open and do not repin hashes alone.
 
-- **Location:** `EXPERIENCE.md:43,46,140`; `src/Hexalith.EventStore.Admin.UI/Layout/NavMenu.razor:29-56`.
-- **Note:** In the proposed IA, Topology means DAPR resources, actors, pub/sub, resiliency, health history, and services. In the current Admin UI, “Topology” is a tenant/domain tree that navigates to filtered Streams. The spine never assigns or retires that current navigator, so migration stories can preserve two Topology concepts or accidentally discard a useful stream filter path.
-- **Fix:** Rename or explicitly dispose of the current tenant/domain navigator. If retained, assign it to the Streams & Events filter/drill-in contract; reserve Topology for DAPR/service operational surfaces and update migration terminology/tests accordingly.
+## Medium findings
 
-### Low
+### 1. The FrontComposer module binding names a component parameter that does not exist
 
-#### 13. Canonical state casing is inconsistent
+**Citations:** `DESIGN.md:24-38`, `:124-130`; `EXPERIENCE.md:24-33`, `:164-168`; `references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Contracts/Registration/FrontComposerNavEntry.cs:3-52`; `references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor.cs:27-39`, `:106-121`.
 
-- **Location:** `EXPERIENCE.md:65-67,105,129`; `DESIGN.md:229`; `src/Hexalith.EventStore.Contracts/Queries/QueryResponseProvenance.cs:11-29`; `src/Hexalith.EventStore.Contracts/Queries/ProjectionLifecycleState.cs:11-53`.
-- **Note:** The Source Traceability table says invalid provenance renders lowercase `unknown`, while the component and state contracts use canonical `Unknown`. This is small, but exact state identifiers feed localization keys, selectors, fixtures, and analytics.
-- **Fix:** Use the exact contract identifiers `ProjectionBacked`, `HandlerComputed`, `Unknown`, `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, and `LocalOnly` everywhere; separately specify localized display strings.
+**Impact:** DESIGN binds `module-navigation` to `FrontComposerNavigation` with `module-id: event-store-admin`, but `FrontComposerNavigation` has no module-id parameter; it renders entries from `IFrontComposerRegistry`. The actual registration contract is `FrontComposerNavEntry(BoundedContext, Title, Href, Icon, Order, RequiredPolicy, Enabled, DisabledReason, TitleKey, Resource)`. Developers must guess whether `event-store-admin` is a bounded context, entry identity, route segment, or test-only identifier, and may omit policy/localization fields.
 
-#### 14. Adopted architecture decisions remain labelled as assumptions
+**Fix:** Bind the single module entry to the real registry API, including exact `BoundedContext`, `Title`, `Href`, `Order`, `RequiredPolicy`, `TitleKey`, and resource marker, and specify how `event-store-admin` remains a stable external/test identity. If FrontComposer needs a first-class module ID, make that an explicit prerequisite.
 
-- **Location:** `EXPERIENCE.md:298-302`; `_bmad-output/planning-artifacts/architecture.md:317-321`.
-- **Note:** The in-place Admin UI integration point and `eventstore-admin-ui` identity are listed under Non-Blocking Assumptions even though AD-21 is adopted and makes them binding. Conversely, “tab names may change” weakens a ten-tab naming contract used by UX-DR3 and Story 7.14 without naming an approval mechanism.
-- **Fix:** Promote adopted host/identity/navigation decisions into Foundation and IA. Leave only genuinely unresolved items under assumptions, and require an explicit UX/architecture update before canonical tab names or groupings change.
+### 2. The selected destructive-dialog primitive cannot render the required structured confirmation contract
 
-## Architecture-ready decisions
+**Citations:** `DESIGN.md:54-60`, `:156-160`; `EXPERIENCE.md:146-156`, `:174`, `:251-252`; `references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.cs:18-46`.
 
-- `src/Hexalith.EventStore.Admin.UI` is the single brownfield EventStore UI target; it evolves in place and retains resource/container identity `eventstore-admin-ui` (`DESIGN.md:164`; `EXPERIENCE.md:21`).
-- EventStore presents one host-level module entry labelled **Event Store Admin**, opening one dashboard rather than feature-by-feature host navigation (`DESIGN.md:164,216`; `EXPERIENCE.md:29,92`).
-- FrontComposer and Blazor Fluent UI V5 are mandatory; existing platform/component primitives take precedence over hand-rolled UI (`DESIGN.md:170-180,200`; `EXPERIENCE.md:19,93`).
-- Interactive UI hosts remain typed-client consumers and do not host generated or hand-written per-message MVC command/query controllers (`EXPERIENCE.md:62`; `_bmad-output/planning-artifacts/architecture.md:111-115`).
-- HTTP `202`, transport success, and SignalR are not completion evidence. SignalR is only a freshness nudge; polling/query evidence must confirm visible state (`EXPERIENCE.md:64,117-118,151-153`).
-- Projection confirmation requires projection-backed provenance plus authoritative `Current`; handler-computed, missing, or invalid provenance renders `Unknown`, and `LocalOnly` never confirms success (`EXPERIENCE.md:65-67,105,126-129`).
-- Mutation defaults are fail-safe: stale/non-current evidence disables action unless a documented consumer-owned exception exists; sensitive actions are role-gated, confirmed, attributable, and support-safe (`EXPERIENCE.md:105,115,154,205-214`).
-- Deferred capabilities are hidden or explicitly disabled/read-only with “Unavailable in this release.”; reachable unavailable server paths return `501`, and no fake operational form is permitted (`EXPERIENCE.md:122,207-214`).
-- The spine commits WCAG 2.2 AA behavior, keyboard-operable Fluent components, focus restoration, live-region priorities, complete resource-backed strings, and three responsive viewport bands (`EXPERIENCE.md:157-197`).
-- The command lifecycle vocabulary—`Received`, `Processing`, `EventsStored`, `EventsPublished`, `Completed`, `Rejected`, `PublishFailed`, `TimedOut`—and the projection lifecycle vocabulary are stable enough for downstream component and fixture design (`EXPERIENCE.md:104-105`).
+**Impact:** The spine requires separately perceivable principal, environment, tenant, target, pre-state, effect, blast radius, reversibility, authorization, and expected evidence, but `FcDestructiveConfirmationDialog` exposes only `Title`, plain-string `Body`, `DestructiveLabel`, and callbacks. Using it directly forces sentence assembly or loses structured labels/associations; replacing it ad hoc defeats the claimed FrontComposer binding.
 
-## Carried forward from the 2026-09-08 lens
+**Fix:** Either define and story-own an additive FrontComposer structured-facts/RenderFragment API, or bind these operations to a named EventStore-owned `FluentDialog` composition and reserve `FcDestructiveConfirmationDialog` for cases its public surface can express. Add API-surface and accessibility tests.
 
-This lens is regenerated in place, so the 2026-09-08 body was overwritten (recoverable at
-`git show 12d2dfc1:_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/review-architecture-readiness.md`).
-The findings below were **code-verified** in that run, are not restated by the findings above, and remain
-open. They are carried here so regeneration does not silently drop them. Counts in "Finding counts" cover
-this run's own findings only.
+### 3. Recovery actions are not explicitly gated by unwired Operations and audit prerequisites
 
-### Component and platform bindings (verified against the rc.5 catalog)
+**Citations:** `EXPERIENCE.md:215-225`, `:316-326`; `_bmad-output/planning-artifacts/architecture.md:298-314`, `:446-463`; `_bmad-output/planning-artifacts/epics.md:4695-4710`, `:4748-4756`, `:4816-4830`.
 
-- **`FluentBadge Color=Neutral` is not a V5 value** (`DESIGN.md:30-31,114-115,143-147`). `BadgeColor` in
-  Microsoft.FluentUI.AspNetCore.Components `5.0.0-rc.5` is `Brand, Danger, Important, Informative, Severe,
-  Subtle, Success, Warning`. *Fix:* use `Subtle` or `Informative`; note `Appearance` is orthogonal to `Color`.
-- **`FluentDrawer` is absent from the V5 catalog** (`DESIGN.md:128,226`; copied into UX-DR18 at
-  `epics.md:224`). The rc.5 Dialog category lists only `FluentDialog`/`FluentDialogBody`/`FluentDialogProvider`,
-  and neither Tenants nor FrontComposer source uses it. *Fix:* specify `FluentDialog` (panel-style) or the
-  FrontComposer panel primitive; drop `FluentDrawer` unless a version that ships it is pinned.
-- **`FluentTabs` is neither a router nor an overflow solution** (`EXPERIENCE.md:95,150,194`). *Fix:* state that
-  the shell binds `ActiveTabId` to the route segment, and that tab-row overflow is an allowed layout-only CSS
-  exception.
-- **Legacy token inventory is untracked** — `wwwroot/css/app.css:5-10,32-37,53-58` (`--hexalith-status-*`,
-  `--hexalith-brand`) and `Components/Shared/ProtectedContentPanel.razor:20` (`--neutral-stroke-rest`,
-  `--neutral-layer-2`). Policy requires an allowlisted migration backlog
-  (`hexalith-ux-instructions.md:37-39`); Story 7.20 names them, the spine does not.
+**Impact:** Flow 1 presents Retry as an available choice, while AD-31 says `eventstore-operations` is not production-wired and Stories 7.1 and 7.3 remain backlog. The general finality disclaimer prevents a current delivery claim, but it does not give story developers the exact UI enablement gate once partial implementation begins.
 
-### Semantics and vocabulary
+**Fix:** In the operation matrix, make Retry/Archive unavailable until Story 7.1 durable poison transfer/recovery, Story 7.3 durable audit, AD-28/AD-29 authorization/attribution, AD-31 wiring/release identity, and authoritative status evidence all pass. Define the read-only state shown before that gate.
 
-- **Lifecycle colour mapping conflicts with shipped Tenants** (Story 2.6, done). `DESIGN.md:141-147` maps
-  stale→warning, rebuilding→neutral, local-only→neutral, unavailable→danger; Tenants renders Stale→`Severe`,
-  Rebuilding→`Informative`, LocalOnly→`Important`, Unavailable→`Severe`
-  (`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Shared/ProjectionLifecycleBadge.razor:28-33`).
-  Two modules will colour the same state differently. *Fix:* adopt the Tenants mapping as platform standard, or
-  record the divergence as an accepted per-module exception.
-- **`MessageId` vs `CorrelationId` lookup is underspecified, and AD-17 has no traceability row**
-  (`EXPERIENCE.md:255,58-69`). The status resource is keyed by `messageId`
-  (`src/Hexalith.EventStore/Controllers/CommandStatusController.cs:23`) while Admin rows carry `CorrelationId`
-  (`Pages/Commands.razor:101`). *Fix:* name `MessageId` the lookup key, `CorrelationId` the trace key, and add
-  an AD-17 row stating the UI never constructs a status URL itself.
-- **FR36 is cited where FR4 is the authority** (`EXPERIENCE.md:67`; `DESIGN.md:229`). *Fix:* relabel to
-  "FR4 / AD-15 / AD-19 / AD-20 (FR36 parity proof)".
+## Low findings
 
-### IA and host contract
+None.
 
-- **`/health` ownership is split between Topology and Recovery** (`EXPERIENCE.md:48`;
-  `Components/CommandPaletteCatalog.cs:14-15`). *Fix:* component health → Topology, health summary + dead
-  letters + consistency → Recovery; say which page owns the shared components.
-- **Host title, breadcrumb, and dev role switcher are outside the header contract** — the shell renders
-  "Hexalith EventStore Admin" (`Layout/MainLayout.razor:23`) against the mandated **Event Store Admin**
-  (`EXPERIENCE.md:92`); `Layout/Breadcrumb.razor` and the role switcher (`MainLayout.razor:26-38`) are unmentioned.
-- **The wide-screen banner is not marked for retirement** — `MainLayout.razor:49-51` and
-  `wwwroot/css/app.css:235-296` render a `role="alert"` "Dashboard optimized for wider screens." against the
-  spine's `<960px` usable-triage promise (`EXPERIENCE.md:195`). *Fix:* add an "existing behaviour to retire" note
-  so Story 7.20 does not inherit it.
+## Strengths
 
-### Traceability obligation
+- Readiness honesty is explicit: UX finality is separated from implementation, release, deployment, migration, and production readiness (`DESIGN.md:91-95`; `EXPERIENCE.md:20-22`, `:47`).
+- Runtime identities are clearly separated across assembly, Admin service, UI service/resource/container, module identity, and visible label (`EXPERIENCE.md:24-33`).
+- Command identity is corrected to `MessageId` for status lookup and `CorrelationId` for tracing, matching AD-17 rather than the stale brownfield description (`EXPERIENCE.md:139-144`; `_bmad-output/planning-artifacts/architecture.md:199-203`; `docs/brownfield/architecture.md:152`).
+- Projection provenance, lifecycle, observation time, refresh time, clock basis, and version are rigorously separated; ETag, SignalR, elapsed time, and `LocalOnly` cannot manufacture success (`EXPERIENCE.md:125-144`).
+- Authorization, non-disclosure, unknown outcomes, no-resubmit behavior, localization, responsive behavior, and test seams are concrete enough to drive strong negative tests (`EXPERIENCE.md:188-297`).
+- FrontComposer/Fluent V5 inheritance and no-theme-redefinition align with repository UX rules (`DESIGN.md:97-140`, `:174-185`; `references/Hexalith.AI.Tools/hexalith-ux-instructions.md:3-37`). Most named FrontComposer primitives exist in tracked 4.4.0 source/package.
 
-- **Spine edits are hash-pinned by `epics.md:16-18`** (SHA-256 of `DESIGN.md`, `EXPERIENCE.md`, `ux.md`). Any fix
-  from this review changes those digests and must re-pin them **in the same commit**; check for an asserting
-  Contracts test before editing. This repo enforces prose and digest pins, and the architecture digest at
-  `epics.md:15` is already stale.
+## Mechanical notes
 
-## Reviewer scope
-
-Read-only architecture-handoff review of `DESIGN.md`, `EXPERIENCE.md`, their direct local sources, canonical UX handoff/index, current PRD validation state, current architecture and epic ownership, promoted HTML mockups, repository UX policy, and targeted brownfield implementation evidence in `Admin.UI`, `Admin.Abstractions`, contracts, and AppHost. The lens tested source currency/traceability, host/module identity, FrontComposer/Fluent UI V5 inheritance, IA/flow closure, components/states/actions, routing/deep links, responsive behavior, evidence/freshness/telemetry semantics, fail-closed security, visual-reference drift, and terminology. It did not modify the spines or sources, grade visual aesthetics, run the application, or claim implementation readiness beyond what the inspected artifacts prove.
+- Digest check: brownfield `3cddf6eb…`, PRD `b99effdb…`, architecture `7e3dbc7b…`, and PRD validation `17f378d0…` match `EXPERIENCE.md`; epics does not (`5a5c03d1…` recorded versus `d067c8fb…` current). Current `DESIGN.md`, `EXPERIENCE.md`, and `ux.md` digests match values recorded by `epics.md`.
+- Artifact inventory: 6 promoted mockup files, 2 imported Fluent captures, and 12 `.working/` files. Promoted/imported references resolve, `DESIGN.md:172` says the spines win on conflict, and `.working/` remains non-authoritative scratch evidence.
+- API verification used tracked FrontComposer 4.4.0 source and package inspection. `FcPageTabs.ActiveTabId/ActiveTabIdChanged`, `FcPageHeader` metadata/actions, `FcStatusBadge`, grid helpers, loading/empty components, palette, and Fluent V5 tabs/grid APIs are real; the two binding gaps above are the material exceptions.
+- The Builds catalog owns FrontComposer 4.4.0 and currently lists Contracts/Shell but not `Hexalith.FrontComposer.Contracts.UI` (`references/Hexalith.Builds/Props/Directory.Packages.props:9`, `:53-57`). Story 7.14 correctly treats adding Contracts.UI to the same catalog family as prerequisite work (`_bmad-output/planning-artifacts/epics.md:5562-5565`).
+- No spine or source file was changed. Only this report was overwritten.

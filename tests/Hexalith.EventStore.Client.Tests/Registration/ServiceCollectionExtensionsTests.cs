@@ -165,14 +165,23 @@ public class ServiceCollectionExtensionsTests : IDisposable {
 
     [Theory]
     [InlineData("ftp://gateway.example")]              // non-http(s) scheme
-    [InlineData("https://user:pass@gateway.example")]  // user info
-    [InlineData("https://gateway.example/?token=abc")] // query
+    [InlineData("https://gateway.example/?probe=abc")] // query
     [InlineData("https://gateway.example/#fragment")]  // fragment
     public void AddEventStoreCommandStatusLocation_WithNonOriginBase_ThrowsArgumentException(string uri) {
         var services = new ServiceCollection();
 
         _ = Should.Throw<ArgumentException>(
             () => services.AddEventStoreCommandStatusLocation(new Uri(uri, UriKind.Absolute)));
+    }
+
+    [Fact]
+    public void AddEventStoreCommandStatusLocation_WithUserInfo_ThrowsArgumentException() {
+        var services = new ServiceCollection();
+        string password = Guid.NewGuid().ToString("N");
+        var uri = new Uri($"https://user:{password}@gateway.example", UriKind.Absolute);
+
+        _ = Should.Throw<ArgumentException>(
+            () => services.AddEventStoreCommandStatusLocation(uri));
     }
 
     [Fact]

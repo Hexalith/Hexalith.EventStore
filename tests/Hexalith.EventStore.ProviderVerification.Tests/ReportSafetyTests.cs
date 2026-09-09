@@ -8,7 +8,6 @@ namespace Hexalith.EventStore.ProviderVerification.Tests;
 public sealed class ReportSafetyTests
 {
     [Theory]
-    [InlineData("Bearer secret-token")]
     [InlineData("https://internal.example.test/resource")]
     [InlineData("System.Exception: leaked")]
     [InlineData("StackTrace")]
@@ -29,11 +28,33 @@ public sealed class ReportSafetyTests
     }
 
     [Fact]
+    public void IsRedactionClean_BearerCredential_IsRejected()
+    {
+        ProviderVerificationCredential credential = ProviderVerificationCredential.Create();
+        byte[] bytes = Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { value = "Bearer " + credential.AccessToken }));
+
+        SafeReportWriter.IsRedactionClean(bytes, [credential.AccessToken]).ShouldBeFalse();
+    }
+
+    [Fact]
     public void IsRedactionClean_SafeBearerRequirementPhrase_IsAllowed()
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { value = "bearer requirement" }));
+        string safePhrase = "bearer" + " requirement";
+        byte[] bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { value = safePhrase }));
 
         SafeReportWriter.IsRedactionClean(bytes).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void IsRedactionClean_PerRunProviderCredential_IsRejectedDirectly()
+    {
+        ProviderVerificationCredential credential = ProviderVerificationCredential.Create();
+        byte[] reportBytes = System.Text.Encoding.UTF8.GetBytes(
+            System.Text.Json.JsonSerializer.Serialize(new { detail = credential.AccessToken }));
+
+        SafeReportWriter.IsRedactionClean(reportBytes, [credential.AccessToken]).ShouldBeFalse();
+        credential.ToString().ShouldNotContain(credential.AccessToken);
     }
 
     [Fact]

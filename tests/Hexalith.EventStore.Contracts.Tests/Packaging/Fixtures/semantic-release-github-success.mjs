@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
@@ -14,6 +15,7 @@ import {
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(fixtureDirectory, "../../../..");
+const generatedCredential = randomBytes(24).toString("base64url");
 const releaseConfiguration = JSON.parse(
     await readFile(resolve(repositoryRoot, ".releaserc.json"), "utf8"),
 );
@@ -347,7 +349,7 @@ try {
                 commits: history.commits,
                 env: {
                     GITHUB_ACTION: "true",
-                    GITHUB_TOKEN: "fixture-token",
+                    GITHUB_TOKEN: generatedCredential,
                 },
                 logger,
                 nextRelease: {

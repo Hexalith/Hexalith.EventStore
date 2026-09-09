@@ -32,7 +32,8 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_ValidKeycloakToken_Returns202Accepted() {
         // Arrange: acquire real OIDC token from Keycloak for admin-user (tenant-a, tenant-b)
-        string token = await _fixture.AcquireTokenAsync("admin-user");
+        string username = "admin-user";
+        string token = await _fixture.AcquireTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 
@@ -82,7 +83,8 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_CrossTenantToken_Returns403Forbidden() {
         // Arrange: tenant-b-user has claims for tenant-b only
-        string token = await _fixture.AcquireTokenAsync("tenant-b-user");
+        string username = "tenant-b-user";
+        string token = await _fixture.AcquireTokenAsync(username);
 
         // Submit command targeting tenant-a (cross-tenant violation)
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
@@ -102,7 +104,8 @@ public class KeycloakAuthenticationTests {
     public async Task SubmitCommand_TenantScopedUser_CanAccessOwnTenant() {
         // Arrange: tenant-a-user has claims for tenant-a + domain "counter" only
         // (hexalith-realm.json seeds this user with domains=["counter"]).
-        string token = await _fixture.AcquireTokenAsync("tenant-a-user");
+        string username = "tenant-a-user";
+        string token = await _fixture.AcquireTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a", domain: "counter");
 
@@ -124,7 +127,8 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_NoTenantClaims_Returns403Forbidden() {
         // Arrange: no-tenant-user has no tenant/domain/permission attributes
-        string token = await _fixture.AcquireTokenAsync("no-tenant-user");
+        string username = "no-tenant-user";
+        string token = await _fixture.AcquireTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 
@@ -142,7 +146,8 @@ public class KeycloakAuthenticationTests {
     [Fact]
     public async Task SubmitCommand_ReadOnlyUser_Returns403Forbidden() {
         // Arrange: readonly-user has command:query only
-        string token = await _fixture.AcquireTokenAsync("readonly-user");
+        string username = "readonly-user";
+        string token = await _fixture.AcquireTokenAsync(username);
 
         using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
 

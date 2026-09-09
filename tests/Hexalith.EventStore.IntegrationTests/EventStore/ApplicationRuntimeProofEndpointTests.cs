@@ -18,7 +18,7 @@ namespace Hexalith.EventStore.IntegrationTests.EventStore;
 public sealed class ApplicationRuntimeProofEndpointTests {
     private const string Endpoint = "/_test/runtime-proof/shutdown";
     private const string Header = "X-Hexalith-Runtime-Proof-Token";
-    private const string Token = "0123456789abcdef0123456789abcdef";
+    private static readonly string Token = Guid.NewGuid().ToString("N");
 
     [Fact]
     public async Task ShutdownEndpointWithoutExplicitTokenIsNotMappedAsync() {
@@ -35,7 +35,7 @@ public sealed class ApplicationRuntimeProofEndpointTests {
         using WebApplicationFactory<EventStoreProgram> factory = CreateFactory(Environments.Development);
         using HttpClient client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint);
-        request.Headers.Add(Header, "fedcba9876543210fedcba9876543210");
+        request.Headers.Add(Header, Guid.NewGuid().ToString("N"));
 
         using HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(true);
 
@@ -58,11 +58,20 @@ public sealed class ApplicationRuntimeProofEndpointTests {
         var baseFactory = new JwtAuthenticatedWebApplicationFactory();
         return baseFactory.WithWebHostBuilder(builder => {
             _ = builder.UseEnvironment(environment);
-            _ = builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(
-                new Dictionary<string, string?> {
-                    ["EventStore:RuntimeProof:ShutdownToken"] = Token,
-                    ["Authentication:JwtBearer:AllowInsecureSymmetricKey"] = "true",
-                }));
+            var settings = new Dictionary<string, string?> {
+                ["EventStore:RuntimeProof:ShutdownToken"] = Token,
+                ["Authentication:JwtBearer:AllowInsecureSymmetricKey"] = "true",
+            };
+            if (environment == Environments.Production) {
+                settings["Authentication:JwtBearer:Authority"] = "https://identity.example.invalid/realms/hexalith";
+                settings["Authentication:JwtBearer:Issuer"] = "https://identity.example.invalid/realms/hexalith";
+                settings["Authentication:JwtBearer:SigningKey"] = string.Empty;
+                settings["Authentication:JwtBearer:AllowedAlgorithms:0"] = "RS256";
+                settings["Authentication:JwtBearer:RequireHttpsMetadata"] = "true";
+                settings["Authentication:JwtBearer:AllowInsecureSymmetricKey"] = "false";
+            }
+
+            _ = builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(settings));
         });
     }
 }

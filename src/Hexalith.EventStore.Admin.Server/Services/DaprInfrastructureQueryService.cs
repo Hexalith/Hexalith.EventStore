@@ -1104,7 +1104,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // Round 5 P14: strip credentials from the endpoint before assigning to the
         // RemoteMetadataPayload — `Endpoint` flows directly into UI tooltips and the round-4
         // empty-state Description copy. A misconfigured endpoint such as
-        // `http://user:pass@host:3500` would echo credentials verbatim into rendered HTML.
+        // `http://<username>:<password>@host:3500` would echo credentials verbatim into rendered HTML.
         // The AC1 leak test pins response bodies but not this UI render path.
         string rawEndpoint = _options.EventStoreDaprHttpEndpoint;
         string endpoint = SanitizeEndpoint(rawEndpoint);

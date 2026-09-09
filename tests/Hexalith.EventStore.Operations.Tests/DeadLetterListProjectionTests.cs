@@ -67,7 +67,9 @@ public sealed class DeadLetterListProjectionTests
         using HttpClient client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/internal/dead-letters?count=2");
         request.Headers.TryAddWithoutValidation("dapr-caller-app-id", "eventstore-admin").ShouldBeTrue();
-        request.Headers.TryAddWithoutValidation("Authorization", "Bearer operator-token").ShouldBeTrue();
+        request.Headers.TryAddWithoutValidation(
+            "Authorization",
+            "Bearer " + Guid.NewGuid().ToString("N")).ShouldBeTrue();
 
         using HttpResponseMessage response = await client.SendAsync(request);
 
@@ -117,7 +119,9 @@ public sealed class DeadLetterListProjectionTests
         using HttpClient client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/internal/dead-letters?count=999");
         request.Headers.TryAddWithoutValidation("dapr-caller-app-id", "eventstore-admin").ShouldBeTrue();
-        request.Headers.TryAddWithoutValidation("Authorization", "Bearer operator-token").ShouldBeTrue();
+        request.Headers.TryAddWithoutValidation(
+            "Authorization",
+            "Bearer " + Guid.NewGuid().ToString("N")).ShouldBeTrue();
 
         using HttpResponseMessage response = await client.SendAsync(request);
 

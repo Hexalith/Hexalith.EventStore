@@ -46,7 +46,7 @@ const opts = buildVerifierOptions({
 **Key Points**:
 
 - `tokenGenerator` is **synchronous** (`() => string`) — if you need async token fetching, resolve the token before creating the filter
-- Return the raw token value, NOT `"Bearer ..."` — the filter adds the prefix
+- Return the raw token value, NOT `"Bearer <runtime-token>"` — the filter adds the prefix
 - Filter sets `Authorization` header on every request during verification
 
 ### Example 2: Dynamic Token (Pre-resolved)
@@ -162,7 +162,7 @@ await new Verifier(opts).verifyProvider();
 ```typescript
 // ❌ Risk of double-prefix: "Bearer Bearer <test-token>"
 requestFilter: (req, res, next) => {
-  const token = getToken(); // What if getToken() returns "Bearer abc123"?
+  const token = getToken(); // What if getToken() returns "Bearer <runtime-token>"?
   req.headers['authorization'] = `Bearer ${token}`;
   next();
 };
@@ -173,7 +173,7 @@ requestFilter: (req, res, next) => {
 ```typescript
 // ✅ tokenGenerator returns raw value — filter handles prefix
 requestFilter: createRequestFilter({
-  tokenGenerator: () => getToken(), // Returns "abc123", not "Bearer abc123"
+  tokenGenerator: () => getToken(), // Returns "<runtime-token>", not "Bearer <runtime-token>"
 });
 ```
 

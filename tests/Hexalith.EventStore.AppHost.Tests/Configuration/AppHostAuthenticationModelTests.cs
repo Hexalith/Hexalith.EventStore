@@ -22,14 +22,20 @@ public sealed class AppHostAuthenticationModelTests
         "Authentication__JwtBearer__ValidAudiences__1",
         "Authentication__JwtBearer__AllowedAlgorithms__0",
         "Authentication__JwtBearer__TokenEndpoint",
-        "Authentication__JwtBearer__Scope",
+        "Authentication__JwtBearer__AudienceParameterName",
+        "Authentication__JwtBearer__AudienceParameterValue",
+        "Authentication__JwtBearer__SampleUi__GrantType",
+        "Authentication__JwtBearer__SampleUi__Scope",
+        "Authentication__JwtBearer__AdminUi__GrantType",
+        "Authentication__JwtBearer__AdminUi__Scope",
         "Parameters__external-sample-auth-client-id",
         "Parameters__external-sample-auth-username",
         "Parameters__external-sample-auth-password",
+        "Parameters__external-sample-auth-client-secret",
         "Parameters__external-admin-auth-client-id",
         "Parameters__external-admin-auth-username",
         "Parameters__external-admin-auth-password",
-        "LocalAuthentication__TestInjection__InvocationId",
+        "Parameters__external-admin-auth-client-secret",
     ];
 
     [Fact]
@@ -127,13 +133,17 @@ public sealed class AppHostAuthenticationModelTests
             Environment.SetEnvironmentVariable("Authentication__JwtBearer__ValidAudiences__1", "secondary-api");
             Environment.SetEnvironmentVariable("Authentication__JwtBearer__AllowedAlgorithms__0", "RS256");
             Environment.SetEnvironmentVariable("Authentication__JwtBearer__TokenEndpoint", "https://tokens.example.test/oauth/token");
-            Environment.SetEnvironmentVariable("Authentication__JwtBearer__Scope", "api.read");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__AudienceParameterName", "resource");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__AudienceParameterValue", "https://api.example.test");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__SampleUi__GrantType", "password");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__SampleUi__Scope", "sample.read");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__AdminUi__GrantType", "client_credentials");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__AdminUi__Scope", "admin.read");
             Environment.SetEnvironmentVariable("Parameters__external-sample-auth-client-id", "sample-ui");
             Environment.SetEnvironmentVariable("Parameters__external-sample-auth-username", "sample-user");
             Environment.SetEnvironmentVariable("Parameters__external-sample-auth-password", Guid.NewGuid().ToString("N"));
             Environment.SetEnvironmentVariable("Parameters__external-admin-auth-client-id", "admin-ui");
-            Environment.SetEnvironmentVariable("Parameters__external-admin-auth-username", "admin-user");
-            Environment.SetEnvironmentVariable("Parameters__external-admin-auth-password", Guid.NewGuid().ToString("N"));
+            Environment.SetEnvironmentVariable("Parameters__external-admin-auth-client-secret", Guid.NewGuid().ToString("N"));
 
             await using IDistributedApplicationTestingBuilder builder = await DistributedApplicationTestingBuilder
                 .CreateAsync<Projects.Hexalith_EventStore_AppHost>(["--AppHost:Operation=publish"])
@@ -144,8 +154,7 @@ public sealed class AppHostAuthenticationModelTests
             Parameter(builder, "external-sample-auth-username").Secret.ShouldBeTrue();
             Parameter(builder, "external-sample-auth-password").Secret.ShouldBeTrue();
             Parameter(builder, "external-admin-auth-client-id").Secret.ShouldBeFalse();
-            Parameter(builder, "external-admin-auth-username").Secret.ShouldBeTrue();
-            Parameter(builder, "external-admin-auth-password").Secret.ShouldBeTrue();
+            Parameter(builder, "external-admin-auth-client-secret").Secret.ShouldBeTrue();
 
             foreach (string resourceName in new[] { "eventstore", "eventstore-admin", "sample-api" })
             {
@@ -171,8 +180,20 @@ public sealed class AppHostAuthenticationModelTests
                 .ShouldBe("https://tokens.example.test/oauth/token");
             adminEnvironment["EventStore__Authentication__TokenEndpoint"]
                 .ShouldBe("https://tokens.example.test/oauth/token");
-            sampleEnvironment["EventStore__Authentication__Scope"].ShouldBe("api.read");
-            adminEnvironment["EventStore__Authentication__Scope"].ShouldBe("api.read");
+            sampleEnvironment["EventStore__Authentication__Scope"].ShouldBe("sample.read");
+            adminEnvironment["EventStore__Authentication__Scope"].ShouldBe("admin.read");
+            sampleEnvironment["EventStore__Authentication__GrantType"].ShouldBe("password");
+            adminEnvironment["EventStore__Authentication__GrantType"].ShouldBe("client_credentials");
+            sampleEnvironment["EventStore__Authentication__AudienceParameterName"].ShouldBe("resource");
+            adminEnvironment["EventStore__Authentication__AudienceParameterName"].ShouldBe("resource");
+            sampleEnvironment["EventStore__Authentication__AudienceParameterValue"].ShouldBe("https://api.example.test");
+            adminEnvironment["EventStore__Authentication__AudienceParameterValue"].ShouldBe("https://api.example.test");
+            sampleEnvironment.ShouldContainKey("EventStore__Authentication__Username");
+            sampleEnvironment.ShouldContainKey("EventStore__Authentication__Password");
+            sampleEnvironment["EventStore__Authentication__ClientSecret"].ShouldBe(string.Empty);
+            adminEnvironment["EventStore__Authentication__Username"].ShouldBe(string.Empty);
+            adminEnvironment["EventStore__Authentication__Password"].ShouldBe(string.Empty);
+            adminEnvironment.ShouldContainKey("EventStore__Authentication__ClientSecret");
 
             string sampleClientId = await ResolveAsync(
                 sampleEnvironment["EventStore__Authentication__ClientId"],
@@ -185,6 +206,23 @@ public sealed class AppHostAuthenticationModelTests
             sampleClientId.ShouldBe("sample-ui");
             adminClientId.ShouldBe("admin-ui");
             sampleClientId.ShouldNotBe(adminClientId);
+
+            string sampleUsername = await ResolveAsync(
+                sampleEnvironment["EventStore__Authentication__Username"],
+                Project(builder, "sample-blazor-ui"),
+                builder.ExecutionContext).ConfigureAwait(true);
+            string samplePassword = await ResolveAsync(
+                sampleEnvironment["EventStore__Authentication__Password"],
+                Project(builder, "sample-blazor-ui"),
+                builder.ExecutionContext).ConfigureAwait(true);
+            string adminClientSecret = await ResolveAsync(
+                adminEnvironment["EventStore__Authentication__ClientSecret"],
+                Project(builder, "eventstore-admin-ui"),
+                builder.ExecutionContext).ConfigureAwait(true);
+            sampleUsername.ShouldBe("sample-user");
+            samplePassword.ShouldBe(Environment.GetEnvironmentVariable("Parameters__external-sample-auth-password"));
+            adminClientSecret.ShouldBe(Environment.GetEnvironmentVariable("Parameters__external-admin-auth-client-secret"));
+            samplePassword.ShouldNotBe(adminClientSecret);
         }
         finally
         {

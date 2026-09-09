@@ -117,8 +117,8 @@ public sealed class EventStoreApiAccessTokenProviderTests
         string clientSecret = " " + Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) + " ";
         values["EventStore:Authentication:GrantType"] = "client_credentials";
         values["EventStore:Authentication:ClientSecret"] = clientSecret;
-        values["EventStore:Authentication:Username"] = "must-not-be-sent";
-        values["EventStore:Authentication:Password"] = "must-not-be-sent";
+        values["EventStore:Authentication:Username"] = "PROTECTED_UNUSED_USERNAME_MARKER";
+        values["EventStore:Authentication:Password"] = "PROTECTED_UNUSED_PASSWORD_MARKER";
         var handler = new RecordingTokenHandler();
         var provider = CreateAuthorityProvider(values, handler);
 

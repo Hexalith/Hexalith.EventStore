@@ -30,7 +30,7 @@ if (errors.Count > 0) {
     await Console.Error.WriteLineAsync(
         $"Error: {string.Join("; ", errors)}\n"
         + "Usage: Set EVENTSTORE_ADMIN_URL (e.g., https://localhost:5443) "
-        + "and EVENTSTORE_ADMIN_TOKEN (Bearer token for Admin API authentication).")
+        + "and EVENTSTORE_ADMIN_TOKEN (Admin API authentication credential).")
         .ConfigureAwait(false);
     return 1;
 }

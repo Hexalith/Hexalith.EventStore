@@ -1312,7 +1312,7 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["BYPASS_VALIDATION"] = bypassValidation;
             start.Environment["EXPECTED_SOURCE_WORKFLOW"] = expectedSourceWorkflow;
             start.Environment["GITHUB_OUTPUT"] = githubOutput;
-            start.Environment["GH_TOKEN"] = "test-token";
+            start.Environment["GH_TOKEN"] = Guid.NewGuid().ToString("N");
             start.Environment["REPOSITORY"] = "Hexalith/Hexalith.EventStore";
             start.Environment["DISPATCH_REF"] = dispatchRef;
             start.Environment["DISPATCH_SHA"] = dispatchSha;

@@ -58,6 +58,7 @@ public class AdminApiClientTests {
     [Fact]
     public async Task GetSystemHealthAsync_SendsAuthorizationBearerHeader() {
         // Arrange
+        string token = Guid.NewGuid().ToString("N");
         AuthenticationHeaderValue? capturedAuth = null;
         using HttpClient httpClient = CreateMockHttpClient(
             (request, _) => {
@@ -68,7 +69,7 @@ public class AdminApiClientTests {
             },
             "https://localhost:5443",
             configureDefaults: client =>
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test-token"));
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token));
 
         var client = new AdminApiClient(httpClient);
 
@@ -78,7 +79,7 @@ public class AdminApiClientTests {
         // Assert
         _ = capturedAuth.ShouldNotBeNull();
         capturedAuth.Scheme.ShouldBe("Bearer");
-        capturedAuth.Parameter.ShouldBe("test-token");
+        capturedAuth.Parameter.ShouldBe(token);
     }
 
     private static HttpClient CreateMockHttpClient(

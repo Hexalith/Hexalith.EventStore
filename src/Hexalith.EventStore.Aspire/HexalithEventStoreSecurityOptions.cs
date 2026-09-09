@@ -31,6 +31,16 @@ public sealed record HexalithEventStoreSecurityOptions
     public const string DefaultEventStoreClientId = "hexalith-eventstore";
 
     /// <summary>
+    /// The realm-import environment placeholder used for the generated default client's user name.
+    /// </summary>
+    public const string DefaultClientUsernameEnvironmentName = "HEXALITH_EVENTSTORE_CLIENT_USERNAME";
+
+    /// <summary>
+    /// The realm-import environment placeholder used for the generated default client's password.
+    /// </summary>
+    public const string DefaultClientPasswordEnvironmentName = "HEXALITH_EVENTSTORE_CLIENT_PASSWORD";
+
+    /// <summary>
     /// The configuration key that disables the security resource when set to <c>false</c>.
     /// </summary>
     public const string DefaultEnableKeycloakConfigurationKey = "EnableKeycloak";

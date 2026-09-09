@@ -400,7 +400,7 @@ test.describe('Service-to-Service Auth', () => {
       method: 'GET',
       path: '/internal/health',
       baseUrl: INTERNAL_SERVICE_URL,
-      headers: { 'X-API-Key': 'invalid-key' },
+      headers: { 'X-API-Key': '<invalid-api-key>' },
     });
 
     expect(status).toBe(401);

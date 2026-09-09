@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -63,11 +64,7 @@ public sealed class ProofPacketValidatorIntegrityTests
             $"\"-p:ContainerRuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"");
         packet.ShouldContain("-p:ContainerImageFormat=OCI");
         packet.ShouldNotContain("\"-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64\"");
-        packet.ShouldContain("--env Authentication__JwtBearer__Issuer=hexalith-container-smoke");
-        packet.ShouldContain("--env Authentication__JwtBearer__Audience=hexalith-eventstore");
-        packet.ShouldContain(
-            "--env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret");
-        packet.ShouldContain("--env Authentication__JwtBearer__AllowInsecureSymmetricKey=true");
+        AssertHistoricalPacketRetired(root);
         packet.ShouldContain("for _ in $(seq 1 180); do");
         packet.ShouldContain(".publish_properties.runtime_identifiers ==");
         packet.ShouldContain(".publish_properties.container_image_format == \"OCI\"");
@@ -106,6 +103,7 @@ public sealed class ProofPacketValidatorIntegrityTests
         string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
         string publicationSmoke = ExtractContract(packet, "container-smoke-contract");
         string verifierSmoke = ExtractContract(packet, "container-smoke-verifier-contract");
+        AssertHistoricalPacketRetired(root);
 
         // Regression: the verifier started the container with ASPNETCORE_URLS only. The host then
         // failed startup for want of JWT bearer configuration — the v3.77.1 amd64 failure — so the
@@ -114,10 +112,7 @@ public sealed class ProofPacketValidatorIntegrityTests
         string[] requiredStartupEnvironment =
         [
             "--env ASPNETCORE_URLS=http://+:8080",
-            "--env Authentication__JwtBearer__Issuer=hexalith-container-smoke",
             "--env Authentication__JwtBearer__Audience=hexalith-eventstore",
-            "--env Authentication__JwtBearer__SigningKey=hexalith-container-smoke-only-key-not-a-secret",
-            "--env Authentication__JwtBearer__AllowInsecureSymmetricKey=true",
         ];
 
         foreach (string setting in requiredStartupEnvironment)
@@ -975,6 +970,25 @@ public sealed class ProofPacketValidatorIntegrityTests
         int endIndex = packet.IndexOf(end, startIndex, StringComparison.Ordinal);
         endIndex.ShouldBeGreaterThan(startIndex, $"The packet must declare {end} after {start}.");
         return packet[(startIndex + start.Length)..endIndex];
+    }
+
+    private static void AssertHistoricalPacketRetired(string root)
+    {
+        string manifestPath = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "story-5-3-retired-captures.json");
+        using JsonDocument manifest = JsonDocument.Parse(File.ReadAllBytes(manifestPath));
+        JsonElement retirement = manifest.RootElement.GetProperty("retired").EnumerateArray().Single(item =>
+            item.GetProperty("path").GetString() == PacketRelativePath);
+
+        retirement.GetProperty("status").GetString().ShouldBe("retired");
+        retirement.GetProperty("authoritative").GetBoolean().ShouldBeFalse();
+        string actualHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, PacketRelativePath))))
+            .ToLowerInvariant();
+        actualHash.ShouldBe(retirement.GetProperty("sha256").GetString());
     }
 
     private static string FindRepositoryRoot()

@@ -326,12 +326,23 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("missing-successor", "Story 4.15 v3 successor directory is missing or symlinked")]
     [InlineData("source-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
     [InlineData("oversized-source", "Story 4.15 v3 bound source docs/ci.md exceeds the 524288-byte limit")]
-    [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/integration.yml has a symlinked path component")]
+    [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/ci.yml has a symlinked path component")]
     [InlineData("symlinked-gate-ancestor", "Story 4.15 v3 bound source docs/ci.md has a symlinked path component")]
+    [InlineData("sdk-gate-input-drift", "Story 4.15 v3 gate-input identity drift: global.json")]
+    [InlineData("landed-source-drift", "Story 4.15 v3 landed source identity drift")]
+    [InlineData("head-ancestry-drift", "Story 4.15 v3 HEAD ancestry declaration drift")]
+    [InlineData("sdk-link-drift", "Story 4.15 v3 historical SDK successor link drift")]
     [InlineData("pre-review-future", "Story 4.15 v3 pre-review execution timestamp is later than current UTC")]
     [InlineData("subject-future", "Story 4.15 v3 review-subject freeze timestamp is later than current UTC")]
     [InlineData("receipt-future", "Story 4.15 v3 security receipt timestamp is later than current UTC")]
     [InlineData("handoff-future", "Story 4.15 v3 handoff assembly timestamp is later than current UTC")]
+    [InlineData("receipt-rejected", "Story 4.15 v3 security review is not approved")]
+    [InlineData("test-verification-missing", "Story 4.15 v3 test review field set drift")]
+    [InlineData("test-verification-failed", "Story 4.15 v3 test review verification oq8-platform-closure:failed count drift")]
+    [InlineData("test-verification-skipped", "Story 4.15 v3 test review verification oq8-platform-closure:skipped count drift")]
+    [InlineData("contracts-full-failed", "Story 4.15 v3 test review verification contracts-full:failed count drift")]
+    [InlineData("consumer-install-command-drift", "Story 4.15 v3 consumer instructions drift")]
+    [InlineData("successor-selection-drift", "Story 4.15 successor selection drift")]
     public void V3SuccessorMutationsFailClosed(string mutation, string expected)
     {
         string root = FindRepositoryRoot();
@@ -344,6 +355,93 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain(expected);
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies default current-source closure rejects a HEAD that does not descend from the v3 landed source,
+    /// even when every bound byte matches.
+    /// </summary>
+    [Fact]
+    public void NonDescendantHeadFailsFinalClosure()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        string gitFixture = CreateGitFixture(root);
+        try
+        {
+            RunGit(gitFixture, "checkout", "--detach", "--quiet", "e60a3777c581d70b62f67173ccc2372b5b64a425");
+
+            (int exitCode, string output) = RunValidator(root, fixture, gitFixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Git identity proof failed for merge-base --is-ancestor");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+            Directory.Delete(gitFixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies historical-only modes still validate the successor selector's structure and historical block
+    /// instead of skipping selector validation when current source is not authorized.
+    /// </summary>
+    /// <param name="mode">The historical validation mode flag.</param>
+    /// <param name="mutation">The selector mutation.</param>
+    /// <param name="expected">The expected failure text.</param>
+    [Theory]
+    [InlineData("--historical-v1-only", "symlink", "Story 4.15 successor selector must be a regular non-symlink file")]
+    [InlineData("--historical-v2-only", "symlink", "Story 4.15 successor selector must be a regular non-symlink file")]
+    [InlineData("--historical-v1-only", "historical", "Story 4.15 successor historical selection drift")]
+    [InlineData("--historical-v2-only", "historical", "Story 4.15 successor historical selection drift")]
+    [InlineData("--historical-v2-only", "field-set", "Story 4.15 successor selector field set drift")]
+    public void HistoricalModesRejectCorruptedSelector(string mode, string mutation, string expected)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            MutateSuccessorSelector(fixture, mutation);
+
+            (int exitCode, string output) = RunValidator(root, fixture, additionalArguments: [mode]);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(expected);
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies pre-review candidate validation rejects a selector whose historical SDK successor link drifted.
+    /// </summary>
+    [Fact]
+    public void PreReviewRejectsSelectorSdkLinkDrift()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            string selectorPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "4-15-oq8-platform-closure-successor.json");
+            JsonObject selector = LoadObject(selectorPath);
+            selector["historical"]!["sdkSuccessor"]!["files"]!["source-artifact-identity.json"] = new string('0', 64);
+            WriteObject(selectorPath, selector);
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Story 4.15 successor source identity selection drift");
             output.ShouldNotContain("Traceback");
         }
         finally
@@ -383,9 +481,9 @@ public sealed class Oq8PlatformClosureTests
                 {
                     string selectorPath = Path.Combine(artifacts, "4-15-oq8-platform-closure-successor.json");
                     JsonObject selector = LoadObject(selectorPath);
-                    selector["prior"]!["packetSha256"] = new string('0', 64);
+                    selector["historical"]!["v1Closure"]!["packetSha256"] = new string('0', 64);
                     WriteObject(selectorPath, selector);
-                    expected = "Story 4.15 successor prior selection drift";
+                    expected = "Story 4.15 successor historical selection drift";
                     break;
                 }
                 case "review-receipt":
@@ -494,6 +592,16 @@ public sealed class Oq8PlatformClosureTests
         deliveredInstructions["installCommand"]!.GetValue<string>()
             .ShouldBe("python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt");
         deliveredInstructions["verifyCommand"]!.GetValue<string>()
+            .ShouldBe(".oq8-python/bin/python tools/validate-oq8-platform-evidence.py");
+
+        string v3HandoffPath = Path.Combine(
+            root,
+            V3SuccessorRelativeDirectory,
+            "source-only-handoff.json");
+        JsonObject v3Instructions = LoadObject(v3HandoffPath)["consumerInstructions"]!.AsObject();
+        v3Instructions["installCommand"]!.GetValue<string>()
+            .ShouldBe("python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt");
+        v3Instructions["verifyCommand"]!.GetValue<string>()
             .ShouldBe(".oq8-python/bin/python tools/validate-oq8-platform-evidence.py");
 
         string[] documents =
@@ -3206,17 +3314,17 @@ public sealed class Oq8PlatformClosureTests
             manifestPath,
             string.Join('\n', relativeFiles.Select(relative => $"{ComputeSha256(Path.Combine(successor, relative))}  {relative}")) + "\n");
 
+        // The SDK successor is historical under v3: its manifest is linked from the selector's
+        // historical block, not from the active v3 successor pointer.
         string selectorPath = Path.Combine(artifacts, "4-15-oq8-platform-closure-successor.json");
         JsonObject selector = LoadObject(selectorPath);
-        selector["successor"]!["manifestSha256"] = ComputeSha256(manifestPath);
+        JsonObject sdkSuccessor = selector["historical"]!["sdkSuccessor"]!.AsObject();
+        sdkSuccessor["manifestSha256"] = ComputeSha256(manifestPath);
         foreach (string relative in relativeFiles)
         {
-            selector["successor"]!["files"]![relative] = ComputeSha256(Path.Combine(successor, relative));
+            sdkSuccessor["files"]![relative] = ComputeSha256(Path.Combine(successor, relative));
         }
 
-        selector["successor"]!["sourceIdentitySha256"] = ComputeSha256(identityPath);
-        selector["successor"]!["reviewSubjectSha256"] = subjectSha256;
-        selector["successor"]!["handoffSha256"] = ComputeSha256(handoffPath);
         WriteObject(selectorPath, selector);
     }
 
@@ -3488,9 +3596,128 @@ public sealed class Oq8PlatformClosureTests
             case "handoff-future":
                 MutateV3Timestamp(successor, "source-only-handoff.json", "assembledAt", ResealV3Manifest);
                 break;
+            case "receipt-rejected":
+            {
+                string receiptPath = Path.Combine(successor, "reviews", "security.json");
+                JsonObject receipt = LoadObject(receiptPath);
+                receipt["decision"] = "rejected";
+                WriteObject(receiptPath, receipt);
+                ResealV3Receipt(successor, "security");
+                break;
+            }
+            case "test-verification-missing":
+            {
+                string receiptPath = Path.Combine(successor, "reviews", "test.json");
+                JsonObject receipt = LoadObject(receiptPath);
+                receipt.Remove("verification");
+                WriteObject(receiptPath, receipt);
+                ResealV3Receipt(successor, "test");
+                break;
+            }
+            case "test-verification-failed":
+                MutateV3TestVerification(successor, command => command["failed"] = 1);
+                break;
+            case "test-verification-skipped":
+                MutateV3TestVerification(successor, command => command["skipped"] = 1);
+                break;
+            case "contracts-full-failed":
+                MutateV3TestVerification(successor, command => command["failed"] = 1, "contracts-full");
+                break;
+            case "sdk-gate-input-drift":
+                File.AppendAllText(Path.Combine(fixture, "global.json"), "\n");
+                break;
+            case "landed-source-drift":
+                MutateV3Identity(successor, identity => identity["landedSource"]!["tree"] = new string('0', 40));
+                break;
+            case "head-ancestry-drift":
+                MutateV3Identity(successor, identity => identity["headAncestry"]!["required"] = false);
+                break;
+            case "sdk-link-drift":
+                MutateV3Identity(successor, identity => identity["historicalSdkSuccessor"]!["manifestSha256"] = new string('0', 64));
+                break;
+            case "consumer-install-command-drift":
+            {
+                string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+                JsonObject handoff = LoadObject(handoffPath);
+                handoff["consumerInstructions"]!["installCommand"] = "pip install pyyaml";
+                WriteObject(handoffPath, handoff);
+                ResealV3Manifest(successor);
+                break;
+            }
+            case "successor-selection-drift":
+            {
+                string selectorPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "4-15-oq8-platform-closure-successor.json");
+                JsonObject selector = LoadObject(selectorPath);
+                selector["successor"]!["handoffSha256"] = new string('0', 64);
+                WriteObject(selectorPath, selector);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown Story 4.15 v3 mutation.");
         }
+    }
+
+    private static void MutateSuccessorSelector(string fixture, string mutation)
+    {
+        string selectorPath = Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "4-15-oq8-platform-closure-successor.json");
+        switch (mutation)
+        {
+            case "symlink":
+            {
+                string targetPath = selectorPath + ".target";
+                File.Move(selectorPath, targetPath);
+                CreateSymbolicLinkOrSkip(selectorPath, Path.GetFileName(targetPath), directory: false);
+                break;
+            }
+            case "historical":
+            {
+                JsonObject selector = LoadObject(selectorPath);
+                selector["historical"]!["v2Successor"]!["manifestSha256"] = new string('0', 64);
+                WriteObject(selectorPath, selector);
+                break;
+            }
+            case "field-set":
+            {
+                JsonObject selector = LoadObject(selectorPath);
+                selector.Remove("successor");
+                WriteObject(selectorPath, selector);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown successor selector mutation.");
+        }
+    }
+
+    private static void MutateV3Identity(string successor, Action<JsonObject> mutation)
+    {
+        string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+        JsonObject identity = LoadObject(identityPath);
+        mutation(identity);
+        WriteObject(identityPath, identity);
+        ResealV3AfterIdentityChange(successor);
+    }
+
+    private static void ResealV3AfterIdentityChange(string successor)
+    {
+        string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+        JsonObject identity = LoadObject(identityPath);
+        string[] boundFields = ["historicalSdkSuccessor", "landedSource", "headAncestry", "sourceTransitions", "gateInputs"];
+
+        string executionPath = Path.Combine(successor, "pre-review-execution.json");
+        JsonObject execution = LoadObject(executionPath);
+        string subjectPath = Path.Combine(successor, "review-subject.json");
+        JsonObject subject = LoadObject(subjectPath);
+        foreach (string field in boundFields)
+        {
+            execution["candidateInputs"]![field] = identity[field]!.DeepClone();
+            subject[field] = identity[field]!.DeepClone();
+        }
+
+        WriteObject(executionPath, execution);
+        subject["bindings"]!["sourceIdentity"]!["sha256"] = ComputeSha256(identityPath);
+        subject["bindings"]!["preReviewExecution"]!["sha256"] = ComputeSha256(executionPath);
+        WriteObject(subjectPath, subject);
+        ResealV3AfterSubjectChange(successor);
     }
 
     private static void MutateV3Timestamp(
@@ -3547,6 +3774,22 @@ public sealed class Oq8PlatformClosureTests
         handoff["reviewReceipts"]![role] = ComputeSha256(receiptPath);
         WriteObject(handoffPath, handoff);
         ResealV3Manifest(successor);
+    }
+
+    private static void MutateV3TestVerification(
+        string successor,
+        Action<JsonObject> mutation,
+        string commandName = "oq8-platform-closure")
+    {
+        string receiptPath = Path.Combine(successor, "reviews", "test.json");
+        JsonObject receipt = LoadObject(receiptPath);
+        JsonObject command = receipt["verification"]!
+            .AsArray()
+            .Select(item => item!.AsObject())
+            .Single(item => item["name"]!.GetValue<string>() == commandName);
+        mutation(command);
+        WriteObject(receiptPath, receipt);
+        ResealV3Receipt(successor, "test");
     }
 
     private static void ResealV3Manifest(string successor)

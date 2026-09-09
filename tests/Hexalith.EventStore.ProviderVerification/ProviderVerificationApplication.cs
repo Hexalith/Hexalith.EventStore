@@ -23,7 +23,7 @@ internal static class ProviderVerificationApplication
     internal static async Task<int> RunAsync(
         ProviderVerificationOptions options,
         CancellationToken cancellationToken,
-        Func<ProviderStateCoordinator, string, TimeSpan, CancellationToken, ProviderVerificationTimeline, Task<ProviderVerificationHost>>? startHostAsync = null,
+        Func<ProviderStateCoordinator, string, TimeSpan, CancellationToken, ProviderVerificationTimeline, ProviderVerificationCredential, Task<ProviderVerificationHost>>? startHostAsync = null,
         Func<string>? findRepositoryRoot = null)
     {
         var timeline = new ProviderVerificationTimeline();
@@ -46,6 +46,7 @@ internal static class ProviderVerificationApplication
         bool portClosed = false;
         int exitCode = SuccessExitCode;
         string? repositoryRoot = null;
+        ProviderVerificationCredential credential = ProviderVerificationCredential.Create();
         try
         {
             if (!SafePath.TryResolveOutputFile(options.ReportOutputPath, out reportOutputPath, out string reportPathCode))
@@ -71,14 +72,21 @@ internal static class ProviderVerificationApplication
 
             var coordinator = new ProviderStateCoordinator(inputs.ProviderStates);
             timeline.BeginStartup();
-            startHostAsync ??= static (stateCoordinator, root, timeout, token, runTimeline) =>
-                ProviderVerificationHost.StartAsync(stateCoordinator, root, timeout, token, runTimeline);
+            startHostAsync ??= static (stateCoordinator, root, timeout, token, runTimeline, runCredential) =>
+                ProviderVerificationHost.StartAsync(
+                    stateCoordinator,
+                    root,
+                    timeout,
+                    token,
+                    runTimeline,
+                    credential: runCredential);
             host = await startHostAsync(
                 coordinator,
                 repositoryRoot,
                 options.StartupTimeout,
                 cancellationToken,
-                timeline).ConfigureAwait(false);
+                timeline,
+                credential).ConfigureAwait(false);
             baseAddress = host.BaseAddress;
             hostStarted = true;
             ready = true;
@@ -90,7 +98,8 @@ internal static class ProviderVerificationApplication
                     inputs.PactDirectory,
                     host.BaseAddress,
                     coordinator,
-                    options.RequestTimeout).ConfigureAwait(false);
+                    options.RequestTimeout,
+                    credential.AccessToken).ConfigureAwait(false);
                 interactions.Add(result);
                 if (result.ResultCode != "interaction.passed")
                 {
@@ -225,7 +234,11 @@ internal static class ProviderVerificationApplication
                 inputs?.Hashes.OrderBy(item => item.Kind, StringComparer.Ordinal).ThenBy(item => item.Name, StringComparer.Ordinal).ToArray()
                     ?? [],
                 interactions);
-            if (!SafeReportWriter.TryWrite(reportOutputPath, report, out string reportFailureCode))
+            if (!SafeReportWriter.TryWrite(
+                reportOutputPath,
+                report,
+                out string reportFailureCode,
+                [credential.AccessToken]))
             {
                 Console.Error.WriteLine(reportFailureCode);
                 exitCode = ReportFailureExitCode;

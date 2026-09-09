@@ -987,13 +987,14 @@ public class BackupsPageTests : AdminUITestContext {
     [Fact]
     public async Task ImportDialog_FileReadFailureUsesFixedCopyClosesAndRestoresFocus()
     {
+        string secret = Guid.NewGuid().ToString("N");
         SetupJobs([]);
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
         await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
         Microsoft.AspNetCore.Components.Forms.IBrowserFile file = Substitute.For<Microsoft.AspNetCore.Components.Forms.IBrowserFile>();
         _ = file.OpenReadStream(Arg.Any<long>(), Arg.Any<CancellationToken>())
-            .Returns(_ => throw new IOException("bearer secret-value at redis://private"));
+            .Returns(_ => throw new IOException("bearer " + secret + " at redis://private"));
 
         await cut.InvokeAsync(() => InvokePrivateAsync(
             cut.Instance,
@@ -1002,7 +1003,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
         message.ShouldBe("Unable to read the selected import file.");
-        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain(secret);
         cut.Markup.ShouldNotContain("Select a previously exported JSON file");
         JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
             .Arguments[0].ShouldBe("backup-import-button");

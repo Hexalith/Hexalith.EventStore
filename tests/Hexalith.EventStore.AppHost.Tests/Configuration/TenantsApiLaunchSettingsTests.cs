@@ -176,7 +176,7 @@ public class TenantsApiLaunchSettingsTests
     }
 
     [Fact]
-    public async Task AppHostModel_PublishMode_DoesNotRegisterPathDiscoveredTenantsHosts()
+    public async Task AppHostModel_PublishMode_OmitsTenantsHostsWithoutCompleteExternalAuthentication()
     {
         Dictionary<string, string?> previous = new(StringComparer.Ordinal);
         string[] variableNames =
@@ -189,7 +189,10 @@ public class TenantsApiLaunchSettingsTests
             "Authentication__JwtBearer__ValidAudiences__1",
             "Authentication__JwtBearer__AllowedAlgorithms__0",
             "Authentication__JwtBearer__TokenEndpoint",
-            "Authentication__JwtBearer__Scope",
+            "Authentication__JwtBearer__SampleUi__GrantType",
+            "Authentication__JwtBearer__SampleUi__Scope",
+            "Authentication__JwtBearer__AdminUi__GrantType",
+            "Authentication__JwtBearer__AdminUi__Scope",
             "Parameters__external-sample-auth-client-id",
             "Parameters__external-sample-auth-username",
             "Parameters__external-sample-auth-password",
@@ -215,7 +218,10 @@ public class TenantsApiLaunchSettingsTests
             Environment.SetEnvironmentVariable("Authentication__JwtBearer__ValidAudiences__1", "secondary-api");
             Environment.SetEnvironmentVariable("Authentication__JwtBearer__AllowedAlgorithms__0", "RS256");
             Environment.SetEnvironmentVariable("Authentication__JwtBearer__TokenEndpoint", "https://tokens.example.test/oauth/token");
-            Environment.SetEnvironmentVariable("Authentication__JwtBearer__Scope", "api.read");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__SampleUi__GrantType", "password");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__SampleUi__Scope", "api.read");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__AdminUi__GrantType", "password");
+            Environment.SetEnvironmentVariable("Authentication__JwtBearer__AdminUi__Scope", "api.admin");
             Environment.SetEnvironmentVariable("Parameters__external-sample-auth-client-id", "sample-ui");
             Environment.SetEnvironmentVariable("Parameters__external-sample-auth-username", "sample-user");
             Environment.SetEnvironmentVariable("Parameters__external-sample-auth-password", Guid.NewGuid().ToString("N"));
@@ -228,17 +234,11 @@ public class TenantsApiLaunchSettingsTests
                 .ConfigureAwait(true);
 
             builder.ExecutionContext.IsPublishMode.ShouldBeTrue();
-            ProjectResource[] tenantsResources =
-            [
-                .. builder.Resources
-                    .OfType<ProjectResource>()
-                    .Where(static resource => resource.Name is "tenants" or "tenants-api"),
-            ];
-            tenantsResources.ShouldAllBe(resource =>
-                ReferenceEquals(
-                    resource.GetProjectMetadata().GetType().Assembly,
-                    typeof(Projects.Hexalith_EventStore_AppHost).Assembly),
-                "Publish mode may contain explicit source-mode Projects.* resources, but never path-discovered resources.");
+            builder.Resources
+                .OfType<ProjectResource>()
+                .Where(static resource => resource.Name is "tenants" or "tenants-api")
+                .ShouldBeEmpty(
+                    "Tenants hosts must stay out of the published graph until every host consumes the complete external authentication contract.");
         }
         finally
         {

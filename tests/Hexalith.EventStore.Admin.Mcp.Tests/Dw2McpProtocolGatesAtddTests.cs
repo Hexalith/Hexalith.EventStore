@@ -205,7 +205,7 @@ public class Dw2McpProtocolGatesAtddTests {
             },
         };
         process.StartInfo.Environment["EVENTSTORE_ADMIN_URL"] = "https://localhost:5443";
-        process.StartInfo.Environment["EVENTSTORE_ADMIN_TOKEN"] = "redacted-test-token";
+        process.StartInfo.Environment["EVENTSTORE_ADMIN_TOKEN"] = Guid.NewGuid().ToString("N");
 
         try {
             _ = process.Start();

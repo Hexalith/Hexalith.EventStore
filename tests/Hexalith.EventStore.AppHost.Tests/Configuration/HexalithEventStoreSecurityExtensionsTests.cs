@@ -3,6 +3,7 @@ namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 using global::Aspire.Hosting;
 using global::Aspire.Hosting.ApplicationModel;
 using Hexalith.EventStore.Aspire;
+using System.Text.Json;
 
 public class HexalithEventStoreSecurityExtensionsTests {
     private const string SecurityResourceName = "security";
@@ -200,6 +201,129 @@ public class HexalithEventStoreSecurityExtensionsTests {
         method.ShouldContain(".WithEnvironment(\"EventStore__Authentication__Password\", password)");
     }
 
+    [Fact]
+    public async Task WithEventStoreClientCredentials_OneArgumentOverloadBindsTheProvisionedRealmIdentity()
+    {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey] = "true";
+        builder.Configuration[HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey] = "false";
+        HexalithEventStoreSecurityResources security = builder.AddHexalithEventStoreSecurity()!;
+        IResourceBuilder<ProjectResource> resource = builder.AddProject<EventStoreProjectMetadata>("consumer");
+
+        _ = resource.WithEventStoreClientCredentials(security);
+
+        ParameterResource usernameParameter = security.DefaultClientUsername!.Resource;
+        ParameterResource passwordParameter = security.DefaultClientPassword!.Resource;
+        builder.Resources.ShouldContain(usernameParameter);
+        builder.Resources.ShouldContain(passwordParameter);
+        usernameParameter.Secret.ShouldBeTrue();
+        passwordParameter.Secret.ShouldBeTrue();
+
+        IReadOnlyDictionary<string, object> consumerEnvironment = await GetEnvironmentAsync(
+            resource.Resource,
+            builder.ExecutionContext).ConfigureAwait(true);
+        IReadOnlyDictionary<string, object> keycloakEnvironment = await GetEnvironmentAsync(
+            security.Keycloak.Resource,
+            builder.ExecutionContext).ConfigureAwait(true);
+        string consumerUsername = await ResolveAsync(
+            consumerEnvironment["EventStore__Authentication__Username"],
+            resource.Resource,
+            builder.ExecutionContext).ConfigureAwait(true);
+        string consumerPassword = await ResolveAsync(
+            consumerEnvironment["EventStore__Authentication__Password"],
+            resource.Resource,
+            builder.ExecutionContext).ConfigureAwait(true);
+        string realmUsername = await ResolveAsync(
+            keycloakEnvironment[HexalithEventStoreSecurityOptions.DefaultClientUsernameEnvironmentName],
+            security.Keycloak.Resource,
+            builder.ExecutionContext).ConfigureAwait(true);
+        string realmPassword = await ResolveAsync(
+            keycloakEnvironment[HexalithEventStoreSecurityOptions.DefaultClientPasswordEnvironmentName],
+            security.Keycloak.Resource,
+            builder.ExecutionContext).ConfigureAwait(true);
+        consumerUsername.Length.ShouldBeGreaterThanOrEqualTo(24);
+        consumerPassword.ShouldNotBeNullOrWhiteSpace();
+        string.Equals(consumerUsername, realmUsername, StringComparison.Ordinal).ShouldBeTrue();
+        string.Equals(consumerPassword, realmPassword, StringComparison.Ordinal).ShouldBeTrue();
+
+        string realmPath = Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "references",
+            "Hexalith.Tenants",
+            "src",
+            "Hexalith.Tenants.AppHost",
+            "KeycloakRealms",
+            "hexalith-realm.json");
+        string realmTemplate = File.ReadAllText(realmPath);
+        using JsonDocument template = JsonDocument.Parse(realmTemplate);
+        JsonElement templateUser = template.RootElement.GetProperty("users").EnumerateArray().Single(
+            static user => user.GetProperty("username").GetString()
+                == "${HEXALITH_EVENTSTORE_CLIENT_USERNAME}");
+        templateUser.GetProperty("credentials")[0].GetProperty("value").GetString().ShouldBe(
+            "${HEXALITH_EVENTSTORE_CLIENT_PASSWORD}");
+
+        string renderedRealm = realmTemplate
+            .Replace(
+                "\"${HEXALITH_EVENTSTORE_CLIENT_USERNAME}\"",
+                JsonSerializer.Serialize(realmUsername),
+                StringComparison.Ordinal)
+            .Replace(
+                "\"${HEXALITH_EVENTSTORE_CLIENT_PASSWORD}\"",
+                JsonSerializer.Serialize(realmPassword),
+                StringComparison.Ordinal);
+        using JsonDocument realm = JsonDocument.Parse(renderedRealm);
+        JsonElement provisionedUser = realm.RootElement.GetProperty("users").EnumerateArray().Single(
+            user => string.Equals(
+                user.GetProperty("username").GetString(),
+                consumerUsername,
+                StringComparison.Ordinal));
+        provisionedUser.GetProperty("enabled").GetBoolean().ShouldBeTrue();
+        provisionedUser.GetProperty("credentials")[0].GetProperty("type").GetString().ShouldBe("password");
+        string.Equals(
+            provisionedUser.GetProperty("credentials")[0].GetProperty("value").GetString(),
+            consumerPassword,
+            StringComparison.Ordinal).ShouldBeTrue();
+        provisionedUser.GetProperty("credentials")[0].GetProperty("temporary").GetBoolean().ShouldBeFalse();
+        JsonElement directGrantClient = realm.RootElement.GetProperty("clients").EnumerateArray().Single(
+            static client => client.GetProperty("clientId").GetString() == "hexalith-eventstore");
+        directGrantClient.GetProperty("enabled").GetBoolean().ShouldBeTrue();
+        directGrantClient.GetProperty("publicClient").GetBoolean().ShouldBeTrue();
+        directGrantClient.GetProperty("directAccessGrantsEnabled").GetBoolean().ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("tokens.example.test/oauth/token")]
+    [InlineData("http://tokens.example.test/oauth/token")]
+    [InlineData("https://user@tokens.example.test/oauth/token")]
+    [InlineData("https://tokens.example.test/oauth/token?tenant=x")]
+    [InlineData("https://tokens.example.test/oauth/token#tenant")]
+    public void WithExternalEventStoreClientCredentials_InvalidEndpointFailsBeforeResourceMutation(string endpoint)
+    {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        IResourceBuilder<ProjectResource> resource = builder.AddProject<EventStoreProjectMetadata>("consumer");
+        IResourceBuilder<ParameterResource> clientId = builder.AddParameter("client-id", static () => "client");
+        IResourceBuilder<ParameterResource> clientSecret = builder.AddParameter(
+            "client-secret",
+            static () => "<runtime-generated>",
+            secret: true);
+        int annotationsBefore = resource.Resource.Annotations.Count;
+
+        _ = Should.Throw<ArgumentException>(() => resource.WithExternalEventStoreClientCredentials(
+            "https://identity.example.test/tenant",
+            "eventstore-api",
+            endpoint,
+            "api.read",
+            "client_credentials",
+            clientId,
+            username: null,
+            password: null,
+            clientSecret,
+            audienceParameterName: null,
+            audienceParameterValue: null));
+
+        resource.Resource.Annotations.Count.ShouldBe(annotationsBefore);
+    }
+
     private static EndpointAnnotation GetEndpoint(HexalithEventStoreSecurityResources security, string name) {
         return security.Keycloak.Resource.Annotations
             .OfType<EndpointAnnotation>()
@@ -257,6 +381,42 @@ public class HexalithEventStoreSecurityExtensionsTests {
             .Single();
         realmEndpoint.Resource.ShouldBeSameAs(security.Keycloak.Resource);
         realmEndpoint.EndpointName.ShouldBe("http");
+    }
+
+    private static async Task<IReadOnlyDictionary<string, object>> GetEnvironmentAsync(
+        IResource resource,
+        DistributedApplicationExecutionContext executionContext)
+    {
+        var context = new EnvironmentCallbackContext(
+            executionContext,
+            resource,
+            new Dictionary<string, object>(),
+            CancellationToken.None);
+        foreach (EnvironmentCallbackAnnotation annotation in resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+        {
+            await annotation.Callback(context).ConfigureAwait(true);
+        }
+
+        return context.EnvironmentVariables;
+    }
+
+    private static async Task<string> ResolveAsync(
+        object value,
+        IResource caller,
+        DistributedApplicationExecutionContext executionContext)
+    {
+        if (value is not IValueProvider provider)
+        {
+            return value.ToString() ?? string.Empty;
+        }
+
+        return await provider.GetValueAsync(
+            new ValueProviderContext
+            {
+                Caller = caller,
+                ExecutionContext = executionContext,
+            },
+            CancellationToken.None).ConfigureAwait(true) ?? string.Empty;
     }
 
     private static string ExtractMethod(string source, string marker) {

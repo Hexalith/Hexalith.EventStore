@@ -23,23 +23,9 @@ Authorization: Bearer {token}
 
 ### Token Acquisition
 
-Acquire a token from the Keycloak development instance:
+The clean-clone local flow uses the [quickstart sample UI](../getting-started/quickstart.md), which authenticates internally. The AppHost intentionally neither exposes its generated realm-user credentials nor accepts reusable default credentials.
 
-```bash
-$ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
-  -d "grant_type=password" \
-  -d "client_id=hexalith-eventstore" \
-  -d "username=admin-user" \
-  -d "password=admin-pass" | jq -r '.access_token')
-```
-
-> **Tip:** On Windows PowerShell 5.x, use:
-
-```powershell
-$ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username="admin-user"; password="admin-pass"} | Select-Object -ExpandProperty access_token
-```
-
-> **Note:** Keycloak development tokens expire after 5 minutes. If you receive `401 Unauthorized`, re-acquire a token using the command above.
+The direct HTTP examples below assume a caller-controlled external or development/test identity provider configured for the EventStore authority, audience, and signing algorithm. Acquire a short-lived token from that provider and supply it through the `TOKEN` environment variable or your HTTP client's secure credential mechanism. `HEXALITH_ADMIN_USERNAME` and `HEXALITH_ADMIN_PASSWORD` are not AppHost inputs.
 
 ### Content-Type
 
@@ -523,20 +509,17 @@ Application error responses use the [RFC 9457 Problem Details](https://www.rfc-e
 
 A quick-reference recipe showing end-to-end command submission and status polling. See the [Quickstart](../getting-started/quickstart.md) for the full guided walkthrough.
 
-**Step 1 — Acquire token:**
+**Step 1 — Supply the endpoint and caller-owned token:**
 
 ```bash
-$ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
-  -d "grant_type=password" \
-  -d "client_id=hexalith-eventstore" \
-  -d "username=admin-user" \
-  -d "password=admin-pass" | jq -r '.access_token')
+$ EVENTSTORE_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="eventstore") | .urls[] | select(.name=="https") | .url' | head -n1)
+$ TOKEN="${CALLER_SUPPLIED_ACCESS_TOKEN}"
 ```
 
 **Step 2 — Submit command:**
 
 ```bash
-$ curl -X POST https://localhost:5001/api/v1/commands \
+$ curl -X POST "${EVENTSTORE_URL}/api/v1/commands" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"messageId":"01HKQXYZ0000000000000000A1","tenant":"tenant-a","domain":"counter","aggregateId":"counter-1","commandType":"IncrementCounter","payload":{}}'

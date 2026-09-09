@@ -101,7 +101,7 @@ public sealed class ProviderVerificationApplicationTests
             int exitCode = await ProviderVerificationApplication.RunAsync(
                 options,
                 TestContext.Current.CancellationToken,
-                static (_, _, _, _, _) => Task.FromException<ProviderVerificationHost>(
+                static (_, _, _, _, _, _) => Task.FromException<ProviderVerificationHost>(
                     new InvalidOperationException("injected-startup-failure")));
 
             exitCode.ShouldBe(ProviderVerificationApplication.ContractFailureExitCode);

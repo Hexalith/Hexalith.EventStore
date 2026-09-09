@@ -78,7 +78,7 @@ Do not use this table to claim exactly-once delivery or subscriber processing su
 
 | Variable                     | Description            | Example                                       |
 | ---------------------------- | ---------------------- | --------------------------------------------- |
-| `RABBITMQ_CONNECTION_STRING` | AMQP connection string | `amqp://user:pass@rabbitmq.example.com:5672/` |
+| `RABBITMQ_CONNECTION_STRING` | AMQP connection string | `amqp://<username>:<password>@rabbitmq.example.com:5672/` |
 
 ### Kafka Pub/Sub
 
@@ -197,13 +197,15 @@ Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" \
 Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" \
 Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" \
 Authentication__JwtBearer__AllowedAlgorithms__0=RS256 \
-Authentication__JwtBearer__Scope="${OIDC_SCOPE}" \
+Authentication__JwtBearer__SampleUi__GrantType=password \
+Authentication__JwtBearer__SampleUi__Scope="${OIDC_SAMPLE_SCOPE}" \
+Authentication__JwtBearer__AdminUi__GrantType=client_credentials \
+Authentication__JwtBearer__AdminUi__Scope="${OIDC_ADMIN_SCOPE}" \
 "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" \
 "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" \
 "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" \
 "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" \
-"Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" \
-"Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" \
+"Parameters__external-admin-auth-client-secret=${OIDC_ADMIN_CLIENT_SECRET}" \
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
 ```
 
@@ -215,13 +217,15 @@ $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY
 $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER
 $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE
 $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
-$env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE
+$env:Authentication__JwtBearer__SampleUi__GrantType="password"
+$env:Authentication__JwtBearer__SampleUi__Scope=$env:OIDC_SAMPLE_SCOPE
+$env:Authentication__JwtBearer__AdminUi__GrantType="client_credentials"
+$env:Authentication__JwtBearer__AdminUi__Scope=$env:OIDC_ADMIN_SCOPE
 Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID
 Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME
 Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD
 Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID
-Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME
-Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD
+Set-Item -Path 'Env:Parameters__external-admin-auth-client-secret' -Value $env:OIDC_ADMIN_CLIENT_SECRET
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
 ```
 
@@ -302,7 +306,7 @@ Pin the DAPR sidecar image to a specific version (e.g., `1.18.0`) — avoid muta
 **Command:**
 
 ```bash
-env PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__Scope="${OIDC_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" "Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+env PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__SampleUi__GrantType=password Authentication__JwtBearer__SampleUi__Scope="${OIDC_SAMPLE_SCOPE}" Authentication__JwtBearer__AdminUi__GrantType=client_credentials Authentication__JwtBearer__AdminUi__Scope="${OIDC_ADMIN_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-client-secret=${OIDC_ADMIN_CLIENT_SECRET}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 ```
 
 **PowerShell (Windows):**
@@ -310,8 +314,8 @@ env PUBLISH_TARGET=k8s EnableKeycloak=false Authentication__JwtBearer__Authority
 ```powershell
 $env:PUBLISH_TARGET="k8s"
 $env:EnableKeycloak="false"
-$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"; $env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE
-Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME; Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD
+$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"; $env:Authentication__JwtBearer__SampleUi__GrantType="password"; $env:Authentication__JwtBearer__SampleUi__Scope=$env:OIDC_SAMPLE_SCOPE; $env:Authentication__JwtBearer__AdminUi__GrantType="client_credentials"; $env:Authentication__JwtBearer__AdminUi__Scope=$env:OIDC_ADMIN_SCOPE
+Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-client-secret' -Value $env:OIDC_ADMIN_CLIENT_SECRET
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\k8s
 ```
 
@@ -355,7 +359,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 **Command:**
 
 ```bash
-env PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__Scope="${OIDC_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-username=${OIDC_ADMIN_USERNAME}" "Parameters__external-admin-auth-password=${OIDC_ADMIN_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
+env PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Authentication__JwtBearer__SampleUi__GrantType=password Authentication__JwtBearer__SampleUi__Scope="${OIDC_SAMPLE_SCOPE}" Authentication__JwtBearer__AdminUi__GrantType=client_credentials Authentication__JwtBearer__AdminUi__Scope="${OIDC_ADMIN_SCOPE}" "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" "Parameters__external-admin-auth-client-secret=${OIDC_ADMIN_CLIENT_SECRET}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/azure
 ```
 
 **PowerShell (Windows):**
@@ -363,8 +367,8 @@ env PUBLISH_TARGET=aca EnableKeycloak=false Authentication__JwtBearer__Authority
 ```powershell
 $env:PUBLISH_TARGET="aca"
 $env:EnableKeycloak="false"
-$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"; $env:Authentication__JwtBearer__Scope=$env:OIDC_SCOPE
-Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-username' -Value $env:OIDC_ADMIN_USERNAME; Set-Item -Path 'Env:Parameters__external-admin-auth-password' -Value $env:OIDC_ADMIN_PASSWORD
+$env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"; $env:Authentication__JwtBearer__SampleUi__GrantType="password"; $env:Authentication__JwtBearer__SampleUi__Scope=$env:OIDC_SAMPLE_SCOPE; $env:Authentication__JwtBearer__AdminUi__GrantType="client_credentials"; $env:Authentication__JwtBearer__AdminUi__Scope=$env:OIDC_ADMIN_SCOPE
+Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME; Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD; Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID; Set-Item -Path 'Env:Parameters__external-admin-auth-client-secret' -Value $env:OIDC_ADMIN_CLIENT_SECRET
 aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\azure
 ```
 
@@ -388,6 +392,7 @@ Publisher manifests contain no local Keycloak credentials. Configure the same ex
 | `Authentication__JwtBearer__Authority`            | OIDC discovery URL (issuer) | `https://login.microsoftonline.com/{tenant}/v2.0` |
 | `Authentication__JwtBearer__Issuer`               | Expected token issuer       | `https://login.microsoftonline.com/{tenant}/v2.0` |
 | `Authentication__JwtBearer__Audience`             | Expected token audience     | `api://hexalith-eventstore`                       |
+| `Authentication__JwtBearer__AllowedAlgorithms__0` | Allowed asymmetric algorithm | `RS256`                                          |
 | `Authentication__JwtBearer__RequireHttpsMetadata` | Require HTTPS for metadata  | `true` (recommended for production)               |
 
 Production startup requires exactly one authentication mode and only OIDC is permitted: set an absolute HTTPS `Authority`, keep `RequireHttpsMetadata=true`, set no `SigningKey`, and provide a non-blank issuer plus at least one audience. Both missing and dual-mode configuration fail before the host serves. Accepted signing algorithms are explicitly restricted to asymmetric RSA/PSS/ECDSA algorithms.

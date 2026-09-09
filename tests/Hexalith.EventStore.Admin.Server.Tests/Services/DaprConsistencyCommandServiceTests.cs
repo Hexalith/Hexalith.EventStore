@@ -898,7 +898,8 @@ public class DaprConsistencyCommandServiceTests {
                 stream.TenantId, stream.Domain, stream.AggregateId,
                 Arg.Any<long?>(), Arg.Any<long?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(call => {
-                CancellationToken token = call.ArgAt<CancellationToken>(6);
+                const int cancellationTokenArgumentIndex = 6;
+                CancellationToken token = call.ArgAt<CancellationToken>(cancellationTokenArgumentIndex);
                 _ = observedTimelineToken.TrySetResult(token);
                 TaskCompletionSource<PagedResult<TimelineEntry>> pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
                 _ = token.Register(() => {

@@ -98,7 +98,7 @@ update; they do not invent story completion.
 
 | Decision | Existing requirement scope | Current story candidates; final slicing pending |
 | --- | --- | --- |
-| AD-26 Production profile | FR8, FR19-FR20, FR26-FR28, FR32; NFR2-NFR4, NFR7, NFR16-NFR17 | 4.14-4.15, 5.6-5.9, 7.6-7.9, plus a focused profile owner if needed |
+| AD-26 Production-profile assumption | FR8, FR19-FR20, FR26-FR28, FR32; NFR2-NFR4, NFR7, NFR16-NFR17 | Owner disposition first; if ratified, 4.14-4.15, 5.6-5.9, 7.6-7.9, plus a focused profile owner if needed |
 | AD-27 Tenant canonicalization | FR26, FR28, FR32, FR34; NFR1-NFR4, NFR14-NFR15 | 5.2, 5.10, 7.2 and every tenant-facing REST, SignalR, admission, DomainService, and Admin boundary |
 | AD-28 DAPR app-channel authentication | FR26, FR28, FR32; NFR1-NFR4, NFR17 | 5.5-5.9, 7.6-7.9, and all SDK-owned DAPR endpoint specs |
 | AD-29 Admin attribution | FR28, FR34-FR35; NFR1-NFR4, NFR15-NFR17 | 7.3 and each Admin mutation/recovery consumer |

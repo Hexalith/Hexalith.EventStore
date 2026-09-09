@@ -384,7 +384,7 @@ def load_known_story_keys(repo_root: Path) -> set[str]:
 
 
 def sanitize_excerpt(text: str, max_len: int) -> str:
-    # URL with userinfo: scheme://user:pass@host -> scheme://[redacted-userinfo]@host
+    # URL with userinfo: scheme://<username>:<password>@host -> scheme://[redacted-userinfo]@host
     redacted = re.sub(r"(https?://)[^\s/@]+:[^\s/@]+@", r"\1[redacted-userinfo]@", text)
     # URL query strings with potentially-sensitive values
     redacted = re.sub(r"https?://[^\s)\]>]+?\?[^\s)\]>]+", lambda m: m.group(0).split("?", 1)[0] + "?[redacted-query]", redacted)

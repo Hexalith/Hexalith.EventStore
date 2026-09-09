@@ -216,27 +216,11 @@ After the application starts, open the Aspire dashboard and navigate to the **St
 
 ## Send a Command
 
-### Get an access token
+### Authenticate for direct API use
 
-The CommandAPI requires a JWT token. If you still have a token from the quickstart, you can reuse it — tokens are valid for 5 minutes. If it has expired, request a fresh one:
+The clean-clone local flow uses the [quickstart sample UI](quickstart.md), which performs authentication internally. The AppHost deliberately does not publish its generated realm-user credentials as environment variables or accept reusable default credentials.
 
-```bash
-$ KEYCLOAK_URL=$(aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | jq -r '.resources[] | select(.displayName=="security") | .urls[] | select(.name=="http") | .url' | head -n1)
-$ curl -s -X POST "${KEYCLOAK_URL}/realms/hexalith/protocol/openid-connect/token" \
-  -d "grant_type=password" \
-  -d "client_id=hexalith-eventstore" \
-  -d "username=${HEXALITH_ADMIN_USERNAME}" \
-  -d "password=${HEXALITH_ADMIN_PASSWORD}"
-```
-
-The response contains an `access_token` field. Copy its value.
-
-> **Tip:** On Windows PowerShell 5.x, use:
-
-```powershell
-$env:KEYCLOAK_URL = aspire describe --format Json --non-interactive --nologo --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj | ConvertFrom-Json | ForEach-Object { $_.resources | Where-Object displayName -eq "security" | ForEach-Object { $_.urls | Where-Object name -eq "http" | Select-Object -ExpandProperty url } }
-$ Invoke-RestMethod -Method Post -Uri "$env:KEYCLOAK_URL/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD} | Select-Object -ExpandProperty access_token
-```
+The direct Swagger request below therefore assumes a caller-controlled external or development/test identity provider that is configured for the EventStore authority, audience, and signing algorithm. Obtain a short-lived access token from that provider and paste it into Swagger's **Authorize** dialog. Do not expect `HEXALITH_ADMIN_USERNAME` or `HEXALITH_ADMIN_PASSWORD` to be supplied by the local AppHost.
 
 ### Add stock
 

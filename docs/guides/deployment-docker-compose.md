@@ -2,17 +2,18 @@
 
 # Docker Compose Deployment Guide
 
-Deploy the Hexalith.EventStore sample application to Docker Compose for a production-like topology on your local machine. This guide uses the .NET Aspire publisher to generate Docker Compose manifests, then adds DAPR sidecars for full event sourcing functionality. It is intended for operators and developers who have completed the [Quickstart Guide](../getting-started/quickstart.md) and want to run the system outside of `dotnet run`.
+Deploy the Hexalith.EventStore sample application to Docker Compose for a production-like topology on your local machine. This guide uses the .NET Aspire publisher to generate Docker Compose manifests, then adds DAPR sidecars for full event sourcing functionality. It is intended for operators and developers who have completed the [Quickstart Guide](../getting-started/quickstart.md) and want to run the system outside the local Aspire topology.
 
 > **Prerequisites:** [Prerequisites](../getting-started/prerequisites.md) — Docker Desktop, .NET 10 SDK, DAPR CLI, Aspire CLI
 
 ## What You'll Deploy
 
-The Docker Compose topology includes the Command API Gateway, the Counter sample domain service, DAPR sidecars for each service, Redis (state store and pub/sub), and optionally Keycloak for OIDC authentication. Unlike the Aspire `dotnet run` experience, this deployment runs entirely inside Docker containers — closer to how you would run in production.
+The Docker Compose topology includes the Command API Gateway, the Counter sample domain service, DAPR sidecars for each service, and Redis (state store and pub/sub). Authentication is provided by an operator-managed external HTTPS OIDC provider; the run-only local Keycloak resource is never published.
 
 ```mermaid
 flowchart TB
     Client([HTTP Client])
+    Identity[External HTTPS<br/>OIDC Provider]
 
     subgraph DockerCompose["Docker Compose"]
         subgraph EventStoreGroup["eventstore network"]
@@ -26,7 +27,6 @@ flowchart TB
         end
 
         Redis[(Redis<br/>:6379)]
-        Security[security<br/>Keycloak-backed<br/>host :8180 → :8080]
         Placement([DAPR Placement<br/>Service])
 
         Client -->|REST| EventStore
@@ -36,8 +36,8 @@ flowchart TB
         CmdSidecar -->|State Store| Redis
         CmdSidecar -->|Pub/Sub| Redis
         Placement -->|Actor Assignment| CmdSidecar
-        Client -.->|OIDC Tokens| Security
     end
+    Client -.->|OIDC Tokens| Identity
 ```
 
 <details>
@@ -51,7 +51,7 @@ The Counter Sample domain service runs in a separate container with its own DAPR
 
 A DAPR Placement Service container manages actor assignment, ensuring each aggregate identity is processed by exactly one actor instance at a time.
 
-An optional `security` service, implemented by a Keycloak container, provides OIDC authentication. It listens on container target port 8080 and is published to host port 8180 in the example below. The HTTP Client obtains JWT tokens from it before calling the Command API Gateway. A local `aspire run` with `EnableKeycloak=false` receives one generated symmetric key shared by issuers and validators; published non-Development deployments must provide the external HTTPS OIDC contract explicitly.
+An operator-managed identity provider outside the Compose application provides OIDC authentication. The HTTP Client obtains JWT tokens from that provider before calling the Command API Gateway. Published non-Development deployments must provide the external HTTPS authority, issuer, audience, allowed algorithms, UI grant profiles, and distinct Sample/Admin UI credentials explicitly.
 
 All containers run within the Docker Compose network boundary.
 
@@ -103,7 +103,21 @@ You should see three DAPR containers running: `dapr_placement`, `dapr_zipkin`, a
 The Aspire AppHost includes a Docker Compose publisher that generates `docker-compose.yaml` and `.env` files from the Aspire topology definition.
 
 ```bash
-$ PUBLISH_TARGET=docker Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" Authentication__JwtBearer__AllowedAlgorithms__0=RS256 Parameters__external-auth-client-id="${OIDC_CLIENT_ID}" Parameters__external-auth-username="${OIDC_USERNAME}" Parameters__external-auth-password="${OIDC_PASSWORD}" aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
+$ env PUBLISH_TARGET=docker \
+  Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}" \
+  Authentication__JwtBearer__Issuer="${OIDC_ISSUER}" \
+  Authentication__JwtBearer__Audience="${OIDC_AUDIENCE}" \
+  Authentication__JwtBearer__AllowedAlgorithms__0=RS256 \
+  Authentication__JwtBearer__SampleUi__GrantType=password \
+  Authentication__JwtBearer__SampleUi__Scope="${OIDC_SAMPLE_SCOPE}" \
+  Authentication__JwtBearer__AdminUi__GrantType=client_credentials \
+  Authentication__JwtBearer__AdminUi__Scope="${OIDC_ADMIN_SCOPE}" \
+  "Parameters__external-sample-auth-client-id=${OIDC_SAMPLE_CLIENT_ID}" \
+  "Parameters__external-sample-auth-username=${OIDC_SAMPLE_USERNAME}" \
+  "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" \
+  "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" \
+  "Parameters__external-admin-auth-client-secret=${OIDC_ADMIN_CLIENT_SECRET}" \
+  aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
 ```
 
 > **PowerShell (Windows):**
@@ -111,7 +125,13 @@ $ PUBLISH_TARGET=docker Authentication__JwtBearer__Authority="${OIDC_AUTHORITY}"
 > ```powershell
 > $env:PUBLISH_TARGET="docker"
 > $env:Authentication__JwtBearer__Authority=$env:OIDC_AUTHORITY; $env:Authentication__JwtBearer__Issuer=$env:OIDC_ISSUER; $env:Authentication__JwtBearer__Audience=$env:OIDC_AUDIENCE; $env:Authentication__JwtBearer__AllowedAlgorithms__0="RS256"
-> $env:Parameters__external-auth-client-id=$env:OIDC_CLIENT_ID; $env:Parameters__external-auth-username=$env:OIDC_USERNAME; $env:Parameters__external-auth-password=$env:OIDC_PASSWORD
+> $env:Authentication__JwtBearer__SampleUi__GrantType="password"; $env:Authentication__JwtBearer__SampleUi__Scope=$env:OIDC_SAMPLE_SCOPE
+> $env:Authentication__JwtBearer__AdminUi__GrantType="client_credentials"; $env:Authentication__JwtBearer__AdminUi__Scope=$env:OIDC_ADMIN_SCOPE
+> Set-Item -Path 'Env:Parameters__external-sample-auth-client-id' -Value $env:OIDC_SAMPLE_CLIENT_ID
+> Set-Item -Path 'Env:Parameters__external-sample-auth-username' -Value $env:OIDC_SAMPLE_USERNAME
+> Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD
+> Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID
+> Set-Item -Path 'Env:Parameters__external-admin-auth-client-secret' -Value $env:OIDC_ADMIN_CLIENT_SECRET
 > $ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
 > ```
 
@@ -142,22 +162,14 @@ services:
         environment:
             - ASPNETCORE_ENVIRONMENT=Production
 
-    security:
-        image: "quay.io/keycloak/keycloak:26.4"
-        command: ["start-dev", "--import-realm"]
-        ports:
-            - "8180:8080"
-        # ... realm import volumes, environment variables
-
     # Aspire dashboard (optional, remove for production)
     docker-dashboard:
         image: ${DASHBOARD_IMAGE}
 ```
 
-> **Note:** Exact field names and structure depend on the Aspire SDK version (currently 13.1.x). Always use the generated output rather than copying this example verbatim. Two changes are typically needed in the generated file:
+> **Note:** Exact field names and structure depend on the Aspire SDK version (currently 13.1.x). Always use the generated output rather than copying this example verbatim. The generated output omits the run-only Keycloak service. One change is typically needed in the generated file:
 >
-> 1. **Keycloak:** Change `command: ["start", "--import-realm"]` to `command: ["start-dev", "--import-realm"]` for HTTP-only local deployments. The `start` command requires HTTPS configuration.
-> 2. **Port mappings:** The generated file may use `expose` instead of `ports` for `eventstore`. Add `ports: ["8080:8080"]` to make the API accessible from the host.
+> 1. **Port mappings:** The generated file may use `expose` instead of `ports` for `eventstore`. Add `ports: ["8080:8080"]` to make the API accessible from the host.
 
 ### Customize for Production Use
 
@@ -326,9 +338,12 @@ REDIS_PASSWORD=
 # If Redis is shared, include a non-empty sanitized channelPrefix value.
 EVENTSTORE_SIGNALR_REDIS=redis-signalr:6379,channelPrefix=hesr.local.eventstore.compose
 
-# Keycloak-backed security service (if enabled). Compose uses target port 8080;
-# host-side token requests use the published port 8180.
-AUTH_AUTHORITY=http://security:8080/realms/hexalith
+# External production authentication contract. Keep these consistent with the
+# values supplied to `aspire publish`; the authority must use HTTPS.
+AUTH_AUTHORITY=https://identity.example.com/realms/hexalith
+AUTH_ISSUER=https://identity.example.com/realms/hexalith
+AUTH_AUDIENCE=hexalith-eventstore
+AUTH_ALLOWED_ALGORITHM=RS256
 ```
 
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
@@ -500,26 +515,25 @@ Verify the full command processing pipeline by submitting a test command.
 
 ### Get an Access Token
 
-If Keycloak is running (default), obtain a JWT token:
+Request a token from the operator-managed external OIDC provider. This example uses the Admin client-credentials profile supplied during publishing; the client must be authorized for the configured EventStore audience and Admin scope.
 
 ```bash
-$ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
-  -d "grant_type=password" \
-  -d "client_id=hexalith-eventstore" \
-  -d "username=${HEXALITH_ADMIN_USERNAME}" \
-  -d "password=${HEXALITH_ADMIN_PASSWORD}" | jq -r '.access_token')
+$ TOKEN=$(curl --fail --silent --show-error -X POST "${OIDC_TOKEN_ENDPOINT}" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=${OIDC_ADMIN_CLIENT_ID}" \
+  -d "client_secret=${OIDC_ADMIN_CLIENT_SECRET}" \
+  -d "scope=${OIDC_ADMIN_SCOPE}" | jq -er '.access_token | select(type == "string" and length > 0)')
 ```
 
 > **PowerShell:**
 >
 > ```powershell
-> $response = Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/protocol/openid-connect/token" -Body @{grant_type="password"; client_id="hexalith-eventstore"; username=$env:HEXALITH_ADMIN_USERNAME; password=$env:HEXALITH_ADMIN_PASSWORD}; $response.access_token
+> $response = Invoke-RestMethod -Method Post -Uri $env:OIDC_TOKEN_ENDPOINT -Body @{grant_type="client_credentials"; client_id=$env:OIDC_ADMIN_CLIENT_ID; client_secret=$env:OIDC_ADMIN_CLIENT_SECRET; scope=$env:OIDC_ADMIN_SCOPE}
+> $TOKEN = $response.access_token
+> if ([string]::IsNullOrWhiteSpace($TOKEN)) { throw "The OIDC provider returned no access token." }
 > ```
 
-If Keycloak is disabled (`EnableKeycloak=false`), the AppHost generates one symmetric key per run and
-shares it only with its local token issuers and validators. There is no configuration override that
-reveals or replaces that key. Use the authenticated `sample-blazor-ui` flow for a local smoke, or
-configure the published external-identity contract for an external client.
+The Sample UI uses its separately supplied password-grant identity and scope. Do not reuse Sample UI credentials for Admin UI or operator access. `EnableKeycloak=false` affects only local run mode: the AppHost still enables authentication and uses a generated per-run symmetric key shared only with its local issuers and validators. Published deployments always use the explicit external-identity contract.
 
 ### Submit a Command
 
@@ -573,9 +587,7 @@ Estimated resource requirements for running the full Docker Compose topology on 
 | DAPR Sidecar (sample)        | 0.1 core       | 64 MB       | Minimal                         |
 | DAPR Placement Service       | 0.1 core       | 64 MB       | Minimal                         |
 | Redis                        | 0.25 core      | 256 MB      | 1 GB+ (depends on event volume) |
-| Keycloak (optional)          | 0.5 core       | 512 MB      | Minimal                         |
-| **Total (with Keycloak)**    | **~2 cores**   | **~1.4 GB** | **~1 GB**                       |
-| **Total (without Keycloak)** | **~1.5 cores** | **~900 MB** | **~1 GB**                       |
+| **Total**                    | **~1.5 cores** | **~900 MB** | **~1 GB**                       |
 
 ### Performance Expectations
 
@@ -585,7 +597,7 @@ Estimated resource requirements for running the full Docker Compose topology on 
 - Default DAPR sidecar call timeout: 5 seconds
 - Snapshot frequency: every 100 events (keeps rehydration to ≤102 reads)
 
-> **Tip:** Allocate at least 4 GB of memory to Docker Desktop. With 2 GB, Redis and Keycloak may be killed by the OOM reaper under load.
+> **Tip:** Allocate at least 4 GB of memory to Docker Desktop. With 2 GB, Redis or application containers may be killed by the OOM reaper under load.
 
 ## Backend Swap
 
@@ -650,7 +662,6 @@ For the full list of supported backends and their environment variables, see [de
 
 ```bash
 $ lsof -i :8080   # Command API Gateway
-$ lsof -i :8180   # Keycloak
 $ lsof -i :6379   # Redis
 ```
 
@@ -696,15 +707,15 @@ Common causes:
 - Missing environment variables referenced by `{env:VARIABLE_NAME}`
 - Component scoping excludes the app-id (the `scopes` list must include `eventstore`)
 
-### Keycloak Token Errors
+### External OIDC Token Errors
 
 **Symptom:** `401 Unauthorized` when calling the Command API Gateway.
 
 **Fix:**
 
-- Verify Keycloak is running: `curl -s http://localhost:8180/realms/hexalith/.well-known/openid-configuration | jq .issuer`
-- Ensure the `Authentication__JwtBearer__Authority` environment variable on `eventstore` points to `http://security:8080/realms/hexalith` (the Compose service name and container target port, not `localhost:8180`)
-- Check token expiry — Keycloak tokens expire after 5 minutes by default. Request a fresh token.
+- Verify `${OIDC_AUTHORITY}/.well-known/openid-configuration` is reachable over HTTPS and reports the configured issuer.
+- Ensure `Authentication__JwtBearer__Authority`, `Issuer`, `Audience`, and `AllowedAlgorithms` exactly match the provider and token contract.
+- Confirm the Admin client is authorized for `${OIDC_ADMIN_SCOPE}` and that the access token is current.
 
 ## Next Steps
 

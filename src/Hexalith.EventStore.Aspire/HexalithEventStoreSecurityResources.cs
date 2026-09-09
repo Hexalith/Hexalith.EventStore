@@ -13,4 +13,15 @@ public sealed record HexalithEventStoreSecurityResources(
     IResourceBuilder<KeycloakResource> Keycloak,
     ReferenceExpression RealmUrl,
     string Audience,
-    bool RequireHttpsMetadata);
+    bool RequireHttpsMetadata)
+{
+    /// <summary>
+    /// Gets the per-AppHost user name parameter bound into compatible local realm imports.
+    /// </summary>
+    public IResourceBuilder<ParameterResource>? DefaultClientUsername { get; init; }
+
+    /// <summary>
+    /// Gets the per-AppHost password parameter bound into compatible local realm imports.
+    /// </summary>
+    public IResourceBuilder<ParameterResource>? DefaultClientPassword { get; init; }
+}

@@ -2,277 +2,165 @@
 
 - **DESIGN.md:** `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md`
 - **EXPERIENCE.md:** `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md`
-- **Run at:** 2026-09-09T10:51:58+02:00
-- **Spines validated:** `status: final`, updated 2026-08-01 (DESIGN.md and EXPERIENCE.md were not modified by this run)
+- **Run at:** 2026-09-09T16:10:28+02:00
+- **Spines validated:** `status: final`, updated 2026-09-09; neither spine was modified
 - **Selected lenses:** rubric walker; accessibility & support-safety; architecture readiness
 
 ## Overall verdict
 
-The pair has a strong document shape and coherent operational model, but it is not yet a clean downstream contract. Its principal blockers are unbindable color tokens, contradictory source authority, and component/platform bindings that no longer commit to the published FrontComposer primitives; journey, state, and visual coverage are also incomplete.
+The spine pair is an adequate downstream UX contract: token, component, state, and visual-reference coverage are strong, and all source-defined UX journeys are behaviorally represented. It should not drive implementation unchanged, however, because inheritance and source-snapshot ambiguities remain, including a Detail panel binding that crosses the repository's FrontComposer/Fluent reuse boundary.
 
-The additional lenses materially raise the handoff risk. Architecture cannot safely consume a spine that cites an obsolete `ready` report beside the current blocked/reject baseline, while regulated/support-critical implementation needs explicit scope freezing, component semantics, refresh/retry controls, typed redaction, reflow, and evidence-expiry behavior. The review reports findings, not defects proven in the running product.
+The architecture lens materially changes the handoff picture: the authoritative PRD remains `blocked` / `reject`, architecture remains `draft`, and `/health` is assigned both to an anonymous probe and an authenticated Recovery page. Until those upstream and route conflicts are resolved, the UX documents remain planning input—not implementation, release, deployment, migration, or readiness authorization.
 
 No overall grade is assigned. Reviewer-reported counts are retained without deduplicating overlaps:
 
 | Reviewer | Critical | High | Medium | Low | Total |
 |---|---:|---:|---:|---:|---:|
-| Rubric walker | 1 | 4 | 9 | 6 | 20 |
-| Accessibility & support-safety | 1 | 10 | 7 | 1 | 19 |
-| Architecture readiness | 1 | 6 | 5 | 2 | 14 |
-| **Combined** | **3** | **20** | **21** | **9** | **53** |
+| Rubric walker | 0 | 1 | 2 | 1 | 4 |
+| Accessibility & support-safety | 0 | 1 | 4 | 0 | 5 |
+| Architecture readiness | 2 | 4 | 3 | 0 | 9 |
+| **Combined** | **2** | **6** | **9** | **1** | **18** |
 
 ## Category verdicts
 
 - Flow coverage — **adequate**
-- Token completeness — **broken**
-- Component coverage — **thin**
-- State coverage — **adequate**
-- Visual reference coverage — **thin**
+- Token completeness — **strong**
+- Component coverage — **strong**
+- State coverage — **strong**
+- Visual reference coverage — **strong**
 - Bloat & overspecification — **adequate**
 - Inheritance discipline — **thin**
-- Shape fit — **strong**
+- Shape fit — **adequate**
 
 ## Findings by severity
 
 Repeated findings are retained when another reviewer adds a distinct downstream consequence.
 
-### Critical (3)
+### Critical (2)
 
-**[Rubric / Token completeness] — Color tokens are not mechanically bindable** (`DESIGN.md:14-32`)
+**[Architecture readiness] — The authoritative planning baseline forbids an implementation handoff** (`prd.md:3-9,83-85,509-511,548-563`; `architecture.md:8-10,73-77,446-465`; `EXPERIENCE.md:22,35-47`)
 
-All 18 color values are free-text recipes rather than hex values or exact Fluent 2 token/component references. This fails the token contract even though the product correctly avoids a custom palette.
+The PRD records `implementation_readiness_status: blocked` and `implementation_readiness_result: reject`; OR14 forbids downstream handoff until the PRD, architecture, and epics are reconciled and approved, while architecture remains `draft`.
 
-Fix: omit inherited colors or encode exact published Fluent 2 token/parameter bindings in a spec-compliant inheritance form.
+Fix: close the PRD's blocking refinements, approve one reconciled architecture/epics baseline, rerun implementation readiness, and bind the new result and source identities before implementation handoff.
 
-**[Architecture readiness] — Declared sources provide contradictory implementation authority** (`DESIGN.md:4-13`; `EXPERIENCE.md:3-12`; `implementation-readiness-report-2026-07-05.md:1-34`; `prd.md:3-11`)
+**[Architecture readiness] — `/health` is both an anonymous probe and an authenticated dashboard route** (`EXPERIENCE.md:60-69,95-106,295`; `architecture.md:193-197`; `Health.razor:1`; `Program.cs:17-18`; `ServiceDefaults/Extensions.cs:156-186`)
 
-The spines cite a July `ready` report while the current PRD and validation state are `blocked` / `reject`, without an authority order, reviewed SHA, or digests.
+The same UI host currently maps the Razor page and an explicitly anonymous health-check endpoint to `/health`. The probe may shadow the UI route; reversing the precedence could expose an authenticated operations surface anonymously.
 
-Fix: replace or explicitly demote the historical report, declare one-way authority and reviewed revisions/digests, and clarify that `status: final` does not authorize implementation.
+Fix: give Recovery a distinct canonical UI path; reserve `/health`, `/alive`, and `/ready` for support-safe probes; then update UX-DR4, Story 7.14, redirects, navigation, palette links, and endpoint tests atomically.
 
-**[Accessibility & support-safety] — Privileged operations can be confirmed against stale or wrong scope** (`EXPERIENCE.md:94-105,153-155,203-214`)
+### High (6)
 
-Mutation dialogs do not freeze and revalidate acting principal, environment, tenant, target, authoritative pre-state, blast radius, or reversibility; the mocks normalize an “All tenants” context.
+**[Rubric / Inheritance discipline] — Detail panel violates the declared reuse boundary** (`DESIGN.md:61,159`; `EXPERIENCE.md:175`; `epics.md:224`; `hexalith-ux-instructions.md:10`)
 
-Fix: display and freeze those facts, revalidate on submit, convert any mismatch/revocation/expiry to a non-submitting conflict, clear protected transient input, and require explicit acknowledgement for irreversible or cross-scope actions.
+The binding selects an EventStore-owned labelled `aside` composed with `FluentCard`, while UX-DR18 requires `FluentDrawer`, `FluentDialog`, or a FrontComposer panel and repository guidance permits custom markup only when no equivalent exists.
 
-### High (20)
+Fix: bind an approved Fluent/FrontComposer primitive, add a reusable panel to FrontComposer, or explicitly reconcile UX-DR18 and document the no-equivalent exception.
 
-**[Rubric / Token completeness] — Local typography ramp conflicts with Fluent UI V5 governance** (`DESIGN.md:34-57,184-188`)
+**[Accessibility & support-safety] — Sample accepted-submission UX has no accountable accessibility/conformance owner** (`EXPERIENCE.md:71,227-228,312,357-373`; `epics.md:272,705-743,1480-1529,1627-1675`)
 
-Fix: bind roles to exact `FluentText`/FrontComposer parameters or Fluent 2 typography tokens.
+Sample's accepted → evidence-pending → projection-confirmed/unknown flow is specified but not owned by a story that closes visible state, focus, keyboard, live-announcement, timeout, and no-resubmit behavior.
 
-**[Rubric / Component coverage] — Canonical components are not bound to current FrontComposer contracts** (`DESIGN.md:77-155,217-231`)
+Fix: add a consumer-surface conformance matrix and assign the complete Sample flow to one explicit story owner; retain Tenants Story 2.6 as its separate owner.
 
-`Dashboard shell`, tabs, evidence grid, detail panel, and command palette retain generic or multiple alternatives despite published FrontComposer primitives.
+**[Architecture readiness] — `/types` is absent from Story 7.14's closed route manifest** (`EXPERIENCE.md:49-52,58-69,77-102`; `epics.md:5539-5549,5577-5585`; `TypeCatalog.razor:1`)
 
-Fix: select exact FrontComposer primitives where available and state one bounded fallback condition.
+The spine makes `/types` canonical under Streams & Events, but Story 7.14 calls its own route list exact and omits `/types`.
 
-**[Rubric / Inheritance discipline] — Source inheritance is circular and includes historical readiness evidence** (`DESIGN.md:6-11`; `EXPERIENCE.md:6-11`)
+Fix: add `/types` and its `events` / `commands` / `aggregates` inner-tab contract to the machine-validated route manifest, or remove the spine claim through an approved source change.
 
-Fix: establish one-way authority, remove downstream artifacts from normative sources, and label or replace the old readiness report.
+**[Architecture readiness] — No closed route/action/policy/evidence matrix exists** (`EXPERIENCE.md:77-102,123-156,213-242,291-312`; `epics.md:4822-4837,4960-4993,5842-5845`)
 
-**[Rubric / Inheritance discipline] — Post-final source and platform changes are unreconciled** (`prd.md:303-335`; `architecture.md:370-425`; `EXPERIENCE.md:199-205`)
+Each query and mutation is not yet bound to a typed facet/outcome, policy, scope, stable identity, terminal/projection/audit evidence, retryability, and availability gate. Story developers would have to invent security and success semantics.
 
-Fix: reconcile FR37/NFR19/AD-23–25 and current FrontComposer contracts, including the ban on rendering or logging idempotency material.
+Fix: create one story-owned operation matrix and generate Story 7.5/7.19 tests from it.
 
-**[Architecture readiness] — Host, service, container, and module identities are conflated** (`DESIGN.md:164,216-219`; `EXPERIENCE.md:19-35,92-95`)
+**[Architecture readiness] — Sample accepted-submission flow lacks a precise implementation/test owner** (`EXPERIENCE.md:71,301-312,357-364`; `epics.md:272,323-328,705-743,1627-1675`)
 
-Fix: add an identity table for assembly, Admin Server `eventstore-admin`, UI container `eventstore-admin-ui`, FrontComposer module `event-store-admin`, and visible label; name Shell/Contracts.UI package prerequisites.
+Story 1.8 proves host/client/API boundaries but not the full Sample pending, projection-confirmed, timeout/unknown, or no-resubmit contract. Tenants Story 2.6 cannot close the Sample surface.
 
-**[Architecture readiness] — The route inventory drops live `/types` behavior** (`EXPERIENCE.md:37-54`; `TypeCatalog.razor:1`)
+Fix: assign the Sample behavior to one named story with browser/component acceptance criteria and cite it separately in Source Traceability.
 
-Fix: assign `/types` and its event/command/aggregate tabs to a canonical destination and propagate the correction to UX-DR4 and Story 7.14.
+**[Architecture readiness] — Source snapshot is not reproducible under its drift rule** (`DESIGN.md:4-14,89-95`; `EXPERIENCE.md:3-13,35-47`; `epics.md:7-18`)
 
-**[Architecture readiness] — Legacy routes are not a canonical routing contract** (`EXPERIENCE.md:39-54,95,148-152`)
+The spines bind revision `23a722a…` while current `HEAD` is `0994c378…`; the recorded epics digest is `5a5c03d1…` while the current file is `d067c8fb…`. The pre-repin explanation and reopen-on-drift rule do not give consumers a mechanical comparison rule.
 
-Fix: add a route matrix covering canonical URL, redirects, parameters/bounds, authorization, malformed/denied behavior, selected tab/module, browser history, and router/tab synchronization.
+Fix: use one immutable baseline manifest or normalized digests that exclude provenance fields; mark reconciliation open until that baseline is bound.
 
-**[Architecture readiness] — Projection lifecycle behavior lacks a bound Admin transport** (`DESIGN.md:140-147,228-229`; `EXPERIENCE.md:104-129`)
+### Medium (9)
 
-Fix: name the typed Admin facet/DTO fields for provenance, lifecycle, evidence time, version, and terminal command evidence; distinguish operational projection status from consumer lifecycle and fall back to `Unknown`.
+**[Rubric / Flow coverage] — Source journey names are not carried forward verbatim** (`epics.md:266,272`; `EXPERIENCE.md:316,366`)
 
-**[Architecture readiness] — Authentication and revocation transitions are missing** (`EXPERIENCE.md:21-23,119,133-144,199-214`)
+UX-DR39 through UX-DR42 are behaviorally covered, but headings omit the requirement IDs and rename source phrases such as “incident-recovery journey.”
 
-Fix: define unauthenticated, expired, denied, wrong-scope, revoked-during-action, and provider-unavailable outcomes, including cache clearing, background-work cancellation, focus/route behavior, safe recovery, and telemetry redaction.
+Fix: prefix applicable flows with UX-DR39–42 and retain the exact source journey names; point UX-DR42 explicitly to both consumer flows.
 
-**[Architecture readiness] — Promoted mocks encode prohibited Fluent token families** (`mockups/dashboard-overview.html:8-27`; `mockups/command-investigation.html:8-26`)
+**[Rubric / Inheritance discipline] — Epics digest comparison is ambiguous** (`EXPERIENCE.md:39,44,47`)
 
-Fix: regenerate with Fluent 2/component roles or remove implementation-like token declarations and add an unmistakable non-copy banner.
+The recorded pre-repin digest differs from the current epics file, but the spine also says any later digest change reopens reconciliation.
 
-**[Accessibility & support-safety] — Final spines are not revision-bound to current obligations** (`DESIGN.md:4-13`; `EXPERIENCE.md:3-12,157-197`; `epics.md:5917-6003`)
+Fix: bind a normalized digest that excludes downstream UX digest fields or record both values with an explicit comparison rule.
 
-Fix: record source revisions/digests and validation identity, regenerate current traceability, and close Story 7.20’s component/state/evidence matrix.
+**[Accessibility & support-safety] — Detail panel/drawer semantics are contradictory** (`DESIGN.md:61-64,136,159-160`; `EXPERIENCE.md:175-176,260-261,266,321,343`)
 
-**[Accessibility & support-safety] — Named components lack implementable semantics** (`EXPERIENCE.md:90-107,146-170`)
+The binding specifies a non-modal `aside`, while journeys call it a drawer and the accessibility floor never resolves modality, focus entry, trapping, dismissal, or stable return.
 
-Fix: specify tab, accordion, grid, dialog, and badge name/role/value/relationship, keyboard, focus, modality, selection, busy, row-action, and live-status semantics.
+Fix: choose and specify one interaction model per viewport/state, including focus and background behavior.
 
-**[Accessibility & support-safety] — Live regions lack ownership, deduplication, throttling, and persistence** (`EXPERIENCE.md:151,172-180`)
+**[Accessibility & support-safety] — WCAG 2.2 ownership does not disposition inherited or absent interaction classes** (`EXPERIENCE.md:200-205,247,255-268,297`; `DESIGN.md:111-113,132`; `epics.md:5935-5958,5990-6003`)
 
-Fix: define one scoped view region and one operation region, announce transitions only, suppress initial/unchanged refresh chatter, coalesce events, and keep terminal outcomes visibly persistent.
+The contract does not say which WCAG 2.2 additions are inherited, locally owned, delegated, absent, or not applicable, leaving Story 7.20 to invent policy for focus obscuration, dragging, and authentication.
 
-**[Accessibility & support-safety] — Automatic refresh can disrupt reading** (`EXPERIENCE.md:113-116,146-155,172-180`)
+Fix: add a concise WCAG ownership/applicability table and explicit rules for single-pointer alternatives, unobscured focus, and accessible authentication ownership.
 
-Fix: provide keyboard-operable pause/frequency control, bounded cadence, manual refresh, and preservation of focus, scroll, filters, selection, expansion, and open dialogs.
+**[Accessibility & support-safety] — Evidence-grid keyboard behavior is underspecified** (`EXPERIENCE.md:168-171,175,247,250,260,266,268`; `DESIGN.md:48-50,155`)
 
-**[Accessibility & support-safety] — Timeout recovery conflates status refresh with mutation retry** (`EXPERIENCE.md:104-118,153,274-284`)
+The contract does not choose between a static table with tabbable actions and an interactive grid with cell focus, arrow navigation, row selection, and embedded-control modes.
 
-Fix: separate actions, permit retry only after authoritative retryable terminal evidence, preserve approved operation identity, and persist “Outcome unknown—do not resubmit” with safe tracking evidence.
+Fix: adopt one Fluent V5 grid profile and define tab stops, arrow/Home/End behavior, activation, announcements, embedded controls, selection, and focus fallback.
 
-**[Accessibility & support-safety] — State coverage excludes Sample/Tenants and conflates failure classes** (`EXPERIENCE.md:31-35,109-145,274-296`)
+**[Accessibility & support-safety] — Route and tab activation lack deterministic focus-entry rules** (`EXPERIENCE.md:75,164-168,246,250,259-263,414-419`; `DESIGN.md:119`)
 
-Fix: close every surface across load/refresh/empty/stale/offline/unavailable/auth/denied/revoked/unknown/conflict/pending/timeout/failure, with focus, announcements, mutation gates, disclosure, and recovery.
+The contract does not settle whether tab activation retains focus, moves to the title, or varies for deep links, history, redirects, and failures.
 
-**[Accessibility & support-safety] — Redaction is not an assistive-technology-safe data boundary** (`EXPERIENCE.md:98,123,199-205`)
+Fix: add a focus-entry table and distinguish programmatic heading focus from sequential tab order and live-region announcements.
 
-Fix: keep sensitive bytes out of DOM/accessibility properties/tooltips/URLs/clipboard/export/logs/telemetry and map each typed unreadable outcome to bounded localized copy and an authorized safe reason code.
+**[Architecture readiness] — FrontComposer module binding names a nonexistent component parameter** (`DESIGN.md:24-38,124-130`; `EXPERIENCE.md:24-33,164-168`; `FrontComposerNavEntry.cs:3-52`; `FrontComposerNavigation.razor.cs:27-39,106-121`)
 
-**[Accessibility & support-safety] — Breakpoints do not define WCAG reflow and zoom behavior** (`EXPERIENCE.md:189-197`)
+`FrontComposerNavigation` has no `module-id` parameter; it renders registry entries whose actual contract includes bounded context, title, href, icon, order, policy, enabled state, localization key, and resource.
 
-Fix: bind acceptance to 320 CSS px, 400% zoom, 200% text, text-spacing overrides, logical flow, labelled grid overflow, visible focus, and retained context; add narrow product references.
+Fix: bind the real registry API and define how `event-store-admin` remains a stable external/test identity, or make first-class module ID a prerequisite.
 
-**[Accessibility & support-safety] — Product mocks contradict the keyboard/semantic contract** (`mockups/dashboard-overview.html:269-339`; `mockups/command-investigation.html:244-315`)
+**[Architecture readiness] — Selected destructive-dialog primitive cannot express the confirmation contract** (`DESIGN.md:54-60,156-160`; `EXPERIENCE.md:146-156,174,251-252`; `FcDestructiveConfirmationDialog.razor.cs:18-46`)
 
-Fix: make primary controls semantic and keyboard-operable or annotate exact Fluent components and mandatory behavior, including skip link, focus, navigation toggle, labels, row actions, and status regions.
+The primitive exposes only title, plain body, destructive label, and callbacks, but the spine requires structured principal, environment, tenant, target, pre-state, effect, blast radius, reversibility, authorization, and expected evidence.
 
-**[Accessibility & support-safety] — `Current` evidence has no expiry/observation contract** (`DESIGN.md:140-147`; `EXPERIENCE.md:96,104-129`)
+Fix: add a story-owned structured-facts/`RenderFragment` API or bind a named EventStore-owned `FluentDialog` composition.
 
-Fix: require canonical source, observed-at and last-refresh times, freshness horizon, and clock basis; stale, invalid, expired, or provenance-mismatched evidence becomes `Unknown`/`Stale` and disables mutation.
+**[Architecture readiness] — Recovery actions are not explicitly gated by unwired Operations/audit prerequisites** (`EXPERIENCE.md:215-225,316-326`; `architecture.md:298-314,446-463`; `epics.md:4695-4710,4748-4756,4816-4830`)
 
-### Medium (21)
+Flow 1 presents Retry as available while `eventstore-operations`, durable poison recovery, audit, authorization/attribution, release identity, and authoritative status evidence remain prerequisites.
 
-**[Rubric / Flow coverage] — Several IA surfaces lack Key Flows** (`EXPERIENCE.md:41-54,225-296`)
+Fix: make Retry/Archive unavailable until every prerequisite passes and define the intervening read-only state in the operation matrix.
 
-Fix: add projection-rebuild, topology, storage/snapshot, and settings journeys or narrow the closure claim.
+### Low (1)
 
-**[Rubric / Token completeness] — Issue-banner appearance borrows badge semantics** (`DESIGN.md:117-122`)
+**[Rubric / Shape fit] — Canonical DESIGN shape and triggered inspiration section are slightly incomplete** (`DESIGN.md:89`; `.memlog.md:7,10`)
 
-Fix: specify `FluentMessageBar` intent/variant semantics directly.
+`Contract Scope` precedes the canonical DESIGN sections, while EXPERIENCE omits `Inspiration & Anti-patterns` despite explicit Fluent reference products/imports.
 
-**[Rubric / State coverage] — Sample and Tenants are absent from the surface matrix** (`EXPERIENCE.md:31-35,111-144`)
-
-Fix: add their cold, empty, stale/offline, denied, error, and mutation states.
-
-**[Rubric / State coverage] — Shell/route failure and request timeout/cancellation are implicit** (`EXPERIENCE.md:114,284`)
-
-Fix: add support-safe state rows including focus and selected-navigation behavior.
-
-**[Rubric / State coverage] — Typed payload-protection outcomes collapse to generic redaction** (`prd.md:335`; `EXPERIENCE.md:123,201`)
-
-Fix: map EventStore-visible outcomes and mark consumer-owned/non-UI cases.
-
-**[Rubric / Visual reference coverage] — Mock CSS uses prohibited legacy variables while claiming Fluent emission** (both mock files, lines 8-27)
-
-Fix: replace the variables or mark the CSS as non-implementable illustration.
-
-**[Rubric / Visual reference coverage] — References are not contextual and two PNGs are orphaned** (`DESIGN.md:166`; `EXPERIENCE.md:25`)
-
-Fix: link each promoted artifact beside the rule it illustrates and retain one precedence statement.
-
-**[Rubric / Visual reference coverage] — Mock navigation geometry conflicts with current FrontComposer navigation** (both mock navigation blocks)
-
-Fix: re-render against `FrontComposerShell`/`FrontComposerNavigation` or explicitly exclude navigation geometry.
-
-**[Rubric / Inheritance discipline] — Stable module identity `event-store-admin` is missing** (`DESIGN.md:164,216`; `EXPERIENCE.md:21,91,300`)
-
-Fix: state it beside the separate `eventstore-admin-ui` resource/container identity.
-
-**[Architecture readiness] — IA-to-flow closure is false for several tabs** (`EXPERIENCE.md:37-54,225-296`)
-
-Fix: add projection, topology, storage/snapshot, and settings flows or explicitly classify those tabs as spine-only/read-only.
-
-**[Architecture readiness] — Command/recovery terminal evidence is not source-bound** (`DESIGN.md:135-139`; `EXPERIENCE.md:101,104,117-121,153-154`)
-
-Fix: identify accepted, terminal, projection, audit, observation, timeout/cancellation, and retry evidence for every mutation.
-
-**[Architecture readiness] — Responsive action disposition remains unresolved** (`EXPERIENCE.md:155,189-197,300-302`)
-
-Fix: add a per-tab retained-context/column/overflow/action matrix and align mocks to the 960/1280 contract.
-
-**[Architecture readiness] — Traceability omits current owners and requirement distinctions** (`EXPERIENCE.md:56-69`)
-
-Fix: add UX-DR/decision/owning-story IDs, separate provenance from projection execution and parity proof, and record the extracted baseline digest.
-
-**[Architecture readiness] — “Topology” refers to two operator concepts** (`EXPERIENCE.md:43,46,140`; `NavMenu.razor:29-56`)
-
-Fix: assign the tenant/domain navigator to Streams & Events or retire/rename it; reserve Topology for DAPR/service operations.
-
-**[Accessibility & support-safety] — Focus rules do not close deep-link, panel, tab, or disappearing-trigger cases** (`EXPERIENCE.md:148-150,162-168`)
-
-Fix: define focus entry, tab retention, panel focus, validation targeting, background-update stability, and stable return fallbacks.
-
-**[Accessibility & support-safety] — Non-text contrast and forced-color behavior are unspecified** (`DESIGN.md:168-180`)
-
-Fix: require WCAG non-text contrast across light/dark/system/forced-colors with explicit focus/lifecycle fallbacks.
-
-**[Accessibility & support-safety] — Dense controls lack a target-size floor** (`DESIGN.md:71-105`)
-
-Fix: require 24×24 CSS px or a documented WCAG exception, with 44×44 preferred for touch-critical actions.
-
-**[Accessibility & support-safety] — Reduced-motion rules omit loading and movement primitives** (`EXPERIENCE.md:113,169`)
-
-Fix: disable nonessential shimmer, auto-scroll, and transitions while retaining static progress/state text.
-
-**[Accessibility & support-safety] — Disabled safety reasons can become unreachable** (`EXPERIENCE.md:105-106,126-155,207-214`)
-
-Fix: provide persistent, programmatically associated reason text plus a reachable safe next action.
-
-**[Accessibility & support-safety] — Localization omits accessibility-only and support-safe formatting rules** (`EXPERIENCE.md:71-84,182-187`)
-
-Fix: resource all accessible/live text, define locale/time-zone/plural/duration formatting, isolate identifiers, and test fallback, pseudo-locale, RTL, and safe truncation.
-
-**[Accessibility & support-safety] — Toast behavior is absent despite false-success risk** (`EXPERIENCE.md:90-107,172-180`)
-
-Fix: keep authoritative state outside toasts, use neutral accepted copy, and make toasts pauseable, dismissible, focus-safe, persistent enough, and deduplicated.
-
-### Low (9)
-
-**[Rubric / Flow coverage] — No journey demonstrates a general legacy deep-link arrival** (`EXPERIENCE.md:52,272`)
-
-Fix: add a bookmarked arrival including selected module/tab state.
-
-**[Rubric / Token completeness] — Non-text contrast is not explicit for focus, borders, and lifecycle indicators** (`DESIGN.md:137-139,178`)
-
-Fix: state the WCAG 2.2 AA 3:1 floor and define tracker foregrounds.
-
-**[Rubric / Component coverage] — Skeleton and inline-validation behaviors lack paired component rows** (`EXPERIENCE.md:113,124,179`)
-
-Fix: add rows or state explicit Fluent-default inheritance.
-
-**[Rubric / Visual reference coverage] — The Overview mock omits Settings** (`dashboard-overview.html:282-292`)
-
-Fix: add the tab or annotate the omission.
-
-**[Rubric / Bloat] — Host identity and deferred-operation policy repeat** (multiple spine sections)
-
-Fix: keep one authoritative definition and cross-reference it.
-
-**[Rubric / Inheritance discipline] — Canonical state casing drifts** (`EXPERIENCE.md:66`)
-
-Fix: normalize lowercase `unknown` to `Unknown`.
-
-**[Architecture readiness] — Canonical state casing is inconsistent** (`EXPERIENCE.md:65-67,105,129`)
-
-Fix: use exact contract identifiers everywhere and localize display strings separately.
-
-**[Architecture readiness] — Adopted decisions remain labelled as assumptions** (`EXPERIENCE.md:298-302`)
-
-Fix: promote adopted host/identity/navigation rules and require an explicit UX/architecture update before changing tab names.
-
-**[Accessibility & support-safety] — `data-testid` is presented as accessibility evidence** (`EXPERIENCE.md:157-170`)
-
-Fix: move selector policy to testing/conformance and pair it with assertions of accessible role, name, value/state, relationships, focus, and live messages.
+Fix: move contract scope into EXPERIENCE Foundation or another contract section and add a compact inspiration/anti-pattern section.
 
 ## Mechanical notes
 
-- All six direct sources resolve; no direct source defines separately numbered user journeys.
-- All 35 distinct `{path.to.token}` references resolve syntactically. Route placeholders `{tenant}`, `{domain}`, and `{aggregate}` are not design-token references; resolved colors still fail type/binding validation.
-- All 16 canonical component names align across DESIGN frontmatter/prose and EXPERIENCE Component Patterns.
-- DESIGN sections follow the required canonical order. EXPERIENCE contains all required defaults and the triggered Responsive & Platform and Inspiration & Anti-patterns sections.
-- Visual inventory: two imports, two HTML mocks, two rendered mock PNGs, and no wireframes. The two PNG twins are not linked inline.
-- No Mermaid blocks occur in either spine.
-- Validation did not modify `DESIGN.md`, `EXPERIENCE.md`, their sources, imports, or mockups.
+- All five local frontmatter sources and all eight promoted/imported visual references resolve; no `wireframes/` directory is present.
+- All four local spacing tokens and every `{spacing.*}` reference resolve. Empty color, typography, and rounded maps are deliberate FrontComposer/Fluent inheritance, not missing local tokens.
+- All 23 product-level component names align across DESIGN frontmatter/prose and EXPERIENCE Component Patterns.
+- DESIGN's canonical sections remain in relative order; EXPERIENCE contains every default section and triggered Responsive & Platform.
+- No Mermaid block appears in either spine.
+- Digest verification matches the brownfield architecture, PRD, architecture, and PRD validation sources; only epics differs under the documented pre-repin cycle.
+- No UX spine, authority source, import, or mockup was changed by validation.
 
 ## Reviewer files
 

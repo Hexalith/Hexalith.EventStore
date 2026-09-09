@@ -10,10 +10,10 @@ internal sealed class ProviderVerificationAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder,
-    ProviderStateCoordinator coordinator)
+    ProviderStateCoordinator coordinator,
+    ProviderVerificationCredential credential)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    internal const string ExpectedTokenMarker = "FC_CONTRACT_TOKEN";
     public const string SchemeName = "ProviderVerification";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -28,7 +28,7 @@ internal sealed class ProviderVerificationAuthenticationHandler(
         if (string.Equals(state, "command-unauthorized", StringComparison.Ordinal)
             || !string.Equals(
                 Request.Headers.Authorization,
-                string.Concat("Bearer", " ", ExpectedTokenMarker),
+                string.Concat("Bearer", " ", credential.AccessToken),
                 StringComparison.Ordinal))
         {
             return Task.FromResult(AuthenticateResult.Fail("provider-state-authentication-denied"));

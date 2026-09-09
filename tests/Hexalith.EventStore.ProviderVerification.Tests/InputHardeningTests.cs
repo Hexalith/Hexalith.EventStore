@@ -219,6 +219,121 @@ public sealed class InputHardeningTests
     }
 
     [Fact]
+    public void CreateNormalizedPact_ReplacesOnlySelectedAuthorizationHeaderAndCreatesOwnerOnlyFile()
+    {
+        string directory = CreateTemporaryDirectory();
+        string pactPath = Path.Combine(directory, "pact.json");
+        byte[] original = Encoding.UTF8.GetBytes(
+            """
+            {
+              "interactions":[
+                {
+                  "description":"selected",
+                  "providerStates":[{"name":"command-accepted"}],
+                  "request":{
+                    "headers":{"Authorization":"Bearer FC_CONTRACT_TOKEN"},
+                    "body":{"credentialMarker":"FC_CONTRACT_TOKEN"}
+                  },
+                  "response":{"status":202},
+                  "metadata":{}
+                },
+                {
+                  "description":"not-selected",
+                  "providerStates":[{"name":"command-accepted"}],
+                  "request":{"headers":{"Authorization":"Bearer FC_CONTRACT_TOKEN"}},
+                  "response":{"status":202},
+                  "metadata":{}
+                }
+              ]
+            }
+            """);
+        File.WriteAllBytes(pactPath, original);
+        var interaction = new InteractionDefinition(
+            "selected",
+            "command-accepted",
+            "POST",
+            "/api/v1/commands",
+            "pact.json",
+            VerificationInputLoader.ComputeSha256(original));
+        ProviderVerificationCredential credential = ProviderVerificationCredential.Create();
+        string? normalizedPath = null;
+        try
+        {
+            normalizedPath = PactInteractionVerifier.CreateNormalizedPact(
+                interaction,
+                directory,
+                credential.AccessToken);
+            JsonNode root = JsonNode.Parse(File.ReadAllBytes(normalizedPath))!;
+
+            root["interactions"]![0]!["request"]!["headers"]!["Authorization"]!.GetValue<string>()
+                .ShouldBe("Bearer " + credential.AccessToken);
+            root["interactions"]![0]!["request"]!["body"]!["credentialMarker"]!.GetValue<string>()
+                .ShouldBe("FC_CONTRACT_TOKEN");
+            root["interactions"]![1]!["request"]!["headers"]!["Authorization"]!.GetValue<string>()
+                .ShouldBe("Bearer FC_CONTRACT_TOKEN");
+            if (!OperatingSystem.IsWindows())
+            {
+                UnixFileMode exposedModes = File.GetUnixFileMode(normalizedPath)
+                    & (UnixFileMode.GroupRead
+                        | UnixFileMode.GroupWrite
+                        | UnixFileMode.GroupExecute
+                        | UnixFileMode.OtherRead
+                        | UnixFileMode.OtherWrite
+                        | UnixFileMode.OtherExecute);
+                exposedModes.ShouldBe((UnixFileMode)0);
+            }
+        }
+        finally
+        {
+            if (normalizedPath is not null)
+            {
+                File.Delete(normalizedPath);
+            }
+
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TryDeleteNormalizedPact_RetriesTransientFailureAndSurfacesExhaustion()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"eventstore-pact-delete-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, "{}");
+        int transientAttempts = 0;
+
+        PactInteractionVerifier.TryDeleteNormalizedPact(
+            path,
+            out string recoveredCode,
+            target =>
+            {
+                transientAttempts++;
+                if (transientAttempts < 3)
+                {
+                    throw new IOException("injected-transient-delete-failure");
+                }
+
+                File.Delete(target);
+            }).ShouldBeTrue();
+
+        recoveredCode.ShouldBeEmpty();
+        transientAttempts.ShouldBe(3);
+        File.Exists(path).ShouldBeFalse();
+
+        int exhaustedAttempts = 0;
+        PactInteractionVerifier.TryDeleteNormalizedPact(
+            path,
+            out string exhaustedCode,
+            _ =>
+            {
+                exhaustedAttempts++;
+                throw new UnauthorizedAccessException("injected-persistent-delete-failure");
+            }).ShouldBeFalse();
+
+        exhaustedCode.ShouldBe("interaction.normalized-pact-cleanup-failed");
+        exhaustedAttempts.ShouldBe(3);
+    }
+
+    [Fact]
     public void LoadStateCatalog_UnsupportedStateAndChangedSeam_AreRejected()
     {
         string eventStoreRoot = FindRepositoryRoot();

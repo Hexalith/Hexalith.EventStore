@@ -74,8 +74,44 @@ public static class HexalithEventStoreSecurityExtensions
                 builder.Configuration[options.ManagementPortConfigurationKey])
             : KeycloakFastStartPorts.ResolveDynamic();
 
+        IResourceBuilder<ParameterResource> defaultClientUsername = builder.AddParameter(
+            $"{options.ResourceName}-eventstore-client-username",
+            new GenerateParameterDefault
+            {
+                MinLength = 24,
+                Lower = true,
+                MinLower = 1,
+                Numeric = true,
+                MinNumeric = 1,
+                Upper = false,
+                Special = false,
+            },
+            secret: true,
+            persist: keycloakPersistent);
+        IResourceBuilder<ParameterResource> defaultClientPassword = builder.AddParameter(
+            $"{options.ResourceName}-eventstore-client-password",
+            new GenerateParameterDefault
+            {
+                MinLength = 32,
+                Lower = true,
+                MinLower = 1,
+                Numeric = true,
+                MinNumeric = 1,
+                Upper = true,
+                MinUpper = 1,
+                Special = false,
+            },
+            secret: true,
+            persist: keycloakPersistent);
+
         IResourceBuilder<KeycloakResource> keycloak = builder.AddKeycloak(options.ResourceName, keycloakHttpPort)
-            .WithRealmImport(options.RealmImportPath);
+            .WithRealmImport(options.RealmImportPath)
+            .WithEnvironment(
+                HexalithEventStoreSecurityOptions.DefaultClientUsernameEnvironmentName,
+                defaultClientUsername)
+            .WithEnvironment(
+                HexalithEventStoreSecurityOptions.DefaultClientPasswordEnvironmentName,
+                defaultClientPassword);
 
         if (keycloakPersistent)
         {
@@ -104,7 +140,11 @@ public static class HexalithEventStoreSecurityExtensions
             keycloak,
             realmUrl,
             options.Audience,
-            options.RequireHttpsMetadata);
+            options.RequireHttpsMetadata)
+        {
+            DefaultClientUsername = defaultClientUsername,
+            DefaultClientPassword = defaultClientPassword,
+        };
     }
 
     /// <summary>
@@ -267,8 +307,8 @@ public static class HexalithEventStoreSecurityExtensions
     /// <param name="security">The security resources returned by <see cref="AddHexalithEventStoreSecurity"/>.</param>
     /// <returns>The same project resource builder for chaining.</returns>
     /// <remarks>
-    /// This source-compatible overload creates required parameter resources instead of restoring
-    /// reusable user-name or password defaults. Consumers must supply the parameter values per run.
+    /// This source-compatible overload creates secret parameter resources backed by fresh
+    /// per-AppHost values instead of restoring reusable user-name or password defaults.
     /// </remarks>
     public static IResourceBuilder<ProjectResource> WithEventStoreClientCredentials(
         this IResourceBuilder<ProjectResource> resource,
@@ -277,13 +317,12 @@ public static class HexalithEventStoreSecurityExtensions
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentNullException.ThrowIfNull(security);
 
-        string parameterPrefix = $"{resource.Resource.Name}-eventstore-auth";
-        IResourceBuilder<ParameterResource> username = resource.ApplicationBuilder.AddParameter(
-            $"{parameterPrefix}-username",
-            secret: true);
-        IResourceBuilder<ParameterResource> password = resource.ApplicationBuilder.AddParameter(
-            $"{parameterPrefix}-password",
-            secret: true);
+        IResourceBuilder<ParameterResource> username = security.DefaultClientUsername
+            ?? throw new InvalidOperationException(
+                "The security resource does not expose a realm-bound default client user name.");
+        IResourceBuilder<ParameterResource> password = security.DefaultClientPassword
+            ?? throw new InvalidOperationException(
+                "The security resource does not expose a realm-bound default client password.");
         return resource.WithEventStoreClientCredentials(
             security,
             HexalithEventStoreSecurityOptions.DefaultEventStoreClientId,
@@ -346,9 +385,13 @@ public static class HexalithEventStoreSecurityExtensions
             audience,
             tokenEndpoint: null,
             scope: "openid",
+            grantType: "password",
             clientId,
             username,
-            password);
+            password,
+            clientSecret: null,
+            audienceParameterName: null,
+            audienceParameterValue: null);
 
     /// <summary>
     /// Wires provider-neutral external token-acquisition settings to a published UI.
@@ -371,29 +414,122 @@ public static class HexalithEventStoreSecurityExtensions
         IResourceBuilder<ParameterResource> clientId,
         IResourceBuilder<ParameterResource> username,
         IResourceBuilder<ParameterResource> password)
+        => resource.WithExternalEventStoreClientCredentials(
+            authority,
+            audience,
+            tokenEndpoint,
+            scope,
+            grantType: "password",
+            clientId,
+            username,
+            password,
+            clientSecret: null,
+            audienceParameterName: null,
+            audienceParameterValue: null);
+
+    /// <summary>
+    /// Wires an explicit external OAuth grant profile to a published UI.
+    /// </summary>
+    /// <param name="resource">The published UI resource.</param>
+    /// <param name="authority">The external HTTPS identity authority.</param>
+    /// <param name="audience">The API audience used by local token validation settings.</param>
+    /// <param name="tokenEndpoint">An optional explicit HTTPS token endpoint; when absent the UI uses OIDC discovery.</param>
+    /// <param name="scope">The explicit OAuth scope request.</param>
+    /// <param name="grantType">Exactly <c>password</c> or <c>client_credentials</c>.</param>
+    /// <param name="clientId">The publish parameter holding the OAuth client identifier.</param>
+    /// <param name="username">The password-profile user name, or <see langword="null"/> otherwise.</param>
+    /// <param name="password">The password-profile opaque password, or <see langword="null"/> otherwise.</param>
+    /// <param name="clientSecret">The client-credentials opaque secret, or <see langword="null"/> otherwise.</param>
+    /// <param name="audienceParameterName">An optional provider-specific <c>audience</c> or <c>resource</c> parameter name.</param>
+    /// <param name="audienceParameterValue">The optional provider-specific parameter value.</param>
+    /// <returns>The same resource builder for chaining.</returns>
+    public static IResourceBuilder<ProjectResource> WithExternalEventStoreClientCredentials(
+        this IResourceBuilder<ProjectResource> resource,
+        string authority,
+        string audience,
+        string? tokenEndpoint,
+        string scope,
+        string grantType,
+        IResourceBuilder<ParameterResource> clientId,
+        IResourceBuilder<ParameterResource>? username,
+        IResourceBuilder<ParameterResource>? password,
+        IResourceBuilder<ParameterResource>? clientSecret,
+        string? audienceParameterName,
+        string? audienceParameterValue)
     {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentException.ThrowIfNullOrWhiteSpace(audience);
         ArgumentException.ThrowIfNullOrWhiteSpace(scope);
+        ArgumentException.ThrowIfNullOrWhiteSpace(grantType);
         ArgumentNullException.ThrowIfNull(clientId);
-        ArgumentNullException.ThrowIfNull(username);
-        ArgumentNullException.ThrowIfNull(password);
 
         string resolvedAuthority = ResolveExternalEndpoint(authority, nameof(authority));
+        string resolvedTokenEndpoint = string.IsNullOrWhiteSpace(tokenEndpoint)
+            ? string.Empty
+            : ResolveExternalEndpoint(tokenEndpoint, nameof(tokenEndpoint));
+        string resolvedGrantType = grantType.Trim();
+        if (resolvedGrantType is not "password" and not "client_credentials")
+        {
+            throw new ArgumentException(
+                "The external grant type must be either 'password' or 'client_credentials'.",
+                nameof(grantType));
+        }
+
+        bool hasAudienceParameterName = !string.IsNullOrWhiteSpace(audienceParameterName);
+        bool hasAudienceParameterValue = !string.IsNullOrWhiteSpace(audienceParameterValue);
+        if (hasAudienceParameterName != hasAudienceParameterValue)
+        {
+            throw new ArgumentException(
+                "The external audience parameter name and value must be configured together.",
+                nameof(audienceParameterName));
+        }
+
+        string resolvedAudienceParameterName = hasAudienceParameterName
+            ? audienceParameterName!.Trim()
+            : string.Empty;
+        if (resolvedAudienceParameterName is not "" and not "audience" and not "resource")
+        {
+            throw new ArgumentException(
+                "The external audience parameter name must be either 'audience' or 'resource'.",
+                nameof(audienceParameterName));
+        }
+
+        if (resolvedGrantType == "password")
+        {
+            ArgumentNullException.ThrowIfNull(username);
+            ArgumentNullException.ThrowIfNull(password);
+        }
+        else
+        {
+            ArgumentNullException.ThrowIfNull(clientSecret);
+        }
+
         IResourceBuilder<ProjectResource> configured = resource
             .WithEnvironment("EventStore__Authentication__Authority", resolvedAuthority)
             .WithEnvironment("EventStore__Authentication__Audience", audience.Trim())
+            .WithEnvironment("EventStore__Authentication__TokenEndpoint", resolvedTokenEndpoint)
             .WithEnvironment("EventStore__Authentication__Scope", scope.Trim())
+            .WithEnvironment("EventStore__Authentication__GrantType", resolvedGrantType)
             .WithEnvironment("EventStore__Authentication__ClientId", clientId)
-            .WithEnvironment("EventStore__Authentication__Username", username)
-            .WithEnvironment("EventStore__Authentication__Password", password)
             .WithEnvironment("EventStore__Authentication__SigningKey", string.Empty);
 
-        return string.IsNullOrWhiteSpace(tokenEndpoint)
-            ? configured.WithEnvironment("EventStore__Authentication__TokenEndpoint", string.Empty)
-            : configured.WithEnvironment(
-                "EventStore__Authentication__TokenEndpoint",
-                ResolveExternalEndpoint(tokenEndpoint, nameof(tokenEndpoint)));
+        configured = resolvedGrantType == "password"
+            ? configured
+                .WithEnvironment("EventStore__Authentication__Username", username!)
+                .WithEnvironment("EventStore__Authentication__Password", password!)
+                .WithEnvironment("EventStore__Authentication__ClientSecret", string.Empty)
+            : configured
+                .WithEnvironment("EventStore__Authentication__Username", string.Empty)
+                .WithEnvironment("EventStore__Authentication__Password", string.Empty)
+                .WithEnvironment("EventStore__Authentication__ClientSecret", clientSecret!);
+
+        return resolvedAudienceParameterName.Length == 0
+            ? configured
+                .WithEnvironment("EventStore__Authentication__AudienceParameterName", string.Empty)
+                .WithEnvironment("EventStore__Authentication__AudienceParameterValue", string.Empty)
+            : configured
+                .WithEnvironment("EventStore__Authentication__AudienceParameterName", resolvedAudienceParameterName)
+                .WithEnvironment("EventStore__Authentication__AudienceParameterValue", audienceParameterValue!.Trim());
     }
 
     /// <summary>

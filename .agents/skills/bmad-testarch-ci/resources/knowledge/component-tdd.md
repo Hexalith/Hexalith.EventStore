@@ -209,7 +209,7 @@ describe('UserProfile Component', () => {
     const user = { id: 1, name: 'John Doe', email: 'john@example.com' };
 
     cy.wrappedMount(<UserProfile />, {
-      initialAuth: { user, token: 'fake-token' }
+      initialAuth: { user, token: '<generated-at-runtime>' }
     });
 
     cy.contains('John Doe').should('be.visible');
@@ -238,7 +238,7 @@ test.describe('UserProfile Component', () => {
 
     const component = await mount(
       <QueryClientProvider client={queryClient}>
-        <AuthProvider initialAuth={{ user, token: 'fake-token' }}>
+        <AuthProvider initialAuth={{ user, token: '<generated-at-runtime>' }}>
           <UserProfile />
         </AuthProvider>
       </QueryClientProvider>

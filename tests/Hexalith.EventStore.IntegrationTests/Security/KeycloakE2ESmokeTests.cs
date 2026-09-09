@@ -26,7 +26,8 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
     [Fact]
     public async Task AuthenticatedCommandSubmission_WithKeycloakToken_ReturnsAccepted() {
         // Arrange: acquire a real OIDC token from Keycloak
-        string token = await GetTokenAsync("admin-user");
+        string username = "admin-user";
+        string token = await GetTokenAsync(username);
         token.ShouldNotBeNullOrEmpty("Keycloak token acquisition failed");
 
         var request = new {

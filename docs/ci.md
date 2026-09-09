@@ -69,7 +69,11 @@ while committed Story 4.14 evidence remains bound to its observed runtime `1.18.
 The Integration Tests checkout uses explicit `fetch-depth: 1` because fresh OQ8
 capture needs only the checked-out commit. Committed OQ8 historical-evidence
 closure is owned by the blocking Tier-1 `Oq8PlatformClosureTests`; Integration
-Tests does not duplicate that current-checkout validation.
+Tests does not duplicate that current-checkout validation. Depth 1 is valid only
+while that job stays in capture mode: the committed-closure validator resolves
+`git show <pinned-commit>:<path>` for the v1, SDK, and v2 snapshots and proves
+`merge-base --is-ancestor 5e8f175b… HEAD` for the active v3 lineage, so any lane
+that runs it needs a full-history checkout (`fetch-depth: 0`).
 
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and
@@ -99,8 +103,10 @@ Rotate this identity only as one reviewed change:
    required additive, content-bound Story 4.15 successor evidence without
    rewriting historical v1 bytes.
 4. Build the Contracts test project, run `PostgreSqlImageGovernanceTests`, run
-   `actionlint .github/workflows/integration.yml`, and run
-   `python3 tools/validate-oq8-platform-evidence.py`.
+   `actionlint .github/workflows/integration.yml`, and run the validator from
+   the pinned environment the v3 handoff mandates:
+   `python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt`
+   then `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py`.
 5. Pull the digest-pinned index and run the complete live-sidecar project. The
    fixture must retain its fail-closed `docker image inspect` prerequisite and
    bounded readiness checks.
@@ -116,13 +122,21 @@ the strict execution → subject freeze → receipts → handoff order. Tests th
 exercise future-time rejection derive their mutation from runtime UTC; do not
 renew them by hard-coding another calendar date.
 
-The v1 and v2 successor packets remain immutable historical evidence. V2 is
-validated against completed closure commit
-`83b32fcfad7bb608098aebccdc15002636ffb431`, not against later working-tree
-bytes. The additive `story-4-15-successors/v3` packet is the active lineage for
-the evolved validator, closure tests, and this guidance; current-source closure
-requires valid historical v1/v2 evidence plus a complete v3 subject, reviews,
-handoff, and path-sorted manifest.
+The v1 closure, the SDK 10.0.400 successor
+(`story-4-15/successors/sdk-10.0.400-xunit4-mtp`), and the v2 successor packets
+remain immutable historical evidence. V2 is validated against completed closure
+commit `83b32fcfad7bb608098aebccdc15002636ffb431`, and the SDK successor against
+its own snapshot commit, not against later working-tree bytes. The additive
+`story-4-15-successors/v3` packet is the single active lineage selected by
+`4-15-oq8-platform-closure-successor.json` (selector schema `v2`, whose
+`historical` block pins all three predecessors and whose `successor` block pins
+v3); current-source closure requires valid historical v1/SDK/v2 evidence plus a
+complete v3 subject, reviews, handoff, and path-sorted manifest. V3 additionally
+binds the landed commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4` and its tree,
+requires current `HEAD` to descend from that commit, and hashes every SDK and v2
+gate input (workflows, `global.json`, `tests/Directory.Build.props`, the
+LiveSidecar fixtures, and the governance tests) as regular non-symlink current
+files.
 
 Story 4.5's append-durability race and generic ETag control remain in this
 dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence

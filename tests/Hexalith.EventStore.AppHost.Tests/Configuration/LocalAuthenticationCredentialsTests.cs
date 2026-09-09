@@ -5,17 +5,13 @@ using System.Text;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
-using Microsoft.Extensions.Configuration;
-
 public sealed class LocalAuthenticationCredentialsTests
 {
     [Fact]
     public void Create_WithoutOverrides_GeneratesIndependentStrongValuesPerRun()
     {
-        IConfiguration configuration = new ConfigurationBuilder().Build();
-
-        LocalAuthenticationCredentials first = LocalAuthenticationCredentials.Create(configuration);
-        LocalAuthenticationCredentials second = LocalAuthenticationCredentials.Create(configuration);
+        LocalAuthenticationCredentials first = LocalAuthenticationCredentials.Create();
+        LocalAuthenticationCredentials second = LocalAuthenticationCredentials.Create();
 
         Encoding.UTF8.GetByteCount(first.SigningKey).ShouldBeGreaterThanOrEqualTo(32);
         first.SigningKey.ShouldNotBe(second.SigningKey);
@@ -28,40 +24,27 @@ public sealed class LocalAuthenticationCredentialsTests
     }
 
     [Fact]
-    public void Create_WithOrdinaryCredentialConfiguration_StillGeneratesFreshValues()
+    public void Create_HasNoConfigurationAddressableOverload()
     {
-        string configuredKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
-        string configuredUserId = Guid.NewGuid().ToString("D");
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["LocalAuthentication:SigningKey"] = configuredKey,
-                ["LocalAuthentication:AdminUserId"] = configuredUserId,
-            })
-            .Build();
+        System.Reflection.MethodInfo[] createMethods = typeof(LocalAuthenticationCredentials)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(static method => method.Name == nameof(LocalAuthenticationCredentials.Create))
+            .ToArray();
 
-        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(configuration);
-
-        credentials.SigningKey.ShouldNotBe(configuredKey);
-        credentials.AdminUserId.ShouldNotBe(configuredUserId);
+        createMethods.ShouldHaveSingleItem().GetParameters().ShouldBeEmpty();
     }
 
     [Fact]
-    public void Create_WithUnregisteredInvocationId_FailsWithoutUsingConfiguredCredentialValues()
+    public void Create_WithoutActivatedCapability_CannotSelectRegisteredValues()
     {
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["LocalAuthentication:TestInjection:InvocationId"] = Guid.NewGuid().ToString("D"),
-                ["LocalAuthentication:TestInjection:SigningKey"] = Guid.NewGuid().ToString("N"),
-            })
-            .Build();
+        string signingKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+        using LocalAuthenticationTestInvocation invocation =
+            LocalAuthenticationCredentials.RegisterTestInvocation(signingKey);
 
-        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
-            () => LocalAuthenticationCredentials.Create(configuration));
+        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create();
 
-        exception.Message.ShouldContain("InvocationId");
-        exception.Message.ShouldNotContain(configuration["LocalAuthentication:TestInjection:SigningKey"]!);
+        credentials.SigningKey.ShouldNotBe(signingKey);
+        credentials.ShouldNotBeSameAs(invocation.Credentials);
     }
 
     [Fact]
@@ -71,26 +54,22 @@ public sealed class LocalAuthenticationCredentialsTests
         string adminUserId = Guid.NewGuid().ToString("D");
         using LocalAuthenticationTestInvocation invocation =
             LocalAuthenticationCredentials.RegisterTestInvocation(signingKey, adminUserId);
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["LocalAuthentication:TestInjection:InvocationId"] = invocation.InvocationId.ToString("D"),
-            })
-            .Build();
+        invocation.Activate();
 
-        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(configuration);
+        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create();
 
         credentials.ShouldBeSameAs(invocation.Credentials);
         credentials.SigningKey.ShouldBe(signingKey);
         credentials.AdminUserId.ShouldBe(adminUserId);
-        _ = Should.Throw<InvalidOperationException>(() => LocalAuthenticationCredentials.Create(configuration));
+        LocalAuthenticationCredentials second = LocalAuthenticationCredentials.Create();
+        second.ShouldNotBeSameAs(credentials);
+        second.SigningKey.ShouldNotBe(signingKey);
     }
 
     [Fact]
     public void Render_ReplacesEveryInertRealmPlaceholder_AndDeletesTemporaryContent()
     {
-        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(
-            new ConfigurationBuilder().Build());
+        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create();
         string sourceDirectory = Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
             "src",
@@ -122,8 +101,7 @@ public sealed class LocalAuthenticationCredentialsTests
             return;
         }
 
-        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(
-            new ConfigurationBuilder().Build());
+        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create();
         string sourceDirectory = GetRealmSourceDirectory();
 
         using KeycloakRealmTemplate renderedRealm = KeycloakRealmTemplate.Render(sourceDirectory, credentials);
@@ -137,8 +115,7 @@ public sealed class LocalAuthenticationCredentialsTests
     [Fact]
     public void Render_WhenSetupFails_RemovesPartialOwnedDirectory()
     {
-        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create(
-            new ConfigurationBuilder().Build());
+        LocalAuthenticationCredentials credentials = LocalAuthenticationCredentials.Create();
         string? partialDirectory = null;
 
         _ = Should.Throw<InvalidOperationException>(() => KeycloakRealmTemplate.Render(
