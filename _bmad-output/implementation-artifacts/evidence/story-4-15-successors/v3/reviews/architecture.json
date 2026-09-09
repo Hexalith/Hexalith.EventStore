@@ -2,14 +2,14 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "architecture",
   "reviewer": "Winston (System Architect)",
-  "issuedAt": "2026-09-09T17:30:37Z",
+  "issuedAt": "2026-09-09T20:39:10Z",
   "decision": "approved",
-  "subjectSha256": "84fdda8013d4c191aaa2758c80365fe798d9c09e9049a6ba0032bc89fd04a51d",
+  "subjectSha256": "90803fdf18d4fa78c7c25d6752ebf04c7f951dd0163368cafc7a7fdd452e89c8",
   "limitationsSha256": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
   "acceptedScope": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, and source-only authority boundaries",
   "findings": [
-    "The unified v3 lineage preserves the v1 closure, SDK successor, and v2 successor as immutable historical evidence while making one current-source successor authoritative.",
-    "The frozen subject binds the original landed commit and tree, requires current HEAD ancestry, covers every SDK and v2 gate input as a regular non-symlink file, and does not expand source-only authority."
+    "Owner-attested architecture review of frozen subject 90803fdf18d4fa78c7c25d6752ebf04c7f951dd0163368cafc7a7fdd452e89c8 after the Group I patches: --pre-review now pins selector authority together with historical v1 packetSha256 and v2 manifestSha256, while v1, the SDK successor, and v2 remain immutable historical evidence under one current-source successor.",
+    "The frozen subject still binds landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 and tree 96fdfbba56df41b58889bf7f3b532a64d15314bd, requires current HEAD ancestry, and the v3 handoff historicalRule now discloses that a full Git object store (fetch-depth: 0) is required because a shallow clone lacking that landed commit fails closed; source-only authority is not expanded."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

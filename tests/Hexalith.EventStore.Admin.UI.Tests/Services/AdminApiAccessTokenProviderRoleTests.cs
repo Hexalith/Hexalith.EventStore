@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Net;
+using System.Net.Sockets;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
 
@@ -250,8 +252,23 @@ public class AdminApiAccessTokenProviderRoleTests {
         handler.RequestUris.ShouldBe(
         [
             new Uri("https://identity.example.test/tenant/.well-known/openid-configuration"),
-            new Uri("https://tokens.example.test/oauth/token"),
+            new Uri("https://identity.example.test/tenant/oauth/token"),
         ]);
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WhenDiscoveryTokenEndpointEscapesAuthorityOrigin_RejectsBeforeSendingCredentials()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values.Remove("EventStore:Authentication:TokenEndpoint");
+        var handler = new RecordingTokenHandler(discoveryTokenEndpoint: "https://tokens.example.test/oauth/token");
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("Authority origin");
+        handler.RequestCount.ShouldBe(1);
     }
 
     [Fact]
@@ -342,6 +359,65 @@ public class AdminApiAccessTokenProviderRoleTests {
         exception.Message.ShouldContain("non-blank access_token");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetAccessTokenAsync_WhenOidcResponseExceedsBound_FailsClosed(bool discovery)
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        string oversizedResponse = new('x', (64 * 1024) + 1);
+        RecordingTokenHandler handler;
+        if (discovery)
+        {
+            values.Remove("EventStore:Authentication:TokenEndpoint");
+            handler = new RecordingTokenHandler(discoveryResponseJson: oversizedResponse);
+        }
+        else
+        {
+            handler = new RecordingTokenHandler(tokenResponseJson: oversizedResponse);
+        }
+
+        var provider = CreateAuthorityProvider(values, handler);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("exceeded the permitted size");
+    }
+
+    [Fact]
+    public async Task AddHttpClient_ProductionClient_DoesNotFollowCredentialPostRedirect()
+    {
+        int sourcePort = GetAvailablePort();
+        int untrustedPort = GetAvailablePort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{sourcePort}/");
+        listener.Start();
+        Task responder = Task.Run(async () =>
+        {
+            HttpListenerContext context = await listener.GetContextAsync();
+            context.Response.StatusCode = (int)HttpStatusCode.TemporaryRedirect;
+            context.Response.RedirectLocation = $"http://127.0.0.1:{untrustedPort}/relay";
+            context.Response.Close();
+        });
+        var services = new ServiceCollection();
+        AdminApiAccessTokenProvider.AddHttpClient(services);
+        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        using HttpClient client = serviceProvider.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(AdminApiAccessTokenProvider));
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["client_secret"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)),
+        });
+
+        using HttpResponseMessage response = await client.PostAsync(
+            $"http://127.0.0.1:{sourcePort}/token",
+            form);
+        await responder;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
+    }
+
     private static IConfiguration CreateDevelopmentConfig()
         => new ConfigurationBuilder().AddInMemoryCollection(CreateConfigValues()).Build();
 
@@ -382,6 +458,15 @@ public class AdminApiAccessTokenProviderRoleTests {
             factory);
     }
 
+    private static int GetAvailablePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
+    }
+
     private static IHttpClientFactory CreateHttpClientFactory() {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         _ = factory.CreateClient(Arg.Any<string>()).Returns(new HttpClient());
@@ -405,14 +490,21 @@ public class AdminApiAccessTokenProviderRoleTests {
     private sealed class RecordingTokenHandler : HttpMessageHandler
     {
         private readonly string _discoveryIssuer;
+        private readonly string? _discoveryResponseJson;
+        private readonly string _discoveryTokenEndpoint;
         private readonly string _tokenResponseJson;
 
         public RecordingTokenHandler(
             string? discoveryIssuer = null,
+            string? discoveryTokenEndpoint = null,
+            string? discoveryResponseJson = null,
             string? tokenResponseJson = null)
         {
             AccessToken = Guid.NewGuid().ToString("N");
             _discoveryIssuer = discoveryIssuer ?? "https://identity.example.test/tenant";
+            _discoveryTokenEndpoint = discoveryTokenEndpoint
+                ?? "https://identity.example.test/tenant/oauth/token";
+            _discoveryResponseJson = discoveryResponseJson;
             _tokenResponseJson = tokenResponseJson
                 ?? JsonSerializer.Serialize(new { access_token = AccessToken, expires_in = 3600 });
         }
@@ -441,10 +533,10 @@ public class AdminApiAccessTokenProviderRoleTests {
             {
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = new StringContent(JsonSerializer.Serialize(new
+                    Content = new StringContent(_discoveryResponseJson ?? JsonSerializer.Serialize(new
                     {
                         issuer = _discoveryIssuer,
-                        token_endpoint = "https://tokens.example.test/oauth/token",
+                        token_endpoint = _discoveryTokenEndpoint,
                     })),
                 };
             }

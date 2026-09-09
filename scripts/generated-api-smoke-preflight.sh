@@ -14,8 +14,8 @@
 #   scripts/generated-api-smoke-preflight.sh --start-control-plane  # (explicit) start placement/scheduler if missing
 #   scripts/generated-api-smoke-preflight.sh --help
 #
-# Overrides (used only as a fallback when `aspire describe` output is unavailable):
-#   --sample-api-url URL         Base URL of the generated Sample API host (e.g. http://localhost:5016)
+# Overrides (validated against the described topology):
+#   --sample-api-url URL         Described loopback HTTPS base URL of the generated Sample API host
 #   --eventstore-dapr-port N     DAPR HTTP port of the eventstore sidecar (default 3501)
 #   --sample-api-dapr-port N     DAPR HTTP port of the sample-api sidecar
 #   --apphost PATH               AppHost project/dir for `aspire describe` (default: src/Hexalith.EventStore.AppHost)
@@ -310,7 +310,7 @@ discover_topology() {
   local out
   out="$(timeout 45 aspire describe --format Json --non-interactive --nologo --apphost "${APPHOST}" 2>/dev/null)"
   if [[ -z "${out}" ]] || ! printf '%s' "${out}" | jq -e . >/dev/null 2>&1; then
-    record aspire topology not-running "No running AppHost described. Start it: 'EnableKeycloak=false aspire run --project ${DEFAULT_APPHOST}'"
+    record aspire topology not-running "No running AppHost described. Start it: 'EnableKeycloak=false aspire run --apphost ${DEFAULT_APPHOST}'"
     return 1
   fi
   TOPOLOGY_JSON="${out}"
@@ -336,11 +336,16 @@ discover_topology() {
   local r topo_broken=0
   for r in eventstore sample sample-api; do
     if printf '%s\n' "${names}" | grep -qx "${r}"; then
-      local url; url="$(topology_http_url "${r}")"
+      local url
+      if [[ "${r}" == "sample-api" ]]; then
+        url="$(topology_https_url "${r}")"
+      else
+        url="$(topology_http_url "${r}")"
+      fi
       if [[ -n "${url}" ]]; then
-        record aspire "resource:${r}" ok "running, http ${url}"
+        record aspire "resource:${r}" ok "running, endpoint ${url}"
       elif [[ "${r}" == "sample-api" ]]; then
-        record aspire "resource:${r}" fail "running but no published HTTP endpoint (generated API cannot be reached over HTTP)"
+        record aspire "resource:${r}" fail "running but no published HTTPS endpoint (generated API cannot be reached safely)"
         escalate "${EX_NO_TOPOLOGY}" topology-not-running
         topo_broken=1
       else
@@ -384,6 +389,60 @@ topology_http_url() {
   printf '%s' "${TOPOLOGY_JSON}" | jq -r --arg n "${name}" '
     .resources[]? | select((.displayName // "") == $n)
     | ( [ .urls[]? | select(.name=="http") | .url ] | .[0] // empty )' 2>/dev/null | head -n1
+}
+
+# Prints the resource's published HTTPS endpoint URL, or empty.
+topology_https_url() {
+  local name="$1"
+  printf '%s' "${TOPOLOGY_JSON}" | jq -r --arg n "${name}" '
+    .resources[]? | select((.displayName // "") == $n)
+    | ( [ .urls[]? | select(.name=="https") | .url ] | .[0] // empty )' 2>/dev/null | head -n1
+}
+
+# Normalizes one credential destination and accepts only a query-free loopback HTTPS base URL.
+normalize_loopback_https_url() {
+  python3 - "$1" <<'PY'
+import sys
+from urllib.parse import urlsplit
+
+try:
+    parsed = urlsplit(sys.argv[1].strip())
+    host = (parsed.hostname or "").lower()
+    port = parsed.port
+except ValueError:
+    raise SystemExit(1)
+
+if (
+    parsed.scheme.lower() != "https"
+    or host not in {"localhost", "127.0.0.1", "::1"}
+    or parsed.username is not None
+    or parsed.password is not None
+    or parsed.query
+    or parsed.fragment
+):
+    raise SystemExit(1)
+
+host_text = f"[{host}]" if ":" in host else host
+port_text = f":{port}" if port is not None else ""
+path = parsed.path.rstrip("/")
+print(f"https://{host_text}{port_text}{path}", end="")
+PY
+}
+
+# Resolves the smoke destination only when it is exactly the loopback HTTPS endpoint owned by the
+# described sample-api resource. An explicit URL narrows user intent; it never expands trust.
+resolve_sample_api_smoke_base() {
+  local described normalized_described normalized_explicit
+  described="$(topology_https_url sample-api)"
+  normalized_described="$(normalize_loopback_https_url "${described}")" || return 1
+  if [[ -z "${SAMPLE_API_URL}" ]]; then
+    printf '%s' "${normalized_described}"
+    return 0
+  fi
+
+  normalized_explicit="$(normalize_loopback_https_url "${SAMPLE_API_URL}")" || return 1
+  [[ "${normalized_explicit}" == "${normalized_described}" ]] || return 1
+  printf '%s' "${normalized_described}"
 }
 
 # Prints a resource's DAPR sidecar HTTP port from its Aspire environment, or empty.
@@ -502,12 +561,9 @@ classify_smoke_failure() {
 
 run_sample_smoke() {
   section generated-api
-  local base="${SAMPLE_API_URL}"
-  if [[ -z "${base}" ]]; then
-    base="$(topology_http_url sample-api)"
-  fi
-  if [[ -z "${base}" ]]; then
-    record generated-api endpoint fail "Sample API base URL unknown. Provide --sample-api-url or ensure aspire describe publishes an HTTP endpoint."
+  local base
+  if ! base="$(resolve_sample_api_smoke_base)"; then
+    record generated-api endpoint fail "Sample API destination must exactly match the described sample-api loopback HTTPS endpoint."
     escalate "${EX_NO_TOPOLOGY}" topology-not-running
     return
   fi
@@ -523,10 +579,9 @@ run_sample_smoke() {
   local cmd_url="${base}/api/${SMOKE_TENANT}/counter/${SMOKE_COUNTER}/increment"
   local qry_url="${base}/api/${SMOKE_TENANT}/counter/${SMOKE_COUNTER}"
 
-  # The generated API host enforces UseHttpsRedirection, so an HTTP call returns 307 -> HTTPS on a
-  # different port. -L follows it; --location-trusted re-sends the bearer across the port change
-  # (curl otherwise drops Authorization on a cross-origin redirect); -k accepts the dev cert.
-  local -a curlopts=(-sS -k -L --location-trusted -m 20)
+  # The bearer is sent only to the HTTPS endpoint owned by the described sample-api resource.
+  # Redirects are deliberately not followed, so the credential cannot be replayed to another origin.
+  local -a curlopts=(-sS -k --proto '=https' --max-redirs 0 -m 20)
 
   # --- Command: POST increment -> expect 202 + Location + Retry-After ---
   local hdr_file status location retry_after
@@ -715,7 +770,7 @@ main() {
   # 2) Aspire topology — read-only discovery.
   if ! discover_topology; then
     escalate "${EX_NO_TOPOLOGY}" topology-not-running
-    finalize "Start the local topology: 'EnableKeycloak=false aspire run --project ${DEFAULT_APPHOST}', wait for resources to be healthy, then re-run."
+    finalize "Start the local topology: 'EnableKeycloak=false aspire run --apphost ${DEFAULT_APPHOST}', wait for resources to be healthy, then re-run."
   fi
 
   # 3) DAPR sidecar diagnostics.
@@ -743,7 +798,7 @@ main() {
     ok)                     finalize "Preflight clean. Safe to treat any remaining generated-API failure as a genuine product defect." ;;
     generated-api-failure)  finalize "Generated API returned a product failure above — investigate the generated controllers/gateway, not the environment." ;;
     state-evidence-failure) finalize "Smoke responses were accepted but persisted state contradicts them — investigate the domain-service write path." ;;
-    topology-not-running)   finalize "Start the local topology: 'EnableKeycloak=false aspire run --project ${DEFAULT_APPHOST}', wait for resources to be healthy, then re-run." ;;
+    topology-not-running)   finalize "Start the local topology: 'EnableKeycloak=false aspire run --apphost ${DEFAULT_APPHOST}', wait for resources to be healthy, then re-run." ;;
     blocked-environment)    finalize "An environment/auth condition was detected during diagnostics (control plane, access control, or unreachable host) — resolve it and re-run; the failure is not a generated-API product defect. See docs/guides/troubleshooting-dapr-actor-placement.md and docs/brownfield/development-guide.md." ;;
     *)                      finalize "Review the findings above." ;;
   esac

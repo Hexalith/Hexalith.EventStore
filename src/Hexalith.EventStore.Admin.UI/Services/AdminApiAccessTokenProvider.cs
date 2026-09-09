@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public sealed class AdminApiAccessTokenProvider {
     private const string ClientCredentialsGrantType = "client_credentials";
+    private const int MaxOidcResponseBytes = 64 * 1024;
     private const string PasswordGrantType = "password";
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;
@@ -21,6 +22,15 @@ public sealed class AdminApiAccessTokenProvider {
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private int _tokenVersion;
     private AccessTokenCacheEntry? _cachedToken;
+
+    public static void AddHttpClient(IServiceCollection services) {
+        ArgumentNullException.ThrowIfNull(services);
+        _ = services.AddHttpClient(nameof(AdminApiAccessTokenProvider), static client =>
+            client.MaxResponseContentBufferSize = MaxOidcResponseBytes)
+            .ConfigurePrimaryHttpMessageHandler(static () => new HttpClientHandler {
+                AllowAutoRedirect = false,
+            });
+    }
 
     public AdminApiAccessTokenProvider(
         IConfiguration configuration,
@@ -109,11 +119,19 @@ public sealed class AdminApiAccessTokenProvider {
             cancellationToken).ConfigureAwait(false);
         using var form = new FormUrlEncodedContent(formValues);
 
-        using HttpResponseMessage response = await client.PostAsync(tokenEndpoint, form, cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint) {
+            Content = form,
+        };
+        using HttpResponseMessage response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken).ConfigureAwait(false);
         _ = response.EnsureSuccessStatusCode();
 
-        using JsonDocument document = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("OIDC token response was empty.");
+        using JsonDocument document = await ReadBoundedJsonAsync(
+            response.Content,
+            "OIDC token response",
+            cancellationToken).ConfigureAwait(false);
 
         string? token = document.RootElement.TryGetProperty("access_token", out JsonElement tokenElement)
             ? tokenElement.GetString()
@@ -231,12 +249,16 @@ public sealed class AdminApiAccessTokenProvider {
         Uri discoveryEndpoint = new(
             authorityUri.AbsoluteUri.TrimEnd('/') + "/.well-known/openid-configuration",
             UriKind.Absolute);
-        using HttpResponseMessage response = await client.GetAsync(discoveryEndpoint, cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, discoveryEndpoint);
+        using HttpResponseMessage response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken).ConfigureAwait(false);
         _ = response.EnsureSuccessStatusCode();
-        using JsonDocument document = await response.Content
-            .ReadFromJsonAsync<JsonDocument>(cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new InvalidOperationException("OIDC discovery response was empty.");
+        using JsonDocument document = await ReadBoundedJsonAsync(
+            response.Content,
+            "OIDC discovery response",
+            cancellationToken).ConfigureAwait(false);
         string? issuer = document.RootElement.TryGetProperty("issuer", out JsonElement issuerElement)
             ? issuerElement.GetString()
             : null;
@@ -260,7 +282,43 @@ public sealed class AdminApiAccessTokenProvider {
             throw new InvalidOperationException("OIDC discovery did not contain a non-blank token_endpoint.");
         }
 
-        return ValidateEndpoint(tokenEndpoint, allowHttp, "discovery token_endpoint", allowQuery: true);
+        Uri discoveredTokenEndpoint = ValidateEndpoint(
+            tokenEndpoint,
+            allowHttp,
+            "discovery token_endpoint",
+            allowQuery: true);
+        if (!HasSameOrigin(authorityUri, discoveredTokenEndpoint)) {
+            throw new InvalidOperationException(
+                "OIDC discovery token_endpoint must remain within the configured Authority origin. "
+                + "Configure EventStore:Authentication:TokenEndpoint explicitly for a different trusted origin.");
+        }
+
+        return discoveredTokenEndpoint;
+    }
+
+    private static bool HasSameOrigin(Uri left, Uri right)
+        => string.Equals(left.Scheme, right.Scheme, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(left.IdnHost, right.IdnHost, StringComparison.OrdinalIgnoreCase)
+            && left.Port == right.Port;
+
+    private static async Task<JsonDocument> ReadBoundedJsonAsync(
+        HttpContent content,
+        string responseName,
+        CancellationToken cancellationToken) {
+        if (content.Headers.ContentLength is long contentLength
+            && contentLength > MaxOidcResponseBytes) {
+            throw new InvalidOperationException($"{responseName} exceeded the permitted size.");
+        }
+
+        try {
+            await content.LoadIntoBufferAsync(MaxOidcResponseBytes, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException exception) {
+            throw new InvalidOperationException($"{responseName} exceeded the permitted size.", exception);
+        }
+
+        using Stream stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private static string NormalizeEndpointForComparison(Uri endpoint)

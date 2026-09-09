@@ -1,24 +1,24 @@
 {
   "schema": "hexalith.eventstore.story-4-15-successor-source-only-handoff/v3",
-  "assembledAt": "2026-09-09T17:30:41Z",
+  "assembledAt": "2026-09-09T20:41:15Z",
   "story": "4.15",
   "predecessor": {
     "completedV2ClosureCommit": "83b32fcfad7bb608098aebccdc15002636ffb431",
     "reviewSubjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
     "closureManifestSha256": "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
   },
-  "reviewSubjectSha256": "84fdda8013d4c191aaa2758c80365fe798d9c09e9049a6ba0032bc89fd04a51d",
+  "reviewSubjectSha256": "90803fdf18d4fa78c7c25d6752ebf04c7f951dd0163368cafc7a7fdd452e89c8",
   "limitationsSha256": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
   "reviewReceipts": {
-    "architecture": "910fda8c5e41179c5014bfdf5464c21f96a49cd5bb6da773ad0b0ba748c11178",
-    "security": "44557f469174ad973dc9553f76a754c25c71405a21199c6439f9d603e087e307",
-    "test": "11c2038e151fadd427ed2f838c116516445264611d052678f60ff81e8b83e588"
+    "architecture": "379f3911e787f491ad37f34e16746e8857926b5f0c00541fe99a3f6f66e93dd0",
+    "security": "45f9d02f9ab7ca2b9c9198ec3409c3ceb0820e2ec00bb04dcc4783356d128d1a",
+    "test": "a32e001b4fa08bb60ec9d8575878a21c4e88070144988df398e72064b0f0e2f0"
   },
   "consumerInstructions": {
     "mode": "source-only",
     "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
     "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
-    "historicalRule": "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable historical artifacts and Git snapshots.",
+    "historicalRule": "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; a shallow clone that lacks commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 fails closed.",
     "currentRule": "Treat current source as closed only when this complete v3 successor validates against the current candidate bytes."
   },
   "authority": {

@@ -106,6 +106,7 @@ public sealed partial class SecretsProtectionTests
             new string(['m', 'o', 'c', 'k', '-', 't', 'o', 'k', 'e', 'n']),
             new string(['!']),
             new string(['+', '-', '.', '_', '~']),
+            "/" + RandomSecret().TrimEnd('=') + "==",
             new string(['n', 'u', 'l', 'l']),
         ];
 
@@ -315,6 +316,32 @@ public sealed partial class SecretsProtectionTests
             .ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(".playwright-cli/traces/session.json")]
+    [InlineData(".playwright-cli/traces/page.html")]
+    [InlineData(".playwright-cli/traces/style.css")]
+    [InlineData(".playwright-cli/traces/app.js")]
+    [InlineData(".playwright-cli/traces/output.txt")]
+    [InlineData(".playwright-cli/traces/resource.dat")]
+    public void DecodableTrackedTraceResources_AreRecoveredAndScanned(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        string content = "\"" + "Bearer /" + RandomSecret().TrimEnd('=') + "==\"";
+
+        IsExplicitGeneratedPath(path).ShouldBeFalse();
+        string? recovered = DecodeTrackedText(path, Encoding.UTF8.GetBytes(content));
+
+        recovered.ShouldBe(content);
+        FindViolations(path, recovered).ShouldBe([$"{path}:1"]);
+    }
+
+    [Fact]
+    public void TrackedTraceBinaryExclusion_RequiresAKnownContentSignature()
+        => DecodeTrackedText(
+            ".playwright-cli/traces/resource.dat",
+            [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+            .ShouldBeNull();
+
     [Fact]
     public void RuntimeDefaultsAndLiteralOperands_AreRejectedRegardlessOfLength()
     {
@@ -459,7 +486,25 @@ public sealed partial class SecretsProtectionTests
     private static IEnumerable<string> FindViolations(string relativePath, string content)
     {
         var violationLines = new SortedSet<int>();
-        void Record(int index, string _) => violationLines.Add(LineNumber(content, index));
+        void Record(int index, string category)
+        {
+            _ = violationLines.Add(LineNumber(content, index));
+            if (Environment.GetEnvironmentVariable("HEXALITH_SCANNER_CATEGORY_DIAGNOSTIC") == "1"
+                && relativePath.StartsWith(".playwright-cli/traces/", StringComparison.Ordinal))
+            {
+                string categoryName = category.Split(':')[0];
+                string safeDetail = string.Empty;
+                if (category.StartsWith("assignment:", StringComparison.Ordinal))
+                {
+                    int separator = category.IndexOf('=', StringComparison.Ordinal);
+                    string assignmentName = separator > 11 ? category[11..separator] : "unknown";
+                    string assignmentValue = separator >= 0 ? category[(separator + 1)..] : string.Empty;
+                    safeDetail = $":name={assignmentName}:value-length={assignmentValue.Length}:bare-identifier={SourceIdentifierPattern().IsMatch(assignmentValue)}";
+                }
+
+                Console.Error.WriteLine($"{relativePath}:{LineNumber(content, index)}:{categoryName}{safeDetail}");
+            }
+        }
 
         foreach (Match match in CompactJwtPattern().Matches(content))
         {
@@ -852,8 +897,7 @@ public sealed partial class SecretsProtectionTests
     }
 
     private static bool IsExplicitGeneratedPath(string path)
-        => ExplicitUiTestArtifactPathPattern().IsMatch(path)
-            || path.StartsWith(".playwright-cli/traces/", StringComparison.Ordinal);
+        => ExplicitUiTestArtifactPathPattern().IsMatch(path);
 
     private static bool TryDecodeBomlessUtf16(byte[] bytes, out string text)
     {
@@ -1816,9 +1860,12 @@ public sealed partial class SecretsProtectionTests
     {
         Group token = match.Groups["token"];
         int afterToken = token.Index + token.Length;
-        return token.Value.Equals("realm", StringComparison.OrdinalIgnoreCase)
+        return token.Value.Equals("realm=", StringComparison.OrdinalIgnoreCase)
             && afterToken < content.Length
-            && content[afterToken] == '=';
+            && (content[afterToken] is '\'' or '"'
+                || (content[afterToken] == '\\'
+                    && afterToken + 1 < content.Length
+                    && content[afterToken + 1] is '\'' or '"'));
     }
 
     private static bool IsBearerSourceExpression(string content, Match match)
@@ -2253,7 +2300,7 @@ public sealed partial class SecretsProtectionTests
     [GeneratedRegex(@"-----BEGIN (?<label>[A-Z0-9 ]*PRIVATE KEY)-----[\s\S]+?-----END \k<label>-----", RegexOptions.CultureInvariant)]
     private static partial Regex PrivateKeyPattern();
 
-    [GeneratedRegex(@"\bBearer[ \t]+(?<token>[!#$%&'*+\-.^_`|~0-9A-Za-z]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"\bBearer[ \t]+(?<token>[!#$%&'*+\-./^_`|~0-9A-Za-z]+=*)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex BearerCredentialPattern();
 
     [GeneratedRegex(

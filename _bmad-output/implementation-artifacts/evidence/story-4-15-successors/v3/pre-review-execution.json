@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-successor-pre-review-execution/v3",
-  "executedAt": "2026-09-09T17:30:35Z",
+  "executedAt": "2026-09-09T20:53:21Z",
   "scope": "receipt-independent-candidate",
   "candidateInputs": {
     "historicalSdkSuccessor": {
@@ -18,11 +18,11 @@
     "sourceTransitions": {
       "tools/validate-oq8-platform-evidence.py": {
         "predecessorSha256": "8934e82022535a3f1d4855202e8008341f99f0abce0331ab5c59616ce3ea8767",
-        "successorSha256": "a0b24951f1e988da9f7923daf6f5a162fc7e4006c3cdfc9e870fc53b08a6e0fc"
+        "successorSha256": "55b0357e00613c09b75ecb0b36d12fd2e04b2bc19f13965ecfca423b75ff3654"
       },
       "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": {
         "predecessorSha256": "434c1ad3ecb7d0bfe7390ce24b47919550b434c5f69db35d4e5b983d9b5864e0",
-        "successorSha256": "d6b1e418330e0f7dcd9abfac5890997715d6ee8eb7ad409f5435cd8abdd18a17"
+        "successorSha256": "d7bceb301fc5c2dbbd9e52f1344773daed577e7e7181802459d01a820fb946aa"
       },
       "docs/ci.md": {
         "predecessorSha256": "f37a5f0ef6058a339b7f5a47375ab9bed195fe548969523a6155e77765fea46c",
@@ -35,14 +35,14 @@
       "docs/ci.md": "f429f4cb973ff64ebc2db856fcceaaf2cc1956d17eba63e7a56e13a4a5e02fd3",
       "global.json": "715a0895da9db82e2370e7445c371c39e3a2d032fdcf7dfbc95f9fcb27ddc7c2",
       "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed",
-      "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "d6b1e418330e0f7dcd9abfac5890997715d6ee8eb7ad409f5435cd8abdd18a17",
+      "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "d7bceb301fc5c2dbbd9e52f1344773daed577e7e7181802459d01a820fb946aa",
       "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs": "d87abfcb82c7fc1b9dad1cbb26720f5c637a5dba6a1c4a2e8549d8c65e44a70b",
       "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "830109d2e985048c1b5b1ab103c686541b714be58719a63bce998dd63f56a687",
       "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs": "36891fd8689ec316ab925d1fb1114eeb54b50499fdfe683cd5ebaf4b7228668c",
       "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "76f45fa2102df293c5d28390383b8001cfa47610412262c9c3626c160694020d",
       "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs": "cbc1be14c3a8c9c58c9951059803a706ab3a54e0ccf130db89f3609c245ed577",
       "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "8bf77620e33501409bc890d5983e57914087bbc469a8be05208a37f5ddd59948",
-      "tools/validate-oq8-platform-evidence.py": "a0b24951f1e988da9f7923daf6f5a162fc7e4006c3cdfc9e870fc53b08a6e0fc"
+      "tools/validate-oq8-platform-evidence.py": "55b0357e00613c09b75ecb0b36d12fd2e04b2bc19f13965ecfca423b75ff3654"
     }
   },
   "commands": [

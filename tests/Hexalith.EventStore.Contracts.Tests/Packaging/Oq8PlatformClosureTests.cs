@@ -341,6 +341,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("test-verification-failed", "Story 4.15 v3 test review verification oq8-platform-closure:failed count drift")]
     [InlineData("test-verification-skipped", "Story 4.15 v3 test review verification oq8-platform-closure:skipped count drift")]
     [InlineData("contracts-full-failed", "Story 4.15 v3 test review verification contracts-full:failed count drift")]
+    [InlineData("contracts-full-skipped", "Story 4.15 v3 test review verification contracts-full:skipped count drift")]
     [InlineData("consumer-install-command-drift", "Story 4.15 v3 consumer instructions drift")]
     [InlineData("successor-selection-drift", "Story 4.15 successor selection drift")]
     public void V3SuccessorMutationsFailClosed(string mutation, string expected)
@@ -442,6 +443,38 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain("Story 4.15 successor source identity selection drift");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies pre-review candidate validation rejects a missing, symlinked, authority-overstating,
+    /// or historically drifted successor selector.
+    /// </summary>
+    /// <param name="mutation">The selector mutation.</param>
+    /// <param name="expected">The expected failure text.</param>
+    [Theory]
+    [InlineData("symlink", "Story 4.15 successor selector must be a regular non-symlink file")]
+    [InlineData("missing", "Story 4.15 successor selector must be a regular non-symlink file")]
+    [InlineData("authority", "External authority overstated: releaseApproved")]
+    [InlineData("v1-packet", "Story 4.15 successor historical selection drift")]
+    [InlineData("historical", "Story 4.15 successor historical selection drift")]
+    public void PreReviewRejectsCorruptedSelector(string mutation, string expected)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        try
+        {
+            MutateSuccessorSelector(fixture, mutation);
+
+            (int exitCode, string output) = RunValidator(root, fixture, preReview: true);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(expected);
             output.ShouldNotContain("Traceback");
         }
         finally
@@ -3623,6 +3656,9 @@ public sealed class Oq8PlatformClosureTests
             case "contracts-full-failed":
                 MutateV3TestVerification(successor, command => command["failed"] = 1, "contracts-full");
                 break;
+            case "contracts-full-skipped":
+                MutateV3TestVerification(successor, command => command["skipped"] = 1, "contracts-full");
+                break;
             case "sdk-gate-input-drift":
                 File.AppendAllText(Path.Combine(fixture, "global.json"), "\n");
                 break;
@@ -3667,6 +3703,23 @@ public sealed class Oq8PlatformClosureTests
                 string targetPath = selectorPath + ".target";
                 File.Move(selectorPath, targetPath);
                 CreateSymbolicLinkOrSkip(selectorPath, Path.GetFileName(targetPath), directory: false);
+                break;
+            }
+            case "missing":
+                File.Delete(selectorPath);
+                break;
+            case "authority":
+            {
+                JsonObject selector = LoadObject(selectorPath);
+                selector["authority"]!["releaseApproved"] = true;
+                WriteObject(selectorPath, selector);
+                break;
+            }
+            case "v1-packet":
+            {
+                JsonObject selector = LoadObject(selectorPath);
+                selector["historical"]!["v1Closure"]!["packetSha256"] = new string('0', 64);
+                WriteObject(selectorPath, selector);
                 break;
             }
             case "historical":

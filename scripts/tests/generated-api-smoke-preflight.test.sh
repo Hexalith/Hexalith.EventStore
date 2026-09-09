@@ -62,6 +62,26 @@ assert_eq "${JSON_MODE}" "1" "parse_args sets JSON_MODE"
 assert_eq "${CHECK_TENANTS}" "1" "parse_args sets CHECK_TENANTS"
 assert_eq "${SAMPLE_API_URL}" "http://localhost:5016" "parse_args captures --sample-api-url"
 
+printf '## sample API destination ownership\n'
+TOPOLOGY_JSON='{"resources":[{"displayName":"sample-api","urls":[{"name":"http","url":"http://localhost:5016"},{"name":"https","url":"https://localhost:7016/"}]}]}'
+SAMPLE_API_URL=""
+assert_eq "$(resolve_sample_api_smoke_base)" "https://localhost:7016" "described HTTPS endpoint is selected directly"
+SAMPLE_API_URL="https://localhost:7016/"
+assert_eq "$(resolve_sample_api_smoke_base)" "https://localhost:7016" "matching explicit described endpoint is accepted"
+SAMPLE_API_URL="https://localhost:7999"
+if resolve_sample_api_smoke_base >/dev/null; then
+  fail "unowned loopback explicit endpoint fails closed"
+else
+  ok "unowned loopback explicit endpoint fails closed"
+fi
+SAMPLE_API_URL="https://example.test:7016"
+if resolve_sample_api_smoke_base >/dev/null; then
+  fail "non-loopback explicit endpoint fails closed"
+else
+  ok "non-loopback explicit endpoint fails closed"
+fi
+SAMPLE_API_URL=""
+
 printf '## resolve_port\n'
 assert_eq "$(resolve_port 12345 6050 50005)" "12345" "explicit override wins"
 # No candidate reachable -> preferred default (first candidate).

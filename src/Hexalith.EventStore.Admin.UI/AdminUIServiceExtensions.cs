@@ -40,6 +40,7 @@ public static class AdminUIServiceExtensions {
         _ = builder.Services.AddScoped<AuthenticationStateProvider, TokenAuthenticationStateProvider>();
 
         // Admin API authentication for protected Admin.Server endpoints
+        AdminApiAccessTokenProvider.AddHttpClient(builder.Services);
         _ = builder.Services.AddScoped<AdminApiAccessTokenProvider>();
         _ = builder.Services.AddTransient<AdminApiAuthorizationHandler>();
 

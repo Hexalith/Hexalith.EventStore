@@ -41,21 +41,21 @@
   },
   "successor": {
     "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3",
-    "manifestSha256": "da07410227ac5a24c28d9d6260bc843c5e5ee2e09681ff0df1a358f1cce868e9",
+    "manifestSha256": "f5e5f83504f0f213f8e70e0b9f6e961d460f587d4a9fdf8ca94ad099f35be620",
     "files": {
       "limitations.json": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
-      "pre-review-execution.json": "479aae90fb069b090057b0e3e73373ad68fe9aa791e3fd0129b8e605769ed9a8",
-      "review-subject.json": "84fdda8013d4c191aaa2758c80365fe798d9c09e9049a6ba0032bc89fd04a51d",
-      "reviews/architecture.json": "910fda8c5e41179c5014bfdf5464c21f96a49cd5bb6da773ad0b0ba748c11178",
-      "reviews/security.json": "44557f469174ad973dc9553f76a754c25c71405a21199c6439f9d603e087e307",
-      "reviews/test.json": "11c2038e151fadd427ed2f838c116516445264611d052678f60ff81e8b83e588",
-      "source-artifact-identity.json": "df91150908ab527f915b39e1ac4abdf055ecbab9258766ff0b77145fcfa37856",
-      "source-only-handoff.json": "d57847f10aaaa8d8327c03b8a2ae4c181eee29b6e3d4026339774ae286e72859",
-      "validator-sha256.txt": "84865c010126e2b6d7b0481f1955863e86d01bf20e32361d0e8c952f64b62f43"
+      "pre-review-execution.json": "c3a7c9dadd9d3e15be1312e49303c79babe3db68319d212eb8bd1fa72d09abc0",
+      "review-subject.json": "90803fdf18d4fa78c7c25d6752ebf04c7f951dd0163368cafc7a7fdd452e89c8",
+      "reviews/architecture.json": "379f3911e787f491ad37f34e16746e8857926b5f0c00541fe99a3f6f66e93dd0",
+      "reviews/security.json": "45f9d02f9ab7ca2b9c9198ec3409c3ceb0820e2ec00bb04dcc4783356d128d1a",
+      "reviews/test.json": "a32e001b4fa08bb60ec9d8575878a21c4e88070144988df398e72064b0f0e2f0",
+      "source-artifact-identity.json": "bd23bc80a233205cd05825d6fa9f63c83b7831b6a05eac4313550a61e9bce09d",
+      "source-only-handoff.json": "f6f3aadfe99e88f9bcff6ae65c26e7cf2114a0d8e2118169730a2d617cc81763",
+      "validator-sha256.txt": "a2dd75ad32b80786740f45aaf221d3ed23b2ce8742469099b208262e7f5fe043"
     },
-    "sourceIdentitySha256": "df91150908ab527f915b39e1ac4abdf055ecbab9258766ff0b77145fcfa37856",
-    "reviewSubjectSha256": "84fdda8013d4c191aaa2758c80365fe798d9c09e9049a6ba0032bc89fd04a51d",
-    "handoffSha256": "d57847f10aaaa8d8327c03b8a2ae4c181eee29b6e3d4026339774ae286e72859"
+    "sourceIdentitySha256": "bd23bc80a233205cd05825d6fa9f63c83b7831b6a05eac4313550a61e9bce09d",
+    "reviewSubjectSha256": "90803fdf18d4fa78c7c25d6752ebf04c7f951dd0163368cafc7a7fdd452e89c8",
+    "handoffSha256": "f6f3aadfe99e88f9bcff6ae65c26e7cf2114a0d8e2118169730a2d617cc81763"
   },
   "authority": {
     "eventStorePlatformComplete": true,

@@ -297,6 +297,12 @@ var jwtAuthentication = new HexalithEventStoreJwtAuthenticationOptions {
     ExternalIssuer = builder.Configuration["Authentication:JwtBearer:Issuer"],
 };
 
+if (security is not null) {
+    ValidateLocalKeycloakAuthenticationContract(
+        configuredAudiences,
+        jwtAuthentication.AllowedAlgorithms);
+}
+
 if (security is not null || builder.ExecutionContext.IsPublishMode) {
     _ = eventStore.WithEventStoreJwtAuthentication(security, jwtAuthentication);
     _ = adminServer.WithEventStoreJwtAuthentication(security, jwtAuthentication);
@@ -489,6 +495,31 @@ static string[] ResolveConfiguredAudiences(
                 audiences.Add(trimmed);
             }
         }
+    }
+}
+
+static void ValidateLocalKeycloakAuthenticationContract(
+    IReadOnlyList<string> audiences,
+    IReadOnlyList<string> allowedAlgorithms) {
+    if (audiences.Count != 1
+        || !string.Equals(
+            audiences[0],
+            HexalithEventStoreSecurityOptions.DefaultAudience,
+            StringComparison.Ordinal)) {
+        throw new InvalidOperationException(
+            $"Local Keycloak supports exactly the '{HexalithEventStoreSecurityOptions.DefaultAudience}' audience. "
+            + "Use publish mode with an external identity provider for a different audience contract.");
+    }
+
+    string[] effectiveAlgorithms = allowedAlgorithms
+        .Select(static algorithm => algorithm?.Trim() ?? string.Empty)
+        .Distinct(StringComparer.Ordinal)
+        .ToArray();
+    if (effectiveAlgorithms.Length != 1
+        || !string.Equals(effectiveAlgorithms[0], "RS256", StringComparison.Ordinal)) {
+        throw new InvalidOperationException(
+            "Local Keycloak supports exactly the RS256 signing algorithm. "
+            + "Use publish mode with an external identity provider for a different algorithm contract.");
     }
 }
 

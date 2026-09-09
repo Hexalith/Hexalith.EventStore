@@ -293,8 +293,13 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
 V3_REVIEW_DATE = "2026-09-09"
-V3_FINAL_CLOSURE_TEST_COUNT = 398
-V3_FULL_CONTRACTS_TEST_COUNT = 1966
+V3_FINAL_CLOSURE_TEST_COUNT = 404
+V3_FULL_CONTRACTS_TEST_COUNT = 1970
+V3_CONSUMER_HISTORICAL_RULE = (
+    "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
+    "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
+    f"a shallow clone that lacks commit {LANDED_SOURCE} fails closed."
+)
 V3_TEST_RECEIPT_VERIFICATION = [
     ("oq8-platform-closure", V2_CLOSURE_COMMAND, V3_FINAL_CLOSURE_TEST_COUNT),
     ("contracts-full", V3_CONTRACTS_TEST_COMMAND, V3_FULL_CONTRACTS_TEST_COUNT),
@@ -3142,7 +3147,7 @@ def validate_v3_handoff(
             "mode": "source-only",
             "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
             "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
-            "historicalRule": "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable historical artifacts and Git snapshots.",
+            "historicalRule": V3_CONSUMER_HISTORICAL_RULE,
             "currentRule": "Treat current source as closed only when this complete v3 successor validates against the current candidate bytes.",
         },
         "Story 4.15 v3 consumer instructions drift",
@@ -3651,8 +3656,21 @@ def validate_pre_review_candidate() -> None:
 
 
 def validate_successor_selector_sdk_link(selector: dict[str, Any]) -> None:
+    validate_authority(selector.get("authority"))
     historical = selector.get("historical")
     require(isinstance(historical, dict), "Story 4.15 successor historical selection is missing")
+    v1_closure = historical.get("v1Closure")
+    require(isinstance(v1_closure, dict), "Story 4.15 successor historical v1 selection is missing")
+    require(
+        v1_closure.get("packetSha256") == PRIOR_PACKET_SHA256,
+        "Story 4.15 successor historical selection drift",
+    )
+    v2_successor = historical.get("v2Successor")
+    require(isinstance(v2_successor, dict), "Story 4.15 successor historical v2 selection is missing")
+    require(
+        v2_successor.get("manifestSha256") == V2_CLOSURE_MANIFEST_SHA256,
+        "Story 4.15 successor historical selection drift",
+    )
     sdk_successor = historical.get("sdkSuccessor")
     require(isinstance(sdk_successor, dict), "Story 4.15 successor historical SDK selection is missing")
     require(sdk_successor.get("directory") == SUCCESSOR_DIRECTORY, "Story 4.15 successor directory selection drift")

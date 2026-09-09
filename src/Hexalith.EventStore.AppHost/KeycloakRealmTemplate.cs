@@ -22,6 +22,9 @@ internal sealed class KeycloakRealmTemplate : IDisposable
     private static readonly Regex PlaceholderPattern = new(
         "__HEXALITH_[A-Z0-9_]+__",
         RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
+    private static readonly Regex TemporaryRealmFileNamePattern = new(
+        "^\\.hexalith-realm\\.json\\.[0-9a-f]{16}\\.tmp$",
+        RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     private static readonly IReadOnlyDictionary<string, string> ApprovedPathPlaceholders =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -242,10 +245,15 @@ internal sealed class KeycloakRealmTemplate : IDisposable
 
             using (cleanupLease)
             {
+                if (!HasValidOwnershipMarker(candidate))
+                {
+                    continue;
+                }
+
                 bool markerDeleted = false;
                 _ = DeleteOwnedDirectory(
                     candidate,
-                    GetCompletedRenderOwnedFiles(candidate),
+                    GetStaleRenderOwnedFiles(candidate),
                     requireMarker: true,
                     beforeDelete: null,
                     ref markerDeleted);
@@ -396,10 +404,7 @@ internal sealed class KeycloakRealmTemplate : IDisposable
 
         string markerPath = Path.Combine(directory, OwnerMarkerFileName);
         string leasePath = Path.Combine(directory, OwnerLeaseFileName);
-        if (requireMarker
-            && !markerDeleted
-            && (!File.Exists(markerPath)
-                || !string.Equals(File.ReadAllText(markerPath), OwnerMarker, StringComparison.Ordinal)))
+        if (requireMarker && !markerDeleted && !HasValidOwnershipMarker(directory))
         {
             return false;
         }
@@ -469,6 +474,22 @@ internal sealed class KeycloakRealmTemplate : IDisposable
             Path.Combine(directory, OwnerLeaseFileName),
             Path.Combine(directory, OwnerMarkerFileName),
         ];
+
+    private static IReadOnlyCollection<string> GetStaleRenderOwnedFiles(string directory)
+    {
+        var ownedFiles = new List<string>(GetCompletedRenderOwnedFiles(directory));
+        ownedFiles.AddRange(Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly)
+            .Where(path => TemporaryRealmFileNamePattern.IsMatch(Path.GetFileName(path))));
+        return ownedFiles;
+    }
+
+    private static bool HasValidOwnershipMarker(string directory)
+    {
+        string markerPath = Path.Combine(directory, OwnerMarkerFileName);
+        return File.Exists(markerPath)
+            && !IsReparsePoint(markerPath)
+            && string.Equals(File.ReadAllText(markerPath), OwnerMarker, StringComparison.Ordinal);
+    }
 
     private static bool IsReparsePoint(string path)
     {

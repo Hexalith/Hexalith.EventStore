@@ -112,6 +112,19 @@ public sealed class AppHostAuthenticationModelTests
                 environment["Authentication__JwtBearer__SigningKey"].ShouldBe(string.Empty);
             }
 
+            IReadOnlyDictionary<string, object> tenantsEnvironment = await GetEnvironmentAsync(
+                Project(builder, "tenants"),
+                builder.ExecutionContext).ConfigureAwait(true);
+            tenantsEnvironment["Authentication__JwtBearer__Audience"]
+                .ShouldBe(HexalithEventStoreSecurityOptions.DefaultAudience);
+            tenantsEnvironment["Authentication__JwtBearer__AllowedAlgorithms__0"].ShouldBe("RS256");
+            IReadOnlyDictionary<string, object> tenantsApiEnvironment = await GetEnvironmentAsync(
+                Project(builder, "tenants-api"),
+                builder.ExecutionContext).ConfigureAwait(true);
+            tenantsApiEnvironment["EventStore__Authentication__Audience"]
+                .ShouldBe(HexalithEventStoreSecurityOptions.DefaultAudience);
+            tenantsApiEnvironment["EventStore__Authentication__AllowedAlgorithms__0"].ShouldBe("RS256");
+
             foreach ((ProjectResource resource, IReadOnlyDictionary<string, object> environment) in
                 new[] { (sampleUi, sampleEnvironment), (adminUi, adminEnvironment) })
             {
@@ -164,6 +177,35 @@ public sealed class AppHostAuthenticationModelTests
         }
 
         Directory.Exists(ownedDirectory).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("Authentication__JwtBearer__Audience", "other-api", "exactly the 'hexalith-eventstore' audience")]
+    [InlineData("Authentication__JwtBearer__AllowedAlgorithms__0", "ES256", "exactly the RS256 signing algorithm")]
+    public async Task RunModel_WithLocalKeycloakContractMismatch_FailsDuringConstruction(
+        string key,
+        string value,
+        string expectedMessage)
+    {
+        Dictionary<string, string?> original = CaptureEnvironment();
+        try
+        {
+            ClearEnvironment();
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                "true");
+            Environment.SetEnvironmentVariable(key, value);
+
+            Exception exception = await Should.ThrowAsync<Exception>(() =>
+                DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_EventStore_AppHost>());
+
+            exception.ToString().ShouldContain(expectedMessage);
+        }
+        finally
+        {
+            RestoreEnvironment(original);
+        }
     }
 
     [Fact]

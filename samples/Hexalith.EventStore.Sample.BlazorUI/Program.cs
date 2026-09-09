@@ -19,6 +19,7 @@ builder.Services.AddFluentUIComponents();
 // Outbound bearer-token acquisition + attachment for calls to the protected EventStore gateway.
 // The UI host consumes EventStore through the platform gateway client; it exposes no REST endpoints
 // of its own, so no inbound authentication scheme is registered.
+EventStoreApiAccessTokenProvider.AddHttpClient(builder.Services);
 builder.Services.AddSingleton<EventStoreApiAccessTokenProvider>();
 builder.Services.AddTransient<EventStoreApiAuthorizationHandler>();
 

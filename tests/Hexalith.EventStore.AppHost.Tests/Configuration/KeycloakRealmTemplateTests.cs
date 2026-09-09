@@ -204,6 +204,7 @@ public sealed class KeycloakRealmTemplateTests
         string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
         string? importDirectory = null;
         string? unrelatedPath = null;
+        string? rendererTemporaryPath = null;
 
         try
         {
@@ -212,6 +213,7 @@ public sealed class KeycloakRealmTemplateTests
                 CreateCredentials(),
                 temporaryPath =>
                 {
+                    rendererTemporaryPath = temporaryPath;
                     importDirectory = Path.GetDirectoryName(temporaryPath);
                     unrelatedPath = Path.Combine(importDirectory!, "unrelated.txt");
                     File.WriteAllText(unrelatedPath, "unrelated");
@@ -221,8 +223,10 @@ public sealed class KeycloakRealmTemplateTests
 
             importDirectory.ShouldNotBeNull();
             unrelatedPath.ShouldNotBeNull();
+            rendererTemporaryPath.ShouldNotBeNull();
             Directory.Exists(importDirectory).ShouldBeTrue();
             File.Exists(unrelatedPath).ShouldBeTrue();
+            File.Exists(rendererTemporaryPath).ShouldBeFalse();
             File.Exists(Path.Combine(importDirectory, ".hexalith-owned")).ShouldBeTrue();
             File.Exists(Path.Combine(importDirectory, ".hexalith-owner-lease")).ShouldBeTrue();
         }
@@ -337,6 +341,73 @@ public sealed class KeycloakRealmTemplateTests
         finally
         {
             renderedRealm?.Dispose();
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CleanupStaleOwnedRunDirectories_WhenInterruptedTemporaryRealmIsStale_DeletesTheExactTemporaryPath()
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        string runDirectory = Path.Combine(temporaryRoot, "run-0123456789abcdef01234567");
+        string temporaryRealmPath = Path.Combine(
+            runDirectory,
+            ".hexalith-realm.json.0123456789abcdef.tmp");
+        Directory.CreateDirectory(runDirectory);
+        File.WriteAllText(Path.Combine(runDirectory, ".hexalith-owned"), "hexalith-eventstore-keycloak-v1");
+        File.WriteAllText(Path.Combine(runDirectory, ".hexalith-owner-lease"), "inactive");
+        File.WriteAllText(temporaryRealmPath, "{}");
+        Directory.SetLastWriteTimeUtc(runDirectory, DateTime.UtcNow.AddDays(-2));
+
+        try
+        {
+            KeycloakRealmTemplate.CleanupStaleOwnedRunDirectories(
+                temporaryRoot,
+                DateTimeOffset.UtcNow.AddDays(-1));
+
+            File.Exists(temporaryRealmPath).ShouldBeFalse();
+            Directory.Exists(runDirectory).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("altered-owner-marker")]
+    public void CleanupStaleOwnedRunDirectories_WhenMarkerIsMissingOrAltered_RefusesTemporaryRealmCleanup(
+        string? marker)
+    {
+        string testDirectory = CreateTestDirectory();
+        string temporaryRoot = Path.Combine(testDirectory, "temporary-root");
+        string runDirectory = Path.Combine(temporaryRoot, "run-fedcba9876543210fedcba98");
+        string temporaryRealmPath = Path.Combine(
+            runDirectory,
+            ".hexalith-realm.json.fedcba9876543210.tmp");
+        Directory.CreateDirectory(runDirectory);
+        if (marker is not null)
+        {
+            File.WriteAllText(Path.Combine(runDirectory, ".hexalith-owned"), marker);
+        }
+
+        File.WriteAllText(Path.Combine(runDirectory, ".hexalith-owner-lease"), "inactive");
+        File.WriteAllText(temporaryRealmPath, "{}");
+        Directory.SetLastWriteTimeUtc(runDirectory, DateTime.UtcNow.AddDays(-2));
+
+        try
+        {
+            KeycloakRealmTemplate.CleanupStaleOwnedRunDirectories(
+                temporaryRoot,
+                DateTimeOffset.UtcNow.AddDays(-1));
+
+            File.Exists(temporaryRealmPath).ShouldBeTrue();
+            Directory.Exists(runDirectory).ShouldBeTrue();
+        }
+        finally
+        {
             Directory.Delete(testDirectory, recursive: true);
         }
     }
