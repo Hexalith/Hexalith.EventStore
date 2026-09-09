@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-09-08
+# last_updated: 2026-09-09
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -54,12 +54,12 @@
 # After ANY comment edit in this file, run:
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
-generated: '07-05-2026 20:01'
-last_updated: '09-08-2026 22:43'
+generated: '2026-07-05T20:01:46+02:00'
+last_updated: '2026-09-09'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
-story_location: 
+story_location:
   /home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts
 
 development_status:
@@ -82,7 +82,7 @@ development_status:
   1-16-complete-projection-freshness-lifecycle: done
   1-17-asynchronous-multi-projection-dispatch: done
   1-18-projection-handler-delivery-idempotency: done
-  # >>> GUARDED BLOCK -- DO NOT EDIT THE NEXT 5 LINES <<<
+  # >>> GUARDED BLOCK -- THE 5 PROTECTED LINES BEGIN AFTER THIS NOTICE, AT '1-19-' <<<
   # Those 5 lines are the declared output of the frozen awk transform in
   # 1-20-owner-approved-parity-closure-proof-packet.md, and
   # ProofPacketValidatorIntegrityTests asserts them as ONE exact, ordered, CONTIGUOUS
@@ -110,7 +110,7 @@ development_status:
   2-9-generated-command-status-location-policy: done
   2-10-outbound-dapr-routing-header-ownership: done
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
-  2-12-tenants-runtime-identity-adoption-and-package-mode-validatio: done
+  2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
   epic-2-retrospective: done
 
   epic-3: in-progress
@@ -149,6 +149,7 @@ development_status:
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
   3-15-corrected-deployed-runtime-parity-closure: in-progress
+  # >>> END GUARDED COMMENTS <<<
   # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
   # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
   # it excludes non-Hexalith, .NET and Aspire upgrades, which epics.md:2849 requires.
@@ -168,9 +169,23 @@ development_status:
   # review loop 5; the block is external operator approval, not development work.
   4-6-global-position-sharding-spec-renegotiation: awaiting-operator
   # Coordinated Tenants follow-up only; EventStore platform prerequisite is Story 1.2.
-  4-7-tenants-query-provenance-follow-up: done
+  # Corrected 2026-09-09 (code review, Story 4.15 Group C). The row read 'done'
+  # while spec-4-7 frontmatter records status: 'in-progress'. The spec is the
+  # correct side: the Story 4.7 review closed at pass 6 on 2026-09-06 and
+  # deliberately left the story in-progress with 7 patches unapplied. This key is
+  # not in the OQ8 validator's pinned status map, so nothing caught the drift.
+  4-7-tenants-query-provenance-follow-up: in-progress
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
+  # Stories 4.9 and 4.10 are ledger-only: they were delivered under the Story 4.8
+  # durable-admission evidence ledger and have no separate spec-4-9-*/spec-4-10-*
+  # artifact. Recorded 2026-09-09 (code review, Story 4.15 Group C) so the absence
+  # is an explicit disposition rather than a silent gap. Note the asymmetry: the
+  # OQ8 validator MANDATES both rows be 'done' (validate-oq8-platform-evidence.py
+  # :3527-3528) while its story_specs frontmatter check covers only 4.11-4.15
+  # (:3539-3544), so these two children are asserted hardest and verified least.
+  # Do not synthesise retroactive spec files to close this -- that manufactures
+  # evidence, which the frozen Story 4.15 spec forbids.
   4-9-trusted-admission-contract-and-protected-identity: done
   4-10-digest-directory-rotation-and-key-retirement: done
   4-11-admission-state-machine-and-current-fence-enforcement: done
@@ -421,7 +436,11 @@ action_items:
       removing it from Epic 3. The 2026-09-06 chore spec does not satisfy its acceptance
       criteria."
     owner: "John (Product Manager)"
-    status: open
+    status: done
+    note: "Closed 2026-09-09 (code review, Story 4.15 Group C): the
+      3-16-latest-compatible-dependency-and-root-submodule-refresh row is present in
+      development_status with status backlog, and its comment records why the
+      2026-09-06 chore does not satisfy the acceptance criteria."
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
   - id: "epic-3-retro-item-22-reconcile-story-3-15-s-done-status-with"
     epic: 3
@@ -433,10 +452,14 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
   - id: "epic-3-retro-item-23-fix-the-red-contracts-tests-build-at-hea"
     epic: 3
-    action: "Fix the red Contracts.Tests build at HEAD: restore the two sprint-status
-      comment lines deleted by d45206f7, or rebind the two guards that assert on them."
+    action: "Fix the red Contracts.Tests build at HEAD: restore the sprint-status
+      comment lines deleted by d45206f7, or rebind the two guards that assert on them.
+      NOTE: the original 'two lines' count was wrong -- ProofPacketValidatorIntegrityTests
+      requires ONE exact, ordered, CONTIGUOUS block of FIVE lines and reports only the
+      first missing one, so a repair guided by that count restores too few and leaves
+      the suite red."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
   - id: "epic-3-retro-item-24-make-deployed_runtime_parity-a-computed"
     epic: 3
@@ -545,9 +568,13 @@ action_items:
   - id: "epic-3-retro-item-38-stop-binding-executable-guards-to-commen"
     epic: 3
     action: "Stop binding executable guards to comment prose in generated status files;
-      bind to a structured field instead."
+      bind to a structured field instead. SUPERSEDED 2026-09-08: rebinding to structured
+      data was investigated and rejected -- the guarded lines are a frozen packet
+      transform's declared output, so they cannot move to a structured field without
+      re-minting that packet. The accepted mitigation is the in-file '>>> GUARDED <<<'
+      fences plus the header notice, both now present."
     owner: "Winston (System Architect)"
-    status: open
+    status: rejected
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
   - id: "epic-3-retro-item-39-adopt-falsify-by-observation-as-the-bar"
     epic: 3

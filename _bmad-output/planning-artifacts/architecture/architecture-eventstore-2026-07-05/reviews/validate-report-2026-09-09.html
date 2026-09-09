@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture Spine Validate Report — 2026-09-09</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f5f7fb; --surface:#fff; --ink:#172033; --muted:#536176; --line:#d9e0ea; --accent:#2457a6; --fail:#a51d2d; --warn:#8a4b08; --pass:#17663b; }
+    @media (prefers-color-scheme:dark) { :root { --bg:#10151d; --surface:#18212d; --ink:#edf2f7; --muted:#b4c0cf; --line:#344252; --accent:#9ec5ff; --fail:#ff9caa; --warn:#f5bf73; --pass:#8de0ae; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width:1100px; margin:auto; padding:clamp(1rem,3vw,3rem); }
+    h1,h2,h3 { line-height:1.2; }
+    h1 { font-size:clamp(1.7rem,4vw,2.7rem); margin-bottom:.4rem; }
+    h2 { margin-top:2.2rem; border-bottom:2px solid var(--line); padding-bottom:.4rem; }
+    h3 { margin-top:1.6rem; }
+    .subtitle,.meta { color:var(--muted); }
+    .verdict { border-left:.45rem solid var(--fail); background:color-mix(in srgb,var(--fail) 12%,var(--surface)); padding:1rem 1.2rem; border-radius:.35rem; }
+    .card { background:var(--surface); border:1px solid var(--line); border-radius:.5rem; padding:1rem 1.2rem; margin:1rem 0; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
+    .stat { text-align:center; padding:1rem; border-top:4px solid var(--accent); }
+    .stat strong { display:block; font-size:2rem; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; background:var(--surface); }
+    th,td { text-align:left; vertical-align:top; border:1px solid var(--line); padding:.65rem .75rem; }
+    th { background:color-mix(in srgb,var(--accent) 12%,var(--surface)); }
+    a { color:var(--accent); }
+    code { overflow-wrap:anywhere; }
+    .critical { border-left:4px solid var(--fail); }
+    .high { border-left:4px solid #d66a00; }
+    .medium { border-left:4px solid var(--warn); }
+    .low { border-left:4px solid var(--pass); }
+    .finding p:last-child { margin-bottom:0; }
+    .small { font-size:.92rem; }
+    @media (max-width:650px) { table { display:block; overflow-x:auto; } main { padding:.9rem; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="subtitle">Architecture review • 9 September 2026</p>
+    <h1>Architecture Spine Validate Report</h1>
+    <div class="verdict"><strong>Gate verdict: FAIL — CHANGES REQUIRED.</strong> The spine is mechanically clean, but two real production divergences and eleven high-severity contract gaps prevent it from serving as the canonical architecture boundary.</div>
+  </header>
+
+  <section aria-labelledby="boundary"><h2 id="boundary">Subject and review boundary</h2>
+    <table><tbody>
+      <tr><th scope="row">Subject</th><td><code>_bmad-output/planning-artifacts/architecture.md</code></td></tr>
+      <tr><th scope="row">State</th><td><code>status: final</code>; updated 2026-08-29; 25 architecture decisions; 609 lines</td></tr>
+      <tr><th scope="row">SHA-256</th><td><code>2b96a810f34f3cc40ee2ef5fc0f9b1cfaf01a395c73d1321953a946162fe945b</code></td></tr>
+      <tr><th scope="row">Intent</th><td>Validate — critique only</td></tr>
+      <tr><th scope="row">Deterministic lint</th><td><strong>Pass, 0 findings</strong></td></tr>
+      <tr><th scope="row">Semantic gate</th><td><strong>Fail, changes required</strong></td></tr>
+    </tbody></table>
+    <p>This report consolidates the independent <a href="review-validate-2026-09-09-rubric-walker.md">rubric walker</a>, <a href="review-validate-2026-09-09-technology-currentness.md">technology-currentness</a>, <a href="review-validate-2026-09-09-adversarial-divergence.md">adversarial-divergence</a>, <a href="review-validate-2026-09-09-security-data-integrity.md">security/data-integrity</a>, and <a href="review-validate-2026-09-09-brownfield-ratification.md">brownfield-ratification</a> reviews. The canonical spine, memlog, code, configuration, tracker, dependencies, and evidence were not changed.</p>
+    <p class="small">“Raw” means every severity-labelled occurrence across the five reviews. “Consolidated” merges descriptions of the same architecture defect, retaining the highest substantiated severity. The separate upstream PRD inconsistency is excluded from both columns.</p>
+    <div class="grid">
+      <div class="card stat"><strong>6</strong>raw critical<br><b>2</b> consolidated</div>
+      <div class="card stat"><strong>21</strong>raw high<br><b>11</b> consolidated</div>
+      <div class="card stat"><strong>20</strong>raw medium<br><b>12</b> consolidated</div>
+      <div class="card stat"><strong>9</strong>raw low<br><b>6</b> consolidated</div>
+      <div class="card stat"><strong>56</strong>raw total<br><b>31</b> consolidated</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="critical"><h2 id="critical">Critical findings</h2>
+    <article class="card finding critical"><h3>C1 — Production runtime/provider authority is undefined</h3><p><strong>Finding:</strong> AD-9 makes topology one change unit and AD-25 approves <code>oq8-postgresql-v1</code>, but no rule selects a production actor state store, broker, deployment target, or proof boundary. PostgreSQL and Cosmos DB appear as production choices while local AppHost uses Redis; the spine records a Redis sequence-1 overwrite and forbids inferring equivalent behavior for other providers.</p><p><strong>Why critical:</strong> Independently conforming deployments could claim readiness with different ETag, transaction, ordering, and first-write behavior; admission fencing is not a storage fence.</p><p><strong>Disposition:</strong> Discuss, then autofix. Select one named production profile covering provider, broker, target, app IDs, overlays, secrets, resilience, and proof. The evidence-backed choice is PostgreSQL v1 under <code>oq8-postgresql-v1</code>; classify Redis Development-only and other providers non-authorizing until equivalent proof exists. Otherwise prohibit production traffic and name owner/trigger.</p></article>
+    <article class="card finding critical"><h3>C2 — Tenant identity has no canonical source or normalization contract</h3><p><strong>Finding:</strong> AD-10 requires tenant authorization and conventions keep identity explicit, but do not define authoritative input, normalization, casing, comparison, reserved names, or omission behavior. Authorization, persistence, Admin, generated REST, and SignalR paths already disagree.</p><p><strong>Why critical:</strong> <code>Tenant-A</code>, <code>tenant-a</code>, an omitted tenant defaulted from a first grant, and reserved values can authorize, partition admission, address state, filter reads, and form SignalR groups differently.</p><p><strong>Disposition:</strong> Autofix. Require one explicit tenant at the first application boundary; canonicalize request values and <code>eventstore:tenant</code> grants in Contracts before authorization/key derivation; carry validated lowercase <code>AggregateIdentity</code> unchanged; never default from claims/session/config; reserve <code>system</code> and wildcard values; prove equivalent spellings cannot create or reveal different scopes.</p></article>
+  </section>
+
+  <section aria-labelledby="high"><h2 id="high">High findings</h2>
+    <div class="card finding high"><h3>H1 — Inbound sidecar-to-application credential is unnamed</h3><p>AD-10 requires an application credential but does not bind carrier, issuer, receiver, claims, tenant rule, rotation, readiness, or SDK integration. Gateway, Operations, and DomainService use incompatible or absent mechanisms.</p><p><strong>Disposition:</strong> Discuss, then autofix: choose one platform-owned receiver protocol through host SDK/ServiceDefaults; fail readiness outside Development when absent; treat caller app ID/ACLs as attribution and defense in depth unless explicitly authoritative.</p></div>
+    <div class="card finding high"><h3>H2 — Deny-by-default remains optional</h3><p>AD-16 only coordinates probe exemptions for hosts that introduce fallback policy; no <code>FallbackPolicy</code> exists under <code>src/</code>, so newly mapped endpoints can be anonymous.</p><p><strong>Disposition:</strong> Autofix: require the platform fallback policy on every HTTP host, allow only named probe/static-public paths, and scan endpoint metadata for every host kind.</p></div>
+    <div class="card finding high"><h3>H3 — Admin mutation attribution and delegation lack a durable contract</h3><p>Current paths forward operator tokens, manufacture <code>system:{appId}</code>, accept caller actor IDs, or fall back to <code>anonymous</code>; audit and mutation state are separate.</p><p><strong>Disposition:</strong> Discuss, then autofix: choose pass-through or precise delegation; derive identity only from authenticated claims; atomically (or via a resumable versioned unit) bind original actor, workload, delegation, canonical tenant, action, target, outcomes, correlation, time, and surface into append-only audit.</p></div>
+    <div class="card finding high"><h3>H4 — AD-24/AD-25 key rotation and fleet catalog can split admission authority</h3><p>Per-record directory/migration phases do not define one fleet-wide active digest, reader set, secret generation, adapter registry, descriptor versions, or retention. AD-24 may revoke while AD-25 retains aliases/tombstones.</p><p><strong>Disposition:</strong> Autofix: make a versioned deployment-overlay catalog sole authority; key adapters by <code>(Domain, CommandType)</code>; compare digest at readiness; bind the ring as an AD-24 runtime-required OpenBao secret; require consumer acknowledgement and zero-reference retirement before revocation.</p></div>
+    <div class="card finding high"><h3>H5 — Correlation identity lacks one cross-host contract</h3><p>AD-17 relies on <code>CorrelationId</code>, while gateway and Admin accept different formats and generate different IDs; Admin uses a parser the spine forbids.</p><p><strong>Disposition:</strong> Autofix: put grammar/validator/generator in Contracts; mint only at first application boundary; echo and propagate unchanged; distinguish from <code>traceparent</code>; decide whether status identity is <code>MessageId</code> or <code>CorrelationId</code>.</p></div>
+    <div class="card finding high"><h3>H6 — Erasure has competing authorities and no ordered completion model</h3><p>Read-model/checkpoint erasure, payload-key invalidation, and rebuild completion have no ordering rule or safe projection-delivery behavior for unreadable history.</p><p><strong>Disposition:</strong> Discuss across EventStore and Parties, then update: name one orchestration authority; order cleanup/key invalidation; define typed <code>Erased</code> delivery/rebuild advancement; distinguish read-model, crypto, physical, and backup completion.</p></div>
+    <div class="card finding high"><h3>H7 — <code>ProjectionVersion</code> has provenance but no interoperable semantics</h3><p>It may be opaque, monotonic, sequence, checkpoint, hash, schema version, or rebuild lineage; production has no owner/constructor.</p><p><strong>Disposition:</strong> Discuss, then autofix: declare it opaque and add a typed checkpoint, or define one bounded platform value, producer, comparer, scope, change rule, catalog/schema binding, and rebuild/live-lineage behavior.</p></div>
+    <div class="card finding high"><h3>H8 — Poison/dead-letter semantics and Operations have no architecture owner</h3><p>The existing stateful <code>eventstore-operations</code> workload is absent from paradigm, seed, topology, capability map, AppHost, and release identity. Defaults are consumer-specific and dead letters can be lost after retry exhaustion.</p><p><strong>Disposition:</strong> Discuss, then update: adopt Operations with durable capture/ack/retry/replay/checkpoint outcomes, tenant identity, authorization/audit, targets, app ID, topology, and release status; or explicitly mark it non-production with fail-closed interim rules.</p></div>
+    <div class="card finding high"><h3>H9 — AD-19 mandates a result contract absent from implementation</h3><p>AD-19 requires exact <code>ProjectionDispatchResult</code>, entry, and checkpoint types, but shipped code exposes different response/outcome types and coordinator-internal checkpoint control. Exact symbols were absent under <code>src/</code> and <code>tests/</code>.</p><p><strong>Disposition:</strong> Discuss, then update: mark the exact shape prospective with owner/proof gate, or re-ratify AD-19 around the shipped seam while retaining its outcome/checkpoint matrix.</p></div>
+    <div class="card finding high"><h3>H10 — Hard-coded .NET/ASP.NET security baseline is superseded</h3><p>AD-11/Stack call SDK <code>10.0.400</code> and package family <code>10.0.11</code> current, while .NET <code>10.0.12</code> and SDK <code>10.0.401</code> were released 2026-09-08.</p><p><strong>Disposition:</strong> Discuss, then update as one validated unit after restore/build/test/consumer proof. If held, label <code>10.0.11</code> a dated catalog pin with owner and revisit trigger.</p></div>
+    <div class="card finding high"><h3>H11 — Public unfenced actor mutation route contradicts AD-5/AD-25</h3><p>The public request makes idempotency optional; null bypasses admission, reaches an unfenced actor method, and <code>EnsureExecutionFenceAsync</code> treats null as success.</p><p><strong>Disposition:</strong> Implementation blocker plus architecture clarification: make admission/fence mandatory for every protected mutation and remove/fail the unfenced path, or scope AD-5/AD-25 to named justified operations.</p></div>
+  </section>
+
+  <section aria-labelledby="tail"><h2 id="tail">Medium and low tail</h2>
+    <table><thead><tr><th scope="col">ID</th><th scope="col">Consolidated finding</th><th scope="col">Disposition</th></tr></thead><tbody>
+      <tr><th scope="row">M1</th><td>Route ownership is not unique across app IDs; fallback and host-overridable projection paths can admit two owners for one key.</td><td>Autofix: versioned route catalog; one owner per operation/projection key; duplicates fail readiness.</td></tr>
+      <tr><th scope="row">M2</th><td>Stack and target/current views drift: FrontComposer is 4.1.1 in the spine versus 4.4.0 live; source is past tag and pending work appears present.</td><td>Autofix, then discuss parity: remove/refresh volatile literal and label delivered versus target topology.</td></tr>
+      <tr><th scope="row">M3</th><td>“DAPR CI/deployment seed 1.18.0” conflates CLI 1.18.0, CI sidecar 1.18.2, and deployment example 1.18.0; runtime 1.18.3 is available.</td><td>Autofix wording; defer upgrade until evidence refresh.</td></tr>
+      <tr><th scope="row">M4</th><td>AD-3 forbids direct Admin state-store calls while topology and <code>DaprProjectionQueryService</code> require support-safe reads.</td><td>Autofix: name/constrain tenant-authorized read-only Admin exception or remove it.</td></tr>
+      <tr><th scope="row">M5</th><td>Structural Seed omits AppHost, SignalR, Testing, Testing.Integration, Admin.Server.Host, and deployment/sample roots.</td><td>Autofix: add and classify current libraries, hosts, tests, and deployment assets.</td></tr>
+      <tr><th scope="row">M6</th><td>Retention/restore, promotion, scale/multi-region, exporters/cardinality, and telemetry redaction are undecided or unsafe to defer.</td><td>Defer with safe posture, owner, trigger; prohibit sensitive payloads, tokens, keys, and PII in telemetry/support output.</td></tr>
+      <tr><th scope="row">M7</th><td>AD-23/24 call payload protection draft/not authorized although exact-digest specification is approved-authorized.</td><td>Autofix: record satisfied prerequisite while retaining successor implementation/evidence gates.</td></tr>
+      <tr><th scope="row">M8</th><td>Story status, dated exceptions, receipts, package schedules, and migration procedure obscure stable invariants.</td><td>Discuss: move volatile lifecycle/evidence procedure to memlog/spec/story artifacts.</td></tr>
+      <tr><th scope="row">M9</th><td>Conventions duplicate AD-7/8/11/16/18/19/20/21/23/24/25 and have drifted.</td><td>Autofix: retain independent conventions and use <code>See AD-x</code> for duplicates.</td></tr>
+      <tr><th scope="row">M10</th><td>Production state-store templates use environment placeholders and omit OpenBao despite AD-24.</td><td>Defer as implementation drift, but gate deployment until templates/validation conform.</td></tr>
+      <tr><th scope="row">M11</th><td>OQ8 is named by version/digest but omits governing repository/path/commit identity.</td><td>Autofix: add <code>github.com/Hexalith/Hexalith.Folders</code>, <code>docs/exit-criteria/oq8-idempotency-design.md</code>, commit <code>a9cfea91c8a987ef7a836c216e633a92321fc3c2</code>, and existing digest.</td></tr>
+      <tr><th scope="row">M12</th><td>Append-only memlog stops at earlier SDK/version baseline and lacks accepted 2026-08-20/29 inputs.</td><td>Autofix only in authorized Update: append recovered constraints/current evidence; never rewrite history.</td></tr>
+      <tr><th scope="row">L1</th><td>CodeCoverage 18.10.0 is catalog-consistent but 18.11.0 is current.</td><td>Defer to next tested catalog refresh.</td></tr>
+      <tr><th scope="row">L2</th><td>CommunityToolkit DAPR remains compatible; later beta builds use another prerelease channel.</td><td>Defer/ignore in spine pending normal prerelease compatibility gate.</td></tr>
+      <tr><th scope="row">L3</th><td>AD-17 cites obsolete RFC 7231 and implies absolute <code>Location</code> is an RFC rule; RFC 9110 permits a URI-reference.</td><td>Autofix: cite RFC 9110 and label absolute form Hexalith’s stricter contract.</td></tr>
+      <tr><th scope="row">L4</th><td>Final Deferred row contains editorial token <code>ADD,</code>.</td><td>Autofix.</td></tr>
+      <tr><th scope="row">L5</th><td>Frontmatter lists the spine itself as a companion.</td><td>Autofix unless a documented consumer requires it.</td></tr>
+      <tr><th scope="row">L6</th><td>Capability map overstates direct FR17/FR18 binding relative to AD-11/AD-12.</td><td>Autofix: bind directly or narrow the map.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section aria-labelledby="upstream"><h2 id="upstream">Upstream PRD inconsistency — not an architecture defect</h2>
+    <article class="card"><h3>U1 — Retired ownership-resolution work remains contradictory inside the PRD</h3><p>The approved 2026-09-08 proposal resolves duplicate primary claims and retires OR12, but the PRD still says SM2 awaits OR12, labels eight FRs multiply owned, and repeats the refuted FR1/Epic-4 assertion.</p><p><strong>Disposition:</strong> Refer to the PRD owner. Correct the PRD in its governed update; do not count U1 or modify the PRD during this architecture Validate run.</p></article>
+  </section>
+
+  <section aria-labelledby="passed"><h2 id="passed">What passed</h2>
+    <ul>
+      <li>Deterministic structure passed with zero findings: 25 stable AD identifiers, required Binds/Prevents/Rule fields, no lint-detected placeholders, and pinned Stack rows.</li>
+      <li>AD-1 through AD-9 provide a coherent DAPR-backed hexagonal/event-sourcing core: actor-owned mutation, stable event identity, at-least-once projection semantics, and topology co-change rules.</li>
+      <li>AD-11/AD-22 release identity remains exact: immutable OCI index/children/config graph, canonical bytes, one-use authority, role receipts, and consumer-owner acceptance.</li>
+      <li>AD-24’s base secret-store contract remains current and closed: DAPR OpenBao v1, value-free overlay catalog, default-deny scopes, bounded cache, and coordinated rotation.</li>
+      <li>AD-19’s status/checkpoint matrix is internally exact, though H9 shows named carrier types are not ratified by code.</li>
+      <li>AD-14/15 provenance, AD-17 gateway-owned absolute status location, and AD-18 outbound remove-and-replace ownership remain sound.</li>
+      <li>AD-25 tombstone fields, expiry response, directory promotion order, redirect, mixed-version fail-closed behavior, and legacy migration phases remain exact within one catalog.</li>
+      <li>JWT is materially fail-closed; SignalR group admission checks tenant authorization; the fenced actor path validates protected context strongly when used.</li>
+      <li>Most named technologies remain published and fit selected bands: Aspire 13.5.3, DAPR .NET SDK 1.18.5, MediatR 14.2.0, FluentValidation 12.1.1, Roslyn 5.9.0, Fluent UI Blazor V5 RC, OpenTelemetry 1.18.0, xUnit v3 4.0.0, Shouldly 4.3.0, NSubstitute 6.2.0, NBomber 6.6.0.</li>
+      <li>Current DAPR actor/pub-sub semantics support the conservative guarantees; Azure Container Apps’ managed DAPR limitation excluding OpenBao remains documented.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="delta"><h2 id="delta">Delta since 2026-09-08</h2>
+    <p>The subject is unchanged: same updated date, 25 ADs, and SHA-256. Movement is better evidence, consolidation, or severity calibration—not a spine regression.</p>
+    <table><thead><tr><th scope="col">Area</th><th scope="col">2026-09-08</th><th scope="col">2026-09-09 assessment</th></tr></thead><tbody>
+      <tr><th scope="row">Gate</th><td>Fail</td><td><strong>Fail, unchanged</strong></td></tr>
+      <tr><th scope="row">Critical</th><td>2 consolidated</td><td>2 consolidated; same production runtime/provider and tenant identity defects</td></tr>
+      <tr><th scope="row">High</th><td>10 consolidated</td><td><strong>11 consolidated</strong>; unfenced actor route separately high on exact bypass evidence</td></tr>
+      <tr><th scope="row">Counts</th><td>Different raw/consolidation convention: 2/16/20/15 raw; 2/10/8/9 consolidated</td><td>All five lenses literally: <strong>6/21/20/9 raw</strong>; <strong>2/11/12/6 consolidated</strong>; compare clusters, not raw totals</td></tr>
+      <tr><th scope="row">.NET currentness</th><td>10.0.12 had propagation ambiguity</td><td>Official metadata, notes, download page, and SignalR NuGet establish security update and SDK 10.0.401</td></tr>
+      <tr><th scope="row">AD-25 key source</th><td>Production configuration source was a concern</td><td>Inline keys are now gated to Development/Test; fleet catalog/OpenBao retirement coordination remains open</td></tr>
+      <tr><th scope="row">Brownfield</th><td>Operations and phantom AD-19 types identified</td><td>Both reconfirmed with direct Admin→Operations and coordinator/interface evidence; current-vs-target and OQ8 continuity clearer</td></tr>
+      <tr><th scope="row">Upstream</th><td>Ownership cleanup treated as external continuity</td><td>PRD contradiction explicit as U1, outside architecture severity counts</td></tr>
+    </tbody></table>
+  </section>
+
+  <section aria-labelledby="decision"><h2 id="decision">Gate decision and next action</h2>
+    <p><strong>Do not use <code>status: final</code> as evidence of production readiness.</strong> Resolve C1 and C2 before any production-readiness claim; close or safely defer H1–H11 with named owners, interim prohibitions, and evidence gates; then run an authorized Update preserving AD IDs and append-only memlog history, followed by deterministic lint and all five reviewer lenses again.</p>
+    <p>This Validate run is critique-only. <code>_bmad-output/planning-artifacts/architecture.md</code> remains unchanged.</p>
+  </section>
+</main>
+</body>
+</html>

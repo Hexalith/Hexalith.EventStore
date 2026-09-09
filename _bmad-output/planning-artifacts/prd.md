@@ -1,8 +1,14 @@
 ---
 title: eventstore Phase 4 Implementation Readiness Recovery PRD
 status: final
+document_status: final
+implementation_readiness_status: blocked
+implementation_readiness_result: reject
+implementation_readiness_assessed: 2026-09-09
+implementation_readiness_baseline: 1b6f08d41de040615d3b08675d98e46cfa5bab0c
+implementation_readiness_report: _bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md
 created: 2026-07-05
-updated: 2026-09-08
+updated: 2026-09-09
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
@@ -60,10 +66,12 @@ source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-29.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-07.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-08-nfr3-nfr4-authentication-ratification.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-08.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-08-01-post-correction.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-08-01.md
   - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
   - _bmad-output/planning-artifacts/epics.md
+  - _bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md
 ---
 
 # PRD: eventstore Phase 4 Implementation Readiness Recovery
@@ -73,6 +81,8 @@ source_artifacts:
 This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the original epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability. The approved 2026-07-11 Parties projection/query parity correction adds FR36. The approved 2026-07-16 payload-protection ownership correction adds FR37 and NFR19 as a committed post-MVP capability. This capability does not enlarge the Phase 4 MVP.
 
 This document owns product requirement intent, MVP scope, non-goals, success metrics, and FR/NFR traceability. `_bmad-output/planning-artifacts/epics.md` owns implementation slicing and sequencing. The required architecture and UX planning artifacts remain separate handoffs and must not be replaced by this PRD.
+
+Document finality and implementation readiness are separate states. This document can be finalized as the truthful requirements baseline while implementation readiness remains blocked. As assessed on 2026-09-09 against repository baseline `1b6f08d41de040615d3b08675d98e46cfa5bab0c`, the bound validation report returned `Poor` / `Reject`; this PRD therefore authorizes no `READY` verdict, Phase 4 MVP completion, release, deployment, consumer migration, or dependent implementation handoff until the blocking prerequisites in §12 are resolved and readiness is re-run.
 
 ## 1. Planning Baseline
 
@@ -85,13 +95,15 @@ The baseline correction does not reduce MVP scope. It separates planning respons
 - `ux.md` must own UI governance, user-flow evidence, and support-safe interaction rules.
 - `epics.md` owns story slicing, sequencing, acceptance criteria, and implementation handoff.
 
-Implementation readiness was re-run on 2026-08-01 and returned `READY` in `implementation-readiness-report-2026-08-01-post-correction.md`, after this PRD, the architecture artifact, the UX artifact, the story splits, and the high-risk NFR traceability were completed. That verdict predates the current text. The gate re-opens, and readiness must be re-run, whenever FR or NFR text changes, an epic retrospective is rejected, or a sprint-change proposal alters scope. All three have since occurred - the 2026-08-16 proposal, the 2026-09-06 NFR3/NFR4 change ratified by the 2026-09-08 proposal, and the rejected 2026-09-07 Epic 3 retrospective - so a re-run is currently owed (§12).
+The 2026-08-01 implementation-readiness re-run returned `READY` in `implementation-readiness-report-2026-08-01-post-correction.md`; that verdict is historical and superseded. Readiness re-opens whenever FR or NFR text changes, an epic retrospective is rejected, or a proposal alters scope. All three later occurred. The current verdict is stated in §0, and its blocking prerequisites are tracked in §12.
+
+The frontmatter `source_artifacts` list records provenance, not equal authority or automatic approval. The 2026-09-08 tracking/ownership proposal documents an applied change, but its header does not state whether the proposal was approved. The two 2026-08-01 readiness reports are historical, with the post-correction report superseding the original for that date; neither overrides the bound 2026-09-09 `Reject` result. Any future authority register must bind approval state, content identity, affected clauses, and supersession rather than infer them from list membership.
 
 ### 1.1 OQ8 Authority Order
 
 For the Story 4.8 evidence ledger and active Stories 4.9-4.15, the approved 2026-07-20 OQ8 sprint change proposal and the Architecture + Security + Test-approved OQ8 design version 1.0.0 govern. This reconciled PRD, architecture, epics, and canonical SPEC package project that authority into EventStore.
 
-**Governing design identity.** The design is owned by the external Hexalith.Folders repository (`github.com/Hexalith/Hexalith.Folders`), at path `docs/exit-criteria/oq8-idempotency-design.md`, commit `a9cfea91c8a987ef7a836c216e633a92321fc3c2` (2026-08-04), SHA-256 `1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`. Hexalith.Folders is not an EventStore submodule and the design bytes are not tracked in this repository; EventStore binds the design by digest only, and Folders must supply and verify those bytes. The path, commit, and digest recorded here were confirmed against a Folders checkout on 2026-09-08, but nothing inside this repository can reproduce that check, and this commit identity is currently recorded only in this PRD (OR11). The 2026-07-20 proposal that granted this authority cited the design while it was still untracked in a Folders working tree; the 2026-08-04 commit named above is the binding identity and supersedes that working-tree citation.
+**Governing design identity.** The design is owned by the external Hexalith.Folders repository (`github.com/Hexalith/Hexalith.Folders`), at path `docs/exit-criteria/oq8-idempotency-design.md`, commit `a9cfea91c8a987ef7a836c216e633a92321fc3c2` (2026-08-04), SHA-256 `1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`. Hexalith.Folders is not an EventStore submodule and the design bytes are not tracked in this repository; EventStore binds the design by digest only, and Folders must supply and verify those bytes. The path, commit, and digest recorded here were confirmed against a Folders checkout on 2026-09-08, but nothing inside this repository can reproduce that check, and this commit identity is currently recorded only in this PRD (OR11). The 2026-07-20 proposal that granted this authority cited the design while it was still untracked in a Folders working tree; the 2026-08-04 commit named above is the binding identity and supersedes that working-tree citation. Until EventStore retains a permitted immutable copy, a complete approved normative projection, or a signed or content-addressed attestation, the bound repository, path, commit, and digest are not reproducible within EventStore. Until then, readiness fails if the governing evidence is absent or does not match the bound identity. No OQ8 closure claim under FR27, NFR7, or NFR16 is authoritative.
 
 **Scope of supersession.** The design governs where it is strictly more specific than this PRD, namely: tenant + key-digest partitioning and the prohibition on persisting or logging raw idempotency keys; the trusted canonical-intent descriptor field set and its exclusions; the admission state machine and its same-request versus different-request outcomes; the ordering invariant that admission precedes aggregate, provider, repository, audit, and projection work; the exact retention and compaction timers; the tombstone field allowlist; the public expired-key contract; the fail-closed treatment of unavailable, malformed, unknown-schema, and unsafe-legacy records; and the production-path evidence denominators. Pre-change FR27, NFR7, and NFR16 wording is superseded only on those points. Every other clause of FR27, NFR7, and NFR16 remains in force, and neither the design nor this section may weaken the 4.9-4.15 sequence or its Story 4.15 closure gate.
 
@@ -308,8 +320,8 @@ Story 1.20 does not cover deployed-runtime parity, payload-protection G5, or Par
 | NFR4 | No committed configuration, including clearly named Development configuration, may contain a forgeable administrator signing key, username, password, credential, bearer token, decoded JWT payload, or other operational secret. Development and test credentials are injected only through this closed list of channels - .NET user-secrets, environment variables, runtime-generated test fixtures, and the Aspire AppHost parameter/secret mechanism - and cannot be loaded as a non-Development fallback. Adding a channel to this list requires a proposal. |
 | NFR5 | SignalR detail metadata must remain bounded and metadata-only: at most 16 entries and 2048 total UTF-8 bytes, as configured by `ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataEntries` and `DefaultMaxDetailMetadataBytes`. The metadata dictionary is deliberately opaque and carries no allow-listed key set, so boundedness is enforced by entry count and byte size only. Framework logs must not expose metadata values above Debug level. |
 | NFR6 | Event delivery semantics are at-least-once and unordered; subscribers must deduplicate by `MessageId` and order events only where domain semantics make `SequenceNumber` meaningful. Safety against duplicate and out-of-order delivery must be enforced and proven through the production projection dispatcher, handler, persistence, marker, and checkpoint path rather than only aggregate replay or transport-level tests. |
-| NFR7 | Event persistence and command processing must avoid silent data loss. Each loss class carries its own delivery state, and a class is satisfied only by an implemented guard or recovery proven through production paths, never by evidence that the loss exists: (a) **staged-state flush loss** - guarded, delivered by Story 5.1. The tracker-versus-`epics.md` contradiction that made this class contested was resolved in the tracker's favour on 2026-09-08 (OR3): `spec-5-1` records `done` at review loop 7, and the clearing order and persisted end-state are verified independently through the actor path by `AggregateActorInfrastructureFailureTests` and the surrounding drain and recovery lanes, not inherited from Story 4.2 or from source inspection. The `epics.md` paragraph that said the story remained backlog was stale planning text and has been corrected; (b) **stale pipeline records** - guarded, delivered by Story 4.2; (c) **append races** - **NOT delivered in the Phase 4 MVP**. Story 4.5 produced only race evidence, recorded the outcome `same-key-overwrite-raw-durable-write-lost`, and explicitly grants no authority to implement a fence; the provider-portable fence is deferred to a separately approved implementation story per `architecture.md` and is tracked as an unowned gap by DW-326. No PRD requirement claims this class is guarded (see §9.2); (d) **committed-but-unpublished events** - recovered, delivered by Story 4.4; (e) **duplicate side effects** across reservation, admission fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts - guarded, delivered by the Stories 4.9-4.13 durable-admission chain, and a consumed key cannot become executable fresh work because its replay result expired or storage became unreadable. The Story 4.11 current fence is an internal admission capability and must never be presented as provider-level append fencing or write-once storage, which is class (c). |
-| NFR8 | Snapshot and projection behavior must have a bounded cost model as streams grow, with the numeric bound defined by the approved spec at `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`; until that spec exists and is approved, no Epic 6 implementation story may start. Snapshot and projection behavior must also avoid unnecessary full-stream replay when projections are already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state. |
+| NFR7 | Event persistence and command processing must prevent silent data loss across five classes: (a) staged-state flush loss; (b) stale pipeline records; (c) append races; (d) committed-but-unpublished events; and (e) duplicate side effects across reservation, admission fencing, execution, recovery, expiry, compaction, restart, and concurrent hosts. A loss class is delivered only when an implemented guard or recovery prevents the loss within the supported operating envelope and production-path evidence proves that the guard or recovery prevents the loss. An out-of-scope declaration, deferral record, or test that merely observes the loss never satisfies NFR7 or SM11. The Story 4.11 current fence is an internal admission capability and must never be presented as class (c) provider-level append fencing or write-once storage. |
+| NFR8 | Snapshot and projection behavior must have a bounded cost model as streams grow. The snapshot specification at `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` has status `approved-authorized`, binds normative SHA-256 `0b456b5fcc49c6f7431e3476cefd073c184cf181d64bf84fb76414c1110d16b2`, sets `MaxSnapshotEnvelopeOverheadBytes` to 4096, and authorizes Story 6.2. This approval does not deliver the runtime outcome or resolve Story 6.1 lifecycle drift. The projection bound remains gated by the missing approved specification at `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`, so Story 6.4 may not start. Snapshot and projection behavior must also avoid unnecessary full-stream replay when projections are already current, and must expose projection freshness/version evidence through platform query metadata when callers depend on lifecycle decisions; freshness/version evidence is authoritative only for query responses whose route provenance is projection-backed, and handler-computed or unknown-provenance responses must not be presented as authoritative lifecycle evidence. Paged rebuild output must equal canonical aggregate replay and must never overwrite a complete live model with page-only state. |
 | NFR9 | Release behavior must be reproducible and independent of local submodule checkout state; Release builds must use package references for external Hexalith libraries unless intentionally overridden. |
 | NFR10 | CI/CD must separate deterministic release-gate tests from live-sidecar/integration tests while preserving live-sidecar coverage in a dedicated lane. |
 | NFR11 | Package publishing must be manifest-driven and must not publish submodule packages or packages outside the EventStore release inventory. |
@@ -355,6 +367,8 @@ Story 1.20 does not cover deployed-runtime parity, payload-protection G5, or Par
 
 ## 9. MVP Scope
 
+**Safety boundary:** Provider-level append fencing and write-once storage enforcement remain outside MVP implementation scope. FR31 delivers race and conflict evidence only; it grants no authority to implement a fence. This scope exclusion is not a safety waiver and cannot count toward NFR7 or SM11. Until a provider-portable fence is implemented and proven, or an approved and enforced supported operating envelope makes the race impossible, NFR7 class (c), implementation readiness, and Phase 4 MVP completion remain blocked (OR4).
+
 ### 9.1 In Scope
 
 - Epics 1-7 as listed in `epics.md`; `epics.md` also lists Epic 8, which is committed post-MVP under §9.3.
@@ -370,7 +384,6 @@ Story 1.20 does not cover deployed-runtime parity, payload-protection G5, or Par
 ### 9.2 Out Of Scope For MVP
 
 - Full GDPR aggregate/event tombstoning, broker-history deletion, physical backup erasure, audit-record deletion, and provider/operator key-custody operations remain outside the Phase 4 MVP under GDPR-1. Generic projection read-model/checkpoint erasure is in scope under FR5 and Story 1.14. The optional shared payload-protection engine and Parties G5 parity are a committed post-MVP capability in Epic 8. Stories 22.7a-d, EventStore stories under the pre-restructure numbering scheme described in the approved 2026-07-16 proposal, supplied prerequisites - provider-neutral hooks and protection metadata, typed unreadable outcomes, key-lifecycle workflow, restored-backup admission, and redaction/recovery contracts - not that engine.
-- Provider-level append fencing and write-once storage enforcement. FR31 delivers the race and conflict evidence only; the fence is deferred to a separately approved implementation story and currently has no owner (DW-326). NFR7 class (c) is therefore not delivered in the Phase 4 MVP.
 - Global-position sharding implementation. FR24 delivers an approved successor specification only; completion authorizes downstream planning, not implementation, deployment, or migration.
 - Admin interactive OIDC login implementation; backlog artifact only.
 - Aggregate test kit implementation; backlog artifact only.
@@ -397,7 +410,7 @@ Metrics are marked **achieved**, **partially met**, or **not met**; a metric wit
 
 **Live delivery metrics**
 
-- **SM2 (partially met):** Every FR1-FR37 maps to at least one epic and at least one owning story in §11.1, with Epic 8 explicitly classified post-MVP, and §11.2 carries the equivalent NFR-to-story mapping. The mapping is complete but not yet unambiguous: eight FRs have more than one story claiming primary ownership, so SM2 closes when OR12 resolves.
+- **SM2 (partially met):** Every requirement from FR1 through FR37 maps to at least one epic and to either one primary owning story or a named set of disjoint primary slices in §11.1. Epic 8 is explicitly classified post-MVP, and §11.2 carries the equivalent NFR-to-story mapping. The mapping is now internally complete and unambiguous after the 2026-09-08 retirement of OR12. SM2 remains partially met until the PRD-to-epics ownership drift guard exists and `epics.md` is reconciled to this PRD's current digest rather than its stale input baseline (OR8, OR14).
 - **SM4:** The oversized stories identified by readiness review are decomposed per `_bmad-output/planning-artifacts/story-id-migration-2026-08-01.md`. Story 4.8 is now a non-executable evidence ledger decomposed into Stories 4.9-4.15 and must never carry an execution status. Stories 7.14 and 8.2 retain their numbers as the first focused child of their own decompositions - 7.14 as the Admin shell and canonical-route boundary, 8.2 as payload-protection contracts and golden vectors - with siblings 7.19-7.20 and 8.3-8.11. Both remain `backlog`, which is decomposition, not completion.
 - **SM6 (not met):** See §6.8. FR36's source/package and frozen-evidence sub-states are closed; the deployed-runtime sub-state is open at Story 3.15, 0 of 3 receipts.
 - **SM7:** Story 8.11 records the payload-protection G5 packet as owner/security-approved `available`, exact source/package/backend identities are recorded, EventStore goldens and Parties dual-provider parity pass, and Story 8.10 rollback succeeds after `pdenc-v2` writes before Parties Story 8.7 resumes. Validates FR37/NFR19.
@@ -409,7 +422,7 @@ These measure the §2 thesis that platform reuse and operational hardening must 
 - **SM8 (FR9, reuse):** Duplicated platform plumbing remaining in the Tenants domain module - request routers, projection actors, cursor codecs, state-store plumbing, telemetry registration, health checks, and per-domain Aspire wiring. Target zero. Currently non-zero: the Tenants domain-service host retains transitional `AddDaprClient`, `UseCloudEvents`, controller, MediatR, and router composition (DW-64).
 - **SM9 (FR13, NFR14, reuse):** Generated or hand-written per-message MVC command/query controllers hosted inside interactive UI hosts. Target zero, measured by the guardrail suite rather than by inspection.
 - **SM10 (NFR1, hardening):** Surfaces in the NFR1 fail-closed set - public, internal, domain-service, projection-notification, admin - that carry at least one negative test proving anonymous or forged-flag access is rejected. Target: every surface, with the health/liveness/readiness probes recorded as the single pinned anonymous exception.
-- **SM11 (NFR7, hardening):** Silent-loss classes that either have an implemented, production-path-proven guard or an explicit out-of-MVP declaration naming a deferral record. Target five of five. Currently four of five confirmed: class (a) became confirmed on 2026-09-08 when OR3 resolved in the tracker's favour and Story 5.1's independent verification was established. The remaining gap is class (c), append races, which is declared out of MVP in §9.2 but whose deferral record DW-326 still has no owner or trigger, so it does not yet meet the standard. Read this metric as four confirmed and one out of scope pending an owned deferral (OR4).
+- **SM11 (not met; NFR7, hardening):** Silent-loss classes with an implemented guard or recovery that prevents loss in the supported operating envelope and is proven through production paths. Target five of five; deferral paperwork and scope exclusion never count. Currently three of five are delivered: class (a) staged-state flush loss is guarded by Story 5.1; class (b) stale pipeline records are guarded by Story 4.2; and class (d) committed-but-unpublished events are recovered by Story 4.4. Class (c) has a reproduced `same-key-overwrite-raw-durable-write-lost` outcome and no fence or approved enforced operating envelope. Class (e) has implementation evidence from Stories 4.9-4.14, but closure remains pending because the Story 4.15 lifecycle sources disagree and the required pre-review validation fails. See OR4 and OR15.
 - **SM12 (NFR16, hardening):** Share of high-tier tests in the required evidence set that assert persisted state-store, read-model, marker, lifecycle, or checkpoint end-state rather than HTTP status or mock call counts. Target: the full required set, per NFR16.
 
 **Counter-Metrics**
@@ -424,9 +437,9 @@ These measure the §2 thesis that platform reuse and operational hardening must 
 
 ### 11.1 FR To Epic Coverage
 
-| FR | Primary epic coverage | Owning stories (`epics.md`) |
+| FR | Primary epic coverage | Primary owning story or disjoint slices (`epics.md`) |
 | --- | --- | --- |
-| FR1 | Epic 1 - Domain author self-service platform | 4.11 |
+| FR1 | Epic 1 - Domain author self-service platform | 1.11 |
 | FR2 | Epic 1 - Domain-service SDK host shape | 1.1 |
 | FR3 | Epic 1 - Canonical domain-service DAPR endpoints | 1.1 |
 | FR4 | Epic 1 - Domain query-handler seam and gateway routing | 1.2 |
@@ -436,35 +449,35 @@ These measure the §2 thesis that platform reuse and operational hardening must 
 | FR8 | Epic 1 - Aspire, telemetry, and health-check platform extensions | 1.7 |
 | FR9 | Epic 1 - Sample and Tenants adoption of platform SDK seams | 1.10 |
 | FR10 | Epic 1 - DomainService and ServiceDefaults packaging | 1.12 |
-| FR11 | Epic 2 - REST API source-generator contract seam | 2.1, 2.4 - **multiple primary owners** (OR12) |
-| FR12 | Epic 2 - Generated typed REST controllers and generator tests | 2.2, 2.9, 2.11 - **multiple primary owners** (OR12) |
-| FR13 | Epic 2 - External API hosts for generated REST; UI uses client libraries | 2.3, 2.5 - **multiple primary owners** (OR12) |
+| FR11 | Epic 2 - REST API source-generator contract seam | 2.1 |
+| FR12 | Epic 2 - Generated typed REST controllers and generator tests | 2.2 - discovery/emission/delegation/query-metadata slice; 2.9 - accepted-command `Location` slice |
+| FR13 | Epic 2 - External API hosts for generated REST; UI uses client libraries | 2.3 |
 | FR14 | Epic 2 - Sample contracts library and external Sample API proof | 2.3 |
-| FR15 | Epic 2 - Tenants external API proof and UI client-library adoption | 2.4-2.6, 2.11, 2.12 - **multiple primary owners** (OR12) |
+| FR15 | Epic 2 - Tenants external API proof and UI client-library adoption | 2.4 - contract metadata/routes; 2.5 - API host; 2.6 - UI client/UX; 2.11 - query provenance; 2.12 - runtime identity/package mode |
 | FR16 | Epic 2 - Metadata-rich, scope-aware projection-changed transport | 2.8 |
 | FR17 | Epic 3 - Live-sidecar tests re-tiered off release gate | 3.1 |
 | FR18 | Epic 3 - Overridable DaprETagService actor timeout | 3.2 |
-| FR19 | Epic 3 - Submodules under references layout; root submodule refresh in Story 3.16 | 3.3, 3.16 - **multiple primary owners** (OR12) |
+| FR19 | Epic 3 - Submodules under references layout; root submodule refresh in Story 3.16 | 3.3 |
 | FR20 | Epic 3 - Aspire Keycloak resource renamed to security | 3.4 |
-| FR21 | Epic 3 - Ecosystem-wide Builds package catalog with explicit source opt-in and package-safe defaults; latest-compatible catalog refresh in Story 3.16 | 3.5, 3.16 - **multiple primary owners** (OR12) |
-| FR22 | Epic 3 - Release commands assert package mode and avoid submodule packaging | 3.6, 3.12, 3.14 - **multiple primary owners** (OR12) |
+| FR21 | Epic 3 - Ecosystem-wide Builds package catalog with explicit source opt-in and package-safe defaults; latest-compatible catalog refresh in Story 3.16 | 3.5 |
+| FR22 | Epic 3 - Release commands assert package mode and avoid submodule packaging | 3.6 |
 | FR23 | Epic 4 - Non-zero global positions, MessageId CloudEvent IDs, duplicate result fidelity | 4.1 |
 | FR24 | Epic 4 - Global-position sharding spec renegotiation | 4.6 |
-| FR25 | Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope | 3.7, 3.12, 3.14 - **multiple primary owners** (OR12) |
-| FR26 | Epic 5 - Phase 0 security and safe-remediation fixes | 5.1-5.4 - deliberate slice decomposition |
-| FR27 | Epic 4 - Resume/idempotency integrity, command status re-keying, and Stories 4.9-4.15 durable tenant/key admission and closure | 4.2, 4.9-4.15 - deliberate slice decomposition |
-| FR28 | Epic 5 - Defense-in-depth trust boundary | 5.5 - **no delivered owner**, all `backlog` |
+| FR25 | Epic 3 - Shared Hexalith.Builds gates and manifest-driven package scope | 3.7 |
+| FR26 | Epic 5 - Phase 0 security and safe-remediation fixes | 5.1-5.4 - named disjoint slices |
+| FR27 | Epic 4 - Resume/idempotency integrity, command status re-keying, and Stories 4.9-4.15 durable tenant/key admission and closure | 4.2, 4.9-4.15 - named disjoint slices |
+| FR28 | Epic 5 - Defense-in-depth trust boundary | 5.5 |
 | FR29 | Epic 4 - Replay and dispatch determinism | 4.3 |
 | FR30 | Epic 4 - Crash recovery for committed-but-unpublished events | 4.4 |
 | FR31 | Epic 4 - Append durability verify-first spike | 4.5 |
-| FR32 | Epic 5 - Runtime topology and deployment posture parity | 5.6-5.9 - **no delivered owner**, all `backlog` |
-| FR33 | Epic 6 - Bounded cost and event evolution | 6.1-6.6 - **no delivered owner**, all `backlog` |
-| FR34 | Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery | 7.1-7.10, 7.14, 7.19, 7.20 - **no delivered owner**, all `backlog` |
-| FR35 | Epic 7 - Backlog capability tracking | 7.15-7.18 - planning artifacts only; authorizes no runtime implementation |
-| FR36 | Epic 1 - completed projection/query parity source/package closure in Story 1.20 and frozen-evidence integrity repair in Story 1.21; Epic 3 - rejected, non-authorizing v3.94.1 disposition in Story 3.13, corrective release work in Story 3.14, and still-open positive deployed-runtime parity closure in Story 3.15 | 1.20, 1.21, 3.15 - 1.20 and 1.21 closed, 3.15 open |
-| FR37 | Epic 8 - Shared payload-protection security specification and Stories 8.2-8.11 implementation, production backend, release, Parties parity, rollback, and G5 closure | 8.1-8.11 - **no delivered owner**, all `backlog` |
+| FR32 | Epic 5 - Runtime topology and deployment posture parity | 5.6-5.9 - named disjoint slices |
+| FR33 | Epic 6 - Bounded cost and event evolution | 6.1-6.6 - named disjoint specification/runtime slices |
+| FR34 | Epic 7 - Delivery, admin, deploy, and IntegrationTests recovery | 7.1-7.10, 7.14, 7.19, 7.20 - named disjoint slices |
+| FR35 | Epic 7 - Backlog capability tracking | 7.15-7.18 - planning slices only; no runtime authority |
+| FR36 | Epic 1 - projection/query parity source/package closure; Epic 3 - deployed-runtime parity closure | 1.20 - source/package slice; 3.15 - deployed-runtime slice |
+| FR37 | Epic 8 - Shared payload-protection security specification and Stories 8.2-8.11 implementation, production backend, release, Parties parity, rollback, and G5 closure | 8.1-8.11 - gated disjoint slices; 8.11 owns whole-capability closure |
 
-Story ownership is declared by each `### Story` section in `epics.md`, which remains authoritative; this column exists so SM2 can be read off one page. A story listed here owns the requirement, which is not the same as having delivered it - the delivery notes above are drawn from `sprint-status.yaml`, and where that tracker and `epics.md` disagree the contradiction is recorded in §12 rather than resolved here. FR1's declared owner sits in Epic 4 while its epic coverage reads Epic 1; that mismatch is part of OR12.
+Story ownership is declared by each `### Story` section in `epics.md`; this table mirrors those current declarations so SM2 can be read on one page. It records ownership only, never delivery or lifecycle state. Supporting stories are intentionally omitted. A multi-story entry lists explicitly named, disjoint primary slices; the requirement closes only when every slice is complete. The current mapping reflects the 2026-09-08 retirement of OR12, but downstream handoff remains blocked until the PRD/architecture/epics input digests and approval evidence are reconciled under OR14.
 
 ### 11.2 High-Risk NFR Story Coverage
 
@@ -495,7 +508,7 @@ Range-notation footnote: the following stories declare coverage through a hyphen
 
 ### 11.3 Required Follow-On Readiness Work
 
-The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/planning-artifacts` and reference each other. The remaining readiness gate is verification: re-run implementation readiness after the story-quality corrections below are reviewed.
+The PRD, architecture, UX, and epics artifacts exist under `_bmad-output/planning-artifacts`, but they do not currently form one approved baseline. Implementation readiness is blocked until the prerequisites in this section and §12 are resolved. These prerequisites address source drift, authority, safety, lifecycle, acceptance, and gate policy. A readiness re-run is the final step, not a substitute for those corrections.
 
 - Stories 1.20 and 3.12 remain `done` and are not reopened by the deployed-runtime correction. Story 1.20 remains the completed source/package parity gate. Story 3.13 records the immutable v3.94.1 candidate as rejected and non-authorizing because its config provenance is malformed and its retained authority forbids deployment. Story 3.15 owns positive deployed-runtime parity for the corrective release produced by Story 3.14. Neither result reopens Story 1.20 or authorizes Parties 8.6, G5, deployment, or consumer migration. This planning update authorizes no release, deployment, Git, or submodule mutation; external publication under Story 3.14 requires a separate durable release-owner authority record.
 
@@ -503,10 +516,7 @@ The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/pla
 
 - The former coordinated-slice parents are superseded by focused children under the dated restructurings. The pre-2026-07-15 legacy Story 1.6 means Sample/Tenants coordinated adoption; current Story 1.6 means Projection And Domain Event Consumer Seams. `_bmad-output/planning-artifacts/story-id-migration-2026-07-15.md` remains the July audit authority, and `_bmad-output/planning-artifacts/story-id-migration-2026-08-01.md` governs Story 3.13, the 4.9-4.15 OQ8 split, Story 5.10, the 7.14/7.19/7.20 Admin UI split, and the 8.2-8.11 payload-protection sequence.
 - Story 5.2 now requires concrete request-size limits: `1_048_576` bytes for representative admin JSON write/sandbox bodies and `10 * 1024 * 1024` bytes for `AdminBackupsController.ImportStream`, with bounded rejection tests and no upstream service invocation on excessive requests.
-- Stories 6.1, 6.3, and 6.5 now name required spec output paths and approval evidence before Stories 6.2, 6.4, and 6.6 can start. The Story 6.1 path is currently in drift and must be reconciled in one change across this PRD and `epics.md` before Story 6.2 may start: `epics.md` gates on `spec-folded-snapshot.md`, while the artifact created on 2026-09-08 is `spec-6-1-folded-snapshot-frozen-spec.md` (`status: draft`), so the gate as written reads as unmet while a spec exists:
-  - `_bmad-output/implementation-artifacts/spec-folded-snapshot.md` - path bound by `epics.md`; actual artifact is `spec-6-1-folded-snapshot-frozen-spec.md`
-  - `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`
-  - `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md`
+- The approved Story 6.1 specification authorizes Story 6.2; lifecycle reconciliation remains OR5. The projection-cost gate remains OR16 before Story 6.4, and the event-versioning specification remains required before Story 6.6.
 - The former Story 7.5 backlog reclassification is carried by Stories 7.15-7.18, one per planning/backlog artifact, with exact deliverables:
   - `_bmad-output/planning-artifacts/backlog/gdpr-1-aggregate-erasure.md`
   - `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
@@ -515,24 +525,52 @@ The PRD, architecture, UX, and epics artifacts now exist under `_bmad-output/pla
 
 ## 12. Open Questions And Owed Refinements
 
-No PRD-level ownership or MVP-scope questions are open. The remaining payload-protection design decisions are intentionally gated by Story 8.1 and the approved security specification listed in §11.3.
+No previously settled FR ownership or Epic 8 scope decision is reopened by this update. Product-policy, acceptance, authority, and cross-artifact questions remain open. This PRD records them as blockers instead of inferring answers. The remaining payload-protection design decisions stay gated by Story 8.1 and the approved security specification listed in §11.3.
 
-The following refinements are owed. Each is tracked here so a reader can tell what this PRD does not yet settle, who owes it, and what re-opens it. Items marked **blocking** must be resolved before the next implementation-readiness re-run can return `READY`.
+The following refinements are owed. Each states what this PRD does not yet settle, who owns the follow-up, and when it must be revisited. Every blocking item must close before the next implementation-readiness re-run can return `READY`.
+
+**Safety and authority blockers**
 
 | # | Owed refinement | Owner | Trigger |
 | --- | --- | --- | --- |
-| OR1 | **Blocking.** Re-run implementation readiness. The current `READY` verdict is dated 2026-08-01 and predates the 2026-08-16 proposal, the ratified NFR3/NFR4 change, and the rejected 2026-09-07 Epic 3 retrospective. Its three blocking prerequisites (OR2, OR3, and OR12) were retired on 2026-09-08; OR1 is now the only remaining blocker. | Product owner | Any FR/NFR text change, a rejected epic retrospective, or a scope-altering proposal - all three have occurred |
-| OR4 | Give DW-326 an owner and a trigger, or convert it into a story. It is the only record of the unowned append fence, and NFR7 class (c) and SM11 both depend on it. | Architecture owner | Before append fencing is scheduled into any epic |
-| OR5 | Reconcile the Story 6.1 spec path in one change across this PRD and `epics.md`: the gate names `spec-folded-snapshot.md`; the artifact is `spec-6-1-folded-snapshot-frozen-spec.md`. | Epic 6 owner | Before Story 6.2 starts |
-| OR6 | Produce `docs/reference/aot-and-trimming-posture.md` and give NFR18 an owning story. The constraint is currently stated only in this PRD, which NFR18 itself says is insufficient. | Platform maintainer | Before NFR18 can be marked covered |
-| OR7 | Sub-letter the omnibus requirements FR26, FR33, FR34, and NFR17 so each clause carries one testable consequence, or add a clause-to-story-to-evidence table. Today a `done` story can appear in these rows without closing any named clause. Deferred 2026-07-16; still open. | Epic/story owners | Before the next readiness re-run |
-| OR8 | Add a guard that diffs this PRD's §7 against the `epics.md` Requirements Inventory, so the two cannot silently diverge again as NFR3/NFR4 did between 2026-09-06 and 2026-09-08. | Test owner | Next Contracts test change |
-| OR9 | Editorial restructure: front-load scope and relocate readiness mechanics. Deliberately deferred since 2026-07-16 to preserve stable downstream section anchors; §5 Product Concerns, which largely restates §6 and §7, should be folded in the same pass. | Product owner | Next major PRD revision, when anchor churn is acceptable |
-| OR10 | Generalize the non-authorship control. This PRD requires owner approval in fifteen places but only Story 8.11 pairs it with a control that distinguishes owner-approved from author-asserted. Decide whether a sealed CI validator run or a second identity is required elsewhere, and if so amend the FR/NFR text rather than the glossary. | Product owner with the EventStore owner | Next major PRD revision, or sooner if a consumer disputes a packet |
-| OR11 | Propagate the §1.1 OQ8 design commit identity into `architecture.md`, `epics.md`, and the OQ8 evidence packets, which currently cite the digest without a repository, path, or commit. Until then the PRD is the single record of where the governing document lives. | Architecture owner | Next architecture or epics revision |
-| OR13 | Bind the correctness gate: state which test lane, run on which trigger, is the gate that a story must pass before it may be recorded `done` against a high-risk NFR. Deferred 2026-07-16; still open. It is the missing control behind the three status and ownership contradictions retired on 2026-09-08, and its absence is why they arose. | Test owner | Before the next readiness re-run |
+| OR4 | **Blocking.** Resolve NFR7 class (c). Deliver and prove provider-portable append fencing, or define, enforce, and prove a supported operating envelope in which the observed append race cannot occur. Any risk acceptance must name the product and architecture approvers, exact bounds, evidence, expiry/revisit trigger, and prohibited completion claims; an owned deferral alone cannot satisfy NFR7 or SM11. | Product owner with architecture owner | Before Phase 4 MVP completion, readiness `READY`, release, or deployment |
+| OR10 | **Blocking.** Define the non-authorship control for high-risk closure. State whether a sealed CI validator run, a second identity, or both are required to distinguish independently approved evidence from an author's assertion, and amend the binding FR/NFR or gate text rather than relying on the glossary. | Product owner with EventStore and test owners | Before any high-risk NFR is used to authorize `READY`, release, or migration |
+| OR11 | **Blocking.** Make the OQ8 design authority reproducible inside the EventStore evidence boundary using a permitted immutable copy, a complete approved normative projection, or a signed or content-addressed Folders attestation. Propagate repository, path, commit, and digest into `architecture.md`, `epics.md`, OQ8 packets, and the validator; absence or mismatch must fail readiness. | Architecture owner with Folders content owner | Before OQ8 closure, readiness `READY`, release, or consumer handoff |
+| OR13 | **Blocking.** Bind the correctness gate: name the exact test lane and command, trigger, evidence identity, pass condition, independent approval rule, and status-transition enforcement required before a story may be recorded `done` against a high-risk NFR. | Test owner | Before the next readiness re-run |
 
-Identifiers OR2, OR3, and OR12 are retired, not reused; the table's remaining numbering is unchanged so existing reviews that cite an OR number keep pointing at the same item.
+**Baseline and lifecycle blockers**
+
+| # | Owed refinement | Owner | Trigger |
+| --- | --- | --- | --- |
+| OR5 | **Blocking.** Reconcile the Story 6.1 lifecycle against the approved canonical `_bmad-output/implementation-artifacts/spec-folded-snapshot.md`. The canonical specification has status `approved-authorized`; the wrapper says `done`; the tracker says `review`; and `epics.md` marks the story `backlog` and says the artifact is absent. The PRD recognizes the specification and Story 6.2 authorization but does not resolve those external lifecycle sources. | Epic 6 owner with tracker owner | Before Story 6.1 is called complete or Story 6.2 records implementation progress |
+| OR6 | **Blocking.** Produce `docs/reference/aot-and-trimming-posture.md` and give NFR18 an owning story. The constraint is currently stated only in this PRD, which NFR18 itself says is insufficient. | Platform maintainer | Before NFR18 is marked covered or readiness returns `READY` |
+| OR8 | **Blocking.** Add a guard that diffs this PRD's FR/NFR text and §11 ownership against the `epics.md` Requirements Inventory and story declarations, so neither requirements nor ownership can silently diverge again. | Test owner | Before the next readiness re-run |
+| OR14 | **Blocking.** Reconcile `architecture.md` to this PRD and OQ8 identity, then reconcile `epics.md` to both. Only after review and renewed approval may `epics.md` replace its stale PRD and architecture input digests; a hash-only refresh is forbidden. | Architecture owner, epic owner, and product owner | Before downstream handoff or the next readiness re-run |
+| OR15 | **Blocking.** Resolve lifecycle contradictions for Stories 4.15, 5.2, 5.4, and 6.1 across `sprint-status.yaml`, story wrappers/evidence, and `epics.md`; retain a passing OQ8 pre-review receipt for Story 4.15. Add guarded status-transition validation so the sources cannot diverge silently again. | Story owners with tracker owner | Before affected FR/NFR delivery claims or the next readiness re-run |
+| OR16 | **Blocking.** Produce and approve `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` with the numeric projection-cost bound and authorization required by NFR8 before Story 6.4 starts. | Epic 6 owner with architecture owner | Before Story 6.4 or NFR8 projection-cost acceptance |
+
+**Acceptance and exit blockers**
+
+| # | Owed refinement | Owner | Trigger |
+| --- | --- | --- | --- |
+| OR7 | **Blocking.** Sub-letter the omnibus requirements FR26, FR33, FR34, and NFR17 so each clause carries one testable consequence, or add a clause-to-story-to-evidence table with an all-clauses-required completion rule. Today a `done` story can appear in these rows without closing any named clause. Deferred 2026-07-16; still open. | Product owner with epic/story owners | Before the next readiness re-run |
+| OR17 | **Blocking.** Define one Phase 4 MVP exit-decision table that separates mandatory gates from post-MVP commitments and, for each gate, identifies the evidence, evaluator, waiver policy, and current result. | Product owner | Before the next readiness re-run |
+
+**Final readiness gate**
+
+| # | Owed refinement | Owner | Trigger |
+| --- | --- | --- | --- |
+| OR1 | **Blocking.** Re-run implementation readiness only after every other blocking refinement in this section is resolved and the reconciled PRD, architecture, epics, evidence, and lifecycle sources form one approved baseline. The 2026-08-01 `READY` verdict is historical; the bound 2026-09-09 validation result is `Poor` / `Reject`. | Product owner | After all blocking refinements close; also whenever FR/NFR text changes, a retrospective is rejected, or a proposal alters scope |
+
+**Non-blocking refinements**
+
+| # | Owed refinement | Owner | Trigger |
+| --- | --- | --- | --- |
+| OR9 | Editorial restructure: front-load full scope and relocate volatile readiness history and replaceable mechanisms into a generated ledger or addendum. Deliberately deferred since 2026-07-16 to preserve stable downstream section anchors; §5 Product Concerns, which largely restates §6 and §7, should be folded in the same pass. | Product owner | Next major PRD revision, when anchor churn is acceptable |
+| OR18 | Bind the exact shared Hexalith.Builds workflow identity and EventStore evidence-handler identity that enforce the §8.1 OCI platform set, and verify that the caller pin resolves to the validated workflow bytes. | Release owner | Before the next container promotion |
+| OR19 | Reconcile the stale Epic 2 tracker rollup and the truncated Story 2.12 tracker key through the tracker owner's guarded process. | Tracker owner | Before the next sprint-status rollup |
+
+Identifiers OR2, OR3, and OR12 are retired, not reused; the remaining numbering is unchanged so existing reviews that cite an OR number keep pointing at the same item.
 
 **Retired 2026-09-08 (sprint change proposal `sprint-change-proposal-2026-09-08.md`).** Three owed refinements closed and are recorded here rather than deleted, because each was retired by correcting an artifact rather than by re-reading it.
 

@@ -4238,6 +4238,41 @@ public sealed class DeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the deliberately corrected lifecycle rows keep their corrected values.
+    /// </summary>
+    [Fact]
+    public void CorrectedLifecycleRowsRetainTheirCorrectedStatus()
+    {
+        string root = FindRepositoryRoot();
+        string sprint = ReadNormalizedText(root, SprintStatusRelativePath);
+
+        // These three rows were each flipped to 'done' by a commit whose subject and body never
+        // mentioned a status change, and each was corrected back. Nothing pinned them afterwards:
+        // the OQ8 validator's status map covers only epic-4 and 4-9..4-15, and the Story 3.15
+        // guard observes digest ordering rather than this row. A 2026-09-09 review demonstrated
+        // the gap by re-flipping all three and watching the full Contracts lane and the OQ8
+        // validator both stay green. Anchored per line, never a whole-file substring, because this
+        // file narrates its own lifecycle corrections in prose that quotes these very tokens.
+
+        // Story 4.6: spec frontmatter records approval_state absent and
+        // implementation_authorized false, with outstanding operator actions.
+        SingleLineValue(sprint, "  4-6-global-position-sharding-spec-renegotiation:")
+            .ShouldBe("awaiting-operator");
+
+        // Story 3.15: the packet fails closed at 0 of 3 receipts and grants nothing.
+        SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
+            .ShouldBe("in-progress");
+
+        // Story 5.3: the committed-secret strip landed; the production JWT guard did not.
+        SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")
+            .ShouldBe("in-progress");
+
+        // Story 4.7: the spec is in-progress at review pass 6 with 7 patches unapplied.
+        SingleLineValue(sprint, "  4-7-tenants-query-provenance-follow-up:")
+            .ShouldBe("in-progress");
+    }
+
+    /// <summary>
     /// Reads the value of the one line that starts with a prefix, failing when it is not unique.
     /// </summary>
     /// <param name="text">The normalized document text.</param>

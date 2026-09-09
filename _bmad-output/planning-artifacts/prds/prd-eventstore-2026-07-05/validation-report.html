@@ -1,506 +1,170 @@
 <!DOCTYPE html>
-<!--
-  PRD Validation Report — skeleton template.
-
-  This file is a starter the synthesis pass fills in directly. There is no
-  substitution engine. The LLM:
-    1. Reads {doc_workspace}/review-rubric.md and every review-{slug}.md from
-       additional reviewers.
-    2. Copies this skeleton.
-    3. Replaces the placeholder content (everything between TEMPLATE markers)
-       with the consolidated review, preserving the structure and CSS.
-    4. Writes the result to {doc_workspace}/validation-report.html.
-    5. Writes a markdown twin to {doc_workspace}/validation-report.md.
-
-  Visual rules the LLM must preserve:
-    - The container width, the color tokens, the typography.
-    - One dimension = one collapsible <section class="dimension">.
-    - Verdict pill uses the verdict-* class matching its judgment.
-    - Severity badge uses the sev-* class matching its level.
-    - Each extra reviewer (adversarial, etc.) gets its own collapsible section
-      below the rubric dimensions.
-    - The footer always shows the artifact paths and timestamp.
--->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>PRD Validation: eventstore Phase 4 Implementation Readiness Recovery</title>
 <style>
   :root {
-    --bg: #fafaf9;
-    --surface: #ffffff;
-    --border: #e7e5e4;
-    --text: #1c1917;
-    --muted: #78716c;
-
-    --verdict-strong: #16a34a;
-    --verdict-adequate: #65a30d;
-    --verdict-thin: #d97706;
-    --verdict-broken: #dc2626;
-
-    --sev-low: #64748b;
-    --sev-medium: #ca8a04;
-    --sev-high: #ea580c;
-    --sev-critical: #dc2626;
-
-    --grade-exc: #16a34a;
-    --grade-good: #65a30d;
-    --grade-fair: #d97706;
-    --grade-poor: #dc2626;
+    --bg: #fafaf9; --surface: #ffffff; --border: #e7e5e4; --text: #1c1917; --muted: #78716c;
+    --verdict-strong: #16a34a; --verdict-adequate: #65a30d; --verdict-thin: #d97706; --verdict-broken: #dc2626;
+    --sev-low: #64748b; --sev-medium: #ca8a04; --sev-high: #ea580c; --sev-critical: #dc2626;
+    --grade-exc: #16a34a; --grade-good: #65a30d; --grade-fair: #d97706; --grade-poor: #dc2626;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    font-size: 15px;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
   .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
-
-  header.report-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 24px;
-  }
+  header.report-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
   .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
   .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  .grade {
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-weight: 600;
-    color: white;
-    font-size: 15px;
-    white-space: nowrap;
-  }
-  .grade-excellent { background: var(--grade-exc); }
-  .grade-good { background: var(--grade-good); }
-  .grade-fair { background: var(--grade-fair); }
-  .grade-poor { background: var(--grade-poor); }
-
-  .synthesis {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--muted);
-    border-radius: 8px;
-    padding: 18px 22px;
-    margin-bottom: 24px;
-    font-size: 15.5px;
-  }
-  .synthesis p { margin: 0 0 10px; }
-  .synthesis p:last-child { margin-bottom: 0; }
-
-  .dimension-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 10px;
-    margin-bottom: 24px;
-  }
-  .dim-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-  }
+  .grade { padding: 10px 18px; border-radius: 8px; font-weight: 600; color: white; font-size: 15px; white-space: nowrap; }
+  .grade-excellent { background: var(--grade-exc); } .grade-good { background: var(--grade-good); } .grade-fair { background: var(--grade-fair); } .grade-poor { background: var(--grade-poor); }
+  .synthesis { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; font-size: 15.5px; }
+  .synthesis p { margin: 0 0 10px; } .synthesis p:last-child { margin-bottom: 0; }
+  .dimension-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .dim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
   .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
   .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
-
   section.dimension, section.reviewer-section { margin-bottom: 14px; }
-  section.dimension details, section.reviewer-section details {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  section summary {
-    padding: 14px 20px;
-    cursor: pointer;
-    user-select: none;
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+  section.dimension details, section.reviewer-section details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  section summary { padding: 14px 20px; cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 12px; }
   section summary::-webkit-details-marker { display: none; }
-  section summary::before {
-    content: "▸";
-    display: inline-block;
-    color: var(--muted);
-    transition: transform 0.15s ease;
-  }
+  section summary::before { content: "▸"; display: inline-block; color: var(--muted); transition: transform 0.15s ease; }
   section details[open] summary::before { transform: rotate(90deg); }
-  section summary h2 {
-    display: inline;
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: -0.005em;
-    flex: 1;
-  }
-  .verdict-pill {
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: white;
-  }
-  .verdict-strong { background: var(--verdict-strong); }
-  .verdict-adequate { background: var(--verdict-adequate); }
-  .verdict-thin { background: var(--verdict-thin); }
-  .verdict-broken { background: var(--verdict-broken); }
-
+  section summary h2 { display: inline; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; flex: 1; }
+  .verdict-pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: white; }
+  .verdict-strong { background: var(--verdict-strong); } .verdict-adequate { background: var(--verdict-adequate); } .verdict-thin { background: var(--verdict-thin); } .verdict-broken { background: var(--verdict-broken); }
   .dim-body { padding: 4px 20px 18px; }
-  .dim-judgment { color: var(--text); font-size: 14.5px; }
-  .dim-judgment p { margin: 0 0 10px; }
-
+  .dim-judgment { color: var(--text); font-size: 14.5px; } .dim-judgment p { margin: 0 0 10px; }
   .findings-list { padding: 0 20px 4px; }
-  article.finding {
-    padding: 14px 0;
-    border-top: 1px solid var(--border);
-  }
+  article.finding { padding: 14px 0; border-top: 1px solid var(--border); }
   article.finding:first-child { border-top: none; }
-  article.finding header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 6px;
-  }
-  .badge {
-    font-size: 10.5px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    line-height: 1.4;
-  }
-  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
-  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
-  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
-  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  article.finding header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .badge { font-size: 10.5px; padding: 3px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; }
+  .badge-sev-low { background: rgba(100,116,139,.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202,138,4,.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234,88,12,.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220,38,38,.14); color: var(--sev-critical); }
   .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
   .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
-  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
-  .finding-fix strong { color: var(--muted); font-weight: 500; }
-
-  .reviewer-source {
-    font-size: 12px;
-    color: var(--muted);
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  }
-
-  .mechanical {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin-top: 24px;
-    font-size: 14px;
-  }
-  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .mechanical ul { margin: 0; padding-left: 20px; }
-  .mechanical li { margin-bottom: 4px; color: var(--text); }
-
-  footer.report-footer {
-    margin-top: 40px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-    font-size: 12px;
-    color: var(--muted);
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; } .finding-fix strong { color: var(--muted); font-weight: 500; }
+  .reviewer-source { font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .mechanical { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 24px; font-size: 14px; }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; } .mechanical li { margin-bottom: 4px; color: var(--text); }
+  footer.report-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
-  <div class="container">
-
-    <header class="report-header">
-      <div class="title">
-        <h1>eventstore Phase 4 Implementation Readiness Recovery — Validation Report</h1>
-        <div class="subtitle">_bmad-output/planning-artifacts/prd.md · status: final · updated: 2026-08-16 · last content commit 8312bced (2026-09-06)</div>
-      </div>
-      <div class="grade grade-poor">Poor</div>
-    </header>
-
-    <div class="synthesis">
-      <p>The PRD's skeleton still holds: decisions are stated as decisions (§1.1 OQ8 authority order, §9.3 Epic 8 gating, §11.3 no-authority boundary), scope boundaries are explicit, IDs are stable, the epic-level FR map is accurate for all 37 FRs, and the September rewrite of NFR3/NFR4 is the best-bounded NFR text in the document. What is at risk is done-ness and truthfulness of self-description: every rubric deferral logged on 2026-07-16 and 2026-07-19 is still open, the PRD asserts "no open questions" while owing them, the success metrics are almost all already satisfied so the PRD can no longer say whether the remaining four epics succeed, and the unlogged NFR3 rewrite is simultaneously looser than the shipped implementation on Production break-glass and out of sync with the epics.md inventory that stories are cut from.</p>
-      <p>The adversarial and brownfield reviewers shift the picture from Fair to Poor. Three findings are critical. NFR7's append-race guard reads as delivered (Story 4.5 <code>done</code>) while the only evidence records a silently lost durable write with no fence authorized and no story owning one. The §1.1 OQ8 authority order binds three of the PRD's own requirements to a hashed document that is not in this repository, has no path, and per <code>epics.md</code> overrides the PRD. And NFR3/NFR4 were rewritten on 2026-09-06 with no approving proposal, no memlog entry, no frontmatter bump, and the Story 5.3 spec that cites the new text as authority was created the day after. The grade is Poor because of those criticals, not because the document is weak overall; each is a bounded edit, but together they mean the PRD cannot currently be trusted as the authoritative source it claims to be for Epics 4-7.</p>
+<div class="container">
+  <header class="report-header">
+    <div class="title">
+      <h1>eventstore Phase 4 Implementation Readiness Recovery — Validation Report</h1>
+      <div class="subtitle">_bmad-output/planning-artifacts/prd.md · baseline 1b6f08d4</div>
     </div>
+    <div class="grade grade-poor">Poor</div>
+  </header>
 
-    <div class="dimension-summary">
-      <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
-      <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
-      <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
-      <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color: var(--verdict-thin)">thin</div></div>
-      <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
-      <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
-      <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
-    </div>
-
-    <!-- 1. Decision-readiness -->
-    <section class="dimension">
-      <details>
-        <summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The real decisions are visible and unsmoothed. §1.1 (lines 76-83) binds Stories 4.9-4.15 to a hashed OQ8 design and says earlier FR27/NFR7/NFR16 wording "cannot weaken" it; §9.3 (lines 345-349) gates Epic 8 story-by-story; §11.3 (line 442) denies release, deployment, Git, and submodule authority and requires a separate durable release-owner record for Story 3.14. §2 line 91 names the trade-off honestly ("A domain-centric SDK without security ... would be easier to adopt but unsafe to operate").</p>
-          <p>Where it dodges is in what it claims is closed. §12 (line 460) says "No PRD-level ownership or MVP-scope questions are open" and §13 (line 464) records no assumptions, yet the run memlog records eight deferrals to "the next major PRD revision" that nobody has applied and that the PRD never mentions. §1 line 74 and §11.3 line 440 read as if the readiness gate is still pending, while the frontmatter lists the 2026-08-01 readiness report and two epics are in progress. A decision-maker reading only the PRD would conclude that implementation is still blocked and that nothing is owed.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">"No open questions" contradicts eight logged, unapplied deferrals</h3><span class="finding-location">§12 line 460; §13 line 464</span></header>
-            <div class="finding-note">The memlog (2026-07-16, 2026-07-19) deferred: clause-level completion evidence for omnibus FR26/FR33/FR34; finite bounds for NFR5/NFR7/NFR8/NFR17; correctness-gate binding; product-bet success metrics; glossary and cross-reference expansion (G5, goldens); the front-loaded-scope restructuring. None has landed. The PRD gives readers no signal that any of this is owed, by whom, or on what trigger.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add an "Owed refinements" list under §12 with owner and trigger for each item, or <code>[NOTE FOR PM]</code> callouts at FR26/FR33/FR34, NFR5/NFR8/NFR17, and §10.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Resume gate reads as still pending</h3><span class="finding-location">§1 line 74; §11.3 line 440</span></header>
-            <div class="finding-note">Readiness was re-run on 2026-08-01 (frontmatter line 50) and Epics 4 and 5 are <code>in-progress</code>. The stale wording makes the PRD's own gate un-actionable: a reader cannot tell whether implementation is authorized.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Restate as "Readiness re-run passed on 2026-08-01; the gate re-opens when ..." and name the re-trigger (new FR/NFR, story split, authority change).</div></article>
-        </div>
-      </details>
-    </section>
-
-    <!-- 2. Substance over theater -->
-    <section class="dimension">
-      <details>
-        <summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>Nothing here is furniture. There are no personas, only six user groups (§3.1) that each map to a feature section; the vision (§2) is product-specific to the sentence level (DAPR-native, domain-centric SDK, generated REST in dedicated hosts, projection-confirmed success); every NFR carries EventStore-specific nouns (<code>MessageId</code>, <code>SequenceNumber</code>, <code>openbao</code>, <code>pdenc-v2</code>, <code>501</code>, <code>ConfigureAwait(false)</code>). The rewritten NFR3/NFR4 (lines 272-273) are concrete rather than boilerplate: named option, named algorithm, fixed skew, enumerated secret kinds, enumerated injection channels.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">§5 Product Concerns restates §6 section descriptions and the §7 NFR list</h3><span class="finding-location">§5 lines 132-144</span></header>
-            <div class="finding-note">No decision or downstream extraction depends on it; it is a summary masquerading as a section.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Fold into §2 or delete; keep §6/§7 as the single source.</div></article>
-        </div>
-      </details>
-    </section>
-
-    <!-- 3. Strategic coherence -->
-    <section class="dimension">
-      <details>
-        <summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The thesis is explicit and the feature sections serve it: §2 line 91 bets that reuse and hardening must ship together, §6.1-6.2 carry reuse, §6.3-6.7 carry hardening, §9.2 refuses the tempting cheats (moving controllers into UI hosts, treating <code>202</code> as success). Counter-metrics exist (SM-C1..C3) and are paired to the metrics they guard.</p>
-          <p>The gap, flagged on 2026-07-16 and still open, is that the success metrics measure planning artifacts, not the bet. SM1, SM2, SM3, and SM5 were satisfied by the 2026-08-01 readiness re-run; SM4 by the 07-15/08-01 restructurings; SM6 by Story 1.20 (<code>done</code>). Only SM7, which is post-MVP, is still live. With Epics 4-7 executing, the PRD has no metric that would tell anyone whether Phase 4 delivered platform reuse or operational hardening.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Success metrics are exhausted before the work is</h3><span class="finding-location">§10 lines 353-364</span></header>
-            <div class="finding-note">SM1-SM6 are already met and are all "artifact exists / mapping exists / packet approved" checks. Nothing measures the §2 line 91 bet: no metric for boilerplate removed from Sample/Tenants (FR9), zero per-message controllers in UI hosts (FR13/NFR14), fail-closed surface coverage (NFR1), or persisted-evidence test share (NFR16/SM-C2). The "product-bet metrics" refinement was deferred 2026-07-16 and is now blocking in effect: four epics have no PRD-level success definition. The adversarial reviewer adds that SM1 is satisfied by the file existing, SM2 asks for stories but §11.1 maps to epics only, and SM3's deadline has already elapsed.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add outcome metrics such as SM8 "Sample and Tenants contain zero platform-boilerplate types per the FR9 guardrail scan" and SM9 "100% of NFR1 surfaces have a fail-closed negative test in the release gate", each with a counter-metric; add a story column to §11.1; retire SM1/SM3 as achieved.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">"All seven Phase 4 epics currently listed in epics.md"</h3><span class="finding-location">§9.1 line 325</span></header>
-            <div class="finding-note"><code>epics.md</code> lists eight; the eighth is post-MVP per §9.3, so the sentence is true only with knowledge the reader must bring.</div>
-            <div class="finding-fix"><strong>Fix:</strong> "Epics 1-7 as listed in <code>epics.md</code>; Epic 8 is post-MVP (§9.3)."</div></article>
-        </div>
-      </details>
-    </section>
-
-    <!-- 4. Done-ness clarity -->
-    <section class="dimension">
-      <details open>
-        <summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">thin</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>This is the dimension the story pipeline leans on, and it is where the PRD is weakest for its stakes. The per-section "Done evidence" lines are a good device, but for the three omnibus FRs they cover a minority of the clauses, and several NFRs still state a property ("bounded", "meaningful", "targets") without a bound. The September NFR3/NFR4 text is a real improvement and is consistent with §8.2 lines 305-308 and NFR1's probe exception, but its environment scope is wider than what was implemented and what Story 5.3's acceptance criteria say, which matters because the PRD is the authority a future change would cite.</p>
-          <p>Verification of the new NFR3/NFR4 against the codebase: <code>src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtBearerAuthenticationContract.cs</code> has <code>ClockSkew = TimeSpan.FromMinutes(1)</code> (line 160), enforces <code>AllowedAlgorithms</code> nonempty/asymmetric in authority mode (lines 98-109, 228-237), and rejects <code>SigningKey</code> in Production "including when AllowInsecureSymmetricKey is true" (lines 118-122). That last rule is stricter than NFR3.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">NFR3 permits Production break-glass that the implementation and Story 5.3 forbid</h3><span class="finding-location">§7 line 272</span></header>
-            <div class="finding-note">"Authentication outside Development must reject symmetric-key mode unless explicitly enabled by the narrowly scoped <code>AllowInsecureSymmetricKey</code> break-glass option" admits symmetric mode in Production when the flag is set. The shipped contract fails validation in Production regardless of the flag (<code>JwtBearerAuthenticationContract.cs:118-122</code>), and the Story 5.3 spec says "Never: Permit symmetric JWT validation in Production even when the legacy override is set". Every other NFR3 claim is implemented (brownfield reviewer table). As the authoritative NFR, this text would justify a later change that re-enables HS256 in Production.</div>
-            <div class="finding-fix"><strong>Fix:</strong> "Production must always reject symmetric-key mode. Non-Development, non-Production environments may accept HS256 symmetric mode only when <code>AllowInsecureSymmetricKey</code> is explicitly enabled ..." and align the Story 5.3 AC in <code>epics.md</code>.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Omnibus FR26/FR33/FR34 still have no per-clause done consequence</h3><span class="finding-location">§6.5 line 219 vs 223; §6.6 line 231 vs 233; §6.7 line 241 vs 244</span></header>
-            <div class="finding-note">FR26 lists nine remediations; its done evidence covers four (no consequence for "clear staged state on infrastructure failure", "tenant-filter parity", "gate admin Swagger", "destructive CLI confirmation", "ULID-safe admin correlation middleware", "stale test-baseline documentation"). FR34 lists eleven; done evidence covers four and shares one block with FR35 which is <code>done</code> while 7.1-7.10 are all <code>backlog</code>. FR33's done evidence is spec-existence only. NFR17's row lists 3.12 (<code>done</code>, satisfies only "immutable image tags") alongside backlog stories, so the row reads green for a requirement whose core has zero implementation. Epic 5 is in progress with 5.2 and 5.3 <code>done</code>; a story can now close against FR26 with no PRD statement of which clauses it retires. Deferred 2026-07-16; blocking in effect.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Either split into sub-IDs (FR26a-i, FR33a-f, FR34a-k, NFR17a-g) with one testable consequence each, or add a clause-to-story-to-evidence table in §11; do not let a <code>done</code> story appear in a row unless it closes a named clause.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">NFR5, NFR8, NFR17 remain adjective-bounded</h3><span class="finding-location">§7 lines 274, 277, 286</span></header>
-            <div class="finding-note">NFR5 "must remain bounded and metadata-only" and FR16 line 178 "bounded metadata" name no byte or field bound (Story 2.8 is <code>done</code>, so a real bound exists and can be lifted). NFR8 "bounded cost model" has no bound and does not say the bound is owed by <code>spec-projection-cost-sequence-guard.md</code>. NFR17 "resiliency targets" names no policy set. NFR7 is now acceptable: §1.1 binds it to the hashed OQ8 design and NFR16 enumerates its proof dimensions. Deferred 2026-07-16; still open.</div>
-            <div class="finding-fix"><strong>Fix:</strong> NFR5: state the max detail-payload size and allowed field set from Story 2.8. NFR8: "bound defined by the approved spec at <em>path</em>; until approved, no Epic 6 implementation story may start." NFR17: name the DAPR resiliency policy set (timeouts, retries, circuit breakers) and the components they must target.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Unbounded verbs with no consequence</h3><span class="finding-location">FR16 line 178; FR33 line 231; FR34 line 241; FR5 line 158; NFR12 line 281; NFR19 line 288</span></header>
-            <div class="finding-note">"DAPR notification support where needed" (who decides need); "reduce projection replay cost" (by how much, measured how); "validate event metadata identity components" (which, what failure); "restore meaningful IntegrationTests CI coverage" (meaningful by what test); "or an approved equivalent" (approver unnamed); "such as" leaves the compatibility set open; "zeroed when no longer needed" has no observable point.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Replace each with a named condition, e.g. FR34 "IntegrationTests lane runs on every push to main and asserts persisted state for at least the FR23/FR27/FR30 paths"; FR33 "replay of an already-current projection performs zero event reads".</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">NFR3/NFR4 altitude and undefined terms</h3><span class="finding-location">§7 lines 272-273</span></header>
-            <div class="finding-note">NFR3 names the <code>AllowInsecureSymmetricKey</code> option but not the <code>AllowedAlgorithms</code> option it also constrains; "role, and tenant validation remain mandatory" is not defined anywhere and is not part of the authentication contract; NFR4 "clearly named Development configuration" and "ephemeral developer tooling" are categories a scanner cannot enumerate. The brownfield reviewer adds that the host set differs between the PRD ("outside Development"), the epics AC (gateway and Admin Server) and the code (three hosts including the Sample API).</div>
-            <div class="finding-fix"><strong>Fix:</strong> Name both options or neither; move the role/tenant clause to NFR1/NFR2; state the host set; enumerate the approved injection channels as a closed list.</div></article>
-        </div>
-      </details>
-    </section>
-
-    <!-- 5. Scope honesty -->
-    <section class="dimension">
-      <details>
-        <summary><h2>Scope honesty</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>Non-goals do real work: §9.2 (lines 335-343) names what GDPR-1 excludes, distinguishes in-scope erasure (FR5/Story 1.14) from out-of-scope tombstoning, and explicitly refuses the two cheats a team under pressure would reach for. §9.3 separates committed post-MVP from MVP. §6.8 line 254 and §11.3 line 442 say precisely what Story 1.20 does not cover and what nothing in this PRD authorizes.</p>
-          <p>What is not honest is the PRD's self-report. The deferrals are recorded only in the memlog, and the NFR3/NFR4 rewrite entered a <code>final</code> PRD with no memlog entry, no frontmatter bump, and no source proposal in <code>source_artifacts</code>; the document's own provenance mechanism was bypassed. Open-items density is zero on paper (0 Open Questions, 0 <code>[ASSUMPTION]</code>, 0 <code>[NOTE FOR PM]</code>) for a launch-stakes PRD, which is only credible if nothing is owed; the memlog shows otherwise.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Post-final requirement change with no listed source</h3><span class="finding-location">frontmatter lines 3-5, 7-52; §7 lines 272-273</span></header>
-            <div class="finding-note">Commit <code>8312bced</code> (2026-09-06) rewrote NFR3 and NFR4; <code>source_artifacts</code> lists no proposal for it, <code>updated</code> still says 2026-08-16, and the memlog has no entry between the 2026-08-16 finalize and this run. A reader cannot tell the new text was approved or where it came from. The brownfield reviewer rates this critical (see its section): no approving artifact exists and the Story 5.3 spec that cites the new text was created the day after.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add a memlog <code>(override)</code> recovery entry, list the originating proposal or story spec in <code>source_artifacts</code>, and bump <code>updated</code>; or revert to the 2026-08-16 text.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Foreign story numbering without qualification</h3><span class="finding-location">§9.2 line 337 "Stories 22.7a-d"</span></header>
-            <div class="finding-note">These are Parties stories; the PRD never says so.</div>
-            <div class="finding-fix"><strong>Fix:</strong> "Parties Stories 22.7a-d".</div></article>
-        </div>
-      </details>
-    </section>
-
-    <!-- 6. Downstream usability -->
-    <section class="dimension">
-      <details>
-        <summary><h2>Downstream usability</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>Traceability is the PRD's strongest asset: §11.1 maps every FR to an epic with a one-line intent (the brownfield reviewer confirms all 37 rows agree with <code>epics.md</code>), §11.2 maps the high-risk NFRs to story IDs that all resolve, and §11.3 names exact output paths. IDs are unique and stable.</p>
-          <p>Two things degrade extraction. First, the <code>epics.md</code> Requirements Inventory (lines 111 and 113) still carries the pre-2026-09-06 NFR3/NFR4 text while the PRD carries the rewrite and Story 5.3's acceptance criteria carry a third rendering. Second, the glossary (§4) has not grown with the requirements: FR27, FR36, FR37, §1.1, and §9.3 lean on OQ8, G5, goldens, parity packet, break-glass, provenance classification, <code>pdenc-v2</code>, durable admission, canonical-intent descriptor, retention tier, Parties, and corrective release, none defined.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">epics.md inventory disagrees with the PRD on NFR3/NFR4</h3><span class="finding-location">§7 lines 272-273 vs epics.md lines 111, 113</span></header>
-            <div class="finding-note">The PRD calls itself the FR/NFR truth (§1 line 69); the epics inventory is what story authors copy from. Old text: "pin accepted JWT algorithms", "require HTTPS metadata where appropriate". New text: nonempty asymmetric allowlist with no default, HTTPS required for authority/OIDC discovery, HS256-only symmetric, 60-second skew, enumerated secret kinds. A story cut from the inventory would be held to the weaker contract.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Sync the inventory to the PRD text in one commit and add a Contracts-style guard that diffs PRD §7 against the inventory.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">"Story 8.6" is ambiguous between two numbering spaces</h3><span class="finding-location">§6.8 line 254; §10 SM6 line 363</span></header>
-            <div class="finding-note">"Before Story 8.6 resumes" is unqualified in both places, but EventStore's own Epic 8 has Stories 8.1-8.11, while the intended referent is the Parties story. §9.3 line 348 does qualify "Parties Story 8.7"; SM6 and §6.8 do not.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Write "Parties Story 8.6" everywhere; add a glossary entry for "Parties".</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Glossary has not kept pace with FR27/FR36/FR37</h3><span class="finding-location">§4 lines 117-130</span></header>
-            <div class="finding-note">Missing: OQ8, G5, goldens, parity packet, break-glass, provenance classification, durable admission, canonical-intent descriptor, retention tier, <code>pdenc-v2</code>, Parties, corrective release. G5 and goldens were explicitly deferred 2026-07-16 pending "authoritative terms"; the OQ8 design and AD-22/AD-23/AD-25 now supply them.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add the entries, each pointing at the owning AD or spec.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">§11.2 omits Story 3.16 and bare references lack paths</h3><span class="finding-location">§11.2 lines 429, 431; §11.3 line 446</span></header>
-            <div class="finding-note"><code>epics.md</code> Story 3.16 (<code>backlog</code>) declares "supporting NFR9, NFR11, and NFR12"; the NFR9/NFR11 rows do not list it. <code>story-id-migration-2026-07-15.md</code> and <code>story-id-migration-2026-08-01.md</code> are cited without their path while every other artifact reference is fully pathed.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add 3.16 to NFR9/NFR11; path the two migration files.</div></article>
-        </div>
-      </details>
-    </section>
-
-    <!-- 7. Shape fit -->
-    <section class="dimension">
-      <details>
-        <summary><h2>Shape fit</h2><span class="verdict-pill verdict-strong">strong</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>Correctly shaped as a brownfield developer-platform and operations-hardening capability spec (§3.3 line 115): FR/NFR tables, guardrails (§8), MVP boundaries, metrics with counter-metrics, and traceability, with no user journeys, appropriate for six operator/developer roles with no consumer-facing flow. Brownfield references checked and accurate: <code>/health</code>, <code>/alive</code>, <code>/ready</code>; <code>Authentication:JwtBearer:AllowedAlgorithms</code>; <code>references/Hexalith.Builds/Props/Directory.Packages.props</code>; <code>AddEventStoreDomainService</code>. The one brownfield inaccuracy found (NFR3's Production scope) is filed under Done-ness. No findings.</p>
-        </div></div>
-        <div class="findings-list"></div>
-      </details>
-    </section>
-
-    <!-- Reviewer: adversarial -->
-    <section class="reviewer-section">
-      <details open>
-        <summary><h2>Adversarial review</h2><span class="reviewer-source">review-adversarial-general-validate-2026-09-08.md</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The document is polished and internally consistent at the sentence level, and that is the problem: it reads as a settled baseline while the repository it describes disagrees with it on the points that matter most. The PRD outsources its hardest requirement text to a hash of a document that is not in this repository, disclaims part of its own FR list as "historical", carries success metrics that were satisfied the day the file was created, and hides seven owner-deferred uncertainties behind an empty Open Questions section. The single biggest risk is NFR7: the PRD says append races "must be explicitly guarded or recovered", the only evidence collected records a silently lost durable write with no fence authorized and no story owning one, and every story in the chain is marked <code>done</code>. A new engineer reading this PRD plus <code>epics.md</code> would conclude append durability is delivered.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">NFR7's append-race guard is marked delivered while the only evidence records silent data loss and no story owns a fix</h3><span class="finding-location">§7 NFR7 line 276; §6.4 FR31 line 209; §11.2 line 427</span></header>
-            <div class="finding-note">NFR7 requires that "append races ... must be explicitly guarded or recovered" and its coverage row lists 4.5 (<code>done</code>). FR31 requires only a live-sidecar two-writer race test before choosing a fencing design, a spike rather than a guard. Story 4.5's reconciliation in <code>epics.md:3112</code> reports <code>same-key-overwrite-raw-durable-write-lost</code>: "a raw same-sequence write was proven durable, then silently replaced by the accepted actor write without an exception or retry ... No fencing implementation is authorized by the partial evidence", the sealed packet "drifted from its bound source files, is not enforced by CI", and the AC at <code>epics.md:3149</code> says 4.5 "grants no authority to implement the fence". No FR, story, or <code>deferred-work.md</code> entry owns the fence. The same shape applies to FR24 (line 205): the requirement is to renegotiate sharding; Story 4.6 is <code>done</code>; nothing owns implementing it. §6.4's "Done evidence" (line 211) is satisfied by tests that observe loss, not by loss being guarded.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Split NFR7 into one row per loss class (staged flush, stale pipeline, append race, committed-unpublished, duplicate side effects) each with an owning implementation story or an explicit "NOT delivered in Phase 4 MVP, deferred to <em>story</em>" marker; add an FR for the fencing implementation or state in §9.2 that append fencing is out of MVP scope; do the same for global-position sharding.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">The OQ8 authority order binds governance to a document that is not in this repository, has no path in the PRD, and overrides the PRD's own FR text</h3><span class="finding-location">§1.1 lines 76-83</span></header>
-            <div class="finding-note">"The Architecture + Security + Test-approved OQ8 design version 1.0.0 (SHA-256 <code>1a55b030…</code>) govern" and "Any pre-change FR27, NFR7, NFR16, or architecture wording is historical context only". No file in this repository hashes to that digest. The 2026-07-20 proposal locates it at <code>docs/exit-criteria/oq8-idempotency-design.md</code> in a different repository ("Folders"), noting "Both files are currently untracked in the Folders worktree". <code>epics.md:149</code> says the design "override[s] historical FR27/NFR7/NFR16 text". So the document §0 calls "the authoritative Phase 4 functional and non-functional requirements baseline" declares three of its own requirements non-authoritative in favour of an unlocatable external file. "Folders" appears nowhere in the PRD. Circularity: <code>architecture.md:67-68</code> defers to the PRD; the PRD says <code>epics.md</code> owns acceptance criteria; <code>epics.md</code> says the external design overrides the PRD.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Name the repository, path, and commit of the governing design in §1.1; either project its normative content into FR27/NFR7/NFR16 so the PRD is self-sufficient, or replace "historical context only" with a precise statement of which clauses are superseded and by what; add "Folders" and "Parties" to the glossary as external repositories with their roles.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Empty Open Questions and Assumptions Index launder seven owner-deferred uncertainties and one unlogged requirement rewrite</h3><span class="finding-location">§12 lines 458-460; §13 lines 462-464; frontmatter line 5</span></header>
-            <div class="finding-note">The run memlog records deferrals the PRD reader never sees (memlog lines 23-25, 28, 37-38). Separately, commit <code>8312bced</code> rewrote NFR3 and NFR4 with no memlog entry and the frontmatter still says <code>updated: 2026-08-16</code>. The next day Story 5.3, the sole NFR3 coverage, flipped to <code>done</code> (<code>c83cc4c3</code>) while <code>epics.md:3810</code> still reads "Story 5.3 remains backlog" and its spec says <code>in-progress</code>. Three artifacts, three states.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Populate §12 with each deferred item, its owner, and its due gate; add a memlog entry and bump <code>updated</code> for <code>8312bced</code>; reconcile 5.3's status across sprint-status, epics reconciliation, and spec before the PRD claims NFR3/NFR4 coverage.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">SM1-SM3 cannot fail and no metric measures the product bet</h3><span class="finding-location">§10 lines 355-357; §2 line 91</span></header>
-            <div class="finding-note">SM1 is satisfied by the file existing. SM2 requires "at least one epic and story" but §11.1 maps to epics only. SM3's deadline elapsed months ago. §2 states the bet ("platform reuse and operational hardening are delivered together"); no metric measures reuse or hardening. The counter-metrics are prohibitions, not measurements.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add a story column to §11.1; retire SM1/SM3 as achieved; add thesis metrics with numbers: platform plumbing deleted from Tenants (FR9), surfaces with a negative fail-closed test (NFR1), silent-loss classes with an owning implementation story (NFR7, currently not 100%).</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">A new engineer cannot tell FR36's real state from this PRD</h3><span class="finding-location">§6.8 line 254; §11.1 line 413; §11.3 line 442; SM6 line 363</span></header>
-            <div class="finding-note">§11.1 calls FR36 "completed ... in Story 1.20" and Epic 1 is <code>done</code>. But positive deployed-runtime parity is assigned to Story 3.15, whose packet holds 0 of 3 receipts and whose verifier exits 1; the 2026-09-07 Epic 3 retrospective is <code>rejected</code> and states "FR36 remains open". §11.3 calls 1.20's evidence "immutable inputs", yet Story 1.21 exists precisely to repair three drifted files in 1.20's frozen manifests and the PRD never mentions it. Story 3.16 is also absent.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add a per-FR status line for FR36 with three explicit sub-states: source/package (closed, 1.20), frozen-evidence integrity (repaired, 1.21), deployed-runtime (open, 3.15 at 0/3); reference 3.16 under §6.3 or drop the §8.1 constraint only it implements.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Story identifiers collide across repositories and reused numbers, and SM4 cites IDs that now name different stories</h3><span class="finding-location">§6.8 line 254; §9.2 line 337; §9.3 line 348; SM4 line 361; SM6 line 363</span></header>
-            <div class="finding-note">"Before Story 8.6 resumes" and "Story 8.11 blocks Parties Story 8.7 migration" use Parties numbers, but EventStore Epic 8 has its own Story 8.6 (Azure Key Vault adapter, <code>epics.md:6382</code>) and 8.7 (Server persistence, <code>epics.md:6460</code>). "Stories 22.7a-d" is unexplained. SM4 says "Oversized Stories 4.8, 7.14, and 8.2 ... are replaced by focused children", but 7.14 and 8.2 are live <code>backlog</code> stories under reused numbers.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Qualify every foreign story as <code>Parties 8.6</code>, <code>Parties 22.7a-d</code>; rewrite SM4 as "former 4.8/7.14/8.2 umbrellas per <code>story-id-migration-2026-08-01.md</code>, now 4.9-4.15, 7.14/7.19/7.20, 8.2-8.11".</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Omnibus requirements let partial delivery read as complete</h3><span class="finding-location">FR26 line 219; FR33 line 231; FR34 line 241; NFR16 line 285; NFR17 line 286; §11.2 line 435</span></header>
-            <div class="finding-note">FR34 bundles twelve independently failable obligations, all owned by Stories 7.1-7.10 which are entirely <code>backlog</code>, yet it shares one §6.7 "Done evidence" block with FR35 which is <code>done</code>. NFR17's coverage row lists 3.12 (<code>done</code>) alongside 5.6/7.6-7.9 (<code>backlog</code>); 3.12 satisfies only the "immutable image tags" clause. FR26's nine clauses split across 5.1-5.3 (<code>done</code>) and 5.4 (<code>review</code>), with the Swagger gate, destructive CLI confirmation, ULID-safe correlation, and stale-doc clauses all in the un-done one.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Sub-letter the clauses (FR34a-l, NFR17a-g, FR26a-i) and give each its own coverage cell; do not let a <code>done</code> story appear in a row unless it closes a named clause.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">§6.1 "Done evidence" claims guardrails that are green by construction</h3><span class="finding-location">§6.1 line 165</span></header>
-            <div class="finding-note">"Guardrails prevent domain modules from reintroducing reusable platform boilerplate" is asserted for a <code>done</code> epic. <code>epics.md:833</code> records residual boundaries; <code>deferred-work.md</code> DW-64, DW-65, DW-77, DW-78/79 document that a domain module naming its handler <code>RoutingHandler</code> and putting the route in a constant passes every guard.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Restate done evidence as a falsifiable negative control ("a fixture domain module that adds <code>AddDaprClient</code> in a non-<code>*Dapr*</code>-named class fails test X") and list the accepted evasions as residual risk in §12.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">"Production path" is load-bearing in FR36, NFR6, NFR8, and NFR16 but never defined, and the evidence accepted under it is fixture-instrumented</h3><span class="finding-location">§4; NFR16 line 285; FR36 line 252</span></header>
-            <div class="finding-note">Story 4.14's AC accepts "deterministic time support is clearly labeled while durable PostgreSQL state and restart observations remain production-path proof", implemented via test-owned <code>Oq8FileTimeProvider</code>, <code>Oq8HostingStartup</code>, and <code>Oq8BoundaryCounterStartupFilter</code> injected into the host. Story 1.20's approved runtime is a proof package. Whether a startup filter, a file-backed clock, or a proof-suffixed package counts as "production path" is a judgment each story makes for itself.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add a glossary entry enumerating which layers must be real (OS process, DAPR sidecar, state component, actor placement, host pipeline) and which substitutions are permitted (time, external secrets, network); require each packet to declare its substitutions against that list.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The readiness gate in §1 has no re-run trigger, and provenance stops at 2026-08-16</h3><span class="finding-location">§1 line 74; frontmatter lines 7-52</span></header>
-            <div class="finding-note">The last re-run is <code>implementation-readiness-report-2026-08-01-post-correction.md</code> (READY). Since then: the 2026-08-16 "major-change proposal", the 2026-09-06 NFR rewrite, and a rejected Epic 3 retrospective, with no re-run. <code>source_artifacts</code> omits seven approved proposals on disk (2026-08-01 story-3-11, 2026-08-12 x2, 2026-08-14, 2026-08-20 x2, 2026-08-29, 2026-09-07) despite the memlog rule that approved proposals must be provenance-listed even when text is unchanged.</div>
-            <div class="finding-fix"><strong>Fix:</strong> State the re-run trigger (any FR/NFR text change, any epic retrospective <code>rejected</code>); list the missing proposals; either re-run readiness or record in §12 that the READY verdict predates the current text.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">"Owner" approval is invoked fifteen times but the roles are never defined and, where recorded, the approver is the author</h3><span class="finding-location">FR36 line 252; §6.8 line 254; SM6/SM7 lines 363-364; §11.3 lines 442-444</span></header>
-            <div class="finding-note">The PRD requires "owner-reviewed", "explicit owner approval", "owner/security-approved", and a "release-owner authority record" but names only "EventStore owner" and "Product owners" as roles. Story 1.20's approvals were issued by the repository author. As written, "owner-approved" and "author-asserted" are indistinguishable, which is exactly the condition FR36 was created to prevent for consumers.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Define each owner role, state whether the same person may hold two of them for one packet, and require a non-authorship control (sealed validator run in CI, or a second identity) wherever the PRD says "owner-approved".</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">NFR18 requires documentation that does not exist and has no coverage row</h3><span class="finding-location">NFR18 line 287; §11.2</span></header>
-            <div class="finding-note">"AOT/trimming is explicitly not a target ... and that constraint must be documented." No file under <code>README.md</code> or <code>docs/</code> mentions AOT, <code>PublishAot</code>, or trimming as a non-target, and NFR18 is absent from §11.2.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Name the target document path and add an NFR18 row.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Scope arithmetic and constraint drift</h3><span class="finding-location">§9.1 line 325; §8.1 line 297</span></header>
-            <div class="finding-note">"All seven Phase 4 epics" while <code>epics.md</code> lists eight. The §8.1 bullet "Keep the shared Builds catalog on the latest validated compatible versions" is a policy with no FR whose only implementer (Story 3.16) is unnamed in the PRD.</div>
-            <div class="finding-fix"><strong>Fix:</strong> "Epics 1-7"; either attach the catalog policy to FR21 or name 3.16.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Terminology is overloaded in ways that change what "done" means</h3><span class="finding-location">§4 lines 117-130</span></header>
-            <div class="finding-note">"Parity" is used in eight senses (query, package, deployed-runtime, topology, dual-provider, tenant-filter, posture, source/package), each with a different proof standard; "closure", "gate", "evidence", and "authority" are undefined. "Projection-backed provenance" (FR4, NFR8) is the load-bearing distinction and is not defined.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add glossary entries for each parity kind with its proof standard, and for evidence/gate/closure/authority.</div></article>
-        </div>
-      </details>
-    </section>
-
-    <!-- Reviewer: brownfield traceability -->
-    <section class="reviewer-section">
-      <details open>
-        <summary><h2>Brownfield traceability review</h2><span class="reviewer-source">review-brownfield-traceability-validate-2026-09-08.md</span></summary>
-        <div class="dim-body"><div class="dim-judgment">
-          <p>The PRD's epic-level FR map (§11.1) is accurate: all 37 FR rows name the epic that <code>epics.md</code> declares, and every FR is referenced by at least one story body. The PRD is not accurate as an authoritative NFR/story/status source today: NFR3 and NFR4 were rewritten out-of-band on 2026-09-06 with no approving artifact, no frontmatter or memlog update, and no matching update to the <code>epics.md</code> Requirements Inventory; the new NFR3 text over-promises the break-glass behaviour the code implements; eight §11.2 cells name stories whose <code>epics.md</code> bodies do not claim that NFR; and Story 5.3, the sole NFR3/NFR4 owner, carries three different statuses across the tracker, its spec, and <code>epics.md</code>. Section 8.1 constraints were verified against the repo (<code>.slnx</code>-only, per-project tests, Builds catalog import, project-reference default, no Dockerfiles). Full verification tables are in the review file.</p>
-        </div></div>
-        <div class="findings-list">
-          <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">NFR3/NFR4 were rewritten out-of-band with no authorizing artifact and no provenance update</h3><span class="finding-location">§7 lines 272-273</span></header>
-            <div class="finding-note">Commit <code>8312bced</code> (2026-09-06 13:44) replaced both NFR rows (+2/-2), the Story 5.3 body in <code>epics.md</code>, and <code>epic-5-context.md</code>. No <code>sprint-change-proposal-2026-09-06*.md</code> exists; the 2026-09-07 proposal states "No PRD, architecture, epic, or UX content changes" and concerns Epic 3 only. The Story 5.3 spec was first committed on 2026-09-07 (<code>dfbbde37</code>), after the PRD edit, and cites "the authoritative Epic 5.3 AC and NFR3" as the reason for its repair: the requirement was rewritten first and then used as authority. Frontmatter still reads <code>status: final</code> / <code>updated: 2026-08-16</code>; the memlog has no entry between the 2026-08-16 finalize and this run.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Either author and approve a dated sprint-change proposal ratifying the 2026-09-06 text, bump <code>updated</code>, add memlog <code>(override)</code>/<code>(decision)</code> entries as was done for the July out-of-band edits, and propagate to the <code>epics.md</code> inventory; or revert lines 272-273 to the 2026-08-16 text and carry the detailed contract only in Story 5.3.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">New NFR3 over-promises the break-glass scope the code implements</h3><span class="finding-location">§7 line 272</span></header>
-            <div class="finding-note"><code>JwtBearerAuthenticationContract.cs:118-122</code> returns "SigningKey is forbidden in Production, including when AllowInsecureSymmetricKey is true" before the option is consulted; lines 124-128 only admit it in non-Development, non-Production environments; the log message at line 302 calls it a "non-Production symmetric JWT exception". The Story 5.3 spec agrees with the code. The <code>epics.md</code> Story 5.3 AC written by the same commit carries the same over-statement. All other NFR3 claims are implemented: option name (<code>JwtBearerAuthenticationOptions.cs:46</code>), HS256-only (<code>:104-110</code>, <code>:163-165</code>), nonempty asymmetric allowlist with empty default (<code>:225-256</code>, <code>Options.cs:26</code>), HTTPS metadata outside Development (<code>:85-89</code>, <code>:258-300</code>), fixed 60-second skew (<code>:160</code>).</div>
-            <div class="finding-fix"><strong>Fix:</strong> Reword NFR3 to "non-Development, non-Production environments may accept HS256 symmetric mode only when <code>AllowInsecureSymmetricKey</code> is explicitly enabled; Production rejects symmetric mode unconditionally", and align the Story 5.3 AC.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Story 5.3, the only NFR3/NFR4 owner, has three contradictory statuses</h3><span class="finding-location">§11.2 lines 424-425; §10 SM3 line 357</span></header>
-            <div class="finding-note"><code>sprint-status.yaml:181</code> says <code>done</code>; the spec frontmatter says <code>status: 'in-progress'</code>, <code>review_loop_iteration: 3</code>, <code>warnings: [oversized]</code>; <code>epics.md:3810</code> says "Story 5.3 remains backlog". The tracker moved <code>backlog</code> to <code>done</code> in <code>c83cc4c3</code> (2026-09-07, a <code>feat(tests)</code> commit with no closure record), and the spec's Boundaries forbid the story from modifying <code>sprint-status.yaml</code> at all.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Reconcile the three sources; if 5.3 is genuinely done, close the spec with its review evidence and refresh the <code>epics.md</code> reconciliation paragraph; otherwise return the tracker row to <code>in-progress</code> or <code>review</code>.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Eight §11.2 cells name stories whose epics.md bodies do not claim that NFR</h3><span class="finding-location">§11.2 lines 422-436</span></header>
-            <div class="finding-note">Line-scoped grep of each <code>### Story</code> section: NFR1 → 5.3 (0 hits); NFR6 → 1.13 (0 hits); NFR14 → 7.19 (0 hits); NFR16 → 1.11, 1.12, 8.2, 8.3, 8.4, 8.5, 8.6 (0 hits each); NFR19 → 8.8 (0 hits). The <code>epics.md</code> story traceability rule requires every story to name its NFR coverage, so these PRD cells assert ownership the epics do not declare. All other cells are backed by story-body mentions.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Narrow the ranges (NFR16 to <code>1.9-1.10, 1.13-1.15, 3.11-3.15, 4.9-4.15, 7.10, 8.7-8.11</code>; NFR19 to <code>8.1-8.7, 8.9-8.11</code>; drop 5.3 from NFR1, 1.13 from NFR6, 7.19 from NFR14) or add the missing NFR ids to the <code>epics.md</code> coverage lines if ownership is intended.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">epics.md Requirements Inventory still carries the pre-2026-09-06 NFR3/NFR4 text</h3><span class="finding-location">§7 lines 272-273 vs epics.md lines 111, 113</span></header>
-            <div class="finding-note"><code>8312bced</code> changed only the Story 5.3 body, not the inventory. The epics "Source-drift rule" requires reconciliation on input change.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Update <code>epics.md:111,113</code> to the ratified text (or revert the PRD) in the same change that resolves the critical finding.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">§11.3 pending/done assertions have drifted from the tracker</h3><span class="finding-location">§11.3 lines 442-451</span></header>
-            <div class="finding-note">Line 444 says G5 stays pending "until Story 8.1's approved security specification authorizes Story 8.2"; <code>sprint-status.yaml:230</code> has 8.1 <code>done</code> with "Story 8.2 alone is authorized". Line 449 names <code>spec-folded-snapshot.md</code> as the required Story 6.1 output; that path does not exist, but <code>spec-6-1-folded-snapshot-frozen-spec.md</code> (draft, 2026-09-08) and <code>epic-6-context.md</code> do, while <code>epics.md</code> still binds 6.1/6.2 to the old path. The 1.20/3.12/3.13/3.14 <code>done</code> claims match the tracker; 3.15 is <code>in-progress</code> at 0/3 receipts; Story 5.2's request-size limits are implemented (<code>AdminRequestSizeLimits</code>, <code>AdminBackupsController.cs:185</code>); the four 7.15-7.18 backlog files exist.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Rewrite line 444 as "Story 8.1 approved; 8.2 authorized, not started"; either rename the 6.1 spec to the bound path or update the PRD and <code>epics.md</code> path in one change.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Stories 1.21 and 3.16 are invisible to the PRD although both carry FR/NFR coverage and one gates Epic 3 closure</h3><span class="finding-location">§11.1 lines 396-398, 413; §9.1 line 328</span></header>
-            <div class="finding-note"><code>epics.md</code> declares Story 1.21 "Frozen Story 1.20 Evidence Integrity Repair" (<code>done</code>, FR36, NFR16) and Story 3.16 "Latest-Compatible Dependency And Root Submodule Refresh" (<code>backlog</code>, FR19, FR21, NFR9, NFR11, NFR12). <code>epic-3-context.md:54</code> makes 3.16 a condition for Epic 3 closure, and the 2026-09-07 proposal documents that its absence from the tracker previously hid an unbuilt story behind <code>pending_stories: []</code>.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add 3.16 to the FR19/FR21 rows and the §9.1 release/repository bullet; add 1.21 to the FR36 row alongside 1.20.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">The two-platform OCI image-index constraint is enforced outside this repository</h3><span class="finding-location">§8.1 line 300</span></header>
-            <div class="finding-note">No EventStore build file declares the platform set. Enforcement lives in Hexalith.Builds <code>publish-containers/*</code>, reached through <code>release.yml:112</code> <code>domain-release.yml@22a578b5</code>; EventStore-side evidence is <code>tools/release_evidence_handlers/v3.py:30</code> and <code>ContainerPublishingGovernanceTests.cs:985-986</code>, which reads <code>docs/ci.md</code>. The Builds worktree is at <code>a32cb422</code>, the committed gitlink at <code>35c3d1e5</code>, the release pin at <code>22a578b5</code>. Not violated, but unverifiable from this repo.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Add "enforced by the pinned Hexalith.Builds <code>publish-containers</code> gate; EventStore evidence handler <code>v3.py</code>" to the constraint bullet.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">NFR3 bundles authorization clauses the authentication contract does not own, and its host scope differs between PRD, epics AC, and code</h3><span class="finding-location">§7 line 272</span></header>
-            <div class="finding-note">"Role, and tenant validation remain mandatory in every mode" is not part of <code>JwtBearerAuthenticationContract</code>; the PRD says "outside Development" generically, the epics AC narrows to gateway and Admin Server, and the code is wired into three hosts including <code>samples/Hexalith.EventStore.Sample.Api/Program.cs:22-27</code>.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Move the role/tenant clause to NFR1/NFR2 and state the host set explicitly.</div></article>
-          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Tracker hygiene that distorts SM2/SM4 reading</h3><span class="finding-location">§10 lines 356-361</span></header>
-            <div class="finding-note"><code>epic-2: in-progress</code> although all twelve Epic 2 stories and the retrospective are <code>done</code>; key <code>2-12-...-validatio</code> is truncated; <code>4-8</code> has no row by design. Not a PRD defect, but SM2 is being read against a tracker whose epic rollups are stale.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Out of PRD scope; raise with the sprint-status owner (guarded comment blocks must not be edited).</div></article>
-        </div>
-      </details>
-    </section>
-
-    <div class="mechanical">
-      <h3>Mechanical notes</h3>
-      <ul>
-        <li>Provenance drift: commit <code>8312bced</code> (2026-09-06) changed §7 NFR3/NFR4 after the 2026-08-16 finalize; frontmatter still <code>status: final</code>, <code>updated: 2026-08-16</code>; no memlog entry; no proposal in <code>source_artifacts</code>. The same commit updated <code>epics.md</code> Story 5.3 AC, <code>epic-5-context.md</code>, <code>spec-3-15-*</code>, <code>spec-4-7-*</code>, and <code>deferred-work.md</code> (DW-493, DW-494), but not the <code>epics.md</code> Requirements Inventory.</li>
-        <li>ID continuity: FR1-FR37 and NFR1-NFR19 unique and complete; presentation is feature-grouped, not numeric. Resolvable, intentional.</li>
-        <li>Assumptions Index roundtrip: no inline <code>[ASSUMPTION]</code> tags; §13 declares none. Consistent. Zero <code>[NOTE FOR PM]</code> callouts anywhere.</li>
-        <li>Cross-references: all §11.2 story IDs resolve in <code>epics.md</code>; 1.21 and 3.16 exist and are unreferenced. §11.3 spec paths (lines 449-451) do not exist yet, expected while 6.1/6.3/6.5 are <code>backlog</code>. Backlog artifact paths, <code>ux.md</code>, <code>architecture.md</code> exist.</li>
-        <li>Glossary drift: "break-glassed" (old NFR3, still in the <code>epics.md</code> inventory) vs "break-glass option" (new NFR3); "Story 8.6"/"Story 8.7" straddle EventStore and Parties numbering; "Parties" used eleven times, never defined.</li>
-        <li>Section 8.1 constraints verified against the repo: <code>.slnx</code>-only, per-project tests, Builds catalog import with zero local <code>PackageVersion</code> items, <code>UseHexalithProjectReferences</code> default false, no Dockerfiles, root-declared submodules only.</li>
-        <li>MVP items still unbuilt: Stories 5.5-5.10, 6.1-6.6, 7.1-7.14/7.19/7.20, 3.16 (all <code>backlog</code>); 3.15 (<code>in-progress</code>, 0/3 receipts); 4.7 (<code>in-progress</code>); 4.15 and 5.4 (<code>review</code>).</li>
-        <li>Tracker hygiene outside PRD scope: <code>epic-2</code> rollup is <code>in-progress</code> although all Epic 2 stories are <code>done</code>; key <code>2-12-...-validatio</code> is truncated. Do not edit the guarded comment blocks.</li>
-        <li>Repeated deferrals: every 2026-07-16 and 2026-07-19 rubric deferral remains open at this pass; the 2026-07-19 OCI/3.12/§11.3 items were applied that day and are closed.</li>
-        <li>UJ protagonist naming: not applicable; no user journeys, by shape.</li>
-        <li>Reviewer files: <code>review-rubric-validate-2026-09-08.md</code>, <code>review-adversarial-general-validate-2026-09-08.md</code>, <code>review-brownfield-traceability-validate-2026-09-08.md</code>. Prior reviews preserved (<code>review-rubric.md</code>, <code>review-rubric-update-2026-08-16.md</code>, <code>review-editorial-*.md</code>). Markdown twin: <code>validation-report.md</code>.</li>
-      </ul>
-    </div>
-
-    <footer class="report-footer">
-      <div class="meta">
-        <span>Rubric: .claude/skills/bmad-prd/assets/prd-validation-checklist.md</span>
-        <span>Generated: 2026-09-08T17:39:43Z</span>
-      </div>
-    </footer>
+  <div class="synthesis">
+    <p>This is a technically substantive and unusually candid brownfield PRD: the thesis is specific, scope exclusions and residual risks are explicit, and most security, reliability, and evidence requirements carry product-specific bounds. It is not safe as the authoritative chain-top baseline it claims to be because its live FR ownership map contradicts its correction record, several omnibus requirements cannot close clause by clause, and readiness controls remain unbound or overdue.</p>
+    <p>The adversarial and brownfield reviewers shift the picture decisively to Reject. Four distinct critical failures survive consolidation: the FR ownership trace is self-contradictory, epics.md fails its own source-drift gate, OQ8 safety requirements depend on external normative bytes EventStore cannot reproduce, and the MVP metric can pass while a known concurrent append race still loses durable data. Do not use this PRD to authorize a READY verdict, MVP completion, consumer migration, or release.</p>
   </div>
+
+  <div class="dimension-summary">
+    <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color:var(--verdict-adequate)">adequate</div></div>
+    <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color:var(--verdict-strong)">strong</div></div>
+    <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color:var(--verdict-adequate)">adequate</div></div>
+    <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color:var(--verdict-thin)">thin</div></div>
+    <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color:var(--verdict-strong)">strong</div></div>
+    <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color:var(--verdict-broken)">broken</div></div>
+    <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color:var(--verdict-thin)">thin</div></div>
+  </div>
+
+  <section class="dimension"><details><summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>The PRD makes real decisions visible, distinguishes MVP from post-MVP, and records owed refinements with owners and triggers. It does not identify who accepted the known append-loss risk, why MVP remains acceptable without a fence, or what forces the decision.</p></div></div>
+    <div class="findings-list"><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Known append-loss risk is disclosed but not accepted as a decision</h3><span class="finding-location">§7, §9.2, SM11, OR4</span></header><div class="finding-note">Append races are not delivered in MVP and the fence has no owner, despite the operational-trust thesis.</div><div class="finding-fix"><strong>Fix:</strong> Name approver, evidence, bounded operating posture, rationale, and mandatory owner/trigger.</div></article></div>
+  </details></section>
+
+  <section class="dimension"><details><summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>The product thesis, target roles, security modes, evidence bounds, and operational requirements are specific to EventStore. There are no decorative personas, novelty claims, or generic NFR furniture.</p></div></div>
+  </details></section>
+
+  <section class="dimension"><details><summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>The two-part platform-reuse and operational-hardening thesis is clear, and the newer product-bet metrics support it. MVP boundaries are described but mostly inherited rather than justified by product and risk criteria.</p></div></div>
+    <div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">MVP selection logic is asserted rather than derived</h3><span class="finding-location">§1, §9</span></header><div class="finding-note">The PRD does not explain why append fencing and sharded allocation implementation lose priority to included corrections.</div><div class="finding-fix"><strong>Fix:</strong> Tie major inclusions and exclusions to thesis, risk tolerance, sequencing, and decision owner.</div></article></div>
+  </details></section>
+
+  <section class="dimension"><details open><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">thin</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>Atomic requirements such as NFR3, NFR5, FR12, and FR36 are testable. FR26, FR33, FR34, and NFR17 remain omnibus, high-risk completion has no bound correctness gate, and NFR8/NFR18 are not acceptance-complete.</p></div></div>
+    <div class="findings-list">
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Omnibus requirements lack clause-level completion</h3><span class="finding-location">FR26, FR33, FR34, NFR17, OR7</span></header><div class="finding-note">A done story can appear without closing a named clause.</div><div class="finding-fix"><strong>Fix:</strong> Add stable sub-IDs or a clause-to-story-to-evidence matrix with all-clauses-required closure.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">High-risk completion has no bound correctness gate</h3><span class="finding-location">OR13</span></header><div class="finding-note">The authoritative lane, trigger, evidence artifact, and pass condition are undefined.</div><div class="finding-fix"><strong>Fix:</strong> Bind and mechanically enforce the exact gate before status mutation.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">NFR8 and NFR18 are not acceptance-complete</h3><span class="finding-location">§7, §11.3, OR5-OR6</span></header><div class="finding-note">NFR8 depends on unresolved spec state; NFR18 requires an absent, unowned document.</div><div class="finding-fix"><strong>Fix:</strong> Approve the NFR8 bounds and assign/produce the NFR18 posture artifact.</div></article>
+    </div>
+  </details></section>
+
+  <section class="dimension"><details><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>In-scope, out-of-scope, and committed post-MVP work are explicit. NFR7 exposes unguarded loss classes and §12 records owed refinements rather than hiding them. The visible disclosure is stronger than template callouts.</p></div></div>
+  </details></section>
+
+  <section class="dimension"><details open><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-broken">broken</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>The glossary, stable IDs, artifact boundaries, and traceability tables should support extraction. The central ownership table invalidates itself: live SM2 and §11.1 preserve OR12 defects that §12 says were retired, and Story 6.1 state has drifted again.</p></div></div>
+    <div class="findings-list">
+      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">FR ownership map contradicts its correction record</h3><span class="finding-location">SM2, §11.1, retired OR12</span></header><div class="finding-note">The live map assigns FR1 to 4.11 and labels duplicate owners; the retirement record and current epics.md say FR1 belongs to 1.11 and the duplicates were resolved.</div><div class="finding-fix"><strong>Fix:</strong> Rebuild from current epics.md and add a retired-OR/source-drift check.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Story 6.1 warning is stale</h3><span class="finding-location">§11.3, OR5</span></header><div class="finding-note">The canonical bound path now exists and is approved-authorized, while wrapper, tracker, and epics disagree.</div><div class="finding-fix"><strong>Fix:</strong> Establish authority order and reconcile all dependent artifacts atomically.</div></article>
+    </div>
+  </details></section>
+
+  <section class="dimension"><details open><summary><h2>Shape fit</h2><span class="verdict-pill verdict-thin">thin</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>A capability-spec shape and the absence of consumer journeys fit this developer platform. The PRD has become a product contract, volatile status ledger, and reconciliation history at once, while technical mechanisms cross the architecture boundary.</p></div></div>
+    <div class="findings-list">
+      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Readiness history overwhelms stable requirements</h3><span class="finding-location">§1.1, §11.3, §12</span></header><div class="finding-note">Commit, evidence, tracker, migration, and retired-resolution detail obscures durable product intent and creates drift.</div><div class="finding-fix"><strong>Fix:</strong> Move dated history to an audit addendum or generated ledger.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">PRD crosses its declared architecture boundary</h3><span class="finding-location">§1, §6-§8</span></header><div class="finding-note">Named methods, paths, DAPR policy identifiers, and evidence mechanics are mixed with durable product contracts.</div><div class="finding-fix"><strong>Fix:</strong> Keep public contracts and hard bounds; move replaceable mechanisms to architecture or an addendum.</div></article>
+    </div>
+  </details></section>
+
+  <section class="reviewer-section"><details><summary><h2>Adversarial general review — Reject</h2><span class="reviewer-source">review-adversarial-general.md</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>Counts: 2 critical, 6 high, 3 medium, 1 low. The reviewer concludes that the PRD remains useful as a recovery history and requirements inventory, but not as an authoritative or implementation-readiness gate.</p></div></div>
+    <div class="findings-list">
+      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">OQ8 normative requirements are unavailable</h3><span class="finding-location">§1.1, FR27, NFR7, NFR16</span></header><div class="finding-note">A digest is not a usable requirement source when the governed bytes are absent.</div><div class="finding-fix"><strong>Fix:</strong> Make the normative content or a verifiable attestation locally available.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">MVP can pass while concurrent append loses data</h3><span class="finding-location">NFR7, §9.2, SM11</span></header><div class="finding-note">The metric treats an out-of-scope declaration as equivalent to an implemented guard.</div><div class="finding-fix"><strong>Fix:</strong> Prevent the loss in the supported envelope and keep SM11 failed until then.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Final status obscures reopened readiness</h3><span class="finding-location">frontmatter, OR1</span></header><div class="finding-note">No machine-readable readiness state accompanies final document status.</div><div class="finding-fix"><strong>Fix:</strong> Separate document and readiness status.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">No coherent MVP exit rule</h3><span class="finding-location">§9-§12</span></header><div class="finding-note">Mandatory gates, evidence, evaluators, and waiver policy are not consolidated.</div><div class="finding-fix"><strong>Fix:</strong> Add a phase exit table and isolate post-MVP gates.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">High-risk evidence can be self-approved</h3><span class="finding-location">OR10, OR13</span></header><div class="finding-note">Non-authorship and exact correctness controls are not generally required.</div><div class="finding-fix"><strong>Fix:</strong> Bind independent approval and a mechanical status gate.</div></article>
+    </div>
+  </details></section>
+
+  <section class="reviewer-section"><details><summary><h2>Brownfield traceability review — Fail</h2><span class="reviewer-source">review-brownfield-traceability.md</span></summary>
+    <div class="dim-body"><div class="dim-judgment"><p>Counts: 2 critical, 5 high, 3 medium, 2 low. Repository checks covered all 37 FRs and 19 NFRs, current digests, Story 6.1's normative digest, and the OQ8 pre-review validator.</p></div></div>
+    <div class="findings-list">
+      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">epics.md fails its source-drift gate</h3><span class="finding-location">epics.md source register</span></header><div class="finding-note">Current PRD and architecture SHA-256 values differ from the recorded inputs.</div><div class="finding-fix"><strong>Fix:</strong> Reconcile content, renew approval, then update hashes and rerun validation.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Story 4.15 lifecycle gate is red</h3><span class="finding-location">NFR7, Story 4.15</span></header><div class="finding-note">Tracker, wrapper, and epics conflict; the OQ8 pre-review validator exits 1.</div><div class="finding-fix"><strong>Fix:</strong> Reconcile lifecycle or mark delivery closure-pending.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Story 6.1 authority is opposite the PRD's claim</h3><span class="finding-location">§11.3, OR5</span></header><div class="finding-note">The bound artifact exists, is approved-authorized, and authorizes Story 6.2.</div><div class="finding-fix"><strong>Fix:</strong> Retire the stale path debt and reconcile status.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Architecture predates current requirements</h3><span class="finding-location">architecture.md authority section</span></header><div class="finding-note">It names the 2026-08-16 PRD while the current PRD is dated 2026-09-08.</div><div class="finding-fix"><strong>Fix:</strong> Reconcile architecture and refresh governed digests.</div></article>
+      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Latest retirement proposal is missing from provenance</h3><span class="finding-location">source_artifacts</span></header><div class="finding-note">The proposal cited to retire OR2, OR3, and OR12 is not in frontmatter.</div><div class="finding-fix"><strong>Fix:</strong> Add it during the traceability correction.</div></article>
+    </div>
+  </details></section>
+
+  <div class="mechanical">
+    <h3>Mechanical notes</h3>
+    <ul>
+      <li>FR1-FR37, NFR1-NFR19, SM1-SM12, and SM-C1-SM-C5 are present and unique in their primary sets.</li>
+      <li>No user journeys are present; that fits the brownfield developer-platform form.</li>
+      <li>The assumptions roundtrip is clean.</li>
+      <li>Cross-reference integrity fails because retired OR12 remains live in SM2 and §11.1.</li>
+      <li>No addendum is present despite substantial audit-history and mechanism content.</li>
+      <li>OQ8 pre-review validation fails on Story 4.15 lifecycle drift.</li>
+    </ul>
+  </div>
+
+  <footer class="report-footer">
+    <div class="meta">
+      <span>Rubric: .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+      <span>Generated: 2026-09-09T08:18:44+02:00</span>
+      <span>Markdown twin: validation-report.md</span>
+    </div>
+  </footer>
+</div>
 </body>
 </html>

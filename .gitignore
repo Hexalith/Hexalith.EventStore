@@ -492,6 +492,11 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 !_bmad-output/**/evidence/**/*.log
 _bmad/render/
 
+
+# OQ8 consumer validation virtualenv created by the documented source-only
+# handoff bootstrap (python3 -m venv .oq8-python).
+.oq8-python/
+
 # Story 3.13 selected-packet archives are tracked evidence, not restore output.
 # ValidatePackageBytes rehashes the 14 on-disk *.nupkg files. The *.nupkg rule
 # ignores the archives themselves. **/[Pp]ackages/* ignores children of a

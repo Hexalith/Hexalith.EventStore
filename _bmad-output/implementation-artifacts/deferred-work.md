@@ -4001,3 +4001,9 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-folded-snapshot-frozen-spec.md`
   summary: Neighboring 5.4 and 4.7 story-status ledgers disagree with sprint-status in the same baseline-wide diff.
   evidence: BH-13 notes `spec-5-4` done vs tracker review, and `spec-4-7` moving to in-progress. Not caused by the folded-snapshot artifact.
+
+## Deferred from: code review of story-4.15 Group D (2026-09-09)
+
+- `.github/workflows/ci.yml` is a named review-subject binding (`ciWorkflow`) but resolves only through `PRIOR_ROOT_BINDING_HASHES[".github/workflows/ci.yml"] = "6a28bd96…"` via `sha256_git_file(COMPLETED_V1_CLOSURE_COMMIT, …)` (`tools/validate-oq8-platform-evidence.py:3181-3186`), never against live bytes. Current `ci.yml` is `80f90b86…`, and unlike `integration.yml` it is not a v2 or v3 `gateInput`, so the 2026-09 restructuring of that workflow is invisible to the closure validator. Deferred: DW-496's frozen-Git-vs-live-bytes asymmetry extended to a bound workflow; rides the same agreed remint.
+- `--filter-not-trait "Category=HeavyweightContainerPublish"` (`.github/workflows/ci.yml:93`) leaves `CorrectiveOciProvenanceReleaseTests.RealMultiRidArchiveContainsExactProvenanceInBothChildConfigs` and `…ContainerPublicationRejectsMissingProvenanceInputs` selected by no workflow; only an attribute-position source check remains, which would pass unchanged if publication provenance broke. Deferred: duplicate of the accepted gap at `deferred-work.md:3534,3598`; needs a scheduled heavyweight lane.
+- The `ci / contracts` job does a cold `dotnet restore` with no `~/.nuget/packages` cache under a 25-minute timeout, unlike `integration.yml` which caches keyed on `global.json`/`Directory.Packages.props`/`**/*.csproj`. Deferred: performance and consistency only, no correctness impact, outside the story's evidence scope.
