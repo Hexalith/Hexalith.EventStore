@@ -380,19 +380,20 @@ Configuration section: `EventStore:OpenApi`
 
 ## Authentication and JWT
 
-Authentication settings configure how the Command API validates incoming JWT tokens. You must provide either an OIDC `Authority` (for production) or a `SigningKey` (for development and testing). Both `Issuer` and `Audience` are always required.
+Authentication settings configure how the Command API validates incoming JWT tokens. You must provide either an OIDC `Authority` (for production) or a `SigningKey` (for development and testing). `Issuer` and at least one audience across `Audience` and `ValidAudiences` are always required.
 
 Configuration section: `Authentication:JwtBearer`
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `Authority` | string | `""` | OIDC authority URL (e.g., `https://keycloak.example.com/realms/hexalith`). Used in production for automatic key discovery |
-| `Audience` | string | `""` | Expected JWT audience claim. **Required** |
-| `ValidAudiences` | string[] | `[]` | Additional accepted audiences. When `Audience` is empty, the first non-blank value becomes the primary audience |
+| `Audience` | string | `""` | Primary accepted JWT audience. Optional when `ValidAudiences` supplies at least one non-blank value |
+| `ValidAudiences` | string[] | `[]` | Alternative or additional accepted audiences. When `Audience` is empty, the first non-blank value becomes the primary audience |
 | `Issuer` | string | `""` | Expected JWT issuer claim. **Required** |
 | `AllowedAlgorithms` | string[] | `[]` | Explicit non-empty asymmetric signing-algorithm allow-list for authority mode (for example, `RS256`) |
 | `SigningKey` | string | `""` | Symmetric signing key for development/testing. Must be at least 32 UTF-8 bytes for HS256 |
 | `RequireHttpsMetadata` | bool | `true` | Require HTTPS when fetching OIDC metadata. Set to `false` only for local development |
+| `AllowInsecureSymmetricKey` | bool | `false` | Explicit legacy exception for symmetric validation outside Production and Development; emits a redacted warning. Production always rejects symmetric mode |
 
 ```json
 {
@@ -416,7 +417,7 @@ Configuration section: `Authentication:JwtBearer`
 - `Issuer` and at least one non-blank primary/additional audience are always required
 - When `Authority` is set, the system uses OIDC discovery to fetch signing keys automatically
 - Authority mode requires a non-empty `AllowedAlgorithms` subset of the supported asymmetric algorithms; there is no production default
-- Outside Development, authority and discovered/token endpoints must be absolute HTTPS URIs without user information, query, or fragment, and HTTPS metadata cannot be disabled
+- Authority and discovered/token endpoints must be absolute URIs without user information, query, or fragment. An HTTP authority is accepted only in Development and only when `RequireHttpsMetadata=false`; outside Development all endpoints must use HTTPS and HTTPS metadata cannot be disabled
 - When `SigningKey` is set, it must be at least 32 UTF-8 bytes; Production always rejects symmetric mode
 
 ### Published UI token acquisition
@@ -660,7 +661,7 @@ The .NET Aspire AppHost orchestrates the full local development topology — the
 EnableKeycloak=false aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
 
 # Generate Kubernetes manifests after exporting the required external OIDC/UI inputs above
-PUBLISH_TARGET=k8s aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
+PUBLISH_TARGET=k8s aspire publish --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/k8s
 ```
 
 The Aspire AppHost also configures:
@@ -763,12 +764,13 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:DomainServices:Registrations:{key}` | object | - | Object keyed by `tenant|domain|version`, `tenant:domain:version`, `*|domain|version`, or `wildcard_{domain}_{version}` | Application |
 | `EventStore:OpenApi:Enabled` | bool | `true` | `true` or `false` | Application |
 | `Authentication:JwtBearer:Authority` | string | `""` | Empty string or absolute OIDC URL | Authentication |
-| `Authentication:JwtBearer:Audience` | string | `""` | Non-empty string | Authentication |
-| `Authentication:JwtBearer:ValidAudiences:{index}` | string | — | Non-empty additional audience | Authentication |
+| `Authentication:JwtBearer:Audience` | string | `""` | Optional non-empty primary audience; at least one audience is required across this setting and `ValidAudiences` | Authentication |
+| `Authentication:JwtBearer:ValidAudiences:{index}` | string | — | Non-empty alternative or additional audience; supplies the primary audience when `Audience` is empty | Authentication |
 | `Authentication:JwtBearer:Issuer` | string | `""` | Non-empty string | Authentication |
 | `Authentication:JwtBearer:AllowedAlgorithms:{index}` | string | — | Explicit supported asymmetric algorithm in authority mode | Authentication |
 | `Authentication:JwtBearer:SigningKey` | string | `""` | Empty string or length `>= 32` | Authentication |
 | `Authentication:JwtBearer:RequireHttpsMetadata` | bool | `true` | `true` or `false` | Authentication |
+| `Authentication:JwtBearer:AllowInsecureSymmetricKey` | bool | `false` | `true` or `false`; never permits symmetric validation in Production | Authentication |
 | `Authentication:JwtBearer:SampleUi:GrantType` | string | — | `password` or `client_credentials` in publish mode | Authentication |
 | `Authentication:JwtBearer:SampleUi:Scope` | string | — | Non-empty external-provider scope | Authentication |
 | `Authentication:JwtBearer:AdminUi:GrantType` | string | — | `password` or `client_credentials` in publish mode | Authentication |

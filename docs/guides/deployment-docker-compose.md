@@ -117,7 +117,7 @@ $ env PUBLISH_TARGET=docker \
   "Parameters__external-sample-auth-password=${OIDC_SAMPLE_PASSWORD}" \
   "Parameters__external-admin-auth-client-id=${OIDC_ADMIN_CLIENT_ID}" \
   "Parameters__external-admin-auth-client-secret=${OIDC_ADMIN_CLIENT_SECRET}" \
-  aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
+  aspire publish --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o ./publish-output/docker
 ```
 
 > **PowerShell (Windows):**
@@ -132,7 +132,7 @@ $ env PUBLISH_TARGET=docker \
 > Set-Item -Path 'Env:Parameters__external-sample-auth-password' -Value $env:OIDC_SAMPLE_PASSWORD
 > Set-Item -Path 'Env:Parameters__external-admin-auth-client-id' -Value $env:OIDC_ADMIN_CLIENT_ID
 > Set-Item -Path 'Env:Parameters__external-admin-auth-client-secret' -Value $env:OIDC_ADMIN_CLIENT_SECRET
-> $ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
+> $ aspire publish --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj -o .\publish-output\docker
 > ```
 
 This generates:

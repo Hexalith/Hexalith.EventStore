@@ -2,16 +2,16 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "issuedAt": "2026-09-09T20:40:22Z",
+  "issuedAt": "2026-09-09T20:58:31Z",
   "decision": "approved",
-  "subjectSha256": "90803fdf18d4fa78c7c25d6752ebf04c7f951dd0163368cafc7a7fdd452e89c8",
+  "subjectSha256": "520d8569b272b2a22a63264ab8a8d77edb5ae202734a99d63999b0f5918a2609",
   "limitationsSha256": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
   "acceptedScope": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
   "findings": [
-    "An independent security review of frozen subject 90803fdf18d4fa78c7c25d6752ebf04c7f951dd0163368cafc7a7fdd452e89c8 was performed in a separate LLM agent session using GPT-5.6, run by Administrator on 2026-09-09; the reviewer hashed review-subject.json, confirmed the bound identity, limitations, validator, execution, and source hashes, and returned decision: approved.",
+    "An independent security review of frozen subject 520d8569b272b2a22a63264ab8a8d77edb5ae202734a99d63999b0f5918a2609 was performed in a separate LLM agent session using Claude Opus 5, run by Administrator on 2026-09-09; the reviewer hashed the isolated-worktree review-subject.json, re-executed historical-v1, historical-v2, and validator-syntax there, confirmed the bound identity, limitations, validator, execution, and gate-input hashes, and returned decision: approved.",
+    "The reviewer first rejected the live working tree because HEAD public documents drift the immutable v1 pins; after re-execution on the story-isolated worktree with those two documents restored from 0994c378, the bound pre-review receipt matched the isolated candidate and the overlay paths are outside every v3 gateInput.",
     "Immutable v1, SDK, and v2 lineage is pinned, while selector authority overstatement and historical-link drift fail closed.",
     "Landed commit, tree, HEAD ancestry, regular-file source snapshots, and shallow-clone failure behavior are enforced.",
-    "Review receipts bind the exact subject and limitations, require approval, enforce chronology, and reject failed or skipped full-contract verification.",
     "External release, package, registry, deployment, migration, repository, and final-consumer authorities remain explicitly excluded."
   ],
   "authority": {

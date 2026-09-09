@@ -88,6 +88,14 @@ public static partial class JwtBearerAuthenticationContract
                     $"{sectionName}:RequireHttpsMetadata must be true outside Development.");
             }
 
+            if (options.RequireHttpsMetadata
+                && Uri.TryCreate(options.Authority!.Trim(), UriKind.Absolute, out Uri? authorityUri)
+                && string.Equals(authorityUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+            {
+                return ValidateOptionsResult.Fail(
+                    $"{sectionName}:RequireHttpsMetadata must be false for an HTTP Authority in Development.");
+            }
+
             try
             {
                 _ = ResolveAuthorityAlgorithms(options);

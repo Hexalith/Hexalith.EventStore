@@ -77,6 +77,40 @@ public sealed class EventStoreApiAccessTokenProviderTests
         principal.FindFirst("permissions")!.Value.ShouldContain("query:read");
     }
 
+    [Theory]
+    [InlineData("Subject", "Subject")]
+    [InlineData("Tenants:0", "Tenants")]
+    [InlineData("Domains:0", "Domains")]
+    [InlineData("Permissions:0", "Permissions")]
+    public async Task GetAccessTokenAsync_WhenRequiredLocalIdentitySettingIsMissingOrBlank_FailsClosed(
+        string settingPath,
+        string expectedName)
+    {
+        foreach (string? invalidValue in new string?[] { null, "   " })
+        {
+            Dictionary<string, string?> values = CreateLocalConfiguration();
+            string key = $"EventStore:Authentication:{settingPath}";
+            if (invalidValue is null)
+            {
+                values.Remove(key);
+            }
+            else
+            {
+                values[key] = invalidValue;
+            }
+
+            var provider = new EventStoreApiAccessTokenProvider(
+                new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
+                new TestHostEnvironment(Environments.Development),
+                new TestHttpClientFactory());
+
+            InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+                () => provider.GetAccessTokenAsync());
+
+            exception.Message.ShouldContain(expectedName);
+        }
+    }
+
     [Fact]
     public async Task GetAccessTokenAsync_WithProductionAuthority_PostsExpectedFormAndCachesResponse()
     {

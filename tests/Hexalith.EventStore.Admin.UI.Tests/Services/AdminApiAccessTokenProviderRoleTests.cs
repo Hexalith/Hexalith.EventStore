@@ -2,10 +2,14 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using System.Net;
 using System.Net.Sockets;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
 using NSubstitute;
 
@@ -28,8 +32,11 @@ public class AdminApiAccessTokenProviderRoleTests {
         roleState.SetRole(selectedRole);
 
         string token = await provider.GetAccessTokenAsync();
+        ClaimsPrincipal principal = ValidateDevelopmentToken(config, token, out JwtSecurityToken validatedToken);
         JsonElement payload = DecodePayload(token);
 
+        validatedToken.Header.Alg.ShouldBe(SecurityAlgorithms.HmacSha256);
+        principal.FindFirst("sub")!.Value.ShouldBe("test-user");
         payload.GetProperty(AdminClaimTypes.Role).GetString().ShouldBe(selectedRole.ToString());
         payload.GetProperty("sub").GetString().ShouldBe("test-user");
         payload.GetProperty("iss").GetString().ShouldBe("hexalith-dev");
@@ -44,6 +51,53 @@ public class AdminApiAccessTokenProviderRoleTests {
         }
         else {
             payload.TryGetProperty("global_admin", out _).ShouldBeFalse();
+        }
+    }
+
+    [Theory]
+    [InlineData("Subject", "Subject")]
+    [InlineData("Tenants:0", "Tenants")]
+    [InlineData("Domains:0", "Domains")]
+    [InlineData("Permissions:0", "Permissions")]
+    public async Task GetAccessTokenAsync_WhenRequiredLocalIdentitySettingIsMissingOrBlank_FailsClosed(
+        string settingPath,
+        string expectedName)
+    {
+        ArgumentNullException.ThrowIfNull(settingPath);
+
+        foreach (string? invalidValue in new string?[] { null, "   " })
+        {
+            Dictionary<string, string?> values = CreateConfigValues();
+            string key = $"EventStore:Authentication:{settingPath}";
+            if (settingPath.StartsWith("Permissions:", StringComparison.Ordinal))
+            {
+                foreach (string permissionKey in values.Keys
+                    .Where(candidate => candidate.StartsWith("EventStore:Authentication:Permissions:", StringComparison.Ordinal))
+                    .ToArray())
+                {
+                    values.Remove(permissionKey);
+                }
+            }
+
+            if (invalidValue is null)
+            {
+                values.Remove(key);
+            }
+            else
+            {
+                values[key] = invalidValue;
+            }
+
+            IConfiguration config = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            var provider = new AdminApiAccessTokenProvider(
+                config,
+                new TestHostEnvironment(Environments.Development),
+                CreateHttpClientFactory());
+
+            InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+                () => provider.GetAccessTokenAsync());
+
+            exception.Message.ShouldContain(expectedName);
         }
     }
 
@@ -477,6 +531,31 @@ public class AdminApiAccessTokenProviderRoleTests {
         string payload = token.Split('.')[1].Replace('-', '+').Replace('_', '/');
         payload = payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '=');
         return JsonDocument.Parse(Convert.FromBase64String(payload)).RootElement.Clone();
+    }
+
+    private static ClaimsPrincipal ValidateDevelopmentToken(
+        IConfiguration configuration,
+        string token,
+        out JwtSecurityToken validatedToken)
+    {
+        var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+        ClaimsPrincipal principal = handler.ValidateToken(token, new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = configuration["EventStore:Authentication:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = configuration["EventStore:Authentication:Audience"],
+            ValidateLifetime = true,
+            RequireExpirationTime = true,
+            RequireSignedTokens = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                configuration["EventStore:Authentication:SigningKey"]!)),
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            ClockSkew = TimeSpan.Zero,
+        }, out SecurityToken securityToken);
+        validatedToken = securityToken.ShouldBeOfType<JwtSecurityToken>();
+        return principal;
     }
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment {

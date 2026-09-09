@@ -95,8 +95,8 @@ All options are bound from the `Authentication:JwtBearer` configuration section:
 | Option                 | Type      | Default         | Description                                                                                                   |
 | ---------------------- | --------- | --------------- | ------------------------------------------------------------------------------------------------------------- |
 | `Authority`            | `string?` | `null`          | OIDC authority URL for production (e.g., `https://login.example.com`). When set, enables OIDC discovery mode. |
-| `Audience`             | `string`  | `""` (required) | Expected `aud` claim value in the JWT.                                                                        |
-| `ValidAudiences`       | `string[]`| `[]`            | Additional accepted audiences, evaluated in configured order.                                                |
+| `Audience`             | `string`  | `""`            | Primary accepted `aud` claim value. Optional when `ValidAudiences` supplies at least one non-blank value.     |
+| `ValidAudiences`       | `string[]`| `[]`            | Alternative or additional accepted audiences; at least one audience is required across both settings.        |
 | `AllowedAlgorithms`    | `string[]`| `[]` (required for authority mode) | Explicit supported asymmetric algorithm allow-list; no Production default is supplied.            |
 | `Issuer`               | `string`  | `""` (required) | Expected `iss` claim value in the JWT.                                                                        |
 | `SigningKey`           | `string?` | `null`          | HS256 symmetric key for development. Must be at least 32 UTF-8 bytes (256 bits).                              |
@@ -111,6 +111,7 @@ Startup validation requires exactly one of `Authority` or `SigningKey`, a non-bl
 
 ```yaml
 # appsettings.Docker.json (or environment variables)
+DOTNET_ENVIRONMENT: "Development"
 Authentication__JwtBearer__Authority: "http://security:8080/realms/hexalith"
 Authentication__JwtBearer__Audience: "hexalith-eventstore"
 Authentication__JwtBearer__Issuer: "http://security:8080/realms/hexalith"
@@ -118,6 +119,10 @@ Authentication__JwtBearer__AllowedAlgorithms__0: "RS256"
 Authentication__JwtBearer__RequireHttpsMetadata: "false"
 # SigningKey must NOT be set — leave it empty for OIDC mode
 ```
+
+The HTTP Keycloak authority is a Development-only local topology. It is accepted only with
+`DOTNET_ENVIRONMENT=Development` and `RequireHttpsMetadata=false`; never carry either setting into
+a Production deployment.
 
 See the [Docker Compose Deployment Guide](deployment-docker-compose.md) for full Keycloak setup instructions.
 
@@ -154,7 +159,7 @@ See the [Azure Container Apps Deployment Guide](deployment-azure-container-apps.
 The gateway validates every token with these parameters:
 
 - **Issuer validation:** Token `iss` must match configured `Issuer`
-- **Audience validation:** Token `aud` must match configured `Audience`
+- **Audience validation:** Token `aud` must match any configured `Audience` or `ValidAudiences` value
 - **Signing key validation:** Signature verified against OIDC-discovered keys or symmetric key
 - **Lifetime validation:** Token must contain an expiry and be currently valid (with 1-minute clock skew tolerance)
 - **Algorithm validation:** OIDC accepts only the explicit RSA/PSS/ECDSA allow-list; symmetric mode accepts only HS256

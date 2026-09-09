@@ -150,7 +150,7 @@ public static class AdminUIServiceExtensions {
                 + "to app-id 'eventstore-admin'), but none was detected — DAPR_HTTP_ENDPOINT, "
                 + "DAPR_GRPC_ENDPOINT, DAPR_HTTP_PORT and DAPR_GRPC_PORT are all unset. "
                 + "Launch the full topology through the Aspire AppHost:" + Environment.NewLine
-                + "    aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+                + "    aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
                 + Environment.NewLine
                 + "Running this project directly with `dotnet run` is unsupported: there is no sidecar "
                 + "and no Admin.Server to invoke.");

@@ -242,6 +242,22 @@ public class EventStoreAuthenticationOptionsTests {
     }
 
     [Fact]
+    public void Validate_DevelopmentHttpAuthorityWithHttpsMetadataRequired_Fails() {
+        var options = new EventStoreAuthenticationOptions {
+            Authority = "http://login.example.com",
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+            AllowedAlgorithms = ["RS256"],
+            RequireHttpsMetadata = true,
+        };
+
+        ValidateOptionsResult result = _validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("RequireHttpsMetadata");
+    }
+
+    [Fact]
     public void Validate_DisabledHttpsMetadataOutsideDevelopment_Fails() {
         var validator = new ValidateEventStoreAuthenticationOptions(CreateEnvironment(Environments.Staging));
         var options = new EventStoreAuthenticationOptions {

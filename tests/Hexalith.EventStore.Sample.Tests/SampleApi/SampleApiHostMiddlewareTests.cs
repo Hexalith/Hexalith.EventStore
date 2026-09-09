@@ -313,6 +313,31 @@ public sealed class SampleApiHostMiddlewareTests
         exception.Message.ShouldContain("AllowedAlgorithms");
     }
 
+    [Fact]
+    public void Host_WhenDevelopmentHttpAuthorityRequiresHttpsMetadata_FailsBeforeServing()
+    {
+        using WebApplicationFactory<SampleApi::Program> factory = new WebApplicationFactory<SampleApi::Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                _ = builder.UseEnvironment("Development");
+                _ = builder.ConfigureAppConfiguration((_, configuration) =>
+                    configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Authentication:JwtBearer:Authority"] = "http://identity.example.test/realms/hexalith",
+                        ["Authentication:JwtBearer:Issuer"] = "http://identity.example.test/realms/hexalith",
+                        ["Authentication:JwtBearer:Audience"] = Audience,
+                        ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
+                        ["Authentication:JwtBearer:SigningKey"] = null,
+                        ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+                        ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500",
+                    }));
+            });
+
+        OptionsValidationException exception = Should.Throw<OptionsValidationException>(() => factory.CreateClient());
+
+        exception.Message.ShouldContain("RequireHttpsMetadata");
+    }
+
     private static void ConfigureSampleAuth(WebHostBuilderContext _, IConfigurationBuilder configuration)
         => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {

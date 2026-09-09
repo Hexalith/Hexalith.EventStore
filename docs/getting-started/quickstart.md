@@ -32,7 +32,7 @@ Start the Aspire AppHost, which launches the CommandAPI, Tenants domain and API 
 domain service, Redis, and Keycloak:
 
 ```bash
-$ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+$ aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
 > **Note:** The first run takes longer than usual because .NET restores NuGet packages and Docker pulls container images for Redis, Keycloak, and the DAPR sidecar.

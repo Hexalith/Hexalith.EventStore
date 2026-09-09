@@ -200,7 +200,7 @@ The naming convention engine converts `InventoryAggregate` to domain name `inven
 Restart the AppHost:
 
 ```bash
-$ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+$ aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
 ### Verify Discovery

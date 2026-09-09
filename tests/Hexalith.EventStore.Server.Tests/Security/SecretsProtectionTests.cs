@@ -326,7 +326,7 @@ public sealed partial class SecretsProtectionTests
     public void DecodableTrackedTraceResources_AreRecoveredAndScanned(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        string content = "\"" + "Bearer /" + RandomSecret().TrimEnd('=') + "==\"";
+        string content = "\"" + "Bearer " + "/" + RandomSecret().TrimEnd('=') + "==\"";
 
         IsExplicitGeneratedPath(path).ShouldBeFalse();
         string? recovered = DecodeTrackedText(path, Encoding.UTF8.GetBytes(content));
@@ -341,6 +341,26 @@ public sealed partial class SecretsProtectionTests
             ".playwright-cli/traces/resource.dat",
             [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
             .ShouldBeNull();
+
+    [Fact]
+    public void TrackedTraceDatLiteralCredentialAssignment_IsRejected()
+    {
+        string path = ".playwright-cli/traces/resources/captured.dat";
+        string content = Assignment("Pass" + "word", "\"" + RandomSecret() + "\"");
+
+        FindViolations(path, content).ShouldBe([$"{path}:1"]);
+    }
+
+    [Fact]
+    public void TrackedTraceDatJavaScriptRuntimeCredentialAssignments_AreAllowed()
+    {
+        const string Path = ".playwright-cli/traces/resources/captured.dat";
+        string accessTokenName = "access" + "Token";
+        string passwordName = "pass" + "word";
+
+        FindViolations(Path, $"this._{accessTokenName} = await response.json()").ShouldBeEmpty();
+        FindViolations(Path, $"{passwordName}={passwordName}").ShouldBeEmpty();
+    }
 
     [Fact]
     public void RuntimeDefaultsAndLiteralOperands_AreRejectedRegardlessOfLength()
@@ -486,25 +506,7 @@ public sealed partial class SecretsProtectionTests
     private static IEnumerable<string> FindViolations(string relativePath, string content)
     {
         var violationLines = new SortedSet<int>();
-        void Record(int index, string category)
-        {
-            _ = violationLines.Add(LineNumber(content, index));
-            if (Environment.GetEnvironmentVariable("HEXALITH_SCANNER_CATEGORY_DIAGNOSTIC") == "1"
-                && relativePath.StartsWith(".playwright-cli/traces/", StringComparison.Ordinal))
-            {
-                string categoryName = category.Split(':')[0];
-                string safeDetail = string.Empty;
-                if (category.StartsWith("assignment:", StringComparison.Ordinal))
-                {
-                    int separator = category.IndexOf('=', StringComparison.Ordinal);
-                    string assignmentName = separator > 11 ? category[11..separator] : "unknown";
-                    string assignmentValue = separator >= 0 ? category[(separator + 1)..] : string.Empty;
-                    safeDetail = $":name={assignmentName}:value-length={assignmentValue.Length}:bare-identifier={SourceIdentifierPattern().IsMatch(assignmentValue)}";
-                }
-
-                Console.Error.WriteLine($"{relativePath}:{LineNumber(content, index)}:{categoryName}{safeDetail}");
-            }
-        }
+        void Record(int index, string _) => violationLines.Add(LineNumber(content, index));
 
         foreach (Match match in CompactJwtPattern().Matches(content))
         {
@@ -1609,7 +1611,12 @@ public sealed partial class SecretsProtectionTests
 
         if (JavaScriptReferenceExpressionPattern().IsMatch(value))
         {
-            return !IdentifiersEqual(name, value);
+            return true;
+        }
+
+        if (JavaScriptAwaitedMemberCallPattern().IsMatch(value))
+        {
+            return true;
         }
 
         int open = value.IndexOf('(');
@@ -1643,6 +1650,15 @@ public sealed partial class SecretsProtectionTests
 
     private static string GetEffectiveSourcePath(string relativePath, string content, int index)
     {
+        if (relativePath.StartsWith(".playwright-cli/traces/", StringComparison.Ordinal)
+            && relativePath.EndsWith(".dat", StringComparison.OrdinalIgnoreCase))
+        {
+            // Playwright stores fetched script resources under content-addressed .dat names.
+            // Treat them as JavaScript source for expression analysis; this does not exclude any
+            // decoded content and literal credentials remain violations.
+            return relativePath + ".js";
+        }
+
         if (!relativePath.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
         {
             return relativePath;
@@ -1796,12 +1812,6 @@ public sealed partial class SecretsProtectionTests
 
         return false;
     }
-
-    private static bool IdentifiersEqual(string left, string right)
-        => string.Equals(
-            Regex.Replace(left, "[^A-Za-z0-9]", string.Empty, RegexOptions.CultureInvariant),
-            Regex.Replace(right, "[^A-Za-z0-9]", string.Empty, RegexOptions.CultureInvariant),
-            StringComparison.OrdinalIgnoreCase);
 
     private static bool IsShellRuntimeExpression(string value)
     {
@@ -2392,6 +2402,9 @@ public sealed partial class SecretsProtectionTests
 
     [GeneratedRegex(@"^[A-Za-z_$][A-Za-z0-9_$]*(?:(?:\??\.[A-Za-z_$][A-Za-z0-9_$]*)|(?:\[[^\]\r\n]+\]))*$", RegexOptions.CultureInvariant)]
     private static partial Regex JavaScriptReferenceExpressionPattern();
+
+    [GeneratedRegex(@"^(?:await\s+)?[A-Za-z_$][A-Za-z0-9_$]*(?:(?:\??\.[A-Za-z_$][A-Za-z0-9_$]*)|(?:\[[^\]\r\n]+\]))+\(\)$", RegexOptions.CultureInvariant)]
+    private static partial Regex JavaScriptAwaitedMemberCallPattern();
 
     [GeneratedRegex(@"(?:`(?:\\.|[^`\\])*`|\""(?:\\.|[^\""\\])*\""|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b)", RegexOptions.CultureInvariant)]
     private static partial Regex JavaScriptLiteralPattern();

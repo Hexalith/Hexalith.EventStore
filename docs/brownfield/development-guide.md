@@ -78,7 +78,7 @@ persisted CloudEvent body), not just API status codes or mock counts (R2-A6).
 ```bash
 aspire run                       # default: from AppHost
 # or explicitly
-aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
 - CommandApi: `http://localhost:8080` (use HTTP in VMs — dev HTTPS cert isn't fully trustable there).
@@ -101,7 +101,7 @@ sudo dockerd &>/tmp/dockerd.log &
 sudo chmod 666 /var/run/docker.sock
 $HOME/.dapr/bin/placement --port 50005 &
 $HOME/.dapr/bin/scheduler --port 50006 --etcd-data-dir /tmp/dapr-scheduler-data &
-EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+EnableKeycloak=false aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
 **VM gotchas:** DAPR slim mode does not auto-start placement/scheduler (start them first or actors
