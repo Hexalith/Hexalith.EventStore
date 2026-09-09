@@ -4022,3 +4022,21 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Three OQ8 identity gaps restated by the acceptance audit are already open Group D items and each needs the v3 remint.
   evidence: `4-15-oq8-platform-closure-successor.json` pins `selectedOn: 2026-08-29` and asserts `eventStorePlatformComplete: true` against a validator and test file replaced twice since; `integration.yml` proves OQ8 on Dapr runtime `1.18.2` while `COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"` (`validate-oq8-platform-evidence.py:79`) is what `observations.json` is checked against; the 4.8 ledger's mutable `review` cell sits inside a live-hashed sealed body.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff Group F (2026-09-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The architecture spine now asserts DAPR runtime `1.18.2` while sealed OQ8 evidence is validated against `1.18.1`, with no crosswalk of the transition.
+  evidence: `_bmad-output/planning-artifacts/architecture.md:330` records "CI `1.18.2`; deployment examples `1.18.0`" and `.memlog.md` repeats it; `COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"` (`tools/validate-oq8-platform-evidence.py:79`) is what `observations.json` is checked against. This is the open Group D patch widened to a new surface; it rides the same agreed v3 remint rather than opening the sealed zone.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: `epics.md` pins a stale SHA-256 for `prd.md` under `inputDocumentDigests`.
+  evidence: `epics.md:14` pins `8f9c88e8b8665c2d…` while the file hashes `b99effdb414209…`. Pre-existing, introduced by `12d2dfc1` rather than by the Group F commit; fold into the same re-pin pass as the architecture digest, which is filed as an open patch.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The Group D deferred-work block uses bare prose bullets outside both sanctioned ledger formats, permanently, in an append-only file.
+  evidence: The `## Deferred from: code review of story-4.15 Group D (2026-09-09)` block carries three bullets with no `source_spec:`/`summary:`/`evidence:` keys and no `DW-###` id. Pre-existing from `12d2dfc1` and already filed as an open Group E patch; the Group E and Group F blocks appended after it do use the sanctioned flat form.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The fourth Group E deferred-work entry bundles three distinct issues under one un-idded block, so sweep cannot triage or close them individually.
+  evidence: That entry folds the `4-15-oq8-platform-closure-successor.json` generation freeze, the Dapr `1.18.2`/`1.18.1` gap, and the 4.8 live-hashed `review` cell into a single block. The flat block form itself is sanctioned; splitting is housekeeping with no correctness impact.

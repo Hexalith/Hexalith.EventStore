@@ -7,6 +7,7 @@ companions:
   - ../../planning-artifacts/story-id-migration-2026-07-15.md
   - ../../planning-artifacts/story-id-migration-2026-08-01.md
   - ../../project-context.md
+  - architecture-reconciliation.md
   - requirements-traceability.md
   - readiness-gates.md
   - glossary.md
@@ -19,139 +20,130 @@ sources:
   - ../../planning-artifacts/sprint-change-proposal-2026-08-16.md
 ---
 
-> **Canonical contract.** This SPEC and the files in `companions:` are the complete, preservation-validated contract for what to build, test, and validate. Source documents listed in frontmatter are for traceability only.
+> **Canonical contract.** This SPEC and the files in `companions:` are the complete,
+> preservation-validated contract for what to build, test, and validate. Source documents listed
+> in frontmatter are for traceability only.
 
-> **Current handoff verdict: BLOCKED.** Implementation handoff remains blocked until one
-> content-addressed planning set proves that `epics.md`, the active Story 3.13 specification, new
-> Story 3.14 and 3.15 specifications, and `sprint-status.yaml` encode the approved split together.
+> **Current verdict: BLOCKED for implementation readiness and production authority.** Existing
+> spec and story identities remain valid, but `epics.md` has not reconciled AD-26 through AD-33 and
+> still contains rules superseded by amended AD-16 and new AD-28. Production promotion, traffic,
+> consumer migration, and readiness claims are separately blocked by AD-26 until its content-bound
+> profile and every applicable evidence gate pass.
 
 # EventStore Phase 4 Implementation Readiness Recovery
 
 ## Why
 
-Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platform into a safer reusable developer platform before full implementation resumes. The need is driven by both product goals and implementation readiness: domain authors need platform-owned seams instead of copied boilerplate, operators need fail-closed trust and persisted evidence, and the planning set must stop using `epics.md` as a proxy for PRD, architecture, UX, and implementation slicing.
-
-For deployed-runtime parity, the final 2026-08-16 PRD and architecture take precedence over stale
-epic, story specification, and sprint tracking text. Story 3.13 is the rejected, non-authorizing
-`v3.94.1` disposition; Story 3.14 owns a separately authorized corrective release; only Story 3.15
-owns independent positive deployed-runtime parity closure.
-
-The Story 4.8 evidence ledger and implementing Stories 4.9-4.15 are governed first by the approved 2026-07-20 OQ8 proposal and the
-OQ8 design version 1.0.0 approved by Architecture, Security, and Test (SHA-256
-`1a55b0302e91233e12db91e6e245f0a22d6bf13fcf6cdf5ee0cbe5759f08dcd8`),
-then by this reconciled SPEC package. Pre-change FR27/NFR7/NFR16 and
-architecture wording is historical context only.
+Hexalith.EventStore Phase 4 must turn a working DAPR-native event-sourcing platform into a safe,
+reusable developer platform. Domain authors need platform seams instead of copied infrastructure;
+operators need fail-closed identity, delivery, and evidence contracts; and every implementation
+spec must follow the same architecture before readiness or production authority can be claimed.
 
 ## Capabilities
 
 - **CAP-1**
-  - **intent:** Domain authors can build EventStore-backed domain modules with domain code only while EventStore libraries supply hosting, query, projection, read-model, cursor, telemetry, health, Aspire, packaging, and consumer-parity seams.
-  - **success:** Sample and Tenants adoption preserve domain behavior, production-path evidence proves the generic replacement seams, and consumer infrastructure remains until one unchanged content-addressed packet proves every applicable source, package, and deployed identity and a separate authenticated Consumer-owner receipt authorizes the exact removal subject.
+  - **intent:** Domain authors can build EventStore-backed modules with domain code only while the platform supplies hosting, query, projection, read-model, cursor, telemetry, health, orchestration, packaging, identity, and routing seams.
+  - **success:** Sample and Tenants preserve behavior through platform seams; Development-only routing overrides and Redis evidence are never represented as production authority; consumer infrastructure remains until exact parity and Consumer-owner removal evidence pass.
 
 - **CAP-2**
   - **intent:** External API developers can expose typed generated REST endpoints in dedicated API hosts while interactive UI hosts consume client libraries directly.
-  - **success:** Generated controllers delegate to `IEventStoreGatewayClient`, Sample/Tenants UI hosts contain no generated or hand-written per-message MVC command/query controllers, and handler-computed or unknown responses never claim projection-confirmed state.
+  - **success:** Generated controllers delegate to `IEventStoreGatewayClient`, query evidence keeps its route provenance, command status uses `MessageId`, and every downstream hop preserves the first-boundary correlation identity and activated catalog route.
 
 - **CAP-3**
-  - **intent:** Maintainers can release reproducibly with references-based submodules, deterministic package mode, dedicated live-sidecar coverage, shared security workflows, and manifest-governed package output.
-  - **success:** Release validation cannot publish submodule packages, CI separates deterministic release-gate tests from live-sidecar tests, and every candidate is bound by the AD-11 canonical release identity and provenance contract; any corrective publication remains separately authorized.
+  - **intent:** Maintainers can release reproducibly with references-based submodules, deterministic package mode, dedicated live-sidecar coverage, shared security workflows, and manifest-governed output.
+  - **success:** Release validation cannot publish submodule packages, every candidate has one validated AD-11 identity and provenance chain, and candidate publication is never treated as AD-26 production authority.
 
 - **CAP-4**
-  - **intent:** Operators and consumers can trust event identity, trusted tenant/key admission, fencing, exact replay, terminal expired-key precedence, replay/tombstone separation, replay dispatch, append behavior, global-position semantics, and crash recovery under duplicates, concurrency, and failures.
-  - **success:** Tests prove CloudEvent id stability, duplicate result fidelity, stale pipeline rejection, trusted semantic equivalence, one current fence, inclusive expiry, minimal tombstone compaction, rotation/migration fail-closed behavior, stored-but-unpublished recovery, and multi-host production-path durable evidence with exactly one eligible execution and zero later duplicate side effects.
+  - **intent:** Operators and consumers can trust event identity, idempotency admission, fencing, replay, dispatch, append behavior, global positions, and crash recovery under duplicates, concurrency, and failures.
+  - **success:** Tests prove stable CloudEvent identity, exact duplicate results, fail-closed admission and migration, one current nonzero fence for every production aggregate side effect, replay equivalence, stored-but-unpublished recovery, and a shared routing/idempotency catalog fingerprint.
 
 - **CAP-5**
-  - **intent:** Public, internal, domain-service, projection-notification, admin, and generated REST surfaces fail closed and preserve tenant isolation.
-  - **success:** Anonymous and cross-tenant admin access fails, production auth rejects insecure modes unless break-glassed, committed config contains no forgeable or operational secrets, and production evidence proves fail-closed required-secret handling plus matching default-deny DAPR scopes and OpenBao ACLs.
+  - **intent:** Public, internal, domain-service, projection-notification, Admin, and generated REST surfaces fail closed and preserve tenant isolation.
+  - **success:** Every boundary uses one explicit canonical tenant; every non-Development DAPR app endpoint authenticates the app channel; Production always rejects symmetric JWT mode; and neither caller app ID, mTLS, ACLs, `system` subjects, nor inferred wildcards create tenant or administrator authority.
 
 - **CAP-6**
-  - **intent:** Long-lived streams can evolve with bounded snapshot/projection cost, sequence-safe projection updates, event versioning/upcasting, validated identity metadata, and cancellation-aware public seams.
-  - **success:** The exact bounded `ProjectionDispatchResult` and replay-equivalent paged rebuild baseline are proven before folded snapshot, projection cost/sequence guard, and event versioning/upcasting specs authorize dependent implementation.
+  - **intent:** Long-lived streams can evolve with bounded snapshot and projection cost, sequence-safe projection updates, event versioning and upcasting, validated identity metadata, and cancellation-aware public seams.
+  - **success:** The shipped projection-dispatch carrier and persisted result matrix, replay-equivalent paged rebuild baseline, and each cost/evolution specification are proven before dependent optimizations or format changes proceed.
 
 - **CAP-7**
-  - **intent:** Operators get explicit delivery semantics, poison/dead-letter handling, attributable admin actions, honest unavailable-operation behavior, hardened deployment posture, meaningful higher-tier evidence, and tracked future capability backlog.
-  - **success:** `Hexalith.EventStore.Admin.UI` is the single consolidated FrontComposer-based EventStore UI; unavailable operations are hidden, disabled, or return `501`; audit records remain support-safe; integration tests assert persisted evidence; operational secrets satisfy AD-24 readiness, runtime-failure, acknowledged-rotation, and real-OpenBao evidence gates; and four independently governed backlog artifacts exist.
+  - **intent:** Operators get explicit delivery semantics, recoverable poison handling, attributable Admin actions, honest unavailable-operation behavior, hardened deployment posture, and persisted evidence.
+  - **success:** Subscriber acknowledgement follows durable capture; Admin mutations preserve bounded human and service attribution through recovery; `eventstore-operations` remains unavailable until its production gates pass; and the consolidated Admin UI presents only support-safe, evidence-backed states.
 
 - **CAP-8**
-  - **intent:** Phase 4 has a coherent planning baseline before full implementation resumes.
-  - **success:** The eight-epic plan keeps Stories 1.20 and 3.12 complete, records Story 3.13 as the rejected `v3.94.1` disposition, assigns separately authorized correction to Story 3.14 and independent positive parity to Story 3.15, keeps Epic 3 open, replaces oversized Stories 4.8 and 8.2 with focused children, and updates epics, story specifications, and sprint tracking atomically before a fresh readiness assessment permits implementation handoff.
+  - **intent:** Phase 4 has one coherent planning and implementation baseline.
+  - **success:** Stable spec, capability, AD, epic, and story identities remain traceable; every AD-1 through AD-33 consequence has an implementation owner and evidence gate; stale or contradictory artifacts grant no completion or production authority; and a fresh readiness assessment passes the reconciled set.
 
 - **CAP-9**
-  - **intent:** EventStore can provide an optional, reusable, byte-stable payload-protection engine with fail-closed cryptographic and key-lifecycle behavior for Parties and later consumers.
-  - **success:** Stories 8.2-8.11 execute only after Story 8.1 authorization and their immediate predecessors, prove FR37/NFR19 contracts through goldens, core crypto, compatibility, policy/key lifecycle, production adapter, server, package, Parties, rollback, and G5 closure, and leave Parties Story 8.7 blocked until Story 8.11 records an approved `available` packet.
+  - **intent:** EventStore can provide an optional reusable byte-stable payload-protection engine while domains retain legal policy and operators retain key custody.
+  - **success:** Stories 8.2-8.11 satisfy their predecessor and evidence gates, and payload-key invalidation remains one separately reported AD-30 erasure facet rather than proof of full erasure.
 
 ## Constraints
 
-### Authority and handoff
+### Authority and readiness
 
-- PRD owns FR/NFR truth and readiness traceability; architecture owns component, integration, topology, and decision-record gates; UX owns UI governance and flows; `epics.md` owns story slicing, sequencing, acceptance criteria, and implementation handoff.
-- The finalized `architecture.md` companion is the architecture contract; its memlog is the decision authority. This run binds architecture SHA-256 `9a20ba5c6860f124ca52a8801e531132a96dd0a761856fdc4684390d848f4101` and memlog SHA-256 `3b20c450f7c105b1cedb1d9862b5e6a10e3968e57dcb1698a47a52779d3abedb`. Preserve AD-1 through AD-25; later amendments within an ID supersede earlier wording.
-- For deployed-runtime parity, the final 2026-08-16 PRD and architecture override stale `epics.md`, Story 3.13-3.15 specifications, and sprint-tracking text. No stale artifact grants positive `v3.94.1` authority.
-- Story 3.13 may complete only on the exact content-bound `rejected-non-authorizing` tuple and authenticated rejection receipts defined in `readiness-gates.md`; it never closes positive FR36 parity.
-- Story 3.14 requires complete AD-11 conformance and a separate authenticated, durable, one-use authority reserved to one run and attempt. Partial publication remains immutable non-authorizing evidence; retry requires a new semantic version and authority. This SPEC grants no publication authority.
-- AD-11 requires one canonical `ReleaseIdentity` and versioned `ReleaseEvidenceCodec` over exact source, workflow, authority, package, raw OCI graph, provenance, and two-platform smoke evidence. Canonical UTF-8 bytes are hashed without reserialization; missing or mixed lineage fails closed.
-- Story 3.15 independently derives one exact new AD-11 lineage and may close only on explicit `deployed_runtime_parity: available` plus the unchanged content-addressed subject and authenticated, valid triad receipts defined in `readiness-gates.md`.
-- AD-22 parity approval does not authorize deletion. Consumer removal requires trusted nonempty applicable modes and the fully bound, authenticated, valid Consumer-owner `consumer-removal-authorized` receipt defined in `readiness-gates.md`.
-- Implementation handoff requires the exact content-addressed planning set, Story 3.13 key rule, and story-status transition rules in `readiness-gates.md`; any missing, duplicate, partial, stale, or mixed-version artifact remains blocked.
-- Full Phase 4 implementation must not resume until the atomic planning-set verifier passes, all other PRD, architecture, UX, story-split, and high-risk NFR gates are reconciled, and a fresh readiness verdict clears the block.
+- The PRD owns FR/NFR truth; `architecture.md` owns component, integration, topology, and AD gates; UX owns interaction rules; `epics.md` owns story slicing and handoff.
+- The governing architecture has SHA-256 `2678116099e3d1c1f68ee38ef344b9bef5a58a82062a800e5a89b8b0f5774395`; its decision-authority memlog has SHA-256 `5b6fa6ec60261de4be496a8350b048e8cf5381d6cd0a8681cc475e69cbd4f793`. Exactly AD-1 through AD-33 govern; later wording under an existing ID supersedes earlier wording without changing the ID.
+- Prior specifications and evidence retain their identities and historical conclusions only within the environment and claim they actually proved. Architecture changes narrow future authority; they do not rewrite historical bytes or silently promote a completed story.
+- AD-26 selects one self-managed Kubernetes production profile: independent DAPR sidecars, `statestore` using stable `state.postgresql` v1 with `actorStateStore: true`, the production resiliency policy, an approved durable broker, AD-24 OpenBao, and OQ8 profile `oq8-postgresql-v1`. Redis is Development/test only; Cosmos and other templates are non-authorizing alternatives.
+- The Platform deployment owner must publish one canonical `deploy/dapr/production-profile.yaml` whose retained-byte digest binds runtime, topology, components, identities, ACLs, resiliency, OpenBao, catalogs, restore posture, and required evidence. A separately authorized candidate can produce evidence but cannot authorize production.
+- Story 3.13 remains the rejected `v3.94.1` disposition; Story 3.14 owns a separately authorized corrective release; Story 3.15 remains the independent positive deployed-runtime gate. None authorizes deployment or consumer removal by status alone.
+- `architecture-reconciliation.md` records the PRD and epic changes still required. Until those owners reconcile and validate their artifacts, the architecture governs any disagreement and readiness remains blocked.
 
-### Runtime and correctness
+### Runtime, identity, and delivery
 
-- The platform remains DAPR-backed hexagonal event sourcing: the EventStore gateway is the policy edge, DAPR actors own aggregate write serialization, domain services are pure domain adapters, and external adapters call platform seams.
-- Generated REST controllers live only in dedicated external API hosts and delegate to `IEventStoreGatewayClient`; interactive UI hosts consume EventStore Client libraries directly and host no generated or hand-written per-message MVC command/query controllers.
-- `AggregateActor` owns durable event mutation; domain code returns `DomainResult` and never writes EventStore state directly.
-- AD-25 admission precedes `AggregateActor`: authentication, current authorization, and canonical validation precede a trusted adapter; the tenant/key admission directory selects exactly one canonical actor; and only its current non-zero fence may cross a protected side-effect boundary.
-- Public requests carry only the opaque idempotency key. Canonical intent and fixed retention are server-owned; raw keys and protected intent never enter persistent or diagnostic surfaces.
-- Mutation replay retention is exactly 86,400 seconds and commit replay retention uses `DateTimeOffset.AddYears(7)`. Inclusive expiry atomically compacts to the approved fence-free minimal tombstone; unresolved states never age into fresh work.
-- Unavailable, corrupt/collision, unknown-version, ambiguous/uninventoried legacy, and unsafe promotion state fail closed. Directory-mediated rotation and versioned legacy migration preserve one canonical authority or remain blocked.
-- Story 4.4 retains committed-event publication recovery. Story 4.8 is the non-executable evidence ledger; Story 4.14 produces `_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml` against the `oq8-postgresql-v1` multi-host DAPR profile and Story 4.15 owns EventStore platform closure and handoff. Folders owns canonical cross-repository OQ8 evidence and final closure.
-- Read models use `IReadModelStore` plus `ReadModelWritePolicy`; cursors use `IQueryCursorCodec` plus `QueryCursorScope` and remain opaque, bounded, scoped, and fail safe.
-- Projection and pub/sub messages are delivered at least once and without guaranteed ordering; notifications are freshness signals, not proof of success; consumers deduplicate by EventStore `MessageId`.
-- Runtime topology changes must update AppHost, DAPR component/configuration YAML, app IDs, sidecar options, ACLs, topics, component and secret scopes, the canonical secret contract, and topology tests together.
+- EventStore remains a DAPR-backed hexagonal event-sourcing platform: the gateway is the policy edge, `AggregateActor` is the sole append coordinator, and domain services remain pure domain adapters.
+- Every production aggregate mutation or side effect requires a nonempty opaque idempotency key, successful AD-25 admission, and the current nonzero fence before domain, persistence, projection, audit, provider, repository, or scheduling work. Unfenced compatibility seams fail closed or remain unmapped outside Development.
+- AD-25 and AD-33 share one deployable `deploy/dapr/eventstore-routing-catalog.json` envelope. Stable route-entry IDs join command/query/projection routing and idempotency facets under one root digest and generation; activation is prepare/ready/commit with rollback to the prior complete generation.
+- Commands and queries map by `(Domain, MessageType)` and projections by `(Domain, ProjectionType)` to one app ID, method, and contract version. Exact keys precede bounded cataloged fallbacks; duplicate, missing, ambiguous, partial, untrusted, or mismatched entries fail readiness, and runtime overrides are Development-only.
+- Read models use `IReadModelStore` plus `ReadModelWritePolicy`; cursors use `IQueryCursorCodec` plus `QueryCursorScope`; projection lifecycle, opaque route-bound version tokens, and rebuild checkpoints remain persisted authorities.
+- `ProjectionDispatchResponse` v2 with `ProjectionDispatchOutcome` is the only cross-service projection carrier. The server owns the persisted normalized per-route outcome and checkpoint matrix; no separate public `ProjectionDispatchResult` family is implied.
+- Pub/sub is at-least-once and unordered. A poison or terminally rejected message is acknowledged only after the AD-31 tenant/domain durable sink accepts a record keyed by stable `MessageId`; unknown, failed, conflicting, or unretainable capture remains retryable or enters separately proven durable quarantine.
+- `X-Correlation-ID` is 1-128 ASCII alphanumeric or hyphen characters. The first public boundary accepts or mints it; downstream hops propagate it unchanged or reject an invalid replacement. It is not a GUID, `traceparent`, or command-status identity.
+- AppHost, DAPR YAML, profile/catalog fingerprints, app IDs, component and secret scopes, ACLs, resiliency, topics, subscriptions, deployment documentation, and topology tests change as one slice.
 
-### Security and release
+### Security and operations
 
-- Security fails closed above infrastructure scoping: application-layer credentials and tenant authorization are required before data disclosure.
-- AD-24 binds FR34, NFR4, NFR17, and current Story 7.6: production operational and application secrets use DAPR component `openbao` of type `secretstores.hashicorp.vault` v1; logical names, map shapes, consumers, retrieval lifecycle, access paths, and rotation bounds derive from the value-free `deploy/dapr/openbao-secret-contract.yaml`.
-- The AD-24 contract drives singleton component scopes, per-app DAPR `defaultAccess: deny` plus explicit `allowedSecrets`, and least-privilege OpenBao ACLs; mismatches fail validation, while the OpenBao token, DAPR API token, and TLS trust material remain acyclic out-of-band bootstrap inputs.
-- AD-24 required secrets gate readiness, runtime lookup failure disables the dependent operation until bounded recovery, and rotation is generation-aware publish-overlap-acknowledge-revoke. Release evidence must use real OpenBao; Azure Container Apps managed DAPR is non-conforming until a separately approved compatible profile exists.
-- AD-24 governs operational and application secret retrieval only. It does not approve, replace, or modify AD-23 or the draft payload-protection Azure Key Vault Premium RSA-HSM KEK proposal; DAPR secret stores are not production `pdenc-v2` key custody.
-- Release is manifest-governed through `tools/release-packages.json`; Release/package validation uses package-reference mode by default; submodule packages are not produced by EventStore release jobs. Story 8.8 alone owns payload-protection package creation and release-manifest authority, updates the manifest atomically from 14 to 16 packages, and does not modify assistant entry-point files.
-- High-risk verification must assert persisted Redis/state-store/read-model/CloudEvent bodies, topology YAML or sidecar arguments, package outputs, and security denials.
+- Every HTTP host installs the platform authenticated `FallbackPolicy`. Only `/health`, `/alive`, and `/ready` carry explicit `AllowAnonymous` metadata and support-safe responses.
+- The shared JWT contract owns issuer, audience, signature, lifetime, roles, tenant validation, 60-second skew, HTTPS metadata, and the closed algorithm allowlist. Production rejects symmetric mode even when break-glass is enabled; HS256 is limited to Development or an explicitly enabled environment that is neither Development nor Production.
+- `Contracts` owns tenant canonicalization. Every boundary requires exactly one explicit request tenant and matching `eventstore:tenant` grant, normalized lowercase to 1-64 characters using `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`; missing, duplicate, conflicting, invalid, public `system`, or inferred wildcard scope fails before routing or state access.
+- Every non-Development DAPR app endpoint validates exactly one `dapr-api-token` against startup `APP_API_TOKEN` through shared constant-time middleware. The token authenticates the channel, not claimed caller identity; sidecar-established attribution plus catalog and ACL authorization are still required.
+- Admin mutations preserve either the authenticated operator or a validated bounded delegation binding human subject, service principal, tenant, operation, reason, request, correlation and message IDs, issuer, and expiry. Mutation and audit use resumable prepare/effect/commit/recovery states; audit failure cannot silently permit the effect.
+- AD-24 production secrets use one value-free OpenBao contract, DAPR Secrets API access, `auth.secretStore: openbao`, `secretKeyRef`, default-deny grants, TLS verification, required-secret readiness, and acknowledged rollout-based rotation. Digest-key retirement also requires the AD-25/AD-33 catalog to prove zero live references.
+- `Hexalith.EventStore.Operations` owns poison capture and replay under app ID `eventstore-operations`, but remains non-production until AppHost/deployment wiring, immutable release identity, AD-28 authentication, AD-29 audit, tenant/target validation, common catalog fingerprint, and capture-before-ack evidence pass.
+- Sensitive payloads, plaintext, ciphertext, tokens, credentials, key material, unbounded claims, and PII never enter telemetry, support output, or evidence; tenant IDs are not metric labels.
 
-### Planning and repository boundaries
+### Erasure, release, and planning boundaries
 
-- Folded snapshots, projection delivery cost, projection sequence guards, event versioning/upcasting, identity metadata validation, cancellation-token public seams, and global-position sharding require approved specs before implementation stories start. Story 6.2 must prove `snapshot size <= folded-state payload size + MaxSnapshotEnvelopeOverheadBytes` using the numeric bound approved by Story 6.1.
-- Preserve the frozen `/project/v2` wire response and emit one server-owned `ProjectionDispatchResult` Version 1 with bounded ordinal route entries, stable status codes, and explicit `Advanced` or `NotAdvanced` checkpoint state; no equivalent shape is allowed without a new architecture decision.
-- `src/Hexalith.EventStore.Admin.UI` remains the only EventStore UI host and the `eventstore-admin-ui` resource. It composes matching FrontComposer Shell and Contracts.UI packages through the Builds catalog `HexalithFrontComposerVersion` (dated architecture value `4.1.1`) with Fluent UI V5, owns the `event-store-admin` module, and distributes shell/routes, typed-client/evidence-state integration, and accessibility/localization/responsive conformance across Stories 7.14, 7.19, and 7.20.
-- Story 1.20 closes source/package parity; Story 3.13 preserves only rejected `v3.94.1` evidence; Story 3.14 produces a separately authorized corrective candidate; Story 3.15 may close positive deployed-runtime parity without reopening Stories 1.20 or 3.12. Never compare a consumer repository SHA to the EventStore SHA.
-- `AddEventStoreGatewayClient(...)` registers the typed client only. DAPR service invocation is opt-in and must be the last/innermost decorator by explicitly chaining `.AddEventStoreDaprServiceInvocation(appId, apiToken)`; omitting the chain fails open to no transport rather than silently selecting DAPR.
-- Tenant provisioning rejects the reserved `system` tenant before any state or side effect; Story 5.10 owns the guard and evidence.
-- The approved replan preserves eight-epic order and MVP scope, rehomes platform provenance into Story 1.2, leaves generated REST/Tenants production provenance in Story 2.11, and makes Story 2.6 independently testable with deterministic presentation fixtures.
-- A split child inherits `done` only through an evidence crosswalk naming implementation, focused tests, review results, and external approval/exact SHA where applicable; otherwise it remains `review`. The 2026-07-15 and 2026-08-01 crosswalks together are authoritative for migrated status and evidence.
-- Tenants adoption requires maintainer approval, approved PR/commit evidence, exact Tenants SHA, repository boundary, source/package-mode validation, and an explicit disposition when approval is unavailable.
-- Use `Hexalith.EventStore.slnx` for restore/build; run unit tests by project; keep package versions centralized; do not recurse submodules or modify submodule files without explicit approval.
-- EventStore envelope identifiers use ULID-safe handling where required; `Guid.TryParse` is forbidden for `messageId`, `correlationId`, `aggregateId`, and `causationId`.
-- UI-facing work must use FrontComposer and Blazor Fluent UI V5, remain support-safe, avoid theme redefinition, and keep detailed UX evidence in `ux.md`.
-- AOT/trimming is not a target while reflection conventions remain load-bearing.
+- AD-7 owns only typed, idempotent, read-back-proven MVP projection read-model/checkpoint removal. It makes no GDPR, event, broker, backup, audit, or cryptographic-erasure claim.
+- AD-30 is a distinct post-MVP domain-policy-owned workflow. It freezes the canonical subject scope and records logical, projection, cryptographic, broker, backup, restore-point, cache, export, replica, and legal-hold facets separately; overall completion is impossible while any required facet is pending, unknown, or failed.
+- AD-23 payload protection remains optional and separately gated. OpenBao operational secrets are not `pdenc-v2` KEK custody, and key invalidation alone is not complete erasure.
+- Release remains manifest-governed; canonical retained bytes, exact OCI lineage, provenance, platform smokes, release authority, parity approval, deployment authority, and Consumer-owner removal authority remain separate fail-closed decisions.
+- Cost, sequence, snapshot, and upcaster changes remain spec-first. Existing paged-rebuild correctness remains binding, but Redis proof is Development/test evidence and cannot satisfy AD-26 production readiness.
+- `Hexalith.EventStore.Admin.UI` remains the only EventStore UI host. FrontComposer and Fluent UI versions come from the live Builds catalog; a dated literal in a specification is not package authority.
+- The dated story-migration crosswalks preserve existing story identities and evidence. A split or amended story inherits no new completion claim without focused evidence and its required owner approvals.
+- Use `Hexalith.EventStore.slnx` for restore/build, run tests per project, keep package versions centralized, preserve ULID-safe envelope IDs, and do not recurse or modify submodules without explicit approval.
+- AOT and trimming remain unsupported while reflection conventions are load-bearing.
 
 ## Non-goals
 
-- Do not reduce Phase 4 MVP scope as part of readiness recovery.
-- Do not implement GDPR aggregate erasure/tombstoning, Admin interactive OIDC login, aggregate test kit, or REST generator hardening beyond approved Epic 2 proof scope; create backlog artifacts only.
-- Do not move generated REST controllers into interactive UI hosts.
-- Do not treat HTTP `202`, SignalR notification, or command acceptance as projection-confirmed UI success.
+- Do not implement or authorize production deployment, traffic, consumer migration, release, publication, secret creation, data deletion, submodule changes, or cross-repository mutation in this planning update.
+- Do not reduce Phase 4 scope, renumber any capability, AD, epic, story, or existing implementation specification, or rewrite historical evidence to match newer architecture.
+- Do not treat Story 1.14 projection cleanup, payload-key invalidation, a dead-letter publish attempt, a candidate image, or a catalog file's presence as its broader completion claim.
+- Do not create a second EventStore UI host, move generated controllers into interactive UI hosts, or present accepted/notification/deferred outcomes as projection-confirmed success.
 - Do not target AOT/trimming while reflection conventions remain load-bearing.
-- Do not create an additional EventStore UI host or preserve duplicate legacy page implementations.
-- Do not roll back implementation solely because planning identities are being restructured.
-- Do not use the AD-24 operational secret store as payload-protection KEK custody or treat AD-24 as approval of the draft payload-protection backend.
-- Do not claim Azure Container Apps managed DAPR conforms to AD-24 without a separately approved compatible profile.
-- Do not authorize or perform a release, deployment, external publication, Git operation, submodule change, consumer mutation, consumer removal, or human acceptance in this planning update.
 
 ## Success signal
 
-Implementation readiness can be re-run only after the atomic downstream planning update. It must then find complete FR1-FR37 and NFR1-NFR19 coverage, no stale positive `v3.94.1` authority, no ungoverned or forward prerequisite, no oversized active parent, and deterministic content-addressed owner, evidence, and removal gates. The resulting plan preserves AD-1 through AD-25; keeps Epic 3 open through independent Story 3.15 closure; keeps FR37 and NFR19 as separately gated post-MVP work; assigns OQ8 platform evidence to Stories 4.14-4.15; and requires persisted-evidence validation.
+A fresh readiness assessment can trace every FR1-FR37 and NFR1-NFR19 obligation through one
+governing AD-1 through AD-33 baseline to stable implementation-spec identities, unambiguous epic
+owners, and persisted evidence. Production authority is granted only when the exact AD-26 profile,
+AD-33 catalog generation, workload authentication, tenant, delivery, attribution, recovery, and
+release gates all pass without relying on Development-only evidence.
 
 ## Assumptions
 
-- No additional audience-facing artifact was requested; this SPEC plus companions are the deliverable.
+- Existing implementation-spec files remain historical records; reconciliation adds governing constraints and follow-up ownership rather than rewriting their completed evidence sections.
+
+## Open Questions
+
+- Which durable broker, retention/RTO/RPO and restore posture, OpenBao production topology, and telemetry exporter/cardinality budgets will Platform Operations bind into the AD-26 profile?

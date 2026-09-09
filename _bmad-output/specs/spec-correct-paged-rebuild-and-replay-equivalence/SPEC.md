@@ -2,8 +2,10 @@
 id: SPEC-correct-paged-rebuild-and-replay-equivalence
 companions:
   - rebuild-semantics.md
+  - ../../planning-artifacts/architecture.md
   - ../../project-context.md
   - ../../implementation-artifacts/1-10-coordinated-read-model-batch-writes.md
+  - ../../implementation-artifacts/1-19-correct-paged-rebuild-and-replay-equivalence.md
 sources:
   - ../../implementation-artifacts/1-14-correct-paged-rebuild-and-replay-equivalence.md
 ---
@@ -43,33 +45,46 @@ Long-stream rebuilds currently pass one bounded page to a stateless full-replay 
   - **success:** Authoritative `ProjectionBacked` evidence is `Rebuilding` in flight and becomes `Current` or `Stale` only after durable promotion, with no terminal stale `Rebuilding` state.
 
 - **CAP-7**
-  - **intent:** Replay equivalence is demonstrated through persisted production-path evidence with bounded temporary full-prefix cost.
-  - **success:** A stream larger than two pages and the required edge corpus prove semantic equality of actor/detail/index outputs, persisted freshness versions, and rebuild checkpoints; safety-limit exhaustion fails without changing live state.
+  - **intent:** Replay equivalence is demonstrated through persisted configured-path evidence with bounded temporary full-prefix cost and explicit environment authority.
+  - **success:** A stream larger than two pages and the required edge corpus prove semantic equality of actor/detail/index outputs, persisted freshness versions, and rebuild checkpoints; safety-limit exhaustion fails without changing live state; only evidence from the complete AD-26 profile may be labeled production-authorizing.
 
 ## Constraints
 
 - The equivalence target is every live surface owned by the rebuild operation: projection-actor state, required detail/index read models, persisted freshness projection versions, and rebuild checkpoints. ETags are not version evidence.
 - Under the current stateless, domain-keyed handler contract, page reads accumulate the complete required prefix to the bounded target before projection; output remains non-live until promotion.
-- Promotion uses Story 1.10's same-store batch or marker-gated resumable protocol. It must not invent another marker, claim cross-store atomicity, or persist live output before best-effort checkpointing.
-- Only `IProjectionRebuildCheckpointStore` advances after proven promotion. `IProjectionCheckpointTracker` delivery checkpoints remain unchanged for Story 1.13.
+- Promotion uses Story 1.15's same-store batch or marker-gated resumable protocol. It must not invent another marker, claim cross-store atomicity, or persist live output before best-effort checkpointing.
+- Only `IProjectionRebuildCheckpointStore` advances after proven promotion. `IProjectionCheckpointTracker` delivery checkpoints remain unchanged for Story 1.18.
 - The rebuild page size is configurable, validates greater than zero, and defaults to 256. Exact page boundaries remain correct.
 - `ProjectionOptions.RebuildMaxPrefixEventCount` defaults to 10,000 and `ProjectionOptions.RebuildMaxPrefixBytes` defaults to 67,108,864 (64 MiB); both are configurable server-wide and validation rejects non-positive values.
 - Exceeding either full-prefix safety bound fails closed with `rebuild_prefix_safety_limit_exceeded`, preserves every live surface, advances no completion checkpoint, and clears terminal `Rebuilding` lifecycle state. Stories 6.3/6.4 may optimize cost without weakening equivalence.
-- Story 1.10 coordinated batching and Story 1.12 named dispatch are completed prerequisites; Story 1.14 consumes those seams and must not create a local substitute.
+- Story 1.15 coordinated batching and Story 1.17 named dispatch are completed prerequisites; Story 1.19 consumes those seams and must not create a local substitute.
 - Persisted `IReadModelFreshness` is the projection-version authority. Lifecycle is never inferred from ETag, HTTP outcome, payload fields, or SignalR.
 - Aggregate sequence remains gapless per aggregate; `SequenceNumber` is never global ordering; bounded `toPosition` uses the canonical replay boundary; shared platform JSON options remain authoritative.
 - Existing immediate/poller full-replay behavior and admin rebuild control flow remain compatible. Public capability is additive.
-- Required evidence traverses the real orchestrator → `/project` → persistence path and asserts persisted state. Mock calls, HTTP status, and isolated replay tests are insufficient.
+- The finalized architecture governs this SPEC. AD-20 owns replay equivalence; later wording within AD-1 through AD-33 supersedes earlier implementation guidance without changing this SPEC or its capability IDs.
+- `ProjectionDispatchResponse` v2 with `ProjectionDispatchOutcome` is the cross-service carrier. The server-owned persisted route/checkpoint matrix is authoritative; this SPEC does not introduce a separate public `ProjectionDispatchResult` family.
+- Every boundary canonicalizes exactly one explicit tenant before route resolution, lifecycle fencing, staging, checkpoint, read-model, or state access. Missing, duplicate, conflicting, invalid, inferred, or public `system` scope fails closed.
+- Non-Development `/project` and `/project/v2` calls validate `dapr-api-token` against startup `APP_API_TOKEN` through shared constant-time middleware. Caller app ID, mTLS, and ACL success do not substitute for app-channel authentication.
+- Admin start, cancel, resume, and promotion actions preserve authenticated operator identity or a bounded validated delegation through one resumable mutation/audit unit. Audit failure cannot silently permit the action.
+- The rebuild operation and its candidates bind stable projection route-entry IDs plus one activated AD-33 root/facet catalog generation. Non-Development runtime overrides, partial generations, and fingerprint drift fail readiness.
+- The first public boundary accepts or mints the bounded `X-Correlation-ID`; every rebuild and projection hop propagates it unchanged or rejects an invalid replacement. Correlation is neither a GUID nor rebuild/status identity.
+- Story 1.14 and AD-7 own projection read-model/checkpoint removal. Rebuild behavior neither authorizes nor proves the separate AD-30 full-erasure workflow.
+- Required correctness evidence traverses the real orchestrator → `/project` → persistence path and asserts persisted state. Mock calls, HTTP status, and isolated replay tests are insufficient. Existing DAPR/Redis evidence proves Development/test replay semantics only; a production claim also requires the complete content-bound AD-26 PostgreSQL v1, durable-broker, OpenBao, resiliency, and independent-sidecar profile.
 
 ## Non-goals
 
-- Implementing Story 1.12 named asynchronous multi-projection dispatch or Story 1.13 delivery deduplication/checkpoint advancement.
+- Reimplementing Story 1.17 named asynchronous multi-projection dispatch or Story 1.18 delivery deduplication/checkpoint advancement.
 - Optimizing long-stream replay cost beyond the explicit temporary safety bound.
 - Changing query-route provenance, rebuild erasure, released read-model/lifecycle/checkpoint ABI, AppHost topology, or domain-module code.
+- Authorizing an AD-26 production profile, AD-30 full erasure, AD-31 dead-letter service, deployment, traffic, or consumer migration.
 
 ## Success signal
 
-A production-path rebuild of a fixture larger than two configured pages promotes persisted state, freshness versions, and rebuild checkpoints that are semantically equal to canonical replay, while cancellation and injected failures leave the previous complete live model intact and retry converges.
+A configured-path rebuild of a fixture larger than two pages promotes persisted state, freshness
+versions, and rebuild checkpoints semantically equal to canonical replay, while cancellation and
+injected failures leave the previous complete live model intact and retry converges. The same
+result becomes production-authorizing only when reproduced through the complete AD-26 profile with
+the activated AD-33 catalog and required tenant, app-channel, attribution, and correlation gates.
 
 ## Assumptions
 

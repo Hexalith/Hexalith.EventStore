@@ -1,302 +1,416 @@
 ---
 name: Hexalith.EventStore Admin
-status: final
+status: draft
 created: 2026-07-05
-updated: 2026-08-01
+updated: 2026-09-09
+reviewed_repository_revision: e302432ca6daf3aa0436c3c0011f7baa551bb449
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/epics.md
-  - _bmad-output/planning-artifacts/implementation-readiness-report-2026-07-05.md
+  - _bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md
   - https://fluentui-blazor-v5.azurewebsites.net/
 ---
 
-# Hexalith.EventStore Admin - Experience Spine
+# Hexalith.EventStore Admin — Experience Spine
 
 ## Foundation
 
-Responsive web inside the Hexalith module shell. The UI system is FrontComposer with Blazor Fluent UI V5. `DESIGN.md` is the visual identity reference; this spine owns information architecture, behavior, states, interactions, accessibility, localization evidence, and journeys.
+Responsive operations web inside the Hexalith module shell. The UI system is `Hexalith.FrontComposer.Shell` plus `Hexalith.FrontComposer.Contracts.UI`, with Blazor Fluent UI V5. `DESIGN.md` is the visual identity reference; this spine owns information architecture, behavior, states, interactions, accessibility, localization, and journeys.
 
-This is brownfield UX. The existing `src/Hexalith.EventStore.Admin.UI` proves the current feature inventory and evolves in place as the target under resource/container identity `eventstore-admin-ui`; no second EventStore UI host or duplicate page implementation is created. All EventStore admin features appear under one Hexalith module menu item: **Event Store Admin**. The opened surface is a dashboard with tabbed child pages.
+This is a brownfield target contract. Stories 7.4, 7.5, 7.14, 7.19, and 7.20 remain backlog; the current UI contains partial legacy behavior. Neither this spine nor a future `status: final` value claims that the target is implemented or that implementation, release, deployment, migration, or readiness is authorized.
 
-Primary users are administrators and platform operators. Stakes include internal operations, customer-facing administration, and regulated/support-critical production support. The default posture is support-safe, auditable, and fail-closed for sensitive actions.
+### Runtime and presentation identities
 
-Visual dependencies resolve through `DESIGN.md` tokens such as `{colors.app-bar-background}`, `{colors.canvas}`, `{components.dashboard-tabs.active-indicator}`, `{components.status-badge.warning-background}`, and `{components.issue-banner.warning-background}`. Visual references: [Fluent UI V5 desktop capture](imports/fluent-ui-v5-home-desktop.png), [Fluent UI V5 mobile capture](imports/fluent-ui-v5-home-mobile.png), [dashboard overview mock](mockups/dashboard-overview.html), and [command investigation mock](mockups/command-investigation.html). The spines win on conflict.
+| Concern | Binding | Rule |
+|---|---|---|
+| Project and assembly | `src/Hexalith.EventStore.Admin.UI` / `Hexalith.EventStore.Admin.UI` | Evolve in place; no second UI executable or duplicate page implementation. |
+| Admin API/service | `eventstore-admin` | Separate typed Admin service boundary; never confuse with UI identity. |
+| UI service/resource/DAPR/container | `eventstore-admin-ui` | Retained across AppHost, deployment, and container publishing. |
+| FrontComposer module | `event-store-admin` | Exactly one host-level module registration. |
+| Visible label | **Event Store Admin** | Remains selected for every tab and deep link. |
+| UI dependencies | `Hexalith.FrontComposer.Shell`, `Hexalith.FrontComposer.Contracts.UI`, Blazor Fluent UI V5 | Resolve the FrontComposer pair as one compatible Builds-catalog family in source and package modes; do not freeze a local version. |
+
+### Source authority
+
+The source chain is one-way: the PRD owns product intent and current readiness state; architecture owns system decisions; epics own implementation slicing and acceptance ownership; the brownfield architecture records observed legacy scope; the bound PRD validation report owns the current `Reject` evidence; official Fluent V5 documentation owns upstream component behavior. `ux.md`, this folder's `index.md`, mocks, and review files are downstream handoffs or evidence, never upstream authority.
+
+| Reviewed source | SHA-256 at repository revision `e302432ca6daf3aa0436c3c0011f7baa551bb449` |
+|---|---|
+| `docs/brownfield/architecture.md` | `3cddf6eb593fb28d90b8dd9d54562cb28bb4ea2a4f5f15c6a51b77f06bf5a0a3` |
+| `_bmad-output/planning-artifacts/prd.md` | `b99effdb414209da373433d9b4d2075072ca950e89534b22b81155236f650662` |
+| `_bmad-output/planning-artifacts/architecture.md` | `2678116099e3d1c1f68ee38ef344b9bef5a58a82062a800e5a89b8b0f5774395` |
+| `_bmad-output/planning-artifacts/epics.md` | `adba169f409ad533a1e96523c4d046729efda9f2ac4ba2ed9ea4a0fd92efcee8` |
+| `_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md` | `17f378d0686d9840938cf835ea9227a2163c39ba210597b2ada40f57aac801d3` |
+
+Any digest or reviewed-revision change reopens source reconciliation. Current PRD readiness is `blocked` / `reject`; the historical July and August readiness verdicts do not override it.
 
 ## Information Architecture
 
-All Hexalith module UIs expose exactly one host-level menu entry. Child pages live inside the module dashboard as tabs, panels, or deep links.
+The host exposes one `event-store-admin` module. Its dashboard owns ten ordered tabs and all detail routes.
 
-| UI host/module | Host menu item | Opens | UX responsibility |
+| Dashboard tab | Canonical child/deep-link routes | Purpose | Visual coverage |
 |---|---|---|---|
-| `Hexalith.EventStore.Admin.UI` | Event Store Admin | EventStore dashboard | Administer and diagnose EventStore operational surfaces in the existing host |
-| Sample Blazor UI | Sample | Sample dashboard | Demonstrate command accepted submission without implying downstream completion |
-| Tenants UI | Tenants | Tenants dashboard | Preserve projection-confirmed success and support-safe tenant access states |
+| Overview | `/` | Authorized health summary, activity, freshness, and recent evidence | Mocked: `mockups/dashboard-overview.html` |
+| Commands | `/commands` | Command lifecycle, accepted versus terminal evidence, and investigation | Mocked: `mockups/command-investigation.html` |
+| Streams & Events | `/streams`, `/streams/{tenant}/{domain}/{aggregate}`, `/events`, `/types` | Stream/event evidence, protected outcomes, and type catalog | Spine-only |
+| Projections | `/projections` | Operational status, authoritative lifecycle, lag, freshness, and rebuild evidence | Spine-only |
+| Tenants & Access | `/tenants` | Tenant-visible access state and role mutation | Spine-only |
+| Topology | `/dapr`, `/dapr/actors`, `/dapr/pubsub`, `/dapr/resiliency`, `/dapr/health-history`, `/services` | DAPR and service operations; not the legacy tenant/domain navigator | Spine-only |
+| Storage & Snapshots | `/storage`, `/snapshots` | Storage and implemented snapshot evidence without implying open runtime work is complete | Spine-only |
+| Recovery | `/health`, `/health/dead-letters`, `/consistency` | Health, dead letters, poison handling, consistency, and safe recovery | Spine-only |
+| Deferred & Backlog | `/backups`, `/compaction` | Honest read-only unavailable-capability disposition | Spine-only |
+| Settings | `/settings` | Implemented environment-safe preferences and role-visible settings | Spine-only |
 
-The EventStore dashboard owns these child tabs:
+The external Sample and Tenants UIs remain separate module dashboards. Sample demonstrates accepted submission without false completion; Tenants demonstrates projection-confirmed outcomes.
 
-| Dashboard tab | Legacy source routes | Purpose |
-|---|---|---|
-| Overview | `/` | Health summary, stream/event activity, stale state, recent operational evidence |
-| Commands | `/commands` | Command lifecycle, status, accepted vs completed evidence, retries, correlation trace |
-| Streams & Events | `/streams`, `/streams/{tenant}/{domain}/{aggregate}`, `/events` | Stream inventory, event timeline, state diff, stream detail, protected payload state |
-| Projections | `/projections` | Projection status, lag, freshness, replay/project evidence, SignalR freshness signals |
-| Tenants & Access | `/tenants`, admin role controls | Tenant isolation, user roles, authorization state, fail-closed visibility |
-| Topology | `/dapr`, `/dapr/actors`, `/dapr/pubsub`, `/dapr/resiliency`, `/dapr/health-history`, `/services` | DAPR resources, actors, pub/sub, resiliency, app health, sidecar metadata, domain services |
-| Storage & Snapshots | `/storage`, `/snapshots` | Storage growth, hot streams, snapshot policies, snapshot evidence, bounded cost signals |
-| Recovery | `/health`, `/health/dead-letters`, `/consistency` | Health, dead letters, poison handling, consistency checks, operational recovery |
-| Deferred & Backlog | `/backups`, `/compaction`, future backlog items | Honest unavailable/deferred operations; hide, disable, or show explicit unsupported state |
-| Settings | `/settings` | Dashboard preferences, environment-safe settings, role visibility when allowed |
+### Canonical routing contract
 
-Deep links may remain for bookmarked details and direct support handoff, but they resolve within the owning module dashboard and keep that module's single host menu item selected.
+The router is the source of truth. On arrival, it selects the owning module, tab, inner view, and bounded filters. Activating a tab navigates to that tab's canonical root URL. Back, forward, reload, and bookmarks replay router state; tabs never maintain a competing navigation state.
 
-IA closure rule: every legacy Admin.UI feature has a target EventStore tab, every source-required UI host has a module dashboard model, and every target surface supports an administrator/operator journey.
+| Route | Owning tab/view | Allowed route state | Failure behavior |
+|---|---|---|---|
+| `/` | Overview | Authorized environment/tenant context | Unavailable shell shows bounded recovery; no false selected child view. |
+| `/commands` | Commands | Allow-listed safe filters and opaque paging | Malformed filter is rejected inline; denied scope reveals no result existence. |
+| `/streams` | Streams & Events / streams | Safe tenant/domain filters and opaque paging | Cross-tenant or malformed scope fails closed. |
+| `/streams/{tenant}/{domain}/{aggregate}` | Streams & Events / stream detail | Typed, encoded path identities; no raw payload in URL | Invalid identity shows a support-safe route error; denial does not confirm the stream. |
+| `/events` | Streams & Events / events | Allow-listed safe filters and opaque paging | Invalid filter performs no query. |
+| `/types` | Streams & Events / Type Catalog | `tab=events`, `tab=commands`, or `tab=aggregates`; omitted means the catalog default | Unknown tab falls back to the catalog default with a bounded notice. Placement is `[ASSUMPTION]`. |
+| `/projections` | Projections | Safe status/filter state; opaque paging | Missing authoritative provenance renders `Unknown`. |
+| `/tenants` | Tenants & Access | Authorized visible-scope filters only | Denial or wrong scope reveals no tenant existence. |
+| `/dapr` | Topology / summary | No secret-bearing state | Unavailable data is not empty or healthy. |
+| `/dapr/actors` | Topology / actors | Allow-listed safe filters | Denied actor data is omitted without counts. |
+| `/dapr/pubsub` | Topology / pub/sub | Allow-listed safe filters | Broker internals and credentials never render. |
+| `/dapr/resiliency` | Topology / resiliency | Allow-listed safe filters | Raw configuration never renders. |
+| `/dapr/health-history` | Topology / health history | Bounded time/filter state | Deferred history uses the canonical unavailable state. |
+| `/services` | Topology / services | Allow-listed safe filters | Internal endpoints and claims never render. |
+| `/storage` | Storage & Snapshots / storage | Safe filters and opaque paging | Unknown cost/storage evidence is labelled, never inferred. |
+| `/snapshots` | Storage & Snapshots / snapshots | Implemented read evidence only | Open snapshot work is unavailable, not simulated. |
+| `/health` | Recovery / health | Authorized safe health scope | API health semantics remain distinct from authenticated UI state. |
+| `/health/dead-letters` | Recovery / dead letters | Safe tenant/domain filters and opaque paging | Denied scope reveals no count or age. |
+| `/consistency` | Recovery / consistency | Implemented read checks only | Unsupported mutation remains absent. |
+| `/backups` | Deferred & Backlog / backup | Read-only tracking context | Exact unavailable state; no form, job, progress, or accepted result. |
+| `/compaction` | Deferred & Backlog / compaction | Read-only tracking context | Exact unavailable state; no form, job, progress, or accepted result. |
+| `/settings` | Settings | Implemented preferences only | Stale or revoked scope disables save with an associated reason. |
 
-## Source Traceability
+Story 7.14's machine-validated route manifest supplies exact parameter sizes and redirects. This spine does not invent numeric bounds. The current tenant/domain navigator becomes a Streams & Events filter/drill-in; **Topology** is reserved for DAPR and service operations.
 
-| Source requirement / decision | UX coverage | Evidence expected from stories |
-|---|---|---|
-| Projection-Confirmed Success | State Patterns, Flow 2, Flow 3, Flow 6 | UI shows success only after read-model/projection evidence, never after HTTP 202 or SignalR alone |
-| Support-Safe State | Support-Safe Operations, Accessibility Floor, all mutation flows | No tokens, decoded JWTs, raw metadata, raw payloads, cursors, ETags, stack traces, or secrets rendered |
-| NFR14 / AD-4 | Foundation, Source Traceability, Sample and Tenants flows | Interactive UI hosts consume client libraries and host no generated or hand-written per-message MVC command/query controllers |
-| NFR15 / FR34 / AD-10 | Deferred & Backlog tab, State Patterns, Flow 4 | Deferred operations are hidden, disabled, or backed by `501`; no fake functional forms |
-| AD-8 | State Patterns, Interaction Primitives, Flow 3 | SignalR is a freshness nudge only; polling/query evidence confirms visible success |
-| AD-14 | Projection freshness indicator, State Patterns | Projection lifecycle and fail-safe `Unknown` evidence comes through gateway metadata, not ad hoc payload fields |
-| AD-15 | Projection freshness indicator, State Patterns, Source Traceability | Current/stale rendered only for projection-backed route provenance; the gateway ETag is an opaque validator, never projection evidence; handler-computed/unknown render `unknown` |
-| FR36 / AD-19 / AD-20 | Projection freshness indicator, State Patterns, Projections tab | All six projection lifecycle states remain distinguishable; async multi-projection and rebuild outcomes never present partial or local-only state as confirmed success |
-| FrontComposer / Fluent UI V5 governance | DESIGN.md, Component Patterns | Components use FrontComposer and Blazor Fluent UI V5 primitives before custom HTML/CSS |
-| Accessibility/localization evidence | Accessibility Floor, Voice and Tone | WCAG 2.2 AA behavior, localized strings, no runtime sentence fragments |
+IA closes through the eleven journeys below: every tab has a journey or is a named waypoint with an explicit action boundary, and the Sample/Tenants consumer surfaces retain their separate journeys.
 
 ## Voice and Tone
 
-Microcopy is direct and operational. Brand posture lives in `DESIGN.md`.
+Microcopy is direct, complete, localizable, and evidence-specific. Brand posture lives in `DESIGN.md`.
 
 | Do | Don't |
 |---|---|
-| "Projection evidence is stale." | "Something went wrong." |
-| "Command accepted. Waiting for projection evidence." | "Command completed." after HTTP 202 |
-| "Unavailable in this release." | "Coming soon!" |
-| "Access denied for this tenant." | "No data found." when authorization denied |
-| "Retry publication" | "Fix issue" |
-| "Dead letter archived. Audit record written." | "Done!" without evidence |
-
-Use complete strings suitable for localization. Avoid runtime sentence fragments, concatenated clauses, and grammar that depends on English word order.
+| “Command accepted. Waiting for authoritative evidence.” | “Command completed.” after HTTP `202` |
+| “Outcome unknown—do not resubmit. Refresh status.” | “Try again.” after a timeout |
+| “Projection evidence is stale.” | “Something went wrong.” |
+| “Unavailable in this release.” | “Coming soon!” |
+| “Access cannot be confirmed for this scope.” | “No data found.” after denial |
+| “Protected value is unavailable. Reason: malformed.” | A generic “redacted” label for every typed outcome |
 
 ## Component Patterns
 
-Behavioral rules. Visual specs live in `DESIGN.md.Components`; token-dependent states reference `DESIGN.md` paths.
+Behavioral rules below pair exactly with `DESIGN.md.Components`.
 
-| Component | Use | Behavioral rules |
-|---|---|---|
-| Module entry | Host shell | One entry only per Hexalith module. EventStore uses **Event Store Admin**. The entry routes to dashboard and remains selected for all child tabs/deep links. |
-| Dashboard shell | Module host | Uses FrontComposer shell and Fluent layout primitives. It owns app status, tenant/environment context, and utility actions. |
-| Dashboard header | Dashboard root and tabs | Shows title, visible tenant/environment scope, connection freshness, and safe utility actions. Do not use hero copy. |
-| Dashboard tabs | Child navigation | Tabs are stable, named by operator job, keyboard-operable, URL-addressable, and visually governed by `{components.dashboard-tabs.active-indicator}`. |
-| Stat summary | Overview and tab summaries | Shows current value plus evidence state. Stale values remain visible only with explicit stale label/timestamp. |
-| Filter bar | Evidence-heavy tabs | Filters sit above the grid they affect, persist in URL where useful, and never disclose denied tenant existence. |
-| Evidence grid | Most tabs | Sort/filter/paginate. Row click opens a detail panel or deep link. Protected payloads stay redacted. |
-| Status badge | Any state label | Uses text plus Fluent badge styling from `{components.status-badge}`. Color alone is never the state. |
-| Issue banner | Any degraded state | Names scope, operational consequence, and next action. Uses `{components.issue-banner}` and exposes no raw internals. |
-| Operation dialog | Mutating admin actions | Requires exact target identity, expected effect, permission context, and confirmation. Shows accepted state first; confirmation follows only when evidence arrives. |
-| Detail panel | Commands, streams, events, projections | Multi-section details use `FluentAccordion`; primary evidence section expanded by default. |
-| Multi-section panel | Pages, dialogs, details | Use `FluentAccordion` when two or more titled sibling sections exist. Do not hide a page's primary grid inside the accordion. |
-| Command lifecycle tracker | Commands | Separates Received, Processing, EventsStored, EventsPublished, Completed, Rejected, PublishFailed, TimedOut. Uses text and status tokens. |
-| Projection freshness indicator | Projections, Tenants, command results | Renders `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, `LocalOnly`, or `Unknown` from gateway metadata. The six lifecycle states render only for projection-backed route provenance; handler-computed, missing, or invalid provenance renders `Unknown`. `Current` may enable otherwise-authorized mutations; every other state disables mutation by default unless an explicit consumer-owned exception is documented. `LocalOnly` never counts as projection-confirmed success. |
-| Deferred operation placeholder | Deferred & Backlog tab or hidden action | If visible, disabled with reason and tracking title only. No fake forms for unavailable backup, restore, import, compaction, GDPR erasure, OIDC login, aggregate test kit, or generator hardening. |
-| Command palette | Optional accelerator | Search/navigate/act across dashboard tabs. It must obey role/tenant filtering and never reveal hidden resources. |
+| Component | Behavioral contract |
+|---|---|
+| Dashboard shell | **Dashboard shell** uses `FrontComposerShell`; exposes shell landmarks, auth/freshness state, and a skip target. Protected state is cleared on identity or scope invalidation. |
+| Module navigation | **Module navigation** uses `FrontComposerNavigation`; one `event-store-admin` entry, route-derived selection, accessible name and current state, and no feature-level host entries. |
+| Page layout | **Page layout** uses `FcPageLayout`; establishes main/content landmarks and `{spacing.section-gap}` without changing evidence semantics during reflow. |
+| Dashboard header | **Dashboard header** uses `FcPageHeader`; one focusable title plus authorized environment, tenant, freshness, last-refresh, and bounded utilities. Scope changes announce once and invalidate stale action state. |
+| Dashboard tabs | **Dashboard tabs** use `FcPageTabs`; the tablist has an accessible name, each tab exposes selected/disabled state, arrow-key behavior follows Fluent, activation navigates its canonical URL, and route changes restore focus without trapping it. |
+| Stat summary | **Stat summary** pairs every number with evidence state, source, and observation time. Stale values remain visible only with an explicit stale label. |
+| Filter bar | **Filter bar** labels each control, applies only to its associated grid, preserves safe filters in the URL, and never autocompletes denied identities. |
+| Evidence grid | **Evidence grid** uses `FluentDataGrid`; exposes accessible row/column context, sort state, busy state, selection, pagination, and one discoverable row-action location. Updates preserve focus, scroll, selection, and expanded detail. |
+| Status badge | **Status badge** uses `FcStatusBadge`; accessible name/value includes canonical state text and never depends on color. |
+| Issue banner | **Issue banner** names affected visible scope, consequence, and a reachable safe action. It is persistent while the condition holds and never exposes raw internals. |
+| Operation dialog | **Operation dialog** is modal, labelled, described, cancellable, and focus-contained. It freezes and displays principal, environment, tenant, target, authoritative pre-state, effect, blast radius, reversibility, and expected evidence, then revalidates all of them on submit. |
+| Detail panel | **Detail panel** uses `FluentDrawer`; it receives focus at a labelled heading, keeps the source row selected, and returns focus to that row or a stable grid fallback when closed or removed. |
+| Multi-section panel | **Multi-section panel** uses one `FluentAccordion` for two or more titled siblings; headers expose expanded state, primary evidence opens by default, and the only primary grid is never hidden in it. |
+| Command lifecycle tracker | **Command lifecycle tracker** exposes an ordered list and current step for `Received`, `Processing`, `EventsStored`, `EventsPublished`, `Completed`, `Rejected`, `PublishFailed`, and `TimedOut`; it names source and observation time. |
+| Projection freshness indicator | **Projection freshness indicator** renders `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, `LocalOnly`, or `Unknown` only from the evidence contract below. |
+| Loading skeleton | **Loading skeleton** matches the eventual layout, exposes one busy state on the owning region, and suppresses nonessential shimmer under reduced motion. |
+| Empty state | **Empty state** appears only after an authoritative successful query for visible scope and has a safe next action. Loading, denied, unavailable, and stale are not empty. |
+| Deferred operation placeholder | **Deferred operation placeholder** is hidden or read-only with tracking context and exact copy “Unavailable in this release.” It exposes no form, submit, accepted, retry, job, or progress behavior. |
+| Command palette | **Command palette** uses `FcCommandPalette`; focus enters search, results announce changes without flooding, Escape closes, focus returns to the trigger, and entries obey current route, tenant, role, and deferred policy. |
+| Refresh controls | **Refresh controls** separate manual status refresh, automatic-refresh pause/resume, and an approved cadence selector. Refresh never submits or retries a mutation and preserves view context. |
+| Live status regions | **Live status regions** consist of one scoped view region and one operation region. They announce transitions only, coalesce repeats, and keep terminal outcomes visible outside transient toasts. |
+| Protected outcome | **Protected outcome** maps a typed unreadable result to bounded localized copy and an authorized safe reason code while protected bytes remain absent from every client channel. |
+
+## Evidence and Mutation Contract
+
+### Authoritative evidence fields
+
+Story 7.5's typed facet/outcome must carry these concepts. Until it does, the UI renders `Unknown` and disables dependent mutation; pages never infer missing values.
+
+| Evidence concept | Required behavior |
+|---|---|
+| Provenance | Exact contract identity: `ProjectionBacked`, `HandlerComputed`, or `Unknown`. Only `ProjectionBacked` permits a concrete projection lifecycle. |
+| Lifecycle | `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, or `LocalOnly`; missing, invalid, expired, handler-computed, or provenance-mismatched evidence renders the UX fallback `Unknown`. |
+| Evidence source | Names the authoritative typed facet/producer, not a UI calculation. Operational projection status remains distinct from consumer projection lifecycle. |
+| Observed at | Source observation time shown in the operator's locale/time zone. |
+| Last refresh | Client retrieval time, kept distinct from observation time. |
+| Freshness horizon | Supplied by the authoritative contract/configuration and evaluated on its declared clock basis. No local numeric horizon is invented. |
+| Clock basis | Names the time basis used to evaluate expiry and skew. |
+| Projection version | Present only when the authoritative projection contract supplies it. |
+| Terminal command evidence | Names authoritative terminal state and source. `Completed` remains distinct from a later projection-confirmed read-model outcome when the operation requires both. |
+| Stable operation/audit identity | Enables status refresh and audit agreement without resubmission; must be support-safe. |
+
+FR4/NFR8 own projection provenance and lifecycle. FR36 owns consumer parity closure and does not define lifecycle. ETags, cursors, cache hits, response age, SignalR, elapsed time, and locally computed data are opaque or advisory and never prove currentness, version, or completion. `LocalOnly` never confirms success.
+
+### Mutation progression
+
+1. Validate input and current authorized scope; invalid or oversized input performs no call.
+2. Open the **Operation dialog** and freeze its displayed context.
+3. Revalidate principal, role, environment, tenant, target, pre-state, freshness, effect, risk, blast radius, and reversibility on submit.
+4. Any mismatch, expiry, revocation, or conflict stops submission, clears protected transient input, cancels background retry, and returns focus to the changed fact or stable initiator.
+5. Submit once through the typed client; show `Accepted`, then `EvidencePending`.
+6. **Refresh status** queries the same stable operation identity. It never replays the mutation.
+7. Show projection-confirmed success only when every route-required authoritative terminal, projection, and audit item agrees.
+8. Timeout or ambiguous transport yields persistent “Outcome unknown—do not resubmit. Refresh status.”
+9. **Retry mutation** appears only after authoritative, retryable terminal non-success; it preserves the approved operation identity policy and repeats scope confirmation.
 
 ## State Patterns
 
-| State | Surface | Treatment |
+### Cross-surface states
+
+| State | Treatment and recovery |
+|---|---|
+| Cold load | **Loading skeleton** with one regional busy state; no spinner-only page. |
+| Refreshing | Keep the last complete view, mark refresh in the view live region, and preserve focus, scroll, filters, selection, expansion, and open dialog. |
+| Empty | **Empty state** only after a successful authoritative query for current visible scope. |
+| Stale/offline | Keep last complete evidence with scope, observed-at, and last-refresh labels; disable dependent mutation. |
+| Admin API unavailable | Global **Issue banner** with safe recovery; stale evidence may remain labelled. |
+| SignalR disconnected/reconnected | Change freshness only and trigger bounded refetch; never announce service failure/recovery or operation completion. |
+| Unauthenticated | Clear protected/cache/transient state, cancel polling and background work, retain only a safe route shell, and offer the configured authentication recovery. Interactive OIDC controls remain unavailable until implemented. |
+| Session expired | Same clearing/cancellation posture; announce expiry once and return focus to a stable recovery action. |
+| Access denied | Fail closed without confirming resource existence; return focus to the initiator or stable route heading. |
+| Wrong scope | Clear results and autocomplete, reject the transition, and offer authorized scope selection without echoing the rejected identity. |
+| Permission revoked during action | Stop before mutation or treat an already accepted operation as status-only; clear protected input and do not retry. |
+| Authentication provider unavailable | Show a bounded unavailable state; do not expose provider endpoints, tokens, or claims and do not offer fake login. |
+| Conflict | Non-submitting state that names the changed safe fact and requires refresh/review. |
+| Accepted | Neutral persistent state with stable safe operation reference; no success language. |
+| Evidence pending | Show expected evidence source and status refresh. No mutation retry. |
+| Timeout/cancelled | Preserve accepted identity when available; outcome is unknown until authoritative status resolves. Cancellation never implies server rollback. |
+| Terminal failure | Persistent reason class and safe recovery. Retry appears only when authoritative evidence marks it retryable. |
+| Unknown | Missing/invalid/expired/mismatched evidence; name consequence and disable dependent mutation. |
+
+### Surface coverage and mutation disposition
+
+| Surface | Empty / stale / unavailable | Auth and scope | Mutation boundary |
+|---|---|---|---|
+| Overview | No visible activity; last-known values labelled; global API banner | Denied counts omitted | Read-only |
+| Commands | No filter matches; status expiry stays distinct from invalid ID | Cross-tenant matches never disclosed | Status refresh distinct from retry/resubmit |
+| Streams & Events | No visible evidence; protected outcome typed | Denied streams/types omitted | Read-only unless an approved support action exists |
+| Projections | No visible projections; lag/currentness never inferred | Denied projection existence omitted | Rebuild/replay requires authoritative `Current`, scope freeze, and explicit availability |
+| Tenants & Access | No visible tenants/users; stale grid labelled | Wrong-scope and denial disclose nothing | Role change requires projection and audit agreement |
+| Topology | No visible resources; unavailable is not healthy | Internal endpoint/claim data omitted | Read-only triage |
+| Storage & Snapshots | No evidence; open snapshot work marked unavailable | Storage metadata remains scope-bound | Only explicitly implemented current operations are enabled |
+| Recovery | No dead letters/issues after authoritative query | Denied count, age, and tenant impact omitted | Retry/archive audited and evidence-confirmed |
+| Deferred & Backlog | No visible items for role | Capability disclosure follows auth first | Never runnable while deferred |
+| Settings | No editable settings; stale save disabled | Hidden settings reveal nothing | Implemented preference save only |
+| Sample UI | Empty current projection; pending timeout remains stale/unknown | Current consumer auth rules | Submission is accepted-first; later read evidence confirms |
+| Tenants UI | Empty visible tenant scope; read model stale/unavailable | Denied tenant/user existence omitted | Projection-confirmed access mutation only |
+
+### Typed protected outcomes
+
+| Outcome | Bounded operator copy | Rule |
 |---|---|---|
-| Cold load | Dashboard | Skeletons matching stat/grid layout; no spinner-only full page unless shell is not ready. |
-| Admin API unavailable | Global/dashboard | Issue banner: cannot reach `eventstore-admin`; last-known data may render as stale if available. |
-| Stale data | Any tab | Keep last-known data with explicit stale label and last successful refresh time. Mutation actions disabled unless the story documents an exception. |
-| SignalR disconnected | Header/status | Show degraded freshness signal; polling remains fallback. |
-| Command accepted | Commands / mutating dialogs / Sample UI | Show accepted/in-flight state, correlation reference if support-safe, and expected evidence source. Do not show success. |
-| Projection confirmed | Commands / Tenants / Projections | Show success only after read-model/projection evidence confirms the outcome. |
-| Access denied | Any restricted tab/action | Fail closed with a support-safe denied state. Do not imply the resource exists. Focus returns to the filter/action that caused the denied result. |
-| Empty tenant/domain | Tenants / Streams | Empty state explains no configured data for visible scope. It does not mention hidden denied resources. |
-| Dead letters present | Recovery / Overview | Prominent warning with count, oldest age, tenant/domain impact, and safe retry/archive actions by role. |
-| Deferred operation | Deferred & Backlog / action locations | Hidden by default or disabled with "Unavailable in this release." Server endpoint returns `501` if reachable. |
-| Protected payload | Stream/event detail | Show redacted/protected status and metadata needed for support; never expose raw protected data. |
-| Validation failure | Dialog/form | Inline Fluent validation; command not submitted. |
-| Oversized admin request | Dialog/form/API result | Fail safely with concise message and no raw payload echo. |
-| Projection rebuilding | Projections / Tenants / command results | Show in-progress state and bounded progress when available; preserve the last complete live model and disable mutation. |
-| Projection degraded | Projections / Tenants / command results | Show a warning naming the affected capability and operational consequence; disable mutation unless explicitly approved. |
-| Projection unavailable | Projections / Tenants / command results | Show an unavailable state with a safe retry or support action; do not render stale/local data as authoritative. |
-| Projection local-only | Projections / Tenants / command results | Label data explicitly as non-authoritative local-only evidence; do not claim projection-confirmed success. |
+| `deleted` | “Protected value was deleted.” | No reconstruction or stale cached value. |
+| `missing` | “Protected value is not available.” | Do not imply deletion or denial. |
+| `denied` | “Protected value cannot be shown for this scope.” | Do not confirm additional identity or content. |
+| `unavailable` | “Protected value is temporarily unavailable.” | Offer safe status refresh only. |
+| `malformed` | “Protected value could not be read. Reason: malformed.” | No raw bytes or parser detail. |
+| `tampered` | “Protected value could not be verified. Reason: tampered.” | Treat as a security-relevant non-success. |
+| `opaque` | “Protected value is intentionally opaque.” | Never decode in the client. |
 
-Tab-state coverage:
-
-| Surface | Empty | Stale/offline | Permission denied | Mutation policy |
-|---|---|---|---|---|
-| Overview | No visible activity for selected scope | Last-known stats with timestamp | Hide denied counts | No direct mutation |
-| Commands | No commands match filters | Disable retry/resubmit until evidence current | No result disclosure for denied tenant | Accepted -> evidence pending -> terminal state |
-| Streams & Events | No visible streams/events | Timeline labels stale evidence | Hide protected or denied stream existence | Read-only unless approved support action exists |
-| Projections | No projections for visible scope | Lag and unknown freshness explicit | Hide denied projections | Replay/project actions role-gated and evidence-confirmed |
-| Tenants & Access | No visible tenants/users | Disable role mutation while stale | Denied state without confirming tenant existence | Role changes require projection-confirmed success |
-| Topology | No visible DAPR/service resources | Show last check and degraded freshness | Hide denied service metadata | Read-only triage |
-| Storage & Snapshots | No snapshot/storage data | Show stale cost/storage indicators | Hide denied storage metadata | Snapshot operations disabled unless implemented and current |
-| Recovery | No dead letters or consistency issues | Warning with last successful check | Hide denied tenant/domain impact | Retry/archive audited and evidence-confirmed |
-| Deferred & Backlog | No visible deferred items for role | No runnable mutation | Hidden unless role may see backlog state | Hidden or disabled; reachable server path returns `501` |
-| Settings | No editable settings for role | Disable save while stale | Hide denied settings | Save only scoped preferences or implemented environment-safe options |
+FR37 is committed post-MVP and remains unavailable until its implementation gate is satisfied. This vocabulary defines safe presentation where a typed contract exists; it does not claim delivery.
 
 ## Interaction Primitives
 
-- Primary navigation: host module item -> dashboard tabs -> grid/detail drill-in.
-- Keyboard: tabs, grids, dialogs, filters, command palette, and accordions must be fully keyboard-operable.
-- Deep links: direct URLs land inside the dashboard and select the right tab/detail.
-- Refresh: SignalR is a freshness nudge only; polling and explicit refresh fetch evidence.
-- Filtering: tenant/domain/status filters are visible above the affected grid and persist in the URL where useful.
-- Mutations: submit -> accepted -> evidence pending -> projection-confirmed or terminal non-success. Never collapse accepted into success.
-- Destructive or recovery actions: role-gated, dialog-confirmed, audited, and support-safe.
-- Mobile/narrow widths: read/triage workflows always work. Each mutation is either fully usable, disabled with a reason, or marked desktop-required in a support-safe message.
+- Navigation: module entry → route-derived dashboard tab → grid/detail drill-in. The router owns state.
+- Keyboard: all tabs, grids, filters, panels, dialogs, accordions, palette results, refresh controls, and actions are fully operable in logical order.
+- Refresh: SignalR is a freshness nudge. Polling and manual status refresh fetch authority. Repeated notices are coalesced and bounded.
+- Refresh preferences: pause/resume and approved cadence apply to automatic view refresh, not operation tracking; an accepted operation keeps a visible manual status path.
+- Context preservation: background updates do not steal focus, scroll, selection, expansion, filters, or dialog state. If a trigger disappears, focus moves to the owning grid heading or page title.
+- Destructive/recovery actions: exact scope, effect, risk, reversibility, role, audit, and evidence are confirmed; no viewport removes those gates.
+- Disabled safety: a disabled control has persistent, programmatically associated reason text and a reachable safe next action; a tooltip alone is insufficient.
+- Toasts: optional supplement only. They are deduplicated, pauseable, dismissible, focus-safe, and never the sole accepted, pending, failure, or success evidence.
 
 ## Accessibility Floor
 
-Behavioral accessibility. Visual contrast inherits from Fluent/FrontComposer and is governed by `DESIGN.md`.
+Behavioral accessibility targets WCAG 2.2 AA; visual contrast is governed by `DESIGN.md`.
 
-- WCAG 2.2 AA target for dashboard and admin workflows.
-- One focusable page title per dashboard view or selected tab.
-- Host skip link reaches dashboard content.
-- `FluentTabs`, `FluentDataGrid`, `FluentDialog`, `FluentAccordion`, and inputs expose accessible names and roles.
-- Status badges include text, not color alone.
-- Grids support screen-reader row context for tenant, domain, aggregate, status, and timestamp.
-- Access-denied states include an accessible state label, route context, and a safe next action without confirming hidden resource existence.
-- Keyboard focus returns to the initiating control after dialogs, denied results, validation failures, and failed mutations.
-- Reduced motion avoids animated transitions for state changes; show final state directly.
-- Stable `data-testid` selectors are part of the implementation contract for dashboard tabs, filters, status badges, dialogs, and evidence rows.
-
-Live-region priority:
-
-| Transition | Priority |
-|---|---|
-| Command accepted, evidence pending, projection confirmed | Polite unless the dialog is still active |
-| Terminal command failure, access denied, destructive action rejected | Assertive |
-| Stale-data transition, SignalR disconnect/reconnect | Polite |
-| Validation failure in active form | Inline field association plus polite summary |
-| Projection rebuilding, degraded, unavailable, or local-only transition | Polite for non-terminal transitions; assertive when an active mutation becomes unavailable or fails |
-
-Localization evidence:
-
-- All user-visible copy comes from resource-backed complete strings.
-- No runtime sentence assembly, string concatenation, or English-only plural grammar in UI code.
-- Tests may use stable selectors and state identifiers, not translated text, as their primary hooks.
-- Screens that show identifiers keep labels translatable while preserving raw identifier values.
+- Exactly one focusable page or selected-tab title; the host skip link reaches dashboard main content.
+- Tablist/tab, grid/row/column, accordion header/panel, modal dialog, drawer, badge/status, filter, and action semantics expose accessible names, roles, values/states, relationships, validation, selection, expansion, busy state, and row context.
+- Dialog focus enters the heading or first invalid field, stays modal, and returns to the initiating control or a documented stable fallback.
+- One polite scoped view live region owns route, refresh, and freshness transitions. One operation live region is polite for accepted/pending/confirmed and assertive for terminal failure, denial, or rejected destructive action.
+- Regions announce transitions only, suppress initial and unchanged refresh chatter, coalesce bursts, and leave terminal outcomes visibly persistent.
+- Reduced motion disables shimmer, nonessential transitions, auto-scroll, and animated state travel while retaining static progress and state text.
+- Reflow succeeds at 320 CSS pixels, 400% browser zoom, and 200% text. Text-spacing overrides preserve content and controls; reading/focus order follows logical order.
+- Two-dimensional scrolling is confined to a labelled grid region. Page-level horizontal scrolling, clipped dialogs, off-screen focus, and hover-only information are prohibited.
+- Non-text focus, control boundary, selection, and lifecycle indicators remain perceivable in light, dark, system, and forced/high-contrast modes.
+- Stable `data-testid` values support tests but are not accessibility evidence; tests also assert role, name, value/state, relationships, focus, and live messages.
 
 ## Responsive & Platform
 
-| Width | Behavior |
+| Width / condition | Required behavior |
 |---|---|
-| `>= 1280px` | Full dashboard layout. Host navigation visible. Tabs remain horizontal. Grids use full columns. |
-| `960-1279px` | Compact host navigation. Dashboard tabs may scroll horizontally. Grids prioritize core columns and move secondary metadata to detail panels. |
-| `< 960px` | Host navigation collapses. Dashboard retains tabs with horizontal scrolling or overflow. Read/triage flows remain usable; operator mutations use viewport-sized Fluent dialogs or are disabled with a desktop-required reason. |
+| `>= 1280px` | Full host navigation, horizontal tabs, applicable full grid columns, dense filters, and side drawer where appropriate. |
+| `960–1279px` | Compact navigation; keyboard-accessible scrolling tabs; identity, scope, state, and actions retained; secondary metadata moves to detail. |
+| `< 960px` | Accessible collapsed navigation; tabs and evidence remain navigable; triage/status/simple recovery visibility remains available; dialogs fill the viewport safely. |
+| 320 CSS px / 400% zoom / 200% text | Single logical reading flow; no page-level two-dimensional scroll; labelled grid overflow only; critical context and focus remain visible. |
 
-The primary surface is desktop/laptop operations. Mobile is supported for incident triage, status checks, and simple recovery visibility.
+Per surface, keep tenant/environment, primary identity, canonical state, observation time, and safe next action before secondary metadata. Every narrow-screen mutation is either fully usable with all confirmation facts, disabled with an associated reason, or explicitly desktop-required with usable cancel/back. Viewport never changes authorization, evidence state, or feature availability.
+
+## Localization and Formatting
+
+- All visible, accessible-name, description, validation, status, dialog, disabled-reason, toast, and live-region copy comes from resource-backed complete strings.
+- Format dates, observation times, durations, counts, and plurals with the active locale and an explicit operator-visible time zone where ambiguity matters.
+- Preserve raw contractual identifiers while isolating them from surrounding translated grammar and bidirectional text.
+- Test every configured locale, fallback locale, diagnostic pseudo-locale, RTL layout, long content, plural/duration forms, and safe truncation.
+- Do not assemble translated sentences from fragments or put secret/protected values into format arguments.
 
 ## Support-Safe Operations
 
-The UI must never render bearer tokens, decoded JWT payloads, raw EventStore metadata, raw event payloads, raw protected payloads, stack traces, cursor internals, ETag internals, secret values, or unbounded SignalR metadata.
+Sensitive material never enters the DOM, accessibility tree or properties, tooltips, URLs, browser history, clipboard, export, logs, telemetry, client exceptions, or transient caches. This includes bearer tokens, decoded JWTs, raw claims, raw EventStore metadata or payloads, protected bytes, stack traces, cursor and ETag contents, secrets, connection strings, provider endpoints/credentials, raw idempotency keys, idempotency digests, canonical-intent descriptors, and unbounded SignalR metadata.
 
-Support copy may show safe identifiers only when they are required for investigation and allowed by the relevant contract. Identifiers use EventStore naming and ULID-safe semantics; never validate or describe these IDs as GUIDs.
+Only allow-listed safe identifiers and reason codes required for investigation may render. Tenant authorization precedes existence disclosure. Only `/health`, `/alive`, and `/ready` are anonymously reachable platform health endpoints; that API rule does not create an anonymous Admin dashboard.
 
-Admin state mutations must be attributable. The UI shows enough audit outcome to support operators without exposing sensitive internals.
+Unavailable capabilities are hidden when no useful read-only context exists. If tracking context is useful, show the **Deferred operation placeholder**. A retained authenticated endpoint returns the typed `501` outcome after authentication, authorization, and validation; it performs no mutation or audit admission.
 
-Unavailable operation visibility policy:
+## Source Traceability
 
-| Capability state | Default UI | Privileged/admin visibility | Server behavior |
-|---|---|---|---|
-| Not implemented and not useful for current role | Hidden | Hidden | `404` or no route preferred |
-| Deferred but useful for operator planning | Hidden from non-operators | Disabled/read-only backlog row with "Unavailable in this release." | `501` if reachable |
-| Implemented but disabled by stale/unknown evidence | Disabled with stale/unknown reason | Disabled with evidence reason | No mutation submitted |
-| Implemented and evidence current | Role-gated action | Role-gated action | Accepted -> evidence-confirmed |
+| Requirement / decision | UX ownership | Story owner |
+|---|---|---|
+| FR4 / NFR8 — provenance and projection lifecycle | Evidence fields, freshness indicator, mutation gates | 7.5 typed transport; 7.19 presentation |
+| FR34 / NFR15 — admin honesty and delivery semantics | Deferred, recovery, accepted/pending/terminal states | 7.4, 7.19 |
+| FR37 / G5 — payload protection, post-MVP and unavailable | Typed protected outcomes and safe boundary | Future gated implementation; no delivery claim |
+| FR36 — consumer parity closure | Readiness/authority note only; not lifecycle semantics | Consumer parity stories; deployed parity remains open |
+| AD-21 / UX-DR1–5, 23 | Host identities, single module, tabs, routes, palette | 7.14 |
+| UX-DR24–30, 38 | Typed Admin outcomes, denial, validation, support safety | 7.5 and 7.19 |
+| UX-DR10–21, 24–31, 38–41 | Operational components, evidence, mutations, critical journeys | 7.19 |
+| UX-DR6–9, 32–37 | Theme inheritance, accessibility, localization, responsive behavior | 7.20 |
+| UX-DR42 | Sample accepted submission and Tenants projection confirmation | Epic 2 consumer stories |
 
 ## Inspiration & Anti-patterns
 
-- **Lifted from Fluent UI Blazor V5 documentation:** app bar, dense sidebar/shell discipline, white content canvas, system typography, compact component examples, restrained informational callouts.
-- **Lifted from FrontComposer:** one module entry per Hexalith module, generated/component-first UI, shell-owned navigation primitives, Fluent conformance.
-- **Rejected - legacy Admin.UI route sprawl:** separate top-level menu entries for every feature do not fit the Hexalith module model.
-- **Rejected - fake admin capability:** backup, restore, import, compaction, and backlog capabilities must not look operational until implemented.
-- **Rejected - HTTP 202 success UI:** command acceptance is not user-visible success.
-- **Rejected - raw diagnostic dump:** support-safe evidence beats exposing raw payloads, tokens, stack traces, cursors, ETags, or metadata.
+- Lift the compact shell, typography discipline, component behavior, and adaptive theming from FrontComposer and the official Fluent UI Blazor V5 surface.
+- Keep the existing screenshots as density/navigation references, not color specifications.
+- Reject feature-by-feature host navigation, a second Admin UI, raw diagnostic dumps, HTTP-202 success language, automatic mutation retry, and runnable deferred work.
+- The current HTML mocks remain composition references only until regenerated with current component bindings and semantic controls; implementation must not copy their legacy variables or navigation geometry.
 
 ## Key Flows
 
-### Flow 1 - Incident triage (Nora, platform operator, during a tenant outage)
+### Flow 1 — Incident triage (Nora, platform operator, during a tenant outage)
 
-1. Nora opens Hexalith and selects **Event Store Admin** from the module menu.
-2. The dashboard opens on Overview. Health and stream activity show stale labels because the Admin API missed the last polling cycle.
-3. Nora selects the **Recovery** tab.
-4. The Dead Letters section shows a warning count, oldest age, affected tenant/domain, and safe action availability.
-5. Nora opens the oldest dead-letter row. The detail panel expands primary evidence first and keeps raw payload protected.
-6. She chooses **Retry publication**. A `FluentDialog` confirms target tenant/domain/message and required role.
-7. The UI shows "Retry accepted. Waiting for delivery evidence."
-8. SignalR nudges the dashboard; polling fetches updated dead-letter and projection evidence.
-9. **Climax:** Recovery shows the dead-letter count reduced and the audit/evidence section confirms the retry outcome. Nora can cite the safe audit record in the incident channel.
+1. Nora opens **Event Store Admin**; Overview shows stale health with observation and refresh times.
+2. She opens Recovery and filters within her authorized tenant/domain scope.
+3. A dead-letter row shows safe failure class, age, freshness, and protected outcome.
+4. Nora opens the detail drawer; primary evidence is expanded and protected bytes are absent.
+5. She chooses retry; the dialog freezes principal, environment, tenant, message, risk, and expected evidence.
+6. The UI revalidates, submits once, and shows accepted then evidence-pending.
+7. **Climax:** status refresh shows authoritative dead-letter disposition/count and matching audit evidence; only then is recovery confirmed.
 
-Failure: retry remains pending or fails terminally -> the row stays in Recovery with terminal state, retry count, safe error classification, and no raw stack trace.
+Failure: timeout persists “Outcome unknown—do not resubmit”; only status refresh is available until authoritative retryability resolves.
 
-### Flow 2 - Admin tenant access review (Marcel, administrator, onboarding a support engineer)
+### Flow 2 — Admin tenant access review (Marcel, administrator, onboarding support)
 
-1. Marcel opens **Event Store Admin** and selects **Tenants & Access**.
-2. He filters to the tenant visible to his role.
-3. The tenant row expands to users and roles. Freshness is current, so role mutation is enabled.
-4. Marcel opens the add/change-role dialog, enters the engineer identity, and confirms.
-5. The UI shows command accepted, then waits for projection evidence.
-6. **Climax:** The tenant user grid updates with the engineer's role and shows projection-confirmed success. The action audit is visible without exposing tokens or decoded claims.
+1. Marcel opens Tenants & Access and selects an authorized tenant.
+2. The grid shows `ProjectionBacked`, `Current`, observation time, and freshness horizon state.
+3. He starts a role change; the dialog freezes principal, tenant, user, role, pre-state, effect, and reversibility.
+4. Submit revalidates every fact and shows accepted/evidence-pending.
+5. **Climax:** the authoritative role projection and audit record agree; the row changes and success is announced.
 
-Failure: tenant visibility is denied -> the grid shows an access-denied state without confirming whether the tenant exists.
+Failure: scope or permission changes before submit produce a non-submitting conflict, clear protected input, and return focus safely.
 
-### Flow 3 - Command investigation (Lea, platform operator, tracing a customer-reported failure)
+### Flow 3 — Command investigation (Lea, platform operator, tracing a customer report)
 
-1. Lea opens **Event Store Admin** and selects **Commands**.
-2. She searches by support-provided message/correlation id.
-3. The command lifecycle row shows `EventsStored` but not `EventsPublished`.
-4. Lea opens the detail panel. The pipeline tracker separates command status, persisted events, publish state, affected projections, and audit evidence.
-5. She drills into **Streams & Events** using the safe stream link.
-6. The stream timeline shows the persisted event and protected payload state; projection evidence remains stale.
-7. **Climax:** Lea can report that the event was committed but publication evidence is missing, and she routes the issue to recovery without resubmitting the command as if it failed before persistence.
+1. Lea opens Commands and searches a safe message/correlation identifier.
+2. The lifecycle distinguishes stored from published events and names source/observation time.
+3. She opens the detail drawer and follows the safe stream link.
+4. Protected content is represented by a typed outcome; projection evidence is stale.
+5. **Climax:** Lea reports that the event was committed but publication evidence is missing and routes it to Recovery without resubmitting.
 
-Failure: the search id is malformed -> inline validation explains accepted identifier shape without saying GUID.
+Failure: malformed identifiers fail inline without calling the API or describing the value as a GUID.
 
-### Flow 4 - Deferred operation discovery (Imani, administrator, looking for backup/restore)
+### Flow 4 — Deferred operation discovery (Imani, administrator, looking for backup)
 
-1. Imani opens **Event Store Admin** and searches for backup from the command palette.
-2. Because backup/restore/import are deferred, no runnable operation appears.
-3. She opens **Deferred & Backlog**.
-4. The page lists Backup/Restore/Import as unavailable in this release with implementation/backlog status, not operational controls.
-5. **Climax:** Imani understands the operation is not available and cannot accidentally trigger a fake backup workflow.
+1. Imani searches the command palette; no runnable backup command appears.
+2. She opens Deferred & Backlog and sees read-only tracking context.
+3. `/backups` renders the same canonical unsupported view.
+4. **Climax:** “Unavailable in this release.” makes the boundary explicit without a form, job, or progress state.
 
-Failure: an old deep link reaches `/backups` -> it resolves inside Deferred & Backlog or shows a disabled state backed by server `501`.
+Failure: denial is evaluated before capability disclosure and does not become `501` merely because backup is deferred.
 
-### Flow 5 - Sample accepted submission (Alex, developer evaluating the Counter sample)
+### Flow 5 — Sample accepted submission (Alex, developer evaluating the sample)
 
-1. Alex opens the Sample module from its single host menu item.
-2. The Sample dashboard shows a command form and the current visible counter projection.
-3. Alex submits an increment command.
-4. The UI validates the form and sends the command through the EventStore client library.
-5. The UI shows "Command accepted. Waiting for projection evidence." It does not show completion.
-6. A freshness signal or explicit polling updates the visible projection.
-7. **Climax:** The sample shows the counter value only when query/projection evidence changes. The accepted state remains separate from confirmed state.
+1. Alex submits an increment through the Sample UI.
+2. Validation succeeds and the typed client submits once.
+3. The UI shows accepted/evidence-pending, not completion.
+4. **Climax:** the visible counter changes only after authoritative read-model metadata changes.
 
-Failure: command submission returns accepted but no projection evidence arrives before timeout -> the UI stays evidence-pending or stale, with a retry/refresh option and no success message.
+Failure: timeout remains pending/stale with status refresh and no success or automatic resubmission.
 
-### Flow 6 - Tenants projection-confirmed update (Priya, tenant administrator, changing access)
+### Flow 6 — Tenants projection-confirmed update (Priya, tenant administrator)
 
-1. Priya opens the Tenants module from its single host menu item.
-2. The Tenants dashboard shows only tenants visible to her role.
-3. She opens a tenant user row and starts a role-change dialog.
-4. The dialog confirms the exact tenant, user, role, and permission context.
-5. Priya submits the change. The UI calls the client library and shows accepted/evidence-pending state.
-6. The Tenants read model refreshes with current evidence metadata.
-7. **Climax:** The row shows the new role with projection-confirmed success and a support-safe audit reference.
+1. Priya opens the Tenants module within her authorized scope.
+2. She confirms exact tenant, user, role, and permission context.
+3. Submission shows accepted/evidence-pending.
+4. **Climax:** the row changes only when current projection evidence and safe audit attribution agree.
 
-Failure: Priya lacks access or freshness is unknown -> the mutation is hidden or disabled, focus returns to the triggering control, and the UI does not confirm whether hidden tenants/users exist.
+Failure: `Unknown`, stale evidence, or denial disables mutation without confirming hidden tenants or users.
 
-## Non-Blocking Assumptions
+### Flow 7 — Projection rebuild oversight (Owen, platform operator, repairing lag)
 
-- `src/Hexalith.EventStore.Admin.UI` provides the FrontComposer host integration point for the single **Event Store Admin** module entry and retains `eventstore-admin-ui` identity.
-- Dashboard tab names may change, but the grouping must preserve the same feature coverage and single-menu-entry rule.
-- Mobile/narrow support is for triage and read workflows first; full operational mutation ergonomics remain desktop-first.
+1. Owen opens Projections and sees authoritative operational status separately from consumer lifecycle.
+2. He inspects lag, provenance, observed-at, refresh, and the configured freshness evaluation.
+3. If rebuild is implemented and authorized, the dialog freezes scope, pre-state, blast radius, reversibility, and expected evidence.
+4. The last complete live model remains visible as rebuilding; partial output never becomes live.
+5. **Climax:** lifecycle returns to authoritative `Current` with a new observation and version before dependent mutations re-enable.
+
+Failure: missing lifecycle transport renders `Unknown`; no rebuild action or inferred currentness appears.
+
+### Flow 8 — Topology diagnosis (Samira, on-call operator, investigating a sidecar issue)
+
+1. Samira opens Topology; service and DAPR evidence is read-only and scope-bound.
+2. A service is unavailable, not empty or healthy; the issue banner names consequence and last refresh.
+3. She pauses automatic refresh while reading and opens a service detail.
+4. **Climax:** manual refresh returns safe current evidence while her focus, expansion, and scroll remain stable.
+
+Failure: authentication-provider or Admin API failure reveals no endpoints, claims, tokens, or raw configuration.
+
+### Flow 9 — Snapshot evidence review (Gabriel, capacity operator, checking a hot stream)
+
+1. Gabriel opens Storage & Snapshots and filters to authorized storage evidence.
+2. The grid retains primary identity, state, and observation time; secondary metadata moves to detail on narrow width.
+3. Open snapshot-runtime work appears unavailable rather than runnable.
+4. **Climax:** Gabriel identifies the latest implemented snapshot evidence without mistaking open projection-cost work for delivered capability.
+
+Failure: missing evidence is `Unknown`; no local age or ETag calculation fabricates freshness.
+
+### Flow 10 — Safe preference change (Asha, administrator, reducing refresh frequency)
+
+1. Asha opens Settings and chooses an approved automatic-refresh cadence.
+2. The setting explains that operation status remains manually refreshable and mutations are never retried.
+3. Scope is revalidated on save.
+4. **Climax:** the preference persists, the page announces it once, and the current evidence view remains unchanged.
+
+Failure: stale or revoked scope disables save with an associated reason and safe route recovery.
+
+### Flow 11 — Bookmarked deep-link arrival (Mateo, support engineer, opening a shared command link)
+
+1. Mateo opens an authorized `/commands` bookmark.
+2. The router selects `event-store-admin`, activates Commands, restores safe filters, and focuses the page title.
+3. He opens the referenced row without a legacy duplicate page.
+4. **Climax:** browser Back returns to the same Commands filters, selection context, and module state.
+
+Failure: malformed, denied, or cross-tenant route state fails closed and does not disclose whether the command exists.
+
+## Open Assumptions
+
+- `[ASSUMPTION]` The live `/types` catalog, including `events`, `commands`, and `aggregates` inner tabs, belongs under Streams & Events. Current sources require preserving the route but do not authorize its destination. Story 7.14 must ratify or replace this placement before implementation.
+- No numeric freshness horizon is assumed. The authoritative typed contract/configuration must supply it and its clock basis before lifecycle-dependent mutation can be enabled.
