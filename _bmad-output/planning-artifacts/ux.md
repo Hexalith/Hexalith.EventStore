@@ -17,7 +17,7 @@ Canonical UX documents:
 `DESIGN.md` and `EXPERIENCE.md` win on conflict with mockups, screenshots,
 validation artifacts, older review findings, archived UX exports, or legacy
 `Admin.UI` behavior. The current update reconciles repository revision
-`e302432ca6daf3aa0436c3c0011f7baa551bb449` and the source digests recorded in
+`0825f0dcde69915a74c1b6ebcbb36f14ded04283` plus the input-snapshot digests recorded in
 `EXPERIENCE.md`.
 
 UX document finality is not implementation readiness. The current PRD is

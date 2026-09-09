@@ -3,8 +3,8 @@
 ## Scope
 
 This update reconciles the UX spines against repository revision
-e302432ca6daf3aa0436c3c0011f7baa551bb449,
-the latest canonical PRD, architecture, epics, the PRD's bound readiness report,
+`0825f0dcde69915a74c1b6ebcbb36f14ded04283` plus the current input-snapshot
+digests for the canonical PRD, architecture, epics, the PRD's bound readiness report,
 the existing UX memlog, and the 2026-09-09 UX validation findings.
 
 ## Source Disposition
@@ -75,6 +75,7 @@ the placement before implementation.
 
 ## Draft Status
 
-The spines remain draft until mock coverage is confirmed, key-screen artifacts
-are regenerated or deliberately retained as non-copyable references, the
-optional reviewer gate is decided, and editorial polish completes.
+The Overview and Commands key-screen artifacts have been regenerated as
+non-copyable desktop and narrow-screen references. The spines remain draft until
+the user confirms whether the spine-only surfaces need more visual references
+and decides the optional reviewer gate.

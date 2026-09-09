@@ -3,7 +3,7 @@ name: Hexalith.EventStore Admin
 status: draft
 created: 2026-07-05
 updated: 2026-09-09
-reviewed_repository_revision: e302432ca6daf3aa0436c3c0011f7baa551bb449
+reviewed_repository_revision: 0825f0dcde69915a74c1b6ebcbb36f14ded04283
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -17,7 +17,7 @@ sources:
 
 ## Foundation
 
-Responsive operations web inside the Hexalith module shell. The UI system is `Hexalith.FrontComposer.Shell` plus `Hexalith.FrontComposer.Contracts.UI`, with Blazor Fluent UI V5. `DESIGN.md` is the visual identity reference; this spine owns information architecture, behavior, states, interactions, accessibility, localization, and journeys.
+The product is a responsive operations web app inside the Hexalith module shell. The UI system is `Hexalith.FrontComposer.Shell` plus `Hexalith.FrontComposer.Contracts.UI`, with Blazor Fluent UI V5. `DESIGN.md` is the visual identity reference; this spine owns information architecture, behavior, states, interactions, accessibility, localization, and journeys.
 
 This is a brownfield target contract. Stories 7.4, 7.5, 7.14, 7.19, and 7.20 remain backlog; the current UI contains partial legacy behavior. Neither this spine nor a future `status: final` value claims that the target is implemented or that implementation, release, deployment, migration, or readiness is authorized.
 
@@ -34,17 +34,22 @@ This is a brownfield target contract. Stories 7.4, 7.5, 7.14, 7.19, and 7.20 rem
 
 ### Source authority
 
-The source chain is one-way: the PRD owns product intent and current readiness state; architecture owns system decisions; epics own implementation slicing and acceptance ownership; the brownfield architecture records observed legacy scope; the bound PRD validation report owns the current `Reject` evidence; official Fluent V5 documentation owns upstream component behavior. `ux.md`, this folder's `index.md`, mocks, and review files are downstream handoffs or evidence, never upstream authority.
+Authority flows one way: the PRD defines product intent and the current readiness state; architecture defines system decisions; epics define implementation slices and acceptance ownership; the brownfield architecture records observed legacy scope; the bound PRD validation report is authoritative for the current `Reject` evidence; and the official Fluent V5 documentation defines upstream component behavior. `ux.md`, this folder's `index.md`, mocks, and review files are downstream handoffs or evidence, not upstream authority.
 
-| Reviewed source | SHA-256 at repository revision `e302432ca6daf3aa0436c3c0011f7baa551bb449` |
+| Reviewed source | Input SHA-256 captured on 2026-09-09 before downstream digest repinning |
 |---|---|
 | `docs/brownfield/architecture.md` | `3cddf6eb593fb28d90b8dd9d54562cb28bb4ea2a4f5f15c6a51b77f06bf5a0a3` |
 | `_bmad-output/planning-artifacts/prd.md` | `b99effdb414209da373433d9b4d2075072ca950e89534b22b81155236f650662` |
-| `_bmad-output/planning-artifacts/architecture.md` | `2678116099e3d1c1f68ee38ef344b9bef5a58a82062a800e5a89b8b0f5774395` |
-| `_bmad-output/planning-artifacts/epics.md` | `adba169f409ad533a1e96523c4d046729efda9f2ac4ba2ed9ea4a0fd92efcee8` |
+| `_bmad-output/planning-artifacts/architecture.md` | `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51` |
+| `_bmad-output/planning-artifacts/epics.md` | `5a5c03d1205ee3741978dd96501d345867860cfd13a737dfecc8c011805e1009` |
 | `_bmad-output/planning-artifacts/prds/prd-eventstore-2026-07-05/validation-report.md` | `17f378d0686d9840938cf835ea9227a2163c39ba210597b2ada40f57aac801d3` |
 
-Any digest or reviewed-revision change reopens source reconciliation. Current PRD readiness is `blocked` / `reject`; the historical July and August readiness verdicts do not override it.
+The reviewed revision identifies the repository base; the input digests also capture newer in-workspace source changes. Any later digest or revision change reopens source reconciliation. Current PRD readiness is `blocked` / `reject`, and architecture is under a draft reconciliation; historical July and August readiness verdicts do not override either state.
+
+### Open assumptions
+
+- `[ASSUMPTION]` The live `/types` catalog, including `events`, `commands`, and `aggregates` inner tabs, belongs under Streams & Events. Current sources require preserving the route but do not authorize its destination. Story 7.14 must ratify or replace this placement before implementation.
+- The UX does not invent a numeric freshness horizon. Story 7.5 must bind the authoritative horizon and clock basis from the typed contract or configuration before dependent mutations can become available.
 
 ## Information Architecture
 
@@ -96,7 +101,11 @@ The router is the source of truth. On arrival, it selects the owning module, tab
 
 Story 7.14's machine-validated route manifest supplies exact parameter sizes and redirects. This spine does not invent numeric bounds. The current tenant/domain navigator becomes a Streams & Events filter/drill-in; **Topology** is reserved for DAPR and service operations.
 
-IA closes through the eleven journeys below: every tab has a journey or is a named waypoint with an explicit action boundary, and the Sample/Tenants consumer surfaces retain their separate journeys.
+The eleven journeys below cover the information architecture: every tab has a journey or is a named waypoint with an explicit action boundary, and the Sample and Tenants consumer surfaces retain separate journeys.
+
+Component health under `/services` belongs to Topology. The aggregate health summary at `/health`, dead letters, and consistency belong to Recovery; shared health presentation never creates competing route ownership.
+
+Story 7.14 aligns the brownfield shell title **Hexalith EventStore Admin** to the canonical **Event Store Admin** label and keeps breadcrumbs route-derived within the single module. Story 7.20 guards the development role switcher as local-only diagnostic behavior or retires it, and removes the wide-screen warning because triage and safe simple recovery remain usable below 960 CSS pixels.
 
 ## Voice and Tone
 
@@ -109,42 +118,13 @@ Microcopy is direct, complete, localizable, and evidence-specific. Brand posture
 | “Projection evidence is stale.” | “Something went wrong.” |
 | “Unavailable in this release.” | “Coming soon!” |
 | “Access cannot be confirmed for this scope.” | “No data found.” after denial |
-| “Protected value is unavailable. Reason: malformed.” | A generic “redacted” label for every typed outcome |
-
-## Component Patterns
-
-Behavioral rules below pair exactly with `DESIGN.md.Components`.
-
-| Component | Behavioral contract |
-|---|---|
-| Dashboard shell | **Dashboard shell** uses `FrontComposerShell`; exposes shell landmarks, auth/freshness state, and a skip target. Protected state is cleared on identity or scope invalidation. |
-| Module navigation | **Module navigation** uses `FrontComposerNavigation`; one `event-store-admin` entry, route-derived selection, accessible name and current state, and no feature-level host entries. |
-| Page layout | **Page layout** uses `FcPageLayout`; establishes main/content landmarks and `{spacing.section-gap}` without changing evidence semantics during reflow. |
-| Dashboard header | **Dashboard header** uses `FcPageHeader`; one focusable title plus authorized environment, tenant, freshness, last-refresh, and bounded utilities. Scope changes announce once and invalidate stale action state. |
-| Dashboard tabs | **Dashboard tabs** use `FcPageTabs`; the tablist has an accessible name, each tab exposes selected/disabled state, arrow-key behavior follows Fluent, activation navigates its canonical URL, and route changes restore focus without trapping it. |
-| Stat summary | **Stat summary** pairs every number with evidence state, source, and observation time. Stale values remain visible only with an explicit stale label. |
-| Filter bar | **Filter bar** labels each control, applies only to its associated grid, preserves safe filters in the URL, and never autocompletes denied identities. |
-| Evidence grid | **Evidence grid** uses `FluentDataGrid`; exposes accessible row/column context, sort state, busy state, selection, pagination, and one discoverable row-action location. Updates preserve focus, scroll, selection, and expanded detail. |
-| Status badge | **Status badge** uses `FcStatusBadge`; accessible name/value includes canonical state text and never depends on color. |
-| Issue banner | **Issue banner** names affected visible scope, consequence, and a reachable safe action. It is persistent while the condition holds and never exposes raw internals. |
-| Operation dialog | **Operation dialog** is modal, labelled, described, cancellable, and focus-contained. It freezes and displays principal, environment, tenant, target, authoritative pre-state, effect, blast radius, reversibility, and expected evidence, then revalidates all of them on submit. |
-| Detail panel | **Detail panel** uses `FluentDrawer`; it receives focus at a labelled heading, keeps the source row selected, and returns focus to that row or a stable grid fallback when closed or removed. |
-| Multi-section panel | **Multi-section panel** uses one `FluentAccordion` for two or more titled siblings; headers expose expanded state, primary evidence opens by default, and the only primary grid is never hidden in it. |
-| Command lifecycle tracker | **Command lifecycle tracker** exposes an ordered list and current step for `Received`, `Processing`, `EventsStored`, `EventsPublished`, `Completed`, `Rejected`, `PublishFailed`, and `TimedOut`; it names source and observation time. |
-| Projection freshness indicator | **Projection freshness indicator** renders `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, `LocalOnly`, or `Unknown` only from the evidence contract below. |
-| Loading skeleton | **Loading skeleton** matches the eventual layout, exposes one busy state on the owning region, and suppresses nonessential shimmer under reduced motion. |
-| Empty state | **Empty state** appears only after an authoritative successful query for visible scope and has a safe next action. Loading, denied, unavailable, and stale are not empty. |
-| Deferred operation placeholder | **Deferred operation placeholder** is hidden or read-only with tracking context and exact copy “Unavailable in this release.” It exposes no form, submit, accepted, retry, job, or progress behavior. |
-| Command palette | **Command palette** uses `FcCommandPalette`; focus enters search, results announce changes without flooding, Escape closes, focus returns to the trigger, and entries obey current route, tenant, role, and deferred policy. |
-| Refresh controls | **Refresh controls** separate manual status refresh, automatic-refresh pause/resume, and an approved cadence selector. Refresh never submits or retries a mutation and preserves view context. |
-| Live status regions | **Live status regions** consist of one scoped view region and one operation region. They announce transitions only, coalesce repeats, and keep terminal outcomes visible outside transient toasts. |
-| Protected outcome | **Protected outcome** maps a typed unreadable result to bounded localized copy and an authorized safe reason code while protected bytes remain absent from every client channel. |
+| “Protected value could not be read. Reason: malformed.” | A generic “redacted” label for every typed outcome |
 
 ## Evidence and Mutation Contract
 
 ### Authoritative evidence fields
 
-Story 7.5's typed facet/outcome must carry these concepts. Until it does, the UI renders `Unknown` and disables dependent mutation; pages never infer missing values.
+The typed facet and outcome contracts in Story 7.5 must represent these concepts. Until they do, the UI renders `Unknown` and disables dependent mutations; pages never infer missing values.
 
 | Evidence concept | Required behavior |
 |---|---|
@@ -159,6 +139,8 @@ Story 7.5's typed facet/outcome must carry these concepts. Until it does, the UI
 | Terminal command evidence | Names authoritative terminal state and source. `Completed` remains distinct from a later projection-confirmed read-model outcome when the operation requires both. |
 | Stable operation/audit identity | Enables status refresh and audit agreement without resubmission; must be support-safe. |
 
+`MessageId` is the command-status lookup key. `CorrelationId` is the trace key shown only when authorized and support-safe. The UI calls the typed Admin client and never constructs a status URL from either identifier.
+
 FR4/NFR8 own projection provenance and lifecycle. FR36 owns consumer parity closure and does not define lifecycle. ETags, cursors, cache hits, response age, SignalR, elapsed time, and locally computed data are opaque or advisory and never prove currentness, version, or completion. `LocalOnly` never confirms success.
 
 ### Mutation progression
@@ -169,10 +151,39 @@ FR4/NFR8 own projection provenance and lifecycle. FR36 owns consumer parity clos
 4. Any mismatch, expiry, revocation, or conflict stops submission, clears protected transient input, cancels background retry, and returns focus to the changed fact or stable initiator.
 5. Submit once through the typed client; show `Accepted`, then `EvidencePending`.
 6. **Refresh status** queries the same stable operation identity. It never replays the mutation.
-7. Show projection-confirmed success only when every route-required authoritative terminal, projection, and audit item agrees.
-8. Timeout or ambiguous transport yields persistent “Outcome unknown—do not resubmit. Refresh status.”
+7. Show projection-confirmed success only when all authoritative terminal, projection, and audit evidence required by the route agrees.
+8. A timeout or ambiguous transport result produces the persistent message “Outcome unknown—do not resubmit. Refresh status.”
 9. **Retry mutation** appears only after authoritative, retryable terminal non-success; it preserves the approved operation identity policy and repeats scope confirmation.
 
+## Component Patterns
+
+Behavioral rules below pair exactly with `DESIGN.md.Components`.
+
+| Component | Behavioral contract |
+|---|---|
+| Dashboard shell | **Dashboard shell** uses `FrontComposerShell`; exposes shell landmarks, auth/freshness state, and a skip target. Protected state is cleared on identity or scope invalidation. |
+| Module navigation | **Module navigation** uses `FrontComposerNavigation`; one `event-store-admin` entry, route-derived selection, accessible name and current state, and no feature-level host entries. |
+| Page layout | **Page layout** uses `FcPageLayout`; establishes main/content landmarks and `{spacing.section-gap}` without changing evidence semantics during reflow. |
+| Dashboard header | **Dashboard header** uses `FcPageHeader`; one focusable title plus authorized environment, tenant, freshness, last-refresh, and bounded utilities. Scope changes announce once and invalidate stale action state. |
+| Dashboard tabs | **Dashboard tabs** use `FcPageTabs`; `ActiveTabId` is derived from the route segment and `ActiveTabIdChanged` navigates to the canonical URL. The tablist is named, exposes selected/disabled state, and follows Fluent keyboard behavior. Horizontal tab scrolling is an allowed layout-only CSS exception, never alternate navigation state. |
+| Stat summary | **Stat summary** pairs every number with evidence state, source, and observation time. Stale values remain visible only with an explicit stale label. |
+| Filter bar | **Filter bar** labels each control, applies only to its associated grid, preserves safe filters in the URL, and never autocompletes denied identities. |
+| Evidence grid | **Evidence grid** uses `FluentDataGrid`; exposes accessible row/column context, sort state, busy state, selection, pagination, and one discoverable row-action location. Updates preserve focus, scroll, selection, and expanded detail. |
+| Status badge | **Status badge** uses `FcStatusBadge`; accessible name/value includes canonical state text and never depends on color. |
+| Issue banner | **Issue banner** names affected visible scope, consequence, and a reachable safe action. It is persistent while the condition holds and never exposes raw internals. |
+| Operation dialog | **Operation dialog** is modal, labelled, described, cancellable, and focus-contained. It freezes and displays principal, environment, tenant, target, authoritative pre-state, effect, blast radius, reversibility, and expected evidence, then revalidates all of them on submit. |
+| Detail panel | **Detail panel** is an EventStore-owned labelled `aside` composed with `FluentCard`; it keeps the source row selected, moves below the grid when space is constrained, and returns focus to that row or a stable grid fallback when closed or removed. |
+| Multi-section panel | **Multi-section panel** uses one `FluentAccordion` for two or more titled siblings; headers expose expanded state, primary evidence opens by default, and the only primary grid is never hidden in it. |
+| Command lifecycle tracker | **Command lifecycle tracker** exposes an ordered list and current step for `Received`, `Processing`, `EventsStored`, `EventsPublished`, `Completed`, `Rejected`, `PublishFailed`, and `TimedOut`; it names source and observation time. |
+| Projection freshness indicator | **Projection freshness indicator** renders `Current`, `Stale`, `Rebuilding`, `Degraded`, `Unavailable`, `LocalOnly`, or `Unknown` only from the evidence contract below. Its text, icon, and Fluent V5 color mapping match the shipped Tenants lifecycle contract. |
+| Projection connection status | **Projection connection status** uses `FcProjectionConnectionStatus` only for connection and reconciliation notices. It can trigger a bounded refetch but never supplies provenance, lifecycle, or completion evidence. |
+| Loading skeleton | **Loading skeleton** matches the eventual layout, exposes one busy state on the owning region, and suppresses nonessential shimmer under reduced motion. |
+| Empty state | **Empty state** appears only after an authoritative successful query for visible scope and has a safe next action. Loading, denied, unavailable, and stale are not empty. |
+| Deferred operation placeholder | **Deferred operation placeholder** is hidden or read-only with tracking context and exact copy “Unavailable in this release.” It exposes no form, submit, accepted, retry, job, or progress behavior. |
+| Command palette | **Command palette** uses `FcCommandPalette`; focus enters search, results announce changes without flooding, Escape closes, focus returns to the trigger, and entries obey current route, tenant, role, and deferred policy. |
+| Refresh controls | **Refresh controls** separate manual status refresh, automatic-refresh pause/resume, and an approved cadence selector. Refresh never submits or retries a mutation and preserves view context. |
+| Live status regions | **Live status regions** consist of one scoped view region and one operation region. They announce transitions only, coalesce repeats, and keep terminal outcomes visible outside transient toasts. |
+| Protected outcome | **Protected outcome** maps a typed unreadable result to bounded localized copy and an authorized safe reason code while protected bytes remain absent from every client channel. |
 ## State Patterns
 
 ### Cross-surface states
@@ -227,7 +238,7 @@ FR4/NFR8 own projection provenance and lifecycle. FR36 owns consumer parity clos
 | `tampered` | “Protected value could not be verified. Reason: tampered.” | Treat as a security-relevant non-success. |
 | `opaque` | “Protected value is intentionally opaque.” | Never decode in the client. |
 
-FR37 is committed post-MVP and remains unavailable until its implementation gate is satisfied. This vocabulary defines safe presentation where a typed contract exists; it does not claim delivery.
+FR37 is planned for post-MVP and remains unavailable until its implementation gate is satisfied. This vocabulary defines safe presentation where a typed contract exists; it does not claim delivery.
 
 ## Interaction Primitives
 
@@ -247,7 +258,7 @@ Behavioral accessibility targets WCAG 2.2 AA; visual contrast is governed by `DE
 - Exactly one focusable page or selected-tab title; the host skip link reaches dashboard main content.
 - Tablist/tab, grid/row/column, accordion header/panel, modal dialog, drawer, badge/status, filter, and action semantics expose accessible names, roles, values/states, relationships, validation, selection, expansion, busy state, and row context.
 - Dialog focus enters the heading or first invalid field, stays modal, and returns to the initiating control or a documented stable fallback.
-- One polite scoped view live region owns route, refresh, and freshness transitions. One operation live region is polite for accepted/pending/confirmed and assertive for terminal failure, denial, or rejected destructive action.
+- One scoped view live region announces route, refresh, and freshness transitions politely. One operation live region announces accepted, pending, and confirmed states politely, and terminal failure, denial, or rejected destructive actions assertively.
 - Regions announce transitions only, suppress initial and unchanged refresh chatter, coalesce bursts, and leave terminal outcomes visibly persistent.
 - Reduced motion disables shimmer, nonessential transitions, auto-scroll, and animated state travel while retaining static progress and state text.
 - Reflow succeeds at 320 CSS pixels, 400% browser zoom, and 200% text. Text-spacing overrides preserve content and controls; reading/focus order follows logical order.
@@ -261,10 +272,12 @@ Behavioral accessibility targets WCAG 2.2 AA; visual contrast is governed by `DE
 |---|---|
 | `>= 1280px` | Full host navigation, horizontal tabs, applicable full grid columns, dense filters, and side drawer where appropriate. |
 | `960–1279px` | Compact navigation; keyboard-accessible scrolling tabs; identity, scope, state, and actions retained; secondary metadata moves to detail. |
-| `< 960px` | Accessible collapsed navigation; tabs and evidence remain navigable; triage/status/simple recovery visibility remains available; dialogs fill the viewport safely. |
+| `< 960px` | Accessible collapsed navigation; tabs and evidence remain navigable; triage status and simple recovery actions remain visible; dialogs fill the viewport safely. |
 | 320 CSS px / 400% zoom / 200% text | Single logical reading flow; no page-level two-dimensional scroll; labelled grid overflow only; critical context and focus remain visible. |
 
 Per surface, keep tenant/environment, primary identity, canonical state, observation time, and safe next action before secondary metadata. Every narrow-screen mutation is either fully usable with all confirmation facts, disabled with an associated reason, or explicitly desktop-required with usable cancel/back. Viewport never changes authorization, evidence state, or feature availability.
+
+The [dashboard mobile render](mockups/dashboard-overview-mobile.png) demonstrates a retained scope summary and grid-contained overflow. The [command mobile render](mockups/command-investigation-mobile.png) demonstrates the evidence panel moving below the grid while the unknown-outcome warning and status-refresh action remain visible.
 
 ## Localization and Formatting
 
@@ -280,7 +293,7 @@ Sensitive material never enters the DOM, accessibility tree or properties, toolt
 
 Only allow-listed safe identifiers and reason codes required for investigation may render. Tenant authorization precedes existence disclosure. Only `/health`, `/alive`, and `/ready` are anonymously reachable platform health endpoints; that API rule does not create an anonymous Admin dashboard.
 
-Unavailable capabilities are hidden when no useful read-only context exists. If tracking context is useful, show the **Deferred operation placeholder**. A retained authenticated endpoint returns the typed `501` outcome after authentication, authorization, and validation; it performs no mutation or audit admission.
+Unavailable capabilities are hidden when no useful read-only context exists. If tracking context is useful, show the **Deferred operation placeholder**. If an authenticated endpoint is retained, it returns the typed `501` outcome after authentication, authorization, and validation; it performs no mutation or audit admission.
 
 ## Source Traceability
 
@@ -290,18 +303,12 @@ Unavailable capabilities are hidden when no useful read-only context exists. If 
 | FR34 / NFR15 — admin honesty and delivery semantics | Deferred, recovery, accepted/pending/terminal states | 7.4, 7.19 |
 | FR37 / G5 — payload protection, post-MVP and unavailable | Typed protected outcomes and safe boundary | Future gated implementation; no delivery claim |
 | FR36 — consumer parity closure | Readiness/authority note only; not lifecycle semantics | Consumer parity stories; deployed parity remains open |
+| AD-17 — command-status authority | `MessageId` lookup, `CorrelationId` tracing, typed-client URL ownership | 7.5 typed transport; 7.19 presentation |
 | AD-21 / UX-DR1–5, 23 | Host identities, single module, tabs, routes, palette | 7.14 |
 | UX-DR24–30, 38 | Typed Admin outcomes, denial, validation, support safety | 7.5 and 7.19 |
 | UX-DR10–21, 24–31, 38–41 | Operational components, evidence, mutations, critical journeys | 7.19 |
 | UX-DR6–9, 32–37 | Theme inheritance, accessibility, localization, responsive behavior | 7.20 |
 | UX-DR42 | Sample accepted submission and Tenants projection confirmation | Epic 2 consumer stories |
-
-## Inspiration & Anti-patterns
-
-- Lift the compact shell, typography discipline, component behavior, and adaptive theming from FrontComposer and the official Fluent UI Blazor V5 surface.
-- Keep the existing screenshots as density/navigation references, not color specifications.
-- Reject feature-by-feature host navigation, a second Admin UI, raw diagnostic dumps, HTTP-202 success language, automatic mutation retry, and runnable deferred work.
-- The current HTML mocks remain composition references only until regenerated with current component bindings and semantic controls; implementation must not copy their legacy variables or navigation geometry.
 
 ## Key Flows
 
@@ -329,7 +336,7 @@ Failure: scope or permission changes before submit produce a non-submitting conf
 
 ### Flow 3 — Command investigation (Lea, platform operator, tracing a customer report)
 
-1. Lea opens Commands and searches a safe message/correlation identifier.
+1. Lea opens Commands and searches for a safe message or correlation identifier.
 2. The lifecycle distinguishes stored from published events and names source/observation time.
 3. She opens the detail drawer and follows the safe stream link.
 4. Protected content is represented by a typed outcome; projection evidence is stale.
@@ -344,7 +351,7 @@ Failure: malformed identifiers fail inline without calling the API or describing
 3. `/backups` renders the same canonical unsupported view.
 4. **Climax:** “Unavailable in this release.” makes the boundary explicit without a form, job, or progress state.
 
-Failure: denial is evaluated before capability disclosure and does not become `501` merely because backup is deferred.
+Failure: denial is evaluated before capability disclosure. Deferring backup does not automatically change the response to `501`.
 
 ### Flow 5 — Sample accepted submission (Alex, developer evaluating the sample)
 
@@ -367,7 +374,7 @@ Failure: `Unknown`, stale evidence, or denial disables mutation without confirmi
 ### Flow 7 — Projection rebuild oversight (Owen, platform operator, repairing lag)
 
 1. Owen opens Projections and sees authoritative operational status separately from consumer lifecycle.
-2. He inspects lag, provenance, observed-at, refresh, and the configured freshness evaluation.
+2. He inspects lag, provenance, observation time, last refresh, and the configured freshness evaluation.
 3. If rebuild is implemented and authorized, the dialog freezes scope, pre-state, blast radius, reversibility, and expected evidence.
 4. The last complete live model remains visible as rebuilding; partial output never becomes live.
 5. **Climax:** lifecycle returns to authoritative `Current` with a new observation and version before dependent mutations re-enable.
@@ -409,8 +416,3 @@ Failure: stale or revoked scope disables save with an associated reason and safe
 4. **Climax:** browser Back returns to the same Commands filters, selection context, and module state.
 
 Failure: malformed, denied, or cross-tenant route state fails closed and does not disclose whether the command exists.
-
-## Open Assumptions
-
-- `[ASSUMPTION]` The live `/types` catalog, including `events`, `commands`, and `aggregates` inner tabs, belongs under Streams & Events. Current sources require preserving the route but do not authorize its destination. Story 7.14 must ratify or replace this placement before implementation.
-- No numeric freshness horizon is assumed. The authoritative typed contract/configuration must supply it and its clock basis before lifecycle-dependent mutation can be enabled.

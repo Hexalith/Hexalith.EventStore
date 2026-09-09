@@ -1,12 +1,20 @@
 # Architecture Spine Rubric Closure — 2026-09-09
 
+
+> **Anchor note (added 2026-09-09, code review Story 4.15 Group F).** The line numbers originally cited in
+> this file were computed against a pre-final draft of the spine and are offset by a non-uniform amount (AD-8 by
+> 21 lines, AD-16 by 25, AD-26 by 32), so they resolve to the wrong decision. Citations that could be mapped
+> unambiguously have been re-anchored to **AD identifiers**, which are stable. Any residual bare `:NNN`
+> reference in this file is unreliable — resolve it by the AD or section named in the surrounding prose, not by
+> the number. `ARCHITECTURE-SPINE.md` is a symlink to `_bmad-output/planning-artifacts/architecture.md`.
+
 **Verdict: PASS.** All five high, four medium, and two low findings from the rubric-walker report are closed. Deterministic lint still passes with zero findings. No critical or high regression was introduced.
 
 ## Closure evidence
 
 | Prior finding | Result | Evidence |
 | --- | --- | --- |
-| H1 — release-before-proof cycle | Closed | AD-26 now permits only a separately authorized, non-authorizing candidate publication and prohibits production promotion, traffic, migration, readiness claims, and approved production identity until validation passes (`ARCHITECTURE-SPINE.md:241-247`). The Deferred preamble preserves the AD-11 candidate/publication distinction (`:409-416`). |
+| H1 — release-before-proof cycle | Closed | AD-26 now permits only a separately authorized, non-authorizing candidate publication and prohibits production promotion, traffic, migration, readiness claims, and approved production identity until validation passes (`ARCHITECTURE-SPINE.md` AD-30). The Deferred preamble preserves the AD-11 candidate/publication distinction (`:409-416`). |
 | H2 — production profile lacked implementable identity | Closed | The Platform deployment owner now owns canonical `deploy/dapr/production-profile.yaml`; its canonical-byte digest binds the exact DAPR runtime/CLI compatibility, Kubernetes mode, providers, app IDs, policy/configuration digests, restore posture, and evidence (`:247`). The missing artifact/runtime pin remains explicitly fail-closed with owner and trigger (`:416`). |
 | H3 — AD-22 approval was not enforceable | Closed | AD-22 now binds a content-bound packet, applicable-mode matrix, exact EventStore and consumer identities, removal-subject digest, authenticated immutable Consumer-owner receipt, explicit outcome, validity, and invalidation behavior; it rejects boolean/free-form/self-declared approval (`:207-211`). |
 | H4 — AD-24 lacked one secret-contract authority | Closed | The Platform deployment owner is now the sole composer of the singleton component, per-app configurations, and canonical value-free contract; inventories, grants/policies, lifecycle/cache/rotation semantics, acknowledgement, and readiness failure derive from that contract (`:219-225`). |
@@ -23,7 +31,7 @@
 ### M-R1 — `altitude: platform` is outside the BMad architecture taxonomy
 
 - **Severity:** Medium
-- **Location:** `ARCHITECTURE-SPINE.md:5`
+- **Location:** `ARCHITECTURE-SPINE.md` the frontmatter
 - **Evidence:** The architecture skill defines only `initiative`, `feature`, and `epic`; altitude represents the planning layer augmented, not the product's technical category. This spine augments a PRD and keeps epics coherent, which maps to `feature`.
 - **Impact:** Downstream BMad routing or validation can treat the metadata as unknown even though the document content is sound.
 - **Fix:** Restore `altitude: feature`. This is a metadata correction and does not reopen any architecture decision.

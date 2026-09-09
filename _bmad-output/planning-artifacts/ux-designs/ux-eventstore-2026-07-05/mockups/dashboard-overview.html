@@ -3,341 +3,141 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Event Store Admin - Dashboard Overview Mock</title>
+  <link rel="icon" href="data:,">
+  <title>Event Store Admin — Dashboard Overview Reference</title>
   <style>
     /*
-      Governed by DESIGN.md: Brand & Style, Colors, Layout & Spacing, Components.
-      Governed by EXPERIENCE.md: Information Architecture, State Patterns, Responsive & Platform.
-      Reference only. Spines win on conflict.
-      Color variables reference Fluent-emitted tokens when present. System-color
-      fallbacks exist only so this static mock can render outside the app shell.
+      Illustrative reference — do not copy this HTML or CSS into the product.
+      Governed by DESIGN.md: Colors, Typography, Layout & Spacing, Components.
+      Governed by EXPERIENCE.md: Information Architecture, Component Patterns,
+      State Patterns, Accessibility Floor, Responsive & Platform, Flow 1.
     */
     :root {
-      --app-blue: var(--accent-fill-rest, Highlight);
-      --appbar-foreground: var(--foreground-on-accent-rest, HighlightText);
-      --canvas: var(--neutral-layer-1, Canvas);
-      --nav: var(--neutral-layer-2, ButtonFace);
-      --text: var(--neutral-foreground-rest, CanvasText);
-      --muted: var(--neutral-foreground-hint, GrayText);
-      --border: var(--neutral-stroke-rest, GrayText);
-      --subtle: var(--neutral-fill-rest, ButtonFace);
-      --info: var(--neutral-fill-layer-rest, ButtonFace);
-      --warning: var(--neutral-fill-stealth-rest, Mark);
-      --danger: var(--neutral-fill-strong-rest, ButtonFace);
-      --success: var(--neutral-fill-rest, ButtonFace);
+      --surface: var(--colorNeutralBackground1, Canvas);
+      --surface-secondary: var(--colorNeutralBackground2, ButtonFace);
+      --text: var(--colorNeutralForeground1, CanvasText);
+      --text-secondary: var(--colorNeutralForeground2, GrayText);
+      --stroke: var(--colorNeutralStroke1, GrayText);
+      --brand: var(--colorBrandBackground, Highlight);
+      --on-brand: var(--colorNeutralForegroundOnBrand, HighlightText);
+      --info: var(--colorPaletteBlueBackground2, ButtonFace);
+      --warning: var(--colorPaletteYellowBackground2, Mark);
+      --danger: var(--colorPaletteRedBackground2, Mark);
+      --success: var(--colorPaletteGreenBackground2, ButtonFace);
     }
-
-    * {
-      box-sizing: border-box;
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--surface); color: var(--text); font-family: "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.45; }
+    button, input, select { min-width: 24px; min-height: 32px; font: inherit; color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .skip { position: absolute; left: 8px; top: -60px; z-index: 5; padding: 8px 12px; background: var(--surface); }
+    .skip:focus { top: 8px; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .noncopy { padding: 8px 16px; border-bottom: 1px solid var(--stroke); background: var(--warning); font-weight: 600; }
+    .appbar { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 4px 16px; color: var(--on-brand); background: var(--brand); }
+    .appbar button { color: inherit; background: transparent; border: 1px solid currentColor; }
+    .shell { display: grid; grid-template-columns: 72px minmax(0, 1fr); min-height: calc(100vh - 84px); }
+    .module-nav { padding: 8px; border-right: 1px solid var(--stroke); background: var(--surface-secondary); }
+    .module-nav button { width: 56px; min-height: 52px; padding: 8px; border: 1px solid var(--stroke); border-inline-start: 4px solid var(--brand); background: var(--surface); text-align: center; font-weight: 600; }
+    main { min-width: 0; padding: 24px 28px 40px; }
+    h1 { margin: 0; font: inherit; font-size: 2rem; font-weight: 600; }
+    .context { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0 16px; color: var(--text-secondary); }
+    .tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--stroke); }
+    .tabs button { flex: 0 0 auto; padding: 8px 12px; border: 0; border-bottom: 3px solid transparent; background: transparent; }
+    .tabs button[aria-selected="true"] { border-bottom-color: var(--brand); font-weight: 600; }
+    .refresh { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 16px 0; }
+    .field { display: grid; gap: 4px; }
+    .refresh button, .refresh select, .filters input, .filters select { padding: 5px 8px; border: 1px solid var(--stroke); background: var(--surface); }
+    .banner { padding: 12px 16px; border: 1px solid var(--stroke); border-inline-start: 4px solid var(--brand); background: var(--info); }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 16px; margin-top: 16px; }
+    .stat { padding: 12px; border: 1px solid var(--stroke); background: var(--surface); }
+    .stat strong { display: block; margin: 4px 0; font-size: 1.6rem; }
+    .meta { color: var(--text-secondary); font-size: .85rem; }
+    .badge { display: inline-block; padding: 2px 8px; border: 1px solid var(--stroke); border-radius: 999px; font-weight: 600; }
+    .badge[data-state="Current"] { background: var(--success); }
+    .badge[data-state="Stale"], .badge[data-state="EvidencePending"] { background: var(--warning); }
+    .badge[data-state="Failure"] { background: var(--danger); }
+    .grid-region { margin-top: 24px; overflow-x: auto; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; border: 1px solid var(--stroke); }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--stroke); text-align: start; vertical-align: top; }
+    th { background: var(--surface-secondary); }
+    .mono { font-family: ui-monospace, "Cascadia Mono", monospace; }
+    @media (max-width: 1279px) { .stats { grid-template-columns: repeat(2, minmax(150px, 1fr)); } }
+    @media (max-width: 959px) {
+      .shell { grid-template-columns: 48px minmax(0, 1fr); }
+      .module-nav { padding: 8px; }
+      .module-nav button { width: 32px; min-width: 32px; min-height: 40px; padding: 4px; }
+      main { padding: 16px; }
     }
-
-    body {
-      margin: 0;
-      font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
-      color: var(--text);
-      background: var(--canvas);
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    .notice {
-      min-height: 40px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 16px;
-      border: 1px solid var(--border);
-      background: var(--success);
-    }
-
-    .appbar {
-      height: 44px;
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      padding: 0 20px;
-      color: var(--appbar-foreground);
-      background: var(--app-blue);
-    }
-
-    .hamburger {
-      font-size: 22px;
-      line-height: 1;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    .mark {
-      width: 24px;
-      height: 24px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-    }
-
-    .mark span:nth-child(1),
-    .mark span:nth-child(2),
-    .mark span:nth-child(3),
-    .mark span:nth-child(4) {
-      background: var(--appbar-foreground);
-    }
-
-    .shell {
-      display: grid;
-      grid-template-columns: 260px 1fr;
-      min-height: calc(100vh - 84px);
-    }
-
-    .nav {
-      background: var(--nav);
-      border-right: 1px solid var(--border);
-      padding: 16px 0;
-    }
-
-    .nav-section {
-      padding: 8px 20px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-height: 40px;
-      padding: 0 20px;
-      border-left: 4px solid transparent;
-    }
-
-    .nav-item.active {
-      border-left-color: var(--app-blue);
-      background: var(--canvas);
-      font-weight: 600;
-    }
-
-    .content {
-      padding: 24px 28px 40px;
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: 34px;
-      font-weight: 400;
-      line-height: 1.2;
-    }
-
-    .subtitle {
-      margin-bottom: 20px;
-      color: var(--muted);
-    }
-
-    .tabs {
-      display: flex;
-      gap: 2px;
-      border-bottom: 1px solid var(--border);
-      overflow: auto;
-      white-space: nowrap;
-    }
-
-    .tab {
-      padding: 10px 14px;
-      border-bottom: 3px solid transparent;
-      color: var(--text);
-    }
-
-    .tab.active {
-      border-bottom-color: var(--app-blue);
-      font-weight: 600;
-    }
-
-    .banner {
-      margin-top: 18px;
-      padding: 14px 16px;
-      border-left: 4px solid var(--app-blue);
-      background: var(--info);
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(160px, 1fr));
-      gap: 16px;
-      margin-top: 20px;
-    }
-
-    .stat {
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 14px;
-      background: var(--canvas);
-    }
-
-    .label {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .value {
-      margin-top: 6px;
-      font-size: 24px;
-      font-weight: 600;
-    }
-
-    .grid-wrap {
-      margin-top: 24px;
-    }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .input,
-    .select {
-      min-height: 32px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 5px 8px;
-      background: var(--canvas);
-      color: var(--text);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      border: 1px solid var(--border);
-    }
-
-    th,
-    td {
-      padding: 9px 10px;
-      border-bottom: 1px solid var(--border);
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background: var(--subtle);
-      font-weight: 600;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 22px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-      border: 1px solid var(--border);
-    }
-
-    .success { background: var(--success); }
-    .warning { background: var(--warning); }
-    .danger { background: var(--danger); }
-    .mono {
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 13px;
-    }
-
-    @media (max-width: 900px) {
-      .shell {
-        grid-template-columns: 1fr;
-      }
-
-      .nav {
-        display: none;
-      }
-
-      .content {
-        padding: 18px 16px 32px;
-      }
-
-      .stats {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
+    @media (max-width: 420px) { .stats { grid-template-columns: 1fr; } h1 { font-size: 1.5rem; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+    @media (forced-colors: active) { .badge, .banner, .module-nav button, .tabs button[aria-selected="true"] { border-color: CanvasText; } }
   </style>
 </head>
 <body>
-  <div class="notice"><strong>Support-safe dashboard:</strong> stale values are labeled and raw payloads stay protected.</div>
+  <a class="skip" href="#dashboard-main">Skip to dashboard content</a>
+  <div class="noncopy" role="note">Illustrative UX reference. Implement with FrontComposer and Fluent UI V5; do not copy this markup.</div>
   <header class="appbar">
-    <div class="hamburger" aria-hidden="true">=</div>
-    <div class="brand"><span class="mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>Hexalith</div>
+    <button type="button" aria-label="Open module navigation">☰</button>
+    <strong>Hexalith</strong>
   </header>
   <div class="shell">
-    <aside class="nav" aria-label="Module navigation">
-      <div class="nav-section">Modules</div>
-      <div class="nav-item active">Event Store Admin</div>
-    </aside>
-    <main class="content">
-      <h1>Event Store Admin</h1>
-      <div class="subtitle">Production operations dashboard. Evidence current as of 08:24 UTC.</div>
-      <nav class="tabs" aria-label="Event Store Admin tabs">
-        <div class="tab active">Overview</div>
-        <div class="tab">Commands</div>
-        <div class="tab">Streams &amp; Events</div>
-        <div class="tab">Projections</div>
-        <div class="tab">Tenants &amp; Access</div>
-        <div class="tab">Topology</div>
-        <div class="tab">Storage &amp; Snapshots</div>
-        <div class="tab">Recovery</div>
-        <div class="tab">Deferred &amp; Backlog</div>
-      </nav>
-      <section class="banner">
-        SignalR disconnected. Polling is active; projection notifications are freshness nudges only.
+    <nav class="module-nav" aria-label="Module navigation">
+      <h2 class="visually-hidden">Modules</h2>
+      <button type="button" aria-current="page"><span aria-hidden="true">ES</span><span class="visually-hidden">Event Store Admin</span></button>
+    </nav>
+    <main id="dashboard-main" tabindex="-1">
+      <h1>Overview</h1>
+      <div class="context">
+        <span>Environment: Production EU</span>
+        <span>Tenant: wingtip</span>
+        <span>Observed 09:42:10 UTC · Refreshed 09:42:14 UTC</span>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Event Store Admin">
+        <button type="button" role="tab" aria-selected="true">Overview</button>
+        <button type="button" role="tab" aria-selected="false">Commands</button>
+        <button type="button" role="tab" aria-selected="false">Streams &amp; Events</button>
+        <button type="button" role="tab" aria-selected="false">Projections</button>
+        <button type="button" role="tab" aria-selected="false">Tenants &amp; Access</button>
+        <button type="button" role="tab" aria-selected="false">Topology</button>
+        <button type="button" role="tab" aria-selected="false">Storage &amp; Snapshots</button>
+        <button type="button" role="tab" aria-selected="false">Recovery</button>
+        <button type="button" role="tab" aria-selected="false">Deferred &amp; Backlog</button>
+        <button type="button" role="tab" aria-selected="false">Settings</button>
+      </div>
+      <section class="refresh" aria-label="Refresh controls">
+        <button type="button">Refresh evidence</button>
+        <button type="button" aria-pressed="false">Pause automatic refresh</button>
+        <label class="field">Automatic refresh
+          <select><option>Approved default cadence</option><option>Reduced cadence</option></select>
+        </label>
+      </section>
+      <section class="banner" role="status" aria-label="Connection status">
+        SignalR disconnected. Polling remains available; notifications are freshness nudges only.
       </section>
       <section class="stats" aria-label="Operational summary">
-        <div class="stat"><div class="label">Active Streams</div><div class="value">128</div><span class="badge success">current</span></div>
-        <div class="stat"><div class="label">Commands In Flight</div><div class="value">7</div><span class="badge warning">waiting for evidence</span></div>
-        <div class="stat"><div class="label">Dead Letters</div><div class="value">3</div><span class="badge danger">action required</span></div>
-        <div class="stat"><div class="label">Projection Lag</div><div class="value">12s</div><span class="badge warning">stale</span></div>
+        <article class="stat"><span class="meta">Active streams</span><strong>41</strong><span class="badge" data-state="Current">Current</span><div class="meta">ProjectionBacked · observed 09:42 UTC</div></article>
+        <article class="stat"><span class="meta">Commands in flight</span><strong>7</strong><span class="badge" data-state="EvidencePending">Evidence pending</span><div class="meta">Refresh status; do not resubmit</div></article>
+        <article class="stat"><span class="meta">Dead letters</span><strong>3</strong><span class="badge" data-state="Failure">Action required</span><div class="meta">Authorized scope only</div></article>
+        <article class="stat"><span class="meta">Projection lag</span><strong>12 s</strong><span class="badge" data-state="Stale">Stale</span><div class="meta">Dependent mutations disabled</div></article>
       </section>
-      <section class="grid-wrap">
-        <div class="toolbar">
-          <div class="input">Search tenant, domain, aggregate...</div>
-          <div class="select">All Tenants</div>
-          <div class="select">All Domains</div>
-          <div class="select">Status: Active</div>
+      <section class="grid-region" aria-label="Recent operational evidence" tabindex="0">
+        <div class="filters" aria-label="Evidence filters">
+          <label class="field">Search <input type="search" value="orders"></label>
+          <label class="field">Domain <select><option>orders</option></select></label>
+          <label class="field">State <select><option>All visible states</option></select></label>
         </div>
-        <table aria-label="Recent operational evidence">
-          <thead>
-            <tr><th>Status</th><th>Tenant</th><th>Domain</th><th>Aggregate</th><th>Evidence</th><th>Last Activity</th></tr>
-          </thead>
+        <table>
+          <caption class="meta">Recent evidence for tenant wingtip</caption>
+          <thead><tr><th scope="col">State</th><th scope="col">Domain</th><th scope="col">Aggregate</th><th scope="col">Evidence</th><th scope="col">Observed</th></tr></thead>
           <tbody>
-            <tr>
-              <td><span class="badge success">active</span></td>
-              <td class="mono">contoso</td>
-              <td>orders</td>
-              <td class="mono">01JZ4...</td>
-              <td>Projection confirmed</td>
-              <td>08:24:12</td>
-            </tr>
-            <tr>
-              <td><span class="badge warning">pending</span></td>
-              <td class="mono">fabrikam</td>
-              <td>tenants</td>
-              <td class="mono">system</td>
-              <td>Command accepted; waiting for read model</td>
-              <td>08:23:59</td>
-            </tr>
-            <tr>
-              <td><span class="badge danger">dead letter</span></td>
-              <td class="mono">wingtip</td>
-              <td>billing</td>
-              <td class="mono">01JZ3...</td>
-              <td>Publish retry exhausted</td>
-              <td>08:18:40</td>
-            </tr>
+            <tr><td><span class="badge" data-state="Current">Current</span></td><td>orders</td><td class="mono">01K4…7P2</td><td>Projection confirmed</td><td>09:42:10 UTC</td></tr>
+            <tr><td><span class="badge" data-state="EvidencePending">Evidence pending</span></td><td>tenants</td><td class="mono">system</td><td>Command accepted; read evidence pending</td><td>09:41:58 UTC</td></tr>
+            <tr><td><span class="badge" data-state="Failure">Dead letter</span></td><td>billing</td><td class="mono">01K4…6M8</td><td>Publication retry exhausted</td><td>09:37:22 UTC</td></tr>
           </tbody>
         </table>
       </section>
+      <div class="visually-hidden" aria-live="polite" aria-atomic="true">Overview evidence is stale. Automatic polling continues.</div>
     </main>
   </div>
 </body>

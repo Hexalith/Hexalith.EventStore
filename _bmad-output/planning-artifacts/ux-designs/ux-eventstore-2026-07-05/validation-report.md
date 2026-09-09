@@ -3,6 +3,7 @@
 - **DESIGN.md:** `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md`
 - **EXPERIENCE.md:** `_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/EXPERIENCE.md`
 - **Run at:** 2026-09-09T10:51:58+02:00
+- **Spines validated:** `status: final`, updated 2026-08-01 (DESIGN.md and EXPERIENCE.md were not modified by this run)
 - **Selected lenses:** rubric walker; accessibility & support-safety; architecture readiness
 
 ## Overall verdict

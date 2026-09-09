@@ -121,6 +121,67 @@
 - The spine commits WCAG 2.2 AA behavior, keyboard-operable Fluent components, focus restoration, live-region priorities, complete resource-backed strings, and three responsive viewport bands (`EXPERIENCE.md:157-197`).
 - The command lifecycle vocabulary—`Received`, `Processing`, `EventsStored`, `EventsPublished`, `Completed`, `Rejected`, `PublishFailed`, `TimedOut`—and the projection lifecycle vocabulary are stable enough for downstream component and fixture design (`EXPERIENCE.md:104-105`).
 
+## Carried forward from the 2026-09-08 lens
+
+This lens is regenerated in place, so the 2026-09-08 body was overwritten (recoverable at
+`git show 12d2dfc1:_bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/review-architecture-readiness.md`).
+The findings below were **code-verified** in that run, are not restated by the findings above, and remain
+open. They are carried here so regeneration does not silently drop them. Counts in "Finding counts" cover
+this run's own findings only.
+
+### Component and platform bindings (verified against the rc.5 catalog)
+
+- **`FluentBadge Color=Neutral` is not a V5 value** (`DESIGN.md:30-31,114-115,143-147`). `BadgeColor` in
+  Microsoft.FluentUI.AspNetCore.Components `5.0.0-rc.5` is `Brand, Danger, Important, Informative, Severe,
+  Subtle, Success, Warning`. *Fix:* use `Subtle` or `Informative`; note `Appearance` is orthogonal to `Color`.
+- **`FluentDrawer` is absent from the V5 catalog** (`DESIGN.md:128,226`; copied into UX-DR18 at
+  `epics.md:224`). The rc.5 Dialog category lists only `FluentDialog`/`FluentDialogBody`/`FluentDialogProvider`,
+  and neither Tenants nor FrontComposer source uses it. *Fix:* specify `FluentDialog` (panel-style) or the
+  FrontComposer panel primitive; drop `FluentDrawer` unless a version that ships it is pinned.
+- **`FluentTabs` is neither a router nor an overflow solution** (`EXPERIENCE.md:95,150,194`). *Fix:* state that
+  the shell binds `ActiveTabId` to the route segment, and that tab-row overflow is an allowed layout-only CSS
+  exception.
+- **Legacy token inventory is untracked** — `wwwroot/css/app.css:5-10,32-37,53-58` (`--hexalith-status-*`,
+  `--hexalith-brand`) and `Components/Shared/ProtectedContentPanel.razor:20` (`--neutral-stroke-rest`,
+  `--neutral-layer-2`). Policy requires an allowlisted migration backlog
+  (`hexalith-ux-instructions.md:37-39`); Story 7.20 names them, the spine does not.
+
+### Semantics and vocabulary
+
+- **Lifecycle colour mapping conflicts with shipped Tenants** (Story 2.6, done). `DESIGN.md:141-147` maps
+  stale→warning, rebuilding→neutral, local-only→neutral, unavailable→danger; Tenants renders Stale→`Severe`,
+  Rebuilding→`Informative`, LocalOnly→`Important`, Unavailable→`Severe`
+  (`references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Components/Shared/ProjectionLifecycleBadge.razor:28-33`).
+  Two modules will colour the same state differently. *Fix:* adopt the Tenants mapping as platform standard, or
+  record the divergence as an accepted per-module exception.
+- **`MessageId` vs `CorrelationId` lookup is underspecified, and AD-17 has no traceability row**
+  (`EXPERIENCE.md:255,58-69`). The status resource is keyed by `messageId`
+  (`src/Hexalith.EventStore/Controllers/CommandStatusController.cs:23`) while Admin rows carry `CorrelationId`
+  (`Pages/Commands.razor:101`). *Fix:* name `MessageId` the lookup key, `CorrelationId` the trace key, and add
+  an AD-17 row stating the UI never constructs a status URL itself.
+- **FR36 is cited where FR4 is the authority** (`EXPERIENCE.md:67`; `DESIGN.md:229`). *Fix:* relabel to
+  "FR4 / AD-15 / AD-19 / AD-20 (FR36 parity proof)".
+
+### IA and host contract
+
+- **`/health` ownership is split between Topology and Recovery** (`EXPERIENCE.md:48`;
+  `Components/CommandPaletteCatalog.cs:14-15`). *Fix:* component health → Topology, health summary + dead
+  letters + consistency → Recovery; say which page owns the shared components.
+- **Host title, breadcrumb, and dev role switcher are outside the header contract** — the shell renders
+  "Hexalith EventStore Admin" (`Layout/MainLayout.razor:23`) against the mandated **Event Store Admin**
+  (`EXPERIENCE.md:92`); `Layout/Breadcrumb.razor` and the role switcher (`MainLayout.razor:26-38`) are unmentioned.
+- **The wide-screen banner is not marked for retirement** — `MainLayout.razor:49-51` and
+  `wwwroot/css/app.css:235-296` render a `role="alert"` "Dashboard optimized for wider screens." against the
+  spine's `<960px` usable-triage promise (`EXPERIENCE.md:195`). *Fix:* add an "existing behaviour to retire" note
+  so Story 7.20 does not inherit it.
+
+### Traceability obligation
+
+- **Spine edits are hash-pinned by `epics.md:16-18`** (SHA-256 of `DESIGN.md`, `EXPERIENCE.md`, `ux.md`). Any fix
+  from this review changes those digests and must re-pin them **in the same commit**; check for an asserting
+  Contracts test before editing. This repo enforces prose and digest pins, and the architecture digest at
+  `epics.md:15` is already stale.
+
 ## Reviewer scope
 
 Read-only architecture-handoff review of `DESIGN.md`, `EXPERIENCE.md`, their direct local sources, canonical UX handoff/index, current PRD validation state, current architecture and epic ownership, promoted HTML mockups, repository UX policy, and targeted brownfield implementation evidence in `Admin.UI`, `Admin.Abstractions`, contracts, and AppHost. The lens tested source currency/traceability, host/module identity, FrontComposer/Fluent UI V5 inheritance, IA/flow closure, components/states/actions, routing/deep links, responsive behavior, evidence/freshness/telemetry semantics, fail-closed security, visual-reference drift, and terminology. It did not modify the spines or sources, grade visual aesthetics, run the application, or claim implementation readiness beyond what the inspected artifacts prove.

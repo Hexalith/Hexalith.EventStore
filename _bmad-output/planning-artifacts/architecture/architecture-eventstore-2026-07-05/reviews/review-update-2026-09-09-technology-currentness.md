@@ -1,5 +1,13 @@
 # Technology Currentness / Reality-Check Review
 
+
+> **Anchor note (added 2026-09-09, code review Story 4.15 Group F).** The line numbers originally cited in
+> this file were computed against a pre-final draft of the spine and are offset by a non-uniform amount (AD-8 by
+> 21 lines, AD-16 by 25, AD-26 by 32), so they resolve to the wrong decision. Citations that could be mapped
+> unambiguously have been re-anchored to **AD identifiers**, which are stable. Any residual bare `:NNN`
+> reference in this file is unreliable — resolve it by the AD or section named in the surrounding prose, not by
+> the number. `ARCHITECTURE-SPINE.md` is a symlink to `_bmad-output/planning-artifacts/architecture.md`.
+
 **Artifact:** `ARCHITECTURE-SPINE.md`  
 **Reviewed:** 2026-09-09  
 **Lens:** named-technology currentness, repository reality, and current-versus-target topology  

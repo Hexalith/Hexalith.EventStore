@@ -5,13 +5,15 @@ purpose: build-substrate
 altitude: feature
 paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
-status: final
+status: draft
 created: 2026-07-05
 updated: 2026-09-09
 binds:
   - FR1-FR37
   - NFR1-NFR19
 sources:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-08-nfr3-nfr4-authentication-ratification.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-09-architecture-condensation.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/planning-artifacts/ux.md
@@ -87,6 +89,11 @@ flowchart LR
 - **Prevents:** incompatible CRUD and event-sourcing implementations.
 - **Rule:** The platform uses CQRS, DDD, and event sourcing over DAPR state, actors, pub/sub, and service invocation. Aspire owns the local orchestration seed; production is governed by AD-26.
 
+Epic 3 encodes Story 3.13 as the rejected `v3.94.1` disposition, Story 3.14 as the corrective release, and
+Story 3.15 as positive parity closure; it remains open for the approved Story 3.16 maintenance follow-up.
+Planning or story status never authorizes release, deployment, consumer removal, or positive `v3.94.1`
+closure.
+
 ### AD-2 - Domain Modules Stay Domain-Centric [ADOPTED]
 
 - **Binds:** FR1-FR10, FR33
@@ -151,7 +158,13 @@ flowchart LR
 - **Prevents:** checkout state or mutable registry tags changing released artifacts.
 - **Rule:** `tools/release-packages.json` is the package inventory; `references/Hexalith.Builds/Props/Directory.Packages.props` is the source-owned version catalog. Package mode is default; source mode requires explicit `UseHexalithProjectReferences=true` and a root-declared available source. Coupled versions move coherently with restore/build/test and representative-consumer evidence.
 
-**Release evidence.** Container releases are immutable OCI image indexes containing exactly `linux/amd64` and `linux/arm64` image manifests. The SHA-pinned shared Builds publisher/validator owns the shape, raw-byte digest chain, provenance labels, `ReleaseEvidenceCodec`, and bounded smoke contract. Deployment is authorized only by a validated index digest, never by a mutable tag, lifecycle label, or prior pass flag. The current release mapping contains only `eventstore`; any additional image first receives an explicit release identity and the same validation contract.
+**Package inventory.** The inventory remains **14 packages** until Story 8.8 atomically creates the
+approved packable engine/adapter package set and updates `tools/release-packages.json`, inventory tests,
+package metadata, SBOM/provenance, and package-only consumer validation from 14 to 16. Assistant
+instruction entry points are never package inventory. Unset or explicit `UseHexalithProjectReferences=false`
+is package intent in every configuration, including Debug.
+
+**Release evidence.** Container releases are immutable OCI image indexes containing exactly `linux/amd64` and `linux/arm64` image manifests. The SHA-pinned shared Builds publisher/validator owns the shape, raw-byte digest chain, provenance labels, `ReleaseEvidenceCodec`, and bounded smoke contract. Deployment is authorized only by a validated index digest, never by a mutable tag, lifecycle label, or prior pass flag. The current release mapping contains only `eventstore`; any additional image first receives an explicit release identity and the same validation contract. Published artifacts are immutable: release tags, conforming and failed, are never re-pointed or deleted; nonconforming releases such as `v3.75.0` and `v3.94.1` remain resolvable as non-authorizing failed evidence and are corrected only by a conforming later semantic version.
 
 ### AD-12 - High-Risk Verification Requires Persisted Evidence [ADOPTED]
 
@@ -194,6 +207,14 @@ flowchart LR
 - **Binds:** FR26, FR28, FR32, NFR1-NFR4, NFR17
 - **Prevents:** inbound headers steering DAPR service invocation.
 - **Rule:** One platform handler replaces, never appends, outbound `dapr-app-id` and `dapr-api-token` from trusted configuration. Caller-provided and forwarded control-plane headers are discarded.
+
+The handler is registered last on the gateway `IHttpClientBuilder` so it remains innermost and has the
+final say after any inbound bearer or header-forwarding handler. Hosts must not define their own DAPR
+routing-header handler, and must not use a bare `TryAddWithoutValidation` for these headers (AD-2).
+
+Omitting `.AddEventStoreDaprServiceInvocation(appId, apiToken)` is **currently fail-open**: it produces no
+compile error, startup validation, or runtime diagnostic. Structural host scans therefore require the
+explicit final chained call for every sidecar-routed client.
 
 ### AD-19 - Projection Dispatch Is Asynchronous And One-To-Many [ADOPTED]
 
@@ -246,9 +267,15 @@ flowchart LR
 
 **Rotation and legacy migration.** Digest promotion keeps the source authoritative through prepare and copy; the target remains non-executable until durable import acknowledgment, then the source persists a redirect, and only then may the directory flip. Every phase is persisted and idempotent. Legacy inventory binds source aggregate identity, schema, protected aliases, exact logical result, and phase; its target is prepared non-executable, the source redirects only after acknowledgment, and inventory flips last. Source evidence remains until target and redirect are durable. Mixed versions without directory routing fail readiness.
 
+**Evidence ownership.** Stories 4.14-4.15 assemble the EventStore platform packet at
+`_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml`; Folders retains
+ownership of the canonical `oq8-idempotency-evidence.yaml` and of OQ8 closure. EventStore platform
+completion is a source-only handoff and confers no release approval, Folders closure, package or pin
+authority, or consumer-migration authority.
+
 **Deployment catalog.** Every compatible host loads the idempotency facet of the AD-33 catalog envelope, keyed by stable route-entry ID and `(Domain, CommandType)`. Each entry binds the trusted adapter, operation, canonical descriptor schema and digest, retention tier, active and reader digest-key generations, OpenBao logical map, consumer identity, and content digest. Readiness fails on missing entries, duplicate keys, unsupported generations, or root/facet fingerprint drift. Retirement is refused while records, tombstones, aliases, migration entries, legal holds, or catalog references remain.
 
-### AD-26 - Production Runs Only On A Proven Fail-Closed Profile [ADOPTED]
+### AD-26 - Production Runs Only On A Proven Fail-Closed Profile [ASSUMPTION]
 
 - **Binds:** FR8, FR19-FR20, FR26-FR28, FR32, NFR2-NFR4, NFR7, NFR16-NFR17
 - **Prevents:** local convenience topology being promoted as production evidence.
@@ -406,15 +433,15 @@ flowchart TB
 
 ## Capability To Architecture Map
 
-| Capability / area | Primary components | Decisions |
+| Requirements / capability area | Primary components | Decisions |
 | --- | --- | --- |
-| Domain authoring and consumer parity | `Contracts`, `Client`, `DomainService`, `Testing`, domain modules | AD-1, AD-2, AD-7, AD-11, AD-13, AD-22 |
-| External API, UI, queries, and status | `RestApi.Generators`, EventStore host, SignalR, Admin UI | AD-3, AD-4, AD-14 through AD-17, AD-21, AD-32 through AD-33 |
-| Event correctness and recovery | `Server`, actors, admission/directory, persistence, publishing | AD-5 through AD-8, AD-12, AD-19 through AD-20, AD-25, AD-30 |
-| Tenant, service, and operator security | `Contracts`, hosts, Admin, DAPR configuration | AD-9 through AD-10, AD-16, AD-18, AD-24, AD-27 through AD-29, AD-33 |
-| Runtime operations | AppHost, deployment assets, `Operations`, telemetry | AD-9, AD-12, AD-26, AD-29, AD-31, AD-33 |
-| Release and repository reliability | workflows, release manifest, Builds catalog, root submodules | AD-11 through AD-12, AD-22, AD-26 |
-| Optional payload protection and erasure | `Contracts`, payload engine/adapters, `Server`, `Testing` | AD-5, AD-23 through AD-25, AD-30 |
+| FR1-FR10, FR36 — Domain authoring and consumer parity | `Contracts`, `Client`, `DomainService`, `Testing`, domain modules | AD-1, AD-2, AD-7, AD-11, AD-13, AD-22 |
+| FR11-FR16 — External API, UI, queries, and status | `RestApi.Generators`, EventStore host, SignalR, Admin UI | AD-3, AD-4, AD-14 through AD-17, AD-21, AD-32 through AD-33 |
+| FR23-FR24, FR27, FR29-FR31 — Event correctness and recovery | `Server`, actors, admission/directory, persistence, publishing | AD-5 through AD-8, AD-12, AD-19 through AD-20, AD-25, AD-30 |
+| FR26, FR28, FR32 — Tenant, service, and operator security | `Contracts`, hosts, Admin, DAPR configuration | AD-9 through AD-10, AD-16, AD-18, AD-24, AD-27 through AD-29, AD-33 |
+| FR34-FR35 — Runtime operations | AppHost, deployment assets, `Operations`, telemetry | AD-9, AD-12, AD-26, AD-29, AD-31, AD-33 |
+| FR17-FR22, FR25 — Release and repository reliability | workflows, release manifest, Builds catalog, root submodules | AD-11 through AD-12, AD-22, AD-26 |
+| FR37, FR33 — Optional payload protection, erasure, and event evolution | `Contracts`, payload engine/adapters, `Server`, `Testing` | AD-5, AD-23 through AD-25, AD-30 |
 
 ## Implementation Status And Production Gates
 

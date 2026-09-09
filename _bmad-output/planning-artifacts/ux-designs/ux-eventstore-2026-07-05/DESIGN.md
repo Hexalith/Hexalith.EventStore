@@ -4,7 +4,7 @@ description: Brownfield operations UX for administrators and platform operators,
 status: draft
 created: 2026-07-05
 updated: 2026-09-09
-reviewed_repository_revision: e302432ca6daf3aa0436c3c0011f7baa551bb449
+reviewed_repository_revision: 0825f0dcde69915a74c1b6ebcbb36f14ded04283
 sources:
   - docs/brownfield/architecture.md
   - _bmad-output/planning-artifacts/prd.md
@@ -59,15 +59,17 @@ components:
     authorization-region: FcAuthorizedCommandRegion
     abandonment-guard: FcFormAbandonmentGuard
   detail-panel:
-    implementation: FluentDrawer
+    implementation: 'EventStore-owned labelled aside with FluentCard'
   multi-section-panel:
     implementation: FluentAccordion
   command-lifecycle-tracker:
     implementation: 'EventStore-owned composition of FcStatusBadge and FluentText'
     pending-summary: FcPendingCommandSummary
   projection-freshness-indicator:
+    implementation: 'EventStore-owned composition of FluentBadge and FluentText'
+    lifecycle-mapping: 'Tenants ProjectionLifecycleBadge contract'
+  projection-connection-status:
     implementation: FcProjectionConnectionStatus
-    status-component: FcStatusBadge
   loading-skeleton:
     implementation: FcProjectionLoadingSkeleton
   empty-state:
@@ -84,21 +86,26 @@ components:
     implementation: 'FcStatusBadge with bounded FluentText explanation'
 ---
 
+## Contract Scope
+
+The brownfield target remains `src/Hexalith.EventStore.Admin.UI`. It retains `eventstore-admin-ui` as its service, resource, DAPR, and container identity and registers one FrontComposer module, `event-store-admin`, labelled **Event Store Admin**. No second host, router, or page implementation is introduced.
+
+The reviewed repository revision is `0825f0dcde69915a74c1b6ebcbb36f14ded04283`. `EXPERIENCE.md` records the input-snapshot digests and authority order. When this document returns to `status: final`, that status means only that the UX contract is finalized. It does not authorize implementation, release, deployment, migration, or a readiness verdict.
+
+Story 7.20 must inventory and retire the current local `--hexalith-status-*` and `--hexalith-brand` definitions in `wwwroot/css/app.css` plus the legacy `--neutral-stroke-rest` and `--neutral-layer-2` usage in `ProtectedContentPanel.razor`. Until then, those declarations are allow-listed brownfield migration debt, not reusable design tokens.
+
 ## Brand & Style
 
 Hexalith.EventStore Admin is an operations surface, not a marketing product or a local design system. It inherits the FrontComposer shell and Blazor Fluent UI V5 and keeps the established visual direction: compact host navigation, a neutral work canvas, dense evidence tables, restrained status surfaces, and system typography.
 
-The product expression is operational honesty. Accepted, evidence-pending, projection-confirmed, stale, unavailable, deferred, denied, and failed are distinct states. Visual polish must never soften those distinctions or imply that a backlog capability is implemented.
-
-The brownfield target remains `src/Hexalith.EventStore.Admin.UI`. It retains `eventstore-admin-ui` as its service, resource, DAPR, and container identity and registers one FrontComposer module, `event-store-admin`, labelled **Event Store Admin**. No second host, router, or page implementation is introduced.
-
-The reviewed repository revision is `e302432ca6daf3aa0436c3c0011f7baa551bb449`. The source digests and authority order are recorded in `EXPERIENCE.md`. `status: final`, when restored after this update, means that the UX contract is finalized; it never authorizes implementation, release, deployment, migration, or a readiness verdict.
+The design must communicate operational state honestly. Accepted, evidence-pending, projection-confirmed, stale, unavailable, deferred, denied, and failed are distinct states. Visual polish must never soften those distinctions or imply that a backlog capability is implemented.
 
 ## Colors
 
 All colors inherit from FrontComposer and Blazor Fluent UI V5. The empty `colors` map is deliberate: EventStore defines no brand or status palette and does not restate inherited theme values as local tokens.
 
-- Use Fluent component appearances and current Fluent 2 roles for accent, neutral surfaces, foregrounds, borders, focus, and Success/Warning/Danger/Neutral treatments.
+- Use Fluent component appearances and current Fluent 2 roles for accent, neutral surfaces, foregrounds, borders, and focus. `FcStatusBadge` receives a FrontComposer `BadgeSlot`; do not invent a nonexistent `BadgeColor.Neutral` value.
+- Projection lifecycle colors follow the shipped Tenants contract: `Current` → `Success`; `Stale` and `Unavailable` → `Severe`; `Rebuilding` → `Informative`; `Degraded` → `Warning`; `LocalOnly` and `Unknown` → `Important`. Text and icon remain the authoritative cues.
 - Do not hard-code colors captured from reference screenshots.
 - Do not use gradients, decorative color bands, custom status palettes, legacy Fluent v4/FAST tokens, or redefined theme primitives.
 - Text contrast meets WCAG 2.2 AA. Focus indicators, control boundaries, selected states, and lifecycle graphics meet the 3:1 non-text contrast floor against adjacent colors.
@@ -109,7 +116,7 @@ All colors inherit from FrontComposer and Blazor Fluent UI V5. The empty `colors
 
 Typography inherits FrontComposer and Fluent UI V5. The empty `typography` map is deliberate: EventStore does not reproduce the Fluent ramp in local CSS.
 
-- `FcPageHeader` owns page and selected-tab titles; titles are direct work-surface nouns and expose one focusable heading.
+- `FcPageHeader` renders page and selected-tab titles. Use direct work-surface nouns for those titles, and expose exactly one focusable heading.
 - `FluentText` roles own body, label, status, and metadata hierarchy. Segoe UI and system fallbacks come from the inherited system.
 - Identifiers may use an inherited monospace role only when it materially improves scanning.
 - Do not create a local heading ramp, hard-code theme typography, use negative letter spacing, or style marketing hero copy.
@@ -134,32 +141,35 @@ Shapes inherit from Fluent components. Do not duplicate component radii in local
 
 ## Components
 
-The following names are canonical and match `EXPERIENCE.md` exactly.
+Frontmatter owns implementation bindings; this table owns visual role and unique constraints. Names match `EXPERIENCE.md` exactly.
 
-- **Dashboard shell** — `FrontComposerShell`; inherits theme and landmark geometry. It contains the single module navigation and dashboard content regions.
-- **Module navigation** — `FrontComposerNavigation`; renders exactly one `event-store-admin` entry labelled **Event Store Admin** and keeps it selected for all child routes.
-- **Page layout** — `FcPageLayout`; owns the dashboard's content width, landmarks, and region spacing.
-- **Dashboard header** — `FcPageHeader`; renders the focusable title, authorized environment/tenant context, connection freshness, and bounded utilities.
-- **Dashboard tabs** — `FcPageTabs` over `FluentTabs`; uses inherited selected, focus, disabled, and overflow appearances.
-- **Stat summary** — `FluentCard` with `FluentText`; used only for repeated metrics, with visible evidence state and observation time.
-- **Filter bar** — `FluentStack` with `FluentTextInput`, `FluentSelect`, `FluentCheckbox`, `FcStatusFilterChips`, `FcFilterResetButton`, and `FcFilterSummary`; visually groups controls directly above their evidence grid.
-- **Evidence grid** — `FluentDataGrid` with `FcColumnPrioritizer`; dense rows, visible header hierarchy, labelled overflow, and a single row-action location.
-- **Status badge** — `FcStatusBadge` over `FluentBadge`; inherited status appearance plus readable canonical state text.
-- **Issue banner** — `FluentMessageBar`; intent is selected from the operational consequence, never borrowed from badge colors.
-- **Operation dialog** — `FluentDialog` with `FcAuthorizedCommandRegion` and `FcFormAbandonmentGuard`; destructive and recovery cases use `FcDestructiveConfirmationDialog`. It visually separates frozen scope, effect, risk, reversibility, and confirmation controls.
-- **Detail panel** — `FluentDrawer`; keeps the selected evidence context visible where viewport permits.
-- **Multi-section panel** — `FluentAccordion`; one item per titled sibling section, with primary evidence expanded by default.
-- **Command lifecycle tracker** — EventStore composition of `FcPendingCommandSummary`, `FcStatusBadge`, and `FluentText`; ordered states remain text-first and do not resemble decorative progress.
-- **Projection freshness indicator** — `FcProjectionConnectionStatus` with `FcStatusBadge`; renders provenance, lifecycle, observation, and freshness without inferring authority from color.
-- **Loading skeleton** — `FcProjectionLoadingSkeleton`; matches the eventual summary/grid layout and has no shimmer when reduced motion is requested.
-- **Empty state** — `FcProjectionEmptyPlaceholder`; names only the authorized visible scope and distinguishes empty from unavailable or denied.
-- **Deferred operation placeholder** — `FluentMessageBar`; contains read-only tracking context and the exact text “Unavailable in this release.” It has no form-like styling.
-- **Command palette** — `FcCommandPalette`; inherits Fluent dialog, input, and result-list appearances and never replaces visible navigation.
-- **Refresh controls** — `FluentButton` and `FluentSelect` in `FluentStack`; a compact group for manual refresh, pause/resume, and approved cadence choices.
-- **Live status regions** — semantic EventStore status containers with `FluentText`; visually persistent terminal outcomes, with no toast-only authority.
-- **Protected outcome** — `FcStatusBadge` plus bounded `FluentText`; distinguishes typed unreadable outcomes without displaying protected bytes.
+| Component | Visual role and constraint |
+|---|---|
+| **Dashboard shell** | One inherited host frame; never a second EventStore shell. |
+| **Module navigation** | One selected **Event Store Admin** entry for every child route. |
+| **Page layout** | One work canvas with inherited width and spacing. |
+| **Dashboard header** | One clear title followed by authorized scope and bounded utilities. |
+| **Dashboard tabs** | Inherited selected, focus, and disabled appearances; horizontal overflow is a layout-only exception. |
+| **Stat summary** | Repeated compact metrics with visible evidence state and observation time. |
+| **Filter bar** | One compact control group directly above its evidence grid. |
+| **Evidence grid** | Dense rows, strong header hierarchy, labelled overflow, and one action location. |
+| **Status badge** | Inherited semantic slot with readable canonical state text. |
+| **Issue banner** | Consequence-led intent; never borrows a lifecycle badge color. |
+| **Operation dialog** | Visually separates frozen scope, effect, risk, reversibility, and confirmation. |
+| **Detail panel** | A labelled evidence aside that keeps source context visible where space permits. |
+| **Multi-section panel** | Titled sibling sections; primary evidence expanded by default. |
+| **Command lifecycle tracker** | Text-first ordered states, never decorative progress. |
+| **Projection freshness indicator** | Provenance, lifecycle, observation, and freshness; Tenants-consistent text/icon/color mapping. |
+| **Projection connection status** | A bounded connection/reconciliation message bar; never lifecycle evidence. |
+| **Loading skeleton** | Matches the eventual summary/grid layout; no reduced-motion shimmer. |
+| **Empty state** | Names authorized scope and remains distinct from unavailable or denied. |
+| **Deferred operation placeholder** | Read-only unavailable treatment with no form-like affordance. |
+| **Command palette** | Inherited dialog/input/results styling; never replaces visible navigation. |
+| **Refresh controls** | Compact manual refresh, pause/resume, and approved-cadence group. |
+| **Live status regions** | Persistent terminal outcomes; never toast-only authority. |
+| **Protected outcome** | Bounded typed explanation without protected bytes. |
 
-The promoted [dashboard overview mock](mockups/dashboard-overview.html) and its [rendered PNG](mockups/dashboard-overview.png) illustrate dashboard density. The [command investigation mock](mockups/command-investigation.html) and its [rendered PNG](mockups/command-investigation.png) illustrate command-evidence hierarchy. The [desktop](imports/fluent-ui-v5-home-desktop.png) and [mobile](imports/fluent-ui-v5-home-mobile.png) captures illustrate inherited shell density and responsive navigation. These artifacts are illustrative and non-copyable until regenerated against current bindings; the two spines win on conflict.
+The promoted [dashboard overview mock](mockups/dashboard-overview.html), [desktop render](mockups/dashboard-overview.png), and [mobile render](mockups/dashboard-overview-mobile.png) illustrate dashboard density and contained grid overflow. The [command investigation mock](mockups/command-investigation.html), [desktop render](mockups/command-investigation.png), and [mobile render](mockups/command-investigation-mobile.png) illustrate command-evidence hierarchy and the detail panel's narrow-screen move. The upstream Fluent [desktop](imports/fluent-ui-v5-home-desktop.png) and [mobile](imports/fluent-ui-v5-home-mobile.png) captures illustrate inherited shell density and responsive navigation. These artifacts are illustrative, current composition references and remain non-copyable; the two spines win on conflict.
 
 ## Do's and Don'ts
 
