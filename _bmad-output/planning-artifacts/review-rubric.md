@@ -2,7 +2,7 @@
 
 ## Overall verdict
 
-Reviewed PRD SHA-256 `094059d481115edb63a46e7be7ad40525d59c70e1206908937339ab1224cff55` at repository `HEAD` `dd55a6d1e128989777ae6c47459da0f746e84e53` plus the documented dirty worktree. The PRD now resolves the supplied validation's critical/high specification gaps or retains their unresolved implementation/evidence conditions as explicit mandatory `FAIL/BLOCKED` gates; implementation readiness remains correctly `blocked` with aggregate `Reject`, and no failed gate is mistaken for delivered evidence.
+Reviewed PRD SHA-256 `9a35ebce65d0f5f5bbcf72b07a213c6a232f1020071a6f1d0430ed01e0e78c6f` at repository `HEAD` `9cde9f2d57bc6531ddbb38df09720229b24f7efe` plus the documented dirty worktree. The PRD now resolves the supplied validation's critical/high specification gaps or retains their unresolved implementation/evidence conditions as explicit mandatory `FAIL/BLOCKED` gates; implementation readiness remains correctly `blocked` with aggregate `Reject`, and no failed gate is mistaken for delivered evidence.
 
 No critical or high PRD-quality finding remains. The PRD passes this rubric/finalize review as a truthful final requirements baseline; this does not pass any implementation gate, approve the dirty artifact set, or change the established MVP/post-MVP boundary.
 
@@ -40,7 +40,7 @@ The unresolved append race creates a difficult scope decision, but the PRD handl
 
 Every FR has at least one observable consequence in its requirement or feature-level evidence statement. The previously ambiguous omnibus requirements now have stable clauses in §7.1, including FR4, FR5, FR7, FR12, FR26, FR33, FR34, FR36, and NFR17, with an all-clauses-required parent rule. The remaining requirements are covered by the total G-MVP-COVERAGE contract, which requires a primary owner, terminal lifecycle state, exact evidence digest, validator result, approval, and blocking-gate linkage for every MVP ID.
 
-The absent NFR8 numeric projection bound is not presented as done: G-NFR8 and OR16 define the exact specification contents and prohibit Story 6.4 from starting. Likewise, current tenant, status-identity, append, compatibility, all-host authentication, runtime-parity, and consumer-removal implementation failures remain explicit failed acceptance gates. This is correct fail-closed done-ness, not incomplete PRD wording.
+The absent NFR8 numeric projection bound is not presented as done: G-NFR8 and OR16 define the exact specification contents and prohibit Story 6.4 from starting. Likewise, current tenant, status-identity, append, compatibility, all-host authentication, runtime-parity, and consumer-removal implementation failures remain explicit failed acceptance gates. Story 5.4's wrapper `in-progress`, tracker `review`, and epics `backlog` states are recorded consistently in §11.3 and OR15 as non-terminal and non-authorizing. This is correct fail-closed done-ness, not incomplete PRD wording.
 
 ### Findings
 

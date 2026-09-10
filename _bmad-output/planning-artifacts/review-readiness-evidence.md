@@ -1,9 +1,9 @@
 # PRD Finalize Review — Readiness And Evidence Consistency
 
 **Reviewed:** 2026-09-10  
-**PRD SHA-256:** `094059d481115edb63a46e7be7ad40525d59c70e1206908937339ab1224cff55`  
-**Repository HEAD:** `dd55a6d1e128989777ae6c47459da0f746e84e53`  
-**Repository state:** `main`, one commit ahead of `origin/main`, dirty and unapproved  
+**PRD SHA-256:** `9a35ebce65d0f5f5bbcf72b07a213c6a232f1020071a6f1d0430ed01e0e78c6f`
+**Repository HEAD:** `9cde9f2d57bc6531ddbb38df09720229b24f7efe`
+**Repository state:** `main`, two commits ahead of `origin/main`, dirty and unapproved
 **Finding counts:** 0 critical, 0 high, 0 medium, 0 low
 
 ## Verdict
@@ -48,7 +48,7 @@ The publication lifecycle separates `built`, `evidence-candidate-published`, `ev
 
 ### Current evidence and lifecycle drift — PASS
 
-The PRD distinguishes the historical `293c69c...` validation baseline from the current finalize review at `dd55a6d...`. §11.3 and OR15 accurately represent Story 3.15 subject drift, Story 4.5 historical-observation versus current-packet drift, Stories 4.15/5.2/5.4/6.1 wrapper-tracker-epic conflicts, and Story 5.3's aligned committed tracker/wrapper but stale epics narrative. None can supply gate evidence.
+The PRD distinguishes the historical `293c69c...` validation baseline and its recorded `dd55a6d...` finalize-review head from this independent review of the current bytes at `9cde9f2...`. §11.3 and OR15 accurately represent Story 3.15 subject drift, Story 4.5 historical-observation versus current-packet drift, Stories 4.15/5.2/6.1 wrapper-tracker-epic conflicts, and Story 5.3's aligned committed tracker/wrapper but stale epics narrative. Story 5.4 is now factually reconciled as wrapper `in-progress`, tracker `review`, and epics `backlog`; all three values are non-terminal and none supplies delivery or gate evidence.
 
 ### Fail-closed aggregate and owner/trigger coverage — PASS
 
@@ -71,4 +71,4 @@ Every mandatory gate is conjunctive, non-waivable, content-bound, invalidating, 
 
 ## Acceptance Recommendation
 
-Accept the PRD as the finalized requirements document at SHA-256 `094059d481115edb63a46e7be7ad40525d59c70e1206908937339ab1224cff55`. Preserve `implementation_readiness_status: blocked` and `implementation_readiness_result: reject`. Do not run or publish a `READY` result until every mandatory §11.4 gate passes against one clean, content-bound, approved baseline and OR1's final rerun completes.
+Accept the PRD as the finalized requirements document at SHA-256 `9a35ebce65d0f5f5bbcf72b07a213c6a232f1020071a6f1d0430ed01e0e78c6f`. Preserve `implementation_readiness_status: blocked` and `implementation_readiness_result: reject`. Do not run or publish a `READY` result until every mandatory §11.4 gate passes against one clean, content-bound, approved baseline and OR1's final rerun completes.

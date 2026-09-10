@@ -1,4 +1,4 @@
-# Platform / API-Contract Adversarial Review — Sealed Final Rebind
+# Platform / API-Contract Adversarial Review — Sealed Story 5.4 Rebind
 
 ## Verdict
 
@@ -12,8 +12,8 @@ Current red implementation/evidence gates are correctly represented as blockers 
 
 ## Reviewed Baseline And Reproduced Evidence
 
-- Observed repository `HEAD`: `dd55a6d1e128989777ae6c47459da0f746e84e53`.
-- Reviewed PRD SHA-256: `094059d481115edb63a46e7be7ad40525d59c70e1206908937339ab1224cff55`.
+- Observed repository `HEAD`: `9cde9f2d57bc6531ddbb38df09720229b24f7efe`.
+- Reviewed PRD SHA-256: `9a35ebce65d0f5f5bbcf72b07a213c6a232f1020071a6f1d0430ed01e0e78c6f`.
 - Architecture SHA-256: `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51`.
 - Epics SHA-256: `d067c8fbffce47d7d0518396265f862093ec1a513cab73cb9fea1e88185cf33b`.
 - Sprint-status SHA-256: `3c007f0d7fc281987f71b90573392e66d6b1730df5c7ae9f730a9e78149f9c82`.
@@ -21,6 +21,7 @@ Current red implementation/evidence gates are correctly represented as blockers 
 - `python3 tools/validate-oq8-platform-evidence.py --pre-review` exits 1 with `Reviewed public document body drift: docs/guides/configuration-reference.md`.
 - The canonical production profile, publication-authority record/validator, consumer-removal manifest/validator, high-risk matrix/validator, MVP-coverage manifest/validator, and corrective-work authorization validator required by the PRD are absent. Each corresponding gate remains explicitly failed; absence grants no authority.
 - Story 3.15's packet/spec subject is `aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5`; `sprint-status.yaml:143` still records stale subject `a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448`. The packet registry contains exactly `eventstore-owner`, `release-owner`, and `test-architect`; G-RUNTIME-PARITY now names that same set.
+- Concurrent Story 5.4 implementation evidence is non-terminal: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md:5` says `in-progress`, `_bmad-output/implementation-artifacts/sprint-status.yaml:206` says `review`, and `_bmad-output/planning-artifacts/epics.md:3870` says `backlog`. The PRD records exactly this disagreement in §11.3 and OR15, gives none of the values completion authority, and keeps G-BASELINE failed.
 
 ## Critical
 
@@ -47,7 +48,7 @@ None. The prior non-authorship ambiguity is resolved by G-HIGH-RISK and OR10 req
 - **Clause and total-MVP closure:** §7.1 prevents omnibus/story-status closure. G-MVP-COVERAGE is total over FR1-FR36, NFR1-NFR18, every stable clause, and the SM9/SM10/SM12 denominators; `N/A`, omissions, duplicate owners, stale identities, unsupported `done`, and failed/unapproved evidence reject.
 - **High-risk applicability and readiness:** G-HIGH-RISK enumerates all 17 mandatory gates including itself and G-READINESS, rejects omissions/unknown/new unclassified gates, and requires explicit `high-risk` or reason-coded `standard-control` classification. G-READINESS consumes the approved baseline, complete MVP manifest, and every passing mandatory row. Any invalidation returns the aggregate to `Reject`.
 - **Corrective exception:** §0 and OR28 require a content-bound, path/mutation-limited, expiring/revocable preflight record, postflight diff/evidence validation, deterministic output-subject derivation, and all authority flags false. Until its validator exists and passes, no corrective implementation handoff is authorized; corrective authority never supplies the authority it is intended to produce.
-- **Cross-artifact conflicts:** Architecture AD-10 Tenants omission, AD-26 assumption status, detailed UX drift, epics ownership/lifecycle drift, Story 3.15 subject drift, Story 4.5 current packet conflict, and other tracker/wrapper disagreements are expressly bound into G-BASELINE/OR14/OR15. They cannot be converted into positive evidence by hash refresh or story labels.
+- **Cross-artifact conflicts:** Architecture AD-10 Tenants omission, AD-26 assumption status, detailed UX drift, epics ownership/lifecycle drift, Story 3.15 subject drift, Story 4.5 current packet conflict, Story 5.4's `in-progress`/`review`/`backlog` disagreement, and other tracker/wrapper disagreements are expressly bound into G-BASELINE/OR14/OR15. They cannot be converted into positive evidence by hash refresh, review labels, completed task boxes, or other non-terminal story evidence.
 
 ## Acceptance Recommendation
 
