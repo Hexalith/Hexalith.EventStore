@@ -1,75 +1,54 @@
-# Platform / API-Contract Adversarial Review
+# Platform / API-Contract Adversarial Review — Sealed Final Rebind
 
 ## Verdict
 
-**Reject as a current chain-top implementation or consumer-handoff baseline.** The PRD is admirably explicit that readiness is blocked, but that warning does not cure several concrete contract conflicts. The tracked REST generator violates the architecture's tenant and command-status identity rules while the corresponding stories are recorded `done`; the public compatibility policy omits most of the platform surface; the authentication contract does not cover every external API host; and consumer-removal authority exists only as a stronger architecture rule, not as a PRD requirement. The known append-loss and unreproducible OQ8 authority gaps remain genuine release blockers. Treat this document as a requirements draft with a conservative `Reject`, not as executable authority for release, deployment, API compatibility, or consumer infrastructure removal.
+**PRD CONTRACT PASS. Implementation readiness remains `blocked` and the aggregate result remains `Reject`.**
+
+The settled PRD closes the prior Critical and High platform/API-contract defects. It now specifies a fail-closed mandatory-gate chain for tenant isolation, status identity, append-loss prevention, OQ8 reproducibility, public compatibility, JWT host conformance, deployed-runtime parity, publication authority, consumer removal, high-risk evidence, total MVP coverage, and final readiness. No story status, local document edit, candidate publication, owner assertion, risk acceptance, or partial evidence can satisfy that chain.
+
+Current red implementation/evidence gates are correctly represented as blockers rather than PRD defects. No present evidence authorizes `READY`, Phase 4 MVP completion, release, production promotion, deployment, migration, or consumer infrastructure removal.
+
+**Finding counts:** Critical 0 · High 0 · Medium 0 · Low 0
+
+## Reviewed Baseline And Reproduced Evidence
+
+- Observed repository `HEAD`: `dd55a6d1e128989777ae6c47459da0f746e84e53`.
+- Reviewed PRD SHA-256: `094059d481115edb63a46e7be7ad40525d59c70e1206908937339ab1224cff55`.
+- Architecture SHA-256: `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51`.
+- Epics SHA-256: `d067c8fbffce47d7d0518396265f862093ec1a513cab73cb9fea1e88185cf33b`.
+- Sprint-status SHA-256: `3c007f0d7fc281987f71b90573392e66d6b1730df5c7ae9f730a9e78149f9c82`.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` exits 1 with `exactly three packet-bound receipts are required`.
+- `python3 tools/validate-oq8-platform-evidence.py --pre-review` exits 1 with `Reviewed public document body drift: docs/guides/configuration-reference.md`.
+- The canonical production profile, publication-authority record/validator, consumer-removal manifest/validator, high-risk matrix/validator, MVP-coverage manifest/validator, and corrective-work authorization validator required by the PRD are absent. Each corresponding gate remains explicitly failed; absence grants no authority.
+- Story 3.15's packet/spec subject is `aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5`; `sprint-status.yaml:143` still records stale subject `a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448`. The packet registry contains exactly `eventstore-owner`, `release-owner`, and `test-architect`; G-RUNTIME-PARITY now names that same set.
 
 ## Critical
 
-### C1. The generated public API contradicts the canonical tenant boundary
-
-- **Location:** PRD §5 tenant-isolation concern, NFR2 (§7), §8.2; architecture AD-10 and AD-27; `epics.md` Stories 2.2/2.5 and `sprint-status.yaml` lines 103/106.
-- **Evidence / note:** NFR2 says tenant isolation includes generated REST APIs, and AD-27 requires exactly one explicit tenant, lowercase canonicalization under the `AggregateIdentity` grammar, rejection of invalid/conflicting tenant values, and rejection of `system` at every public boundary. The shipped generator instead returns literal `"system"` for `RestTenantSource.System`; route mode only converts whitespace to null and otherwise forwards the original spelling; claims mode returns the sole raw claim. It neither canonicalizes nor enforces the grammar/reserved-name rule (`RestApiControllerEmitter.cs` lines 407-445). Generator tests intentionally compile `RestTenantSource.System`, including an `api/tenants` surface. Stories 2.2 and 2.5 are nevertheless `done`, and their acceptance criteria never bind AD-27. This is not merely missing evidence: the reusable public adapter currently emits behavior forbidden by the architecture.
-- **Fix:** Promote AD-27's exact public-boundary consequences into NFR2/FR12 (or stable sub-requirements), assign a primary story for the generator and every host, and add compiled-controller negative tests for uppercase, malformed, duplicate/conflicting, unauthorized, and reserved-`system` tenants. Do not call the external REST surface tenant-safe until the emitted code uses the shared canonicalizer and those tests pass.
-
-### C2. A completed public `Location` contract can still select `CorrelationId` as command identity
-
-- **Location:** PRD FR12, FR27, §8.2; architecture AD-17; `epics.md` Story 2.9; `sprint-status.yaml` line 110.
-- **Evidence / note:** AD-17 states that `MessageId` is the sole status identity and `CorrelationId` never selects a command record. Story 2.9 says the tracking field must be read without assuming correlation equals message identity and is recorded `done`. The generator emits `string __hexalithStatusKey = __hexalithResponse.MessageId ?? __hexalithResponse.CorrelationId;` (`RestApiControllerEmitter.cs` line 281), and `RestApiControllerGenerationTests.cs` line 65 pins that fallback. When a response lacks `MessageId`, the generated external API may advertise a status URI for diagnostic correlation metadata, directly violating the adopted public contract.
-- **Fix:** Make FR12 explicitly require `MessageId` as the only status key and fail-closed omission when it is absent or invalid. Remove the correlation fallback, add runtime tests for missing/invalid `MessageId`, and reopen/reconcile Story 2.9 rather than preserving `done` against contradictory shipped bytes.
-
-### C3. Phase 4 still has a reproduced silent append-loss class with no delivered guard
-
-- **Location:** PRD NFR7, §9 safety boundary, SM11, OR4; architecture AD-5 and production-gates table; `epics.md` Story 4.5.
-- **Evidence / note:** Story 4.5 records `same-key-overwrite-raw-durable-write-lost`. The PRD correctly admits that the OQ8 fence is not provider-level append fencing, that class (c) is undelivered, and that fencing remains outside MVP implementation scope. This is therefore a truthful blocker rather than a hidden defect, but it is still Critical: a product whose defining promise is durable event storage cannot authorize MVP completion, release, or deployment while a supported writer race can silently overwrite durable state. The epic text also says the implementation gap is still unowned (`DW-326`).
-- **Fix:** Create and approve an owned implementation/evidence slice for provider-portable write-once/append fencing, or define and mechanically enforce a supported operating envelope in which the second writer cannot exist. Retain the global block until production-path evidence proves loss prevention; risk-acceptance prose alone must never pass the gate.
-
-### C4. Durable-admission semantics still depend on normative bytes EventStore cannot reproduce
-
-- **Location:** PRD §1.1, FR27, NFR7, NFR16, OR11; architecture AD-25.
-- **Evidence / note:** The PRD delegates descriptor fields, state-machine outcomes, timers, tombstones, failure handling, and evidence denominators to a Hexalith.Folders document, while explicitly admitting the bytes are absent from this repository. A digest without the governed bytes cannot let an EventStore developer, reviewer, CI job, or consumer reconstruct the contract. The local pre-review gate is also currently red: `python3 tools/validate-oq8-platform-evidence.py --pre-review` exits 1 with `Reviewed public document body drift: docs/guides/configuration-reference.md`. Thus neither the normative contract nor the current evidence closure is reproducible from the claimed baseline.
-- **Fix:** Retain a permitted immutable copy, a complete approved normative projection, or a signed/content-addressed attestation whose bytes are available to validation. Bind that identity through PRD, architecture, epics, packet, and CI, repair/reseal the drifted OQ8 subject through its governed review path, and keep Story 4.15/release/consumer handoff closed until the gate passes.
+None.
 
 ## High
 
-### H1. The backward-compatibility requirement excludes most of the public platform
-
-- **Location:** PRD NFR12, FR2-FR7, FR11-FR16, §5 public-contract concern.
-- **Evidence / note:** NFR12's closed protected set covers only the SignalR signal-only notification, existing generic gateway APIs, and named payload-protection read formats. It does not protect the domain-service SDK methods and mapped endpoints, REST attributes and generated routes, Problem Details/error codes, query metadata headers, event envelopes, serialization contracts, DAPR wire methods, or most public NuGet abstractions. The repository has scattered compatibility tests, but no PRD-level versioning/deprecation/breaking-change policy or release gate for the complete public surface. A developer platform can therefore satisfy this PRD while silently breaking its principal consumers.
-- **Fix:** Inventory public source/binary/wire/HTTP contracts, classify each compatibility promise, define additive/deprecation/removal and SemVer rules, and require API/wire baselines plus representative package-only consumer tests before release.
-
-### H2. The signing-key contract leaves the Tenants external API and future generated hosts outside NFR3
-
-- **Location:** PRD NFR1-NFR3 and §3 target users; architecture AD-10 JWT contract; `epics.md` Story 2.5 and NFR3 coverage.
-- **Evidence / note:** NFR3 names only the EventStore gateway, Admin Server Host, and Sample API. The architecture says the shared JWT contract also governs every future JWT-binding host, but that obligation is absent from the PRD. The dedicated Tenants API is an explicit product surface; Story 2.5 is `done` under older acceptance that checks issuer/audience/HTTPS/minimum symmetric-key length, not NFR3's production symmetric-mode ban, explicit algorithm allowlist, 60-second skew, role validation, and tenant validation. The NFR3 traceability row does not include Story 2.5. This permits authentication posture to vary by generated host.
-- **Fix:** Define NFR3 by capability (`every externally reachable or JWT-binding host`) rather than a closed host list, require the shared contract/fingerprint, and add Tenants plus a generated-host conformance fixture to primary coverage and release evidence.
-
-### H3. The PRD's consumer-removal gate is weaker than the architecture's actual safety rule
-
-- **Location:** PRD FR36, §6.8, glossary Owner Roles; architecture AD-22; `epics.md` Story 3.15.
-- **Evidence / note:** FR36 requires an EventStore owner-reviewed packet and an exact EventStore SHA match. AD-22 additionally requires a consumer-specific repository/commit, applicable-mode matrix, exact removal-subject digest, authenticated Consumer-owner receipt, validity, and invalidation on bound change. The PRD's Owner Roles does not even define Consumer owner. Because product requirements are supposed to own intent while architecture owns mechanism, this material authorization policy is stranded in the lower-level artifact and can disappear from a future architecture revision without violating FR36.
-- **Fix:** Amend FR36 with stable consumer-specific authorization outcomes and invalidation conditions, define the Consumer-owner role, and separate EventStore capability availability, release/deployment authority, and each consumer's removal authorization as independently failing gates.
-
-### H4. The dated reject result no longer describes one coherent current repository baseline
-
-- **Location:** PRD frontmatter and §0, SM2, OR14; `epics.md` frontmatter; current tracked repository.
-- **Evidence / note:** The PRD binds its readiness result to commit `1b6f08d4...`, while current `HEAD` is `293c69c4...` and includes substantial authentication, planning, evidence-validator, and documentation changes. Meanwhile the `epics.md` recorded PRD/architecture digests now exactly equal the current files (`b99eff...` and `7e3dbc...`), contradicting OR14/SM2's assertion that those input digests are still stale. The current OQ8 pre-review failure is public-document drift, not the lifecycle-only failure recorded in the prior review. The posture remains conservatively blocked, but the stated reasons and provenance are not a truthful single snapshot.
-- **Fix:** Re-run source reconciliation against an explicit clean commit, record current digests and validation outputs as one atomic baseline, retire or rewrite blockers that repository truth has superseded, and distinguish stable product requirements from generated/current execution status.
+None.
 
 ## Medium
 
-### M1. Ownership traceability is not delivery traceability
+None. The prior non-authorship ambiguity is resolved by G-HIGH-RISK and OR10 requiring both an authenticated independent second identity and sealed CI validation. The publication-vocabulary drift is explicitly identified as an external reconciliation blocker in OR14 and G-BASELINE rather than presented as a closed or authorizing state.
 
-- **Location:** PRD §11.1-§11.2, §10 metrics, OR7/OR13/OR17.
-- **Evidence / note:** The PRD correctly says its tables report declarations rather than delivery, but it still provides no authoritative clause-level result for most FRs/NFRs. Tracker `done`, story wrapper status, implementation evidence, and actual public behavior can disagree—as the tenant and `Location` conflicts demonstrate. A downstream developer cannot determine which contract is safe to consume from the chain-top artifact.
-- **Fix:** Add one generated exit ledger keyed by stable requirement/sub-requirement ID, with current result, exact evidence identity, evaluator, waiver policy, and invalidation trigger. Keep volatile rows out of the durable narrative, but make the current ledger part of readiness input.
+## Verified Contract Closure
 
-### M2. Shared-workflow governance mixes mutable and immutable authority
+- **Tenant boundary:** NFR2 (`prd.md:348`) matches AD-27 (`architecture.md:286-290`): invariant lowercase normalization precedes comparison/authorization; one explicit tenant is required; mixed-case positives are allowed only after canonicalization; missing, duplicate, conflicting-after-normalization, invalid, unauthorized, whitespace-repaired, reserved `system`, and synthetic-platform cases fail before disclosure or state access. G-TENANT remains failed against current code.
+- **Status identity and compatibility:** MessageId Contract Version (`prd.md:187`), FR12 (`prd.md:244`), NFR12 (`prd.md:358`), G-STATUS-ID (`prd.md:638`), and OR21 (`prd.md:692`) define endpoint-selected v1/v2 grammars, canonical v2 ULID round-trip, byte-preserved legacy v1, and `MessageId` as the sole status selector. `CorrelationId` fallback is prohibited. G-COMPAT closes the public-surface inventory, source/binary/wire baselines, representative consumers, and SemVer-major exception without waiving evidence.
+- **Append loss:** NFR7 and G-APPEND distinguish the internal OQ8 fence from provider-level append fencing. The reproduced `same-key-overwrite-raw-durable-write-lost` outcome cannot count as prevention; no risk-acceptance waiver exists. Story 4.5's retired narrative now separates the accepted historical FR31 observation from its current non-authorizing packet/lifecycle conflict (`prd.md:720`).
+- **OQ8:** §1.1 binds repository, path, commit, and SHA-256 and states that unavailable governing bytes cannot close OQ8. G-OQ8 names the exact pre-review command and rejects the observed public-document drift.
+- **JWT all-host conformance:** NFR3 and G-AUTH-HOSTS cover EventStore, Admin, Sample, Tenants, generated-host fixtures, and future JWT-binding hosts with a shared versioned fingerprint and complete negative contract. Current hand-written/partial host behavior remains failed.
+- **Story 3.15:** G-RUNTIME-PARITY binds the exact current subject, packet root, exact validator, and registry roles. Three receipts establish only `evidence-validated`; they cannot establish release availability or production promotion. Current 0/3 receipts and tracker-subject drift correctly fail the gate.
+- **Publication authority:** The lifecycle, Canonical Production Profile Inventory (`prd.md:177`), G-PUBLICATION-AUTH (`prd.md:645`), and OR29 (`prd.md:700`) close state order, authenticated roles, predecessor chain, source/package/OCI/receipt lineage, profile completeness, AD-26 `deploy/dapr/production-profile.yaml` canonical-byte digest, deployment identity, time validity, revocation, invalidation, and exact validator. Absent, under-declared, unknown, or self-only profiles fail.
+- **Consumer-removal authority:** FR36, G-CONSUMER, and OR24 enumerate every root-declared or Phase-4-referenced consumer whether or not removal is proposed. `N/A` is reachable only for a bound no-removal diff; Parties is applicable and failed. Runtime, release, promotion, or platform-owner evidence cannot substitute for an authenticated consumer-owner receipt bound to repository/commit, removal digest, mode matrix, canonical profile digest, and validity.
+- **Clause and total-MVP closure:** §7.1 prevents omnibus/story-status closure. G-MVP-COVERAGE is total over FR1-FR36, NFR1-NFR18, every stable clause, and the SM9/SM10/SM12 denominators; `N/A`, omissions, duplicate owners, stale identities, unsupported `done`, and failed/unapproved evidence reject.
+- **High-risk applicability and readiness:** G-HIGH-RISK enumerates all 17 mandatory gates including itself and G-READINESS, rejects omissions/unknown/new unclassified gates, and requires explicit `high-risk` or reason-coded `standard-control` classification. G-READINESS consumes the approved baseline, complete MVP manifest, and every passing mandatory row. Any invalidation returns the aggregate to `Reject`.
+- **Corrective exception:** §0 and OR28 require a content-bound, path/mutation-limited, expiring/revocable preflight record, postflight diff/evidence validation, deterministic output-subject derivation, and all authority flags false. Until its validator exists and passes, no corrective implementation handoff is authorized; corrective authority never supplies the authority it is intended to produce.
+- **Cross-artifact conflicts:** Architecture AD-10 Tenants omission, AD-26 assumption status, detailed UX drift, epics ownership/lifecycle drift, Story 3.15 subject drift, Story 4.5 current packet conflict, and other tracker/wrapper disagreements are expressly bound into G-BASELINE/OR14/OR15. They cannot be converted into positive evidence by hash refresh or story labels.
 
-- **Location:** PRD FR25, NFR9, §8.1, OR18; architecture AD-11/AD-22; `.github/workflows`.
-- **Evidence / note:** FR25 requires shared Hexalith.Builds gates through mutable `@main`, while §8.1 and the architecture rely on a SHA-pinned shared publisher/validator for reproducible release authority. The release caller is pinned, but CI, CodeQL, commitlint, dependency-review, and initialization still use `@main`. OR18 admits the exact enforcing workflow identity is not bound. The PRD does not state which mutable uses may affect an authorizing result and which are advisory.
-- **Fix:** Classify every shared workflow/action as authorizing or advisory, pin every authorizing dependency by immutable identity, bind that identity into evidence, and explicitly constrain where `@main` is acceptable.
+## Acceptance Recommendation
 
-## Low
-
-None.
+Accept the PRD's platform/API contract for finalization. Preserve `implementation_readiness_status: blocked` and `implementation_readiness_result: reject`. Do not publish a READY report, release, promote, deploy, migrate, or remove consumer infrastructure until every mandatory gate passes against one clean, current, content-bound, approved source set and readiness is rerun.
