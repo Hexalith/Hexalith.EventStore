@@ -174,7 +174,7 @@ development_status:
   # correct side: the Story 4.7 review closed at pass 6 on 2026-09-06 and
   # deliberately left the story in-progress with 7 patches unapplied. This key is
   # not in the OQ8 validator's pinned status map, so nothing caught the drift.
-  4-7-tenants-query-provenance-follow-up: in-progress
+  4-7-tenants-query-provenance-follow-up: review
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
   # Stories 4.9 and 4.10 are ledger-only: they were delivered under the Story 4.8

@@ -4168,3 +4168,15 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: `docs/guides/configuration-reference.md` still documents only public `EventStore:OpenApi:Enabled`; Admin discovery is already stated in `api-contracts.md`.
   evidence: Host/OpenAPI chunk decision (2026-09-10). Deferred: do not remint the already-drifting OQ8 public-document seal from this slice; add the Admin catalog paragraph on the Docs chunk / later public-document remint.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Make the Tenants no-Keycloak Aspire topology provision valid local JWT authentication without process-level test overrides.
+  evidence: EventStore now exits 134 with `OptionsValidationException` because the Tenants AppHost disables Keycloak but supplies neither an authority nor signing key; process-local JWT settings make the exact Story 4.7 proof pass in both modes, so permanent repair belongs to Tenants AppHost authentication composition rather than producer provenance.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Add real-browser evidence that Admin destructive-dialog close paths restore focus to the initiating control.
+  evidence: Existing bUnit tests assert only the `focusElementById` interop call and do not execute `interop.js`; deleting the underlying `element.focus()` would leave them green while keyboard focus restoration fails.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Add Tenants browser automation proving the global-administrator removal modal wraps focus from its start sentinel to Cancel.
+  evidence: The current component test injects a synthetic successful `focusElementById` result and no browser test loads `tenantsFocus.js`, so deployed focus can remain on the invisible sentinel without a failing test.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
+  summary: Merge handler query-type catalogs across multiple registrations for the same EventStore domain.
+  evidence: `AdminOperationalIndexHostedService.RefreshAsync` writes only the refreshed registration's handler set to `admin:query-types:{domain}`, allowing one same-domain registration to overwrite sibling handlers and misroute their queries.
