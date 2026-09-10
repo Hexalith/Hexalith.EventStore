@@ -4180,3 +4180,24 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md`
   summary: Merge handler query-type catalogs across multiple registrations for the same EventStore domain.
   evidence: `AdminOperationalIndexHostedService.RefreshAsync` writes only the refreshed registration's handler set to `admin:query-types:{domain}`, allowing one same-domain registration to overwrite sibling handlers and misroute their queries.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Live Admin CLI mutation commands still have no confirmation gate.
+  evidence: Story 5.4 only required unavailable stub commands to return `ExitCodes.Error`; callable `projection pause/resume/reset` and other live groups still execute without a preview/confirm step.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Admin UI token acquisition does not map empty or non-JSON OIDC bodies to a bounded parse error.
+  evidence: `AdminApiAccessTokenProvider` JSON parsing is Story 5.3 authentication code in the same baseline window, not this Admin hygiene envelope.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Token-response size-limit handling can classify network `HttpRequestException` as an oversized OIDC body.
+  evidence: `LoadIntoBufferAsync` exception filtering is Story 5.3 token-acquisition code in the same baseline window.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Non-int32 `expires_in` values can throw during Admin token parse.
+  evidence: `expires_in` handling is Story 5.3 token-acquisition code in the same baseline window.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Sample BlazorUI token acquisition has the same OIDC empty/non-JSON parse gap as Admin UI.
+  evidence: `EventStoreApiAccessTokenProvider` is the Story 5.3 sample twin, not Admin surface hygiene.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Publish-mode Tenants source inclusion can omit previously included tenant projects.
+  evidence: `HEXALITH_TENANTS_SOURCE` publish topology is later DAPR/authentication work this story forbids entering.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Named Admin/Sample token HTTP clients are not proven through `AddAdminUI` / host composition.
+  evidence: Redirect-refusal tests call `AddHttpClient` on a fresh `ServiceCollection`, so removing the production registration would leave those tests green.

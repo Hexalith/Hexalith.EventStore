@@ -423,6 +423,29 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
             .Arguments[0].ShouldBe(expectedFocusId);
     }
 
+    [Fact]
+    public async Task ExecuteOperationAsync_UnexpectedFailureUsesFixedCopy()
+    {
+        string secret = Guid.NewGuid().ToString("N");
+        _ = _mockApiClient.GetProjectionDetailAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ProjectionDetail?>(CreateDetail()));
+        IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
+            .Add(item => item.TenantId, "tenant-1")
+            .Add(item => item.ProjectionName, "counter-projection"));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Pause"), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => InvokeExecuteOperationAsync(
+            cut.Instance,
+            () => throw new Exception("bearer " + secret + " at redis://private")));
+
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe("Projection operation failed. Refresh status before deciding whether to retry.");
+        message.ShouldNotContain(secret);
+        message.ShouldNotContain("redis://private");
+        message.ShouldNotContain("completed", Case.Insensitive);
+    }
+
     [Theory]
     [InlineData("reset", "#projection-reset-button", "Reset request accepted")]
     [InlineData("replay", "#projection-replay-button", "Replay request accepted")]
@@ -468,6 +491,15 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"Method '{methodName}' not found.");
         await ((Task)method.Invoke(instance, null)!).ConfigureAwait(false);
+    }
+
+    private static async Task InvokeExecuteOperationAsync(object instance, Func<Task> operation)
+    {
+        System.Reflection.MethodInfo method = instance.GetType().GetMethod(
+            "ExecuteOperationAsync",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("ExecuteOperationAsync was not found.");
+        await ((Task)method.Invoke(instance, ["pause", operation])!).ConfigureAwait(false);
     }
 
     private static void SetPrivateField(object instance, string fieldName, object? value)

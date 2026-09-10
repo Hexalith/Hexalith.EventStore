@@ -141,6 +141,44 @@ deferred:
 | VG2-03 | `medium` — Pre-verified gap: snapshot create/edit/create-snapshot facts were unpinned. | patch |
 | VG2-04 | `medium` — Pre-verified gap: tenant generic-exception redaction lacked sentinel tests. | patch |
 | VG2-05 | `medium` — Pre-verified gap: consistency API `InvalidOperationException` lacked a trigger test. | patch |
+| BH3-01 | `medium` — carried Verified: the baseline-window `sprint-status.yaml` rewrite comes from Epic 3 tracking commits, not Admin hygiene. | defer |
+| BH3-02 | `false` — The spec-artifact changelog/`review_loop_iteration` observation is fixed only by editing this build's spec, which triage rejects. | reject |
+| BH3-03 | `false` — The intent-contract matrix names projection reset/replay, not pause/resume; those writes keep the pre-existing generic confirmation. | reject |
+| BH3-04 | `false` — Backup validate/export and compaction are outside the intent-contract destructive set; compaction stays a visibly deferred control. | reject |
+| BH3-05 | `medium` — Verified: live CLI mutation commands still have no confirmation gate. This story only required unavailable commands to return `ExitCodes.Error`; the live-CLI gap is pre-existing. | defer |
+| BH3-06 | `false` — Skip facts describe no processing and the dialog body describes queue removal; both match skip, they do not conflict. | reject |
+| BH3-07 | `false` — Tenant confirmation impact names the requested mutation; accepted-versus-completed wording is the post-call result language, which already says request accepted. | reject |
+| BH3-08 | `medium` — Verified: `ConfirmationFacts` renders `Target`/`Impact`/`RequiredPermission` with no 240-character bound, so identifier interpolation can exceed the Always bounded-output rule. | patch |
+| BH3-09 | `maybe-false` — carried `RestoreAsync` has no after-render wait; whether Fluent's trap still owns focus after `HideAsync` needs the deferred browser fixture. | defer |
+| BH3-10 | `false` — Bulk processing already breaks on 401/403; continuing later confirmed tenant groups after a non-denial failure is the remaining batch, not a post-denial mutation. | reject |
+| BH3-11 | `false` — `ServiceUnavailableException` messages are fixed client strings, and `AdminOperationResult.Message` is the API operator field, not a raw exception/stack leak. | reject |
+| BH3-12 | `false` — carried Every current write tool matches the `bool confirm=false` inventory filter; a different future signature is not present. | reject |
+| BH3-13 | `low` — carried Rejected: Development `Enabled=true` is already supplied by `appsettings.Development.json`; no user-facing defect. | reject |
+| BH3-14 | `false` — `security-model.md` documents JWT OIDC discovery, not Admin OpenAPI/Swagger; those are different surfaces. | reject |
+| BH3-15 | `medium` — carried Verified: AppHost still advertises `{adminServerHttps}/swagger/index.html`; topology wiring is outside this story. | defer |
+| BH3-16 | `false` — A mixed baseline-window diff is a dirty-tree process fact, not an Admin-hygiene product defect. | reject |
+| EC3-01 | `maybe-false` — carried duplicate of BH3-09/BH2-13: success-path `HideAsync` then `RestoreAsync` is the same unproven Fluent trap race. | defer |
+| EC3-02 | `maybe-false` — carried duplicate of BH3-09: dead-letter success unmount uses the same restore helper. | defer |
+| EC3-03 | `maybe-false` — carried duplicate of BH3-09: consistency success unmount uses the same restore helper. | defer |
+| EC3-04 | `maybe-false` — carried duplicate of BH3-09: snapshot success unmount uses the same restore helper. | defer |
+| EC3-05 | `maybe-false` — carried duplicate of BH3-09: tenant success unmount uses the same restore helper. | defer |
+| EC3-06 | `maybe-false` — carried duplicate of BH3-09: backup restore/import success unmount uses the same restore helper. | defer |
+| EC3-07 | `false` — Validate and export dialogs are outside the intent-contract destructive list that requires `ConfirmationFacts`. | reject |
+| EC3-08 | `false` — An empty `events` array is a legal export (`Exported 0 events`); local import already rejects a missing or non-array `events` property. | reject |
+| EC3-09 | `low` — Verified: `GetRestoreFocusId` interpolates raw `BackupId` into an HTML id, unlike snapshot policy ids which are encoded. Everyday backup ids are ULID-safe, but the restore initiator was added by this story. | patch |
+| EC3-10 | `false` — `RestoreAsync` already no-ops on a blank id; inventing a fallback target would violate exact-initiator restoration. | reject |
+| EC3-11 | `false` — Create/confirm controls stay disabled until required identifiers are non-whitespace, so blank facts cannot be confirmed. | reject |
+| EC3-12 | `low` — carried Rejected: a UTF-16 cut at the 240-character bound is unlikely in everyday support-safe preview use. | reject |
+| EC3-13 | `medium` — Verified: Admin token-provider OIDC empty/non-JSON handling lives in the Story 5.3 authentication surface, not this Admin hygiene envelope. | defer |
+| EC3-14 | `medium` — Verified: `LoadIntoBufferAsync` size-limit classification is Story 5.3 token-acquisition code in the same baseline window. | defer |
+| EC3-15 | `medium` — Verified: `expires_in` parsing is Story 5.3 token-acquisition code in the same baseline window. | defer |
+| EC3-16 | `medium` — Verified: the Sample BlazorUI token-provider twin is Story 5.3, not Admin surface hygiene. | defer |
+| EC3-17 | `medium` — Verified: publish-mode Tenants source inclusion is topology/authentication work this story forbids entering. | defer |
+| EC3-18 | `medium` — carried duplicate of BH3-01: sprint-status mutation is outside this story. | defer |
+| EC3-19 | `false` — duplicate of EC3-07: validate/export are not in-scope destructive confirms. | reject |
+| EC3-20 | `false` — Cancel-focus on validate/export is outside the intent-contract destructive set. | reject |
+| VG3-01 | `medium` — Pre-verified gap: Create Backup and snapshot create-policy/edit-policy/create-snapshot now close and restore on 401/403, but tests still cover only cancel plus sibling denials, so those four handlers can regress silently. | patch |
+| VG3-02 | `medium` — Pre-verified gap: named-client `AllowAutoRedirect=false` is proven only when tests call `AddHttpClient` directly, not through `AddAdminUI`. That composition is Story 5.3 token acquisition, not this hygiene envelope. | defer |
 
 ## Design Notes
 

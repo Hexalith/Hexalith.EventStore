@@ -872,7 +872,7 @@ public class BackupsPageTests : AdminUITestContext {
     }
 
     [Theory]
-    [InlineData("restore", "Backup 'bk-safe'", "parallel restore stream and never overwrite original event streams", "backup-restore-bk-safe")]
+    [InlineData("restore", "Backup 'bk-safe'", "parallel restore stream and never overwrite original event streams", "backup-restore-Ymstc2FmZQ")]
     [InlineData("import", "Imported event-stream content", "currently deferred stream-import path", "backup-import-button")]
     [InlineData("create", "Backup data for tenant 'tenant-a'", "currently deferred backend", "backup-create-button")]
     public async Task DestructiveDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
@@ -887,7 +887,7 @@ public class BackupsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("bk-safe"), TimeSpan.FromSeconds(5));
 
         string selector = action switch {
-            "restore" => "#backup-restore-bk-safe",
+            "restore" => "#backup-restore-Ymstc2FmZQ",
             "import" => "#backup-import-button",
             _ => "#backup-create-button",
         };
@@ -1015,8 +1015,8 @@ public class BackupsPageTests : AdminUITestContext {
             CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true),
         ]);
         IRenderedComponent<Backups> cut = Render<Backups>();
-        cut.WaitForAssertion(() => cut.Find("#backup-restore-bk-safe"), TimeSpan.FromSeconds(5));
-        await cut.Find("#backup-restore-bk-safe").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Find("#backup-restore-Ymstc2FmZQ"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-restore-Ymstc2FmZQ").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
         SetPrivateField(cut.Instance, "_restorePointInTime", "not-an-iso-date bearer secret-value");
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRestoreConfirm"));
@@ -1028,7 +1028,7 @@ public class BackupsPageTests : AdminUITestContext {
         message.ShouldBe("Invalid date format. Use ISO 8601 (e.g. 2026-03-20T14:30:00Z).");
         message.ShouldNotContain("secret-value");
         JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
-            .Arguments[0].ShouldBe("backup-restore-bk-safe");
+            .Arguments[0].ShouldBe("backup-restore-Ymstc2FmZQ");
     }
 
     [Fact]
@@ -1058,6 +1058,39 @@ public class BackupsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe("backup-import-button");
     }
 
+    [Theory]
+    [InlineData(true, "Access denied. Insufficient permissions.")]
+    [InlineData(false, "Authentication required. Please sign in again.")]
+    public async Task CreateBackupConfirm_DenialUsesSafeCopyClosesAndRestoresCreateButton(
+        bool forbidden,
+        string expectedMessage)
+    {
+        SetupJobs([]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden tenant-a backup at redis://private; bearer secret-value")
+            : new UnauthorizedAccessException("hidden tenant-a backup at redis://private; bearer secret-value");
+        _ = _mockBackupApi.TriggerBackupAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-create-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-create-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_createTenantId", "tenant-a");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateBackupConfirm"));
+
+        _ = await _mockBackupApi.Received(1).TriggerBackupAsync(
+            "tenant-a", null, true, Arg.Any<CancellationToken>());
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe(expectedMessage);
+        message.ShouldNotContain("hidden tenant");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        cut.FindAll("fluent-dialog[aria-label='Create Backup (deferred)']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-create-button");
+    }
+
     [Fact]
     public async Task RestoreDialog_ForbiddenUsesFixedCopyClosesAndRestoresExactInitiator() {
         SetupJobs([CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true)]);
@@ -1066,8 +1099,8 @@ public class BackupsPageTests : AdminUITestContext {
             .Returns(Task.FromException<AdminOperationResult?>(
                 new ForbiddenAccessException("hidden backup exists at redis://private; bearer secret-value")));
         IRenderedComponent<Backups> cut = Render<Backups>();
-        cut.WaitForAssertion(() => cut.Find("#backup-restore-bk-safe"), TimeSpan.FromSeconds(5));
-        await cut.Find("#backup-restore-bk-safe").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Find("#backup-restore-Ymstc2FmZQ"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-restore-Ymstc2FmZQ").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRestoreConfirm"));
 
@@ -1079,11 +1112,11 @@ public class BackupsPageTests : AdminUITestContext {
         message.ShouldNotContain("secret-value");
         cut.FindAll("fluent-dialog[aria-label='Restore from Backup']").ShouldBeEmpty();
         JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
-            .Arguments[0].ShouldBe("backup-restore-bk-safe");
+            .Arguments[0].ShouldBe("backup-restore-Ymstc2FmZQ");
     }
 
     [Theory]
-    [InlineData("restore", "Restore request accepted", "backup-restore-bk-safe")]
+    [InlineData("restore", "Restore request accepted", "backup-restore-Ymstc2FmZQ")]
     [InlineData("import", "Import request accepted", "backup-import-button")]
     public async Task AsyncOperationSuccess_UsesAcceptedNotCompletedWording(
         string action,

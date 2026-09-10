@@ -688,19 +688,20 @@
         }
         catch (UnauthorizedAccessException)
         {
-            await ToastService.ShowErrorAsync("Unauthorized");
+            await ToastService.ShowErrorAsync("Unauthorized").ConfigureAwait(false);
         }
         catch (ForbiddenAccessException)
         {
-            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions");
+            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions").ConfigureAwait(false);
         }
         catch (ServiceUnavailableException)
         {
-            await ToastService.ShowErrorAsync("Service unavailable — try again later");
+            await ToastService.ShowErrorAsync("Service unavailable — try again later").ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Operation failed: {ex.Message}");
+            _ = ex;
+            await ToastService.ShowErrorAsync("Projection operation failed. Refresh status before deciding whether to retry.").ConfigureAwait(false);
         }
         finally
         {

@@ -378,6 +378,32 @@ Configuration section: `EventStore:OpenApi`
 }
 ```
 
+This public Command API setting does not control Admin discovery. The Admin host uses a separate, fail-closed gate.
+
+### Admin OpenAPI
+
+Controls whether the Admin host maps OpenAPI and Swagger UI. Discovery is a local-development aid and is independent from `EventStore:OpenApi`.
+
+Configuration section: `EventStore:Admin:OpenApi`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `Enabled` | bool | `false` | Maps `/openapi/v1.json` and `/swagger/*` only when the Admin host environment is `Development` **and** this value is `true`. Production never maps those routes, even when the setting is `true`. Development `appsettings.Development.json` sets it `true` for local use. |
+
+```json
+{
+  "EventStore": {
+    "Admin": {
+      "OpenApi": {
+        "Enabled": true
+      }
+    }
+  }
+}
+```
+
+Anonymous callers outside Development can reach only `/health`, `/alive`, and `/ready`. Validate Admin discovery with those probes plus the unmapped `/openapi/v1.json` and `/swagger` 404s; do not treat a configured `true` value as a Production surface.
+
 ## Authentication and JWT
 
 Authentication settings configure how the Command API validates incoming JWT tokens. You must provide either an OIDC `Authority` (for production) or a `SigningKey` (for development and testing). `Issuer` and at least one audience across `Audience` and `ValidAudiences` are always required.
@@ -763,6 +789,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:DomainServices:MaxEventSizeBytes` | int | `1048576` | Integer `> 0` | Application |
 | `EventStore:DomainServices:Registrations:{key}` | object | - | Object keyed by `tenant|domain|version`, `tenant:domain:version`, `*|domain|version`, or `wildcard_{domain}_{version}` | Application |
 | `EventStore:OpenApi:Enabled` | bool | `true` | `true` or `false` | Application |
+| `EventStore:Admin:OpenApi:Enabled` | bool | `false` | `true` maps Admin discovery only in Development; Production always omits it | Application |
 | `Authentication:JwtBearer:Authority` | string | `""` | Empty string or absolute OIDC URL | Authentication |
 | `Authentication:JwtBearer:Audience` | string | `""` | Optional non-empty primary audience; at least one audience is required across this setting and `ValidAudiences` | Authentication |
 | `Authentication:JwtBearer:ValidAudiences:{index}` | string | — | Non-empty alternative or additional audience; supplies the primary audience when `Audience` is empty | Authentication |

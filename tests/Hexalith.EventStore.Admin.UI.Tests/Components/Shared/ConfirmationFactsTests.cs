@@ -22,4 +22,24 @@ public class ConfirmationFactsTests : AdminUITestContext
             .ShouldBe("Clear projection state and rebuild it.");
         component.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Operator");
     }
+
+    [Fact]
+    public void ConfirmationFacts_ClampsEachDisplayedFactToSupportSafeBound()
+    {
+        const int supportSafeBound = 240;
+        string oversized = new string('a', supportSafeBound + 40);
+
+        IRenderedComponent<ConfirmationFacts> component = Render<ConfirmationFacts>(parameters => parameters
+            .Add(item => item.Target, oversized)
+            .Add(item => item.Impact, oversized)
+            .Add(item => item.RequiredPermission, oversized));
+
+        foreach (string fact in new[] { "target", "impact", "permission" })
+        {
+            string text = component.Find($"[data-confirmation-fact='{fact}']").TextContent;
+            text.Length.ShouldBe(supportSafeBound);
+            text.ShouldEndWith("...");
+            text.ShouldNotBe(oversized);
+        }
+    }
 }

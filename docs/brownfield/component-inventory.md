@@ -15,11 +15,11 @@
 - **DAPR infra:** `DaprActors`, `DaprComponents`, `DaprPubSub`, `DaprResiliency`, `DaprHealthHistory`, `Services`
 - **Admin:** `Tenants` (CRUD + roles), `TypeCatalog`, `Index`, `Settings`
 
-### Reusable components (15)
+### Reusable components (16)
 
 `StreamTimelineGrid`, `EventDetailPanel`, `StateDiffViewer`, `BlameViewer`, `BisectTool`,
 `CorrelationTraceMap`, `ProjectionStatusBadge`, `TimelineFilterBar`, `StreamFilterBar`, `ActivityChart`,
-`SkeletonCard`, `StatCard`, `EmptyState`, `IssueBanner`.
+`SkeletonCard`, `StatCard`, `EmptyState`, `IssueBanner`, `ConfirmationFacts`.
 
 ### API clients & services
 
@@ -30,7 +30,9 @@ Typed API clients per controller (`AdminStreamApiClient`, `AdminProjectionApiCli
 `AdminTypeCatalogApiClient`). Auth/services: `TokenAuthenticationStateProvider`,
 `AdminApiAuthorizationHandler`, `AdminApiAccessTokenProvider`, `AdminTenantOptionsProvider`
 (role-filtered tenant dropdown), `DashboardRefreshService`, `TopologyCacheService`, `ViewportService`,
-`AdminUserContext`, `AdminClaimTypes`. Container: `eventstore-admin-ui`.
+`AdminUserContext`, `AdminClaimTypes`, `InitiatorFocusService`. Container: `eventstore-admin-ui`.
+Destructive confirmations render resource-backed target, impact, and required permission through
+`ConfirmationFacts`; cancel, local validation, and denial restore focus through `InitiatorFocusService`.
 
 ## Sample Blazor UI (`samples/Hexalith.EventStore.Sample.BlazorUI`)
 

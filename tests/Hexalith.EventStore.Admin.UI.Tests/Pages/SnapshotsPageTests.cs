@@ -482,6 +482,66 @@ public class SnapshotsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe(expectedFocusId);
     }
 
+    [Theory]
+    [InlineData("create-policy", "[id='snapshot-policy-create-button']", "snapshot-policy-create-button", true)]
+    [InlineData("create-policy", "[id='snapshot-policy-create-button']", "snapshot-policy-create-button", false)]
+    [InlineData("edit-policy", "[id='snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']", "snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU", true)]
+    [InlineData("edit-policy", "[id='snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']", "snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU", false)]
+    [InlineData("create-snapshot", "[id='snapshot-create-button']", "snapshot-create-button", true)]
+    [InlineData("create-snapshot", "[id='snapshot-create-button']", "snapshot-create-button", false)]
+    public async Task IndependentSnapshotDenialHandlersUseSafeCopyCloseAndRestoreExactInitiator(
+        string action,
+        string selector,
+        string expectedFocusId,
+        bool forbidden)
+    {
+        SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([policy]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden tenant membership exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden tenant membership exists; bearer secret-value");
+        _ = _mockSnapshotApi.SetSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockSnapshotApi.CreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        if (action == "create-policy") {
+            SetPrivateField(cut.Instance, "_createTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_createDomain", "orders");
+            SetPrivateField(cut.Instance, "_createAggregateType", "OrderAggregate");
+        }
+        else if (action == "create-snapshot") {
+            SetPrivateField(cut.Instance, "_snapshotTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_snapshotDomain", "orders");
+            SetPrivateField(cut.Instance, "_snapshotAggregateId", "agg-1");
+        }
+
+        string methodName = action switch {
+            "create-policy" => "OnCreatePolicyConfirm",
+            "edit-policy" => "OnEditPolicyConfirm",
+            "create-snapshot" => "OnCreateSnapshotConfirm",
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, methodName));
+
+        string expectedMessage = forbidden
+            ? "Access denied. Insufficient permissions."
+            : "Authentication required. Please sign in again.";
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe(expectedMessage);
+        message.ShouldNotContain("hidden tenant");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        cut.FindAll("[data-confirmation-fact='target']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
     [Fact]
     public async Task DeletePolicyDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimDeletion() {
         SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
@@ -704,4 +764,13 @@ public class SnapshotsPageTests : AdminUITestContext {
         => instance.GetType()
             .GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(instance, value);
+
+    private static async Task InvokePrivateAsync(object instance, string methodName)
+    {
+        System.Reflection.MethodInfo method = instance.GetType().GetMethod(
+            methodName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Method '{methodName}' not found.");
+        await ((Task)method.Invoke(instance, null)!).ConfigureAwait(false);
+    }
 }
