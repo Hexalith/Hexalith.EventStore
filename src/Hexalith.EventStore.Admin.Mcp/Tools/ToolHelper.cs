@@ -92,6 +92,28 @@ internal static class ToolHelper {
     }
 
     /// <summary>
+    /// Rejects caller-supplied values that preview sanitization would redact or truncate,
+    /// so confirmation cannot approve a different value than the request that is sent.
+    /// </summary>
+    /// <param name="parameters">Tuples of (value, parameterName). Null or empty values are skipped.</param>
+    /// <returns>An error JSON string, or <c>null</c> if every value would survive preview unchanged.</returns>
+    internal static string? ValidatePreviewMatchesExecution(params (string? value, string name)[] parameters) {
+        foreach ((string? value, string name) in parameters) {
+            if (string.IsNullOrEmpty(value)) {
+                continue;
+            }
+
+            if (!string.Equals(value, SafeText(value, "Preview parameter redacted."), StringComparison.Ordinal)) {
+                return SerializeError(
+                    "invalid-input",
+                    $"Parameter '{name}' is not support-safe or exceeds {MaxSupportSafeTextLength} characters.");
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Entry point for exception handling in all tool methods.
     /// Catches <see cref="HttpRequestException"/>, <see cref="TaskCanceledException"/>,
     /// and <see cref="JsonException"/>.
@@ -169,7 +191,11 @@ internal static class ToolHelper {
                 return AdminRedactedContent.DefaultPlaceholder;
             }
 
-            return text;
+            if (IsResultMessageProperty(propertyName) && !string.IsNullOrEmpty(text)) {
+                return JsonValue.Create(SafeText(text, "Protected diagnostic text redacted."));
+            }
+
+            return text is null ? null : BoundText(text);
         }
 
         return node.DeepClone();
@@ -229,10 +255,16 @@ internal static class ToolHelper {
             ? replacement
             : UnsafeMarkerDetection.ContainsUnsafeMarker(value) ? replacement : value;
 
-        return safe.Length <= MaxSupportSafeTextLength
-            ? safe
-            : safe[..(MaxSupportSafeTextLength - 3)] + "...";
+        return BoundText(safe);
     }
+
+    private static string BoundText(string value)
+        => value.Length <= MaxSupportSafeTextLength
+            ? value
+            : value[..(MaxSupportSafeTextLength - 3)] + "...";
+
+    private static bool IsResultMessageProperty(string? propertyName)
+        => propertyName is not null && propertyName.Equals("message", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsRawCapableProperty(string propertyName)
         => propertyName.Equals("payloadJson", StringComparison.OrdinalIgnoreCase)

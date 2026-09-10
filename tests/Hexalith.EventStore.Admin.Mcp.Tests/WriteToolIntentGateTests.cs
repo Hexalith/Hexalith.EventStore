@@ -2,6 +2,8 @@ using System.Net;
 using System.Reflection;
 using System.Text.Json;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Mcp;
 using Hexalith.EventStore.Admin.Mcp.Tools;
 using Hexalith.EventStore.Testing.Http;
 
@@ -50,8 +52,8 @@ public class WriteToolIntentGateTests
         string falsePreview = await InvokeAsync(toolName, client, false, cancellationToken);
 
         requestCount.ShouldBe(0);
-        AssertPreview(omittedPreview, toolName, expectedPermission);
-        AssertPreview(falsePreview, toolName, expectedPermission);
+        AssertPreview(omittedPreview, toolName, expectedPermission, expectedPath);
+        AssertPreview(falsePreview, toolName, expectedPermission, expectedPath);
 
         _ = await InvokeAsync(toolName, client, true, cancellationToken);
 
@@ -76,16 +78,8 @@ public class WriteToolIntentGateTests
             "projection-resume",
         ];
 
-        string[] actual = typeof(AdminApiClient).Assembly
-            .GetTypes()
-            .Where(type => type.IsDefined(typeof(McpServerToolTypeAttribute), inherit: false))
-            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            .Where(method => method.IsDefined(typeof(McpServerToolAttribute), inherit: false))
-            .Where(method => method.GetParameters().Any(parameter =>
-                string.Equals(parameter.Name, "confirm", StringComparison.Ordinal)
-                && parameter.ParameterType == typeof(bool)
-                && parameter.HasDefaultValue
-                && parameter.DefaultValue is false))
+        string[] actual = GetMcpTools()
+            .Where(HasConfirmDefaultFalse)
             .Select(method => method.GetCustomAttribute<McpServerToolAttribute>()?.Name)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Cast<string>()
@@ -93,6 +87,33 @@ public class WriteToolIntentGateTests
             .ToArray();
 
         actual.ShouldBe(expected);
+
+        GetMcpTools()
+            .Where(method => method.DeclaringType?.Name.EndsWith("WriteTools", StringComparison.Ordinal) == true)
+            .Where(method => !HasConfirmDefaultFalse(method))
+            .Select(method => method.Name)
+            .ShouldBeEmpty();
+
+        string[] expectedPostHelpers =
+        [
+            "CancelConsistencyCheckAsync",
+            "PauseProjectionAsync",
+            "ReplayProjectionAsync",
+            "ResetProjectionAsync",
+            "ResumeProjectionAsync",
+            "TriggerBackupAsync",
+            "TriggerConsistencyCheckAsync",
+        ];
+        string[] actualPostHelpers = typeof(AdminApiClient)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(method => method.ReturnType.IsGenericType
+                && method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+                && method.ReturnType.GetGenericArguments()[0] == typeof(AdminOperationResult))
+            .Select(method => method.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        actualPostHelpers.ShouldBe(expectedPostHelpers);
     }
 
     [Theory]
@@ -138,7 +159,7 @@ public class WriteToolIntentGateTests
         JsonElement.DeepEquals(actualDocument.RootElement, expectedDocument.RootElement).ShouldBeTrue();
     }
 
-    private static void AssertPreview(string json, string toolName, string expectedPermission)
+    private static void AssertPreview(string json, string toolName, string expectedPermission, string expectedPath)
     {
         using var document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
@@ -147,7 +168,23 @@ public class WriteToolIntentGateTests
         root.GetProperty("target").GetString().ShouldNotBeNullOrWhiteSpace();
         root.GetProperty("impact").GetString().ShouldNotBeNullOrWhiteSpace();
         root.GetProperty("requiredPermission").GetString().ShouldBe(expectedPermission);
+        root.GetProperty("endpoint").GetString().ShouldBe($"POST {expectedPath}");
     }
+
+    private static MethodInfo[] GetMcpTools()
+        => typeof(AdminApiClient).Assembly
+            .GetTypes()
+            .Where(type => type.IsDefined(typeof(McpServerToolTypeAttribute), inherit: false))
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(method => method.IsDefined(typeof(McpServerToolAttribute), inherit: false))
+            .ToArray();
+
+    private static bool HasConfirmDefaultFalse(MethodInfo method)
+        => method.GetParameters().Any(parameter =>
+            string.Equals(parameter.Name, "confirm", StringComparison.Ordinal)
+            && parameter.ParameterType == typeof(bool)
+            && parameter.HasDefaultValue
+            && parameter.DefaultValue is false);
 
     private static Task<string> InvokeAsync(
         string toolName,

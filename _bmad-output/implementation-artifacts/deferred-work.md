@@ -4201,3 +4201,33 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Named Admin/Sample token HTTP clients are not proven through `AddAdminUI` / host composition.
   evidence: Redirect-refusal tests call `AddHttpClient` on a fresh `ServiceCollection`, so removing the production registration would leave those tests green.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-10, Host+MCP+CLI+docs)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Bash health completions still advertise a non-existent `--interval` flag (`--timeout` is the real option).
+  evidence: Pre-existing `CompletionScripts.GenerateBash` health stanza. This chunk only rewrote backup and tenant inventories; zsh/PowerShell health already offer `dapr` without `--interval`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: `docs/guides/configuration-reference.md` JWT, AppHost, and publish-mode UI grant edits sit beside the new Admin OpenAPI section.
+  evidence: Other-story content in the same baseline window (Story 5.3 authentication / later topology). Story 5.4 Never forbids reworking that authentication surface from this hygiene story.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: CLI inventory still says profiles persist to `.eventstore-admin-profiles.json` while `ProfileManager` uses `~/.eventstore/profiles.json`.
+  evidence: Pre-existing sentence in `docs/brownfield/component-inventory.md`; this chunk rewrote the adjacent backup inventory and left the path line unchanged.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-10, Group B re-review)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Bound-path Git tests named fail-closed still expect pass.
+  evidence: Restates DW-496 / Group B owner acceptance. `ChangedOrDeletedBoundCapabilityPathFailsClosed`, `HiddenBoundCapabilityPathFailsClosed`, and `NonDescendantHeadFailsClosed` keep pre-review pass assertions (`Oq8PlatformClosureTests.cs:1890-1968`). Live current-source Git rejection remains the validator remint, not this tests-only chunk.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-10, Group M)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Bound-path `currentVerification` is JSON-pinned, not Git-checked against HEAD.
+  evidence: Restates DW-496. v1 `source-artifact-identity.json` `currentVerification.source` is `"current HEAD Git tree"` and the three receipts claim 24-path HEAD/worktree equivalence, but `validate_source_state` hashes `LANDED_SOURCE` / `COMPLETED_V1_CLOSURE_COMMIT` and `git_diff_is_clean` has no callers. The packet records no `reviewedAtCommit`. Keep v1 historical; live proof stays on the reduced v3 gate-input set.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Sealing validator bytes are not the landed-commit blob.
+  evidence: `validator-sha256.txt` is `96520190…`; landed `5e8f175b` is `585e4d86…`. `landedGitByteOverrides` and `closureEvolvedPaths` already state that split. Reminting v1 limitations/handoff to repeat it is the DW-496 keep-historical path. Live consumer instructions are the v3 handoff.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The tests that execute this packet are not a required merge check.
+  evidence: Not caused by the v1 packet files. Already the Group D ruleset decision: `Oq8PlatformClosureTests.ApprovedSourceOnlyHandoffPasses` runs in `ci / contracts`, which is not a Protect required check; `live-sidecar` invokes the validator only with `--capture-directory`.

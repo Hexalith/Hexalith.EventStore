@@ -27,6 +27,7 @@ public class AdminSurfaceDocumentationTests
         contracts.ShouldContain("`EventStore:Admin:OpenApi:Enabled`");
         contracts.ShouldContain("Development");
         inventory.ShouldContain("`backup-trigger`");
+        inventory.ShouldContain("does not prove execution");
         inventory.ShouldContain("`projection-pause`");
         inventory.ShouldContain("`projection-resume`");
         inventory.ShouldContain("`projection-reset`");

@@ -221,3 +221,29 @@ Reuse one presentation component for confirmation facts, but keep each page resp
 - [Rejected][false] Credential comment/tests still use `user:password` / username `user` — those are placeholders; fixture passwords are randomized.
 - [Rejected][false] Credential log test only searches formatted `Message` — `LogInformation` already passes `SanitizeEndpoint(...)` as `{Endpoint}`, so structured state is the sanitized value.
 - [Rejected][false] Timeline `CancellationToken` is captured at argument index 6 — that index matches `IStreamQueryService.GetStreamTimelineAsync` today.
+
+### Review Findings — Host+MCP+CLI+docs chunk (2026-09-10)
+
+- [x] [Review][Patch] MCP `backup-trigger` discovery and tests still present a completed backup [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:18]
+- [x] [Review][Patch] Write-tool inventory counts only tools with `confirm` defaulting to false [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:84]
+- [x] [Review][Patch] Confirmed MCP results skip the 240-character support-safe bound [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:33]
+- [x] [Review][Patch] Redacted or truncated preview values are not the values posted on confirm [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:43]
+- [x] [Review][Patch] Intent-gate preview assertions omit the endpoint that confirm actually posts [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:141]
+- [x] [Review][Patch] Registered backup stub help text still describes working backup operations [src/Hexalith.EventStore.Admin.Cli/Commands/Backup/BackupCommand.cs:15]
+- [x] [Review][Defer] Bash health completions still advertise `--interval` [src/Hexalith.EventStore.Admin.Cli/Commands/Config/CompletionScripts.cs:65] — deferred: pre-existing; this change only rewrote backup and tenant inventories
+- [x] [Review][Defer] Configuration-reference JWT, AppHost, and publish-mode UI grant docs sit in the same file as Admin OpenAPI — deferred: Story 5.3 / topology content in the baseline window, not this Admin hygiene envelope
+- [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: pre-existing sentence left beside the rewritten backup inventory
+
+#### Rejected — Host+MCP+CLI+docs chunk (2026-09-10)
+
+- [Rejected][false] `requiredPermission` must use `AdminAuthorizationPolicies` constants — the spec requires the words `Operator` or `Admin`, not `AdminOperator` / `AdminFull`.
+- [Rejected][false] Completions offering `backup create|restore|list` treats stubs as live engines — those are the registered commands; `BackupCommand.Create` and `BackupCommandTests` already fail them with `ExitCodes.Error`.
+- [Rejected][false] Dormant `BackupTriggerCommand` success tests make backup callable — `BackupCommand.Create` does not register those types; the spec preserves dormant engines without wiring them.
+- [Rejected][false] `AdminOpenApiWebApplicationFactory` always mapping OpenAPI hides a host-gate regression — `HostBootstrapTests` is the real-host proof; that factory exists to generate schema documents.
+- [Rejected][false] Host tests omit Staging and published-as-Development discovery — `IsDevelopment()` matches the spec I/O matrix; Development `Enabled: true` is the specified local aid.
+- [Rejected][false] MCP missing-env usage no longer names Bearer — the process still sends `Authorization: Bearer`; “authentication credential” is not a false scheme claim.
+- [Rejected][false] Omitted and false confirmation previews are uncompared — both take `if (!confirm)` and `AssertPreview` already runs on each result.
+- [Rejected][false] Invalid-input coverage only empties the first string, so empty `projectionName` is unproven — `ValidateRequired` already rejects every required pair; the confirm=true empty-tenant path is the inventory gate.
+- [Rejected][low] Skipped DW2 ATDD still names `backup-create` / `backup-restore` — those tests stay skipped by spec; un-skipping them is a later DW2 story.
+- [Rejected][low] `SafeText` can split a UTF-16 surrogate at the 240-character cut — everyday Admin ids are ASCII; a rune-safe slice adds a branch for a rare description.
+- [Rejected][low] Whitespace-only strings skip `SafeText` replacement — `ValidateRequired` rejects blank ids; whitespace descriptions are not interpolated into target/impact.

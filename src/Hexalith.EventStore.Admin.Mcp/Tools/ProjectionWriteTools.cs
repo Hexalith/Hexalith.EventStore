@@ -23,7 +23,10 @@ internal static class ProjectionWriteTools {
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"));
+            (tenantId, "tenantId"), (projectionName, "projectionName"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution(
+                (tenantId, "tenantId"),
+                (projectionName, "projectionName"));
         if (validation is not null) {
             return validation;
         }
@@ -63,7 +66,10 @@ internal static class ProjectionWriteTools {
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"));
+            (tenantId, "tenantId"), (projectionName, "projectionName"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution(
+                (tenantId, "tenantId"),
+                (projectionName, "projectionName"));
         if (validation is not null) {
             return validation;
         }
@@ -104,7 +110,10 @@ internal static class ProjectionWriteTools {
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"));
+            (tenantId, "tenantId"), (projectionName, "projectionName"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution(
+                (tenantId, "tenantId"),
+                (projectionName, "projectionName"));
         if (validation is not null) {
             return validation;
         }
@@ -146,7 +155,10 @@ internal static class ProjectionWriteTools {
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"));
+            (tenantId, "tenantId"), (projectionName, "projectionName"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution(
+                (tenantId, "tenantId"),
+                (projectionName, "projectionName"));
         if (validation is not null) {
             return validation;
         }

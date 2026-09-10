@@ -12,10 +12,10 @@ namespace Hexalith.EventStore.Admin.Mcp.Tools;
 [McpServerToolType]
 internal static class BackupWriteTools {
     /// <summary>
-    /// Trigger a full backup for a tenant.
+    /// Submit a deferred backup request for a tenant.
     /// </summary>
     [McpServerTool(Name = "backup-trigger")]
-    [Description("Trigger a full backup for a tenant (requires confirm: true)")]
+    [Description("Submit a deferred backup request for a tenant (requires confirm: true). Does not prove backup execution.")]
     public static async Task<string> TriggerBackup(
         AdminApiClient adminApiClient,
         [Description("Tenant ID")] string tenantId,
@@ -23,7 +23,8 @@ internal static class BackupWriteTools {
         [Description("Include snapshots in backup")] bool includeSnapshots = true,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"));
+        string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution((tenantId, "tenantId"), (description, "description"));
         if (validation is not null) {
             return validation;
         }

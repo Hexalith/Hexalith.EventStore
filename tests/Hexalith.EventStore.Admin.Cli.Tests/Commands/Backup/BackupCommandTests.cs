@@ -25,6 +25,7 @@ public class BackupCommandTests {
         command.Subcommands.Select(c => c.Name).ShouldContain("create");
         command.Subcommands.Select(c => c.Name).ShouldContain("restore");
         command.Subcommands.Select(c => c.Name).ShouldContain("list");
+        command.Subcommands.ShouldAllBe(c => c.Description!.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

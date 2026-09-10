@@ -72,7 +72,8 @@ Stdio JSON-RPC 2.0. Env: `EVENTSTORE_ADMIN_URL`, `EVENTSTORE_ADMIN_TOKEN`. Tools
   `consistency-list`, `consistency-detail`, `storage-overview`, `tenant-list`, `tenant-detail`,
   `tenant-users`, `types-list`.
 - **Write (exact callable set):** `projection-pause`, `projection-resume`, `projection-reset`,
-  `projection-replay`, `consistency-trigger`, `consistency-cancel`, `backup-trigger`. Every write
+  `projection-replay`, `consistency-trigger`, `consistency-cancel`, `backup-trigger` (deferred;
+  confirmation does not prove execution). Every write
   requires `confirm=true` before it sends an Admin API request. An omitted or false confirmation
   returns a non-mutating preview with the target, impact, and required permission; it sends no
   request. Projection writes and consistency trigger require Operator permission; consistency

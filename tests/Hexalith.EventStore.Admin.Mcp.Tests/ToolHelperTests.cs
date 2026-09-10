@@ -173,6 +173,61 @@ public class ToolHelperTests {
     }
 
     [Fact]
+    public void ValidatePreviewMatchesExecution_ReturnsNull_WhenValuesWouldSurvivePreview() {
+        string? result = ToolHelper.ValidatePreviewMatchesExecution(("tenant-1", "tenantId"), (null, "description"));
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void ValidatePreviewMatchesExecution_ReturnsError_WhenValueContainsUnsafeMarker() {
+        string? result = ToolHelper.ValidatePreviewMatchesExecution(("Password=secret", "description"));
+
+        _ = result.ShouldNotBeNull();
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        doc.RootElement.GetProperty("message").GetString()!.ShouldContain("description");
+    }
+
+    [Fact]
+    public void ValidatePreviewMatchesExecution_ReturnsError_WhenValueExceedsBound() {
+        string? result = ToolHelper.ValidatePreviewMatchesExecution((new string('x', 241), "tenantId"));
+
+        _ = result.ShouldNotBeNull();
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        doc.RootElement.GetProperty("message").GetString()!.ShouldContain("tenantId");
+    }
+
+    [Fact]
+    public void SerializeResult_MessageIsBoundedAndRedactsUnsafeMarkers() {
+        var data = new {
+            Success = true,
+            Message = ProtectedDataLeakSentinel.ProtectedProviderExceptionText + new string('x', 300),
+        };
+
+        string result = ToolHelper.SerializeResult(data);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        using var doc = JsonDocument.Parse(result);
+        string message = doc.RootElement.GetProperty("message").GetString()!;
+        message.ShouldBe("Protected diagnostic text redacted.");
+        message.Length.ShouldBeLessThanOrEqualTo(240);
+    }
+
+    [Fact]
+    public void SerializeResult_OrdinaryNonMessageStringsAreLengthBounded() {
+        var data = new { SafeIdentifier = new string('a', 500) };
+
+        string result = ToolHelper.SerializeResult(data);
+
+        using var doc = JsonDocument.Parse(result);
+        string value = doc.RootElement.GetProperty("safeIdentifier").GetString()!;
+        value.Length.ShouldBe(240);
+        value.ShouldEndWith("...");
+    }
+
+    [Fact]
     public void SerializePreview_ProducesCorrectShape() {
         string result = ToolHelper.SerializePreview(
             "projection-pause",

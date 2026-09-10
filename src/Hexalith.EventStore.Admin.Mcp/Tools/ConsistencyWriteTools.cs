@@ -23,7 +23,11 @@ internal static class ConsistencyWriteTools {
         [Description("Filter by domain")] string? domain = null,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired((checkTypes, "checkTypes"));
+        string? validation = ToolHelper.ValidateRequired((checkTypes, "checkTypes"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution(
+                (checkTypes, "checkTypes"),
+                (tenantId, "tenantId"),
+                (domain, "domain"));
         if (validation is not null) {
             return validation;
         }
@@ -70,7 +74,8 @@ internal static class ConsistencyWriteTools {
         [Description("Consistency check ID")] string checkId,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired((checkId, "checkId"));
+        string? validation = ToolHelper.ValidateRequired((checkId, "checkId"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution((checkId, "checkId"));
         if (validation is not null) {
             return validation;
         }
