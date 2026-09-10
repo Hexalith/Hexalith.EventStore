@@ -4276,9 +4276,9 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("in-progress");
 
-        // Story 5.3: the committed-secret strip landed; the production JWT guard did not.
+        // Story 5.3: owner closed the story 2026-09-10 after spec-5-3 reached done (review loop 8).
         SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")
-            .ShouldBe("in-progress");
+            .ShouldBe("done");
 
         // Story 4.7: the spec is in-progress at review pass 6 with 7 patches unapplied.
         SingleLineValue(sprint, "  4-7-tenants-query-provenance-follow-up:")

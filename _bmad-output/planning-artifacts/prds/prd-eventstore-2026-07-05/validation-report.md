@@ -1,16 +1,16 @@
 # Validation Report — eventstore Phase 4 Implementation Readiness Recovery
 
-- **PRD:** _bmad-output/planning-artifacts/prd.md
-- **Rubric:** .agents/skills/bmad-prd/assets/prd-validation-checklist.md
-- **Repository baseline:** 1b6f08d41de040615d3b08675d98e46cfa5bab0c
-- **Run at:** 2026-09-09T08:18:44+02:00
+- **PRD:** `_bmad-output/planning-artifacts/prd.md`
+- **Rubric:** `.agents/skills/bmad-prd/assets/prd-validation-checklist.md`
+- **Repository baseline:** `293c69c42d35dee26682d42f05c943c0b65786f4`
+- **Run at:** 2026-09-10T08:31:03+02:00
 - **Grade:** Poor
 
 ## Overall verdict
 
-This is a technically substantive and unusually candid brownfield PRD, with specific requirements, explicit scope exclusions, stable IDs, and strong security and evidence bounds. It is nevertheless unsafe as the authoritative chain-top baseline it claims to be: the live FR ownership map contradicts its own retired-correction record, the epic plan fails its own source-drift gate, safety-sensitive OQ8 clauses depend on normative bytes this repository cannot reproduce, and the MVP success model can pass while a known concurrent append race still loses durable data.
+This is a technically substantive and unusually candid requirements catalogue that supports one immediate decision well: keep implementation readiness blocked. It is not safe as the authoritative chain-top baseline it claims to be because downstream usability is broken by an unreconciled artifact set and unavailable normative OQ8 source, while acceptance clarity and document shape remain thin. The explicit `Reject` posture must stay in force until those gaps close.
 
-The adversarial and brownfield reviews strengthen the rubric's reject verdict. Repository truth has also moved beyond the PRD around Story 6.1, Story 4.15, architecture authority, and several story lifecycle states. Do not use this PRD to authorize a READY verdict, MVP completion, consumer migration, or release until the critical findings are resolved and the dependent planning artifacts are reconciled against one baseline.
+The platform-contract review materially strengthens that conclusion with current repository evidence: generated REST tenant handling and command-status `Location` behavior contradict adopted public-boundary rules, silent append loss remains unguarded, and the compatibility, authentication-conformance, and consumer-removal contracts are incomplete. The prior 2026-09-09 reject remains directionally correct, but its recorded baseline and reasons do not describe one coherent current repository snapshot.
 
 ## Dimension verdicts
 
@@ -24,144 +24,146 @@ The adversarial and brownfield reviews strengthen the rubric's reject verdict. R
 
 ## Findings by severity
 
-### Critical (4)
+### Critical (5)
 
-**[Downstream usability / Brownfield] — The authoritative FR ownership map contradicts its own correction record (§10 SM2; §11.1; §12 retired OR12)**
+**[Downstream usability] — Planning artifacts are not one approved baseline (§11.3; §12 OR14, OR15)**
 
-The live map assigns FR1 to Story 4.11 and still labels eight requirements as having multiple primary owners under OR12. The same PRD says OR12 is retired, FR1 belongs to Story 1.11, and the duplicate ownership was resolved. Current epics.md confirms the retirement narrative, not the live table.
+The PRD delegates implementation slicing and acceptance to `epics.md` while recording stale-input and lifecycle contradictions. Current matching PRD/architecture digests in `epics.md` were refreshed without the reviewed approval sequence OR14 requires; the accepted architecture remains `draft`, and UX digests are already stale. The traceability tables cannot authorize downstream implementation or completion claims.
 
-Fix: Rebuild SM2 and §11.1 from current epics.md declarations, encode sole owners and approved disjoint slices, remove every live OR12 warning, and add a drift check.
+Fix: Reconcile architecture to the PRD, reconcile epics and UX inputs to both, resolve lifecycle contradictions, run the guarded drift/status validations, and renew approval as one atomic baseline before handoff.
 
-**[Brownfield] — The epic plan fails its own source-drift gate (epics.md source register and drift rule)**
+**[Downstream usability / Platform contract] — Normative OQ8 requirements are unavailable inside EventStore (§1.1; FR27; NFR7; NFR16; OR11)**
 
-The digests recorded by epics.md do not match the current PRD or architecture. Recorded/current PRD digests are 8f9c88e8… / 39e22f7c…; architecture digests are 623bc23e… / 2b96a810…. Since the PRD delegates slicing and sequencing authority to epics.md, the repository cannot prove that current stories implement the current requirements and architecture.
+An external Hexalith.Folders design overrides safety-sensitive state-machine behavior, timers, tombstones, public errors, and evidence denominators, but EventStore cannot reproduce the governed bytes. The current local pre-review validator also exits 1 because `docs/guides/configuration-reference.md` has drifted.
 
-Fix: Reconcile the current PRD and architecture deltas into epics.md, update digests only after review, rerun the source-drift/final-validation gate, and preserve renewed approval evidence.
+Fix: Retain a permitted immutable copy, complete approved normative projection, or signed/content-addressed attestation whose bytes are available to validation. Bind the identity through PRD, architecture, epics, evidence, and CI, and keep closure fail-closed until the validator passes.
 
-**[Adversarial / Brownfield] — Normative OQ8 requirements are unavailable inside EventStore (§1.1; FR27; NFR7; NFR16)**
+**[Platform contract] — Generated public APIs contradict the canonical tenant boundary (NFR2; §8.2; architecture AD-27)**
 
-The PRD makes an external Hexalith.Folders document more specific and therefore normative for state-machine behavior, timers, tombstones, failure semantics, and evidence denominators, while admitting that EventStore cannot reproduce the governing bytes. A locally stored digest verifies identity only if those bytes are available.
+The generator can emit the reserved tenant `system`, forwards route tenant spelling without canonicalization, and returns the raw sole tenant claim. It does not enforce the shared grammar or invalid/conflicting/reserved-name rules even though Stories 2.2 and 2.5 are recorded `done`.
 
-Fix: Track an immutable permitted copy, a complete normative projection, or a signed/content-addressed attestation that binds repository, path, commit, and digest. Make absence or mismatch a readiness failure and propagate the full identity to architecture, epics, evidence, and validation.
+Fix: Promote AD-27's public-boundary consequences into stable PRD requirements, route generated controllers through the shared canonicalizer, and add compiled-controller negative tests for malformed, conflicting, unauthorized, uppercase, and reserved tenants.
 
-**[Decision-readiness / Adversarial] — MVP success can coexist with known concurrent append data loss (§7 NFR7; §9.2; §10 SM11/SM-C5; §12 OR4)**
+**[Platform contract] — Public command `Location` can use `CorrelationId` as status identity (FR12; FR27; architecture AD-17)**
 
-Story 4.5 observed same-key-overwrite-raw-durable-write-lost, no provider-level append fence exists, and DW-326 has no owner or trigger. Yet SM11 counts either a guard or an out-of-MVP declaration toward five-of-five success, allowing paperwork to satisfy a loss-prevention metric.
+The generator falls back from `MessageId` to `CorrelationId` when building the command-status location, although AD-17 makes `MessageId` the sole record selector and Story 2.9 is recorded `done`.
 
-Fix: Deliver and prove append fencing, or enforce and document an MVP operating envelope in which the race cannot occur. Keep SM11 failed until loss is prevented in the supported envelope; record explicit risk acceptance, approver, bounds, and revisit trigger.
+Fix: Require `MessageId` as the only status key, fail closed when it is absent or invalid, remove the correlation fallback, add runtime coverage, and reopen/reconcile Story 2.9.
 
-### High (9)
+**[Platform contract] — Silent concurrent append loss remains unguarded (NFR7; §9; SM11; OR4)**
 
-**[Brownfield] — NFR7 declares duplicate-side-effect protection delivered before Story 4.15 closes (§1.1; NFR7; Story 4.15)**
+Story 4.5 reproduced `same-key-overwrite-raw-durable-write-lost`; no provider-level append fence has been delivered, and the implementation gap remains unowned. A durable event store cannot authorize MVP completion, release, or deployment while a supported writer race can silently overwrite state.
 
-The tracker says review, the story wrapper says done, epics.md records the conflict, and python3 tools/validate-oq8-platform-evidence.py --pre-review fails on lifecycle drift.
+Fix: Deliver provider-portable write-once/append fencing, or mechanically enforce a supported operating envelope in which the second writer cannot exist. Keep the global gate failed until production-path evidence proves loss prevention.
 
-Fix: Mark class (e) closure-pending or reconcile the lifecycle and retain the claim only with a passing validator result.
+### High (10)
 
-**[Downstream usability / Brownfield] — Story 6.1 path and authorization claims are stale (§11.3; OR5)**
+**[Decision-readiness] — The future `READY` decision has no executable exit contract (§12 OR17)**
 
-The canonical spec-folded-snapshot.md now exists, is approved-authorized, and authorizes Story 6.2; the wrapper says done while the tracker says review and epics.md still says backlog/absent. The PRD describes the opposite repository state.
+Reviewers must reconstruct mandatory gates, evidence, evaluators, waiver rules, and current results across several sections.
 
-Fix: Establish authority order, reconcile the canonical spec, wrapper, tracker, epics, and PRD atomically, and retire or rewrite OR5.
+Fix: Add one Phase 4 exit table whose rows bind each gate to evidence, evaluator, current result, waiver policy, approval, and invalidation trigger.
 
-**[Brownfield] — New lifecycle contradictions are absent from the promised ledger (§11.1 explanation; §12)**
+**[Done-ness clarity] — Omnibus requirements have no clause-level closure rule (FR26, FR33, FR34, NFR17; OR7)**
 
-Stories 5.2, 5.4, 6.1, and 4.15 disagree across sprint-status.yaml, story wrappers, or epics.md, while the PRD says contradictions are recorded in §12.
+Each requirement combines independently fail-able outcomes while whole-ID story mappings do not show which clauses are delivered.
 
-Fix: Resolve each against its completion gate and add a mechanical guard preventing divergent status transitions.
+Fix: Assign stable sub-IDs to independent clauses or create a clause-to-story-to-evidence table with an all-clauses-required completion rule.
 
-**[Adversarial] — Final document state obscures reopened readiness (frontmatter; §1; OR1)**
+**[Done-ness clarity] — Acceptance ambiguity extends beyond OR7's named requirements (FR4, FR5, FR7, FR12)**
 
-The document is status final even though its readiness gate is explicitly reopened and OR1 remains blocking. Machine consumers have no separate parsable readiness state.
+Feature-level evidence paragraphs do not round-trip every consequence in several multi-clause requirements.
 
-Fix: Separate document_status from implementation_readiness_status and bind the latter to report path, date, baseline SHA, and result.
+Fix: Give each FR a verifiable consequence list or extend the clause-to-evidence mechanism to all multi-clause requirements.
 
-**[Done-ness clarity] — Omnibus requirements cannot be closed clause by clause (FR26, FR33, FR34, NFR17; OR7)**
+**[Done-ness clarity] — NFR8's projection-cost outcome has no measurable bound (§7 NFR8; §12 OR16)**
 
-Each combines independently fail-able behaviors while story mappings do not identify which clause is delivered. The PRD concedes that a done story may close no named clause.
+The required projection specification is missing, leaving the projection half of NFR8 untestable and Story 6.4 unauthorized.
 
-Fix: Give clauses stable sub-IDs with consequences, owners, evidence, and all-clauses-required closure, or generate an equivalent clause-to-story-to-evidence matrix.
+Fix: Approve the named specification with numeric bounds, workload, pass condition, and evidence path, then bind those acceptance facts from NFR8.
 
-**[Done-ness clarity / Adversarial] — High-risk closure lacks an independent approval rule and bound correctness gate (OR10; OR13)**
+**[Downstream usability] — NFR traceability is incomplete (§0; §11.2)**
 
-Most high-risk evidence can be author-approved, and no exact test lane or trigger controls recording a story done against a high-risk NFR.
+The PRD claims FR/NFR traceability ownership, but §11.2 omits NFR5, NFR12, and NFR13 although `epics.md` declares coverage.
 
-Fix: Define non-authorship requirements, exact CI lane/command, trigger, evidence identity, pass condition, and status-transition enforcement.
+Fix: Add every NFR to the table, distinguishing primary from supporting ownership and retaining the warning that declared coverage is not delivered evidence.
 
-**[Strategic coherence / Adversarial] — No coherent Phase 4/MVP exit decision rule (§9-§12)**
+**[Shape fit] — Multi-stakeholder and UI-affecting workflows lack user journeys (§3; §8.3)**
 
-Metrics mix historical artifact milestones, runtime outcomes, and post-MVP gates without one table defining mandatory gates, evidence, evaluator, waiver policy, and current result.
+Six roles and three UI surfaces are named, but no narrated journey captures domain adoption, generated API exposure, projection-confirmed UI success, operator recovery, or release authorization.
 
-Fix: Add a release/phase exit table and separate non-gating post-MVP commitments.
+Fix: Add a small set of named-protagonist journeys for load-bearing cross-role success and failure/recovery flows.
 
-**[Brownfield] — Architecture cites an obsolete PRD baseline (architecture.md frontmatter and authority section)**
+**[Platform contract] — Backward compatibility excludes most public platform surfaces (NFR12)**
 
-Architecture is final at 2026-08-29 and still names the PRD updated 2026-08-16, predating the current 2026-09-08 NFR and OQ8 changes. Its stored digest also fails the epic source-drift check.
+The protected set omits major SDK, REST-generator, HTTP error, event-envelope, serialization, DAPR-wire, and NuGet abstraction contracts.
 
-Fix: Reconcile architecture with the current PRD, update provenance and OQ8 identity, then refresh the epic input digest through the governed gate.
+Fix: Inventory source, binary, wire, and HTTP contracts; define SemVer, deprecation, and removal rules; and gate release on API/wire baselines plus package-only consumer tests.
 
-**[Done-ness clarity] — NFR8 and NFR18 are not acceptance-complete (§7; §11.3; OR5-OR6)**
+**[Platform contract] — Authentication conformance does not cover every external API host (NFR3)**
 
-NFR8's bound depends on an unresolved spec identity/status, while NFR18 requires a nonexistent document and has no owning story.
+NFR3 names a closed host list and omits Tenants and future generated hosts from the full shared JWT posture and traceability.
 
-Fix: Bind and approve the NFR8 spec and numeric bounds; assign and produce the NFR18 posture document before either can be treated as complete.
+Fix: Define NFR3 by capability—every externally reachable or JWT-binding host—and add Tenants plus a generated-host conformance fixture to primary release evidence.
+
+**[Platform contract] — Consumer-removal authority is weaker in the PRD than in architecture (FR36; architecture AD-22)**
+
+Consumer-specific repository identity, subject digest, authenticated Consumer-owner receipt, validity, and invalidation rules exist only in the lower-level architecture; the PRD does not define the Consumer-owner role.
+
+Fix: Promote the stable authorization outcomes and invalidation conditions into FR36, define Consumer owner, and separate platform availability, release/deployment authority, and per-consumer removal authorization.
+
+**[Platform contract] — The bound reject result is not a coherent current baseline (frontmatter; §0; OR14)**
+
+The report binds commit `1b6f08d4…`, while current `HEAD` is `293c69c4…`; substantial authentication, planning, validator, and documentation changes have landed. Some recorded blocker reasons are stale even though readiness remains blocked.
+
+Fix: Re-run reconciliation against an explicit clean commit, bind current digests and validator outputs atomically, and retire or rewrite superseded blocker descriptions.
 
 ### Medium (4)
 
-**[Strategic coherence] — MVP selection logic is inherited rather than argued (§1; §9)**
+**[Strategic coherence] — MVP priority follows the epic inventory more than the thesis (§9.1)**
 
-The PRD preserves Epics 1-7 but does not explain why append fencing and sharding implementation are deferred while lower-risk planning, packaging, and UI work remains MVP.
+The PRD does not distinguish exit-critical outcomes that validate the reuse-plus-hardening bet from supporting readiness work.
 
-Fix: Tie the major inclusions and exclusions to the two-part thesis, risk tolerance, sequencing constraints, and decision owner.
+Fix: Add a short thesis-derived scope rationale without duplicating story sequencing.
 
-**[Shape fit / Adversarial] — Stable requirements are mixed with volatile execution history (§1.1; §6.8; §10-§12)**
+**[Shape fit] — Volatile readiness evidence is embedded in the stable PRD (§1.1; §6.8; §10–§12; OR9)**
 
-Story states, receipt counts, tracker disputes, migration history, and retrospective facts make the PRD stale quickly and obscure its durable product contract.
+Receipt counts, story statuses, historical verdicts, source identities, and retired refinements make the requirements baseline stale quickly.
 
-Fix: Move live status and historical reconciliation to a generated ledger or audit addendum, leaving baseline-specific links and durable decisions in the PRD.
+Fix: Keep durable authority and fail-closed rules in the PRD; move replaceable run history and evidence state into a generated ledger or addendum linked by immutable identity.
 
-**[Adversarial / Brownfield] — Source authority is flat and incomplete (frontmatter source_artifacts)**
+**[Platform contract] — Ownership traceability is not delivery traceability (§10–§12)**
 
-The source list lacks per-source approval, digest, affected clauses, and supersession, and it omits the proposal cited as authority for retiring OR2/OR3/OR12.
+Tracker status, wrapper status, evidence, and actual public behavior can disagree, so downstream consumers cannot determine which contracts are safe from ownership tables alone.
 
-Fix: Add the missing proposal and replace the flat list with a compact authority register or a generated validation against one.
+Fix: Generate an exit ledger keyed by stable requirement/sub-requirement ID with result, evidence identity, evaluator, waiver policy, and invalidation trigger.
 
-**[Shape fit] — Product constraints and replaceable implementation mechanisms are not separated (§6-§8)**
+**[Platform contract] — Shared-workflow governance mixes mutable and immutable authority (FR25; NFR9; OR18)**
 
-The PRD delegates technical design to architecture but embeds many method names, file paths, DAPR identifiers, workflow mechanics, and evidence scripts without an addendum.
+Some authorizing workflows are SHA-pinned while other CI and governance dependencies use mutable `@main`, and the PRD does not classify which results are authorizing.
 
-Fix: Retain public contracts and non-negotiable bounds; move replaceable mechanisms and audit rationale to architecture or an addendum.
+Fix: Classify every shared workflow/action as authorizing or advisory, pin authorizing dependencies immutably, and bind those identities into retained evidence.
 
-### Low (3)
+### Low (0)
 
-**[Adversarial] — Scope and decision state arrive late (§9; OR9)**
-
-Fix: Put supported operating envelope, in/out/post-MVP scope, unsafe gaps, and current readiness state immediately after purpose.
-
-**[Brownfield] — Epic 2 tracker rollup is stale**
-
-All Epic 2 stories and its retrospective are done, but the epic remains in-progress; the Story 2.12 key is truncated.
-
-Fix: Correct through the tracker owner's guarded process.
-
-**[Brownfield] — OCI platform enforcement depends on an external Builds pin (§8.1)**
-
-Fix: Record the exact shared-workflow identity and EventStore evidence-handler identity, and verify that caller pin and validated workflow bytes match.
+None.
 
 ## Mechanical notes
 
-- FR1-FR37 and NFR1-NFR19 are present and unique in their primary requirement sets.
-- SM1-SM12 and SM-C1-SM-C5 are unique; live product-bet metrics carry more weight than the historical metrics.
-- No user journeys are present; that is appropriate for this brownfield developer-platform capability specification.
-- The assumptions roundtrip is clean: no inline assumption marker exists, and §13 says none exist.
-- Cross-reference integrity is not clean because retired OR12 remains live in SM2 and §11.1.
-- No addendum.md is present despite substantial audit-history and technical-mechanism content.
-- Current validation of OQ8 evidence fails: python3 tools/validate-oq8-platform-evidence.py --pre-review exits 1 on Story 4.15 lifecycle drift.
+- FR1–FR37 and NFR1–NFR19 are complete and unique in their requirement declarations. The thematic FR ordering is non-numeric but deliberate and readable.
+- §11.1 contains one coverage row for every FR. §11.2 omits NFR5, NFR12, and NFR13; this is promoted to a substantive finding above.
+- No duplicate IDs or obviously broken internal section references were found, and every frontmatter `source_artifacts` path exists.
+- Glossary terminology is generally disciplined, especially the parity and provenance distinctions.
+- The Assumptions Index round-trips cleanly: no inline `[ASSUMPTION]` tags exist and the index says none exist.
+- No UJ IDs or named protagonists are present; this is treated as a shape issue rather than an ID defect.
 
 ## Reviewer files
 
-- review-rubric.md
-- review-adversarial-general.md
-- review-brownfield-traceability.md
+- `review-rubric.md`
+- `review-platform-contract.md`
+
+## Supporting source extract
+
+- `reconcile-validation-2026-09-10.md`
 
 Historical reviewer files remain preserved in the workspace and were treated as prior-run context, not as current-baseline findings.

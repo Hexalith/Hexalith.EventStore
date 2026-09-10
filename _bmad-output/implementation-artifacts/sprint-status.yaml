@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-09-09
+# last_updated: 2026-09-10
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-09-09'
+last_updated: '2026-09-10'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -201,10 +201,8 @@ development_status:
   # Corrected 2026-09-08 (correct-course OR2). Commit c83cc4c3 flipped this row
   # 'backlog' -> 'done' in a test-only change whose subject and body never mention
   # a status change, and whose story spec forbids it from touching this file.
-  # spec-5-3 is 'in-progress' at review loop 3 with 14 of 20 checklist items done
-  # and no Auto Run Result marker; the committed-secret strip has landed, the
-  # production JWT guard and its real-pipeline evidence have not.
-  5-3-production-authentication-guards-and-secret-stripping: in-progress
+  # Owner set this row to done 2026-09-10 after spec-5-3 closed (review loop 8).
+  5-3-production-authentication-guards-and-secret-stripping: done
   5-4-admin-surface-safety-hygiene: review
   5-5-internal-and-domain-service-trust-boundary: backlog
   5-6-apphost-component-loading-and-sidecar-argument-parity: backlog

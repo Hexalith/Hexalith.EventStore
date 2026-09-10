@@ -4120,6 +4120,15 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: The Group H deferred-work row still summarizes the 384/1952 reproducibility gap as open while its evidence paragraph says it was settled.
   evidence: The Group H `summary` still reads “The v3 test receipt's 384 / 1952 test counts are not reproducible from any recorded execution,” while the same entry's `evidence` field records the isolated 1966/1966 `V3_CONTRACTS_TEST_COMMAND` run that settled it. The append-only ledger cannot rewrite that summary; `bmad-loop-sweep` will keep seeing an open unreproducible-count claim. Settlement is already in the evidence paragraph and the spec's Group H Completion Verification.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-09, Group J)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: v1 public-document proofs hash live working-tree files rather than the v1 Git snapshot.
+  evidence: `validate_review_subject` compares `sha256_file(ROOT / relative)` to `EXPECTED_DOCUMENT_HASHES` (`tools/validate-oq8-platform-evidence.py:3282-3284`) while other historical bindings use `sha256_git_file(COMPLETED_V1_CLOSURE_COMMIT, …)`. Later JWT-doc work therefore breaks Story 4.15 without a v3 gate-input change. Pre-existing; belongs to the later public-document group.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: `--pre-review` still does not pin the full selector historical object after the Group I partial pin.
+  evidence: `validate_successor_selector_sdk_link` now checks authority, v1 `packetSha256`, v2 `manifestSha256`, SDK directory, and one SDK file hash (`tools/validate-oq8-platform-evidence.py:3658-3682`). `validate_successor_selector_historical` also pins v1 `packetPath` / directory / `manifestSha256` / `files`, v2 directory, and the SDK manifest. Pre-review can still freeze a selector that final closure would reject. Leftover of the accepted Group I partial pin, not introduced by this remint.
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
   summary: EnableKeycloak=false still starts source-enabled Tenants hosts without the shared per-run signing key.
   evidence: `ConfigureLocalSymmetricValidation` is applied only to EventStore, Admin.Server, and Sample API; `tenants` and `tenants-api` remain in the run graph without equivalent local JWT wiring. Owner rerouted this remaining review `bad_spec` after loop 8.
@@ -4132,3 +4141,30 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md`
   summary: Realm render-failure cleanup still swallows a refused owned-directory delete.
   evidence: The `KeycloakRealmTemplate.Render` catch calls `DeleteOwnedDirectory` and ignores a false return, rethrowing only the original setup exception so a leftover secret directory has no retry handle. Owner rerouted this remaining review `bad_spec` after loop 8.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-10, Group K)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: `--pre-review` still does not pin the full selector historical object after the Group I partial pin.
+  evidence: Restates the Group J leftover. `validate_successor_selector_sdk_link` (`tools/validate-oq8-platform-evidence.py:3658-3682`) still omits v1 `packetPath` / directory / `manifestSha256` / `files`, v2 `directory`, SDK `manifestSha256` / remaining files, and `set(historical)`. `PreReviewRejectsCorruptedSelector` does not mutate those holes. No new action beyond the Group J row.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Sealed 404/1970 counts and the new `--pre-review` tests are not reproducible on the remint tree after the public-document overlay was omitted.
+  evidence: Widens the Group J live-hash public-document deferral. Live `docs/guides/configuration-reference.md` is `edd38e7c…` vs pin `e2fde4db…`; `docs/reference/command-api.md` is `1f19e75b…` vs `6b0bfd40…`. `CreateCandidateFixture` copies those live files; `--pre-review` hashes them in `validate_review_subject` before selector checks. The v3 test receipt still records isolated-tree 404/1970. Belongs to the later public-document group.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-10, Group L)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Remaining `https://localhost:5001` curl/Location examples on the Command API page were not part of this hunk.
+  evidence: Pre-existing. This chunk switched Complete Flow submit to `${EVENTSTORE_URL}` but left other examples on `https://localhost:5001` (`docs/reference/command-api.md:99,116,132,153,246,302,390`). Step 3 of Complete Flow is a separate patch.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Sibling public docs still teach `dotnet run --project` AppHost and `localhost:8180` token recipes.
+  evidence: Pre-existing, outside this four-file chunk. Blind Hunter cited `docs/guides/troubleshooting.md` and `docs/assets/regenerate-demo-checklist.md`.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene (2026-09-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: AppHost always injects `EventStore__AdminServer__SwaggerUrl` as `{adminServerHttps}/swagger/index.html`, including publish, while non-Development Admin hosts now omit Swagger.
+  evidence: Host/OpenAPI chunk (`src/Hexalith.EventStore.AppHost/Program.cs:374-376`). Pre-existing topology wiring outside this slice; Story 5.4 forbids later DAPR/topology stories. Local Development Aspire can still serve that URL.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: `docs/guides/configuration-reference.md` still documents only public `EventStore:OpenApi:Enabled`; Admin discovery is already stated in `api-contracts.md`.
+  evidence: Host/OpenAPI chunk decision (2026-09-10). Deferred: do not remint the already-drifting OQ8 public-document seal from this slice; add the Admin catalog paragraph on the Docs chunk / later public-document remint.

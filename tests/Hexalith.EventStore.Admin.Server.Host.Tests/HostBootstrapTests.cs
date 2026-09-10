@@ -171,6 +171,28 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
     }
 
     [Fact]
+    public async Task DevelopmentPipeline_WithDiscoveryUnset_OmitsDiscovery()
+    {
+        await using WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["EventStore:Admin:OpenApi:Enabled"] = null,
+                })));
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage document = await client.GetAsync(
+            "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
+        using HttpResponseMessage swagger = await client.GetAsync(
+            "/swagger/index.html",
+            TestContext.Current.CancellationToken);
+
+        document.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        swagger.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Authenticated_Admin_Request_ReturnsExpectedStreamPayload() {
         using HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(

@@ -5,166 +5,415 @@
 <title>PRD Validation: eventstore Phase 4 Implementation Readiness Recovery</title>
 <style>
   :root {
-    --bg: #fafaf9; --surface: #ffffff; --border: #e7e5e4; --text: #1c1917; --muted: #78716c;
-    --verdict-strong: #16a34a; --verdict-adequate: #65a30d; --verdict-thin: #d97706; --verdict-broken: #dc2626;
-    --sev-low: #64748b; --sev-medium: #ca8a04; --sev-high: #ea580c; --sev-critical: #dc2626;
-    --grade-exc: #16a34a; --grade-good: #65a30d; --grade-fair: #d97706; --grade-poor: #dc2626;
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
   .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
-  header.report-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
   .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
   .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  .grade { padding: 10px 18px; border-radius: 8px; font-weight: 600; color: white; font-size: 15px; white-space: nowrap; }
-  .grade-excellent { background: var(--grade-exc); } .grade-good { background: var(--grade-good); } .grade-fair { background: var(--grade-fair); } .grade-poor { background: var(--grade-poor); }
-  .synthesis { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: 8px; padding: 18px 22px; margin-bottom: 24px; font-size: 15.5px; }
-  .synthesis p { margin: 0 0 10px; } .synthesis p:last-child { margin-bottom: 0; }
-  .dimension-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 24px; }
-  .dim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
   .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
   .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
   section.dimension, section.reviewer-section { margin-bottom: 14px; }
-  section.dimension details, section.reviewer-section details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  section summary { padding: 14px 20px; cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 12px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
   section summary::-webkit-details-marker { display: none; }
-  section summary::before { content: "▸"; display: inline-block; color: var(--muted); transition: transform 0.15s ease; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
   section details[open] summary::before { transform: rotate(90deg); }
-  section summary h2 { display: inline; margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; flex: 1; }
-  .verdict-pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: white; }
-  .verdict-strong { background: var(--verdict-strong); } .verdict-adequate { background: var(--verdict-adequate); } .verdict-thin { background: var(--verdict-thin); } .verdict-broken { background: var(--verdict-broken); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
   .dim-body { padding: 4px 20px 18px; }
-  .dim-judgment { color: var(--text); font-size: 14.5px; } .dim-judgment p { margin: 0 0 10px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
   .findings-list { padding: 0 20px 4px; }
-  article.finding { padding: 14px 0; border-top: 1px solid var(--border); }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
   article.finding:first-child { border-top: none; }
-  article.finding header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-  .badge { font-size: 10.5px; padding: 3px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; }
-  .badge-sev-low { background: rgba(100,116,139,.12); color: var(--sev-low); }
-  .badge-sev-medium { background: rgba(202,138,4,.14); color: var(--sev-medium); }
-  .badge-sev-high { background: rgba(234,88,12,.14); color: var(--sev-high); }
-  .badge-sev-critical { background: rgba(220,38,38,.14); color: var(--sev-critical); }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
   .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
   .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
-  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; } .finding-fix strong { color: var(--muted); font-weight: 500; }
-  .reviewer-source { font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  .mechanical { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 24px; font-size: 14px; }
-  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .mechanical ul { margin: 0; padding-left: 20px; } .mechanical li { margin-bottom: 4px; color: var(--text); }
-  footer.report-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
   footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
-<div class="container">
-  <header class="report-header">
-    <div class="title">
-      <h1>eventstore Phase 4 Implementation Readiness Recovery — Validation Report</h1>
-      <div class="subtitle">_bmad-output/planning-artifacts/prd.md · baseline 1b6f08d4</div>
-    </div>
-    <div class="grade grade-poor">Poor</div>
-  </header>
+  <div class="container">
+    <header class="report-header">
+      <div class="title">
+        <h1>eventstore Phase 4 Implementation Readiness Recovery — Validation Report</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/prd.md</div>
+      </div>
+      <div class="grade grade-poor">Poor</div>
+    </header>
 
-  <div class="synthesis">
-    <p>This is a technically substantive and unusually candid brownfield PRD: the thesis is specific, scope exclusions and residual risks are explicit, and most security, reliability, and evidence requirements carry product-specific bounds. It is not safe as the authoritative chain-top baseline it claims to be because its live FR ownership map contradicts its correction record, several omnibus requirements cannot close clause by clause, and readiness controls remain unbound or overdue.</p>
-    <p>The adversarial and brownfield reviewers shift the picture decisively to Reject. Four distinct critical failures survive consolidation: the FR ownership trace is self-contradictory, epics.md fails its own source-drift gate, OQ8 safety requirements depend on external normative bytes EventStore cannot reproduce, and the MVP metric can pass while a known concurrent append race still loses durable data. Do not use this PRD to authorize a READY verdict, MVP completion, consumer migration, or release.</p>
+    <div class="synthesis">
+      <p>This is a technically substantive and unusually candid requirements catalogue that supports one immediate decision well: keep implementation readiness blocked. It is not safe as the authoritative chain-top baseline it claims to be because downstream usability is broken by an unreconciled artifact set and unavailable normative OQ8 source, while acceptance clarity and shape remain thin. The explicit <code>Reject</code> posture must stay in force until those gaps close.</p>
+      <p>The platform-contract review materially strengthens that conclusion with current repository evidence: generated REST tenant handling and command-status <code>Location</code> behavior contradict adopted public-boundary rules, silent append loss remains unguarded, and compatibility, authentication-conformance, and consumer-removal contracts are incomplete. The previous reject remains directionally correct, but its baseline and reasons do not describe one coherent current repository snapshot.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color: var(--verdict-thin)">thin</div></div>
+      <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color: var(--verdict-broken)">broken</div></div>
+      <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color: var(--verdict-thin)">thin</div></div>
+    </div>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>The PRD makes the current stop decision unmistakable: document finality is separate from readiness, the bound result is <code>Reject</code>, and §0 forbids release, deployment, migration, and downstream handoff. The blocker register is owned and trigger-bound, but the eventual go decision lacks a single executable exit contract.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The future READY decision has no single executable exit contract</h3><span class="finding-location">§12 OR17</span></header>
+            <div class="finding-note">A reviewer must reconstruct mandatory gates, evidence, evaluators, waiver rules, and current results across several sections.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add one Phase 4 exit table with a pass/fail row for each gate and durable approval evidence.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>The content is earned. The vision is specific to a DAPR-native event-sourcing platform, roles directly drive SDK, API, UI, release, operator, and evidence requirements, and NFRs carry product-specific limits. Known failures and negative evidence are retained instead of being presented as success.</p>
+        </div></div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>The PRD has a clear thesis: platform reuse and operational hardening must ship together. Metrics test both halves and counter-metrics prevent shortcuts. The minimum slice, however, is still described mostly as the inherited Epic 1–7 inventory rather than as a thesis-derived priority order.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">MVP priority follows the epic inventory more than the product thesis</h3><span class="finding-location">§9.1</span></header>
+            <div class="finding-note">The scope does not identify which outcomes are indispensable to validating the reuse-and-hardening bet versus supporting readiness work.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a short scope-logic paragraph grouping mandatory MVP outcomes by the thesis they validate.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">thin</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Many clauses define precise bounds and evidence denominators, but an engineer still cannot determine completion from the PRD alone. Acceptance is delegated to epics, section-level evidence covers several FRs at once, and multiple requirements bundle independently fail-able consequences.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Omnibus requirements have no clause-level closure rule</h3><span class="finding-location">FR26, FR33, FR34, NFR17; OR7</span></header>
+            <div class="finding-note">Whole-ID story mappings cannot show which independent clauses are delivered.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Assign stable sub-IDs or add a clause-to-story-to-evidence table with an all-clauses-required rule.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Acceptance ambiguity extends beyond OR7</h3><span class="finding-location">FR4, FR5, FR7, FR12</span></header>
+            <div class="finding-note">Feature-level evidence paragraphs do not round-trip every consequence in several multi-clause requirements.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Give each FR a verifiable consequence list or extend clause-level evidence coverage to every multi-clause FR.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">NFR8's projection-cost outcome has no measurable bound</h3><span class="finding-location">NFR8; OR16</span></header>
+            <div class="finding-note">The missing projection specification leaves the projection half untestable and Story 6.4 unauthorized.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Approve numeric bounds, workload, pass condition, and evidence path, then bind them from NFR8.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Scope is unusually honest. MVP, exclusions, and committed post-MVP work are separated; append fencing remains a blocker rather than a waiver; planning/evidence outcomes are not misrepresented as implementation; and open refinements have owners and triggers.</p>
+        </div></div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Downstream usability</h2><span class="verdict-pill verdict-broken">broken</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>The glossary, requirement IDs, feature grouping, and traceability aids are locally strong. Yet the PRD itself records that PRD, architecture, UX, epics, and lifecycle evidence do not form one approved baseline. Safety-sensitive OQ8 rules are also governed by external bytes unavailable inside EventStore.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Planning artifacts are not one approved baseline</h3><span class="finding-location">§11.3; OR14, OR15</span></header>
+            <div class="finding-note">Matching PRD/architecture hashes in epics were refreshed without the required approval sequence; architecture remains draft, lifecycle sources conflict, and UX hashes are stale.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Reconcile and approve the planning set atomically, then run guarded drift and lifecycle validations before handoff.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Normative OQ8 requirements are unavailable inside the evidence boundary</h3><span class="finding-location">§1.1; OR11</span></header>
+            <div class="finding-note">A digest without accessible governed bytes cannot let downstream workflows extract or validate the overriding state machine, timers, tombstones, public errors, and evidence denominators.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Retain accessible immutable normative content or a verifiable attestation and make absence or mismatch fail closed.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">NFR traceability is incomplete</h3><span class="finding-location">§0; §11.2</span></header>
+            <div class="finding-note">NFR5, NFR12, and NFR13 are absent from the NFR table although epics declares coverage.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add every NFR and distinguish primary from supporting ownership without treating declarations as delivery proof.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Shape fit</h2><span class="verdict-pill verdict-thin">thin</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>The capability-spec shape fits this brownfield platform, but the PRD covers six roles, three UI surfaces, release, and incident/recovery work without user journeys. It also mixes a stable requirements baseline with volatile receipt counts, story state, digests, and historical reconciliation.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Multi-stakeholder and UI-affecting workflows have no user journeys</h3><span class="finding-location">§3; §8.3</span></header>
+            <div class="finding-note">Downstream UX and story work must reconstruct cross-role order, visible state, and failure recovery from scattered requirements.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a small set of named-protagonist journeys for load-bearing success and failure/recovery flows.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Volatile readiness evidence is embedded in the stable PRD</h3><span class="finding-location">§1.1; §6.8; §10–§12; OR9</span></header>
+            <div class="finding-note">Receipt counts, statuses, verdict history, source identities, and retired refinements stale after each review cycle.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep stable authority and fail-closed rules in the PRD; move run history and evidence state to a generated ledger or addendum.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details>
+        <summary><h2>Platform / API-contract adversarial review</h2><span class="reviewer-source">review-platform-contract.md</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Reject as a current chain-top implementation or consumer-handoff baseline. Current tracked behavior exposes public-contract conflicts beyond the rubric's structural findings.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Generated public API contradicts the canonical tenant boundary</h3><span class="finding-location">NFR2; §8.2; AD-27</span></header>
+            <div class="finding-note">Generated controllers can emit reserved <code>system</code> and fail to canonicalize or fully validate route/claim tenants.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Bind the full canonicalization contract in the PRD, use the shared canonicalizer, and add negative generated-controller tests.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Command Location can select CorrelationId as status identity</h3><span class="finding-location">FR12; FR27; AD-17</span></header>
+            <div class="finding-note">Generated code falls back from MessageId to CorrelationId despite the adopted sole-selector rule.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Remove the fallback, fail closed on missing/invalid MessageId, add runtime tests, and reopen Story 2.9.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">Silent append loss remains unguarded</h3><span class="finding-location">NFR7; §9; SM11; OR4</span></header>
+            <div class="finding-note">The reproduced same-key overwrite class still lacks a provider-level fence or enforced single-writer envelope.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Deliver and prove append fencing, or mechanically exclude the race from the supported operating envelope.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">OQ8 semantics remain unreproducible and validation is red</h3><span class="finding-location">§1.1; OR11; AD-25</span></header>
+            <div class="finding-note">The governed bytes are unavailable and the current OQ8 pre-review validator fails on public-document drift.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Make normative bytes available, bind them through all artifacts, repair the drift through the governed review path, and keep handoff closed.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Backward compatibility excludes most public surfaces</h3><span class="finding-location">NFR12</span></header>
+            <div class="finding-note">SDK, generator, HTTP, envelope, serialization, DAPR-wire, and NuGet contracts lack a complete PRD-level compatibility policy.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Inventory and classify public contracts, define SemVer/deprecation/removal rules, and gate releases on API/wire and package-consumer evidence.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Authentication conformance excludes Tenants and future generated hosts</h3><span class="finding-location">NFR3</span></header>
+            <div class="finding-note">The shared JWT posture is expressed as a closed host list rather than a capability-level obligation.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Apply NFR3 to every externally reachable or JWT-binding host and add generated-host conformance evidence.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Consumer-removal safety is weaker in the PRD than in architecture</h3><span class="finding-location">FR36; AD-22</span></header>
+            <div class="finding-note">Consumer identity, subject digest, authenticated receipt, validity, and invalidation conditions are stranded in architecture.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Promote stable authorization outcomes into FR36 and define the Consumer-owner role.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-high">high</span><h3 class="finding-title">The dated reject no longer describes one current baseline</h3><span class="finding-location">frontmatter; §0; OR14</span></header>
+            <div class="finding-note">Current HEAD is fourteen commits beyond the bound baseline; some reasons changed even though the conservative posture remains correct.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Reconcile and validate against an explicit clean current commit and refresh provenance atomically.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Ownership traceability is not delivery traceability</h3><span class="finding-location">§10–§12</span></header>
+            <div class="finding-note">Tracker, wrapper, evidence, and shipped behavior can disagree despite ownership tables.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Generate a stable-ID exit ledger with result, evidence, evaluator, waiver, and invalidation data.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Workflow governance mixes mutable and immutable authority</h3><span class="finding-location">FR25; NFR9; OR18</span></header>
+            <div class="finding-note">The PRD does not classify which shared workflow results authorize a gate and which mutable dependencies are merely advisory.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Classify workflow authority, immutably pin authorizing dependencies, and bind identities into evidence.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>FR1–FR37 and NFR1–NFR19 are complete and unique in their declaration sections; thematic FR ordering is deliberately non-numeric.</li>
+        <li>§11.1 covers every FR. §11.2 omits NFR5, NFR12, and NFR13; this is promoted to a substantive finding.</li>
+        <li>No duplicate IDs or obviously broken internal section references were found; every frontmatter source path exists.</li>
+        <li>Glossary terminology is generally disciplined, especially the parity and provenance distinctions.</li>
+        <li>The Assumptions Index round-trips cleanly.</li>
+        <li>No named-protagonist journeys are present; this is treated as a shape finding rather than an ID defect.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+        <span>Generated: 2026-09-10T08:31:03+02:00</span>
+        <span>Baseline: 293c69c42d35dee26682d42f05c943c0b65786f4</span>
+      </div>
+    </footer>
   </div>
-
-  <div class="dimension-summary">
-    <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color:var(--verdict-adequate)">adequate</div></div>
-    <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color:var(--verdict-strong)">strong</div></div>
-    <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color:var(--verdict-adequate)">adequate</div></div>
-    <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color:var(--verdict-thin)">thin</div></div>
-    <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color:var(--verdict-strong)">strong</div></div>
-    <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color:var(--verdict-broken)">broken</div></div>
-    <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color:var(--verdict-thin)">thin</div></div>
-  </div>
-
-  <section class="dimension"><details><summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>The PRD makes real decisions visible, distinguishes MVP from post-MVP, and records owed refinements with owners and triggers. It does not identify who accepted the known append-loss risk, why MVP remains acceptable without a fence, or what forces the decision.</p></div></div>
-    <div class="findings-list"><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Known append-loss risk is disclosed but not accepted as a decision</h3><span class="finding-location">§7, §9.2, SM11, OR4</span></header><div class="finding-note">Append races are not delivered in MVP and the fence has no owner, despite the operational-trust thesis.</div><div class="finding-fix"><strong>Fix:</strong> Name approver, evidence, bounded operating posture, rationale, and mandatory owner/trigger.</div></article></div>
-  </details></section>
-
-  <section class="dimension"><details><summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>The product thesis, target roles, security modes, evidence bounds, and operational requirements are specific to EventStore. There are no decorative personas, novelty claims, or generic NFR furniture.</p></div></div>
-  </details></section>
-
-  <section class="dimension"><details><summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>The two-part platform-reuse and operational-hardening thesis is clear, and the newer product-bet metrics support it. MVP boundaries are described but mostly inherited rather than justified by product and risk criteria.</p></div></div>
-    <div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">MVP selection logic is asserted rather than derived</h3><span class="finding-location">§1, §9</span></header><div class="finding-note">The PRD does not explain why append fencing and sharded allocation implementation lose priority to included corrections.</div><div class="finding-fix"><strong>Fix:</strong> Tie major inclusions and exclusions to thesis, risk tolerance, sequencing, and decision owner.</div></article></div>
-  </details></section>
-
-  <section class="dimension"><details open><summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">thin</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>Atomic requirements such as NFR3, NFR5, FR12, and FR36 are testable. FR26, FR33, FR34, and NFR17 remain omnibus, high-risk completion has no bound correctness gate, and NFR8/NFR18 are not acceptance-complete.</p></div></div>
-    <div class="findings-list">
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Omnibus requirements lack clause-level completion</h3><span class="finding-location">FR26, FR33, FR34, NFR17, OR7</span></header><div class="finding-note">A done story can appear without closing a named clause.</div><div class="finding-fix"><strong>Fix:</strong> Add stable sub-IDs or a clause-to-story-to-evidence matrix with all-clauses-required closure.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">High-risk completion has no bound correctness gate</h3><span class="finding-location">OR13</span></header><div class="finding-note">The authoritative lane, trigger, evidence artifact, and pass condition are undefined.</div><div class="finding-fix"><strong>Fix:</strong> Bind and mechanically enforce the exact gate before status mutation.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">NFR8 and NFR18 are not acceptance-complete</h3><span class="finding-location">§7, §11.3, OR5-OR6</span></header><div class="finding-note">NFR8 depends on unresolved spec state; NFR18 requires an absent, unowned document.</div><div class="finding-fix"><strong>Fix:</strong> Approve the NFR8 bounds and assign/produce the NFR18 posture artifact.</div></article>
-    </div>
-  </details></section>
-
-  <section class="dimension"><details><summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">strong</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>In-scope, out-of-scope, and committed post-MVP work are explicit. NFR7 exposes unguarded loss classes and §12 records owed refinements rather than hiding them. The visible disclosure is stronger than template callouts.</p></div></div>
-  </details></section>
-
-  <section class="dimension"><details open><summary><h2>Downstream usability</h2><span class="verdict-pill verdict-broken">broken</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>The glossary, stable IDs, artifact boundaries, and traceability tables should support extraction. The central ownership table invalidates itself: live SM2 and §11.1 preserve OR12 defects that §12 says were retired, and Story 6.1 state has drifted again.</p></div></div>
-    <div class="findings-list">
-      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">FR ownership map contradicts its correction record</h3><span class="finding-location">SM2, §11.1, retired OR12</span></header><div class="finding-note">The live map assigns FR1 to 4.11 and labels duplicate owners; the retirement record and current epics.md say FR1 belongs to 1.11 and the duplicates were resolved.</div><div class="finding-fix"><strong>Fix:</strong> Rebuild from current epics.md and add a retired-OR/source-drift check.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Story 6.1 warning is stale</h3><span class="finding-location">§11.3, OR5</span></header><div class="finding-note">The canonical bound path now exists and is approved-authorized, while wrapper, tracker, and epics disagree.</div><div class="finding-fix"><strong>Fix:</strong> Establish authority order and reconcile all dependent artifacts atomically.</div></article>
-    </div>
-  </details></section>
-
-  <section class="dimension"><details open><summary><h2>Shape fit</h2><span class="verdict-pill verdict-thin">thin</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>A capability-spec shape and the absence of consumer journeys fit this developer platform. The PRD has become a product contract, volatile status ledger, and reconciliation history at once, while technical mechanisms cross the architecture boundary.</p></div></div>
-    <div class="findings-list">
-      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Readiness history overwhelms stable requirements</h3><span class="finding-location">§1.1, §11.3, §12</span></header><div class="finding-note">Commit, evidence, tracker, migration, and retired-resolution detail obscures durable product intent and creates drift.</div><div class="finding-fix"><strong>Fix:</strong> Move dated history to an audit addendum or generated ledger.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">PRD crosses its declared architecture boundary</h3><span class="finding-location">§1, §6-§8</span></header><div class="finding-note">Named methods, paths, DAPR policy identifiers, and evidence mechanics are mixed with durable product contracts.</div><div class="finding-fix"><strong>Fix:</strong> Keep public contracts and hard bounds; move replaceable mechanisms to architecture or an addendum.</div></article>
-    </div>
-  </details></section>
-
-  <section class="reviewer-section"><details><summary><h2>Adversarial general review — Reject</h2><span class="reviewer-source">review-adversarial-general.md</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>Counts: 2 critical, 6 high, 3 medium, 1 low. The reviewer concludes that the PRD remains useful as a recovery history and requirements inventory, but not as an authoritative or implementation-readiness gate.</p></div></div>
-    <div class="findings-list">
-      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">OQ8 normative requirements are unavailable</h3><span class="finding-location">§1.1, FR27, NFR7, NFR16</span></header><div class="finding-note">A digest is not a usable requirement source when the governed bytes are absent.</div><div class="finding-fix"><strong>Fix:</strong> Make the normative content or a verifiable attestation locally available.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">MVP can pass while concurrent append loses data</h3><span class="finding-location">NFR7, §9.2, SM11</span></header><div class="finding-note">The metric treats an out-of-scope declaration as equivalent to an implemented guard.</div><div class="finding-fix"><strong>Fix:</strong> Prevent the loss in the supported envelope and keep SM11 failed until then.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Final status obscures reopened readiness</h3><span class="finding-location">frontmatter, OR1</span></header><div class="finding-note">No machine-readable readiness state accompanies final document status.</div><div class="finding-fix"><strong>Fix:</strong> Separate document and readiness status.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">No coherent MVP exit rule</h3><span class="finding-location">§9-§12</span></header><div class="finding-note">Mandatory gates, evidence, evaluators, and waiver policy are not consolidated.</div><div class="finding-fix"><strong>Fix:</strong> Add a phase exit table and isolate post-MVP gates.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">High-risk evidence can be self-approved</h3><span class="finding-location">OR10, OR13</span></header><div class="finding-note">Non-authorship and exact correctness controls are not generally required.</div><div class="finding-fix"><strong>Fix:</strong> Bind independent approval and a mechanical status gate.</div></article>
-    </div>
-  </details></section>
-
-  <section class="reviewer-section"><details><summary><h2>Brownfield traceability review — Fail</h2><span class="reviewer-source">review-brownfield-traceability.md</span></summary>
-    <div class="dim-body"><div class="dim-judgment"><p>Counts: 2 critical, 5 high, 3 medium, 2 low. Repository checks covered all 37 FRs and 19 NFRs, current digests, Story 6.1's normative digest, and the OQ8 pre-review validator.</p></div></div>
-    <div class="findings-list">
-      <article class="finding"><header><span class="badge badge-sev-critical">critical</span><h3 class="finding-title">epics.md fails its source-drift gate</h3><span class="finding-location">epics.md source register</span></header><div class="finding-note">Current PRD and architecture SHA-256 values differ from the recorded inputs.</div><div class="finding-fix"><strong>Fix:</strong> Reconcile content, renew approval, then update hashes and rerun validation.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Story 4.15 lifecycle gate is red</h3><span class="finding-location">NFR7, Story 4.15</span></header><div class="finding-note">Tracker, wrapper, and epics conflict; the OQ8 pre-review validator exits 1.</div><div class="finding-fix"><strong>Fix:</strong> Reconcile lifecycle or mark delivery closure-pending.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Story 6.1 authority is opposite the PRD's claim</h3><span class="finding-location">§11.3, OR5</span></header><div class="finding-note">The bound artifact exists, is approved-authorized, and authorizes Story 6.2.</div><div class="finding-fix"><strong>Fix:</strong> Retire the stale path debt and reconcile status.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Architecture predates current requirements</h3><span class="finding-location">architecture.md authority section</span></header><div class="finding-note">It names the 2026-08-16 PRD while the current PRD is dated 2026-09-08.</div><div class="finding-fix"><strong>Fix:</strong> Reconcile architecture and refresh governed digests.</div></article>
-      <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Latest retirement proposal is missing from provenance</h3><span class="finding-location">source_artifacts</span></header><div class="finding-note">The proposal cited to retire OR2, OR3, and OR12 is not in frontmatter.</div><div class="finding-fix"><strong>Fix:</strong> Add it during the traceability correction.</div></article>
-    </div>
-  </details></section>
-
-  <div class="mechanical">
-    <h3>Mechanical notes</h3>
-    <ul>
-      <li>FR1-FR37, NFR1-NFR19, SM1-SM12, and SM-C1-SM-C5 are present and unique in their primary sets.</li>
-      <li>No user journeys are present; that fits the brownfield developer-platform form.</li>
-      <li>The assumptions roundtrip is clean.</li>
-      <li>Cross-reference integrity fails because retired OR12 remains live in SM2 and §11.1.</li>
-      <li>No addendum is present despite substantial audit-history and mechanism content.</li>
-      <li>OQ8 pre-review validation fails on Story 4.15 lifecycle drift.</li>
-    </ul>
-  </div>
-
-  <footer class="report-footer">
-    <div class="meta">
-      <span>Rubric: .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span>
-      <span>Generated: 2026-09-09T08:18:44+02:00</span>
-      <span>Markdown twin: validation-report.md</span>
-    </div>
-  </footer>
-</div>
 </body>
 </html>

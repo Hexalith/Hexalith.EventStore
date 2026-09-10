@@ -1,6 +1,6 @@
 # Epic 4 Context: Operators Can Trust Command and Event Integrity
 
-<!-- Generated from planning artifacts. Regenerate with compile-epic-context if planning docs change. -->
+<!-- Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change. -->
 
 ## Goal
 
@@ -52,5 +52,5 @@ Operator-facing command states must distinguish acceptance, recovery in progress
 ## Cross-Story Dependencies
 
 - Story 4.1 establishes stable identity. Story 4.2 adds exact message-keyed recovery state; both precede Story 4.4 publication recovery. Story 4.5 gates append-fencing decisions and gates Story 4.6 only if the selected sharding design changes append fencing or provider write semantics.
-- Story 4.8 is a historical, non-executable ledger. Stories 4.9-4.15 form the ordered OQ8 authority and evidence chain; later work cannot retroactively authorize an earlier unsafe outcome, and platform completion does not grant release, deployment, consumer migration, or downstream repository authority.
-- Story 4.7 depends on separately authenticated Tenants-maintainer authority and exact external-repository evidence. Existing EventStore provenance enforcement remains fail-safe while that follow-up is incomplete.
+- Story 4.8 is a historical, non-executable ledger. Stories 4.9-4.15 form the ordered OQ8 authority and evidence chain; later work cannot retroactively authorize an earlier unsafe outcome, and platform completion does not grant release, deployment, consumer migration, or external-repository authority.
+- Story 4.7 depends on completed EventStore route-provenance enforcement and generated-consumer handling, plus separately authenticated Tenants-maintainer authority and exact external-repository evidence. Existing EventStore provenance enforcement remains fail-safe while that follow-up is incomplete.

@@ -158,3 +158,28 @@ Reuse one presentation component for confirmation facts, but keep each page resp
 - `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release --no-restore` -- expected: confirmation, no-work, and focus tests pass.
 - `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore` -- expected: zero warnings and errors.
 - `git diff --check` -- expected: no whitespace errors and no diff for `sprint-status.yaml`.
+
+### Review Findings — Host/OpenAPI chunk (2026-09-10)
+
+- [x] [Review][Defer] Operator catalog still omits Admin discovery while that file is OQ8-sealed — deferred: do not remint the already-drifting public-document seal from this Host slice; `api-contracts.md` already documents the Admin gate; add the catalog paragraph on the Docs chunk / later OQ8 public-document remint.
+- [x] [Review][Patch] Development omitted/null OpenAPI flag is unpinned [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:151]
+- [x] [Review][Defer] AppHost always advertises Admin Swagger UI [src/Hexalith.EventStore.AppHost/Program.cs:374] — deferred: pre-existing topology wiring outside this Host/OpenAPI slice; Story 5.4 forbids entering later DAPR/topology stories, and published/non-Development Admin hosts now 404 that URL by design.
+
+#### Rejected — Host/OpenAPI chunk (2026-09-10)
+
+- [Rejected][false] Brownfield overview/inventory omitted from this diff lack the discovery contract — this chunk excluded those files; `docs/brownfield/api-contracts.md` already documents the Admin Development-only gate, and `project-overview.md` is a package table.
+- [Rejected][false] `DevelopmentPipeline_WithExplicitEnablement_MapsDiscovery` never sets `Enabled=true` — the real Development host factory loads `appsettings.Development.json`, which sets the flag `true`.
+- [Rejected][false] Production omitted-setting row is untested — `ProductionPipeline_AlwaysOmitsDiscovery(true)` already proves configuration cannot expose discovery outside Development; omitted binds to `false` under `GetValue<bool>`.
+- [Rejected][false] Production 404s must also assert body emptiness and `/swagger/swagger-initializer.js` — unmapped endpoints return framework 404 without OpenAPI/Swagger payloads; initializer is the same SwaggerUI middleware as `index.html`.
+- [Rejected][false] Production discovery is not proven together with probes and protected routes — `ProductionPipeline_LeavesProbesAnonymousAndProtectedAdminRouteChallenged` uses the same factory type; probes are mapped before the OpenAPI `if`.
+- [Rejected][false] Development disable does not re-hit authenticated Admin routes — `MapControllers()` is unconditional after the OpenAPI gate.
+- [Rejected][false] Development tests omit the `/swagger` prefix — `RoutePrefix = "swagger"` serves prefix and `index.html`; Production already probes `/swagger`.
+- [Rejected][low] Development enablement asserts only HTTP 200 — `MapOpenApi()` / `UseSwaggerUI()` on the real host return the document and UI; sibling `AdminOpenApiDocumentTests` already pin document shape.
+- [Rejected][false] Disabled OpenAPI factory copies the gate and does not force Development — Host.Tests pin `Program.cs`; this factory is a Server.Tests double with `Enabled=false`.
+- [Rejected][false] Enabled OpenAPI factory maps unconditionally and ignores `Enabled=true` — that factory exists to generate documents for schema tests, not to prove the host gate.
+- [Rejected][false] `AddAdminApi` still always calls `AddAdminOpenApi()` and the XML invites ungated mapping — DI registration does not expose routes; mapping is host-gated.
+- [Rejected][false] `Enabled=true` outside Development is a silent 404 — intended fail-closed behavior; configuration cannot expose discovery outside Development.
+- [Rejected][false] `GetValue<bool>` is an implicit default rather than `GetValue(..., false)` — a missing key already binds to `false`.
+- [Rejected][false] Credential comment/tests still use `user:password` / username `user` — those are placeholders; fixture passwords are randomized.
+- [Rejected][false] Credential log test only searches formatted `Message` — `LogInformation` already passes `SanitizeEndpoint(...)` as `{Endpoint}`, so structured state is the sanitized value.
+- [Rejected][false] Timeline `CancellationToken` is captured at argument index 6 — that index matches `IStreamQueryService.GetStreamTimelineAsync` today.
