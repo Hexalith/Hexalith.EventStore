@@ -417,7 +417,7 @@ Configuration section: `Authentication:JwtBearer`
 - `Issuer` and at least one non-blank primary/additional audience are always required
 - When `Authority` is set, the system uses OIDC discovery to fetch signing keys automatically
 - Authority mode requires a non-empty `AllowedAlgorithms` subset of the supported asymmetric algorithms; there is no production default
-- Authority and discovered/token endpoints must be absolute URIs without user information, query, or fragment. An HTTP authority is accepted only in Development and only when `RequireHttpsMetadata=false`; outside Development all endpoints must use HTTPS and HTTPS metadata cannot be disabled
+- Authority URIs must be absolute and contain no user information, query, or fragment. Explicit and discovered token endpoints must be absolute URIs without user information or fragment; a standards-compliant fixed query is allowed. An HTTP authority or token endpoint is accepted only in Development and only when `RequireHttpsMetadata=false`; outside Development all endpoints must use HTTPS and HTTPS metadata cannot be disabled
 - When `SigningKey` is set, it must be at least 32 UTF-8 bytes; Production always rejects symmetric mode
 
 ### Published UI token acquisition
@@ -431,7 +431,7 @@ requires an explicit grant profile and scope:
 | `Authentication:JwtBearer:SampleUi:Scope` | Non-blank provider scope |
 | `Authentication:JwtBearer:AdminUi:GrantType` | Exactly `password` or `client_credentials` |
 | `Authentication:JwtBearer:AdminUi:Scope` | Non-blank provider scope |
-| `Authentication:JwtBearer:TokenEndpoint` | Optional explicit HTTPS endpoint; when absent, OIDC discovery is used and its `issuer` must match `Authority` |
+| `Authentication:JwtBearer:TokenEndpoint` | Optional explicit HTTPS endpoint (HTTP only in Development); a fixed query is allowed. When absent, OIDC discovery is used and its `issuer` must match `Authority` |
 | `Authentication:JwtBearer:AudienceParameterName` / `AudienceParameterValue` | Optional pair; the name is exactly `audience` or `resource`. Omit both when the provider does not require this non-standard field |
 
 Each profile always receives its own `Parameters__external-*-auth-client-id`. A `password` profile
@@ -768,7 +768,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `Authentication:JwtBearer:ValidAudiences:{index}` | string | — | Non-empty alternative or additional audience; supplies the primary audience when `Audience` is empty | Authentication |
 | `Authentication:JwtBearer:Issuer` | string | `""` | Non-empty string | Authentication |
 | `Authentication:JwtBearer:AllowedAlgorithms:{index}` | string | — | Explicit supported asymmetric algorithm in authority mode | Authentication |
-| `Authentication:JwtBearer:SigningKey` | string | `""` | Empty string or length `>= 32` | Authentication |
+| `Authentication:JwtBearer:SigningKey` | string | `""` | Empty string or at least 32 UTF-8 bytes | Authentication |
 | `Authentication:JwtBearer:RequireHttpsMetadata` | bool | `true` | `true` or `false` | Authentication |
 | `Authentication:JwtBearer:AllowInsecureSymmetricKey` | bool | `false` | `true` or `false`; never permits symmetric validation in Production | Authentication |
 | `Authentication:JwtBearer:SampleUi:GrantType` | string | — | `password` or `client_credentials` in publish mode | Authentication |

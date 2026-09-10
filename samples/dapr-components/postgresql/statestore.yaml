@@ -9,6 +9,9 @@
 #   docker run -d --name dapr-postgres -p 5432:5432 \
 #     -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" -e POSTGRES_DB=daprstate \
 #     postgres:16-alpine
+# The component binds {env:POSTGRES_CONNECTION_STRING}. Export a libpq connection
+# string (host, port, user, password, dbname, sslmode=disable) that uses the same
+# credentials as the container; DAPR does not read POSTGRES_PASSWORD directly.
 
 # DAPR component manifest version. All DAPR components use the v1alpha1 schema.
 apiVersion: dapr.io/v1alpha1

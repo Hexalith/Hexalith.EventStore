@@ -18,6 +18,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 
 [Collection(AspireEnvironmentMutationCollection.Name)]
 public sealed class AppHostAuthenticationModelTests
@@ -392,6 +393,13 @@ public sealed class AppHostAuthenticationModelTests
             token.Split('.').Length.ShouldBe(3);
             token.ShouldNotContain(signingKey);
             logger.Messages.ShouldBeEmpty();
+            JsonElement payload = DecodeJwtPayload(token);
+            JsonSerializer.Deserialize<string[]>(payload.GetProperty("tenants").GetString()!)
+                .ShouldBe(["tenant-a"]);
+            JsonSerializer.Deserialize<string[]>(payload.GetProperty("domains").GetString()!)
+                .ShouldBe(["counter"]);
+            JsonSerializer.Deserialize<string[]>(payload.GetProperty("permissions").GetString()!)
+                .ShouldBe(["command:submit", "query:read"]);
 
             WebApplicationBuilder webBuilder = WebApplication.CreateSlimBuilder();
             webBuilder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
@@ -427,6 +435,33 @@ public sealed class AppHostAuthenticationModelTests
                 .ConfigureAwait(true);
 
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+        finally
+        {
+            RestoreEnvironment(original);
+        }
+    }
+
+    [Fact]
+    public async Task RunModel_WithLocalKeycloakPersistenceEnabled_FailsDuringConstruction()
+    {
+        Dictionary<string, string?> original = CaptureEnvironment();
+        try
+        {
+            ClearEnvironment();
+            Environment.SetEnvironmentVariable("SKIP_PREREQUISITE_CHECK", "true");
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultEnableKeycloakConfigurationKey,
+                "true");
+            Environment.SetEnvironmentVariable(
+                HexalithEventStoreSecurityOptions.DefaultPersistentConfigurationKey,
+                "true");
+
+            Exception exception = await Should.ThrowAsync<Exception>(() =>
+                DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_EventStore_AppHost>());
+
+            exception.GetBaseException().Message.ShouldBe(
+                "KeycloakPersistent cannot be enabled because local realm identities and passwords are generated per AppHost run.");
         }
         finally
         {
@@ -499,6 +534,13 @@ public sealed class AppHostAuthenticationModelTests
                 ExecutionContext = executionContext,
             },
             CancellationToken.None).ConfigureAwait(true) ?? string.Empty;
+    }
+
+    private static JsonElement DecodeJwtPayload(string token)
+    {
+        string payload = token.Split('.')[1].Replace('-', '+').Replace('_', '/');
+        payload = payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '=');
+        return JsonDocument.Parse(Convert.FromBase64String(payload)).RootElement.Clone();
     }
 
     private static Dictionary<string, string?> CaptureEnvironment()

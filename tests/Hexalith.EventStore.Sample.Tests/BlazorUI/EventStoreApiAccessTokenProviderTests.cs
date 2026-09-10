@@ -228,6 +228,26 @@ public sealed class EventStoreApiAccessTokenProviderTests
     }
 
     [Fact]
+    public async Task GetAccessTokenAsync_WithDevelopmentHttpTokenEndpoint_PostsTheGrant()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfiguration();
+        values["EventStore:Authentication:Authority"] = "http://identity.example.test/tenant";
+        values["EventStore:Authentication:TokenEndpoint"] = "http://tokens.example.test/oauth/token";
+        var handler = new RecordingTokenHandler();
+        var provider = new EventStoreApiAccessTokenProvider(
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
+            new TestHostEnvironment(Environments.Development),
+            new TestHttpClientFactory(handler));
+
+        string token = await provider.GetAccessTokenAsync();
+
+        token.ShouldBe(handler.AccessToken);
+        handler.RequestCount.ShouldBe(1);
+        handler.RequestUri.ShouldBe(new Uri("http://tokens.example.test/oauth/token"));
+        handler.FormValues["grant_type"].ShouldBe("password");
+    }
+
+    [Fact]
     public async Task GetAccessTokenAsync_WithoutExplicitEndpoint_UsesMatchingIssuerDiscoveryAndCachesResponse()
     {
         Dictionary<string, string?> values = CreateAuthorityConfiguration();

@@ -290,6 +290,28 @@ public class AdminApiAccessTokenProviderRoleTests {
     }
 
     [Fact]
+    public async Task GetAccessTokenAsync_WithDevelopmentHttpTokenEndpoint_PostsTheGrant()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        values["EventStore:Authentication:Authority"] = "http://identity.example.test/tenant";
+        values["EventStore:Authentication:TokenEndpoint"] = "http://tokens.example.test/oauth/token";
+        var handler = new RecordingTokenHandler();
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>()).Returns(new HttpClient(handler));
+        var provider = new AdminApiAccessTokenProvider(
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
+            new TestHostEnvironment(Environments.Development),
+            factory);
+
+        string token = await provider.GetAccessTokenAsync();
+
+        token.ShouldBe(handler.AccessToken);
+        handler.RequestCount.ShouldBe(1);
+        handler.RequestUri.ShouldBe(new Uri("http://tokens.example.test/oauth/token"));
+        handler.FormValues["grant_type"].ShouldBe("password");
+    }
+
+    [Fact]
     public async Task GetAccessTokenAsync_WithoutExplicitEndpoint_UsesMatchingIssuerDiscoveryAndCachesResponse()
     {
         Dictionary<string, string?> values = CreateAuthorityConfigValues();

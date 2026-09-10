@@ -193,6 +193,22 @@ public class EventStoreAuthenticationOptionsTests {
     }
 
     [Fact]
+    public void Validate_SigningKeyOnly_StagingWithoutOverride_Fails() {
+        var validator = new ValidateEventStoreAuthenticationOptions(CreateEnvironment(Environments.Staging));
+        var options = new EventStoreAuthenticationOptions {
+            SigningKey = s_signingKey,
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+        };
+
+        ValidateOptionsResult result = validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("Development-only");
+        result.FailureMessage.ShouldNotContain(s_signingKey);
+    }
+
+    [Fact]
     public void Validate_AuthorityAndSigningKey_Fails() {
         var options = new EventStoreAuthenticationOptions {
             Authority = "https://login.example.com",
@@ -255,6 +271,21 @@ public class EventStoreAuthenticationOptionsTests {
 
         result.Failed.ShouldBeTrue();
         result.FailureMessage.ShouldContain("RequireHttpsMetadata");
+    }
+
+    [Fact]
+    public void Validate_DevelopmentHttpAuthorityWithHttpsMetadataDisabled_Succeeds() {
+        var options = new EventStoreAuthenticationOptions {
+            Authority = "http://login.example.com",
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+            AllowedAlgorithms = ["RS256"],
+            RequireHttpsMetadata = false,
+        };
+
+        ValidateOptionsResult result = _validator.Validate(null, options);
+
+        result.Succeeded.ShouldBeTrue();
     }
 
     [Fact]

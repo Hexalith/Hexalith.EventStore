@@ -2,8 +2,8 @@
 title: 'Story 5.3: Production Authentication Guards And Secret Stripping'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-review'
-review_loop_iteration: 6
+status: 'done'
+review_loop_iteration: 8
 followup_review_recommended: false
 baseline_revision: '8745b14bf1524d56f0bbea70375c3e8e3d55385e'
 baseline_commit: '3c6a5e33f9fbaf8469047ba3de72f70ab4425e66'
@@ -11,7 +11,11 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-5-context.md'
   - '{project-root}/references/Hexalith.AI.Tools/hexalith-ux-instructions.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - no-keycloak-tenants-symmetric-contract
+  - one-argument-client-credentials-realm-binding
+  - scanner-yaml-sequences-constructors-xml-cdata-cli-jwks
+  - realm-render-cleanup-refused-delete
 ---
 
 <intent-contract>
@@ -181,6 +185,85 @@ deferred: []
 - KEEP: preserve every Repair 5 grant/query/model/Pact/realm/scanner fix; the shared exclusive-mode three-host JWT contract; generated opaque credentials and caller-held test injection; owner-only files and retryable ownership boundaries; fixed-query token endpoints; source compatibility; provenance-safe evidence handling; all green focused and Release build evidence; concurrent user commits/submodule pointers; and zero Story 5.3 edits to `sprint-status.yaml`.
 
 ## Review Triage Log
+
+### 2026-09-10 — Review pass 8
+
+- owner_disposition: remaining `bad_spec` entries were rerouted to deferred-work by explicit user choice; continue with new `patch` entries only.
+- verdicts: 35 findings — high 8, medium 11, low 8, false 8, maybe-false 0
+- findings:
+  - `[high]` `[bad_spec]` carried: The no-Keycloak run path still omits source-enabled Tenants hosts from the shared symmetric contract — `ConfigureLocalSymmetricValidation` is applied only to EventStore, Admin.Server, and Sample API while `tenants` and `tenants-api` remain running.
+  - `[medium]` `[bad_spec]` carried: The one-argument `WithEventStoreClientCredentials` path still lacks a realm-bound identity — `AddHexalithEventStoreSecurity` mints `HEXALITH_EVENTSTORE_CLIENT_USERNAME`/`PASSWORD` as Keycloak container env and the one-argument overload uses those parameters, while `hexalith-realm.json` is rendered only from `LocalAuthenticationCredentials` placeholders.
+  - `[high]` `[bad_spec]` carried: YAML credential sequences whose value is `-` are still skipped without scanning child scalars.
+  - `[high]` `[patch]` carried: Unquoted YAML scalars are still inspected only through the first whitespace-delimited token.
+  - `[high]` `[bad_spec]` carried: Credential-constructor recognition is still type-name and qualification incomplete — fully qualified `NetworkCredential` and `ClientSecretCredential` remain outside the structural scan.
+  - `[high]` `[bad_spec]` carried: XML credential elements still do not inspect CDATA because the element regex stops at `<`.
+  - `[high]` `[bad_spec]` carried: Space-separated command-line secret options such as `--client-secret <literal>` still evade the scanner.
+  - `[high]` `[bad_spec]` carried: Private JWK material with `kty=oct` and a literal `k` is still unrecognized.
+  - `[high]` `[patch]` carried: The two-byte `MZ` prefix is still treated as conclusive binary proof without a PE-header check.
+  - `[false]` `[reject]` Duplicate Aspire versus host algorithm collections do not currently diverge — `SecurityAlgorithms.RsaSha256` and the Aspire `"RS256"` literals are the same JWT `alg` values, so an emitted allow-list is not rejected by public hosts today.
+  - `[false]` `[reject]` Production probe proof is not missing for this story — the frozen acceptance criterion requires ServiceDefaults metadata plus the real Admin.Server Host Production pipeline, which is what the tests exercise; EventStore and Sample API real-pipeline probe pairs were not promised.
+  - `[false]` `[reject]` The AppHost-owned smoke-token command is intentionally run-mode `EnableKeycloak=false` only — the acceptance criterion and repair-5 task bind that surface to the no-Keycloak path; Keycloak-on local use is the authenticated UI flow.
+  - `[low]` `[patch]` The PostgreSQL DAPR sample still documents `docker run -e POSTGRES_PASSWORD` while the component binds `{env:POSTGRES_CONNECTION_STRING}` with no mapping, so the copy-pasteable local store is not executable as written.
+  - `[low]` `[patch]` `docs/guides/configuration-reference.md` summary table still says SigningKey `length >= 32` while `JwtBearerAuthenticationContract.Validate` and the detailed table measure UTF-8 bytes.
+  - `[false]` `[reject]` Local Keycloak issuer/host mismatch is not demonstrated — Authority is the proxyless Keycloak `RealmUrl`, discovery is fetched from that URL, and Keycloak advertises the request host; the claim needs a live issuer document that contradicts that wiring.
+  - `[low]` `[reject]` carried: Windows realm directories still use `Directory.CreateDirectory` without an explicit current-user ACL — the same low-frequency local-only Windows case previously rejected as disproportionate.
+  - `[medium]` `[patch]` carried: Stale-directory enumeration can still race another cleaner because `File.GetAttributes` is not treated as “already gone” on `DirectoryNotFoundException`.
+  - `[medium]` `[bad_spec]` carried: Render-exception cleanup still ignores a refused `DeleteOwnedDirectory` outcome and rethrows only the original setup failure.
+  - `[medium]` `[patch]` carried: Removing the credential-bearing Playwright trace resource still leaves retained network manifests that name the deleted content hash.
+  - `[false]` `[reject]` carried: Story 5.3 did not introduce the Administration/OpenAPI, ConfirmationFacts, or `sprint-status.yaml` work — those remain intervening committed or concurrent user changes.
+  - `[medium]` `[defer]` carried: the public idempotency adapter contract moved without a forwarding shim in concurrent commit `d80c5e23`, outside Story 5.3 ownership.
+  - `[false]` `[reject]` Committed Keycloak usernames `tenant-a-user`, `tenant-b-user`, `readonly-user`, and `no-tenant-user` are non-secret authorization principals — passwords and the admin username remain generated, and the sample UI is required to use the tenant-A identity.
+  - `[medium]` `[patch]` Authority-mode documentation still says discovered/token endpoints must have no query, while `ResolveExternalEndpoint(..., allowQuery: true)` and both UI token providers now allow a query on token endpoints.
+  - `[low]` `[reject]` carried: a non-positive Sample UI `expires_in` still returns a token that immediately expires — `GetInt32()` accepts 0/negative and `AddSeconds` proceeds; this remains the malformed-provider edge previously judged unlikely and disproportionate.
+  - `[low]` `[reject]` carried: a non-positive Admin UI `expires_in` returns the same immediately expired cache entry.
+  - `[low]` `[reject]` Development UI minting does not locally enforce the 32 UTF-8-byte SigningKey floor — AppHost generates a qualifying key and the host rejects a weak shared key at startup, so a standalone short-key UI is unlikely in ordinary use and adding a second public strength check is extra complexity.
+  - `[false]` `[reject]` Discovery issuer comparison does not fail on a default HTTPS port — `NormalizeEndpointForComparison` uses `UriComponents.SchemeAndServer`, which omits default ports, so `https://idp.example.com` and `https://idp.example.com:443` compare equal.
+  - `[low]` `[reject]` Empty or non-JSON OIDC bodies throw `JsonException` from `JsonDocument.ParseAsync` instead of `InvalidOperationException` — failure is still fail-closed and support-safe, and wrapping every parse exception would add branches without changing the user-visible outcome.
+  - `[false]` `[reject]` Password-grant requests omit `client_secret` by design — the frozen grant profile sends client id, username, opaque password, and scope; the local Keycloak client is `publicClient: true`, and client-credentials is the confidential profile.
+  - `[low]` `[reject]` macOS stale cleanup disposes the exclusive lease before deletion so unlink can succeed — a live owner still blocks `TryAcquireCleanupLease`, and the remaining same-user TOCTOU after close is the same unlikely local race previously rejected for symlink-swap.
+  - `[medium]` `[patch]` AppHost construction still has no test that `KeycloakPersistent=true` with local Keycloak enabled throws the support-safe message — deleting the throw would leave integration fixtures green because they force persistence off.
+  - `[medium]` `[patch]` Staging plus SigningKey with `AllowInsecureSymmetricKey=false` is untested — Production and Staging-with-override are covered, so the Development-only branch at `JwtBearerAuthenticationContract.cs:132-136` can be removed without a failing unit test.
+  - `[medium]` `[patch]` The no-Keycloak smoke-token test never decodes `tenants`/`domains`/`permissions` — the dummy host checks signature, issuer, audience, and lifetime only, so dropping EventStore claim JSON would still pass while `/increment` would be denied.
+  - `[medium]` `[patch]` Development HTTP authority with `RequireHttpsMetadata=false` has no success assertion — only HTTP failure cases are pinned, so the local Keycloak host contract can be made invalid without a failing unit test.
+  - `[medium]` `[patch]` UI authority-provider tests always use Production, so Development HTTP TokenEndpoint success is unpinned — dropping `allowHttp` would still pass the Production HTTPS-only cases while AppHost Keycloak UI acquisition would throw before sending credentials.
+
+### 2026-09-10 — Review pass 7
+
+- verdicts: 33 findings — high 17, medium 9, low 3, false 4, maybe-false 0
+- findings:
+  - `[high]` `[bad_spec]` The no-Keycloak run path omits source-enabled Tenants hosts from the shared symmetric contract — EventStore, Admin, and Sample receive the per-run validator key, but `tenants` and `tenants-api` remain running without equivalent local validation wiring.
+  - `[high]` `[bad_spec]` YAML credential sequences evade the scanner — A credential collection whose value is `-` is skipped without scanning its child scalars, so a usable list entry passes.
+  - `[high]` `[patch]` Unquoted YAML scalars are inspected only through the first whitespace-delimited token — An inert environment placeholder can therefore hide a later literal credential on the same value line.
+  - `[high]` `[bad_spec]` Credential-constructor recognition is type-name and qualification incomplete — Fully qualified `NetworkCredential` and common credential SDK constructors such as `ClientSecretCredential` remain outside the structural scan.
+  - `[high]` `[bad_spec]` XML credential elements do not inspect CDATA — The element regex stops at `<`, allowing a usable credential inside a credential-named CDATA node.
+  - `[high]` `[patch]` XML key/value attributes are order-dependent — The scanner catches `key`/`name` before `value` but misses the semantically identical reversed attribute order.
+  - `[high]` `[bad_spec]` Space-separated command-line secret options evade the scanner — A command such as `az login --client-secret <literal>` is not covered by curl-userinfo or assignment grammar; the reviewer's `--password=<literal>` example is already caught, but the reported option-form gap is real.
+  - `[high]` `[patch]` carried: JavaScript runtime transforms still return before checking ordinary literal operands — A transform followed by literal concatenation remains the same previously logged bypass.
+  - `[high]` `[bad_spec]` carried: Python environment recognition still accepts a committed fallback literal — The existing fallback grammar covers selected calls but not `os.environ.get(...) or <literal>`.
+  - `[high]` `[bad_spec]` carried: JavaScript fallback recognition still omits ternary branches — Long base64-shaped literals are caught incidentally, but a short usable literal in a ternary branch remains unexamined under the previously logged runtime-expression root cause.
+  - `[high]` `[bad_spec]` `AuthenticationHeaderValue` trusts a neutral bare alias without resolving it — A literal assigned to a non-credential-named constant and then passed as the bearer value bypasses both scans.
+  - `[high]` `[bad_spec]` carried: credential-looking zero-argument method calls are trusted without implementation correlation — A literal-returning `GenerateToken()` remains the previously logged no-argument-call bypass.
+  - `[high]` `[patch]` Credential-name suffix and vocabulary coverage remains incomplete — `clientSecretBlob`, `passwordString`, and `passphrase` are not classified even though the existing suffix normalization handles several adjacent forms.
+  - `[high]` `[bad_spec]` Private JWK material is not recognized — A forgeable symmetric JWK with `kty=oct` and a literal `k` value passes all current JWT, key, and assignment detectors.
+  - `[medium]` `[bad_spec]` UTF-32LE BOM text is decoded as UTF-16LE — Because `FF FE` is checked before a four-byte BOM, contiguous credential text becomes interleaved and evades matching.
+  - `[high]` `[patch]` The two-byte `MZ` prefix is treated as conclusive binary proof — A tracked text file can deliberately begin with those characters and bypass the entire scanner without a valid PE structure.
+  - `[high]` `[bad_spec]` carried: literal-composed bearer calls remain outside neutral assignment scanning — `string.Concat("Bearer", " ", <literal>)` is the same previously logged all-literal-call bypass when stored under a non-credential name.
+  - `[medium]` `[patch]` Runtime-generated Keycloak tenant identities have no CI-executed real-token proof — The focused real-Keycloak test exists and exercises the generated tenant-A password, but both normal and integration workflows omit it.
+  - `[medium]` `[bad_spec]` The root-consumer Tenants credential path lacks a real Keycloak interpolation proof — Tests compare parameter identities and manually substitute the realm template, so they do not prove Keycloak imports the generated environment-backed identity used by protected Tenants bootstrap/API calls.
+  - `[low]` `[reject]` carried: a non-positive Sample UI `expires_in` returns a token that immediately expires — This is the same malformed-provider edge already judged unlikely in ordinary use and disproportionate to broaden here.
+  - `[low]` `[reject]` carried: a non-positive Admin UI `expires_in` returns a token that immediately expires — The identical prior proportionality judgment still applies.
+  - `[medium]` `[defer]` Dead-letter bulk denial omits later unattempted selections from failure totals — The behavior is real in the separately committed Administration surface and was not caused by Story 5.3.
+  - `[medium]` `[patch]` Stale-directory enumeration can race another cleaner — Removal between enumeration and `GetAttributes` can throw and abort a concurrent AppHost startup instead of skipping the vanished candidate.
+  - `[low]` `[reject]` Path-based cleanup cannot eliminate every same-user symlink-swap race — The root is owner-only, an attacker requires the same account's privileges, and pinning directory identity would be disproportionate to this unlikely local-only edge.
+  - `[medium]` `[bad_spec]` Render-exception cleanup ignores a refused cleanup outcome — It rethrows only the original setup failure and exposes no retry handle when ownership/reparse checks return false, so the claimed cleanup failure is not surfaced even though transient deletion exceptions do surface.
+  - `[medium]` `[defer]` carried: an agent-skill example quotes `TEST_USER_PASSWORD` as a literal — The example-semantics issue is unchanged, and the required fix remains an agent-context skill edit routed to defer.
+  - `[high]` `[bad_spec]` BOM-less UTF-16 detection depends on frequent ASCII-position NULs — Mostly non-ASCII UTF-16 content can miss the heuristic and preserve an encoded credential outside contiguous matching.
+  - `[medium]` `[patch]` Removing the credential-bearing trace resource leaves two retained network manifests dangling — Both captures still reference the deleted content hash, so replay integrity requires a sanitized replacement with matching updated references or explicit retirement of the dependent captures.
+  - `[false]` `[reject]` `dashboard-overview.png` was deleted while still linked — The file exists at the cited path and the retained links resolve; it is modified, not deleted, relative to the baseline.
+  - `[false]` `[reject]` `dashboard-overview-mobile.png` was deleted while still linked — The file exists and is added relative to the baseline, so the claimed broken link does not occur.
+  - `[false]` `[reject]` `command-investigation.png` was deleted while still linked — The file exists at the cited path and the retained links resolve; it is modified, not deleted.
+  - `[false]` `[reject]` `command-investigation-mobile.png` was deleted while still linked — The file exists and is added relative to the baseline, so the claimed broken link does not occur.
+  - `[medium]` `[defer]` carried: the public idempotency adapter contract was moved without a forwarding shim — This is the same real compatibility concern from concurrent commit `d80c5e23`, outside Story 5.3 ownership.
 
 ### 2026-09-09 — Review pass 6
 
