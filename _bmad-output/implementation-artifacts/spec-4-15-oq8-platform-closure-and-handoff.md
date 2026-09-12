@@ -2,7 +2,7 @@
 title: 'Story 4.15: OQ8 Platform Closure And Handoff'
 type: 'feature'
 created: '2026-08-10'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 story_key: '4-15-oq8-platform-closure-and-handoff'
 baseline_commit: '699ca71206cd280dc6b770d83c338495bfe70fab'
@@ -666,3 +666,31 @@ _Chunked code review, validator chunk (2026-09-12). Baseline `699ca712` → HEAD
 - low: Capture writes the focused result before validating support evidence — capture targets are required to be fresh directories and failed runs do not produce a valid packet; transactional staging is disproportionate.
 - low: Symlink checks and subsequent reads have a TOCTOU window — already accepted as DW-454 for the single-writer CI environment; closing it portably would require descriptor-relative traversal throughout.
 - low: A repository-local `yaml` module can shadow PyYAML before dependency trust validation — the validator already executes trusted repository code from the same checkout, so this does not cross an additional trust boundary.
+
+### Review Findings
+
+_Chunked code review, active v3 successor packet (2026-09-12). Baseline `699ca712` → HEAD `a568af4e`. Files: the top-level successor selector plus `evidence/story-4-15-successors/v3/**` (11 files, +506/−0). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor. Direct verification: the declared default validator exits 1 with `Reviewed public document body drift: docs/guides/configuration-reference.md`._
+
+- [ ] [Review][Patch] Active selector asserts EventStore platform completion for a candidate the final validator rejects — `authority.eventStorePlatformComplete` is `true`, while the security receipt says approval required an isolated two-document overlay and the handoff's declared command fails on the actual repository. Apply the already-authorized Group L correction: validate frozen v1 document identities from `COMPLETED_V1_CLOSURE_COMMIT`, retain live semantic checks, then reseal the active packet. [`4-15-oq8-platform-closure-successor.json:60-63`; `v3/reviews/security.json:10-12`; `tools/validate-oq8-platform-evidence.py:3282-3284`]
+- [ ] [Review][Patch] Current v3 evidence never executes the changed OQ8 LiveSidecar fixture or records a current workflow-lint run — the v3 identity binds current workflow and LiveSidecar bytes, including `Oq8PostgresqlFixture.cs` after its post-v2 secret-generation change, but pre-review execution stops at Contracts build and the test receipt runs only Contracts tests. Run and bind the current workflow/static validation and focused LiveSidecar lane against the exact v3 candidate before resealing. [`v3/pre-review-execution.json:48-98`; `v3/reviews/test.json:14-34`; `v3/source-artifact-identity.json:36-49`]
+- [ ] [Review][Patch] Consumer bootstrap installs PyYAML by version without artifact hashes — `PyYAML==6.0.3` and `pip install --requirement` permit an index substitution that controls the validator's YAML import. Pin accepted distribution hashes and require hash verification in the consumer command and both bound workflows, then reseal. [`v3/source-only-handoff.json:17-22`; `requirements-oq8.txt:1`]
+- [ ] [Review][Patch] Full-history prerequisite is attached to `historicalRule` instead of the active current-source rule — the default verification path performs the landed-commit/tree/HEAD-ancestry proof, but only the historical-only instruction warns that a full Git object store is required. Move or repeat that prerequisite in `currentRule`, as already identified by Group K, then reseal. [`v3/source-only-handoff.json:17-22`; `v3/limitations.json:5-7`]
+
+#### Rejected (2026-09-12 active v3 successor packet)
+
+- false: The v3 pre-review execution record must invoke `--pre-review` — that flag validates the earlier v1 receipt-independent candidate and a partial selector; the v3 record instead has its own exact canonical pre-freeze command set.
+- low: The test receipt must bind the built DLL hash because `--no-build` may use stale output — the ordered build/freeze/receipt session is adequate in the single-writer review environment; sealing generated binaries would add substantial remint complexity for a non-everyday substitution.
+- false: The v3 identity must bind every transitive build/configuration input — the approved DW-496 model intentionally binds a reduced current OQ8 path set, and the finding did not identify an omitted path inside that accepted authority set.
+- false: HEAD ancestry must start at the completed-v2 commit — AC2 deliberately anchors current-source ancestry at landed source `5e8f175b…`; the v2 predecessor is independently content-bound by its subject and manifest hashes.
+- low: The packet must preserve and hash TRX, Cobertura, and stdout artifacts — the approved repository-attestation model binds commands, counts, subject, and receipts; retaining all generated output would improve forensics but is not required for ordinary verification.
+- false: The selector needs a UTC `selectedAt` to prove ordering — execution, freeze, receipts, and handoff already have strictly validated UTC timestamps, and the selector content-binds the post-receipt handoff through its manifest and digest.
+- false: Any production-source file omitted from `gateInputs` invalidates closure — the frozen story permits unrelated later repository work and requires equivalence for the pinned OQ8 path set, not every repository source file.
+- low: The validator must recapture every bound file immediately before exit — snapshot-at-start behavior is acceptable in the single-writer CI trust boundary; atomic multi-file recapture would add complexity for a low-probability concurrent mutation.
+- low: The test binaries can be replaced between pre-review build and receipt execution — this duplicates the stale-output scenario and requires malicious or concurrent mutation inside the isolated single-writer review session.
+- low: The handoff must refuse an existing `.oq8-python` environment — exploiting retained `.pth` or site-packages already requires control of the consumer workspace; hash-verifying the downloaded dependency is the direct actionable bootstrap correction.
+- false: Reviewer receipts require external cryptographic signatures — the approved trust model is repository attestation through content-bound subject, receipts, manifest, selector, and visible Git history; external signing is not part of the accepted contract.
+
+#### Actions (2026-09-12 active v3 successor packet)
+
+- Owner chose option 2 (leave as action items). The four patches remain unchecked and were not applied.
+- Story and sprint tracking moved to `in-progress`; do not claim current-source closure until the action items are resolved and the final validator passes.

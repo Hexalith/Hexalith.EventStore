@@ -4273,3 +4273,15 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Authentication documentation omits published-UI settings from its exhaustive table, omits the symmetric `AllowedAlgorithms` rule, and permits Development HTTP token endpoints that the Aspire helper rejects.
   evidence: Story 5.3 authentication/AppHost content in the mixed baseline window; Story 5.4 explicitly excludes reworking that boundary (`docs/guides/configuration-reference.md:419,446,460,753-804`; `HexalithEventStoreSecurityExtensions.cs:472-475,717-735`).
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-12, Group 1 adversarial review)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: CLI inventory still names `.eventstore-admin-profiles.json` instead of the implemented `~/.eventstore/profiles.json` path.
+  evidence: Reconfirmed unchanged pre-existing text already tracked by the earlier Story 5.4 review (`docs/brownfield/component-inventory.md:61`; `ProfileManager.cs:29-45`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Authentication documentation omits published-UI quick-reference settings and symmetric-mode rules, and permits Development HTTP token endpoints that publish composition rejects.
+  evidence: Reconfirmed Story 5.3 authentication/AppHost content from the mixed baseline window; Story 5.4 explicitly excludes reworking that boundary (`docs/guides/configuration-reference.md:419,446,460,753-804`; `HexalithEventStoreSecurityExtensions.cs:472-475,717-735`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Valid tenant `admissions` collides with the fixed backup route and cannot reach the deferred tenant-backup action.
+  evidence: Reconfirmed pre-existing controller-route ambiguity requiring a route/versioning or tenant-compatibility decision outside Story 5.4 (`BackupWriteTools.cs:36`; `AdminBackupsController.cs:58,228`).

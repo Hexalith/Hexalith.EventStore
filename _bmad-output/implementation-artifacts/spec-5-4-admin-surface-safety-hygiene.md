@@ -287,3 +287,30 @@ _Chunk 1 follow-up review — Host, MCP, CLI, and documentation (2026-09-12)._
 - [Rejected][false] Ordinary string bounding produces undetectably false values — the required bound is intentional and truncation is visibly marked with `...`; no current generic MCP result contract requires arbitrary strings to remain lossless.
 - [Rejected][false] Discovery omission lacks proof for non-Production environments — `IsDevelopment()` excludes every non-Development environment, and the acceptance criterion specifically requires the real Production-host proof that exists.
 - [Rejected][low] A 240-character cut can split a UTF-16 surrogate pair — the edge case is real but unlikely for everyday Admin identifiers/descriptions, and fixing it adds a special-case branch for negligible impact.
+
+### Review Findings
+
+_Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
+
+- [ ] [Review][Patch] Consistency trigger uses a string-array client contract that the real enum-bound controller rejects, and it accepts unadvertised check-type values [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:35]
+- [ ] [Review][Patch] Consistency trigger permits an omitted tenant even though an Operator request is silently narrowed to a tenant the preview cannot name [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:22]
+- [ ] [Review][Patch] Optional backup and consistency inputs are not normalized, so blank values render misleading preview parameters or reach execution as ambiguous scopes [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:26]
+- [ ] [Review][Patch] MCP write boundaries accept path-normalizing identifiers, invalid tenant grammar, and negative projection positions that still perform an HTTP request [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionWriteTools.cs:112]
+- [ ] [Review][Patch] Individually bounded parameters can compose a target or endpoint that is truncated before confirmation while execution uses the full values [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:100]
+- [ ] [Review][Patch] MCP result sanitization does not protect cursors, opaque configuration, raw consistency details, error/status messages, or common credential shapes [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:154]
+- [ ] [Review][Patch] Caller-level intent-gate tests cover only one blank argument and do not exercise unsafe, overlong, optional-scope, enum, path, or numeric cases across all write tools [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:119]
+- [ ] [Review][Patch] Published inventory is already miscounted and its test checks selected literals instead of comparing documentation with the CLI/MCP/component assemblies [docs/brownfield/component-inventory.md:18]
+- [ ] [Review][Patch] MCP documentation promises a preview for every omitted or false confirmation although invalid unconfirmed calls correctly return validation errors [docs/brownfield/component-inventory.md:76]
+- [ ] [Review][Patch] Completion-script inventory assertions embed LF-only multi-line literals and fail on Windows-generated CRLF output [tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/CompletionScriptsTests.cs:107]
+- [ ] [Review][Patch] Backup Swagger and MCP-client XML still promise a full backup although the registered backend always returns Deferred [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:55]
+- [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` instead of `~/.eventstore/profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: unchanged pre-existing text, already tracked by the earlier Story 5.4 review.
+- [x] [Review][Defer] Authentication documentation omits published-UI quick-reference settings and symmetric-mode rules, and permits Development HTTP token endpoints that publish composition rejects [docs/guides/configuration-reference.md:419] — deferred: Story 5.3 authentication/AppHost content from the mixed baseline window; Story 5.4 explicitly excludes reworking that boundary.
+- [x] [Review][Defer] Valid tenant `admissions` collides with the fixed backup route and cannot reach the deferred tenant-backup action [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:36] — deferred: pre-existing controller-route ambiguity requiring a route/versioning or tenant-compatibility decision outside Story 5.4.
+
+#### Rejected
+
+- [Rejected][false] Bounding ordinary MCP strings corrupts required opaque values — the 240-character bound is an explicit story requirement, continuation cursors are forbidden output rather than round-trip inputs, and no current caller requires an identifier above the bound.
+- [Rejected][low] UTF-16 truncation can split a surrogate pair — real but unlikely for everyday Admin identifiers/descriptions, and correcting it requires an extra boundary branch for negligible practical benefit.
+- [Rejected][false] Confirmation must bind to a previous preview with a nonce — the story explicitly forbids adding a preview nonce protocol and defines `confirm=true` as the complete intent gate.
+- [Rejected][false] The callable-write inventory currently misses mutations outside `*WriteTools` — every current callable write and `AdminOperationResult` POST helper is enumerated; the alleged miss requires a hypothetical future convention violation.
+- [Rejected][low] UTF-16 truncation can split a surrogate pair (duplicate edge-case report) — rejected for the same low-frequency, disproportionate-fix reason above.
