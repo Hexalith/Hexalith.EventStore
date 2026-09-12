@@ -4231,3 +4231,18 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: The tests that execute this packet are not a required merge check.
   evidence: Not caused by the v1 packet files. Already the Group D ruleset decision: `Oq8PlatformClosureTests.ApprovedSourceOnlyHandoffPasses` runs in `ci / contracts`, which is not a Protect required check; `live-sidecar` invokes the validator only with `--capture-directory`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The sealed test receipt attests workflow and Tenants reruns that the bound execution log does not contain.
+  evidence: Owner deferred 2026-09-11: v1 receipt prose is not a gate; reminting for two unbound clauses contradicts keep-historical. `reviews/test.json` finding 4 names workflow guards and Tenants skip/token guards; `pre-review-execution.json` has 32/237 and no `ReleasePackageManifestTests` or Tenants command. If v1 is reminted for a real gate-input change, drop those two clauses then.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The active v3 consumer handoff exposes no erratum for the historical v1 test receipt's unreproducible qualitative rerun claims.
+  evidence: The v1 receipt predates the reviewed ledger delta and remains immutable historical evidence. The validator binds the receipt bytes but only requires nonblank findings; the v1 execution inventory contains no workflow-guard or Tenants command, and the v3 handoff/limitations disclose no erratum. A consumer-visible correction requires an owner-authorized v3 reseal and fresh content-bound review.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-11, Host/OpenAPI follow-up)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: AppHost advertises an unavailable Admin Swagger URL outside Development.
+  evidence: Reconfirmed the existing Story 5.4 deferred item at `src/Hexalith.EventStore.AppHost/Program.cs:374-376`; the unconditional publish-time `EventStore__AdminServer__SwaggerUrl` predates this review baseline and points at a route non-Development Admin hosts intentionally omit.

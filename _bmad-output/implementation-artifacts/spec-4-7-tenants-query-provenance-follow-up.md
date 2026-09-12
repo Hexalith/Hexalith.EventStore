@@ -446,6 +446,35 @@ deferred: ['DW-487', 'DW-488', 'DW-489', 'DW-490', 'DW-491', 'DW-492', 'DW-493',
   - `[medium]` `[defer]` Carried CI, provenance-emission, UI, routing, marker, authorization, and admission findings retain their existing deferred-work routes and were not appended again.
 - loopback: none; no intent gap, bad spec, or Story 4.7 patch survived triage.
 
+### 2026-09-11 — Review pass 12 (bmad-code-review)
+
+- subject: Group 1 Tenants Code Map `d2b7ede3..2fac1839` (9 files, +785/−148, 1249 lines). `TenantQueryHandlerBase.cs` unchanged. Remaining unreviewed chunks: Memories source-graph guard; EventStore spec/gitlink SHA changes.
+- failed_layers: Verification Gap Reviewer (empty results)
+- verdicts: 16 findings — high 0, medium 3, low 3, false 10, maybe-false 0
+- routes: intent_gap 0, bad_spec 0, patch 0, defer 3, reject 13
+- findings:
+  - `[medium]` `[defer]` `[P12-BH-04]` Carried from DW-488: generated-controller hostile metadata leaves `ServedAt`/`IsDegraded` unset and does not assert those headers absent; the emitter still emits them without a provenance gate. Not written again.
+  - `[medium]` `[defer]` `[P12-BH-08]` Carried from DW-487: the persisted-route proof is `[DaprFact]` Tier 3, calls `SkipIfUnavailable()`, and `Assert.Skip`s `PublishFailed`. Not written again.
+  - `[medium]` `[defer]` `[P12-BH-09]` Carried from DW-493: the six-argument `FromPayload` still discards freshness inputs under the frozen signature. Not written again.
+  - `[false]` `[reject]` `[P12-BH-01]` Degenerate-ETag theories pin the only branch that can change (`Metadata` null). `FromPayload` always returns `Success=true` and serializes the payload before ETag normalization; a failed/empty body cannot be produced on that path without rewriting lines the opaque-etag `AssertValidatorOnly` already covers.
+  - `[false]` `[reject]` `[P12-BH-02]` `""opaque-etag""` unwraps to the already-tested `"opaque-etag"` case; `"W/"abc""` unwraps once to the already-tested `W/"abc"` token. The loop's transforms are covered by composing existing InlineData.
+  - `[false]` `[reject]` `[P12-BH-03]` `Freshness_overload_ignores_timestamp_and_sequence_authority` already includes `(old timestamp, null version)`, which is the `readModel?.ProjectionVersion ?? normalizedETag` alias shape.
+  - `[false]` `[reject]` `[P12-BH-05]` Server ETag/freshness/factory matrices fail if `FromPayload` aliases `ProjectionVersion`. Live EventStore assertions pin gateway stripping (`NormalizeProducerMetadata`), which the spec forbids this story from editing.
+  - `[false]` `[reject]` `[P12-BH-06]` After `WaitForPersistedTenantAsync` returns, lines 164-165 still require `ProjectedAt` and a `tenant-sequence:` prefix; a version-less blob fails the proof rather than being accepted.
+  - `[false]` `[reject]` `[P12-BH-11]` Code Map requires exposing `tenants-api` on the fixture; `WaitForAliveness: false` keeps `/alive` off shared startup. The remaining Running/HTTPS wait is how `TenantsApiClient` is created.
+  - `[false]` `[reject]` `[P12-BH-12]` AC3 is one persisted `get-tenant` path; six-route HandlerComputed coverage is the factory/handler matrices.
+  - `[false]` `[reject]` `[P12-BH-13]` EventStore `IsNotModified: null` is stripped producer metadata; typed-client `false` is the HTTP 304 flag from `ReadMetadata`. Same split as P8-BH-04/P9-BH-04.
+  - `[false]` `[reject]` `[P12-ECH-02]` Line 444 binds `DaprDiagnostics.DefaultRedisPort`, not `ResolveRedisPort()`. That pins the dapr-init Redis this proof reads; honoring an env override was previously rejected as pointing at the wrong store.
+  - `[false]` `[reject]` `[P12-ECH-03]` `HashGet` timeout or WRONGTYPE is not retried; the exception fails the persistence proof, which is the required fail-closed outcome.
+  - `[low]` `[reject]` `[P12-BH-07]` Redis poll uses 60s `SampleProjectionTimeout` rather than the 5-minute CTS. Recorded proofs finish in ~26s; widening the wait is timeout-policy complexity, not an everyday-path defect.
+  - `[low]` `[reject]` `[P12-BH-10]` `SharedClientRelayHandler` is a nested helper beside existing ones; the clone is GET-only with no `Content`. Extracting a file adds surface.
+  - `[low]` `[reject]` `[P12-ECH-01]` A one-sided wrapping quote keeps a stray `"` in the validator. DAPR ETags are balanced or weak-quoted; extra quote heuristics add unsupported semantics.
+- grouped survivors:
+  - `[medium]` `[defer]` Ungated ServedAt/IsDegraded headers: P12-BH-04, already DW-488.
+  - `[medium]` `[defer]` Skippable Tier-3 persisted-route proof: P12-BH-08, already DW-487.
+  - `[medium]` `[defer]` Inert freshness overload: P12-BH-09, already DW-493.
+- loopback: none; no intent gap, bad spec, or Story 4.7 patch survived triage.
+
 ## Design Notes
 
 Keep the active freshness overload signature so all handler constructors and call sites stay stable, but delegate it to the validator-only factory. The persisted read model still stores timestamp and sequence for replay/idempotency; only query-response authority changes. The Tier-3 proof must inspect Redis before both raw HTTP and typed-client assertions because a completed command or successful response does not establish projection origin.
@@ -550,3 +579,27 @@ Review pass 10 (2026-09-08, `bmad-code-review`). Chunked Code Map + EventStore s
 - `low` — "`WaitForPersistedTenantAsync` uses 60s `SampleProjectionTimeout` instead of the 5-minute test CTS": recorded proofs finish in ~26s; the cap also prevents a hung Redis poll from consuming the whole budget.
 - `low` — "Proof never deletes the `provenance-*` Redis/aggregate tenant": leftover test data; cleanup would add persistence plumbing the spec forbids.
 - `low` — "Shared fixture waits for `tenants-api` Running on every topology test": Code Map requires exposing that existing resource; `WaitForAliveness` is already false so only client creation waits for Running.
+
+Review pass 12 (2026-09-11, `bmad-code-review`). Group 1 Tenants Code Map `d2b7ede3..2fac1839` (9 files, +785/−148). Blind Hunter, Edge Case Hunter, and Acceptance Auditor completed. Verification Gap Reviewer returned empty results.
+
+**Deferred**
+
+- [x] [Review][Defer] Generated-controller hostile metadata leaves `ServedAt`/`IsDegraded` unset and does not assert those headers absent [tests/Hexalith.Tenants.IntegrationTests/TenantsApiGeneratedControllerTests.cs:117] — deferred: DW-488 (already recorded; not written again)
+- [x] [Review][Defer] Flagship persisted-route proof remains in a skippable Tier-3 `[DaprFact]` lane [tests/Hexalith.Tenants.IntegrationTests/AspireTopologyTests.cs:118] — deferred: DW-487 (already recorded; not written again)
+- [x] [Review][Defer] Six-argument `FromPayload` still discards freshness inputs while host options stay operator-configurable [src/Hexalith.Tenants/Queries/TenantQueryResult.cs:37] — deferred: DW-493 (already recorded; not written again)
+
+**Rejected**
+
+- `false` — "Degenerate-ETag tests only assert `Metadata` is null": `FromPayload` always returns success and serializes the payload before ETag normalization; opaque-etag `AssertValidatorOnly` already pins success/payload.
+- `false` — "Double-wrapped tokens and quoted weak validators are untested": `""opaque-etag""` unwraps to the tested `"opaque-etag"` case; `"W/"abc""` unwraps to the tested `W/"abc"` token.
+- `false` — "Freshness overload never uses a version-less model with a usable ETag": `(old timestamp, null version)` is already an InlineData row.
+- `false` — "Live EventStore/tenants-api assertions would not catch a producer ETag alias": Server matrices fail on that alias; live assertions pin gateway stripping, which this story must not edit.
+- `false` — "`WaitForPersistedTenantAsync` accepts a version-less Redis blob": post-wait asserts require `ProjectedAt` and a `tenant-sequence:` prefix.
+- `false` — "Fixture `tenants-api` wait fails unrelated topology tests": `WaitForAliveness` is false; Code Map requires exposing that resource to create `TenantsApiClient`.
+- `false` — "Live proof covers only `get-tenant`": AC3 is one persisted tenant; six-route coverage is the factory/handler matrices.
+- `false` — "EventStore `IsNotModified: null` vs typed-client `false` is an undocumented split": EventStore strips the producer validator; the client records the HTTP 304 flag (P8-BH-04).
+- `false` — "`HEXALITH_*_TEST_REDIS_PORT` override is ignored because `ResolveRedisPort()` is used": line 444 binds `DefaultRedisPort`, the pin chosen so an override cannot point at the wrong store.
+- `false` — "HashGet timeout or a non-hash key throws instead of retrying": failing the persistence proof is the required fail-closed outcome.
+- `low` — "Redis poll uses 60s `SampleProjectionTimeout` instead of the 5-minute CTS": recorded proofs finish in ~26s; widening the wait is timeout-policy complexity.
+- `low` — "`SharedClientRelayHandler` is a second type and an incomplete clone": nested helpers already exist in this file; the clone is GET-only with no `Content`.
+- `low` — "One-sided wrapping quotes keep a stray `"` in the validator": not an everyday DAPR ETag shape; extra quote heuristics add unsupported semantics.

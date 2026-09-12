@@ -247,3 +247,14 @@ Reuse one presentation component for confirmation facts, but keep each page resp
 - [Rejected][low] Skipped DW2 ATDD still names `backup-create` / `backup-restore` — those tests stay skipped by spec; un-skipping them is a later DW2 story.
 - [Rejected][low] `SafeText` can split a UTF-16 surrogate at the 240-character cut — everyday Admin ids are ASCII; a rune-safe slice adds a branch for a rare description.
 - [Rejected][low] Whitespace-only strings skip `SafeText` replacement — `ValidateRequired` rejects blank ids; whitespace descriptions are not interpolated into target/impact.
+
+### Review Findings — Host/OpenAPI follow-up (2026-09-11)
+
+- [ ] [Review][Patch] Production discovery assertions follow redirects [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:539]
+- [x] [Review][Defer] AppHost advertises an unavailable Admin Swagger URL outside Development [src/Hexalith.EventStore.AppHost/Program.cs:374] — deferred: the unconditional publish-time environment value predates the Story 5.4 baseline, is outside this Host/OpenAPI chunk, and is already tracked in the deferred-work ledger.
+
+#### Rejected — Host/OpenAPI follow-up (2026-09-11)
+
+- [Rejected][false] The disabled OpenAPI factory duplicates the host gate and can hide a `Program.cs` regression — `HostBootstrapTests` exercises the real `Program.cs`; the separate disabled factory is only a Server.Tests test host, so a production-entry-point regression is still caught.
+- [Rejected][false] Production omission is untested — base configuration supplies `false`, the Production theory also forces the less-safe `true` value, and the real environment guard makes omission introduce no distinct production branch; the unset binder case is independently covered in Development.
+- [Rejected][low] Malformed Development OpenAPI configuration can stop host startup — confirmed with `EventStore__Admin__OpenApi__Enabled=not-a-boolean`, but this is pre-existing, explicit fail-fast behavior with a precise conversion diagnostic; silently accepting the typo would require an extra fallback branch and is not worth changing here.

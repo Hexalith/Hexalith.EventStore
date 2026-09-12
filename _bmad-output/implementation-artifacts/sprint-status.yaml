@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-09-10
+# last_updated: 2026-09-11
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-09-10'
+last_updated: '2026-09-11'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -174,7 +174,10 @@ development_status:
   # correct side: the Story 4.7 review closed at pass 6 on 2026-09-06 and
   # deliberately left the story in-progress with 7 patches unapplied. This key is
   # not in the OQ8 validator's pinned status map, so nothing caught the drift.
-  4-7-tenants-query-provenance-follow-up: review
+  # 2026-09-11 (code review pass 12, Group 1): no decision/patch survivors;
+  # carried DW-487/DW-488/DW-493 were not reopened. Spec frontmatter already
+  # records status: done. Sprint row synced from review -> done.
+  4-7-tenants-query-provenance-follow-up: done
   # Story 4.8 is a non-executable evidence ledger and therefore has no status row.
   # The August crosswalk maps its checked candidate evidence to focused review stories only.
   # Stories 4.9 and 4.10 are ledger-only: they were delivered under the Story 4.8
