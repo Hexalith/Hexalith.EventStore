@@ -206,7 +206,7 @@ development_status:
   # a status change, and whose story spec forbids it from touching this file.
   # Owner set this row to done 2026-09-10 after spec-5-3 closed (review loop 8).
   5-3-production-authentication-guards-and-secret-stripping: done
-  5-4-admin-surface-safety-hygiene: done
+  5-4-admin-surface-safety-hygiene: in-progress
   5-5-internal-and-domain-service-trust-boundary: backlog
   5-6-apphost-component-loading-and-sidecar-argument-parity: backlog
   5-7-production-dapr-component-and-acl-parity: backlog

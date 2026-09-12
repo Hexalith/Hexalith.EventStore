@@ -4246,3 +4246,30 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: AppHost advertises an unavailable Admin Swagger URL outside Development.
   evidence: Reconfirmed the existing Story 5.4 deferred item at `src/Hexalith.EventStore.AppHost/Program.cs:374-376`; the unconditional publish-time `EventStore__AdminServer__SwaggerUrl` predates this review baseline and points at a route non-Development Admin hosts intentionally omit.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The declared 24-path current-source proof still hashes historical commits and never checks the current HEAD/worktree.
+  evidence: Restates DW-496 and the owner's accepted split: keep v1/v2 historical and use the reduced active-v3 gate-input set rather than freeze the original 24 paths. `git_diff_is_clean` remains unused; `validate_source_state` hashes `LANDED_SOURCE` / `COMPLETED_V1_CLOSURE_COMMIT` (`tools/validate-oq8-platform-evidence.py:910,1977-2025,2773-2803`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Story/sprint frontmatter extraction can miss YAML-equivalent duplicate status keys.
+  evidence: Restates the previously accepted Group G defer. Replacing the bounded status extractor with full YAML parsing adds dependency and compatibility complexity for a low-frequency repository-authoring error (`tools/validate-oq8-platform-evidence.py:3582-3594`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Workflow bootstrap checks are substring-based and not scoped to executable workflow steps.
+  evidence: Restates the previously accepted Group G defer. The workflow is content-bound, and structural workflow parsing was judged disproportionate for the current threat model (`tools/validate-oq8-platform-evidence.py:3408-3418`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Full validation requires lifecycle values already at `review` / `done` instead of advancing them only after validation succeeds.
+  evidence: Restates DW-497 and the owner's accepted lifecycle disposition: keep spec `done` and sprint `review` until the lifecycle contract is redesigned (`tools/validate-oq8-platform-evidence.py:3606-3632,3811-3822`).
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Valid tenant identifiers `admissions`, `export-stream`, and `import-stream` collide with fixed backup controller routes, so `backup-trigger` cannot reach the deferred tenant-backup action for those names.
+  evidence: The collision predates Story 5.4's MCP preview changes. Resolving it requires a controller route/versioning or tenant-compatibility decision outside this story's deferred-backup boundary (`BackupWriteTools.cs:36`; `AdminBackupsController.cs:58,144,183,228`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: CLI inventory names `.eventstore-admin-profiles.json` instead of the implemented `~/.eventstore/profiles.json` path.
+  evidence: Unchanged pre-existing text already recorded by the earlier Story 5.4 chunk review (`docs/brownfield/component-inventory.md:61`; `ProfileManager.cs:29-45`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Authentication documentation omits published-UI settings from its exhaustive table, omits the symmetric `AllowedAlgorithms` rule, and permits Development HTTP token endpoints that the Aspire helper rejects.
+  evidence: Story 5.3 authentication/AppHost content in the mixed baseline window; Story 5.4 explicitly excludes reworking that boundary (`docs/guides/configuration-reference.md:419,446,460,753-804`; `HexalithEventStoreSecurityExtensions.cs:472-475,717-735`).

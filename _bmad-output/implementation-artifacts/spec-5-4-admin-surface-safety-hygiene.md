@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -258,3 +258,32 @@ Reuse one presentation component for confirmation facts, but keep each page resp
 - [Rejected][false] The disabled OpenAPI factory duplicates the host gate and can hide a `Program.cs` regression — `HostBootstrapTests` exercises the real `Program.cs`; the separate disabled factory is only a Server.Tests test host, so a production-entry-point regression is still caught.
 - [Rejected][false] Production omission is untested — base configuration supplies `false`, the Production theory also forces the less-safe `true` value, and the real environment guard makes omission introduce no distinct production branch; the unset binder case is independently covered in Development.
 - [Rejected][low] Malformed Development OpenAPI configuration can stop host startup — confirmed with `EventStore__Admin__OpenApi__Enabled=not-a-boolean`, but this is pre-existing, explicit fail-fast behavior with a precise conversion diagnostic; silently accepting the typo would require an extra fallback branch and is not worth changing here.
+
+### Review Findings
+
+_Chunk 1 follow-up review — Host, MCP, CLI, and documentation (2026-09-12)._
+
+- [ ] [Review][Patch] Require an explicit `tenantId` for consistency previews and execution so every confirmation names an exact tenant; keep `domain` optional to mean all domains within that tenant [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:26]
+- [ ] [Review][Patch] Derived MCP target and endpoint fields can truncate even when every raw parameter passes preview/execution validation [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:100]
+- [ ] [Review][Patch] Optional backup description and consistency scopes are not normalized before preview and execution, producing redacted, whitespace, or differently omitted values [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:26]
+- [ ] [Review][Patch] Consistency trigger neither validates advertised check-type names nor serializes them to the server's enum contract, so invalid inputs reach transport and valid confirmed calls bind as HTTP 400 [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:26]
+- [ ] [Review][Patch] Projection reset and replay allow negative event positions to reach the protected downstream endpoint [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionWriteTools.cs:112]
+- [ ] [Review][Patch] The exhaustive write-tool invalid-input gate covers only one empty first argument and misses caller-boundary unsafe, overlong, optional-scope, enum, and numeric cases [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:119]
+- [ ] [Review][Patch] Session context stores the full scope but reports a truncated scope that later queries do not use [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:55]
+- [ ] [Review][Patch] MCP result sanitization exposes continuation cursors, opaque projection configuration, and consistency error/raw-detail fields [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:154]
+- [ ] [Review][Patch] The `ping` tool bypasses the bounded and support-safe MCP result sanitizer [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:35]
+- [ ] [Review][Patch] Unsafe-marker detection permits Bearer tokens, JWT-shaped values, JSON secret fields, `client_secret`, and URI user-info through preview and result text [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:14]
+- [ ] [Review][Patch] HTTP 400 responses are mislabeled as `server-error` instead of bounded invalid input [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:135]
+- [ ] [Review][Patch] The reusable-component inventory says 16 but lists 15 components [docs/brownfield/component-inventory.md:18]
+- [ ] [Review][Patch] Backup Swagger and MCP-client XML still promise a full backup although the registered backend is deferred [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:55]
+- [x] [Review][Defer] Valid tenant identifiers `admissions`, `export-stream`, and `import-stream` collide with fixed backup controller routes [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:36] — deferred: the collision predates this change and requires a route/versioning or tenant-compatibility decision outside the Story 5.4 deferred-backup boundary.
+- [x] [Review][Defer] CLI inventory names `.eventstore-admin-profiles.json` instead of `~/.eventstore/profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: this unchanged, pre-existing sentence is already tracked from the earlier Story 5.4 chunk review.
+- [x] [Review][Defer] Authentication documentation omits three published-UI settings from its exhaustive table, omits the symmetric `AllowedAlgorithms` rule, and permits Development HTTP token endpoints that the Aspire helper rejects [docs/guides/configuration-reference.md:419] — deferred: these are Story 5.3 authentication/AppHost findings in the mixed baseline window, which Story 5.4 explicitly excludes from rework.
+
+#### Rejected
+
+- [Rejected][false] Callable-write inventory can silently miss a current mutation — all current write tools and all current `AdminOperationResult` POST helpers are enumerated; the proposed failure requires a hypothetical future tool outside both conventions.
+- [Rejected][false] Preview permissions have already drifted from controller authorization policies — every current `Admin`/`Operator` preview value matches its controller policy; only a hypothetical future policy change is described.
+- [Rejected][false] Ordinary string bounding produces undetectably false values — the required bound is intentional and truncation is visibly marked with `...`; no current generic MCP result contract requires arbitrary strings to remain lossless.
+- [Rejected][false] Discovery omission lacks proof for non-Production environments — `IsDevelopment()` excludes every non-Development environment, and the acceptance criterion specifically requires the real Production-host proof that exists.
+- [Rejected][low] A 240-character cut can split a UTF-16 surrogate pair — the edge case is real but unlikely for everyday Admin identifiers/descriptions, and fixing it adds a special-case branch for negligible impact.
