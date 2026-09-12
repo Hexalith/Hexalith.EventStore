@@ -250,7 +250,7 @@ Reuse one presentation component for confirmation facts, but keep each page resp
 
 ### Review Findings — Host/OpenAPI follow-up (2026-09-11)
 
-- [ ] [Review][Patch] Production discovery assertions follow redirects [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:539]
+- [x] [Review][Patch] Production discovery assertions follow redirects [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:539]
 - [x] [Review][Defer] AppHost advertises an unavailable Admin Swagger URL outside Development [src/Hexalith.EventStore.AppHost/Program.cs:374] — deferred: the unconditional publish-time environment value predates the Story 5.4 baseline, is outside this Host/OpenAPI chunk, and is already tracked in the deferred-work ledger.
 
 #### Rejected — Host/OpenAPI follow-up (2026-09-11)

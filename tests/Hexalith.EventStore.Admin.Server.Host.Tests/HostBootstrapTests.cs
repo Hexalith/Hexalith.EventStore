@@ -536,7 +536,10 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
     public async Task ProductionPipeline_AlwaysOmitsDiscovery(bool openApiEnabled)
     {
         await using var factory = new ProductionAdminServerHostFactory(openApiEnabled);
-        using HttpClient client = factory.CreateClient();
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
 
         foreach (string path in new[] { "/openapi/v1.json", "/swagger", "/swagger/index.html" })
         {
