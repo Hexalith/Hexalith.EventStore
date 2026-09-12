@@ -414,9 +414,9 @@ Configuration section: `Authentication:JwtBearer`
 |---------|------|---------|-------------|
 | `Authority` | string | `""` | OIDC authority URL (e.g., `https://keycloak.example.com/realms/hexalith`). Used in production for automatic key discovery |
 | `Audience` | string | `""` | Primary accepted JWT audience. Optional when `ValidAudiences` supplies at least one non-blank value |
-| `ValidAudiences` | string[] | `[]` | Alternative or additional accepted audiences. When `Audience` is empty, the first non-blank value becomes the primary audience |
+| `ValidAudiences` | string[] | `[]` | Alternative or additional accepted audiences. Every entry must be non-blank; when `Audience` is empty, the first entry becomes the primary audience |
 | `Issuer` | string | `""` | Expected JWT issuer claim. **Required** |
-| `AllowedAlgorithms` | string[] | `[]` | Explicit non-empty asymmetric signing-algorithm allow-list for authority mode (for example, `RS256`) |
+| `AllowedAlgorithms` | string[] | `[]` | Explicit signing-algorithm allow-list. Authority mode requires a non-empty asymmetric subset (for example, `RS256`); symmetric mode accepts an empty list or exactly `HS256` |
 | `SigningKey` | string | `""` | Symmetric signing key for development/testing. Must be at least 32 UTF-8 bytes for HS256 |
 | `RequireHttpsMetadata` | bool | `true` | Require HTTPS when fetching OIDC metadata. Set to `false` only for local development |
 | `AllowInsecureSymmetricKey` | bool | `false` | Explicit legacy exception for symmetric validation outside Production and Development; emits a redacted warning. Production always rejects symmetric mode |
@@ -443,8 +443,9 @@ Configuration section: `Authentication:JwtBearer`
 - `Issuer` and at least one non-blank primary/additional audience are always required
 - When `Authority` is set, the system uses OIDC discovery to fetch signing keys automatically
 - Authority mode requires a non-empty `AllowedAlgorithms` subset of the supported asymmetric algorithms; there is no production default
+- Symmetric mode accepts an empty `AllowedAlgorithms` list or exactly `HS256`; all other values are rejected
 - Authority URIs must be absolute and contain no user information, query, or fragment. Explicit and discovered token endpoints must be absolute URIs without user information or fragment; a standards-compliant fixed query is allowed. An HTTP authority or token endpoint is accepted only in Development and only when `RequireHttpsMetadata=false`; outside Development all endpoints must use HTTPS and HTTPS metadata cannot be disabled
-- When `SigningKey` is set, it must be at least 32 UTF-8 bytes; Production always rejects symmetric mode
+- When `SigningKey` is set, it must be at least 32 UTF-8 bytes. Production always rejects symmetric mode; outside Production and Development it additionally requires `AllowInsecureSymmetricKey=true`
 
 ### Published UI token acquisition
 
@@ -794,7 +795,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `Authentication:JwtBearer:Audience` | string | `""` | Optional non-empty primary audience; at least one audience is required across this setting and `ValidAudiences` | Authentication |
 | `Authentication:JwtBearer:ValidAudiences:{index}` | string | — | Non-empty alternative or additional audience; supplies the primary audience when `Audience` is empty | Authentication |
 | `Authentication:JwtBearer:Issuer` | string | `""` | Non-empty string | Authentication |
-| `Authentication:JwtBearer:AllowedAlgorithms:{index}` | string | — | Explicit supported asymmetric algorithm in authority mode | Authentication |
+| `Authentication:JwtBearer:AllowedAlgorithms:{index}` | string | — | Supported asymmetric algorithm in authority mode; symmetric mode permits only `HS256` when supplied | Authentication |
 | `Authentication:JwtBearer:SigningKey` | string | `""` | Empty string or at least 32 UTF-8 bytes | Authentication |
 | `Authentication:JwtBearer:RequireHttpsMetadata` | bool | `true` | `true` or `false` | Authentication |
 | `Authentication:JwtBearer:AllowInsecureSymmetricKey` | bool | `false` | `true` or `false`; never permits symmetric validation in Production | Authentication |
@@ -834,9 +835,9 @@ This table lists every configurable setting for quick scanning, including explic
 
 ### OQ8 deployment and handoff limit
 
-Story 4.15 records the reviewed source-only handoff for EventStore source commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
+Story 4.15 records the reviewed source-only handoff for EventStore source commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded; the closure validator remains the required fail-closed consumer gate.
 
-The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. From the repository root, clean consumers must first run `python3 -m venv .oq8-python` and `.oq8-python/bin/python -m pip install --requirement requirements-oq8.txt`. They may rely on this EventStore source-only handoff only while `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. From the repository root, clean consumers must first run `python3 -m venv .oq8-python` and `.oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt`. They may rely on this EventStore source-only handoff only while `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
 
 - **Next:** [Deployment Progression](deployment-progression.md) — Choose your deployment target and see how configuration changes per environment
 - **Related:** [DAPR Component Reference](dapr-component-reference.md) — Complete YAML examples for every supported backend

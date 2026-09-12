@@ -4259,11 +4259,11 @@ public sealed class DeployedRuntimeParityClosureTests
         string root = FindRepositoryRoot();
         string sprint = ReadNormalizedText(root, SprintStatusRelativePath);
 
-        // These three rows were each flipped to 'done' by a commit whose subject and body never
+        // These four rows were each flipped to 'done' by a commit whose subject and body never
         // mentioned a status change, and each was corrected back. Nothing pinned them afterwards:
         // the OQ8 validator's status map covers only epic-4 and 4-9..4-15, and the Story 3.15
         // guard observes digest ordering rather than this row. A 2026-09-09 review demonstrated
-        // the gap by re-flipping all three and watching the full Contracts lane and the OQ8
+        // the gap by re-flipping all four and watching the full Contracts lane and the OQ8
         // validator both stay green. Anchored per line, never a whole-file substring, because this
         // file narrates its own lifecycle corrections in prose that quotes these very tokens.
 
@@ -4280,9 +4280,9 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")
             .ShouldBe("done");
 
-        // Story 4.7: the spec is in-progress at review pass 6 with 7 patches unapplied.
+        // Story 4.7: the accepted spec and sprint row both record completion.
         SingleLineValue(sprint, "  4-7-tenants-query-provenance-follow-up:")
-            .ShouldBe("in-progress");
+            .ShouldBe("done");
     }
 
     /// <summary>

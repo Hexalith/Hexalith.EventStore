@@ -717,7 +717,7 @@ public sealed class ReleasePackageManifestTests
         string contractsJob = ExtractTopLevelWorkflowJobBlock(ci, "contracts");
         const string allRootSubmodules = "git -c submodule.recurse=false submodule update --init";
         const string createEnvironment = "python3 -m venv \"${RUNNER_TEMP}/oq8-python\"";
-        const string installDependency = "\"${RUNNER_TEMP}/oq8-python/bin/python\" -m pip install --requirement requirements-oq8.txt";
+        const string installDependency = "\"${RUNNER_TEMP}/oq8-python/bin/python\" -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt";
         const string publishEnvironment = "echo \"${RUNNER_TEMP}/oq8-python/bin\" >> \"$GITHUB_PATH\"";
         contractsJob.ShouldContain("- name: Initialize root-declared submodules");
         contractsJob.ShouldContain(allRootSubmodules);
@@ -766,8 +766,26 @@ public sealed class ReleasePackageManifestTests
         liveSidecarJob.IndexOf(publishEnvironment, StringComparison.Ordinal)
             .ShouldBeLessThan(liveSidecarJob.IndexOf("python3 tools/validate-oq8-platform-evidence.py", StringComparison.Ordinal));
 
-        File.ReadAllText(Path.Combine(root, "requirements-oq8.txt")).Replace("\r\n", "\n", StringComparison.Ordinal)
-            .ShouldBe("PyYAML==6.0.3\n");
+        string[] requirementLines = File.ReadAllText(Path.Combine(root, "requirements-oq8.txt"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        requirementLines[0].ShouldBe("PyYAML==6.0.3 \\");
+        requirementLines.Length.ShouldBe(8);
+        requirementLines[1..^1].ShouldAllBe(line => Regex.IsMatch(
+            line,
+            @"^    --hash=sha256:[0-9a-f]{64} \\$",
+            RegexOptions.CultureInvariant,
+            TimeSpan.FromSeconds(1)));
+        Regex.IsMatch(
+            requirementLines[^1],
+            @"^    --hash=sha256:[0-9a-f]{64}$",
+            RegexOptions.CultureInvariant,
+            TimeSpan.FromSeconds(1)).ShouldBeTrue();
+        requirementLines[1..]
+            .Select(line => line.Trim().TrimEnd('\\'))
+            .Distinct(StringComparer.Ordinal)
+            .Count()
+            .ShouldBe(7);
         string validator = File.ReadAllText(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
         validator.ShouldContain("PINNED_PYYAML_VERSION = \"6.0.3\"");
         validator.ShouldContain("PINNED_PYYAML_REQUIREMENT = f\"PyYAML=={PINNED_PYYAML_VERSION}\"");
@@ -832,8 +850,8 @@ public sealed class ReleasePackageManifestTests
                     "          fetch-depth: 1\n          path: ~/.nuget/packages\n",
                     StringComparison.Ordinal),
             "checkout-env-shallow-depth" => integration.Replace(
-                "        with:\n          fetch-depth: 1\n          submodules: false",
-                "        env:\n          fetch-depth: 1\n        with:\n          submodules: false",
+                "        with:\n          # This capture-only lane does not read historical OQ8 Git objects. Any committed-closure\n          # validation added here must also change this checkout to fetch-depth: 0.\n          fetch-depth: 1\n          submodules: false",
+                "        env:\n          fetch-depth: 1\n        with:\n          # This capture-only lane does not read historical OQ8 Git objects. Any committed-closure\n          # validation added here must also change this checkout to fetch-depth: 0.\n          submodules: false",
                 StringComparison.Ordinal),
             "release-coupling-workflow" => integration,
             "release-coupling-project" => integration,
@@ -1928,7 +1946,16 @@ public sealed class ReleasePackageManifestTests
         lines.ShouldContain("      - name: Verify Tenants source-mode topology guardrails");
         trimmedLines.ShouldContain("--filter-class Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests");
         trimmedLines.ShouldContain("--report-xunit-trx");
-        AssertWorkflowJobCannotBeSkippedOrTolerated(jobBlock, "Tenants source-mode");
+        lines.ShouldContain("      - name: Upload Tenants source-mode test results");
+        lines.ShouldContain("        if: always()");
+        lines.ShouldContain("          name: tenants-source-mode-test-results");
+        lines.ShouldContain("          path: TestResults/Hexalith.EventStore.AppHost.Tests/**/*.trx");
+        lines.ShouldContain("          if-no-files-found: error");
+        lines.ShouldContain("          retention-days: 7");
+        lines.Count(static line => line.Trim() == "if: always()").ShouldBe(1);
+        AssertWorkflowJobCannotBeSkippedOrTolerated(
+            jobBlock.Replace("        if: always()\n", string.Empty, StringComparison.Ordinal),
+            "Tenants source-mode");
     }
 
     private static void AssertSemanticReleaseGovernanceJobIsBlocking(string jobBlock)
@@ -2008,6 +2035,14 @@ public sealed class ReleasePackageManifestTests
                 "          dotnet test tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj",
                 "          --filter-class Hexalith.EventStore.AppHost.Tests.Configuration.TenantsApiLaunchSettingsTests",
                 "          --report-xunit-trx",
+                "      - name: Upload Tenants source-mode test results",
+                "        if: always()",
+                "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+                "        with:",
+                "          name: tenants-source-mode-test-results",
+                "          path: TestResults/Hexalith.EventStore.AppHost.Tests/**/*.trx",
+                "          if-no-files-found: error",
+                "          retention-days: 7",
             ]);
 
     private static string CreateValidSemanticReleaseGovernanceJobBlock()

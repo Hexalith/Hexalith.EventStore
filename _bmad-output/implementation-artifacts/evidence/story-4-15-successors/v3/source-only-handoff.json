@@ -1,25 +1,25 @@
 {
   "schema": "hexalith.eventstore.story-4-15-successor-source-only-handoff/v3",
-  "assembledAt": "2026-09-09T20:59:40Z",
+  "assembledAt": "2026-09-12T17:32:23Z",
   "story": "4.15",
   "predecessor": {
     "completedV2ClosureCommit": "83b32fcfad7bb608098aebccdc15002636ffb431",
     "reviewSubjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
     "closureManifestSha256": "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
   },
-  "reviewSubjectSha256": "520d8569b272b2a22a63264ab8a8d77edb5ae202734a99d63999b0f5918a2609",
-  "limitationsSha256": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
+  "reviewSubjectSha256": "b3aed1c5ff53f1930baaac3e7d142fa218146a96e465d87376f6d765cc412cb5",
+  "limitationsSha256": "2e926cd462c9a6a66bd3a05edf632846d7f19808087cf9fcf5efbdda6bcb62c2",
   "reviewReceipts": {
-    "architecture": "f4d4470277dd4ab2c248cf1bb8fdedc28f30508c60c1e0ef7bae9336242ec8ec",
-    "security": "a2a9d58e67e022dcc39969e87f4b10dc2961d8ff86e72c8c7b262fef395ff5de",
-    "test": "72f9b148fc2e199e76ba3a739ae4ca8eae5b68fe6fe18d0359e20fb2ab0b797f"
+    "architecture": "270990ed1ce5310f4f239a16dca203a4d5ac4313cec630f81360cb64e192a585",
+    "security": "1846c6e8eb961e91967e0c9b3ae7afa0992ef2b25e2b3a195fa3f6b9981074e0",
+    "test": "4d3a2e2fbca3c8601ac86bbd16c15d079f3e694c9b9b2d38c44d5e1d2e0fb9d9"
   },
   "consumerInstructions": {
     "mode": "source-only",
-    "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+    "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt",
     "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
     "historicalRule": "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; a shallow clone that lacks commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 fails closed.",
-    "currentRule": "Treat current source as closed only when this complete v3 successor validates against the current candidate bytes."
+    "currentRule": "Treat current source as closed only when this complete v3 successor validates against the current candidate bytes. A full Git object store (fetch-depth: 0) is required; a shallow clone that lacks commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 fails closed."
   },
   "authority": {
     "eventStorePlatformComplete": true,

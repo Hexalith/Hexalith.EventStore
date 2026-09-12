@@ -2,17 +2,18 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "issuedAt": "2026-09-09T20:58:31Z",
+  "issuedAt": "2026-09-12T17:32:21Z",
   "decision": "approved",
-  "subjectSha256": "520d8569b272b2a22a63264ab8a8d77edb5ae202734a99d63999b0f5918a2609",
-  "limitationsSha256": "b82bfd6516d165c651ec6415300ca13c14acee136b018dfaa829bd5216f899d2",
+  "subjectSha256": "b3aed1c5ff53f1930baaac3e7d142fa218146a96e465d87376f6d765cc412cb5",
+  "limitationsSha256": "2e926cd462c9a6a66bd3a05edf632846d7f19808087cf9fcf5efbdda6bcb62c2",
   "acceptedScope": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
   "findings": [
-    "An independent security review of frozen subject 520d8569b272b2a22a63264ab8a8d77edb5ae202734a99d63999b0f5918a2609 was performed in a separate LLM agent session using Claude Opus 5, run by Administrator on 2026-09-09; the reviewer hashed the isolated-worktree review-subject.json, re-executed historical-v1, historical-v2, and validator-syntax there, confirmed the bound identity, limitations, validator, execution, and gate-input hashes, and returned decision: approved.",
-    "The reviewer first rejected the live working tree because HEAD public documents drift the immutable v1 pins; after re-execution on the story-isolated worktree with those two documents restored from 0994c378, the bound pre-review receipt matched the isolated candidate and the overlay paths are outside every v3 gateInput.",
-    "Immutable v1, SDK, and v2 lineage is pinned, while selector authority overstatement and historical-link drift fail closed.",
-    "Landed commit, tree, HEAD ancestry, regular-file source snapshots, and shallow-clone failure behavior are enforced.",
-    "External release, package, registry, deployment, migration, repository, and final-consumer authorities remain explicitly excluded."
+    "Security review matched exact frozen subject b3aed1c5ff53f1930baaac3e7d142fa218146a96e465d87376f6d765cc412cb5, its four direct bindings, and all 13 gate inputs.",
+    "Immutable v2 and SDK lineage plus all three source transitions matched their declared identities.",
+    "Landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4, tree 96fdfbba56df41b58889bf7f3b532a64d15314bd, and current HEAD ancestry were verified.",
+    "Negative probes rejected source, tree, object-store, receipt, authority, protected-content, and private-path drift.",
+    "All bound inputs were bounded regular non-symlink files and contained no forbidden protected or private content.",
+    "Release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, and final-consumer authority remain false."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

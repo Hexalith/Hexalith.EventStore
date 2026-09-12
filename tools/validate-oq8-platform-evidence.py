@@ -80,9 +80,19 @@ COMMITTED_DAPR_RUNTIME_VERSION = "1.18.1"
 CURRENT_REVIEW_DATE = "2026-08-27"
 PINNED_PYYAML_VERSION = "6.0.3"
 PINNED_PYYAML_REQUIREMENT = f"PyYAML=={PINNED_PYYAML_VERSION}"
+PINNED_PYYAML_HASHES = (
+    "0150219816b6a1fa26fb4699fb7daa9caf09eb1999f3b70fb6e786805e80375a",
+    "0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6",
+    "22ba7cfcad58ef3ecddc7ed1db3409af68d023b7f940da23c6c2a1890976eda6",
+    "9c7708761fccb9397fe64bbc0395abcae8c4bf7b0eac081e12b809bf47700d0b",
+    "b8bb0864c5a28024fac8a632c443c87c5aa6f215c0b126c449ae1a150412f31d",
+    "ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc",
+    "c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5",
+)
 MAX_SPRINT_STATUS_BYTES = 1_048_576
 MAX_V2_ARTIFACT_BYTES = 65_536
 MAX_V2_BOUND_SOURCE_BYTES = 524_288
+MAX_RAW_CTRF_BYTES = 8 * 1024 * 1024
 EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
 CLOSURE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4"
 SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp"
@@ -273,34 +283,52 @@ V3_BINDING_RULE = (
 V3_REVIEW_SCOPES = {
     "architecture": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, and source-only authority boundaries",
     "security": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
-    "test": "historical v1/v2 validation, active v3 selector and bootstrap coverage, rejected or incomplete receipt mutations, and the full Contracts lane",
+    "test": "historical v1/v2 validation, active v3 selector and bootstrap coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the full Contracts lane",
 }
 V3_LIMITATIONS = [
     "Story 4.15 v1, the SDK 10.0.400 successor, and v2 remain immutable historical evidence and do not authorize source bytes changed after completed-v2 closure commit 83b32fcfad7bb608098aebccdc15002636ffb431.",
     "The active v3 successor validates exact current repository source bytes while preserving the reviewed PostgreSQL multi-platform index authority recorded by v2.",
     "The v3 landed-commit, landed-tree, and HEAD-ancestry proofs resolve through the local Git object store, so a shallow or history-rewritten clone that lacks commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 fails closed rather than validating.",
+    "The immutable Story 4.14 capture remains historical evidence of Dapr runtime 1.18.1; the current content-bound integration workflow and fresh OQ8 capture lane require Dapr runtime 1.18.2, without granting runtime-pin authority.",
     "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
     "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority.",
 ]
-V3_CONTRACTS_RESTORE_COMMAND = "dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -p:Configuration=Release -p:UseHexalithProjectReferences=false"
+V3_CONTRACTS_RESTORE_COMMAND = "dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -m:1 -p:Configuration=Release -p:UseHexalithProjectReferences=false"
 V3_CONTRACTS_BUILD_COMMAND = "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false"
 V3_CONTRACTS_TEST_COMMAND = "dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --results-directory TestResults/Hexalith.EventStore.Contracts.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.Contracts.Tests.trx --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml -p:UseHexalithProjectReferences=false"
+V3_ACTIONLINT_COMMAND = "actionlint .github/workflows/ci.yml .github/workflows/integration.yml"
+V3_LIVE_SIDECAR_BUILD_COMMAND = "dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false"
+V3_LIVE_SIDECAR_TEST_COMMAND = "dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants -noColor"
 V3_PRE_REVIEW_COMMANDS = [
     ("validator-syntax", "python3 -m py_compile tools/validate-oq8-platform-evidence.py", 0),
     ("historical-v1-validation", "python3 tools/validate-oq8-platform-evidence.py --historical-v1-only", 0),
     ("historical-v2-validation", "python3 tools/validate-oq8-platform-evidence.py --historical-v2-only", 0),
+    ("workflow-static-validation", V3_ACTIONLINT_COMMAND, 0),
+    ("live-sidecar-build", V3_LIVE_SIDECAR_BUILD_COMMAND, 0),
+    ("live-sidecar-focused", V3_LIVE_SIDECAR_TEST_COMMAND, 1),
     ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V3_REVIEW_DATE = "2026-09-09"
-V3_FINAL_CLOSURE_TEST_COUNT = 404
-V3_FULL_CONTRACTS_TEST_COUNT = 1970
+V3_REVIEW_DATE = "2026-09-12"
+V3_FINAL_CLOSURE_TEST_COUNT = 421
+V3_FULL_CONTRACTS_TEST_COUNT = 1987
 V3_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
     "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
     f"a shallow clone that lacks commit {LANDED_SOURCE} fails closed."
 )
+V3_CONSUMER_CURRENT_RULE = (
+    "Treat current source as closed only when this complete v3 successor validates against the "
+    "current candidate bytes. A full Git object store (fetch-depth: 0) is required; "
+    f"a shallow clone that lacks commit {LANDED_SOURCE} fails closed."
+)
+V3_CONSUMER_INSTALL_COMMAND = (
+    "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install "
+    "--require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt"
+)
 V3_TEST_RECEIPT_VERIFICATION = [
+    ("workflow-static-validation", V3_ACTIONLINT_COMMAND, 0),
+    ("live-sidecar-focused", V3_LIVE_SIDECAR_TEST_COMMAND, 1),
     ("oq8-platform-closure", V2_CLOSURE_COMMAND, V3_FINAL_CLOSURE_TEST_COUNT),
     ("contracts-full", V3_CONTRACTS_TEST_COMMAND, V3_FULL_CONTRACTS_TEST_COUNT),
 ]
@@ -376,7 +404,7 @@ DOCUMENT_REQUIRED_TEXT = (
     "EventStore platform completion and the source-only handoff are recorded",
     "only while",
     "python3 -m venv .oq8-python",
-    ".oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+    ".oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt",
     ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
 )
 DOCUMENT_FORBIDDEN_TEXT = (
@@ -771,15 +799,19 @@ def load_json_bytes(value: bytes, label: str) -> Any:
         fail(f"Cannot load JSON evidence {label}")
 
 
-def scan_json_protected_content(value: Any) -> None:
+def scan_json_protected_content(value: Any, depth: int = 0, visited: list[int] | None = None) -> None:
+    require(depth <= 64, "Candidate JSON nesting exceeds the 64-level limit")
+    node_count = [0] if visited is None else visited
+    node_count[0] += 1
+    require(node_count[0] <= 100_000, "Candidate JSON exceeds the 100000-node limit")
     if isinstance(value, dict):
         for name, nested in value.items():
-            scan_json_protected_content(name)
-            scan_json_protected_content(nested)
+            scan_json_protected_content(name, depth + 1, node_count)
+            scan_json_protected_content(nested, depth + 1, node_count)
         return
     if isinstance(value, list):
         for nested in value:
-            scan_json_protected_content(nested)
+            scan_json_protected_content(nested, depth + 1, node_count)
         return
     if not isinstance(value, str):
         return
@@ -789,6 +821,8 @@ def scan_json_protected_content(value: Any) -> None:
         all(term.lower() not in lowered for term in FORBIDDEN_CAPTURE_TERMS),
         "Candidate JSON contains forbidden protected content",
     )
+    require(PLACEHOLDER_RE.search(value) is None, "Candidate JSON contains a placeholder")
+    require(FORBIDDEN_CLAIM_RE.search(value) is None, "Candidate JSON contains a forbidden closure or release claim")
 
 
 def load_candidate_json(path: Path) -> Any:
@@ -838,12 +872,13 @@ def run_subprocess_bounded(command: list[str], label: str) -> tuple[int, bytes, 
     except OSError:
         fail(f"{label} could not start")
 
-    require(process.stdout is not None and process.stderr is not None, f"{label} output capture failed")
-    selector = selectors.DefaultSelector()
+    selector: selectors.BaseSelector | None = None
     output = bytearray()
     errors = bytearray()
     deadline = time.monotonic() + GIT_TIMEOUT_SECONDS
     try:
+        require(process.stdout is not None and process.stderr is not None, f"{label} output capture failed")
+        selector = selectors.DefaultSelector()
         for stream, destination in ((process.stdout, output), (process.stderr, errors)):
             os.set_blocking(stream.fileno(), False)
             selector.register(stream, selectors.EVENT_READ, destination)
@@ -889,10 +924,18 @@ def run_subprocess_bounded(command: list[str], label: str) -> tuple[int, bytes, 
             process.kill()
             process.wait()
         fail(f"{label} failed safely")
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
     finally:
-        selector.close()
-        process.stdout.close()
-        process.stderr.close()
+        if selector is not None:
+            selector.close()
+        if process.stdout is not None:
+            process.stdout.close()
+        if process.stderr is not None:
+            process.stderr.close()
 
     return return_code, bytes(output), bytes(errors)
 
@@ -1063,13 +1106,25 @@ def require_no_symlink_components(path: Path, label: str) -> None:
         current = candidate
 
 
-def read_bounded_regular_snapshot(path: Path, maximum_bytes: int, label: str) -> bytes:
-    require_no_symlink_components(path, label)
+def read_bounded_regular_snapshot(
+    path: Path,
+    maximum_bytes: int,
+    label: str,
+    *,
+    repository_bound: bool = True,
+) -> bytes:
+    if repository_bound:
+        require_no_symlink_components(path, label)
+    else:
+        require(not path.is_symlink(), f"{label} must be a regular non-symlink file")
     try:
         metadata = path.stat()
     except OSError:
         fail(f"{label} is missing")
-    require(path.is_file(), f"{label} is not a regular file")
+    require(
+        path.is_file(),
+        f"{label} is not a regular file" if repository_bound else f"{label} must be a regular non-symlink file",
+    )
     require(metadata.st_size <= maximum_bytes, f"{label} exceeds the {maximum_bytes}-byte limit")
     try:
         with path.open("rb") as stream:
@@ -1078,6 +1133,29 @@ def read_bounded_regular_snapshot(path: Path, maximum_bytes: int, label: str) ->
         fail(f"Cannot read {label}")
     require(len(value) <= maximum_bytes, f"{label} exceeds the {maximum_bytes}-byte limit")
     return value
+
+
+def read_bounded_raw_input(path: Path, label: str) -> bytes:
+    return read_bounded_regular_snapshot(
+        path,
+        MAX_RAW_CTRF_BYTES,
+        label,
+        repository_bound=False,
+    )
+
+
+def relative_tree_entries(root: Path) -> set[str]:
+    entries: set[str] = set()
+    try:
+        for directory, directories, files in os.walk(root, followlinks=False):
+            current = Path(directory)
+            for name in directories:
+                entries.add((current / name).relative_to(root).as_posix())
+            for name in files:
+                entries.add((current / name).relative_to(root).as_posix())
+    except OSError:
+        fail(f"Cannot enumerate evidence path {display_path(root)}")
+    return entries
 
 
 def require_sha256(value: Any, field: str) -> str:
@@ -1118,9 +1196,19 @@ def validate_observations(
         {"schemaVersion", "captureKind", "capturedOn", "topology", "profile", "runtime", "executionConfiguration", "artifacts", "diagnostics", "observations"},
         "Observation",
     )
-    require(document.get("schemaVersion") == 1, "Observation schemaVersion drift")
+    require_exact_integer(document.get("schemaVersion"), 1, "Observation schemaVersion")
     require(document.get("captureKind") == "release-entry-binaries-test-seams-sidecar-postgresql", "Observation capture kind drift")
-    require(re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(document.get("capturedOn", ""))) is not None, "Capture date missing")
+    captured_on_text = document.get("capturedOn")
+    require(isinstance(captured_on_text, str), "Capture date missing")
+    require(
+        re.fullmatch(r"\d{4}-\d{2}-\d{2}", captured_on_text) is not None,
+        "Capture date must use YYYY-MM-DD",
+    )
+    try:
+        captured_on = datetime.strptime(captured_on_text, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        fail("Capture date must be a real UTC calendar date")
+    require(captured_on <= datetime.now(timezone.utc), "Capture date cannot be in the future")
 
     topology = document.get("topology", {})
     require_exact_fields(topology, {"eventStoreProcessCount", "eventStoreSidecarCount", "sampleProcessCount", "sampleSidecarCount", "independentProcessIdentities"}, "Observation topology")
@@ -1273,7 +1361,7 @@ def validate_observations(
 
 
 def sanitize_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
-    ctrf = load_json(ctrf_path)
+    ctrf = load_json_bytes(read_bounded_raw_input(ctrf_path, "Raw focused CTRF"), "raw focused CTRF")
     require(isinstance(ctrf, dict), "Focused CTRF must be an object")
     results = ctrf.get("results")
     require(isinstance(results, dict), "Focused CTRF results must be an object")
@@ -1393,7 +1481,7 @@ def validate_support_document(document: Any, expected_command: str = SUPPORT_LEG
 
 
 def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
-    ctrf = load_json(ctrf_path)
+    ctrf = load_json_bytes(read_bounded_raw_input(ctrf_path, "Raw support CTRF"), "raw support CTRF")
     require(isinstance(ctrf, dict), "Deterministic support CTRF must be an object")
     results = ctrf.get("results")
     require(isinstance(results, dict), "Deterministic support CTRF results must be an object")
@@ -1408,10 +1496,13 @@ def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
 
     observed = {identity: 0 for identity in EXPECTED_SUPPORT_METHOD_CASES}
     passed = {identity: 0 for identity in EXPECTED_SUPPORT_METHOD_CASES}
+    observed_names: set[str] = set()
     for test in tests:
         require(isinstance(test, dict), "Deterministic support CTRF contains an invalid test record")
         name = test.get("name")
         require(isinstance(name, str), "Deterministic support CTRF test identity is missing")
+        require(name not in observed_names, f"Duplicate deterministic support test case: {name}")
+        observed_names.add(name)
         matches = [identity for identity in EXPECTED_SUPPORT_METHOD_CASES if name == identity or name.startswith(f"{identity}(")]
         require(len(matches) == 1, f"Unexpected or ambiguous deterministic support test: {name}")
         identity = matches[0]
@@ -1497,6 +1588,10 @@ def validate_manifest() -> dict[str, str]:
         require("/" not in name and "\\" not in name and name not in manifest, "Unsafe or duplicate manifest name")
         manifest[name] = digest
     require(set(manifest) == REQUIRED_FILES, "Evidence manifest file set is incomplete or contains extras")
+    require(
+        relative_tree_entries(EVIDENCE) == REQUIRED_FILES | {"evidence-sha256.txt"},
+        "Evidence directory file set drift",
+    )
     for name, expected in manifest.items():
         path = EVIDENCE / name
         require(path.is_file(), f"Manifest artifact missing: {name}")
@@ -2008,7 +2103,7 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
 
     retained_paths = capability_paths - REPLACED_PRIOR_BOUND_PATHS
     require(
-        retained_paths | REPLACED_PRIOR_BOUND_PATHS == capability_paths,
+        REPLACED_PRIOR_BOUND_PATHS <= capability_paths,
         "Story 4.15 successor replaced paths are not prior current-bound paths",
     )
     for relative, capture_expected in capture_paths.items():
@@ -2055,6 +2150,10 @@ def validate_closure_manifest() -> dict[str, str]:
         )
         manifest[relative] = digest
     require(set(manifest) == CLOSURE_FILES, "Closure manifest file set drift")
+    require(
+        relative_tree_entries(CLOSURE) == CLOSURE_FILES | {"closure-sha256.txt", "reviews"},
+        "Closure directory file set drift",
+    )
     for relative, expected in manifest.items():
         path = CLOSURE / relative
         require(path.is_file(), f"Closure artifact missing: {relative}")
@@ -2215,10 +2314,7 @@ def capture_v2_snapshots() -> dict[str, bytes]:
     require_no_symlink_components(V2_SUCCESSOR, "Story 4.15 v2 successor directory")
     require(V2_SUCCESSOR.is_dir(), "Story 4.15 v2 successor directory is missing or symlinked")
     expected_entries = V2_SUCCESSOR_FILES | {"closure-sha256.txt", "reviews"}
-    actual_entries = {
-        path.relative_to(V2_SUCCESSOR).as_posix()
-        for path in V2_SUCCESSOR.rglob("*")
-    }
+    actual_entries = relative_tree_entries(V2_SUCCESSOR)
     require(actual_entries == expected_entries, "Story 4.15 v2 successor file set drift")
     for relative in actual_entries:
         path = V2_SUCCESSOR / relative
@@ -2775,7 +2871,7 @@ def capture_v3_snapshots() -> dict[str, bytes]:
     require_no_symlink_components(V3_SUCCESSOR, "Story 4.15 v3 successor directory")
     require(V3_SUCCESSOR.is_dir(), "Story 4.15 v3 successor directory is missing or symlinked")
     expected_entries = V3_SUCCESSOR_FILES | {"closure-sha256.txt", "reviews"}
-    actual_entries = {path.relative_to(V3_SUCCESSOR).as_posix() for path in V3_SUCCESSOR.rglob("*")}
+    actual_entries = relative_tree_entries(V3_SUCCESSOR)
     require(actual_entries == expected_entries, "Story 4.15 v3 successor file set drift")
     for relative in actual_entries:
         path = V3_SUCCESSOR / relative
@@ -3145,10 +3241,10 @@ def validate_v3_handoff(
         document.get("consumerInstructions")
         == {
             "mode": "source-only",
-            "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt",
+            "installCommand": V3_CONSUMER_INSTALL_COMMAND,
             "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
             "historicalRule": V3_CONSUMER_HISTORICAL_RULE,
-            "currentRule": "Treat current source as closed only when this complete v3 successor validates against the current candidate bytes.",
+            "currentRule": V3_CONSUMER_CURRENT_RULE,
         },
         "Story 4.15 v3 consumer instructions drift",
     )
@@ -3280,8 +3376,10 @@ def validate_review_subject(subject: dict[str, Any], crosswalk: dict[str, Any], 
         "Review subject identity drift",
     )
     for relative, expected in EXPECTED_DOCUMENT_HASHES.items():
-        validate_document_semantics(relative)
-        require(sha256_file(ROOT / relative) == expected, f"Reviewed public document body drift: {relative}")
+        require(
+            sha256_git_file(COMPLETED_V1_CLOSURE_COMMIT, relative) == expected,
+            f"Reviewed public document historical identity drift: {relative}",
+        )
     require(subject.get("reviewedPublicDocs") == EXPECTED_DOCUMENT_HASHES, "Review subject public-document binding drift")
     require(
         subject.get("handoff") == {
@@ -3401,19 +3499,21 @@ def validate_pyyaml_dependency() -> None:
     )
 
     requirement_path = ROOT / "requirements-oq8.txt"
-    require(
-        read_text(requirement_path).splitlines() == [PINNED_PYYAML_REQUIREMENT],
-        "OQ8 validator dependency requirement drift",
+    expected_requirement_lines = [f"{PINNED_PYYAML_REQUIREMENT} \\"]
+    expected_requirement_lines.extend(
+        f"    --hash=sha256:{digest}{' \\' if index < len(PINNED_PYYAML_HASHES) - 1 else ''}"
+        for index, digest in enumerate(PINNED_PYYAML_HASHES)
     )
+    require(read_text(requirement_path).splitlines() == expected_requirement_lines, "OQ8 validator dependency requirement drift")
     required_workflow_fragments = (
         'python3 -m venv "${RUNNER_TEMP}/oq8-python"',
-        '"${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --requirement requirements-oq8.txt',
+        '"${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt',
         'echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"',
     )
     for relative in (".github/workflows/ci.yml", ".github/workflows/integration.yml"):
         workflow = read_text(ROOT / relative)
         require(
-            all(fragment in workflow for fragment in required_workflow_fragments),
+            "\n          ".join(required_workflow_fragments) in workflow,
             f"OQ8 validator dependency bootstrap drift: {relative}",
         )
 
@@ -4121,7 +4221,10 @@ def main() -> int:
         print(f"OQ8 evidence validation failed: {exception}", file=sys.stderr)
         return 1
     except Exception as exception:
-        bounded = EvidenceError(f"Unexpected validator failure was safely bounded ({type(exception).__name__})")
+        message = re.sub(r"[\r\n\t]+", " ", str(exception)).strip()
+        message = PRIVATE_PATH_RE.sub("<redacted-path>", message)[:256]
+        detail = f": {message}" if message else ""
+        bounded = EvidenceError(f"Unexpected validator failure was safely bounded ({type(exception).__name__}){detail}")
         print(f"OQ8 evidence validation failed: {bounded}", file=sys.stderr)
         return 1
 

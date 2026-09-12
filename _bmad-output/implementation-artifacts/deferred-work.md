@@ -4285,3 +4285,30 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Valid tenant `admissions` collides with the fixed backup route and cannot reach the deferred tenant-backup action.
   evidence: Reconfirmed pre-existing controller-route ambiguity requiring a route/versioning or tenant-compatibility decision outside Story 5.4 (`BackupWriteTools.cs:36`; `AdminBackupsController.cs:58,228`).
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12, resumed build)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Story 4.14 `observations.json` is parsed before any input-size bound is enforced.
+  evidence: The raw CTRF correction does not cover this pre-existing evidence input, so a hostile oversized observation document can consume unbounded memory before validation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: The historical SDK successor directory does not reject extra unmanifested entries.
+  evidence: `validate_successor_manifest` verifies the declared manifest files but never compares the actual successor tree with the expected exact set, allowing unreviewed material beside the sealed packet.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Existing PostgreSQL image mutation tests fail on historical source identity before exercising semantic workflow and fixture extraction.
+  evidence: The `semantic-workflow-tag` and `semantic-fixture-tag` rows therefore do not prove the semantic image-drift diagnostics they are intended to guard.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Story 4.14 pending-review history lacks a direct immutable mutation test.
+  evidence: Existing coverage mutates `observations.json` and exact directory contents but does not rewrite the pending fields in `review-records.json` and assert fail-closed rejection.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Protected-content scanning rejects `password=` but not the equally secret-like `password:` form.
+  evidence: A credential embedded in an otherwise permitted reviewer finding or evidence string can pass the pre-existing leakage scan and be committed.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Sprint-status size validation occurs only after the entire file has been read into memory.
+  evidence: `parse_development_status` enforces `MAX_SPRINT_STATUS_BYTES`, but its caller uses unbounded `read_text` first, so the limit does not bound initial allocation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Historical closure validation still hashes mutable live Dapr component files.
+  evidence: `validate_capture_packet` reads current `deploy/dapr/statestore-postgresql.yaml` and `resiliency.yaml` even in historical-only modes, so legitimate later configuration drift can invalidate immutable history.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: PostgreSQL workflow extraction ignores `docker pull` commands outside the named authority step.
+  evidence: `extract_v2_workflow_image` searches only the matched `Pull PostgreSQL container image` step body, so an additional mutable pull elsewhere is not rejected by the pre-existing semantic guard.

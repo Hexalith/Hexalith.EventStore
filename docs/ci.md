@@ -103,9 +103,9 @@ Rotate this identity only as one reviewed change:
    required additive, content-bound Story 4.15 successor evidence without
    rewriting historical v1 bytes.
 4. Build the Contracts test project, run `PostgreSqlImageGovernanceTests`, run
-   `actionlint .github/workflows/integration.yml`, and run the validator from
+   `actionlint .github/workflows/ci.yml .github/workflows/integration.yml`, and run the validator from
    the pinned environment the v3 handoff mandates:
-   `python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --requirement requirements-oq8.txt`
+   `python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt`
    then `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py`.
 5. Pull the digest-pinned index and run the complete live-sidecar project. The
    fixture must retain its fail-closed `docker image inspect` prerequisite and

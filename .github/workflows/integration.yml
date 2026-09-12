@@ -33,6 +33,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          # This capture-only lane does not read historical OQ8 Git objects. Any committed-closure
+          # validation added here must also change this checkout to fetch-depth: 0.
           fetch-depth: 1
           submodules: false
           persist-credentials: false
@@ -48,7 +50,7 @@ jobs:
       - name: Install pinned OQ8 validator dependency
         run: |
           python3 -m venv "${RUNNER_TEMP}/oq8-python"
-          "${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --requirement requirements-oq8.txt
+          "${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt
           echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"
 
       - name: Cache NuGet packages
@@ -166,7 +168,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # NOTE: the Tier-3 `IntegrationTests` project spins up a full Aspire DistributedApplication
+      # NOTE: fixture-backed Tier-3 `IntegrationTests` classes spin up a full Aspire DistributedApplication
       # (Projects.Hexalith_EventStore_AppHost) which `dapr init` alone does not satisfy. Running it
       # reliably in GitHub-hosted CI needs a dedicated Aspire-in-CI setup and is tracked as a
       # follow-up — see sprint-change-proposal-2026-06-22-ci-release-retier.md.

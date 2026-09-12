@@ -2,7 +2,7 @@
 title: 'Story 4.15: OQ8 Platform Closure And Handoff'
 type: 'feature'
 created: '2026-08-10'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 story_key: '4-15-oq8-platform-closure-and-handoff'
 baseline_commit: '699ca71206cd280dc6b770d83c338495bfe70fab'
@@ -387,6 +387,35 @@ _BMad Build review of the baseline-wide diff on 2026-09-09. Routes are recorded 
 | edge-17 | medium | defer | Blank malformed publication-index entries do not consume the activation probe budget, so a corrupted index can force unbounded scanning and repeated logging before valid work is reached. |
 | verification-01 | medium | defer | The credential-injecting Pact verifier and auth handler are present, but the only real-Kestrel interaction is unauthorized and succeeds regardless of the generated credential. No test proves an authorized interaction reaches the provider with the matching token. |
 | verification-02 | medium | defer | Aspire authentication tests cover a valid audience pair and an invalid token endpoint, but do not exercise a missing half of the audience pair or an unsupported parameter name, leaving bounded pre-mutation validation unproved. |
+| run2-blind-01 | high | patch | The current validator, workflow, and test bytes invalidate the active v3 source identities, so default validation correctly fails until the candidate is frozen, independently reviewed, and coherently resealed. |
+| run2-blind-02 | high | patch | Sprint status remains `in-progress`, while the final lifecycle contract requires `review`; advance it only as part of the passing reviewed reseal. |
+| run2-blind-03 | false | reject | `status: in-review` is the workflow-mandated state during this review; final `done` is applied only after review succeeds, so the interim state is not a defect. |
+| run2-blind-04 | medium | patch | Historical validation resolves historical Git objects, so removing the full-object-store warning from `historicalRule` made the consumer instruction incomplete; retain it in both historical and current rules. |
+| run2-blind-05 | high | patch | The public-document identity fix still runs live document semantics in historical-only modes, allowing later live documentation changes to invalidate immutable history; live semantics belong only to current validation. |
+| run2-blind-06 | medium | patch | `docs/ci.md` still teaches the unhashed dependency install and one-workflow lint command after the canonical bootstrap and static command changed. |
+| run2-blind-07 | low | reject | The seven accepted hashes cover the Linux/WSL OQ8 consumer and CI contract; broadening an explicitly binary-only security bootstrap to unsupported macOS/Windows targets adds complexity without an in-scope consumer failure. |
+| run2-blind-08 | high | patch | The new canonical LiveSidecar build uses `--no-restore` without a preceding LiveSidecar restore, so it is not reproducible in a clean checkout. |
+| run2-blind-09 | low | reject | The recorded `actionlint` result is review evidence rather than a shipped runtime dependency, and adding repository-wide tool installation/version management is disproportionate without a demonstrated verdict drift. |
+| run2-blind-10 | medium | defer | `observations.json` is still parsed without an input-size bound; this predates the focused raw-CTRF hardening and can consume unbounded memory on hostile evidence. |
+| run2-blind-11 | low | reject | CTRF bytes are now capped at 8 MiB and parser recursion failures return a bounded non-zero result; moving structural limits ahead of JSON parsing would require a streaming parser for negligible additional protection. |
+| run2-blind-12 | low | reject | Required v1 artifact symlinks can only succeed with exact reviewed hashes inside the single-writer repository trust boundary; expanding the already accepted DW-454 symlink policy is disproportionate here. |
+| run2-blind-13 | medium | defer | The historical SDK successor validates declared files but does not reject extra directory entries, allowing unreviewed material beside the sealed manifest; this behavior predates the current candidate. |
+| run2-blind-14 | medium | defer | Existing semantic PostgreSQL image mutations fail first on historical source identity, so they do not exercise the semantic extractors; this is a pre-existing test gap. |
+| run2-blind-15 | medium | defer | Existing Story 4.14 immutability coverage lacks a direct pending-history mutation of `review-records.json`; this gap predates the current candidate. |
+| run2-blind-16 | medium | defer | Carried from `blind-13`: tracked Playwright traces contain transient session material and generated bulk; the current Story 4.15 candidate does not touch those files. |
+| run2-verification-01 | medium | defer | Carried from `blind-04`: `ci / contracts` owns committed-closure verification but is not a required merge context, while required `live-sidecar` runs capture mode only. |
+| run2-verification-02 | low | patch | The new Tenants `if: always()` TRX upload has no source contract test, so a later removal can silently erase the diagnostic artifact on failing runs. |
+| run2-verification-03 | high | patch | `CandidateSemanticMutationsFailClosed` still expects arbitrary live document-byte drift to fail after identities moved to immutable Git snapshots; the focused lane is red and the stale case must be removed or retargeted. |
+| run2-edge-01 | high | defer | Candidate protected-content scanning rejects `password=` but not `password:`, so a secret-like value can pass leakage validation; the scanner gap predates this candidate. |
+| run2-edge-02 | false | reject | `FORBIDDEN_CLAIM_RE` already rejects the positive `release approved` clause even when a no-release disclaimer is also present. |
+| run2-edge-03 | medium | defer | Sprint-status size is checked only after `read_text` loads the complete file, so the declared limit does not bound initial memory use; this is pre-existing. |
+| run2-edge-04 | low | reject | Repository-bound symlinks require a hostile same-user workspace writer and are already covered by the accepted DW-454 single-writer trust-boundary disposition. |
+| run2-edge-05 | medium | defer | The SDK-successor extra-file claim is the same verified pre-existing manifest exactness gap as `run2-blind-13`. |
+| run2-edge-06 | medium | defer | Carried from `edge-01`: the accepted DW-496 model keeps v1/v2 historical and binds only the reduced active-v3 current path set. |
+| run2-edge-07 | high | patch | The historical public-document claim is the same live-semantics isolation defect as `run2-blind-05`. |
+| run2-edge-08 | medium | defer | Historical capture validation still hashes mutable live Dapr component files, so later Dapr configuration can invalidate history; this behavior predates the current public-document correction. |
+| run2-edge-09 | medium | defer | PostgreSQL workflow extraction searches only the named step, so an additional `docker pull` elsewhere is not rejected; this is a pre-existing governance gap. |
+| run2-edge-10 | low | reject | The SDK directory and identity guards follow symlinks, but exploitation requires an already-hostile same-user workspace and exact reviewed bytes; extending the accepted DW-454 policy is disproportionate. |
 
 ### Completion Verification (2026-09-09)
 
@@ -694,3 +723,31 @@ _Chunked code review, active v3 successor packet (2026-09-12). Baseline `699ca71
 
 - Owner chose option 2 (leave as action items). The four patches remain unchecked and were not applied.
 - Story and sprint tracking moved to `in-progress`; do not claim current-source closure until the action items are resolved and the final validator passes.
+
+### Review Findings
+
+_BMad Build completion review (2026-09-12). Frozen v3 review subject: `b3aed1c5ff53f1930baaac3e7d142fa218146a96e465d87376f6d765cc412cb5`._
+
+- [x] [Review][Patch] **RESOLVED.** The v1 public-document identity check now reads immutable bytes from the completed-v1 Git snapshot, while live document semantics remain a current-validation gate only.
+- [x] [Review][Patch] **RESOLVED.** The canonical pre-review evidence now records workflow static validation, a restore-capable warning-free LiveSidecar build, and the focused production PostgreSQL/Dapr test.
+- [x] [Review][Patch] **RESOLVED.** The OQ8 Python dependency is artifact-hash locked and both workflows and consumer instructions require hash verification.
+- [x] [Review][Patch] **RESOLVED.** Both historical and current consumer rules disclose the full Git object-store requirement.
+- [x] [Review][Patch] **RESOLVED.** Story 4.7 lifecycle regression coverage now matches its accepted `done` spec and sprint row.
+- [x] [Review][Patch] **RESOLVED.** The checkout-environment mutation remains effective after checkout comments were added.
+- [x] [Review][Patch] **RESOLVED.** The untouched-repository lifecycle probe now observes Story 4.15 `done` directly.
+- [x] [Review][Patch] **RESOLVED.** The final document-semantics mutation no longer rewrites or reseals the frozen review subject, so it reaches the intended live semantic diagnostic.
+
+Fresh, independent architecture, security, and test reviews approved the exact frozen subject. The resulting receipt, handoff, closure-manifest, and selector chain was assembled in dependency order without changing the subject or historical evidence.
+
+### Completion Verification (2026-09-12, current run)
+
+- `python3 tools/validate-oq8-platform-evidence.py`: passed (`OQ8 platform evidence validation passed`).
+- `python3 tools/validate-oq8-platform-evidence.py --historical-v1-only`: passed and remained non-authorizing.
+- `python3 tools/validate-oq8-platform-evidence.py --historical-v2-only`: passed and remained non-authorizing.
+- `actionlint .github/workflows/ci.yml .github/workflows/integration.yml`: passed.
+- Canonical LiveSidecar Release build: passed with 0 warnings and 0 errors; focused production PostgreSQL/Dapr test passed 1/1 with no skips.
+- Canonical Contracts restore and Release build: passed with 0 warnings and 0 errors.
+- Exact `Oq8PlatformClosureTests` assembly run: 421 passed, 0 failed, 0 skipped.
+- Exact full Contracts lane with TRX and Cobertura: 1,987 passed, 0 failed, 0 skipped.
+- Frozen review-subject SHA-256 remained `b3aed1c5ff53f1930baaac3e7d142fa218146a96e465d87376f6d765cc412cb5` through final assembly and verification.
+- `git diff --check`: passed; no historical Story 4.15 evidence paths changed.

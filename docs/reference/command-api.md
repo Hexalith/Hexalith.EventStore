@@ -23,7 +23,7 @@ Authorization: Bearer {token}
 
 ### Token Acquisition
 
-The clean-clone local flow uses the [quickstart sample UI](../getting-started/quickstart.md), which authenticates internally. The AppHost intentionally neither exposes its generated realm-user credentials nor accepts reusable default credentials.
+The clean-clone local flow uses the [quickstart sample UI](../getting-started/quickstart.md), which authenticates internally. The AppHost publishes non-secret generated usernames for local UI wiring, but keeps generated passwords secret and accepts no reusable default credentials.
 
 The direct HTTP examples below assume a caller-controlled external or development/test identity provider configured for the EventStore authority, audience, and signing algorithm. Acquire a short-lived token from that provider and supply it through the `TOKEN` environment variable or your HTTP client's secure credential mechanism. `HEXALITH_ADMIN_USERNAME` and `HEXALITH_ADMIN_PASSWORD` are not AppHost inputs.
 
@@ -299,7 +299,7 @@ Query the processing status of a previously submitted command.
 ### Example
 
 ```bash
-$ curl https://localhost:5001/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+$ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -532,7 +532,7 @@ $ curl -X POST "${EVENTSTORE_URL}/api/v1/commands" \
 **Step 3 — Poll status:**
 
 ```bash
-$ curl https://localhost:5001/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+$ curl "${EVENTSTORE_URL}/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -555,9 +555,9 @@ $ curl https://localhost:5001/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1
 
 ### OQ8 consumption status
 
-Story 4.15 records the reviewed source-only handoff for EventStore source commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded, and the live closure validator passes against the unchanged bound source.
+Story 4.15 records the reviewed source-only handoff for EventStore source commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded; the closure validator remains the required fail-closed consumer gate.
 
-The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. From the repository root, clean consumers must first run `python3 -m venv .oq8-python` and `.oq8-python/bin/python -m pip install --requirement requirements-oq8.txt`. They may rely on this EventStore source-only handoff only while `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. From the repository root, clean consumers must first run `python3 -m venv .oq8-python` and `.oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt`. They may rely on this EventStore source-only handoff only while `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
 
 **Next:** [Query & Projection API Reference](query-api.md) — query execution, ETag validation, and real-time projection refresh
 
