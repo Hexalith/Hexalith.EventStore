@@ -4291,6 +4291,7 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Story 4.14 `observations.json` is parsed before any input-size bound is enforced.
   evidence: The raw CTRF correction does not cover this pre-existing evidence input, so a hostile oversized observation document can consume unbounded memory before validation.
+  tracked_as: DW-503 — close together; this bullet carries no id of its own.
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: The historical SDK successor directory does not reject extra unmanifested entries.
   evidence: `validate_successor_manifest` verifies the declared manifest files but never compares the actual successor tree with the expected exact set, allowing unreviewed material beside the sealed packet.
@@ -4303,6 +4304,7 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Protected-content scanning rejects `password=` but not the equally secret-like `password:` form.
   evidence: A credential embedded in an otherwise permitted reviewer finding or evidence string can pass the pre-existing leakage scan and be committed.
+  tracked_as: DW-504 — close together; this bullet carries no id of its own.
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Sprint-status size validation occurs only after the entire file has been read into memory.
   evidence: `parse_development_status` enforces `MAX_SPRINT_STATUS_BYTES`, but its caller uses unbounded `read_text` first, so the limit does not bound initial allocation.
@@ -4367,6 +4369,7 @@ location: tools/validate-oq8-platform-evidence.py:1191-1192,1559
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: Both CTRF inputs were routed through `read_bounded_raw_input` by this change, but the sibling `observations.json` from the same `--capture-directory` still reaches `read_text` then `load_json` with no size or symlink check, and the `is_file()` guard follows symlinks. Duplicate of the id-less entry filed by the same change and of `run2-blind-10`; recorded here only so the class has a citable id — close both together.
+duplicate_of: id-less bullet "Story 4.14 `observations.json` is parsed before any input-size bound is enforced." under `## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12, resumed build)`; and `run2-blind-10`. Closing DW-503 closes all three.
 status: open
 
 ### DW-504: Protected-content scanning rejects `password=` but not `password:`.
@@ -4376,6 +4379,7 @@ location: tools/validate-oq8-platform-evidence.py:818
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: A credential written in the `password:` form can pass the leakage scan and be committed inside an otherwise permitted reviewer finding or evidence string, while this same change hardened the surrounding scanner with depth/node bounds and placeholder/claim scans. Duplicate of the id-less entry filed by the same change and of `run2-edge-01`; recorded here only so the class has a citable id — close both together.
+duplicate_of: id-less bullet "Protected-content scanning rejects `password=` but not the equally secret-like `password:` form." under `## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12, resumed build)`; and `run2-edge-01`. Closing DW-504 closes all three.
 status: open
 
 ### DW-505: Story 4.15 is pinned at sprint review plus spec done, now hardened by an always-on repository probe.
@@ -4385,4 +4389,33 @@ location: tools/validate-oq8-platform-evidence.py:3713; tests/Hexalith.EventStor
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: The final lifecycle map requires sprint `review` and spec `done` simultaneously, and the new `CheckedInRepositoryLifecyclePassesWithoutMutation` runs the final validator against the checked-in repository, so flipping either value turns the entire Contracts lane red with no explanatory message. This hardens the inversion accepted as DW-497; reversing it is that lifecycle-contract decision, not a local fix.
+status: open
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13, Group P)
+
+### DW-506: Both v3 canonical encoders emit non-JSON NaN/Infinity, a third hand-written copy survives, and no test falsifies any of it.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group P)
+location: tools/release_evidence_handlers/v3.py:80,544; tools/deployed_runtime_parity_handlers/v1.py:222; tools/capture-corrected-deployed-runtime-parity-smokes.py:58
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: `canonical_bytes` and `_publisher_canonical_bytes` both omit `allow_nan=False`, so they encode the JavaScript literals `NaN`/`Infinity` and hash bytes no conforming JSON reader can parse. Measured after the Group P revert: `canonical_bytes({"a": nan})` returns `b'{"a":NaN}\n'` and `_publisher_canonical_bytes` returns `b'{\n  "a": NaN\n}\n'`, the latter feeding `record_hash`. The branch is reachable — `load_json_bytes` and `_load_json_value_bytes` call plain `json.loads` with no `parse_constant`, so `{"a": NaN}` parses. Three hand-written copies of the canonical encoder remain (`grep -rn "def canonical_bytes" tools/`), and the capture copy is itself a pinned verifier input of the same Story 3.15 packet. No test under `tests/` exercises non-finite values through any of them. Commit `e9292354` fixed the first two and consolidated v1 onto v3, but was reverted as `ec5c3da8` because it moved three sealed pins with no re-mint; the fix is correct and blocked only on that re-mint. All four files are Zone B.
+status: open
+
+### DW-507: The assembler-identity guard is tautological and accepts a layout-preserving copy executed from outside the repository.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group P)
+location: tools/assemble-corrected-deployed-runtime-parity.py:116,142-154; tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3941-4004
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: `repository_root()` returns `Path(__file__).resolve().parents[1]` and `executing_assembler_path()` compares `Path(__file__).resolve()` against `(root / ASSEMBLER_FILE).resolve()`, so both sides derive from the same path and the comparison cannot fail. The guard exists to stop a copied assembler from stamping the pristine repository file's digest into the closure it produces. `e9292354` attempted a fix but did not close it: reproduced during this review that a `tools/` copy plus `git init` plus an empty `Hexalith.EventStore.slnx` marker still passed `repository_root`, `executing_assembler_path` and `verify_handler_provenance`, and that `GIT_DIR`/`GIT_WORK_TREE` redirect the supposedly independent root. That attempt was reverted as `ec5c3da8`, restoring this defect knowingly. A correct fix must first settle what an independent root is and whether a hard git-and-work-tree precondition is acceptable, since the attempted version broke the guard's only test by aborting before it. Zone B.
+status: open
+
+### DW-508: The A7/A8 corrections and the Story 3.15 re-mint that must carry them.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group P)
+location: _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/{subject,closure}.json; tools/validate-corrective-release-evidence.py:35; tools/validate-corrected-deployed-runtime-parity.py:48; _bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure-proof-packet.md:55
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: high
+reason: `tools/release_evidence_handlers/v3.py`, `tools/deployed_runtime_parity_handlers/v1.py` and `tools/assemble-corrected-deployed-runtime-parity.py` are sha256+size-pinned decision inputs of the Story 3.15 closure packet and of both retained-evidence validators. Any correction to them — DW-506, DW-507, or the subprocess hardening and path-redaction items recorded in the Group P findings — moves those pins and requires one re-mint of the subject, the closure, the proof-packet table and both validators' pins, which rejects the three existing 3.15 receipts and needs fresh architecture, security and test sign-off. Landing them one at a time is what turned the Contracts lane red at 1987/204/0 and failed both validators, requiring revert `ec5c3da8`. Batch every item into a single authorized re-mint. Note the asymmetry that hid this: none of the three files is an OQ8 v3 gate input, so `validate-oq8-platform-evidence.py` stayed green throughout, and `Contracts.Tests` is absent from `unit-test-projects` in `.github/workflows/ci.yml`, so the failures surfaced only in `ci / contracts`, which the live `main` ruleset does not require.
 status: open
