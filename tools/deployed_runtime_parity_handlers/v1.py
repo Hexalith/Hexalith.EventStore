@@ -220,11 +220,14 @@ def load_json_bytes(value):
 
 
 def canonical_bytes(value):
-    """Return the selected canonical UTF-8 JSON representation."""
-    return (
-        json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"), sort_keys=True)
-        + "\n"
-    ).encode("utf-8")
+    """Return the selected canonical UTF-8 JSON representation.
+
+    Delegates to the predecessor handler's encoder rather than restating it. Two hand-written
+    copies of the canonical encoder are two things that can drift; each file is SHA-pinned but
+    nothing compared their *outputs*, so a divergence would have been invisible until it changed
+    a subject digest.
+    """
+    return predecessor_handler.canonical_bytes(value)
 
 
 def canonical_sha256(value):
