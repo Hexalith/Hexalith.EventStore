@@ -4312,3 +4312,77 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: PostgreSQL workflow extraction ignores `docker pull` commands outside the named authority step.
   evidence: `extract_v2_workflow_image` searches only the matched `Pull PostgreSQL container image` step body, so an additional mutable pull elsewhere is not rejected by the pre-existing semantic guard.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12, Group O)
+
+### DW-498: PyYAML hash set is manylinux-x86_64-CPython-only with no disclosed platform constraint.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: requirements-oq8.txt:1-8; tools/validate-oq8-platform-evidence.py:83-92
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: Verified against the PyPI 6.0.3 file list — the seven pinned digests are exactly the cp38-cp314 manylinux x86_64 wheels. Every aarch64, musllinux, s390x and cp314t free-threaded wheel and the sdist are absent, so under `--require-hashes --no-deps --only-binary=:all:` the documented consumer bootstrap hard-fails on arm64 Linux, Alpine, or a free-threaded interpreter. `limitations.json` states no platform constraint while all four public documents instruct every clean consumer to run that command. CI on ubuntu-latest x86_64 is unaffected. Both remedies are Zone B: adding digests changes a bound validator constant, and disclosing changes sealed limitations. `run2-blind-07` declined broadening on macOS/Windows grounds without considering these Linux cases.
+status: open
+
+### DW-499: actionlint is canonical receipt evidence and a documented rotation step but is gated by no workflow.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: .github/workflows/ci.yml; .github/workflows/integration.yml; docs/ci.md:106
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: `V3_ACTIONLINT_COMMAND` appears in the pre-review execution record, the test receipt and step 4 of the rotation guide, but `grep -rn actionlint .github/` returns nothing. The receipt's own verification command is therefore not reproducible in CI, and a later workflow edit lands with no static validation. `run2-blind-09` already declined repository-wide tool installation.
+status: open
+
+### DW-500: Raw CTRF inputs bypass the new candidate depth, node and protected-content scans.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: tools/validate-oq8-platform-evidence.py:1364,1484
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: `sanitize_ctrf` and `sanitize_support_ctrf` call `load_json_bytes`, not `load_candidate_json`, so up to 8 MiB of caller-supplied CTRF is parsed without the depth/node bounds and protected-content scans this change added elsewhere. A direct fix is not available: `PLACEHOLDER_RE` matches `<[^>]+>`, so applying the candidate scan would reject any test name containing a generic type parameter.
+status: open
+
+### DW-501: PLACEHOLDER_RE applies to all candidate evidence JSON and will fail closed on the word "unknown".
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: tools/validate-oq8-platform-evidence.py:639,824
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: `scan_json_protected_content` now applies `PLACEHOLDER_RE` (`\bTBD\b|\bTODO\b|\bUNKNOWN\b|<[^>]+>`, IGNORECASE) to every string in every candidate evidence JSON. Nothing trips it today, but a future reviewer finding, scope string or command containing the word "unknown" — including this repository's own AD-15 `Unknown` provenance value — or any angle-bracket token will fail validation with `Candidate JSON contains a placeholder`. Settled by deciding whether the placeholder scan should apply to reviewer prose at all.
+status: open
+
+### DW-502: Duplicate-support-case diagnostic echoes an unscanned caller-controlled test name.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: tools/validate-oq8-platform-evidence.py:1504
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: The new `Duplicate deterministic support test case: {name}` message echoes an unscanned value from the raw CTRF to stderr, and `fail()`/`require()` bound nothing — only the generic `except Exception` branch truncates and redacts. Pre-existing pattern: the adjacent `Unexpected or ambiguous deterministic support test` message already echoes the same value, and the 8 MiB raw cap added by this change is a net improvement over the previously unbounded read.
+status: open
+
+### DW-503: observations.json is parsed with no input-size or symlink bound.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: tools/validate-oq8-platform-evidence.py:1191-1192,1559
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: Both CTRF inputs were routed through `read_bounded_raw_input` by this change, but the sibling `observations.json` from the same `--capture-directory` still reaches `read_text` then `load_json` with no size or symlink check, and the `is_file()` guard follows symlinks. Duplicate of the id-less entry filed by the same change and of `run2-blind-10`; recorded here only so the class has a citable id — close both together.
+status: open
+
+### DW-504: Protected-content scanning rejects `password=` but not `password:`.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: tools/validate-oq8-platform-evidence.py:818
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: A credential written in the `password:` form can pass the leakage scan and be committed inside an otherwise permitted reviewer finding or evidence string, while this same change hardened the surrounding scanner with depth/node bounds and placeholder/claim scans. Duplicate of the id-less entry filed by the same change and of `run2-edge-01`; recorded here only so the class has a citable id — close both together.
+status: open
+
+### DW-505: Story 4.15 is pinned at sprint review plus spec done, now hardened by an always-on repository probe.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
+location: tools/validate-oq8-platform-evidence.py:3713; tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs:2087-2097
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: The final lifecycle map requires sprint `review` and spec `done` simultaneously, and the new `CheckedInRepositoryLifecyclePassesWithoutMutation` runs the final validator against the checked-in repository, so flipping either value turns the entire Contracts lane red with no explanatory message. This hardens the inversion accepted as DW-497; reversing it is that lifecycle-contract decision, not a local fix.
+status: open
