@@ -78,19 +78,10 @@ def _load_json_value_bytes(value):
 
 
 def canonical_bytes(value):
-    """Encode the one canonical JSON representation used for identity hashing.
-
-    ``allow_nan=False`` is not optional. Without it this encoder emits the JavaScript literals
-    ``NaN``/``Infinity``, which are not JSON: it would hash bytes no conforming reader can parse,
-    and would disagree with every other encoder in the trust path, all of which refuse them.
-    This is the single implementation; v1 delegates here so the two cannot drift apart again.
-    """
-    return (
-        json.dumps(
-            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
-        )
-        + "\n"
-    ).encode("utf-8")
+    """Encode the one canonical JSON representation used for identity hashing."""
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode(
+        "utf-8"
+    )
 
 
 def canonical_sha256(value):

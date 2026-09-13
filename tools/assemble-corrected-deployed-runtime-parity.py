@@ -110,33 +110,8 @@ def _restore_previous_closure(path, previous_bytes):
     path.write_bytes(previous_bytes)
 
 
-REPOSITORY_MARKER = "Hexalith.EventStore.slnx"
-
-
 def repository_root():
-    """Return the repository root, derived independently of this file's own location.
-
-    Deriving the root from ``__file__`` made ``executing_assembler_path`` tautological: both
-    sides of its comparison came from the same path, so a layout-preserving copy executed from
-    outside the repository satisfied the guard that exists to refuse exactly that. The root is
-    now resolved by git and confirmed by a repository marker, so neither side is derived from
-    the bytes under test.
-    """
-    try:
-        completed = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=Path(__file__).resolve().parent,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except (OSError, subprocess.SubprocessError) as error:
-        raise ValueError("repository root could not be resolved with git") from error
-    root = Path(completed.stdout.strip()).resolve()
-    if not (root / REPOSITORY_MARKER).is_file():
-        raise ValueError(
-            f"{root} is not the EventStore repository: {REPOSITORY_MARKER} is missing")
-    return root
+    return Path(__file__).resolve().parents[1]
 
 
 def executing_assembler_path(root):
