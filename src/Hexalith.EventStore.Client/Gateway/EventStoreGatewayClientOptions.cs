@@ -20,6 +20,12 @@ public sealed class EventStoreGatewayClientOptions {
     public string QueryPath { get; set; } = "api/v1/queries";
 
     /// <summary>
+    /// Gets or sets the relative path of the command status endpoint. The message identifier is appended as a
+    /// trailing segment.
+    /// </summary>
+    public string CommandStatusPath { get; set; } = "api/v1/commands/status";
+
+    /// <summary>
     /// Gets or sets the relative public stream read endpoint path.
     /// </summary>
     public string StreamReadPath { get; set; } = "api/v1/streams/read";

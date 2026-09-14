@@ -1084,7 +1084,11 @@ public partial class AggregateActor(
                         accepted: true, eventCount: 0, errorMessage: null,
                         expectedPreCommitPipeline: pipelineState,
                         intermediatePipeline: null,
-                        processActivity, startTicks).ConfigureAwait(false);
+                        processActivity, startTicks,
+                        // A no-op carries the same completed-result evidence as an eventful success: the wire result
+                        // and the domain-service invoker both preserve ResultPayload for IsNoOp, so dropping it here
+                        // was the one link that withheld it from the caller.
+                        resultPayload: domainResult.ResultPayload).ConfigureAwait(false);
                 }
 
                 // Step 5: Event persistence (Story 3.7)

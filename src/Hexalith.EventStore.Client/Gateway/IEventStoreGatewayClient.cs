@@ -16,6 +16,16 @@ public interface IEventStoreGatewayClient {
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Reads a command's recorded status through <c>GET /api/v1/commands/status/{messageId}</c>.
+    /// </summary>
+    /// <param name="messageId">The command message identifier returned on the submission receipt.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The recorded status, or <c>null</c> when no status exists for the identifier.</returns>
+    Task<CommandStatusQueryResponse?> GetCommandStatusAsync(
+        string messageId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Submits a query through <c>POST /api/v1/queries</c>.
     /// </summary>
     Task<EventStoreQueryResult> SubmitQueryAsync(

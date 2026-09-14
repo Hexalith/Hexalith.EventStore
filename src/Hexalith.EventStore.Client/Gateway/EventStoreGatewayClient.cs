@@ -81,6 +81,41 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     }
 
     /// <inheritdoc />
+    public async Task<CommandStatusQueryResponse?> GetCommandStatusAsync(
+        string messageId,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+
+        using HttpResponseMessage response = await SendTranslatingAsync(
+            () => _httpClient.GetAsync(
+                CreateRelativeUri($"{_options.CommandStatusPath.TrimEnd('/')}/{Uri.EscapeDataString(messageId)}"),
+                cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+
+        // A missing status is an ordinary answer, not a fault: the record may not have been written yet.
+        if (response.StatusCode == HttpStatusCode.NotFound) {
+            return null;
+        }
+
+        if (!response.IsSuccessStatusCode) {
+            await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+
+        try {
+            return await response.Content
+                .ReadFromJsonAsync<CommandStatusQueryResponse>(JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (JsonException ex) {
+            throw new EventStoreGatewayException(
+                (int)response.StatusCode,
+                response.ReasonPhrase ?? "OK",
+                detail: "Command status response body could not be parsed.",
+                innerException: ex);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<SubmitCommandResponse> SubmitCommandAsync(
         SubmitCommandRequest request,
         CancellationToken cancellationToken = default) {

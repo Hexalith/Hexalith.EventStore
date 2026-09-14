@@ -265,6 +265,31 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
         return Task.FromResult(CommandResponse);
     }
 
+    /// <summary>
+    /// Gets or sets the command status returned by <see cref="GetCommandStatusAsync"/>. A <c>null</c> value models
+    /// a status record that has not been written yet.
+    /// </summary>
+    public CommandStatusQueryResponse? CommandStatus { get; set; }
+
+    /// <summary>
+    /// Gets or sets the exception thrown by <see cref="GetCommandStatusAsync"/>, when configured.
+    /// </summary>
+    public Exception? CommandStatusException { get; set; }
+
+    /// <inheritdoc />
+    public Task<CommandStatusQueryResponse?> GetCommandStatusAsync(
+        string messageId,
+        CancellationToken cancellationToken = default) {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
+
+        if (CommandStatusException is not null) {
+            throw CommandStatusException;
+        }
+
+        return Task.FromResult(CommandStatus);
+    }
+
     /// <inheritdoc />
     public Task<EventStoreQueryResult> SubmitQueryAsync(
         SubmitQueryRequest request,

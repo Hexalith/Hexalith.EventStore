@@ -156,6 +156,35 @@ public class StateMachineIntegrationTests {
         checkpointedStates.ShouldAllBe(state => state.ResultPayload == null);
     }
 
+    [Fact]
+    public async Task ProcessCommand_NoOp_WithResultPayload_PreservesTerminalPayload() {
+        // A no-op carries the same completed-result evidence as an eventful success. Dropping it here left callers
+        // that correlate a write with its outcome unable to distinguish "already applied" from "unverifiable".
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
+        const string resultPayload = "{\"effect\":\"AlreadyApplied\",\"configurationVersion\":7}";
+        var noOpResult = new PayloadDomainResult([], resultPayload);
+        var checkpointedStates = new List<PipelineState>();
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(noOpResult);
+        _ = stateManager.SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<PipelineState>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(callInfo => checkpointedStates.Add(callInfo.ArgAt<PipelineState>(1)));
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        noOpResult.IsNoOp.ShouldBeTrue();
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(0);
+        result.ResultPayload.ShouldBe(resultPayload);
+        checkpointedStates.ShouldAllBe(state => state.ResultPayload == null);
+    }
+
     // --- Task 8.2: Rejection path ---
 
     [Fact]
