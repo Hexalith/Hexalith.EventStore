@@ -102,6 +102,10 @@ context:
   pre-existing diagnostic-format issue was deferred. Reverification passed 31 focused and
   2,018 full Contracts tests, the solution build, both independent verifiers,
   all 14 package checks, and all isolated consumers.
+- 2026-09-14: Recorded Jérôme Piquot's final acceptance of the exact reviewed
+  Story 8.2 evidence and explicit authorization for Story 8.3 as
+  `AR-20260914-01`. Story 8.2 moved to done; Story 8.3 remains unstarted and
+  later successors remain predecessor/evidence gated.
 
 ## Review Triage Log
 

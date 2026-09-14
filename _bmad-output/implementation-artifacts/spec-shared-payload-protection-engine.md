@@ -5,7 +5,7 @@ status: approved-authorized
 decision: adopted-amendment
 story_8_2_authorized: true
 created: 2026-07-16
-last_updated: 2026-09-13
+last_updated: 2026-09-14
 eventstore_source_sha: dfc0ac557c43363159b55bffb4d40feceab1f787
 story_baseline_sha: 76f122332216cc5d9b44a421bdbed3ab20d35f5e
 parties_source_sha: 4378dede55d92e489caf7aad63d6c2892e6f856d
@@ -26,8 +26,8 @@ content digest.
 | --- | --- |
 | ADR status | **ADOPTED AND APPROVED — 2026-09-13 AMENDMENT** |
 | Story 8.2 initial authorization | **AUTHORIZED** for exact-digest/source preflight and implementation |
-| Successor authorization | Story 8.2 is authorized; Stories 8.3-8.11 remain blocked until their approved immediate predecessor closes. |
-| Reason | Jérôme Piquot approved replacement packet `AR-20260913-01` in all seven mandatory roles for the exact amendment digest/source, accepted the documented residual risks and additive API design, and reported no open material findings. |
+| Successor authorization | Story 8.2 is approved and done; Story 8.3 is authorized but not started; Stories 8.4-8.11 remain blocked until their approved immediate predecessor closes. |
+| Reason | Jérôme Piquot approved replacement packet `AR-20260913-01` for the exact amendment digest/source, then approved the exact reviewed Story 8.2 evidence and authorized Story 8.3 in `AR-20260914-01`, acting in all seven mandatory roles with no open material finding. |
 | Required artifact | `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` |
 | EventStore inspected source | `dfc0ac557c43363159b55bffb4d40feceab1f787` (`main`); its Contracts security bytes match approved source `b200305978577530ee2e6ba9e92b886d26dc6f6f` |
 | Story baseline | `76f122332216cc5d9b44a421bdbed3ab20d35f5e` |
@@ -91,6 +91,23 @@ The confirmed approval accepted the unchanged residual risks and the exact
 additive API amendment with no open material finding. It authorizes Story 8.2
 only for the exact digest/source preflight and bounded implementation described
 by this specification; all successor and G5 gates remain in force.
+
+### 1.5 Story 8.2 completion approval and Story 8.3 authorization
+
+| Role | Named approver | Decision | UTC timestamp | Normative SHA-256 | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Architect | Jérôme Piquot | Approved Story 8.2; authorized Story 8.3 | 2026-09-14T07:04:19Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260914-01` |
+| Security Reviewer | Jérôme Piquot | Approved Story 8.2; authorized Story 8.3 | 2026-09-14T07:04:19Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260914-01` |
+| EventStore owner | Jérôme Piquot | Approved Story 8.2; authorized Story 8.3 | 2026-09-14T07:04:19Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260914-01` |
+| Release owner | Jérôme Piquot | Approved Story 8.2; authorized Story 8.3 | 2026-09-14T07:04:19Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260914-01` |
+| Operations owner | Jérôme Piquot | Approved Story 8.2; authorized Story 8.3 | 2026-09-14T07:04:19Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260914-01` |
+| Parties maintainer | Jérôme Piquot | Approved Story 8.2; authorized Story 8.3 | 2026-09-14T07:04:19Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260914-01` |
+| Test Architect / independent vector reviewer | Jérôme Piquot | Approved Story 8.2; authorized Story 8.3 | 2026-09-14T07:04:19Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260914-01` |
+
+The detached packet binds this decision to the exact reviewed implementation,
+Story 8.2 specification, completion evidence, and verification results. Story
+8.3 remains unstarted and must satisfy its own bounded specification and gates;
+this packet does not authorize Story 8.4 or any later successor.
 
 <!-- HX-PP-V2-NORMATIVE-BEGIN -->
 
@@ -2470,3 +2487,4 @@ it is retained for audit history and grants no authority to the amendment.
 | 2026-08-01 | Recorded Jérôme Piquot's independent reproduction, sections 12-17 review, residual-risk acceptance, and approval in every mandatory role as `AR-20260801-01`. | Normative bytes and digest are unchanged; Story 8.2 is authorized, while Stories 8.3-8.11 remain predecessor-gated. |
 | 2026-09-13 | Reopened Story 8.1 after Story 8.2 preflight found missing exact public signatures; froze the additive snapshot carrier, occurrence-aware write/unprotect results, completion context/outcome/hooks and fail-closed legacy defaults; rebound current planning/source identities. | Normative bytes changed; `AR-20260801-01` is superseded, Story 8.2 is not authorized, and all source work is blocked pending `AR-20260913-01`. |
 | 2026-09-13 | Recorded Jérôme Piquot's exact-digest/source confirmation in all seven mandatory roles as `AR-20260913-01`, including additive-API and residual-risk acceptance with no open material finding. | Normative bytes and digest are unchanged; Story 8.2 is authorized, while Stories 8.3-8.11 remain predecessor-gated. |
+| 2026-09-14 | Recorded Jérôme Piquot's final Story 8.2 acceptance and explicit Story 8.3 authorization in all seven mandatory roles as `AR-20260914-01`. | Normative bytes and digest are unchanged; Story 8.2 is done, Story 8.3 is authorized but not started, and Stories 8.4-8.11 remain predecessor/evidence gated. |

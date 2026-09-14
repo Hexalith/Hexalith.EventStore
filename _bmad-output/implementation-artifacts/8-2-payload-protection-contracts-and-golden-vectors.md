@@ -8,11 +8,12 @@ against EventStore baseline
 `AR-20260913-01`. The exact Story 8.1 normative digest recomputes as
 `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`.
 
-This evidence does not authorize Story 8.3. Story 8.2's technical
-contract/API/vector review is closed, but Story 8.3 remains predecessor-gated
-until explicit successor authorization is recorded by the required named
-owners. Stories 8.4-8.11 and G5 remain blocked by their own predecessor and
-evidence gates.
+Jérôme Piquot approved this exact reviewed Story 8.2 implementation and
+explicitly authorized Story 8.3 at `2026-09-14T07:04:19Z` in packet
+`AR-20260914-01`, acting in the same seven named roles recorded for the
+normative approval. Story 8.2 is done. Story 8.3 is authorized but not started;
+Stories 8.4-8.11 and G5 remain blocked by their own predecessor and evidence
+gates.
 
 ## Implemented Boundary
 
@@ -43,7 +44,7 @@ or changed.
 | Story 8.1 normative range | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` |
 | `tools/release-packages.json` | `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
 | Sorted complete Contracts/Security per-file hash stream | `a01dc5576702f08dc0a95caaa8a4158e457c2f1d85dd4337fc145d126a02fa2e` |
-| Scoped implementation diff from the EventStore baseline | `ff0fd2ddebd68f4b8f944174667289e35680ba3af104adc580dd57ff037aaf9` |
+| Scoped implementation diff from the EventStore baseline | `cff0fd2ddebd68f4b8f944174667289e35680ba3af104adc580dd57ff037aaf9` |
 | `IEventPayloadProtectionService.cs` | `bf642ba897581dae1870c524e10ee8c97824e4c4c1675ddcd0cbfe14f8f6781e` |
 | `PayloadProtectionV2ContractTests.cs` | `02915db53d0a375aae067261961a5b9860b7dba833413e1bf39fe3f9c9b96abf` |
 | Contracts test project | `1f996cc51b85147d641e0faedfd867bf379965b6d751643d95a1035eed474067` |
@@ -136,3 +137,6 @@ no-op and Testing fake providers.
   reuse. The clean package proof and supported Microsoft Testing Platform run
   therefore set `DOTNET_CLI_USE_MSBUILD_SERVER=0` and
   `MSBUILDDISABLENODEREUSE=1`; all recorded guarded runs completed successfully.
+- Story 8.3 authorization permits its separately bounded planning and
+  implementation work. It does not start Story 8.3, authorize Story 8.4 or
+  later successors, or claim any Story 8.3 evidence.
