@@ -6,6 +6,24 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal static class Base64UrlCodec
 {
     /// <summary>
+    /// Gets the exact unpadded base64url character count for a bounded byte count.
+    /// </summary>
+    internal static int GetEncodedLength(int byteCount)
+    {
+        if (byteCount < 0)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
+        return checked((byteCount / 3 * 4) + ((byteCount % 3) switch
+        {
+            1 => 2,
+            2 => 3,
+            _ => 0,
+        }));
+    }
+
+    /// <summary>
     /// Encodes bytes without padding.
     /// </summary>
     internal static string Encode(ReadOnlySpan<byte> value)

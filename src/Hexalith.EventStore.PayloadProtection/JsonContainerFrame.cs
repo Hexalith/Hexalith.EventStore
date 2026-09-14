@@ -14,6 +14,7 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
     private int _pendingPropertyStart = -1;
     private int _pendingPropertyLength;
     private ulong _pendingPropertyHash;
+    private bool _pendingPropertyIsEscaped;
 
     /// <summary>Gets the indexed container node.</summary>
     internal int NodeIndex { get; } = nodeIndex;
@@ -74,6 +75,7 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
             _pendingPropertyStart = tokenStart;
             _pendingPropertyLength = tokenLength;
             _pendingPropertyHash = hash;
+            _pendingPropertyIsEscaped = reader.ValueIsEscaped;
         }
         finally
         {
@@ -85,7 +87,11 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
     /// <summary>
     /// Consumes the pending property token for the next object value.
     /// </summary>
-    internal void ConsumeProperty(out int tokenStart, out int tokenLength, out ulong propertyNameHash)
+    internal void ConsumeProperty(
+        out int tokenStart,
+        out int tokenLength,
+        out ulong propertyNameHash,
+        out bool propertyNameIsEscaped)
     {
         if (ValueKind != JsonValueKind.Object || _pendingPropertyStart < 0)
         {
@@ -95,9 +101,11 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
         tokenStart = _pendingPropertyStart;
         tokenLength = _pendingPropertyLength;
         propertyNameHash = _pendingPropertyHash;
+        propertyNameIsEscaped = _pendingPropertyIsEscaped;
         _pendingPropertyStart = -1;
         _pendingPropertyLength = 0;
         _pendingPropertyHash = 0;
+        _pendingPropertyIsEscaped = false;
     }
 
     /// <summary>

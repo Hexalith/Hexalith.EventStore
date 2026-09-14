@@ -110,6 +110,58 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  payload-protection:
+    name: ci / payload-protection
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      - name: Initialize root-declared submodules
+        run: git -c submodule.recurse=false submodule update --init
+
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore PayloadProtection tests
+        run: >-
+          dotnet restore tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj
+          -p:Configuration=Release
+
+      - name: Build PayloadProtection tests
+        run: >-
+          dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj
+          --no-restore
+          --configuration Release
+          -warnaserror
+          -m:1
+
+      - name: Run PayloadProtection tests
+        run: >-
+          dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj
+          --no-build
+          --configuration Release
+          --minimum-expected-tests 201
+          --fail-skips on
+          --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests
+          --report-xunit-trx
+          --report-xunit-trx-filename Hexalith.EventStore.PayloadProtection.Tests.trx
+
+      - name: Upload PayloadProtection test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: payload-protection-test-results
+          path: TestResults/Hexalith.EventStore.PayloadProtection.Tests/**/*.trx
+          if-no-files-found: error
+          retention-days: 7
+
   semantic-release-governance:
     name: ci / semantic-release-governance
     runs-on: ubuntu-latest

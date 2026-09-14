@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
@@ -62,6 +61,15 @@ internal sealed class BoundedJsonDocument : IDisposable
     {
         ArgumentNullException.ThrowIfNull(node);
         return node.Depth;
+    }
+
+    /// <summary>
+    /// Gets the complete indexed subtree size for one node.
+    /// </summary>
+    internal static int GetSubtreeNodeCount(BoundedJsonNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node.SubtreeNodeCount;
     }
 
     /// <summary>
@@ -205,7 +213,7 @@ internal sealed class BoundedJsonDocument : IDisposable
     internal byte[] CopyPayload(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        byte[] result = _utf8Json.ToArray();
+        byte[] result = [.. _utf8Json];
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -255,8 +263,14 @@ internal sealed class BoundedJsonDocument : IDisposable
                 {
                     CheckCancellation(ref examinedChildren, cancellationToken, checkpoint);
                     childCount++;
-                    if (PropertyNameEquals(_nodes[childIndex], _protectedMemberName))
+                    BoundedJsonNode child = _nodes[childIndex];
+                    if (PropertyNameEquals(child, _protectedMemberName))
                     {
+                        if (child.PropertyNameIsEscaped)
+                        {
+                            throw new PayloadProtectionFormatException();
+                        }
+
                         protectedChildIndex = childIndex;
                     }
 
@@ -292,7 +306,7 @@ internal sealed class BoundedJsonDocument : IDisposable
                     cancellationToken.ThrowIfCancellationRequested();
                     envelope = EnvelopeCodec.Read(envelopeBytes);
                     cancellationToken.ThrowIfCancellationRequested();
-                    string path = MaterializePath(nodeIndex);
+                    string path = MaterializePath(nodeIndex, cancellationToken, checkpoint);
                     var wrapper = new ProtectedWrapper(path, envelope, node.Start, node.Length);
                     wrappers.Add(wrapper);
                     envelope = null;
@@ -328,16 +342,40 @@ internal sealed class BoundedJsonDocument : IDisposable
     /// <summary>
     /// Applies non-overlapping byte-range replacements and rejects output expansion beyond the payload ceiling.
     /// </summary>
-    internal byte[] Rewrite(IReadOnlyList<JsonReplacement> replacements, CancellationToken cancellationToken)
+    internal byte[] Rewrite(
+        IReadOnlyList<JsonReplacement> replacements,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint = null,
+        Action<int>? sortCheckpoint = null)
     {
         ArgumentNullException.ThrowIfNull(replacements);
         var ordered = new JsonReplacement[replacements.Count];
+        int examined = 0;
         for (int index = 0; index < replacements.Count; index++)
         {
+            CheckCancellation(ref examined, cancellationToken, checkpoint);
             ordered[index] = replacements[index];
         }
 
-        Array.Sort(ordered, static (left, right) => left.Start.CompareTo(right.Start));
+        cancellationToken.ThrowIfCancellationRequested();
+        int comparisons = 0;
+        try
+        {
+            Array.Sort(ordered, (left, right) =>
+            {
+                CheckCancellation(ref comparisons, cancellationToken, sortCheckpoint);
+                return left.Start.CompareTo(right.Start);
+            });
+        }
+        catch (InvalidOperationException exception)
+            when (cancellationToken.IsCancellationRequested
+                && exception.InnerException is OperationCanceledException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
         long outputLength = _utf8Json.Length;
         int previousEnd = 0;
         for (int index = 0; index < ordered.Length; index++)
@@ -365,19 +403,35 @@ internal sealed class BoundedJsonDocument : IDisposable
         {
             int sourceOffset = 0;
             int destinationOffset = 0;
+            int copiedBytes = 0;
             for (int index = 0; index < ordered.Length; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 JsonReplacement replacement = ordered[index];
                 int unchangedLength = replacement.Start - sourceOffset;
-                _utf8Json.AsSpan(sourceOffset, unchangedLength).CopyTo(output.AsSpan(destinationOffset));
+                CopyWithCancellation(
+                    _utf8Json.AsSpan(sourceOffset, unchangedLength),
+                    output.AsSpan(destinationOffset),
+                    ref copiedBytes,
+                    cancellationToken,
+                    checkpoint);
                 destinationOffset += unchangedLength;
-                replacement.Value.CopyTo(output, destinationOffset);
+                CopyWithCancellation(
+                    replacement.Value,
+                    output.AsSpan(destinationOffset),
+                    ref copiedBytes,
+                    cancellationToken,
+                    checkpoint);
                 destinationOffset += replacement.Value.Length;
                 sourceOffset = checked(replacement.Start + replacement.Length);
             }
 
-            _utf8Json.AsSpan(sourceOffset).CopyTo(output.AsSpan(destinationOffset));
+            CopyWithCancellation(
+                _utf8Json.AsSpan(sourceOffset),
+                output.AsSpan(destinationOffset),
+                ref copiedBytes,
+                cancellationToken,
+                checkpoint);
             cancellationToken.ThrowIfCancellationRequested();
             return output;
         }
@@ -385,6 +439,35 @@ internal sealed class BoundedJsonDocument : IDisposable
         {
             Clear(output, SensitiveBufferKind.AbandonedOutput, _observer);
             throw;
+        }
+    }
+
+    private static void CopyWithCancellation(
+        ReadOnlySpan<byte> source,
+        Span<byte> destination,
+        ref int copiedBytes,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
+    {
+        int offset = 0;
+        while (offset < source.Length)
+        {
+            if (copiedBytes == 0)
+            {
+                checkpoint?.Invoke(1);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            int nextBoundary = checked(((copiedBytes / 256) + 1) * 256);
+            int length = Math.Min(nextBoundary - copiedBytes, source.Length - offset);
+            source.Slice(offset, length).CopyTo(destination.Slice(offset, length));
+            offset += length;
+            copiedBytes = checked(copiedBytes + length);
+            if (copiedBytes == nextBoundary)
+            {
+                checkpoint?.Invoke(copiedBytes);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
     }
 
@@ -413,7 +496,6 @@ internal sealed class BoundedJsonDocument : IDisposable
         int maximumNodes = PayloadProtectionLimits.JsonNodes,
         int maximumDepth = PayloadProtectionLimits.JsonDepth)
     {
-        List<BoundedJsonNode>? nodes = null;
         Stack<JsonContainerFrame>? containers = null;
         bool containsProtectedMember = false;
         int observedMaximumDepth = 0;
@@ -428,7 +510,7 @@ internal sealed class BoundedJsonDocument : IDisposable
                 throw new PayloadProtectionFormatException();
             }
 
-            nodes = [];
+            List<BoundedJsonNode>? nodes = [];
             containers = [];
             var reader = new Utf8JsonReader(
                 utf8Json,
@@ -500,6 +582,7 @@ internal sealed class BoundedJsonDocument : IDisposable
 
                             frame.ValidateComplete();
                             nodes[frame.NodeIndex].Length = checked((int)reader.BytesConsumed - nodes[frame.NodeIndex].Start);
+                            nodes[frame.NodeIndex].SubtreeNodeCount = checked(nodes.Count - frame.NodeIndex);
                         }
                         finally
                         {
@@ -587,13 +670,18 @@ internal sealed class BoundedJsonDocument : IDisposable
         int propertyStart = -1;
         int propertyLength = 0;
         ulong propertyNameHash = 0;
+        bool propertyNameIsEscaped = false;
         int arrayIndex = -1;
         if (containers.Count > 0)
         {
             JsonContainerFrame parent = containers.Peek();
             if (parent.ValueKind == JsonValueKind.Object)
             {
-                parent.ConsumeProperty(out propertyStart, out propertyLength, out propertyNameHash);
+                parent.ConsumeProperty(
+                    out propertyStart,
+                    out propertyLength,
+                    out propertyNameHash,
+                    out propertyNameIsEscaped);
             }
             else
             {
@@ -624,6 +712,7 @@ internal sealed class BoundedJsonDocument : IDisposable
             propertyNameHash,
             arrayIndex,
             containers.Count,
+            propertyNameIsEscaped,
             reader.TokenType == JsonTokenType.String && reader.ValueIsEscaped);
         int nodeIndex = nodes.Count;
         nodes.Add(node);
@@ -687,13 +776,18 @@ internal sealed class BoundedJsonDocument : IDisposable
         }
     }
 
-    private string MaterializePath(int nodeIndex)
+    private string MaterializePath(
+        int nodeIndex,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
     {
         Span<int> ancestors = stackalloc int[PayloadProtectionLimits.JsonDepth + 1];
         int count = 0;
         int current = nodeIndex;
+        int examined = 0;
         while (_nodes[current].ParentIndex >= 0)
         {
+            CheckCancellation(ref examined, cancellationToken, checkpoint);
             if (count == ancestors.Length)
             {
                 throw new PayloadProtectionFormatException();
@@ -710,11 +804,18 @@ internal sealed class BoundedJsonDocument : IDisposable
             Span<byte> formattedArrayIndex = stackalloc byte[10];
             for (int index = count - 1; index >= 0; index--)
             {
+                CheckCancellation(ref examined, cancellationToken, checkpoint);
                 BoundedJsonNode node = _nodes[ancestors[index]];
-                WritePathByte(path, ref written, (byte)'/');
+                WritePathByte(path, ref written, (byte)'/', ref examined, cancellationToken, checkpoint);
                 if (node.PropertyTokenStart >= 0)
                 {
-                    WriteEscapedPropertyName(node, path, ref written);
+                    WriteEscapedPropertyName(
+                        node,
+                        path,
+                        ref written,
+                        ref examined,
+                        cancellationToken,
+                        checkpoint);
                 }
                 else if (node.ArrayIndex >= 0)
                 {
@@ -723,7 +824,13 @@ internal sealed class BoundedJsonDocument : IDisposable
                         throw new PayloadProtectionFormatException();
                     }
 
-                    WritePathBytes(path, ref written, formattedArrayIndex[..formattedLength]);
+                    WritePathBytes(
+                        path,
+                        ref written,
+                        formattedArrayIndex[..formattedLength],
+                        ref examined,
+                        cancellationToken,
+                        checkpoint);
                 }
                 else
                 {
@@ -744,40 +851,195 @@ internal sealed class BoundedJsonDocument : IDisposable
         }
     }
 
-    private void WriteEscapedPropertyName(BoundedJsonNode node, byte[] path, ref int written)
+    private void WriteEscapedPropertyName(
+        BoundedJsonNode node,
+        byte[] path,
+        ref int written,
+        ref int examined,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
     {
-        int maximumLength = Math.Max(1, node.PropertyTokenLength);
-        byte[] decoded = ArrayPool<byte>.Shared.Rent(maximumLength);
-        try
+        ReadOnlySpan<byte> token = _utf8Json.AsSpan(node.PropertyTokenStart, node.PropertyTokenLength);
+        if (token.Length < 2 || token[0] != (byte)'\"')
         {
-            var reader = new Utf8JsonReader(_utf8Json.AsSpan(node.PropertyTokenStart, node.PropertyTokenLength));
-            if (!reader.Read() || reader.TokenType != JsonTokenType.String)
+            throw new PayloadProtectionFormatException();
+        }
+
+        int contentEnd = FindPropertyNameEnd(
+            token,
+            ref examined,
+            cancellationToken,
+            checkpoint);
+        Span<byte> encoded = stackalloc byte[4];
+        for (int index = 1; index < contentEnd; index++)
+        {
+            CheckCancellation(ref examined, cancellationToken, checkpoint);
+            byte value = token[index];
+            if (value != (byte)'\\')
+            {
+                WriteEscapedPathValue(path, ref written, value, ref examined, cancellationToken, checkpoint);
+                continue;
+            }
+
+            if (++index >= contentEnd)
             {
                 throw new PayloadProtectionFormatException();
             }
 
-            int decodedLength = reader.CopyString(decoded);
-            for (int index = 0; index < decodedLength; index++)
+            CheckCancellation(ref examined, cancellationToken, checkpoint);
+            byte escape = token[index];
+            if (escape != (byte)'u')
             {
-                byte value = decoded[index];
-                if (value == (byte)'~')
+                byte decoded = escape switch
                 {
-                    WritePathBytes(path, ref written, "~0"u8);
-                }
-                else if (value == (byte)'/')
+                    (byte)'\"' => (byte)'\"',
+                    (byte)'\\' => (byte)'\\',
+                    (byte)'/' => (byte)'/',
+                    (byte)'b' => (byte)'\b',
+                    (byte)'f' => (byte)'\f',
+                    (byte)'n' => (byte)'\n',
+                    (byte)'r' => (byte)'\r',
+                    (byte)'t' => (byte)'\t',
+                    _ => throw new PayloadProtectionFormatException(),
+                };
+                WriteEscapedPathValue(path, ref written, decoded, ref examined, cancellationToken, checkpoint);
+                continue;
+            }
+
+            int scalar = ReadHexCodeUnit(
+                token,
+                contentEnd,
+                ref index,
+                ref examined,
+                cancellationToken,
+                checkpoint);
+            if (scalar is >= 0xd800 and <= 0xdbff)
+            {
+                if (index + 2 >= contentEnd
+                    || token[index + 1] != (byte)'\\'
+                    || token[index + 2] != (byte)'u')
                 {
-                    WritePathBytes(path, ref written, "~1"u8);
+                    throw new PayloadProtectionFormatException();
                 }
-                else
+
+                index += 2;
+                int lowSurrogate = ReadHexCodeUnit(
+                    token,
+                    contentEnd,
+                    ref index,
+                    ref examined,
+                    cancellationToken,
+                    checkpoint);
+                if (lowSurrogate is < 0xdc00 or > 0xdfff)
                 {
-                    WritePathByte(path, ref written, value);
+                    throw new PayloadProtectionFormatException();
                 }
+
+                scalar = 0x10000 + ((scalar - 0xd800) << 10) + (lowSurrogate - 0xdc00);
+            }
+            else if (scalar is >= 0xdc00 and <= 0xdfff)
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
+            if (!Rune.TryCreate(scalar, out Rune rune))
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
+            int encodedLength = rune.EncodeToUtf8(encoded);
+            for (int encodedIndex = 0; encodedIndex < encodedLength; encodedIndex++)
+            {
+                WriteEscapedPathValue(
+                    path,
+                    ref written,
+                    encoded[encodedIndex],
+                    ref examined,
+                    cancellationToken,
+                    checkpoint);
             }
         }
-        finally
+    }
+
+    private static int FindPropertyNameEnd(
+        ReadOnlySpan<byte> token,
+        ref int examined,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
+    {
+        bool escaped = false;
+        for (int index = 1; index < token.Length; index++)
         {
-            CryptographicOperations.ZeroMemory(decoded);
-            ArrayPool<byte>.Shared.Return(decoded);
+            CheckCancellation(ref examined, cancellationToken, checkpoint);
+            byte value = token[index];
+            if (escaped)
+            {
+                escaped = false;
+            }
+            else if (value == (byte)'\\')
+            {
+                escaped = true;
+            }
+            else if (value == (byte)'\"')
+            {
+                return index;
+            }
+        }
+
+        throw new PayloadProtectionFormatException();
+    }
+
+    private static int ReadHexCodeUnit(
+        ReadOnlySpan<byte> token,
+        int contentEnd,
+        ref int index,
+        ref int examined,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
+    {
+        if (index > contentEnd - 5)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
+        int value = 0;
+        for (int digit = 0; digit < 4; digit++)
+        {
+            index++;
+            CheckCancellation(ref examined, cancellationToken, checkpoint);
+            byte character = token[index];
+            int nibble = character switch
+            {
+                >= (byte)'0' and <= (byte)'9' => character - (byte)'0',
+                >= (byte)'A' and <= (byte)'F' => character - (byte)'A' + 10,
+                >= (byte)'a' and <= (byte)'f' => character - (byte)'a' + 10,
+                _ => throw new PayloadProtectionFormatException(),
+            };
+            value = (value << 4) | nibble;
+        }
+
+        return value;
+    }
+
+    private static void WriteEscapedPathValue(
+        byte[] path,
+        ref int written,
+        byte value,
+        ref int examined,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
+    {
+        if (value == (byte)'~')
+        {
+            WritePathBytes(path, ref written, "~0"u8, ref examined, cancellationToken, checkpoint);
+        }
+        else if (value == (byte)'/')
+        {
+            WritePathBytes(path, ref written, "~1"u8, ref examined, cancellationToken, checkpoint);
+        }
+        else
+        {
+            WritePathByte(path, ref written, value, ref examined, cancellationToken, checkpoint);
         }
     }
 
@@ -807,19 +1069,34 @@ internal sealed class BoundedJsonDocument : IDisposable
         }
     }
 
-    private static void WritePathBytes(byte[] destination, ref int written, ReadOnlySpan<byte> value)
+    private static void WritePathBytes(
+        byte[] destination,
+        ref int written,
+        ReadOnlySpan<byte> value,
+        ref int examined,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
     {
         if (value.Length > PayloadProtectionLimits.PathBytes - written)
         {
             throw new PayloadProtectionFormatException();
         }
 
-        value.CopyTo(destination.AsSpan(written));
-        written += value.Length;
+        for (int index = 0; index < value.Length; index++)
+        {
+            WritePathByte(destination, ref written, value[index], ref examined, cancellationToken, checkpoint);
+        }
     }
 
-    private static void WritePathByte(byte[] destination, ref int written, byte value)
+    private static void WritePathByte(
+        byte[] destination,
+        ref int written,
+        byte value,
+        ref int examined,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
     {
+        CheckCancellation(ref examined, cancellationToken, checkpoint);
         if (written >= PayloadProtectionLimits.PathBytes)
         {
             throw new PayloadProtectionFormatException();

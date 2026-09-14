@@ -2,10 +2,10 @@
 
 ## Disposition
 
-The provider-neutral core and focused test implementation are ready for
-independent review. They do not authorize Stories 8.4/8.5. Literal completion
-of frozen V030 is blocked by the normative inconsistency recorded below; no
-frozen authority byte was changed to conceal it.
+The review-loop 4 provider-neutral core and focused test implementation are
+ready for independent review. They do not authorize Stories 8.4/8.5. The
+constructibility interpretations approved by `AR-20260914-02` remain exact;
+no frozen authority byte was changed.
 
 ## Content Binding
 
@@ -14,24 +14,28 @@ relative path, and exclude generated `bin/` and `obj/` content.
 
 | Inventory | Files | SHA-256 |
 | --- | ---: | --- |
-| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 29 | `9a8d0e85f8f3416e0615cdbc51275c020bf8a91f0a5eb6d683ee6d875b2a1206` |
-| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 11 | `610323256f1b9a2dd4206d63b63bd1c41877031bed551f6f859959861fbff01d` |
+| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 34 | `09754b6f4266a9a33bce382b53f2829d1dae1ae619148f1a36e66a9644497ce0` |
+| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `4234c80e5531c691486597b1eab9e759ebdf7886dfbb461ba870e27b74848f41` |
 | Core project | 1 | `358feb7e012807a2e54da26ca5324e668a35cefeb7689dd49d5b424ef9b7e91f` |
 | Test project | 1 | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | 1 | `3cc4898d645fb0cf31481abebfe5730d0869d385b13d8f96960c58841bd75297` |
+| GitHub focused lane | 1 | `1433bcaff40b2b449f63376b590ba8ade769c869ef66218615e88087c6a696d1` |
+| Local focused lane | 1 | `13a7114e7c5b604629ebfeb68124a8658076497c24aadac5ae55e9ec270fe342` |
 
 The production inventory contains one internal documented type per C# file:
 limits/exceptions/results/context/material, strict canonical text/ULID/base64url,
-HXP2 envelope, HXAD AAD, HXPM manifest, restricted RFC 6901, bounded JSON,
-AES-GCM, delayed entropy/material generation, atomic event transformation,
-owned-buffer observation, and closed diagnostics. The project is
+HXP2 envelope, HXAD AAD, HXPM manifest, restricted RFC 6901,
+payload-proportional byte-range JSON indexing, root snapshot and atomic event
+transformation, AES-GCM, delayed entropy/material generation, owned-buffer
+observation, and closed diagnostics. The project is
 `IsPackable=false`, references only Contracts directly, has no public types or
 registration, and has no Azure, DAPR, Server, domain, Parties, or UI dependency.
 
 The test inventory contains the required `Envelope`, `AadPath`,
 `Cryptography`, `JsonTransform`, `LimitsAndConcurrency`, and `Diagnostics`
-areas plus three bounded helpers and a separate execution manifest. Story 8.2
-fixtures are linked read-only rather than copied or modified. The manifest
+areas plus three one-type-per-file bounded helpers and a separate execution
+manifest. Tests load the linked Story 8.2 G-001, NIST, and ownership fixtures
+read-only rather than relying only on duplicated constants. The manifest
 assigns inherited V001-V003 and 48 Story 8.3 vectors V004-V048/V135-V136/V138;
 all 51 identifiers have a corresponding xUnit trait and none is skipped.
 
@@ -41,14 +45,53 @@ all 51 identifiers have a corresponding xUnit trait and none is skipped.
 | --- | --- |
 | `node scripts/payload-protection/verify-golden-vectors.mjs` | PASS V001-V003; frozen bytes unchanged |
 | `python3 scripts/payload-protection/verify-golden-vectors.py` | PASS V001-V003; independent frozen bytes unchanged |
-| `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --minimum-expected-tests 48` | PASS 137/137; zero failed/skipped; latest complete run 3.557s |
-| Complete Release suite with detailed stdout | PASS 137/137; V138 observed 16 concurrent hostile calls, 1,398,212-character input, cancellation checkpoints 1/256/512, 159,467,104 process-wide allocated bytes, and 87.471ms; these are observations, not a performance gate |
-| `dotnet format style ... --verify-no-changes` for each new project plus an LF scan | PASS; code-style diagnostics clean and all C# source is LF-only per `.gitattributes` |
-| `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` | PASS; zero warnings/errors, latest run 2.48s |
-| `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` | PASS; zero warnings/errors, latest run 20.00s |
-| Release pack into `/tmp/eventstore-story-8-3-packages.WsDViS` plus `scripts/validate-nuget-packages.py` and `tools/validate-release-packages.py` | PASS; exactly the existing 14 version `999.0.0-ci-test` archives; new project excluded |
-| Dependency/scope scans | PASS; one direct Contracts project reference, no direct package reference, no forbidden provider/Server/domain dependency, no new public type, no `.slnx` or release-manifest entry |
+| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false` then `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 201 --fail-skips on --no-ansi` | PASS 201/201; zero warnings, failures, or skips; independently rerun after stabilization |
+| `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --filter-method "Hexalith.EventStore.PayloadProtection.Tests.LimitsAndConcurrencyTests.V138_HostileConcurrentLoad_IsBoundedAndCancellableAsync" --output Detailed --no-ansi` | PASS; 16 hostile unprotect calls met at an in-core barrier; 1,398,212-character input; cancellation checkpoints 1/256/512; 92,558,704 process-wide allocated bytes; 76.552ms; observations only |
+| The two exact `dotnet format style` commands and one-type/Allman/LF scans below | PASS; zero formatter or structural-style violations |
+| `dotnet build` for the core and focused test projects with `--no-restore -warnaserror -p:GenerateDocumentationFile=true` | PASS sequentially; zero undocumented public/protected/internal-member warnings |
+| `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release --no-restore -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` | PASS; zero warnings/errors |
+| `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore -m:1 -nodeReuse:false` | PASS; zero warnings/errors |
+| `package_dir="$(mktemp -d /tmp/eventstore-story-8-3-packages.XXXXXX)"; python3 scripts/pack-release-packages.py "$package_dir" 999.0.0-ci-test; python3 scripts/validate-nuget-packages.py "$package_dir"; python3 tools/validate-release-packages.py "$package_dir" 999.0.0-ci-test` | PASS; exactly the existing 14 archives; PayloadProtection excluded |
+| The exact dependency/surface/preservation commands below | PASS; one direct Contracts reference, no forbidden dependency/public type, and frozen solution/release manifest unchanged |
+| `actionlint .github/workflows/ci.yml` and `bash -n scripts/ci-local.sh` | PASS; both direct lanes require 201 tests and fail on skips |
 | `git diff --check` | PASS |
+
+The structural and preservation rows are replayable from the repository root
+with these exact commands:
+
+```bash
+dotnet format style src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --verify-no-changes --no-restore --severity info
+dotnet format style tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --verify-no-changes --no-restore --severity info
+for file in $(find src/Hexalith.EventStore.PayloadProtection tests/Hexalith.EventStore.PayloadProtection.Tests -type f -name '*.cs' -not -path '*/bin/*' -not -path '*/obj/*' | sort); do count=$(rg -c '^\s*(?:internal|public|private|protected)\s+(?:(?:sealed|static|abstract|readonly|partial)\s+)*(?:class|record(?:\s+struct)?|interface|enum|struct)\b' "$file" || true); test "$count" = 1 || exit 1; done
+! rg -n --pcre2 '^\s*(?:(?:internal|public|private|protected)\s+)?(?:(?:sealed|static|abstract|readonly|partial)\s+)*(?:class|record(?:\s+struct)?|interface|enum|struct|if|for|foreach|while|switch|catch|finally|else|try|using)\b[^;]*\{\s*$' src/Hexalith.EventStore.PayloadProtection tests/Hexalith.EventStore.PayloadProtection.Tests --glob '*.cs'
+! rg -lU '\r$' src/Hexalith.EventStore.PayloadProtection tests/Hexalith.EventStore.PayloadProtection.Tests --glob '*.cs'
+! rg -n '^using (Azure|Dapr|Hexalith\.EventStore\.Server|Hexalith\.Parties|Hexalith\.Commons)' src/Hexalith.EventStore.PayloadProtection --glob '*.cs'
+! rg -n '^\s*public\s+(?:sealed\s+|static\s+|abstract\s+|readonly\s+|partial\s+)*(class|record|interface|enum|struct)\b' src/Hexalith.EventStore.PayloadProtection --glob '*.cs'
+rg -n '<(ProjectReference|PackageReference)' src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj
+test -z "$(git diff --name-only -- Hexalith.EventStore.slnx tools/release-packages.json src/Hexalith.EventStore.Contracts tests/Hexalith.EventStore.Contracts.Tests scripts/payload-protection _bmad-output/implementation-artifacts/evidence/story-8-2 references/Hexalith.FrontComposer)"
+sha256sum Hexalith.EventStore.slnx tools/release-packages.json
+```
+
+The content-binding streams are reproduced exactly with:
+
+```bash
+find src/Hexalith.EventStore.PayloadProtection -maxdepth 1 -type f \( -name '*.cs' -o -name '*.csproj' \) -print0 | sort -z | xargs -0 sha256sum | sha256sum
+find tests/Hexalith.EventStore.PayloadProtection.Tests -type f \( -name '*.cs' -o -name '*.csproj' -o -name 'vector-execution.json' \) -not -path '*/bin/*' -not -path '*/obj/*' -print0 | sort -z | xargs -0 sha256sum | sha256sum
+sha256sum src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj tests/Hexalith.EventStore.PayloadProtection.Tests/Fixtures/vector-execution.json
+```
+
+## Non-Blocking Repository Context
+
+A supplemental invocation of the unrelated Server test project was not used as
+Story 8.3 acceptance evidence:
+
+```bash
+dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release --no-build -- --minimum-expected-tests 201 --fail-skips on
+```
+
+It discovered 3,339 tests and reported 26 failures: deliberate DW1 red-phase
+`FAIL_SKIP` scaffolds plus the pre-existing tracked-reusable-content scan over
+unrelated artifacts. The Story 8.3 focused project has no skips or failures.
 
 The delayed material factory was exercised explicitly: V041 makes zero material
 calls for an all-null selection and returns the exact caller-owned input bytes;
@@ -58,10 +101,10 @@ reference to collide, and observes a wholly fresh DEK/reference on the loser.
 Success and authentication-failure tests observe DEK, selected-plaintext, and
 decrypted-plaintext buffers only after `CryptographicOperations.ZeroMemory`.
 
-## Step-3 Audit Closure
+## Review-Loop 4 Audit Closure
 
-The post-implementation audit expanded exact coverage from 110 to 137 passing
-test cases without expanding the core into Story 8.5:
+The review-loop audit expanded exact coverage from 137 to 201 passing test
+cases without expanding the core into Story 8.5:
 
 - V004-V014 now assert that every locally invalid carrier/header exit performs
   zero key lookups. V007 separately covers forbidden alphabet, padding,
@@ -88,6 +131,28 @@ test cases without expanding the core into Story 8.5:
   authentication-after-partial-decryption exits. Diagnostics tests inspect the
   actual activity, metric, exception, and typed-result surfaces for closed
   names/tags/messages and hostile canary absence.
+- Manifest prefix validation catches interposed ancestors such as `/a`,
+  `/a-foo`, `/a/b`; manifest enumeration, sort, encoding, and chunked hashing
+  have distinct cancellation proof. Writer byte/node/depth expansion is
+  projected before material creation, and event reader aggregate bounds are
+  enforced before lookup.
+- Wrapper discovery accepts only literal `$pdenc`, materializes escaped paths
+  incrementally under the 2,048-byte cap, and observes cancellation through
+  wrapper maps, path construction, replacement copying, and sorting. Snapshot
+  type IDs enforce strict lowercase kebab suffixes.
+- Full reader tests cover V010-V012, escaped `~`/`/` member names, event and
+  snapshot key outcomes, invalid-context pass-through, reserved markers,
+  decoded duplicate aliases, exact 4,096 wrappers, and cumulative plaintext.
+  V138 now gates 16 hostile unprotect calls inside the core.
+- Final independent-review patches reject escaped reserved names before lookup,
+  check cancellation before manifest enumeration and during raw property scans,
+  short-circuit provably oversized text, and classify unsupported AES before
+  external material or resolver calls.
+- Diagnostics now isolate process-wide listeners while proving exact activity,
+  instrument, measurement-tag, and failure-outcome identities. Snapshot and
+  full-reader regressions cover exact configured maxima, cleanup, caller
+  mutation, malformed wire keys, authenticated residual markers, resolver
+  cancellation precedence, and atomic reconstruction bounds.
 
 Some registry wording cannot be implemented literally without contradicting
 other frozen rules. HXP2 envelope version `02` is the required valid value, so

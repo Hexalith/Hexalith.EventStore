@@ -70,11 +70,17 @@ if [[ "${SKIP_BUILD}" -eq 0 ]]; then
   echo "=== Restore ==="
   CURRENT_STAGE="Restore"
   dotnet restore Hexalith.EventStore.slnx
+  dotnet restore tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj
 
   echo ""
   echo "=== Build (Release) ==="
   CURRENT_STAGE="Build"
   dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release
+  dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj \
+    --no-restore \
+    --configuration Release \
+    -warnaserror \
+    -m:1
 fi
 
 TIER1_PROJECTS=(
@@ -123,6 +129,14 @@ if want_tier 1; then
   echo "=== Tier 1 — Unit Tests (${#TIER1_PROJECTS[@]} projects) ==="
   CURRENT_STAGE="Tier 1 unit tests"
   bash scripts/tests/generated-api-smoke-preflight.test.sh
+  dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj \
+    --no-build \
+    --configuration Release \
+    --minimum-expected-tests 201 \
+    --fail-skips on \
+    --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests \
+    --report-xunit-trx \
+    --report-xunit-trx-filename payload-protection-results.trx
   for project in "${TIER1_PROJECTS[@]}"; do
     run_test_project "${project}" "test-results.trx"
   done

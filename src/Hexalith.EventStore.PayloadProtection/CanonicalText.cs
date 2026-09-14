@@ -35,6 +35,11 @@ internal static class CanonicalText
             throw new PayloadProtectionFormatException();
         }
 
+        if (value.Length > maximumBytes)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
         try
         {
             if (!value.IsNormalized(NormalizationForm.FormC))
@@ -84,7 +89,7 @@ internal static class CanonicalText
         try
         {
             string decoded = _strictUtf8.GetString(value);
-            _ = Encode(decoded, minimumBytes, maximumBytes);
+            _ = GetByteCount(decoded, minimumBytes, maximumBytes);
             return decoded;
         }
         catch (DecoderFallbackException)

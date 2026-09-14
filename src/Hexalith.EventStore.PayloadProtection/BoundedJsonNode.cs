@@ -20,6 +20,7 @@ internal sealed class BoundedJsonNode
         ulong propertyNameHash,
         int arrayIndex,
         int depth,
+        bool propertyNameIsEscaped,
         bool valueIsEscaped)
     {
         ValueKind = valueKind;
@@ -31,6 +32,7 @@ internal sealed class BoundedJsonNode
         PropertyNameHash = propertyNameHash;
         ArrayIndex = arrayIndex;
         Depth = depth;
+        PropertyNameIsEscaped = propertyNameIsEscaped;
         ValueIsEscaped = valueIsEscaped;
     }
 
@@ -61,8 +63,14 @@ internal sealed class BoundedJsonNode
     /// <summary>Gets the zero-based structural depth of this node.</summary>
     internal int Depth { get; }
 
+    /// <summary>Gets a value indicating whether the raw JSON property-name token contains escape sequences.</summary>
+    internal bool PropertyNameIsEscaped { get; }
+
     /// <summary>Gets a value indicating whether a JSON string token contains escape sequences.</summary>
     internal bool ValueIsEscaped { get; }
+
+    /// <summary>Gets or sets the number of nodes in this node's complete subtree.</summary>
+    internal int SubtreeNodeCount { get; set; } = 1;
 
     /// <summary>Gets or sets the first child node index.</summary>
     internal int FirstChildIndex { get; set; } = -1;

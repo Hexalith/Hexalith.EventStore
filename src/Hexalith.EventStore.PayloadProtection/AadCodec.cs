@@ -49,10 +49,27 @@ internal static class AadCodec
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(context.Identity);
+        if (!CanonicalUlid.IsValid(keyReference) || dekVersion == 0)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
+        return ValidateBeforeMaterial(context, propertyPath, fieldOrdinal, manifestCommitment);
+    }
+
+    /// <summary>
+    /// Validates every predictable AAD source and total length before material creation or lookup.
+    /// </summary>
+    internal static int ValidateBeforeMaterial(
+        PayloadProtectionContext context,
+        string propertyPath,
+        uint fieldOrdinal,
+        ReadOnlySpan<byte> manifestCommitment)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(context.Identity);
         if (propertyPath is null
             || !Enum.IsDefined(context.PayloadKind)
-            || !CanonicalUlid.IsValid(keyReference)
-            || dekVersion == 0
             || fieldOrdinal >= PayloadProtectionLimits.ProtectedPaths
             || manifestCommitment.Length != 32)
         {
@@ -203,6 +220,11 @@ internal static class AadCodec
         {
             char character = suffix[index];
             if (!(character is >= 'a' and <= 'z' or >= '0' and <= '9' or '-'))
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
+            if (character == '-' && index > 0 && suffix[index - 1] == '-')
             {
                 throw new PayloadProtectionFormatException();
             }

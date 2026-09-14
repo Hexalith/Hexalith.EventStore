@@ -38,8 +38,7 @@ internal static class PayloadCryptography
             ciphertext = new byte[plaintext.Length];
             tag = new byte[PayloadProtectionLimits.TagBytes];
             BinaryPrimitives.WriteUInt64BigEndian(nonce.AsSpan(4), fieldOrdinal);
-            using var cipher = new AesGcm(dek, PayloadProtectionLimits.TagBytes);
-            cipher.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+            EncryptAesGcm(dek, nonce, plaintext, ciphertext, tag, aad);
             var envelope = new PayloadProtectionEnvelope(keyReference, dekVersion, fieldOrdinal, nonce, ciphertext, tag);
             nonce = null;
             ciphertext = null;
@@ -55,6 +54,37 @@ internal static class PayloadCryptography
             Clear(nonce);
             Clear(ciphertext);
             Clear(tag);
+        }
+    }
+
+    /// <summary>
+    /// Executes the fixed AES-256-GCM primitive used by the envelope engine and independent NIST vectors.
+    /// </summary>
+    internal static void EncryptAesGcm(
+        ReadOnlySpan<byte> dek,
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> plaintext,
+        Span<byte> ciphertext,
+        Span<byte> tag,
+        ReadOnlySpan<byte> aad)
+    {
+        if (dek.Length != 32
+            || nonce.Length != PayloadProtectionLimits.NonceBytes
+            || ciphertext.Length != plaintext.Length
+            || tag.Length != PayloadProtectionLimits.TagBytes)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
+        EnsurePlatformSupport();
+        try
+        {
+            using var cipher = new AesGcm(dek, PayloadProtectionLimits.TagBytes);
+            cipher.Encrypt(nonce, plaintext, ciphertext, tag, aad);
+        }
+        catch (CryptographicException)
+        {
+            throw new PayloadProtectionCryptographicException();
         }
     }
 
@@ -109,7 +139,10 @@ internal static class PayloadCryptography
         return envelope.Nonce.AsSpan().SequenceEqual(expectedNonce);
     }
 
-    private static void EnsurePlatformSupport()
+    /// <summary>
+    /// Rejects a platform without AES-GCM support before any external material boundary is crossed.
+    /// </summary>
+    internal static void EnsurePlatformSupport()
     {
         if (!AesGcm.IsSupported)
         {

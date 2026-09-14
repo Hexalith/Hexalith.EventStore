@@ -6,13 +6,15 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>
 /// Reads and writes the closed pdenc-v2 binary grammar from normative section 6.2.
 /// </summary>
-internal static class EnvelopeCodec {
+internal static class EnvelopeCodec
+{
     private static ReadOnlySpan<byte> Magic => "HXP2"u8;
 
     /// <summary>
     /// Serializes a validated envelope.
     /// </summary>
-    internal static byte[] Write(PayloadProtectionEnvelope envelope) {
+    internal static byte[] Write(PayloadProtectionEnvelope envelope)
+    {
         ArgumentNullException.ThrowIfNull(envelope);
         ValidateFields(envelope);
 
@@ -48,8 +50,10 @@ internal static class EnvelopeCodec {
     /// <summary>
     /// Parses an envelope after validating its fixed header and checked total length.
     /// </summary>
-    internal static PayloadProtectionEnvelope Read(ReadOnlySpan<byte> value) {
-        if (value.Length < 83 || value.Length > PayloadProtectionLimits.EnvelopeBytes) {
+    internal static PayloadProtectionEnvelope Read(ReadOnlySpan<byte> value)
+    {
+        if (value.Length < 83 || value.Length > PayloadProtectionLimits.EnvelopeBytes)
+        {
             throw new PayloadProtectionFormatException();
         }
 
@@ -63,7 +67,8 @@ internal static class EnvelopeCodec {
             || value[20] != PayloadProtectionLimits.NonceBytes
             || value[21] != PayloadProtectionLimits.TagBytes
             || value[22] != 0
-            || value[23] != 0) {
+            || value[23] != 0)
+        {
             throw new PayloadProtectionFormatException();
         }
 
@@ -72,17 +77,20 @@ internal static class EnvelopeCodec {
         uint ciphertextLength = BinaryPrimitives.ReadUInt32BigEndian(value[24..]);
         if (dekVersion == 0
             || ordinal >= PayloadProtectionLimits.ProtectedPaths
-            || ciphertextLength is 0 or > PayloadProtectionLimits.CiphertextBytes) {
+            || ciphertextLength is 0 or > PayloadProtectionLimits.CiphertextBytes)
+        {
             throw new PayloadProtectionFormatException();
         }
 
         long expectedLength = 82L + ciphertextLength;
-        if (expectedLength != value.Length) {
+        if (expectedLength != value.Length)
+        {
             throw new PayloadProtectionFormatException();
         }
 
         string keyReference = CanonicalText.Decode(value.Slice(28, PayloadProtectionLimits.KeyReferenceBytes), 26, 26);
-        if (!CanonicalUlid.IsValid(keyReference)) {
+        if (!CanonicalUlid.IsValid(keyReference))
+        {
             throw new PayloadProtectionFormatException();
         }
 
@@ -120,7 +128,8 @@ internal static class EnvelopeCodec {
         }
     }
 
-    private static void ValidateFields(PayloadProtectionEnvelope envelope) {
+    private static void ValidateFields(PayloadProtectionEnvelope envelope)
+    {
         if (!CanonicalUlid.IsValid(envelope.KeyReference)
             || envelope.DekVersion == 0
             || envelope.FieldOrdinal >= PayloadProtectionLimits.ProtectedPaths
@@ -129,13 +138,15 @@ internal static class EnvelopeCodec {
             || envelope.Tag is null
             || envelope.Nonce.Length != PayloadProtectionLimits.NonceBytes
             || envelope.Tag.Length != PayloadProtectionLimits.TagBytes
-            || envelope.Ciphertext.Length is 0 or > PayloadProtectionLimits.CiphertextBytes) {
+            || envelope.Ciphertext.Length is 0 or > PayloadProtectionLimits.CiphertextBytes)
+        {
             throw new PayloadProtectionFormatException();
         }
 
         Span<byte> expectedNonce = stackalloc byte[PayloadProtectionLimits.NonceBytes];
         BinaryPrimitives.WriteUInt64BigEndian(expectedNonce[4..], envelope.FieldOrdinal);
-        if (!envelope.Nonce.AsSpan().SequenceEqual(expectedNonce)) {
+        if (!envelope.Nonce.AsSpan().SequenceEqual(expectedNonce))
+        {
             throw new PayloadProtectionFormatException();
         }
     }

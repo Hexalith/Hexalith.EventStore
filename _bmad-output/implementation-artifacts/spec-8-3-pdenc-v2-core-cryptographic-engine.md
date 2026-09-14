@@ -2,10 +2,10 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
-review_loop_iteration: 3
+review_loop_iteration: 4
 context:
   - '_bmad-output/implementation-artifacts/epic-8-context.md'
   - '_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md'
@@ -57,25 +57,26 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 ## Review Re-derivation Requirements
 
 - `src/Hexalith.EventStore.PayloadProtection/` -- validate one owned byte snapshot and one bounded immutable path snapshot, then use only those snapshots. Keep JSON plaintext byte-oriented: do not create engine-owned plaintext strings or a plaintext `JsonNode`/`JsonDocument`; zero every mutable plaintext/output staging buffer after transfer.
-- `src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs` -- keep the JSON index and selected-path lookup proportional to payload bytes, node count, and encoded selected-path bytes: do not retain a full concatenated path or decoded managed member-name string per node, and do not repeatedly scan wide sibling lists once per selected path. Preserve otherwise-valid unselected JSON even when its eventual pointer would exceed the selected-path cap; enforce the 2,048-byte path bound only when a selected or discovered protected path is materialized. Check cancellation at least every 256 examined nodes, children, or lookup comparisons, including wide-object wrapper discovery. Reconstructed event and snapshot plaintext must reject any residual or emergent `$pdenc` member before transfer.
-- `src/Hexalith.EventStore.PayloadProtection/ProtectedPathManifestCodec.cs` -- reject after at most 4,097 enumerated paths, accept cancellation before, during, and after sorting/encoding/hashing, checkpoint bounded work, and detect overlap from adjacent sorted UTF-8 paths without quadratic string allocation.
-- `src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs` -- validate all context/AAD sources and aggregate envelope ciphertext bounds before pass-through, material creation, or key lookup; bound null/invalid material and ensure caller cancellation wins after every external factory/resolver return or exception; implement the root-manifest snapshot crypto seam without Server integration; reject decrypted event-root `null`; track prospective reconstructed node/depth/byte and cumulative plaintext limits while authenticating rather than allowing many individually valid fragments to multiply work; observe cancellation during and after transformation.
+- `src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs` -- keep the JSON index and selected-path lookup proportional to payload bytes, node count, and encoded selected-path bytes: do not retain a full concatenated path or decoded managed member-name string per node, and do not repeatedly scan wide sibling lists once per selected path. Preserve otherwise-valid unselected JSON even when its eventual pointer would exceed the selected-path cap; enforce the 2,048-byte path bound only when a selected or discovered protected path is materialized. Materialize discovered paths with bounded incremental decoding rather than renting a buffer sized to an arbitrarily long raw property token. Check cancellation at least every 256 examined nodes, children, ancestor/path bytes, replacement copies, sort comparisons, or lookup comparisons, including wide-object wrapper discovery. Accept only the literal unescaped `$pdenc` member spelling as a canonical wrapper. Reconstructed event and snapshot plaintext must reject any residual or emergent `$pdenc` member before transfer.
+- `src/Hexalith.EventStore.PayloadProtection/ProtectedPathManifestCodec.cs` -- reject after at most 4,097 enumerated paths, accept cancellation before, during, and after sorting/encoding/hashing, checkpoint bounded work, and detect every duplicate or ancestor/descendant overlap without quadratic string allocation. Do not assume an ancestor is adjacent to its descendant after ordinary byte sorting; maintain an active-prefix structure or use another bounded algorithm that catches interposed names such as `/a`, `/a-foo`, `/a/b`.
+- `src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs` -- validate all context/AAD sources, selected-path overlap, and predictably computable protected output byte/node/depth expansion before pass-through, material creation, or key lookup; aggregate envelope ciphertext bounds before key lookup; bound null/invalid material and ensure caller cancellation wins after every external factory/resolver return or exception; implement the root-manifest snapshot crypto seam without Server integration; reject decrypted event-root `null`; track prospective reconstructed node/depth/byte and cumulative plaintext limits while authenticating rather than allowing many individually valid fragments to multiply work; observe cancellation during and after every 256 items of transformation and wrapper-map/AAD validation.
+- `src/Hexalith.EventStore.PayloadProtection/AadCodec.cs` -- enforce the complete canonical snapshot type grammar, including a non-empty lowercase ASCII kebab-case suffix with no leading, trailing, or consecutive hyphen.
 - `src/Hexalith.EventStore.PayloadProtection/{AadCodec,Base64UrlCodec,BoundedJsonDocument,EnvelopeCodec,JsonContainerFrame,PayloadProtectionCore,PayloadCryptography,ProtectedPathManifestCodec}.cs` -- establish cleanup ownership before the first sensitive allocation and retain it until the complete result object or collection entry is successfully constructed; on every unsuccessful exit zero every earlier allocation, including partial AAD fields, decoded carriers, envelope fields, selected/decrypted plaintext, transformed output, manifest paths, nonce/ciphertext/tag, and parser snapshots. Cleanup must be allocation-free before zeroing.
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
-- `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- add snapshot positive/tamper, carrier metadata/type mismatch, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including wrapper-induced depth/node expansion and reader-side cumulative plaintext; full-path V010; genuine in-core gated V138 concurrency plus cancellation during wide lookup/wrapper scans/sort/hash and checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names; malformed wire-key zero-lookup cases; zero-material-call assertions for every locally invalid JSON/path selection; a complete 4,096-wrapper read; missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; explicit protect/unprotect diagnostics; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 159-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
+- `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
+- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 201-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/implementation-artifacts/evidence/story-8-3/` -- preserve preflight, then bind the re-derived source/test/CI inventory, authority/8.2 hashes, Contracts API, 14-package baseline, NIST recheck, and exact review results; halt on drift.
-- [ ] `src/Hexalith.EventStore.PayloadProtection/` -- re-derive the Contracts-only, `IsPackable=false` byte-oriented event/snapshot core and every bounded validation, cancellation, diagnostic, exception, dependency, and buffer-ownership rule in Review Re-derivation Requirements; cite the digest and normative sections in material files.
-- [ ] `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- re-derive the runnable xUnit v3/Shouldly project with internal access, linked fixtures, deterministic test-only seams, exact execution manifest, and all review-regression cases.
-- [ ] `tests/Hexalith.EventStore.PayloadProtection.Tests/{Envelope,AadPath,Cryptography,JsonTransform,LimitsAndConcurrency,Diagnostics}Tests.cs` -- execute inherited V001-V003 and owned V004-V048/V135-V136/V138, including every constructible named mutation, all reapproved interpretations, snapshot crypto, full-path outcomes, true concurrency, exact/max+1 reconstruction, cancellation, zeroing/no-leak, and exceptional-exit assertions.
-- [ ] `.github/workflows/ci.yml`, `scripts/ci-local.sh` -- add a blocking direct-project PayloadProtection test lane while preserving the frozen `.slnx` and 14-package release inventory.
-- [ ] `_bmad-output/implementation-artifacts/8-3-pdenc-v2-core-cryptographic-engine.md` -- replace superseded hashes/results with the re-derived commands, counts, limits, review state, and authorization boundary; authorize only 8.4/8.5 after exact approval.
+- [x] `_bmad-output/implementation-artifacts/evidence/story-8-3/` -- preserve preflight, then bind the re-derived source/test/CI inventory, authority/8.2 hashes, Contracts API, 14-package baseline, NIST recheck, and exact review results; halt on drift.
+- [x] `src/Hexalith.EventStore.PayloadProtection/` -- re-derive the Contracts-only, `IsPackable=false` byte-oriented event/snapshot core and every bounded validation, cancellation, diagnostic, exception, dependency, and buffer-ownership rule in Review Re-derivation Requirements; cite the digest and normative sections in material files.
+- [x] `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- re-derive the runnable xUnit v3/Shouldly project with internal access, linked fixtures, deterministic test-only seams, exact execution manifest, and all review-regression cases.
+- [x] `tests/Hexalith.EventStore.PayloadProtection.Tests/{Envelope,AadPath,Cryptography,JsonTransform,LimitsAndConcurrency,Diagnostics}Tests.cs` -- execute inherited V001-V003 and owned V004-V048/V135-V136/V138, including every constructible named mutation, all reapproved interpretations, snapshot crypto, full-path outcomes, true concurrency, exact/max+1 reconstruction, cancellation, zeroing/no-leak, and exceptional-exit assertions.
+- [x] `.github/workflows/ci.yml`, `scripts/ci-local.sh` -- add a blocking direct-project PayloadProtection test lane while preserving the frozen `.slnx` and 14-package release inventory.
+- [x] `_bmad-output/implementation-artifacts/8-3-pdenc-v2-core-cryptographic-engine.md` -- replace superseded hashes/results with the re-derived commands, counts, limits, review state, and authorization boundary; authorize only 8.4/8.5 after exact approval.
 
 **Acceptance Criteria:**
 - Given activation, when preflight runs, then every authorized digest/hash matches current bytes and any mismatch blocks source work.
@@ -93,7 +94,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   complete local path/budget validation and at least one non-null selection.
   This makes V041/V045 zero-material-call behavior directly observable without
   implementing Story 8.5 lifecycle storage.
-- The six required test areas contain 51 unique vector traits and execute 159
+- The six required test areas contain 51 unique vector traits and execute 201
   passing cases after the review-loop re-derivation audit. Approval packet
   `AR-20260914-02` accepts the evidence-backed constructible interpretations
   for V008/V016/V023/V030/V038/V039 without weakening bounds or importing
@@ -165,12 +166,47 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   validation, full snapshot seam, closed diagnostics and error taxonomy,
   allocation-free observer isolation, Contracts-only/non-packable scope,
   frozen `.slnx`, and 14-package output.
+- 2026-09-14: Re-derived the loop-3 implementation around a
+  payload-proportional byte lookup, cumulative reader bounds, exact caller
+  cancellation precedence, root snapshot crypto, and cleanup ownership through
+  result construction. Added the missing 22-case regression matrix and blocking
+  CI lanes; the focused gate now passes 159/159 with no skips while the frozen
+  vectors, solution, and 14-package release boundary remain unchanged. Story
+  status stays `in-progress` pending independent review.
+- 2026-09-14: Review-loop iteration 4 found that adjacent-only manifest overlap
+  detection misses ancestors when a sibling name sorts between them, and that
+  predictable protected-output expansion was still rejected only after key
+  creation and encryption. The non-frozen requirements now mandate complete
+  bounded prefix detection, pre-material output projection, canonical literal
+  wrapper spelling, bounded incremental discovered-path decoding, cancellation
+  throughout wrapper maps/path materialization/replacement work, strict snapshot
+  kebab suffixes, fixture-consuming golden tests, and the missing full-reader
+  and hostile-concurrency regressions. Avoid adjacent-only prefix validation,
+  raw-token-sized path rentals, post-crypto locally decidable rejection, and
+  synchronous tasks presented as concurrent evidence. KEEP exact G-001/NIST
+  bytes and reapproved semantics, payload-proportional child lookup, cleanup
+  ownership through result construction, cumulative reader bounds, closed
+  taxonomy/diagnostics, root snapshot crypto, Contracts-only/non-packable scope,
+  frozen `.slnx`, and 14-package output.
+- 2026-09-14: Re-derived loop 4 with complete bounded prefix validation,
+  pre-material output projection, literal-wrapper and incremental path rules,
+  full cancellation coverage, fixture-consuming/full-reader regressions, and
+  genuinely concurrent hostile V138 reads. The focused gate passes 185/185
+  with no skips; frozen vectors, the solution, and the 14-package release
+  boundary remain unchanged. Advanced to independent review.
+- 2026-09-14: Applied the final independent-review patch set for early reserved-
+  member/AES rejection, cancellation boundaries, exact diagnostics, snapshot
+  cleanup and configured limits, caller isolation, malformed wire keys,
+  authenticated residual markers, reconstruction bounds, and resolver
+  isolation. The complete focused gate now passes 201/201 with no skips.
 
 ## Review Triage Log
 
-- Independent review not yet run. Requirement renegotiation and human approval
-  are recorded in `AR-20260914-02`; the remaining test task and Story 8.3 may
-  close after independent review confirms the implementation matches it.
+- Five independent review batches were triaged below. All surviving Story 8.3
+  findings were patched and independently verified; rejected findings retain
+  their evidence, and the externally authored FrontComposer gitlink remains
+  out of scope. Requirement renegotiation and human approval are recorded in
+  `AR-20260914-02`.
 
 | ID | Verdict | Route | Evidence |
 | --- | --- | --- | --- |
@@ -292,6 +328,65 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC3-22 | medium | bad_spec | carried within this iteration's BH3-05/EC3-10 root cause: sort and final hash work do not observe cancellation throughout and after completion. |
 | EC3-23 | high | bad_spec | carried within this iteration's EC3-01/BH3-09 root cause: parser ownership begins too late and ends before document construction succeeds. |
 | EC3-24 | medium | defer | carried: the externally authored FrontComposer pointer remains the already-logged out-of-scope history and is not patched or deferred again. |
+| BH4-01 | medium | defer | carried: the externally authored FrontComposer gitlink advance is the same already-logged out-of-scope change and is not patched or deferred again. |
+| BH4-02 | medium | defer | carried: the evolving external FrontComposer target and its provenance are the same prior gitlink issue; it remains excluded from Story 8.3 rather than deferred again. |
+| BH4-03 | false | reject | During Step 4 the spec is intentionally `in-review` while sprint tracking remains `in-progress`; final synchronization occurs only after review succeeds. |
+| BH4-04 | medium | patch | The focused project copies the immutable Story 8.2 fixtures but no focused test consumes them, so its golden assertions rely on duplicated constants. |
+| BH4-05 | false | reject | Current `JsonPointer.Decode` and `CanonicalText.Decode` validate with allocation-free `GetByteCount`; the cited abandoned validation byte arrays no longer exist. |
+| BH4-06 | medium | bad_spec | Wrapper discovery compares decoded names but records escape state only for values, so an obfuscated `\u0024pdenc` member is accepted as canonical. |
+| BH4-07 | high | bad_spec | Writer output byte/node/depth expansion is locally predictable but is rejected only after material creation and AES work. |
+| BH4-08 | medium | patch | Event wrapper-path copying, dictionary construction, and aggregate AAD validation lack periodic cancellation checks across 4,096 entries. |
+| BH4-09 | medium | bad_spec | Discovered-path materialization has no cancellation parameter or checkpoints across thousands of ancestor walks. |
+| BH4-10 | high | bad_spec | Discovered-path decoding rents the complete raw property-token length before enforcing the 2,048-byte canonical path cap, allowing near-payload-sized allocation for inevitable rejection. |
+| BH4-11 | medium | patch | Material generation does not recheck caller cancellation immediately after key-reference entropy returns, so it can continue to DEK generation or let a non-cancellation exception win. |
+| BH4-12 | medium | patch | V138 hostile unprotect calls complete synchronously during enumeration; the separate in-core gate covers protection only and does not prove concurrent hostile reads. |
+| BH4-13 | medium | patch | V031 tests only a standalone escaping helper; no complete protect/read case verifies actual `MaterializePath` behavior for `~` and `/` names. |
+| BH4-14 | medium | patch | V011/V012 mutate tag/ciphertext only through the primitive decryptor, leaving full-reader resolver, atomic-result, and cleanup behavior unverified. |
+| BH4-15 | false | reject | The diagnostics test explicitly asserts every expected `(instrument, operation, result, format_version)` tuple and every measurement's exact three-tag shape at lines 145-162. |
+| BH4-16 | low | patch | Verification still abbreviates formatter, packaging, and dependency/surface scan invocations instead of recording exact replayable commands. |
+| EC4-01 | high | bad_spec | Adjacent-only sorted overlap validation misses `/a` as an ancestor of `/a/b` when `/a-foo` sorts between them, causing locally invalid selections to reach material/AES. |
+| EC4-02 | medium | patch | Snapshot type validation permits consecutive hyphens although the authoritative suffix is lowercase ASCII kebab-case. |
+| EC4-03 | medium | patch | Material generation can call DEK entropy after key-reference entropy cancels the caller token; cancellation must be checked immediately after that boundary. |
+| EC4-04 | medium | patch | Replacement descriptor copying and sorting omit bounded cancellation observation at the 4,096-replacement maximum. |
+| EC4-05 | medium | patch | carried within this iteration's BH4-08 root cause: wrapper dictionary and aggregate AAD loops lack periodic cancellation checks. |
+| EC4-06 | false | reject | Current path validation calls allocation-free `CanonicalText.GetByteCount`; the cited abandoned mutable validation buffer is absent. |
+| EC4-07 | false | reject | Concurrent measurements use the same closed three-tag vocabulary and the test requires all expected tuples without asserting counts, so unrelated valid measurements cannot make it fail. |
+| EC4-08 | medium | defer | carried: the FrontComposer gitlink is the already-logged externally authored out-of-scope history and is not patched or deferred again. |
+| VG4-01 | medium | patch | Pre-verified gap: manifest enumeration, sort, and hash cancellation are tested, but the encoding-phase checkpoint is never exercised. |
+| VG4-02 | medium | patch | Pre-verified gap: V138 creates synchronously completed hostile-unprotect values, so it does not prove overlap inside that read path. |
+| VG4-03 | medium | patch | Pre-verified gap: event missing-key and wrong-length-key classifications and wrong-length cleanup are not directly tested. |
+| VG4-04 | medium | patch | Pre-verified gap: snapshot protection's reserved-marker rejection lacks a zero-material-call regression. |
+| VG4-05 | medium | patch | Pre-verified gap: invalid event context on empty-selection pass-through is not exercised through `ProtectEvent`. |
+| VG4-06 | false | reject | Despite the filed gap, the current diagnostics test already asserts exact protect/unprotect operation/result tuples for both instruments at lines 145-162, directly disproving the proposed regression. |
+| BH5-01 | high | patch | An escaped `$pdenc` member elsewhere beside a valid literal wrapper is locally visible but is rejected only after key lookup/decryption. |
+| BH5-02 | low | reject | A single property-name decode is bounded by the 16 MiB payload ceiling; making framework UTF-8 decoding interruptible would add disproportionate parser complexity for negligible bounded latency. |
+| BH5-03 | medium | patch | `FindPropertyNameEnd` scans a raw property token without cancellation before incremental discovered-path decoding starts. |
+| BH5-04 | medium | patch | Manifest enumeration checks only after `MoveNext`; a pre-cancelled or cancellation-producing external enumerable can still run observable work. |
+| BH5-05 | low | reject | Carrier decode/copy is capped at about 1.4 MiB and followed immediately by cancellation checks; threading cancellation through closed codecs is disproportionate to this bounded delay. |
+| BH5-06 | medium | patch | AES-GCM support is locally known but checked only after material creation or key lookup, causing avoidable external work on unsupported platforms. |
+| BH5-07 | medium | patch | Metrics flatten tags across instruments and do not prove exact per-measurement operation/result association. |
+| BH5-08 | medium | patch | The activity test invokes only protection and does not require the unprotect activity name. |
+| BH5-09 | medium | patch | Snapshot success/authentication-failure tests do not observe clearing of plaintext, DEK, envelope, and abandoned-output buffers. |
+| BH5-10 | medium | patch | Several locally invalid event selection tests use an uncounted material factory, so they do not prove rejection precedes material creation. |
+| BH5-11 | medium | patch | No factory callback mutates caller bytes and the mutable path collection to prove the core uses only pre-callback snapshots. |
+| BH5-12 | medium | patch | No protected-event test asserts `SerializationFormat == "json+pdenc-v2"`. |
+| BH5-13 | medium | patch | Noncanonical wire key references lack complete-reader cases proving local rejection and zero resolver calls. |
+| BH5-14 | medium | patch | Authenticated event-root `null` and authenticated residual/emergent `$pdenc` plaintext lack reader regressions. |
+| BH5-15 | medium | patch | V136 parser-only depth/node maxima do not directly prove core reconstruction accounting and atomic rejection. |
+| BH5-16 | medium | patch | Snapshot resolver cancellation precedence and post-resolver DEK cleanup are not directly tested. |
+| BH5-17 | medium | patch | V138 does not count resolver calls and its cancellation cases do not assert full-reader backend isolation. |
+| BH5-18 | medium | defer | carried: the FrontComposer gitlink remains the already-logged externally authored out-of-scope history and is not patched or deferred again. |
+| VG5-01 | medium | patch | Pre-verified gap: exact unprotect activity and metric operation identity are not required by the current diagnostics tests. |
+| VG5-02 | medium | patch | Pre-verified gap: metric callbacks discard instrument identity, so removal of the duration histogram remains green. |
+| VG5-03 | medium | patch | Pre-verified gap: missing-key, consistency-mismatch, and cryptographic-failure metric classifications are not observed. |
+| VG5-04 | medium | patch | Pre-verified gap: snapshot configured write maximum exact/max+1 behavior is untested. |
+| VG5-05 | medium | patch | Pre-verified gap: correctly authenticated event/snapshot plaintext containing reserved markers is not exercised. |
+| VG5-06 | medium | patch | Pre-verified gap: caller payload and path mutation after snapshotting is not tested through the material callback. |
+| EC5-01 | medium | patch | Manifest code copies an arbitrarily oversized caller path before applying the 2,048-byte bound. |
+| EC5-02 | medium | patch | Canonical context validation normalizes and scans strings whose UTF-16 length already proves they exceed the byte maximum. |
+| EC5-03 | high | patch | carried within this iteration's BH5-01 root cause: escaped reserved names accompanying a valid wrapper reach lookup before rejection. |
+| EC5-04 | medium | patch | A process-wide meter listener can capture concurrent valid results not in the test's limited set, causing nondeterministic failures; isolate diagnostics tests from parallel execution. |
+| EC5-05 | medium | defer | carried: the FrontComposer gitlink is the same already-logged externally authored out-of-scope history and is not patched or deferred again. |
 
 ## Design Notes
 
@@ -302,13 +397,13 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --minimum-expected-tests 159` -- expected: all core vectors pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 201 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
 **Observed results (2026-09-14):** both independent V001-V003 verifiers passed;
-focused Release tests passed 159/159 with no skips; code-style verification and
+focused Release tests passed 201/201 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
 solution Release build, and `git diff --check` passed; release packing plus both
 validators produced exactly 14 archives. Stories 8.4/8.5 remain unauthorized

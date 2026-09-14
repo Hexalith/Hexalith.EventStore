@@ -18,7 +18,18 @@ internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntro
         for (int attempt = 0; attempt < _maximumAttempts; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string keyReference = entropy.CreateKeyReference();
+            string keyReference;
+            try
+            {
+                keyReference = entropy.CreateKeyReference();
+            }
+            catch
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                throw;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
             byte[] dek = new byte[32];
             try
             {

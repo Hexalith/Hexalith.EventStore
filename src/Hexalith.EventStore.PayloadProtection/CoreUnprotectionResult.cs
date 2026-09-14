@@ -9,7 +9,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <param name="UnreadableReason">The safe unreadable reason, or <see langword="null"/>.</param>
 internal sealed record CoreUnprotectionResult(
     byte[]? PayloadBytes,
-    UnreadableProtectedDataReason? UnreadableReason) {
+    UnreadableProtectedDataReason? UnreadableReason)
+{
     /// <summary>Gets a value indicating whether complete authenticated plaintext is available.</summary>
     internal bool IsReadable => PayloadBytes is not null && UnreadableReason is null;
 
