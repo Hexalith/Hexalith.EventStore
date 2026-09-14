@@ -7,9 +7,10 @@ EventStore baseline `e8886ec4c277460de3d3208b3fc0b9c261c4967d`, Story 8.2 approv
 packet `AR-20260914-01`, and normative digest
 `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`.
 
-The implementation is ready for independent review but is not self-approved.
-Stories 8.4 and 8.5 remain unauthorized until exact review/approval resolves or
-accepts the frozen V030 inconsistency recorded below.
+Approval packet `AR-20260914-02` amended and reapproved the frozen Story 8.3
+requirements to the safe, constructible interpretations proven below. The
+implementation is ready for independent review but is not self-approved.
+Stories 8.4 and 8.5 remain unauthorized pending that review and exact approval.
 
 ## Delivered Scope
 
@@ -36,6 +37,7 @@ accepts the frozen V030 inconsistency recorded below.
 
 | Artifact | SHA-256 |
 | --- | --- |
+| Requirements amendment approval | `cd95ab5546939d2f79338c354ea1bf4456c50093cf0525dafb7b82cebab4d3a6` |
 | Sorted production source/project hash stream (29 files) | `9a8d0e85f8f3416e0615cdbc51275c020bf8a91f0a5eb6d683ee6d875b2a1206` |
 | Sorted focused-test/project/manifest hash stream (11 files) | `610323256f1b9a2dd4206d63b63bd1c41877031bed551f6f859959861fbff01d` |
 | Core project | `358feb7e012807a2e54da26ca5324e668a35cefeb7689dd49d5b424ef9b7e91f` |
@@ -63,14 +65,15 @@ counts, and observed load values are in
 - Dependency, public-surface, solution/release-preservation, vector-coverage,
   and whitespace scans passed.
 
-## Limitation And Review State
+## Approved Constructibility Boundary And Review State
 
-Frozen V030's requested total AAD boundary cannot be constructed: its eleven
+V030's original total AAD boundary cannot be constructed: its eleven
 individual field maxima plus framing total 3,873 bytes, below 4,096, and the
 existing `AggregateIdentity` restrictions lower the runtime maximum to 3,617.
 The implementation proves the 3,617-byte constructible maximum and rejects a
-maximum-plus-one field before crypto. It does not alter frozen intent to invent
-an unreachable 4,096/4,097 case.
+maximum-plus-one field before crypto. `AR-20260914-02` accepts this as the
+executable Story 8.3 boundary while retaining the 4,096-byte defensive cap and
+all individual field bounds.
 
 The exact-format source cases in V023 and the policy-cycle/converter/getter
 cases in V038/V039 remain unconstructible at the Story 8.3 byte-core boundary;
@@ -79,9 +82,10 @@ paths are covered. V008's request to treat `02` as an unsupported version byte
 conflicts with the frozen required HXP2 version `02`, so the core preserves
 G-001, accepts that exact byte, and rejects `03`/`ff`. These limitations and
 V016's required pre-lookup ordinal consistency rejection are detailed in the
-verification evidence.
+verification evidence. `AR-20260914-02` explicitly accepts these
+interpretations for Story 8.3 only; the shared authority bytes remain unchanged.
 
-No independent Story 8.3 review or approval has yet been recorded. No package,
-provider, lifecycle, compatibility, Server/snapshot integration, deployment,
-NIST CAVP certification, later vector, or G5 claim is authorized by this
-artifact.
+No independent Story 8.3 implementation review or completion approval has yet
+been recorded. No package, provider, lifecycle, compatibility, Server/snapshot
+integration, deployment, NIST CAVP certification, later vector, or G5 claim is
+authorized by this artifact.
