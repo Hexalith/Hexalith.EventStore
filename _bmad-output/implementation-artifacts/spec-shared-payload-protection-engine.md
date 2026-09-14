@@ -2,11 +2,11 @@
 title: Shared Payload-Protection Engine Security Specification And ADR
 story: "8.1"
 status: approved-authorized
-decision: adopted
+decision: adopted-amendment
 story_8_2_authorized: true
 created: 2026-07-16
-last_updated: 2026-08-01
-eventstore_source_sha: b200305978577530ee2e6ba9e92b886d26dc6f6f
+last_updated: 2026-09-13
+eventstore_source_sha: dfc0ac557c43363159b55bffb4d40feceab1f787
 story_baseline_sha: 76f122332216cc5d9b44a421bdbed3ab20d35f5e
 parties_source_sha: 4378dede55d92e489caf7aad63d6c2892e6f856d
 ---
@@ -24,18 +24,18 @@ content digest.
 
 | Field | Value |
 | --- | --- |
-| ADR status | **ADOPTED AND APPROVED** |
-| Story 8.2 initial authorization | **AUTHORIZED** for exact-digest preflight and implementation |
+| ADR status | **ADOPTED AND APPROVED — 2026-09-13 AMENDMENT** |
+| Story 8.2 initial authorization | **AUTHORIZED** for exact-digest/source preflight and implementation |
 | Successor authorization | Story 8.2 is authorized; Stories 8.3-8.11 remain blocked until their approved immediate predecessor closes. |
-| Reason | Jérôme Piquot independently reproduced the vectors, reviewed sections 12-17 with no material findings, accepted every documented residual risk, and approved all mandatory roles for the exact normative digest. |
+| Reason | Jérôme Piquot approved replacement packet `AR-20260913-01` in all seven mandatory roles for the exact amendment digest/source, accepted the documented residual risks and additive API design, and reported no open material findings. |
 | Required artifact | `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` |
-| EventStore inspected source | `b200305978577530ee2e6ba9e92b886d26dc6f6f` (`main`, tag `v3.67.3`) |
+| EventStore inspected source | `dfc0ac557c43363159b55bffb4d40feceab1f787` (`main`); its Contracts security bytes match approved source `b200305978577530ee2e6ba9e92b886d26dc6f6f` |
 | Story baseline | `76f122332216cc5d9b44a421bdbed3ab20d35f5e` |
 | Parties inspected source | `4378dede55d92e489caf7aad63d6c2892e6f856d` (`Hexalith/Hexalith.Parties`, `main` retrieved 2026-07-16) |
 | Current release inventory | 14 packages; `tools/release-packages.json` SHA-256 `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
-| Normative content SHA-256 | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` |
+| Normative content SHA-256 | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` |
 | Embedded golden wrapper SHA-256 | `35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3` |
-| Last source verification | 2026-07-16 |
+| Last source verification | 2026-09-13 |
 
 ### 1.2 Content-bound digest rule
 
@@ -58,21 +58,39 @@ Fixture files, if introduced, are separately hashed. Their exact SHA-256 values
 are normative fields inside the markers; changing a fixture therefore changes
 the normative content and invalidates approval.
 
-### 1.3 Approval and authorization record
+### 1.3 Superseded approval and authorization record
 
 | Role | Named approver | Decision | UTC timestamp | Normative SHA-256 | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| Architect | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-01/OD-06 |
-| Security Reviewer | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-02/OD-03/OD-06 |
-| EventStore owner | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-01 |
-| Release owner | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-04 |
-| Operations owner | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-03 |
-| Parties maintainer | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-05 |
-| Test Architect / independent vector reviewer | Jérôme Piquot | Approved | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; OD-02/OD-06 |
+| Architect | Jérôme Piquot | Superseded | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; valid only for the old bytes |
+| Security Reviewer | Jérôme Piquot | Superseded | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; valid only for the old bytes |
+| EventStore owner | Jérôme Piquot | Superseded | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; valid only for the old bytes |
+| Release owner | Jérôme Piquot | Superseded | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; valid only for the old bytes |
+| Operations owner | Jérôme Piquot | Superseded | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; valid only for the old bytes |
+| Parties maintainer | Jérôme Piquot | Superseded | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; valid only for the old bytes |
+| Test Architect / independent vector reviewer | Jérôme Piquot | Superseded | 2026-08-01T16:08:07Z | `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` | `AR-20260801-01`; valid only for the old bytes |
 
 The Administrator approval dated 2026-07-16 applied only to the planning change
-proposal. The separate content-bound approval `AR-20260801-01` below approves
-this specification and authorizes Story 8.2 for the exact recorded digest.
+proposal. Content-bound approval `AR-20260801-01` remains valid evidence for its
+old bytes but was superseded when this amendment changed the normative range.
+It does not authorize the replacement digest or any Story 8.2 source edit.
+
+### 1.4 Current replacement approval and authorization record
+
+| Role | Named approver | Decision | UTC timestamp | Normative SHA-256 | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Architect | Jérôme Piquot | Approved | 2026-09-13T12:31:46Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260913-01`; OD-01/OD-06 |
+| Security Reviewer | Jérôme Piquot | Approved | 2026-09-13T12:31:46Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260913-01`; OD-02/OD-03/OD-06 |
+| EventStore owner | Jérôme Piquot | Approved | 2026-09-13T12:31:46Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260913-01`; OD-01 |
+| Release owner | Jérôme Piquot | Approved | 2026-09-13T12:31:46Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260913-01`; OD-04 |
+| Operations owner | Jérôme Piquot | Approved | 2026-09-13T12:31:46Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260913-01`; OD-03 |
+| Parties maintainer | Jérôme Piquot | Approved | 2026-09-13T12:31:46Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260913-01`; OD-05 |
+| Test Architect / independent vector reviewer | Jérôme Piquot | Approved | 2026-09-13T12:31:46Z | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` | `AR-20260913-01`; OD-02/OD-06 |
+
+The confirmed approval accepted the unchanged residual risks and the exact
+additive API amendment with no open material finding. It authorizes Story 8.2
+only for the exact digest/source preflight and bounded implementation described
+by this specification; all successor and G5 gates remain in force.
 
 <!-- HX-PP-V2-NORMATIVE-BEGIN -->
 
@@ -120,14 +138,14 @@ handoff, and Parties compatibility/rollback gates.
 | AC6 | Threat/misuse/no-leak model and vectors | 14-15 | Independent threat review, mutation corpus, leak sentinel extension |
 | AC7 | Exact approved artifact, decisions, approvals, authorization | 1, 16-17 | Digest recomputation and named content-bound approvals |
 
-Planning input identities rebound on 2026-08-01:
+Planning input identities rebound on 2026-09-13:
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `_bmad-output/planning-artifacts/prd.md` | `4b0510f72a2ea69891e3b937ac33bd52107851fd033d7bac32f15adfaadaa8ea` |
-| `_bmad-output/planning-artifacts/architecture.md` | `e12a60d2c2e41baae41fd845c2e54ed0b885a6b2a9fa443d6e1f95739f52b265` |
-| `_bmad-output/planning-artifacts/epics.md` | `2b5512408fa12c4df522626aac7d46912c29d47c0284f1d9a70d6927f3547a03` |
-| `_bmad-output/planning-artifacts/ux.md` | `3c827e922c2a05559eac09ad3bff638fed0e2aca789eacd733dbb904e4a42c8c` |
+| `_bmad-output/planning-artifacts/prd.md` | `9a35ebce65d0f5f5bbcf72b07a213c6a232f1020071a6f1d0430ed01e0e78c6f` |
+| `_bmad-output/planning-artifacts/architecture.md` | `7e3dbc7bd335034bd9b98cadfed8b14650b7d811321b326b8f32e1b280960d51` |
+| `_bmad-output/planning-artifacts/epics.md` | `d067c8fbffce47d7d0518396265f862093ec1a513cab73cb9fea1e88185cf33b` |
+| `_bmad-output/planning-artifacts/ux.md` | `2927f97d4fe7262ec5886084a974d9d5c21240560e6563ab84f84b90e4dd670a` |
 | `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-16.md` | `9d2bc1d9a60b816795461eb0b5852cce486dae04638bb1281a9fc32355700fa1` |
 | `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-01.md` | `ba054c82d8855366279a4c7dea51b54870cb562a3e4361afe08146502c1dacfe` |
 | `_bmad-output/planning-artifacts/story-id-migration-2026-08-01.md` | `d421a91531a0713195dddb514bfe83f8b0f0dc51e54553803febfb8a371f7766` |
@@ -334,8 +352,9 @@ empty arrays, and empty objects are protected when selected. An ancestor and a
 descendant cannot both be selected; the policy result is rejected rather than
 silently choosing one.
 
-A v2 snapshot uses one `ProtectedSnapshotPayloadV2` object with exactly these
-durable logical fields: `Format="json+pdenc-v2"`, `SnapshotTypeId` equal to an
+A v2 snapshot uses the exact additive `ProtectedSnapshotPayloadV2` record in
+section 9.1 with exactly these durable logical fields:
+`Format="json+pdenc-v2"`, `SnapshotTypeId` equal to an
 explicit registered stable ID, and `Envelope` equal to the canonical unpadded
 base64url binary envelope. `SnapshotTypeId` is 16..128 printable ASCII bytes,
 begins with `hx-snapshot-v1:`, and has a lowercase ASCII kebab-case suffix. It is
@@ -794,6 +813,34 @@ public sealed record PayloadProtectionOccurrenceContext(
     PayloadProtectionPayloadKind PayloadKind,
     string PayloadTypeId);
 
+public sealed record ProtectedSnapshotPayloadV2(
+    string Format,
+    string SnapshotTypeId,
+    string Envelope);
+
+public sealed record PayloadProtectionCompletionContext(
+    AggregateIdentity Identity,
+    PayloadProtectionOccurrenceContext Occurrence,
+    string OperationId,
+    string KeyReference,
+    uint DekVersion,
+    ulong LifecycleEpoch);
+
+public enum PayloadProtectionPersistenceOutcome
+{
+    Persisted = 1,
+    NotPersisted = 2,
+    Unknown = 3,
+}
+
+public sealed record PayloadProtectionWriteResult(
+    PayloadProtectionResult ProtectionResult,
+    PayloadProtectionCompletionContext? CompletionContext);
+
+public sealed record SnapshotProtectionWriteResult(
+    SnapshotProtectionResult ProtectionResult,
+    PayloadProtectionCompletionContext? CompletionContext);
+
 public enum PersonalDataPolicyDecision
 {
     Abstain = 0,
@@ -880,20 +927,135 @@ public interface IErasureStateProvider
 }
 ```
 
+`PayloadProtectionOccurrenceContext.RecordSequence` is the authenticated
+aggregate-local event sequence or persisted snapshot sequence and uses the full
+u64 range. `PayloadKind` must be one of the two defined values. An event
+`PayloadTypeId` is the exact persisted event type string and obeys the section
+7.1 1..1024-byte strict-UTF-8/NFC/control-character rules. A snapshot
+`PayloadTypeId` is the exact registered stable ID and obeys the section 6.1
+16..128-byte printable-ASCII/prefix/kebab-case rules. The value is supplied by
+trusted EventStore storage context, not a domain payload or extension.
+
+`ProtectedSnapshotPayloadV2` is the durable snapshot carrier; its three
+case-sensitive member names are also its exact serialized member names. Format
+is exact `json+pdenc-v2`, the type ID obeys the preceding bounds, and Envelope
+obeys section 6.3 canonical unpadded base64url bounds. Unknown, duplicate, null,
+or additional members are rejected by the v2 reader. The carrier contains no
+CLR type name, metadata, completion context, plaintext, key bytes, or provider
+detail.
+
+`PayloadProtectionWriteResult` and `SnapshotProtectionWriteResult` are
+call-scoped wrappers and are not durable carriers. A v2 protection result must
+have exactly one non-null completion context; every non-v2 result must have
+null. `PayloadProtectionPersistenceOutcome` has no valid zero/default value and
+describes only whether the actor-owned event/snapshot save is confirmed absent,
+confirmed durable, or ambiguous; it does not claim key activation or
+reconciliation completion by itself.
+
+The following signatures are the exact additive default members Story 8.2 adds
+to `IEventPayloadProtectionService`; every pre-existing member remains
+byte-for-byte source compatible. `JsonTypeInfo` means the non-generic
+`System.Text.Json.Serialization.Metadata.JsonTypeInfo` supplied by the approved
+source-generated registry. The semicolon form records the public signature;
+the mandatory default behavior follows the block.
+
+```csharp
+Task<PayloadProtectionWriteResult> ProtectEventPayloadAsync(
+    AggregateIdentity identity,
+    IEventPayload eventPayload,
+    string eventTypeName,
+    byte[] payloadBytes,
+    string serializationFormat,
+    PayloadProtectionOccurrenceContext occurrenceContext,
+    CancellationToken cancellationToken = default);
+
+Task<SnapshotProtectionWriteResult> ProtectSnapshotAsync(
+    AggregateIdentity identity,
+    object state,
+    JsonTypeInfo stateTypeInfo,
+    PayloadProtectionOccurrenceContext occurrenceContext,
+    CancellationToken cancellationToken = default);
+
+Task<PayloadUnprotectionOutcome> TryUnprotectEventPayloadAsync(
+    AggregateIdentity identity,
+    string eventTypeName,
+    byte[] payloadBytes,
+    string serializationFormat,
+    EventStorePayloadProtectionMetadata? metadata,
+    PayloadProtectionOccurrenceContext occurrenceContext,
+    CancellationToken cancellationToken = default);
+
+Task<SnapshotUnprotectionOutcome> TryUnprotectSnapshotAsync(
+    AggregateIdentity identity,
+    object state,
+    EventStorePayloadProtectionMetadata? metadata,
+    JsonTypeInfo stateTypeInfo,
+    PayloadProtectionOccurrenceContext occurrenceContext,
+    CancellationToken cancellationToken = default);
+
+Task AcquirePayloadProtectionCompletionLeaseAsync(
+    PayloadProtectionCompletionContext completionContext,
+    CancellationToken cancellationToken = default);
+
+Task CompletePayloadProtectionAsync(
+    PayloadProtectionCompletionContext completionContext,
+    PayloadProtectionPersistenceOutcome persistenceOutcome,
+    CancellationToken cancellationToken = default);
+```
+
+Every default checks cancellation first; rejects null context/type metadata,
+the undefined enum value zero, an event/snapshot kind mismatch, and an event
+`PayloadTypeId` that differs ordinally from `eventTypeName`. The protect defaults
+then call the corresponding pre-existing method with the original arguments and
+the same cancellation token. They wrap a non-v2 result with
+`CompletionContext=null`. If an old provider returns exact format
+`json+pdenc-v2`, exact scheme `hexalith-pdenc-v2`, or a
+`ProtectedSnapshotPayloadV2`, the default throws a fixed-message
+`NotSupportedException`; it never accepts a v2 claim without a completion
+context.
+
+The context-aware unprotect defaults do not delegate a recognized v2 input to
+an old member because that would discard authenticated occurrence/type
+context. After the cancellation/context checks, exact format
+`json+pdenc-v2`, exact scheme `hexalith-pdenc-v2`, or a
+`ProtectedSnapshotPayloadV2` returns
+`UnreadableProtectedDataReason.ProviderOpaqueUnsupportedOperation` through the
+existing typed outcome. Other inputs delegate to the corresponding existing
+typed default with unchanged arguments and cancellation token.
+
+The two completion defaults validate their arguments and then return a
+fixed-message `NotSupportedException`; old implementations therefore compile
+unchanged but cannot silently consume a completion context. A v2 implementation
+must override all six members. Its successful protect result has a non-null
+completion context; every non-v2 result has null. The context repeats the exact
+call identity and occurrence, uses canonical 26-character uppercase ULIDs for
+`OperationId` and `KeyReference`, requires positive `DekVersion`, and carries
+the strongly observed `LifecycleEpoch`. It is call-scoped, contains no key or
+plaintext bytes, and is never persisted in an event, snapshot, metadata,
+diagnostic, or public failure.
+
+`AcquirePayloadProtectionCompletionLeaseAsync` conditionally acquires the
+section 10.2 lease immediately before the actor save. Completion with
+`Persisted` idempotently moves the exact matching `Reserved` record to `Active`
+and releases the lease; `NotPersisted` never activates and releases the lease;
+`Unknown` never activates, records/schedules reconciliation, and retains the
+lease until reconciliation or expiry. A disagreement in identity, occurrence,
+operation, key reference/version, or lifecycle epoch is a consistency failure
+and cannot activate another reservation.
+
 All public/internal members receive project-standard XML documentation in Story
 8.2. `ContractVersion` 1 is exact; a semantic change requires additive types or
 a new version. Context records are call-scoped and never persisted. Policies
 must not retain `Root`, `SerializedRoot`, `SerializedValue`, `Owner`,
 `JsonTypeInfo`, or reflection objects.
 
-Story 8.2 adds backward-compatible default overloads on
-`IEventPayloadProtectionService` that require
-`PayloadProtectionOccurrenceContext` for v2 protect and unprotect. Server alone
-constructs it from the aggregate-local event sequence or persisted snapshot
-sequence plus the persisted event type/current registered snapshot type ID.
-The engine rejects v2 when the context is absent, caller-invented, or disagrees
-with the authenticated storage record; legacy providers continue through the
-existing overloads and cannot emit v2.
+Server alone constructs `PayloadProtectionOccurrenceContext` from the
+aggregate-local event sequence or persisted snapshot sequence plus the
+persisted event type/current registered snapshot type ID. Domain input and
+caller extensions cannot construct or override it. The engine rejects v2 when
+the context is absent, caller-invented, or disagrees with the authenticated
+storage record; legacy providers continue through the existing overloads and
+cannot emit v2 through a default adapter.
 
 ### 9.2 Discovery, precedence, and errors
 
@@ -1079,16 +1241,19 @@ ordered—not falsely described as cross-store atomic:
    of the exact unchanged values under those ETags. The same transaction
    advances `HighestWrittenFormat`/epoch when required. It completes **before**
    producing a v2 result.
-4. Encrypt and return a distinct protected byte array. `EventPersister`
+4. Encrypt and return a distinct protected byte array plus the exact non-null
+   `PayloadProtectionCompletionContext`. `EventPersister`
    preserves its existing all-protection-before-actor-write behavior and, after
    confirming the result does not alias the caller-owned serialized input,
    zeroes that input buffer in `finally`. If the result aliases input, protection
    fails before staging; CLR event/snapshot objects and immutable/aliased
    serializer storage are explicitly outside this zeroing claim.
-5. Immediately before actor save the writer acquires the exact completion lease.
-   After the actor event/snapshot save succeeds, an additive completion hook
-   conditionally moves the referenced record `Reserved` to `Active` and releases
-   the lease. A stored
+5. Immediately before actor save the writer calls
+   `AcquirePayloadProtectionCompletionLeaseAsync` with that exact context. It
+   then calls `CompletePayloadProtectionAsync` with `Persisted`, `NotPersisted`,
+   or `Unknown` according to section 9.1. Only `Persisted` conditionally moves
+   the referenced record `Reserved` to `Active`; the completion operation owns
+   lease release/reconciliation exactly as section 9.1 specifies. A stored
    event that references `Reserved` is readable and schedules reconciliation;
    the stored event itself proves the reservation is not orphaned.
 6. Failure before event save leaves only a `Reserved` record. After 24 hours and
@@ -1906,7 +2071,7 @@ baseline but may not silently move a concern across the frozen boundaries:
 
 | Class | Likely NEW/UPDATE artifacts | Frozen decisions implemented / evidence |
 | --- | --- | --- |
-| Story 8.2 contracts/goldens | One type per file under `src/Hexalith.EventStore.Contracts/Security`: `PersonalDataAttribute`, `PayloadProtectionPayloadKind`, `PersonalDataPolicyDecision`, `PersonalDataPolicyContext`, `IPersonalDataPolicy`, `PayloadErasureState*`, `IErasureStateProvider`, stable v2 snapshot carrier/context/completion contracts; additive defaults on `IEventPayloadProtectionService` where compatibility requires; frozen fixtures | Sections 6-9 and 14-15; API approval/source compatibility, two-toolchain goldens, and negative/mutation vectors. Existing providers compile unchanged. |
+| Story 8.2 contracts/goldens | One type per file under `src/Hexalith.EventStore.Contracts/Security`: `PersonalDataAttribute`, `PayloadProtectionPayloadKind`, `PersonalDataPolicyDecision`, `PersonalDataPolicyContext`, `IPersonalDataPolicy`, `PayloadErasureState*`, `IErasureStateProvider`, `PayloadProtectionOccurrenceContext`, `ProtectedSnapshotPayloadV2`, `PayloadProtectionCompletionContext`, `PayloadProtectionPersistenceOutcome`, `PayloadProtectionWriteResult`, and `SnapshotProtectionWriteResult`; the six exact additive defaults on `IEventPayloadProtectionService`; frozen fixtures | Sections 6-9 and 14-15; API approval/source compatibility, two-toolchain goldens, and negative/mutation vectors. Existing providers compile unchanged. |
 | Story 8.3 core engine | Create non-packable `Hexalith.EventStore.PayloadProtection` (`IsPackable=false`) and implement provider-neutral codec/AAD/path traversal, CSPRNG/AES, typed outcomes, bounds, cancellation, safe logs/telemetry, and owned-buffer zeroing | Sections 5-8 and 14-15; no Azure/domain/Server dependency; G-001 and applicable named vectors. Packability remains owned by Story 8.8. |
 | Story 8.4 compatibility | Historical and mixed-version readers/routing for legacy-unprotected, redacted, `pdenc-v1`, Story 22.7 metadata, protected snapshots, `pdenc-v2`, and unknown/opaque state | Sections 12-13 and Appendix A; no silent plaintext, downgrade, or checkpoint advance on unreadable input. |
 | Story 8.5 policy/key lifecycle | Policy discovery, backend SPI, DAPR scoped record/index/fence/lease/operation/audit stores, lifecycle/cache/retry/breaker/reconciler, erasure state, and fault fixtures under the future engine package boundary | Sections 9-10 and 14-15; deterministic ownership, state capabilities, lifecycle/cache/resilience, zeroing, and no-leak evidence. Packability remains owned by Story 8.8. |
@@ -2066,8 +2231,9 @@ erasure completion, or Parties migration is accepted by this document alone.
 - Story 8.1 is a specification: the engine, contracts, state-store capabilities,
   Azure profile, vectors and rollback have not been implemented or independently
   proven. Existing production behavior is unchanged.
-- The current protection hook needs additive context/completion/fence contracts;
-  exact source compatibility must be demonstrated in Story 8.2.
+- The current protection hook needs the exact additive occurrence, write-result,
+  completion, persistence-outcome, and default members frozen in section 9.1;
+  exact source/package compatibility must be demonstrated in Story 8.2.
 - V2 protects valid JSON values up to 1 MiB and at most 4,096 selected fields;
   arbitrary binary field encryption and larger values need another format.
 - Snapshots are whole-state protected when any selected value exists; this may
@@ -2113,7 +2279,7 @@ remaining evidence decisions block Story 8.1 completion and Story 8.2:
 ### 17.5 Content-bound approval and authorization algorithm
 
 The approval subject is the normative SHA-256 computed by section 1.2 together
-with EventStore SHA `b200305978577530ee2e6ba9e92b886d26dc6f6f`, Parties SHA
+with EventStore SHA `dfc0ac557c43363159b55bffb4d40feceab1f787`, Parties SHA
 `4378dede55d92e489caf7aad63d6c2892e6f856d`, the external-source retrieval date
 and the embedded fixture hashes. Each approval record outside the normative
 markers must contain the approver's unambiguous name/role, `Approved` or
@@ -2141,7 +2307,7 @@ must remain non-`done`, and sprint Stories 8.2-8.11 remain blocked.
 
 | Existing seam at EventStore SHA `b2003059…` | Exact state | Preservation constraint |
 | --- | --- | --- |
-| `IEventPayloadProtectionService` (`bb6c2570…`) | Event protect/unprotect; metadata-aware additive overload; object and typed snapshot methods; typed `TryUnprotect*` defaults; cancellation propagates and otherwise unclassified exceptions map to `ProviderUnavailable`. Protect receives identity, event object/type, bytes, and format, but no property path, key identity/version, message ID, sequence, or global position. | Add context through backward-compatible default interface methods/contracts or engine-internal deterministic derivation. Existing providers must continue to compile and run. |
+| `IEventPayloadProtectionService` (`bb6c2570…`) | Event protect/unprotect; metadata-aware additive overload; object and typed snapshot methods; typed `TryUnprotect*` defaults; cancellation propagates and otherwise unclassified exceptions map to `ProviderUnavailable`. Protect receives identity, event object/type, bytes, and format, but no property path, key identity/version, message ID, sequence, or global position. | Add the exact section 9.1 occurrence/write-result/completion members as backward-compatible defaults. Existing providers continue to compile/run and default adapters cannot emit or consume v2. |
 | `EventStorePayloadProtectionMetadata` (`e417fbbc…`) | Metadata version 1 with state, scheme, key alias, content hint, and up to eight compatibility flags. It explicitly excludes raw keys, nonces, tags, and provider-private blobs. | V2 payload bytes carry the bounded cryptographic envelope. Metadata remains a constructive, non-secret routing allowlist and changes only through intentional versioned migration. |
 | `EventStorePayloadProtectionMetadataCarrier` (`55d1e7c0…`) | `eventstore.protection` bounded JSON carrier; unknown, malformed, secret-shaped, or unsupported values become provider-opaque; missing metadata maps to legacy. | Preserve fail-closed parsing. Existing name/substring checks remain defense in depth, not proof that encoded or innocuously named secrets are safe. |
 | `PayloadProtectionResult`, `PayloadUnprotectionOutcome`, `Snapshot*Outcome` | Readable results carry bytes/state; unreadable results carry no plaintext and one typed reason. | Extend additively; never create a second failure channel or parse provider exception text. |
@@ -2233,8 +2399,8 @@ SDK/API versions before its code or evidence is accepted.
 
 ## 18. Independent Review And Reproduction Evidence
 
-This section contains the independent review, approval, and author evidence
-bound to normative digest
+This section preserves independent review, approval, and author evidence. All
+2026-08-01 records are bound only to superseded normative digest
 `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`.
 
 Author verification is recorded for reproducibility but is explicitly **not**
@@ -2250,7 +2416,7 @@ the independent evidence required by OD-02/OD-06:
 | 2026-08-01 | Node.js 26.4.0/OpenSSL 3.5.7 and Python 3.14.4/cryptography 46.0.5 exact embedded commands | Both independently rebuilt the path manifest, 11-field AAD, ciphertext/tag, envelope, wrapper, and hashes from atomic inputs; output SHA-256 `91744a9a620158fa982c0128e88c20eecd81764338e3e71a38eff526fbd53382` matched | Author-operated pre-approval reproduction; independently repeated and closed by `AR-20260801-01`. |
 | 2026-08-01 | Exact registry/marker/digest validation | V001-V138 registry contains 138 ordered unique IDs; full-line digest markers are unique; LF/no-BOM preconditions pass; digest `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7` recomputes exactly | Pre-approval validation checkpoint; later approved by `AR-20260801-01`. |
 
-### 18.1 Independent approval packet `AR-20260801-01`
+### 18.1 Superseded independent approval packet `AR-20260801-01`
 
 | Field | Exact evidence |
 | --- | --- |
@@ -2265,17 +2431,33 @@ the independent evidence required by OD-02/OD-06:
 | Findings | No open material findings. The 3 recorded deferrals are pre-existing sprint-tracking matters outside the normative artifact and do not weaken authorization. |
 | Residual-risk disposition | Explicitly accepted every residual risk and limitation recorded in sections 4, 8.2, 11.5, 13, 14, and 17.3 for the exact digest. |
 | Roles approved | Architect; Security Reviewer; EventStore owner; Release owner; Operations owner; Parties maintainer; Test Architect / independent vector reviewer |
-| Final disposition | **Approved. Story 8.2 is AUTHORIZED** for exact-digest/source preflight and implementation. |
+| Final disposition | **Superseded by the 2026-09-13 normative amendment.** It authorized only the old exact digest/source preflight and cannot authorize the replacement bytes. |
 
-OD-01 through OD-06 are closed by this packet with no open material finding.
-PF-01 and PF-02 remain mandatory implementation preflights owned by Stories 8.6
-and 8.5 respectively; they are not Story 8.1 approval blockers.
+OD-01 through OD-06 were closed for the old digest by this packet with no open
+material finding. The amendment reopens them for the replacement digest. PF-01
+and PF-02 remain mandatory implementation preflights owned by Stories 8.6 and
+8.5 respectively; they are not Story 8.1 approval blockers.
 
 The final pre-approval sentence in normative section 17.5 and the “missing
 evidence” wording in section 17.4 record the state at normative freeze. This
-detached packet supplies the evidence those rules require; the normative bytes
-are intentionally unchanged so the approval remains bound to the reviewed
-digest rather than becoming self-referential.
+detached packet supplied the evidence those rules required for the old digest;
+it is retained for audit history and grants no authority to the amendment.
+
+### 18.2 Replacement amendment approval request `AR-20260913-01`
+
+| Field | Exact evidence |
+| --- | --- |
+| Status | **APPROVED AND AUTHORIZED** |
+| Reviewer/approver | Jérôme Piquot |
+| UTC timestamp | `2026-09-13T12:31:46Z` |
+| Normative digest | `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e` |
+| EventStore source | `dfc0ac557c43363159b55bffb4d40feceab1f787` |
+| Parties source | `4378dede55d92e489caf7aad63d6c2892e6f856d` |
+| Amendment scope | Exact additive v2 snapshot carrier, occurrence-aware protect/unprotect write wrappers, completion context, persistence outcome, completion lease/hook signatures and mandatory compatibility defaults in sections 6, 9, 10, 16, 17, and Appendix A; planning/source identities rebound. |
+| Evidence references | Detached packet `AR-20260913-01`; Story 8.2 preflight SHA-256 `3a37fa8a1dc523a9f86f68a2b07e2b5443a023af0197ddf91ec9314f72d61b9f`; amendment validation SHA-256 `3b7fb4cc964e1bcff076ae21dfec58b071024eaa48ee388c3fdabe4449868a8e`; unchanged independent-vector evidence in superseded packet `AR-20260801-01`. |
+| Review method | Reviewed the exact replacement digest/source and amendment scope; confirmed the amendment did not change the G-001, NIST, or V001–V138 inputs/results; re-bound the prior independent Node.js `v26.4.0`/OpenSSL `3.5.7` and Python `3.14.4`/cryptography `46.0.5` reproduction output SHA-256 `91744a9a620158fa982c0128e88c20eecd81764338e3e71a38eff526fbd53382`. This is re-review/re-approval of unchanged evidence, not a claim of command re-execution on 2026-09-13. |
+| Review and residual-risk disposition | Approved in the named Architect, Security Reviewer, EventStore owner, Release owner, Operations owner, Parties maintainer, and Test Architect / independent vector reviewer roles; unchanged residual risks and the additive API design accepted; no open material finding. |
+| Authorization effect | `story_8_2_authorized` is `true` for the exact digest/source preflight and Story 8.2 implementation. Stories 8.3-8.11 and G5 remain predecessor/evidence gated. |
 
 ## 19. Change History
 
@@ -2286,3 +2468,5 @@ digest rather than becoming self-referential.
 | 2026-08-01 | Rebound implementation, package, consumer, rollback, and closure ownership from the former Story 8.2 umbrella to Stories 8.2-8.11 and recorded the predecessor chain. | Normative digest changed; all approvals remain absent, Story 8.2 remains not authorized, and Stories 8.3-8.11 remain blocked. |
 | 2026-08-01 | Applied the accepted adversarial-review patches: occurrence/path-set authentication, stable snapshot IDs, serializer-first policy, bounded resources, canonical durable schemas, safe lifecycle/rotation, generation leases and split fences, honest zeroing/RNG claims, exact vector registry, and corrected package/provider handoff. | Normative digest changed to `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`; all approvals remain absent and every successor remains blocked. |
 | 2026-08-01 | Recorded Jérôme Piquot's independent reproduction, sections 12-17 review, residual-risk acceptance, and approval in every mandatory role as `AR-20260801-01`. | Normative bytes and digest are unchanged; Story 8.2 is authorized, while Stories 8.3-8.11 remain predecessor-gated. |
+| 2026-09-13 | Reopened Story 8.1 after Story 8.2 preflight found missing exact public signatures; froze the additive snapshot carrier, occurrence-aware write/unprotect results, completion context/outcome/hooks and fail-closed legacy defaults; rebound current planning/source identities. | Normative bytes changed; `AR-20260801-01` is superseded, Story 8.2 is not authorized, and all source work is blocked pending `AR-20260913-01`. |
+| 2026-09-13 | Recorded Jérôme Piquot's exact-digest/source confirmation in all seven mandatory roles as `AR-20260913-01`, including additive-API and residual-risk acceptance with no open material finding. | Normative bytes and digest are unchanged; Story 8.2 is authorized, while Stories 8.3-8.11 remain predecessor-gated. |

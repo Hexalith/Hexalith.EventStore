@@ -42,9 +42,10 @@ source_files:
 
 Status: in-progress
 
-<!-- Note: Validation is mandatory for this security gate. Story 8.2 remains blocked until the
-     exact specification is complete, independently reviewed, and explicitly authorized;
-     Stories 8.3-8.11 remain blocked by their recorded predecessors. -->
+<!-- Note: Story 8.1 was reopened on 2026-09-13 because Story 8.2 preflight found missing exact
+     signatures. Replacement digest de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e
+     received content-bound approval as AR-20260913-01; Story 8.2 is authorized and Stories
+     8.3-8.11 remain blocked by their recorded predecessors. -->
 
 ## Story
 
@@ -408,14 +409,16 @@ OpenAI Codex (GPT-5)
 - Preserve every existing Story 22.7 contract and fail-closed read boundary; specify only additive future APIs and no runtime changes in Story 8.1.
 - Treat the exact EventStore and Parties source identities plus primary cryptography/provider sources as the baseline before freezing wire, lifecycle, backend, and migration decisions.
 - Validate each task with focused structural/security gates, then run the complete document/scope/fixture validation before requesting approval.
+- Reopened decision: freeze the previously missing additive v2 snapshot carrier, occurrence-aware write/unprotect wrappers, completion context/outcome/hooks, and fail-closed legacy defaults before any Story 8.2 source edit.
 
 ### Independent Review And Approval Evidence
 
-- Approval packet: `AR-20260801-01` in section 18.1 of the authoritative spec.
+- Superseded approval packet: `AR-20260801-01` in section 18.1 of the authoritative spec; valid only for normative digest `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`.
 - Reviewer/approver: Jérôme Piquot, acting in all seven mandatory roles.
 - Recorded: `2026-08-01T16:08:07Z` for normative digest `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`.
 - Independent reproduction: Node.js `v26.4.0`/OpenSSL `3.5.7` and Python `3.14.4`/cryptography `46.0.5`; both output SHA-256 `91744a9a620158fa982c0128e88c20eecd81764338e3e71a38eff526fbd53382`.
-- Disposition: sections 12-17 reviewed, no open material findings, documented residual risks accepted, Story 8.2 authorized subject to exact-digest/source preflight.
+- Historical disposition: sections 12-17 reviewed, no open material findings, and documented residual risks accepted for the superseded digest.
+- Replacement approval: `AR-20260913-01` in section 18.2, confirmed by Jérôme Piquot at `2026-09-13T12:31:46Z` in all seven mandatory roles for digest `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`; additive API and residual risks accepted with no open material finding; Story 8.2 authorized.
 
 ### Debug Log References
 
@@ -439,6 +442,9 @@ OpenAI Codex (GPT-5)
 - 2026-08-01: Verified 138 ordered unique V001-V138 registry entries, unique full-line normative markers, LF/no-BOM input, and exact normative digest `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`; no approval or Story 8.2 authorization is implied.
 - 2026-08-01: Jérôme Piquot independently reproduced both exact vector commands with Node.js `v26.4.0`/OpenSSL `3.5.7` and Python `3.14.4`/cryptography `46.0.5`; both output hashes matched `91744a9a620158fa982c0128e88c20eecd81764338e3e71a38eff526fbd53382`.
 - 2026-08-01: Recorded approval packet `AR-20260801-01` at `2026-08-01T16:08:07Z`: sections 12-17 independently reviewed with no open material findings, all documented residual risks accepted, every mandatory role approved for the exact digest, and Story 8.2 authorized.
+- 2026-09-13: Story 8.2 preflight at EventStore HEAD `dfc0ac557c43363159b55bffb4d40feceab1f787` recomputed the old digest, proved Contracts/Security byte-identical to approved source, and retained the 14-package manifest hash; it also confirmed that exact v2 carrier/context/completion signatures were absent.
+- 2026-09-13: Reopened Story 8.1, froze the missing additive API and mandatory fail-closed default behavior, rebound current planning/source identities, superseded `AR-20260801-01`, and recomputed the LF/no-BOM normative bytes as `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`. No source edit is authorized pending `AR-20260913-01`.
+- 2026-09-13: Jérôme Piquot confirmed `AR-20260913-01` at `2026-09-13T12:31:46Z` for the exact replacement digest/source in all seven mandatory roles, accepted the additive API and documented residual risks, and reported no open material finding. Story 8.2 source work is authorized.
 
 ### Completion Notes List
 
@@ -453,12 +459,14 @@ OpenAI Codex (GPT-5)
 - Task 9 complete: Jérôme Piquot supplied content-bound approval in every mandatory role for the exact normative digest and accepted all documented residual risks.
 - Task 10 complete: independent vector, compatibility, rollback, structure, traceability, threat, scope, and approval-evidence validation passed; Story 8.2 is authorized subject to its exact-digest/source preflight.
 - Code-review patches complete: strengthened occurrence/path completeness, snapshot identity, policy traversal, bounded resources, state schemas/lifecycle/rotation, fleet fencing, ownership/zeroing and RNG truthfulness; expanded exact vectors and regenerated G-001/digest while preserving the hard authorization gate.
+- Amendment complete: exact Story 8.2 public signatures and compatibility defaults are frozen and approved under replacement digest `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`; Story 8.2 implementation is authorized.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md` (new)
 - `_bmad-output/implementation-artifacts/8-1-shared-payload-protection-security-spec-and-adr.md` (updated)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated)
+- `_bmad-output/implementation-artifacts/evidence/story-8-2/preflight-before-adr-amendment.md` (new preflight evidence)
 
 ### Change Log
 
@@ -474,3 +482,5 @@ OpenAI Codex (GPT-5)
 - 2026-08-01: Rebound the former Story 8.2 umbrella handoff to Stories 8.2-8.11, assigned package/manifest authority solely to Story 8.8, recomputed the normative digest, and preserved `NOT AUTHORIZED` status pending all named approvals.
 - 2026-08-01: Applied all 28 accepted adversarial-review patches, retained 3 pre-existing deferrals, regenerated the atomic two-toolchain golden and exact V001-V138 registry, and rebound the still-unapproved normative artifact to digest `0f841d5a72a0d0b10fa42a7e765b7282a810f3a5a2aa2b41da2001d17a054ae7`.
 - 2026-08-01: Recorded Jérôme Piquot's independent reproduction/review and seven-role approval as `AR-20260801-01`; marked Story 8.1 done and authorized Story 8.2 for the exact digest/source preflight.
+- 2026-09-13: Reopened Story 8.1, froze the missing exact Story 8.2 contracts/defaults, superseded the old approval, and blocked source work pending content-bound approval of digest `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`.
+- 2026-09-13: Recorded `AR-20260913-01` content-bound approval, marked Story 8.1 done, and authorized Story 8.2 against the unchanged replacement normative digest.

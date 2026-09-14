@@ -22,4 +22,26 @@
     <Using Include="Shouldly" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Security/Fixtures/PayloadProtectionV2/**/*.json"
+          CopyToOutputDirectory="PreserveNewest"
+          TargetPath="Fixtures/PayloadProtectionV2/%(Filename)%(Extension)" />
+    <None Include="../../scripts/payload-protection/verify-golden-vectors.mjs"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="PayloadProtectionV2/verify-golden-vectors.mjs"
+          TargetPath="Fixtures/PayloadProtectionV2/verifiers/verify-golden-vectors.mjs" />
+    <None Include="../../scripts/payload-protection/verify-golden-vectors.py"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="PayloadProtectionV2/verify-golden-vectors.py"
+          TargetPath="Fixtures/PayloadProtectionV2/verifiers/verify-golden-vectors.py" />
+    <None Include="../../scripts/payload-protection/requirements.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="PayloadProtectionV2/requirements.txt"
+          TargetPath="Fixtures/PayloadProtectionV2/verifiers/requirements.txt" />
+    <None Include="../../_bmad-output/implementation-artifacts/spec-shared-payload-protection-engine.md"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="PayloadProtectionV2/spec-shared-payload-protection-engine.md"
+          TargetPath="Fixtures/PayloadProtectionV2/spec-shared-payload-protection-engine.md" />
+  </ItemGroup>
+
 </Project>

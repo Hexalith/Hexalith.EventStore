@@ -4419,3 +4419,54 @@ source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: high
 reason: `tools/release_evidence_handlers/v3.py`, `tools/deployed_runtime_parity_handlers/v1.py` and `tools/assemble-corrected-deployed-runtime-parity.py` are sha256+size-pinned decision inputs of the Story 3.15 closure packet and of both retained-evidence validators. Any correction to them — DW-506, DW-507, or the subprocess hardening and path-redaction items recorded in the Group P findings — moves those pins and requires one re-mint of the subject, the closure, the proof-packet table and both validators' pins, which rejects the three existing 3.15 receipts and needs fresh architecture, security and test sign-off. Landing them one at a time is what turned the Contracts lane red at 1987/204/0 and failed both validators, requiring revert `ec5c3da8`. Batch every item into a single authorized re-mint. Note the asymmetry that hid this: none of the three files is an OQ8 v3 gate input, so `validate-oq8-platform-evidence.py` stayed green throughout, and `Contracts.Tests` is absent from `unit-test-projects` in `.github/workflows/ci.yml`, so the failures surfaced only in `ci / contracts`, which the live `main` ruleset does not require.
 status: open
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13, Group Q)
+
+### DW-509: The sealed v3 gate-input digest for `global.json` hashes the CRLF worktree file, not the committed blob, so the OQ8 gate cannot pass on a clean checkout.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group Q)
+location: _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/source-artifact-identity.json:40; .gitattributes:1; tools/validate-oq8-platform-evidence.py:3001-3006
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: high
+reason: `global.json` begins `7b 0d 0a` (CRLF). Its worktree sha256 is `75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654`, which is exactly the pinned `gateInputs` value, while `git cat-file blob HEAD:global.json` hashes to `25b36d45123efa1d03786506dadad7546069f8563cddd4b509849b5c3631e9f5`. `.gitattributes` carries `* text=auto` and has no rule for `global.json`; of the 13 v3 gate inputs it is the only one whose pin matches the worktree rather than the committed blob. Measured: substituting the committed blob makes `validate-oq8-platform-evidence.py` fail closed with `Story 4.15 v3 gate-input identity drift: global.json`, exit 1, and CI at `dfc0ac55` shows `ci / contracts` failing with 23 such failures — identical at the control `17779677`, so this is pre-existing. Consequence: every "validator exits 0 in all four modes" and "Contracts 1987/0/0" measurement in the Group O and Group P records is reproducible only on a CRLF worktree, and the Group P Decision 3 disposition was closed on that basis. This is the Story 3.3 CRLF-in-worktree/LF-in-index class, which leaves `git status` clean. Fix = add `global.json text eol=lf` to `.gitattributes` and re-mint that digest across `source-artifact-identity.json`, `review-subject.json` and `pre-review-execution.json`, plus an `Oq8PlatformClosureTests` case asserting every `gateInputs` entry equals `git cat-file blob HEAD:<path>`. Sealed work — batch into the DW-508 re-mint.
+status: open
+
+### DW-510: Two required checks, `advisory` and `ci / build-and-test`, are red on `main`.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group Q)
+location: .github/workflows/ci.yml; tests/Hexalith.EventStore.Server.Tests
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: At HEAD `dfc0ac55` the check runs are `advisory: failure`, `ci / build-and-test: failure`, `ci / contracts: failure`, with `ci / tenants-source-mode`, `codeql`, `commitlint`, `live-sidecar` and `ci / semantic-release-governance` green. All three failures are identical at the control `17779677`, so none is caused by the Group Q delta. `ci / build-and-test` fails on `tests/Hexalith.EventStore.Server.Tests` (Dapr `SocketException (111): Connection refused`), the project already documented as excluded from the baseline. The review-relevant consequence is that `main` sits red on two required contexts, so a genuine new regression on either lane would be indistinguishable from the standing failure, and the ruleset cannot be relied on as a signal while that holds.
+status: open
+
+### DW-511: The layout-preserving-copy refusal case and a NaN characterization case are missing and can only go green with the sealed fix.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group Q)
+location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3941-4004
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: `AssemblerRefusesExecutionOffTheBoundRepositoryPath(mode: "assembler")` copies the assembler to a flat `Path.GetTempPath()/*.py`, where `parents[1]` is `/` and the comparison fails for reasons unrelated to repository identity — so it passes against the tautological guard and reports it as covered. No case copies `tools/` intact; measured, such a copy passes `repository_root`, `executing_assembler_path` and `verify_handler_provenance`. Separately, no test anywhere exercises `NaN`/`Infinity` through the Python canonical encoders. Both assertions can only pass together with the DW-506/DW-507 code change, so they belong in the DW-508 batch, and that batch also owes a rewrite of the message-shape assertion the current test pins. Worth recording: this test file is **not** pinned by the Story 3.15 packet (0 hash hits, 0 mentions in `subject.json`), so it is Zone A and costs no reseal of its own.
+status: open
+
+### DW-512: Only `references/Hexalith.Builds` is pinned by a test; the other four root gitlinks are governed by nothing.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group Q)
+location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs:632
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: low
+reason: `ContainerPublishingGovernanceTests` asserts the `references/Hexalith.Builds` gitlink against an approved release SHA, but `references/Hexalith.Commons`, `references/Hexalith.FrontComposer`, `references/Hexalith.Memories` and `references/Hexalith.Tenants` are asserted by no test, no validator and no required check. That is the mechanical reason three undisclosed bumps rode into `dfc0ac55` unnoticed, and why the Builds/Commons pair in `9f0714ef` had to be caught by a human reading a diff. Closing it adds new governance surface rather than correcting a defect in this delta, so it is deferred rather than patched; the frozen Ask-First clause naming "submodule state" is the policy this would mechanize.
+status: open
+
+### DW-513: `spec-4-7` asserts in the present tense a root Tenants gitlink that the Group Q delta falsifies.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13 Group Q)
+location: _bmad-output/implementation-artifacts/spec-4-7-tenants-query-provenance-follow-up.md:91
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: low
+reason: The line reads "Validation resumed on 2026-09-10 at EventStore `293c69c4…` and published Tenants `2fac18396ff11a4459de053b3ebb7ddfe7c13e30`; the root gitlink selects that exact Tenants SHA." The Tenants bump in `dfc0ac55` moves that gitlink to `ff43dc941b01d4a68070f92dde0536f5ab1ef4df`, so the present-tense claim is now false in a story recorded `done`. The fix edits another story's spec, which this review does not do unilaterally; record it so the next Tenants-provenance pass or the 4.7 record owner can restate it as an as-of-date observation.
+status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-2-payload-protection-contracts-and-golden-vectors.md`
+  summary: Existing typed unreadable outcome record formatting can expose the sensitive-by-default metadata key alias when callers log the whole outcome.
+  evidence: `PayloadUnprotectionOutcome` and `SnapshotUnprotectionOutcome` predate Story 8.2 and retain `EventStorePayloadProtectionMetadata`; none overrides generated record formatting, so its pre-existing `KeyAlias` can appear in `ToString()`. Story 8.2 must preserve those v1 contracts, so a bounded diagnostic-format change belongs to a separately authorized compatibility change.
