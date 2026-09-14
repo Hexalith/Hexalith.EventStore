@@ -829,7 +829,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        return material;
+        return material!;
     }
 
     private static void ValidateMaterial(PayloadProtectionMaterial material)
@@ -848,10 +848,18 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     {
         int encodedLength = Encoding.ASCII.GetByteCount(encodedEnvelope);
         byte[] result = new byte[checked(WrapperPrefix.Length + encodedLength + WrapperSuffix.Length)];
-        WrapperPrefix.CopyTo(result);
-        Encoding.ASCII.GetBytes(encodedEnvelope, result.AsSpan(WrapperPrefix.Length, encodedLength));
-        WrapperSuffix.CopyTo(result.AsSpan(WrapperPrefix.Length + encodedLength));
-        return result;
+        try
+        {
+            WrapperPrefix.CopyTo(result);
+            Encoding.ASCII.GetBytes(encodedEnvelope, result.AsSpan(WrapperPrefix.Length, encodedLength));
+            WrapperSuffix.CopyTo(result.AsSpan(WrapperPrefix.Length + encodedLength));
+            return result;
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(result);
+            throw;
+        }
     }
 
     private void ClearWrappers(IReadOnlyList<ProtectedWrapper> wrappers)
