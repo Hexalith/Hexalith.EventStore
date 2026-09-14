@@ -170,7 +170,8 @@ public sealed class JsonTransformTests {
         protectedResult.ProtectedPathCount.ShouldBe(expectedProtected);
         Encoding.UTF8.GetBytes("{\"value\":" + value + "}").ShouldBe(original);
         if (expectedProtected == 0) {
-            protectedResult.PayloadBytes.ShouldBeSameAs(original);
+            protectedResult.PayloadBytes.ShouldNotBeSameAs(original);
+            protectedResult.PayloadBytes.ShouldBe(original);
             return;
         }
 

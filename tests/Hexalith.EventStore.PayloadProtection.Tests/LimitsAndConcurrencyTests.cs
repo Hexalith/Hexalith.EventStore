@@ -27,7 +27,8 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output) {
                 materialCalls++;
                 return TestFixture.Material();
             });
-        result.PayloadBytes.ShouldBeSameAs(original);
+        result.PayloadBytes.ShouldNotBeSameAs(original);
+        result.PayloadBytes.ShouldBe(original);
         result.ProtectedPathCount.ShouldBe(0);
         result.SerializationFormat.ShouldBe("json");
         materialCalls.ShouldBe(0);
@@ -229,7 +230,7 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output) {
             maximumProtectedValueBytes: writeMaximum));
         overWritePayload.ShouldBe(originalOverWritePayload);
         materialCalls.ShouldBe(0);
-        observer.Observed.ShouldBe([SensitiveBufferKind.SelectedPlaintext]);
+        observer.Observed.ShouldBe([SensitiveBufferKind.InputSnapshot]);
 
         byte[] oversizedEnvelope = new byte[82 + PayloadProtectionLimits.CiphertextBytes + 1];
         Convert.FromHexString(TestFixture.EnvelopeHex).AsSpan(0, 66).CopyTo(oversizedEnvelope);
@@ -323,7 +324,7 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output) {
 
         protectedResult.PayloadBytes.ShouldBe(original);
         resolvedDek.ShouldAllBe(static value => value == 0);
-        observer.Observed.Count(static kind => kind == SensitiveBufferKind.DecryptedPlaintext).ShouldBe(1);
+        observer.Observed.Count(static kind => kind == SensitiveBufferKind.DecryptedPlaintext).ShouldBe(2);
         observer.Observed.Count(static kind => kind == SensitiveBufferKind.DataEncryptionKey).ShouldBe(1);
     }
 
@@ -336,7 +337,8 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output) {
         exactPayload.AsSpan(10).Fill((byte)' ');
         CoreProtectionResult passThrough = new PayloadProtectionCore().ProtectEvent(
             exactPayload, Array.Empty<string>(), TestFixture.Context(), TestFixture.Material);
-        passThrough.PayloadBytes.ShouldBeSameAs(exactPayload);
+        passThrough.PayloadBytes.ShouldNotBeSameAs(exactPayload);
+        passThrough.PayloadBytes.ShouldBe(exactPayload);
 
         byte[] oversizedPayload = [.. exactPayload, (byte)' '];
         Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectEvent(

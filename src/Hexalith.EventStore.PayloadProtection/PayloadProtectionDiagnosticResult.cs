@@ -3,7 +3,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>
 /// Defines safe low-cardinality operation results.
 /// </summary>
-internal enum PayloadProtectionDiagnosticResult {
+internal enum PayloadProtectionDiagnosticResult
+{
     /// <summary>The operation completed.</summary>
     Success = 1,
 
@@ -18,4 +19,13 @@ internal enum PayloadProtectionDiagnosticResult {
 
     /// <summary>The key source was unavailable.</summary>
     Unavailable = 5,
+
+    /// <summary>The requested key was missing.</summary>
+    MissingKey = 6,
+
+    /// <summary>The supplied key material or protected record was inconsistent.</summary>
+    ConsistencyMismatch = 7,
+
+    /// <summary>The cryptographic platform or operation failed safely.</summary>
+    CryptographicFailure = 8,
 }

@@ -1,14 +1,13 @@
 using System.Globalization;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>
 /// Implements the restricted RFC 6901 profile from normative section 7.2.
 /// </summary>
-internal static class JsonPointer {
+internal static class JsonPointer
+{
     /// <summary>
     /// Escapes one serialized JSON member name.
     /// </summary>
@@ -62,65 +61,10 @@ internal static class JsonPointer {
     }
 
     /// <summary>
-    /// Resolves a validated pointer in an immutable JSON tree.
+    /// Parses one canonical array index token.
     /// </summary>
-    internal static JsonElement Resolve(JsonElement root, string pointer, bool allowRoot = false) {
-        JsonElement current = root;
-        foreach (string segment in Decode(pointer, allowRoot)) {
-            if (current.ValueKind == JsonValueKind.Object) {
-                if (!current.TryGetProperty(segment, out current)) {
-                    throw new PayloadProtectionFormatException();
-                }
-            }
-            else if (current.ValueKind == JsonValueKind.Array) {
-                int index = ParseArrayIndex(segment);
-                if (index >= current.GetArrayLength()) {
-                    throw new PayloadProtectionFormatException();
-                }
-
-                current = current[index];
-            }
-            else {
-                throw new PayloadProtectionFormatException();
-            }
-        }
-
-        return current;
-    }
-
-    /// <summary>
-    /// Replaces a non-root location in a mutable JSON tree.
-    /// </summary>
-    internal static void Replace(JsonNode root, string pointer, JsonNode? replacement) {
-        IReadOnlyList<string> segments = Decode(pointer, allowRoot: false);
-        JsonNode? current = root;
-        for (int index = 0; index < segments.Count - 1; index++) {
-            current = current switch {
-                JsonObject jsonObject when jsonObject.TryGetPropertyValue(segments[index], out JsonNode? child) => child,
-                JsonArray jsonArray => jsonArray[ParseArrayIndex(segments[index])],
-                _ => throw new PayloadProtectionFormatException(),
-            };
-        }
-
-        string final = segments[^1];
-        switch (current) {
-            case JsonObject jsonObject when jsonObject.ContainsKey(final):
-                jsonObject[final] = replacement;
-                break;
-            case JsonArray jsonArray:
-                int arrayIndex = ParseArrayIndex(final);
-                if (arrayIndex >= jsonArray.Count) {
-                    throw new PayloadProtectionFormatException();
-                }
-
-                jsonArray[arrayIndex] = replacement;
-                break;
-            default:
-                throw new PayloadProtectionFormatException();
-        }
-    }
-
-    private static int ParseArrayIndex(string segment) {
+    internal static int ParseArrayIndex(string segment)
+    {
         if (segment.Length == 0
             || (segment.Length > 1 && segment[0] == '0')
             || !int.TryParse(segment, NumberStyles.None, CultureInfo.InvariantCulture, out int result)

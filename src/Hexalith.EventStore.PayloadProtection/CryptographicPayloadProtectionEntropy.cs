@@ -1,15 +1,47 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
-using Hexalith.Commons.UniqueIds;
 
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>
 /// Supplies production CSPRNG bytes and canonical ULID references for a single protection attempt.
 /// </summary>
-internal sealed class CryptographicPayloadProtectionEntropy : IPayloadProtectionEntropy {
-    /// <inheritdoc/>
-    public string CreateKeyReference() => UniqueIdHelper.GenerateSortableUniqueStringId();
+internal sealed class CryptographicPayloadProtectionEntropy : IPayloadProtectionEntropy
+{
+    private const string _alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
     /// <inheritdoc/>
-    public void FillDataEncryptionKey(Span<byte> destination) => RandomNumberGenerator.Fill(destination);
+    public string CreateKeyReference()
+    {
+        Span<byte> value = stackalloc byte[16];
+        Span<byte> timestampBytes = stackalloc byte[8];
+        long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        BinaryPrimitives.WriteUInt64BigEndian(timestampBytes, checked((ulong)timestamp));
+        timestampBytes[2..].CopyTo(value);
+        RandomNumberGenerator.Fill(value[6..]);
+
+        Span<char> encoded = stackalloc char[26];
+        for (int characterIndex = 0; characterIndex < encoded.Length; characterIndex++)
+        {
+            int symbol = 0;
+            for (int bitIndex = 0; bitIndex < 5; bitIndex++)
+            {
+                symbol <<= 1;
+                int sourceBit = (characterIndex * 5) + bitIndex - 2;
+                if (sourceBit >= 0)
+                {
+                    symbol |= (value[sourceBit / 8] >> (7 - (sourceBit & 7))) & 1;
+                }
+            }
+
+            encoded[characterIndex] = _alphabet[symbol];
+        }
+
+        CryptographicOperations.ZeroMemory(value);
+        return new string(encoded);
+    }
+
+    /// <inheritdoc/>
+    public void FillDataEncryptionKey(Span<byte> destination)
+        => RandomNumberGenerator.Fill(destination);
 }

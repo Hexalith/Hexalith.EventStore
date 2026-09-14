@@ -1,0 +1,111 @@
+using System.Buffers;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using System.Text.Json;
+
+namespace Hexalith.EventStore.PayloadProtection;
+
+/// <summary>
+/// Tracks one open JSON container and byte-oriented duplicate-member detection during parsing.
+/// </summary>
+internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind) : IDisposable
+{
+    private readonly Dictionary<ulong, List<byte[]>> _memberNames = [];
+    private int _pendingPropertyStart = -1;
+    private int _pendingPropertyLength;
+
+    /// <summary>Gets the indexed container node.</summary>
+    internal int NodeIndex { get; } = nodeIndex;
+
+    /// <summary>Gets the container kind.</summary>
+    internal JsonValueKind ValueKind { get; } = valueKind;
+
+    /// <summary>Gets or sets the next array element index.</summary>
+    internal int NextArrayIndex { get; set; }
+
+    /// <summary>
+    /// Records a property name after exact decoded-byte duplicate detection.
+    /// </summary>
+    internal void SetProperty(Utf8JsonReader reader, int tokenStart, int tokenLength)
+    {
+        if (ValueKind != JsonValueKind.Object || _pendingPropertyStart >= 0)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
+        int maximumLength = checked((int)reader.ValueSpan.Length);
+        byte[] rented = ArrayPool<byte>.Shared.Rent(Math.Max(1, maximumLength));
+        try
+        {
+            int length = reader.CopyString(rented);
+            Span<byte> digest = stackalloc byte[32];
+            SHA256.HashData(rented.AsSpan(0, length), digest);
+            ulong hash = BinaryPrimitives.ReadUInt64BigEndian(digest);
+            if (_memberNames.TryGetValue(hash, out List<byte[]>? collisions))
+            {
+                for (int index = 0; index < collisions.Count; index++)
+                {
+                    if (rented.AsSpan(0, length).SequenceEqual(collisions[index]))
+                    {
+                        throw new PayloadProtectionFormatException();
+                    }
+                }
+            }
+            else
+            {
+                collisions = [];
+                _memberNames.Add(hash, collisions);
+            }
+
+            collisions.Add(rented.AsSpan(0, length).ToArray());
+            _pendingPropertyStart = tokenStart;
+            _pendingPropertyLength = tokenLength;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(rented);
+            ArrayPool<byte>.Shared.Return(rented);
+        }
+    }
+
+    /// <summary>
+    /// Consumes the pending property token for the next object value.
+    /// </summary>
+    internal void ConsumeProperty(out int tokenStart, out int tokenLength)
+    {
+        if (ValueKind != JsonValueKind.Object || _pendingPropertyStart < 0)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+
+        tokenStart = _pendingPropertyStart;
+        tokenLength = _pendingPropertyLength;
+        _pendingPropertyStart = -1;
+        _pendingPropertyLength = 0;
+    }
+
+    /// <summary>
+    /// Verifies that an object does not end with a property missing its value.
+    /// </summary>
+    internal void ValidateComplete()
+    {
+        if (_pendingPropertyStart >= 0)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        foreach (List<byte[]> collisions in _memberNames.Values)
+        {
+            for (int index = 0; index < collisions.Count; index++)
+            {
+                CryptographicOperations.ZeroMemory(collisions[index]);
+            }
+        }
+
+        _memberNames.Clear();
+    }
+}

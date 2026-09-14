@@ -79,12 +79,6 @@ internal static class EnvelopeCodec {
         }
 
         int ciphertextBytes = checked((int)ciphertextLength);
-        Span<byte> expectedNonce = stackalloc byte[PayloadProtectionLimits.NonceBytes];
-        BinaryPrimitives.WriteUInt64BigEndian(expectedNonce[4..], ordinal);
-        if (!value.Slice(54, PayloadProtectionLimits.NonceBytes).SequenceEqual(expectedNonce)) {
-            throw new PayloadProtectionFormatException();
-        }
-
         return new PayloadProtectionEnvelope(
             keyReference,
             dekVersion,

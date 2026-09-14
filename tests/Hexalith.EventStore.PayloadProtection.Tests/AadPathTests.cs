@@ -315,12 +315,14 @@ public sealed class AadPathTests {
     [InlineData("/items/+1", false)]
     [Trait("Vector", "V033")]
     public void V033_ArrayIndices_UseCanonicalDecimal(string pointer, bool valid) {
-        using JsonDocument document = JsonDocument.Parse("{\"items\":[0,1,2,3,4,5,6,7,8,9,10]}");
+        using BoundedJsonDocument document = BoundedJsonDocument.Parse(
+            "{\"items\":[0,1,2,3,4,5,6,7,8,9,10]}"u8,
+            default);
         if (valid) {
-            _ = JsonPointer.Resolve(document.RootElement, pointer);
+            _ = document.Resolve(pointer);
         }
         else {
-            Should.Throw<PayloadProtectionFormatException>(() => JsonPointer.Resolve(document.RootElement, pointer));
+            Should.Throw<PayloadProtectionFormatException>(() => document.Resolve(pointer));
         }
     }
 
