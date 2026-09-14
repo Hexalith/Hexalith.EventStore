@@ -29,22 +29,32 @@ internal static class PayloadCryptography
         }
 
         EnsurePlatformSupport();
-        byte[] nonce = new byte[PayloadProtectionLimits.NonceBytes];
-        byte[] ciphertext = new byte[plaintext.Length];
-        byte[] tag = new byte[PayloadProtectionLimits.TagBytes];
+        byte[]? nonce = null;
+        byte[]? ciphertext = null;
+        byte[]? tag = null;
         try
         {
+            nonce = new byte[PayloadProtectionLimits.NonceBytes];
+            ciphertext = new byte[plaintext.Length];
+            tag = new byte[PayloadProtectionLimits.TagBytes];
             BinaryPrimitives.WriteUInt64BigEndian(nonce.AsSpan(4), fieldOrdinal);
             using var cipher = new AesGcm(dek, PayloadProtectionLimits.TagBytes);
             cipher.Encrypt(nonce, plaintext, ciphertext, tag, aad);
-            return new PayloadProtectionEnvelope(keyReference, dekVersion, fieldOrdinal, nonce, ciphertext, tag);
+            var envelope = new PayloadProtectionEnvelope(keyReference, dekVersion, fieldOrdinal, nonce, ciphertext, tag);
+            nonce = null;
+            ciphertext = null;
+            tag = null;
+            return envelope;
         }
         catch (CryptographicException)
         {
-            CryptographicOperations.ZeroMemory(nonce);
-            CryptographicOperations.ZeroMemory(ciphertext);
-            CryptographicOperations.ZeroMemory(tag);
             throw new PayloadProtectionCryptographicException();
+        }
+        finally
+        {
+            Clear(nonce);
+            Clear(ciphertext);
+            Clear(tag);
         }
     }
 
@@ -122,6 +132,14 @@ internal static class PayloadCryptography
         catch
         {
             // Buffer observation is best effort and cannot alter cleanup or failure classification.
+        }
+    }
+
+    private static void Clear(byte[]? buffer)
+    {
+        if (buffer is not null)
+        {
+            CryptographicOperations.ZeroMemory(buffer);
         }
     }
 }

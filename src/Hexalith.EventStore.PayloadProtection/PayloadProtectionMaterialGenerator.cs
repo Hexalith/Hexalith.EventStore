@@ -23,12 +23,15 @@ internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntro
             try
             {
                 entropy.FillDataEncryptionKey(dek);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!CanonicalUlid.IsValid(keyReference))
                 {
                     throw new PayloadProtectionFormatException();
                 }
 
-                if (isAvailable(keyReference))
+                bool available = isAvailable(keyReference);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (available)
                 {
                     return new PayloadProtectionMaterial(keyReference, 1, dek);
                 }
@@ -36,6 +39,7 @@ internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntro
             catch
             {
                 Clear(dek);
+                cancellationToken.ThrowIfCancellationRequested();
                 throw;
             }
 

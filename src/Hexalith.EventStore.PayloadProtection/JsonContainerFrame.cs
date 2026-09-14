@@ -13,6 +13,7 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
     private readonly Dictionary<ulong, List<byte[]>> _memberNames = [];
     private int _pendingPropertyStart = -1;
     private int _pendingPropertyLength;
+    private ulong _pendingPropertyHash;
 
     /// <summary>Gets the indexed container node.</summary>
     internal int NodeIndex { get; } = nodeIndex;
@@ -41,25 +42,38 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
             Span<byte> digest = stackalloc byte[32];
             SHA256.HashData(rented.AsSpan(0, length), digest);
             ulong hash = BinaryPrimitives.ReadUInt64BigEndian(digest);
-            if (_memberNames.TryGetValue(hash, out List<byte[]>? collisions))
-            {
-                for (int index = 0; index < collisions.Count; index++)
-                {
-                    if (rented.AsSpan(0, length).SequenceEqual(collisions[index]))
-                    {
-                        throw new PayloadProtectionFormatException();
-                    }
-                }
-            }
-            else
+            if (!_memberNames.TryGetValue(hash, out List<byte[]>? collisions))
             {
                 collisions = [];
                 _memberNames.Add(hash, collisions);
             }
 
-            collisions.Add(rented.AsSpan(0, length).ToArray());
+            for (int index = 0; index < collisions.Count; index++)
+            {
+                if (rented.AsSpan(0, length).SequenceEqual(collisions[index]))
+                {
+                    throw new PayloadProtectionFormatException();
+                }
+            }
+
+            _ = collisions.EnsureCapacity(checked(collisions.Count + 1));
+            byte[]? retainedName = rented.AsSpan(0, length).ToArray();
+            try
+            {
+                collisions.Add(retainedName);
+                retainedName = null;
+            }
+            finally
+            {
+                if (retainedName is not null)
+                {
+                    CryptographicOperations.ZeroMemory(retainedName);
+                }
+            }
+
             _pendingPropertyStart = tokenStart;
             _pendingPropertyLength = tokenLength;
+            _pendingPropertyHash = hash;
         }
         finally
         {
@@ -71,7 +85,7 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
     /// <summary>
     /// Consumes the pending property token for the next object value.
     /// </summary>
-    internal void ConsumeProperty(out int tokenStart, out int tokenLength)
+    internal void ConsumeProperty(out int tokenStart, out int tokenLength, out ulong propertyNameHash)
     {
         if (ValueKind != JsonValueKind.Object || _pendingPropertyStart < 0)
         {
@@ -80,8 +94,10 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
 
         tokenStart = _pendingPropertyStart;
         tokenLength = _pendingPropertyLength;
+        propertyNameHash = _pendingPropertyHash;
         _pendingPropertyStart = -1;
         _pendingPropertyLength = 0;
+        _pendingPropertyHash = 0;
     }
 
     /// <summary>

@@ -111,31 +111,46 @@ internal static class Base64UrlCodec
                 padded[index] = '=';
             }
 
-            byte[] decoded = new byte[decodedLength];
-            if (!Convert.TryFromBase64Chars(padded, decoded, out int bytesWritten)
-                || bytesWritten != decoded.Length)
+            byte[]? decoded = new byte[decodedLength];
+            try
             {
-                Array.Clear(decoded);
-                throw new PayloadProtectionFormatException();
-            }
-
-            string canonical = Encode(decoded);
-            if (canonical.Length != value.Length)
-            {
-                Array.Clear(decoded);
-                throw new PayloadProtectionFormatException();
-            }
-
-            for (int index = 0; index < value.Length; index++)
-            {
-                if (canonical[index] != value[index])
+                if (!Convert.TryFromBase64Chars(padded, decoded, out int bytesWritten)
+                    || bytesWritten != decoded.Length)
                 {
-                    Array.Clear(decoded);
                     throw new PayloadProtectionFormatException();
                 }
-            }
 
-            return decoded;
+                if (!Convert.TryToBase64Chars(decoded, padded, out int charactersWritten)
+                    || charactersWritten != padded.Length)
+                {
+                    throw new PayloadProtectionFormatException();
+                }
+
+                for (int index = 0; index < value.Length; index++)
+                {
+                    char canonical = padded[index] switch
+                    {
+                        '+' => '-',
+                        '/' => '_',
+                        _ => padded[index],
+                    };
+                    if (canonical != value[index])
+                    {
+                        throw new PayloadProtectionFormatException();
+                    }
+                }
+
+                byte[] result = decoded;
+                decoded = null;
+                return result;
+            }
+            finally
+            {
+                if (decoded is not null)
+                {
+                    Array.Clear(decoded);
+                }
+            }
         }
         finally
         {

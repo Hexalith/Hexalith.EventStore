@@ -14,6 +14,8 @@ internal sealed class BoundedJsonDocument : IDisposable
     private static readonly byte[] _protectedMemberName = "$pdenc"u8.ToArray();
     private readonly byte[] _utf8Json;
     private readonly List<BoundedJsonNode> _nodes;
+    private readonly Dictionary<BoundedJsonLookupKey, int> _children;
+    private readonly Dictionary<BoundedJsonLookupKey, List<int>> _hashCollisions;
     private readonly ISensitiveBufferObserver? _observer;
     private readonly SensitiveBufferKind _ownedBufferKind;
     private readonly bool _ownsBuffer;
@@ -22,14 +24,20 @@ internal sealed class BoundedJsonDocument : IDisposable
     private BoundedJsonDocument(
         byte[] utf8Json,
         List<BoundedJsonNode> nodes,
+        Dictionary<BoundedJsonLookupKey, int> children,
+        Dictionary<BoundedJsonLookupKey, List<int>> hashCollisions,
         bool containsProtectedMember,
+        int maximumDepth,
         bool ownsBuffer,
         ISensitiveBufferObserver? observer,
         SensitiveBufferKind ownedBufferKind)
     {
         _utf8Json = utf8Json;
         _nodes = nodes;
+        _children = children;
+        _hashCollisions = hashCollisions;
         ContainsProtectedMember = containsProtectedMember;
+        MaximumDepth = maximumDepth;
         _ownsBuffer = ownsBuffer;
         _observer = observer;
         _ownedBufferKind = ownedBufferKind;
@@ -38,11 +46,23 @@ internal sealed class BoundedJsonDocument : IDisposable
     /// <summary>Gets the number of scalar and container nodes, including the root.</summary>
     internal int NodeCount => _nodes.Count;
 
+    /// <summary>Gets the maximum zero-based node depth in the document.</summary>
+    internal int MaximumDepth { get; }
+
     /// <summary>Gets a value indicating whether any object contains the reserved <c>$pdenc</c> member.</summary>
     internal bool ContainsProtectedMember { get; }
 
     /// <summary>Gets the root JSON node.</summary>
     internal BoundedJsonNode Root => _nodes[0];
+
+    /// <summary>
+    /// Gets the zero-based structural depth of an indexed node.
+    /// </summary>
+    internal static int GetDepth(BoundedJsonNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node.Depth;
+    }
 
     /// <summary>
     /// Copies caller bytes once, then parses and validates only that stable snapshot.
@@ -70,7 +90,9 @@ internal sealed class BoundedJsonDocument : IDisposable
     internal static BoundedJsonDocument Inspect(
         byte[] stableUtf8Json,
         CancellationToken cancellationToken,
-        Action<int>? checkpoint = null)
+        Action<int>? checkpoint = null,
+        int maximumNodes = PayloadProtectionLimits.JsonNodes,
+        int maximumDepth = PayloadProtectionLimits.JsonDepth)
     {
         ArgumentNullException.ThrowIfNull(stableUtf8Json);
         return ParseCore(
@@ -79,33 +101,66 @@ internal sealed class BoundedJsonDocument : IDisposable
             cancellationToken,
             checkpoint,
             observer: null,
-            SensitiveBufferKind.InputSnapshot);
+            SensitiveBufferKind.InputSnapshot,
+            maximumNodes,
+            maximumDepth);
     }
 
     /// <summary>
     /// Resolves one validated canonical JSON pointer without decoding or retaining document member-name strings.
     /// </summary>
-    internal BoundedJsonNode Resolve(string pointer, bool allowRoot = false)
+    internal BoundedJsonNode Resolve(
+        string pointer,
+        bool allowRoot = false,
+        CancellationToken cancellationToken = default,
+        Action<int>? checkpoint = null)
     {
         IReadOnlyList<string> segments = JsonPointer.Decode(pointer, allowRoot);
         int currentIndex = 0;
+        int comparisons = 0;
+        Span<byte> digest = stackalloc byte[32];
         for (int segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
         {
+            CheckCancellation(ref comparisons, cancellationToken, checkpoint);
             BoundedJsonNode current = _nodes[currentIndex];
             if (current.ValueKind == JsonValueKind.Object)
             {
                 byte[] segment = CanonicalText.Encode(segments[segmentIndex], 0, PayloadProtectionLimits.PathBytes);
                 try
                 {
-                    int childIndex = current.FirstChildIndex;
-                    while (childIndex >= 0 && !PropertyNameEquals(_nodes[childIndex], segment))
-                    {
-                        childIndex = _nodes[childIndex].NextSiblingIndex;
-                    }
-
-                    if (childIndex < 0)
+                    SHA256.HashData(segment, digest);
+                    var key = new BoundedJsonLookupKey(
+                        currentIndex,
+                        IsArrayIndex: false,
+                        System.Buffers.Binary.BinaryPrimitives.ReadUInt64BigEndian(digest));
+                    if (!_children.TryGetValue(key, out int childIndex))
                     {
                         throw new PayloadProtectionFormatException();
+                    }
+
+                    CheckCancellation(ref comparisons, cancellationToken, checkpoint);
+                    if (!PropertyNameEquals(_nodes[childIndex], segment))
+                    {
+                        if (!_hashCollisions.TryGetValue(key, out List<int>? collisions))
+                        {
+                            throw new PayloadProtectionFormatException();
+                        }
+
+                        childIndex = -1;
+                        for (int index = 0; index < collisions.Count; index++)
+                        {
+                            CheckCancellation(ref comparisons, cancellationToken, checkpoint);
+                            if (PropertyNameEquals(_nodes[collisions[index]], segment))
+                            {
+                                childIndex = collisions[index];
+                                break;
+                            }
+                        }
+
+                        if (childIndex < 0)
+                        {
+                            throw new PayloadProtectionFormatException();
+                        }
                     }
 
                     currentIndex = childIndex;
@@ -118,13 +173,8 @@ internal sealed class BoundedJsonDocument : IDisposable
             else if (current.ValueKind == JsonValueKind.Array)
             {
                 int target = JsonPointer.ParseArrayIndex(segments[segmentIndex]);
-                int childIndex = current.FirstChildIndex;
-                while (childIndex >= 0 && _nodes[childIndex].ArrayIndex != target)
-                {
-                    childIndex = _nodes[childIndex].NextSiblingIndex;
-                }
-
-                if (childIndex < 0)
+                var key = new BoundedJsonLookupKey(currentIndex, IsArrayIndex: true, checked((ulong)target));
+                if (!_children.TryGetValue(key, out int childIndex))
                 {
                     throw new PayloadProtectionFormatException();
                 }
@@ -172,8 +222,17 @@ internal sealed class BoundedJsonDocument : IDisposable
     /// Enumerates exact wrapper objects and materializes only their bounded canonical paths.
     /// </summary>
     internal IReadOnlyList<ProtectedWrapper> ReadProtectedWrappers(CancellationToken cancellationToken)
+        => ReadProtectedWrappers(cancellationToken, checkpoint: null);
+
+    /// <summary>
+    /// Enumerates exact wrapper objects with a bounded cancellation checkpoint seam.
+    /// </summary>
+    internal IReadOnlyList<ProtectedWrapper> ReadProtectedWrappers(
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
     {
         var wrappers = new List<ProtectedWrapper>();
+        int examinedChildren = 0;
         try
         {
             for (int nodeIndex = 0; nodeIndex < _nodes.Count; nodeIndex++)
@@ -194,6 +253,7 @@ internal sealed class BoundedJsonDocument : IDisposable
                 int protectedChildIndex = -1;
                 while (childIndex >= 0)
                 {
+                    CheckCancellation(ref examinedChildren, cancellationToken, checkpoint);
                     childCount++;
                     if (PropertyNameEquals(_nodes[childIndex], _protectedMemberName))
                     {
@@ -223,16 +283,29 @@ internal sealed class BoundedJsonDocument : IDisposable
                     throw new PayloadProtectionFormatException();
                 }
 
+                _ = wrappers.EnsureCapacity(checked(wrappers.Count + 1));
                 ReadOnlySpan<byte> encodedEnvelope = _utf8Json.AsSpan(protectedChild.Start + 1, protectedChild.Length - 2);
                 byte[] envelopeBytes = Base64UrlCodec.Decode(encodedEnvelope);
+                PayloadProtectionEnvelope? envelope = null;
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    envelope = EnvelopeCodec.Read(envelopeBytes);
+                    cancellationToken.ThrowIfCancellationRequested();
                     string path = MaterializePath(nodeIndex);
-                    wrappers.Add(new ProtectedWrapper(path, EnvelopeCodec.Read(envelopeBytes), node.Start, node.Length));
+                    var wrapper = new ProtectedWrapper(path, envelope, node.Start, node.Length);
+                    wrappers.Add(wrapper);
+                    envelope = null;
                 }
                 finally
                 {
                     Clear(envelopeBytes, SensitiveBufferKind.ProtectedOutput, _observer);
+                    if (envelope is not null)
+                    {
+                        Clear(envelope.Nonce, SensitiveBufferKind.ProtectedOutput, _observer);
+                        Clear(envelope.Ciphertext, SensitiveBufferKind.ProtectedOutput, _observer);
+                        Clear(envelope.Tag, SensitiveBufferKind.ProtectedOutput, _observer);
+                    }
                 }
             }
 
@@ -336,32 +409,34 @@ internal sealed class BoundedJsonDocument : IDisposable
         CancellationToken cancellationToken,
         Action<int>? checkpoint,
         ISensitiveBufferObserver? observer,
-        SensitiveBufferKind ownedBufferKind)
+        SensitiveBufferKind ownedBufferKind,
+        int maximumNodes = PayloadProtectionLimits.JsonNodes,
+        int maximumDepth = PayloadProtectionLimits.JsonDepth)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (utf8Json.Length > PayloadProtectionLimits.PayloadBytes)
-        {
-            if (ownsBuffer)
-            {
-                Clear(utf8Json, ownedBufferKind, observer);
-            }
-
-            throw new PayloadProtectionFormatException();
-        }
-
-        var nodes = new List<BoundedJsonNode>();
-        var containers = new Stack<JsonContainerFrame>();
+        List<BoundedJsonNode>? nodes = null;
+        Stack<JsonContainerFrame>? containers = null;
         bool containsProtectedMember = false;
+        int observedMaximumDepth = 0;
         bool success = false;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (utf8Json.Length > PayloadProtectionLimits.PayloadBytes
+                || maximumNodes is < 1 or > PayloadProtectionLimits.JsonNodes
+                || maximumDepth is < 1 or > PayloadProtectionLimits.JsonDepth)
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
+            nodes = [];
+            containers = [];
             var reader = new Utf8JsonReader(
                 utf8Json,
                 new JsonReaderOptions
                 {
                     AllowTrailingCommas = false,
                     CommentHandling = JsonCommentHandling.Disallow,
-                    MaxDepth = PayloadProtectionLimits.JsonDepth,
+                    MaxDepth = maximumDepth,
                 });
 
             while (reader.Read())
@@ -387,7 +462,14 @@ internal sealed class BoundedJsonDocument : IDisposable
                     case JsonTokenType.True:
                     case JsonTokenType.False:
                     case JsonTokenType.Null:
-                        int nodeIndex = AddNode(reader, nodes, containers, cancellationToken, checkpoint);
+                        int nodeIndex = AddNode(
+                            reader,
+                            nodes,
+                            containers,
+                            cancellationToken,
+                            checkpoint,
+                            maximumNodes);
+                        observedMaximumDepth = Math.Max(observedMaximumDepth, nodes[nodeIndex].Depth);
                         if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray)
                         {
                             containers.Push(new JsonContainerFrame(
@@ -434,14 +516,25 @@ internal sealed class BoundedJsonDocument : IDisposable
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            success = true;
-            return new BoundedJsonDocument(
+            CreateLookups(
+                nodes,
+                cancellationToken,
+                checkpoint,
+                out Dictionary<BoundedJsonLookupKey, int> children,
+                out Dictionary<BoundedJsonLookupKey, List<int>> hashCollisions);
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = new BoundedJsonDocument(
                 utf8Json,
                 nodes,
+                children,
+                hashCollisions,
                 containsProtectedMember,
+                observedMaximumDepth,
                 ownsBuffer,
                 observer,
                 ownedBufferKind);
+            success = true;
+            return result;
         }
         catch (OperationCanceledException)
         {
@@ -457,7 +550,7 @@ internal sealed class BoundedJsonDocument : IDisposable
         }
         finally
         {
-            while (containers.Count > 0)
+            while (containers is not null && containers.Count > 0)
             {
                 containers.Pop().Dispose();
             }
@@ -474,7 +567,8 @@ internal sealed class BoundedJsonDocument : IDisposable
         List<BoundedJsonNode> nodes,
         Stack<JsonContainerFrame> containers,
         CancellationToken cancellationToken,
-        Action<int>? checkpoint)
+        Action<int>? checkpoint,
+        int maximumNodes)
     {
         int count = checked(nodes.Count + 1);
         bool container = reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray;
@@ -484,7 +578,7 @@ internal sealed class BoundedJsonDocument : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        if (count > PayloadProtectionLimits.JsonNodes)
+        if (count > maximumNodes)
         {
             throw new PayloadProtectionFormatException();
         }
@@ -492,13 +586,14 @@ internal sealed class BoundedJsonDocument : IDisposable
         int parentIndex = containers.Count == 0 ? -1 : containers.Peek().NodeIndex;
         int propertyStart = -1;
         int propertyLength = 0;
+        ulong propertyNameHash = 0;
         int arrayIndex = -1;
         if (containers.Count > 0)
         {
             JsonContainerFrame parent = containers.Peek();
             if (parent.ValueKind == JsonValueKind.Object)
             {
-                parent.ConsumeProperty(out propertyStart, out propertyLength);
+                parent.ConsumeProperty(out propertyStart, out propertyLength, out propertyNameHash);
             }
             else
             {
@@ -526,7 +621,9 @@ internal sealed class BoundedJsonDocument : IDisposable
             parentIndex,
             propertyStart,
             propertyLength,
+            propertyNameHash,
             arrayIndex,
+            containers.Count,
             reader.TokenType == JsonTokenType.String && reader.ValueIsEscaped);
         int nodeIndex = nodes.Count;
         nodes.Add(node);
@@ -546,6 +643,48 @@ internal sealed class BoundedJsonDocument : IDisposable
         }
 
         return nodeIndex;
+    }
+
+    private static void CreateLookups(
+        List<BoundedJsonNode> nodes,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint,
+        out Dictionary<BoundedJsonLookupKey, int> children,
+        out Dictionary<BoundedJsonLookupKey, List<int>> hashCollisions)
+    {
+        children = new Dictionary<BoundedJsonLookupKey, int>(nodes.Count);
+        hashCollisions = [];
+        int examined = 0;
+        for (int nodeIndex = 0; nodeIndex < nodes.Count; nodeIndex++)
+        {
+            CheckCancellation(ref examined, cancellationToken, checkpoint);
+            BoundedJsonNode node = nodes[nodeIndex];
+            if (node.ParentIndex < 0)
+            {
+                continue;
+            }
+
+            var key = node.PropertyTokenStart >= 0
+                ? new BoundedJsonLookupKey(node.ParentIndex, IsArrayIndex: false, node.PropertyNameHash)
+                : new BoundedJsonLookupKey(node.ParentIndex, IsArrayIndex: true, checked((ulong)node.ArrayIndex));
+            if (children.TryAdd(key, nodeIndex))
+            {
+                continue;
+            }
+
+            if (key.IsArrayIndex)
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
+            if (!hashCollisions.TryGetValue(key, out List<int>? collisions))
+            {
+                collisions = [];
+                hashCollisions.Add(key, collisions);
+            }
+
+            collisions.Add(nodeIndex);
+        }
     }
 
     private string MaterializePath(int nodeIndex)
@@ -653,6 +792,19 @@ internal sealed class BoundedJsonDocument : IDisposable
         return reader.Read()
             && reader.TokenType == JsonTokenType.String
             && reader.ValueTextEquals(expected);
+    }
+
+    private static void CheckCancellation(
+        ref int examined,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
+    {
+        examined = checked(examined + 1);
+        if (examined == 1 || (examined & 255) == 0)
+        {
+            checkpoint?.Invoke(examined);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
     }
 
     private static void WritePathBytes(byte[] destination, ref int written, ReadOnlySpan<byte> value)

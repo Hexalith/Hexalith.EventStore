@@ -34,6 +34,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         PayloadProtectionMaterial? material = null;
+        ProtectedPathManifest? requestedManifest = null;
+        ProtectedPathManifest? manifest = null;
         List<(BoundedJsonNode Node, byte[] Plaintext)>? selectedValues = null;
         List<JsonReplacement>? replacements = null;
         byte[]? transformed = null;
@@ -46,7 +48,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             AadCodec.ValidateContext(context, PayloadProtectionPayloadKind.Event);
-            ProtectedPathManifest requestedManifest = ProtectedPathManifestCodec.Create(
+            requestedManifest = ProtectedPathManifestCodec.Create(
                 selectedPaths,
                 cancellationToken: cancellationToken,
                 allowEmpty: true);
@@ -62,9 +64,11 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             if (requestedManifest.Paths.Count == 0)
             {
-                byte[] passThrough = document.CopyPayload(cancellationToken);
+                transformed = document.CopyPayload(cancellationToken);
+                var result = new CoreProtectionResult(transformed, "json", 0);
+                transformed = null;
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
-                return new CoreProtectionResult(passThrough, "json", 0);
+                return result;
             }
 
             selectedValues = new List<(BoundedJsonNode Node, byte[] Plaintext)>(requestedManifest.Paths.Count);
@@ -74,7 +78,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 string path = requestedManifest.Paths[index];
-                BoundedJsonNode node = document.Resolve(path);
+                BoundedJsonNode node = document.Resolve(path, cancellationToken: cancellationToken);
                 if (node.ValueKind == JsonValueKind.Null)
                 {
                     continue;
@@ -98,16 +102,17 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             if (nonNullPaths.Count == 0)
             {
-                byte[] passThrough = document.CopyPayload(cancellationToken);
+                transformed = document.CopyPayload(cancellationToken);
+                var result = new CoreProtectionResult(transformed, "json", 0);
+                transformed = null;
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
-                return new CoreProtectionResult(passThrough, "json", 0);
+                return result;
             }
 
-            ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create(
+            manifest = ProtectedPathManifestCodec.Create(
                 nonNullPaths,
                 cancellationToken: cancellationToken);
             material = InvokeMaterialFactory(materialFactory, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
             ValidateMaterial(material);
             replacements = new List<JsonReplacement>(manifest.Paths.Count);
             for (int index = 0; index < manifest.Paths.Count; index++)
@@ -141,8 +146,20 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                         checked((uint)index));
                     envelopeBytes = EnvelopeCodec.Write(envelope);
                     string encodedEnvelope = Base64UrlCodec.Encode(envelopeBytes);
-                    byte[] wrapper = CreateWrapper(encodedEnvelope);
-                    replacements.Add(new JsonReplacement(node.Start, node.Length, wrapper));
+                    byte[]? wrapper = CreateWrapper(encodedEnvelope);
+                    try
+                    {
+                        var replacement = new JsonReplacement(node.Start, node.Length, wrapper);
+                        replacements.Add(replacement);
+                        wrapper = null;
+                    }
+                    finally
+                    {
+                        if (wrapper is not null)
+                        {
+                            Clear(wrapper, SensitiveBufferKind.ProtectedOutput);
+                        }
+                    }
                 }
                 finally
                 {
@@ -166,10 +183,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            byte[] transferred = transformed;
+            var protectionResult = new CoreProtectionResult(transformed, "json+pdenc-v2", manifest.Paths.Count);
             transformed = null;
             diagnosticResult = PayloadProtectionDiagnosticResult.Success;
-            return new CoreProtectionResult(transferred, "json+pdenc-v2", manifest.Paths.Count);
+            return protectionResult;
         }
         catch (OperationCanceledException)
         {
@@ -213,6 +230,9 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 Clear(material.DataEncryptionKey, SensitiveBufferKind.DataEncryptionKey);
             }
 
+            ClearManifest(manifest);
+            ClearManifest(requestedManifest);
+
             PayloadProtectionDiagnostics.Stop(activity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Protect,
@@ -238,6 +258,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Protect);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         PayloadProtectionMaterial? material = null;
+        ProtectedPathManifest? manifest = null;
         byte[]? plaintext = null;
         byte[]? envelopeBytes = null;
         PayloadProtectionEnvelope? envelope = null;
@@ -262,12 +283,11 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             plaintext = document.CopyPayload(cancellationToken);
-            ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create(
+            manifest = ProtectedPathManifestCodec.Create(
                 [string.Empty],
                 snapshot: true,
                 cancellationToken: cancellationToken);
             material = InvokeMaterialFactory(materialFactory, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
             ValidateMaterial(material);
             byte[] aad = AadCodec.Write(
                 context,
@@ -328,6 +348,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 Clear(material.DataEncryptionKey, SensitiveBufferKind.DataEncryptionKey);
             }
 
+            ClearManifest(manifest);
+
             PayloadProtectionDiagnostics.Stop(activity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Protect,
@@ -354,7 +376,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         byte[]? dek = null;
         byte[]? reconstructed = null;
         IReadOnlyList<ProtectedWrapper>? wrappers = null;
-        var plaintextBuffers = new List<byte[]>();
+        ProtectedPathManifest? manifest = null;
+        List<byte[]>? plaintextBuffers = null;
         int clearedPlaintextBuffers = 0;
         try
         {
@@ -377,7 +400,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 wrapperPaths[index] = wrappers[index].Path;
             }
 
-            ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create(
+            manifest = ProtectedPathManifestCodec.Create(
                 wrapperPaths,
                 cancellationToken: cancellationToken);
             ProtectedWrapper? first = null;
@@ -391,6 +414,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             var orderedWrappers = new ProtectedWrapper[wrappers.Count];
+            long totalCiphertext = 0;
+            long prospectiveOutputBytes = protectedPayloadBytes.Length;
             for (int index = 0; index < manifest.Paths.Count; index++)
             {
                 if (!wrappersByPath.TryGetValue(manifest.Paths[index], out ProtectedWrapper? wrapper))
@@ -414,8 +439,17 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     wrapper.Envelope.DekVersion,
                     wrapper.Envelope.FieldOrdinal,
                     manifest.Commitment);
+                totalCiphertext = checked(totalCiphertext + wrapper.Envelope.Ciphertext.Length);
+                prospectiveOutputBytes = checked(
+                    prospectiveOutputBytes - wrapper.Length + wrapper.Envelope.Ciphertext.Length);
+                if (totalCiphertext > PayloadProtectionLimits.SelectedPlaintextBytes
+                    || prospectiveOutputBytes > PayloadProtectionLimits.PayloadBytes)
+                {
+                    return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch);
+                }
             }
 
+            plaintextBuffers = new List<byte[]>(orderedWrappers.Length);
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
@@ -430,11 +464,13 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
             catch (OperationCanceledException)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 diagnosticResult = PayloadProtectionDiagnosticResult.Unavailable;
                 return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
             }
             catch
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 diagnosticResult = PayloadProtectionDiagnosticResult.Unavailable;
                 return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
             }
@@ -453,7 +489,12 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             var replacements = new List<JsonReplacement>(orderedWrappers.Length);
-            long totalPlaintext = 0;
+            int prospectiveNodeCount = checked(document.NodeCount - (orderedWrappers.Length * 2));
+            if (prospectiveNodeCount < 1)
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
             for (int index = 0; index < orderedWrappers.Length; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -481,18 +522,28 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     throw new PayloadProtectionFormatException();
                 }
 
-                totalPlaintext = checked(totalPlaintext + plaintext.Length);
-                if (totalPlaintext > PayloadProtectionLimits.SelectedPlaintextBytes)
+                int remainingNodes = checked(PayloadProtectionLimits.JsonNodes - prospectiveNodeCount);
+                int wrapperDepth = BoundedJsonDocument.GetDepth(document.Resolve(wrapper.Path, cancellationToken: cancellationToken));
+                int remainingDepth = checked(PayloadProtectionLimits.JsonDepth - wrapperDepth);
+                if (remainingNodes < 1 || remainingDepth < 0)
                 {
                     throw new PayloadProtectionFormatException();
                 }
 
-                using (BoundedJsonDocument plaintextDocument = BoundedJsonDocument.Inspect(plaintext, cancellationToken))
+                using (BoundedJsonDocument plaintextDocument = BoundedJsonDocument.Inspect(
+                    plaintext,
+                    cancellationToken,
+                    maximumNodes: remainingNodes,
+                    maximumDepth: Math.Max(1, remainingDepth)))
                 {
-                    if (plaintextDocument.ContainsProtectedMember)
+                    if (plaintextDocument.Root.ValueKind == JsonValueKind.Null
+                        || plaintextDocument.ContainsProtectedMember
+                        || wrapperDepth + plaintextDocument.MaximumDepth > PayloadProtectionLimits.JsonDepth)
                     {
                         throw new PayloadProtectionFormatException();
                     }
+
+                    prospectiveNodeCount = checked(prospectiveNodeCount + plaintextDocument.NodeCount);
                 }
 
                 replacements.Add(new JsonReplacement(wrapper.Start, wrapper.Length, plaintext));
@@ -516,10 +567,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            byte[] transferred = reconstructed;
+            CoreUnprotectionResult result = CoreUnprotectionResult.Readable(reconstructed);
             reconstructed = null;
             diagnosticResult = PayloadProtectionDiagnosticResult.Success;
-            return CoreUnprotectionResult.Readable(transferred);
+            return result;
         }
         catch (OperationCanceledException)
         {
@@ -547,7 +598,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 Clear(reconstructed, SensitiveBufferKind.AbandonedOutput);
             }
 
-            for (int index = clearedPlaintextBuffers; index < plaintextBuffers.Count; index++)
+            for (int index = clearedPlaintextBuffers; plaintextBuffers is not null && index < plaintextBuffers.Count; index++)
             {
                 Clear(plaintextBuffers[index], SensitiveBufferKind.DecryptedPlaintext);
             }
@@ -561,6 +612,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 ClearWrappers(wrappers);
             }
+
+            ClearManifest(manifest);
 
             PayloadProtectionDiagnostics.Stop(activity);
             PayloadProtectionDiagnostics.Record(
@@ -589,6 +642,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         byte[]? plaintext = null;
         byte[]? output = null;
         PayloadProtectionEnvelope? envelope = null;
+        ProtectedPathManifest? manifest = null;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -604,7 +658,9 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             byte[] envelopeBytes = Base64UrlCodec.Decode(protectedSnapshot.Envelope);
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 envelope = EnvelopeCodec.Read(envelopeBytes);
+                cancellationToken.ThrowIfCancellationRequested();
             }
             finally
             {
@@ -616,7 +672,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch);
             }
 
-            ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create(
+            manifest = ProtectedPathManifestCodec.Create(
                 [string.Empty],
                 snapshot: true,
                 cancellationToken: cancellationToken);
@@ -638,11 +694,13 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
             catch (OperationCanceledException)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 diagnosticResult = PayloadProtectionDiagnosticResult.Unavailable;
                 return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
             }
             catch
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 diagnosticResult = PayloadProtectionDiagnosticResult.Unavailable;
                 return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
             }
@@ -686,10 +744,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             output = plaintext.ToArray();
             cancellationToken.ThrowIfCancellationRequested();
-            byte[] transferred = output;
+            CoreUnprotectionResult result = CoreUnprotectionResult.Readable(output);
             output = null;
             diagnosticResult = PayloadProtectionDiagnosticResult.Success;
-            return CoreUnprotectionResult.Readable(transferred);
+            return result;
         }
         catch (OperationCanceledException)
         {
@@ -732,6 +790,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 ClearEnvelope(envelope);
             }
 
+            ClearManifest(manifest);
+
             PayloadProtectionDiagnostics.Stop(activity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Unprotect,
@@ -740,11 +800,11 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         }
     }
 
-    private static PayloadProtectionMaterial InvokeMaterialFactory(
+    private PayloadProtectionMaterial InvokeMaterialFactory(
         Func<PayloadProtectionMaterial> materialFactory,
         CancellationToken cancellationToken)
     {
-        PayloadProtectionMaterial material;
+        PayloadProtectionMaterial? material = null;
         try
         {
             material = materialFactory();
@@ -755,7 +815,18 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         }
         catch
         {
+            cancellationToken.ThrowIfCancellationRequested();
             throw new PayloadProtectionCryptographicException();
+        }
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            if (material?.DataEncryptionKey is not null)
+            {
+                Clear(material.DataEncryptionKey, SensitiveBufferKind.DataEncryptionKey);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         return material;
@@ -789,6 +860,17 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         {
             ClearEnvelope(wrappers[index].Envelope);
         }
+    }
+
+    private void ClearManifest(ProtectedPathManifest? manifest)
+    {
+        if (manifest is null)
+        {
+            return;
+        }
+
+        Clear(manifest.Encoded, SensitiveBufferKind.AuthenticatedData);
+        Clear(manifest.Commitment, SensitiveBufferKind.AuthenticatedData);
     }
 
     private void ClearEnvelope(PayloadProtectionEnvelope envelope)

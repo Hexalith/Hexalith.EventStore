@@ -106,16 +106,23 @@ internal static class AadCodec
             dekVersion,
             fieldOrdinal,
             manifestCommitment);
-        byte[] tenant = CanonicalText.Encode(context.Identity.TenantId, 1, 256);
-        byte[] domain = CanonicalText.Encode(context.Identity.Domain, 1, 128);
-        byte[] aggregate = CanonicalText.Encode(context.Identity.AggregateId, 1, 256);
-        bool snapshot = context.PayloadKind == PayloadProtectionPayloadKind.Snapshot;
-        byte[] payloadType = CanonicalText.Encode(context.PayloadTypeId, snapshot ? 16 : 1, snapshot ? 128 : 1024);
-        byte[] path = CanonicalText.Encode(propertyPath, snapshot ? 0 : 1, PayloadProtectionLimits.PathBytes);
-        byte[] key = CanonicalText.Encode(keyReference, 26, 26);
-        byte[] result = new byte[totalLength];
+        byte[]? tenant = null;
+        byte[]? domain = null;
+        byte[]? aggregate = null;
+        byte[]? payloadType = null;
+        byte[]? path = null;
+        byte[]? key = null;
+        byte[]? result = null;
         try
         {
+            tenant = CanonicalText.Encode(context.Identity.TenantId, 1, 256);
+            domain = CanonicalText.Encode(context.Identity.Domain, 1, 128);
+            aggregate = CanonicalText.Encode(context.Identity.AggregateId, 1, 256);
+            bool snapshot = context.PayloadKind == PayloadProtectionPayloadKind.Snapshot;
+            payloadType = CanonicalText.Encode(context.PayloadTypeId, snapshot ? 16 : 1, snapshot ? 128 : 1024);
+            path = CanonicalText.Encode(propertyPath, snapshot ? 0 : 1, PayloadProtectionLimits.PathBytes);
+            key = CanonicalText.Encode(keyReference, 26, 26);
+            result = new byte[totalLength];
             "HXAD"u8.CopyTo(result);
             result[4] = 1;
             result[5] = (byte)context.PayloadKind;
@@ -143,21 +150,19 @@ internal static class AadCodec
                 throw new PayloadProtectionFormatException();
             }
 
-            return result;
-        }
-        catch
-        {
-            CryptographicOperations.ZeroMemory(result);
-            throw;
+            byte[] transferred = result;
+            result = null;
+            return transferred;
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(tenant);
-            CryptographicOperations.ZeroMemory(domain);
-            CryptographicOperations.ZeroMemory(aggregate);
-            CryptographicOperations.ZeroMemory(payloadType);
-            CryptographicOperations.ZeroMemory(path);
-            CryptographicOperations.ZeroMemory(key);
+            Clear(tenant);
+            Clear(domain);
+            Clear(aggregate);
+            Clear(payloadType);
+            Clear(path);
+            Clear(key);
+            Clear(result);
         }
     }
 
@@ -201,6 +206,14 @@ internal static class AadCodec
             {
                 throw new PayloadProtectionFormatException();
             }
+        }
+    }
+
+    private static void Clear(byte[]? buffer)
+    {
+        if (buffer is not null)
+        {
+            CryptographicOperations.ZeroMemory(buffer);
         }
     }
 }
