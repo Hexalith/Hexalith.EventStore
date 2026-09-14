@@ -2,7 +2,8 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -45,11 +46,11 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/implementation-artifacts/evidence/story-8-3/` -- bind clean HEAD, authority/8.2 hashes, Contracts API, 14-package baseline, NIST recheck, and inventory; halt on drift.
-- [ ] `src/Hexalith.EventStore.PayloadProtection/` -- create the Contracts-only, `IsPackable=false` project and one documented type per file for strict envelope/base64url, AAD/manifest/RFC6901, JSON transformation, AES-GCM, bounds/cancellation, safe diagnostics, and buffer ownership; cite the digest and normative sections in material files.
-- [ ] `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- create a runnable xUnit v3/Shouldly project with internal access, linked fixtures, deterministic test-only seams, and a separate execution manifest.
+- [x] `_bmad-output/implementation-artifacts/evidence/story-8-3/` -- bind clean HEAD, authority/8.2 hashes, Contracts API, 14-package baseline, NIST recheck, and inventory; halt on drift.
+- [x] `src/Hexalith.EventStore.PayloadProtection/` -- create the Contracts-only, `IsPackable=false` project and one documented type per file for strict envelope/base64url, AAD/manifest/RFC6901, JSON transformation, AES-GCM, bounds/cancellation, safe diagnostics, and buffer ownership; cite the digest and normative sections in material files.
+- [x] `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- create a runnable xUnit v3/Shouldly project with internal access, linked fixtures, deterministic test-only seams, and a separate execution manifest.
 - [ ] `tests/Hexalith.EventStore.PayloadProtection.Tests/{Envelope,AadPath,Cryptography,JsonTransform,LimitsAndConcurrency,Diagnostics}Tests.cs` -- execute inherited V001-V003 and owned V004-V048/V135-V136/V138, including every named mutation, exact/max+1 boundary, cancellation checkpoint, zeroing/no-leak assertion, and bounded hostile-load observation.
-- [ ] `_bmad-output/implementation-artifacts/8-3-pdenc-v2-core-cryptographic-engine.md` -- bind hashes, commands, counts, limitations, and review state; authorize only 8.4/8.5 after exact approval.
+- [x] `_bmad-output/implementation-artifacts/8-3-pdenc-v2-core-cryptographic-engine.md` -- bind hashes, commands, counts, limitations, and review state; authorize only 8.4/8.5 after exact approval.
 
 **Acceptance Criteria:**
 - Given activation, when preflight runs, then every authorized digest/hash matches current bytes and any mismatch blocks source work.
@@ -59,9 +60,38 @@ context:
 
 ## Implementation Notes
 
+- Preflight reproduced packet `AR-20260914-01`, normative digest
+  `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`,
+  every Story 8.2 source/fixture/verifier identity, and the 14-package release
+  baseline before source work.
+- The core requests cryptographic material through a delayed factory only after
+  complete local path/budget validation and at least one non-null selection.
+  This makes V041/V045 zero-material-call behavior directly observable without
+  implementing Story 8.5 lifecycle storage.
+- The six required test areas contain 51 unique vector traits and execute 137
+  passing cases after the Step-3 exact-coverage audit. The task remains
+  unchecked because V030's literal total-byte case is mathematically
+  unreachable under its frozen field bounds, while the policy-specific parts
+  of V038/V039 belong to Story 8.5. Exact covered cases, registry conflicts,
+  and remaining unconstructible sources are recorded in
+  `evidence/story-8-3/verification.md`.
+
 ## Spec Change Log
 
+- 2026-09-14: Added the bounded provider-neutral core, focused vector suite,
+  preflight/verification evidence, and completion artifact. Frozen intent and
+  the authority, Contracts, fixture/verifier, solution, and release-manifest
+  bytes remain unchanged.
+- 2026-09-14: Closed the safely constructible Step-3 audit gaps with exact
+  carrier/header, AAD/manifest, lookup-before-authentication, ordering,
+  collision, limit, atomic-exit/clearing, and diagnostic assertions. Retained
+  `in-progress` and the unchecked vector task because V030 and the Story
+  8.5-owned policy cases remain unresolved without changing frozen ownership.
+
 ## Review Triage Log
+
+- Independent review not yet run. Frozen V030 requires review/renegotiation or
+  explicit acceptance before the remaining test task and Story 8.3 can close.
 
 ## Design Notes
 
@@ -76,3 +106,10 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
+
+**Observed results (2026-09-14):** both independent V001-V003 verifiers passed;
+focused Release tests passed 137/137 with no skips; code-style verification and
+the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
+solution Release build, and `git diff --check` passed; release packing plus both
+validators produced exactly 14 archives. Stories 8.4/8.5 remain unauthorized
+pending independent review and exact approval.

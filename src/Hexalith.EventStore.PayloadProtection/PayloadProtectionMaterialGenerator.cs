@@ -1,0 +1,45 @@
+using System.Security.Cryptography;
+
+namespace Hexalith.EventStore.PayloadProtection;
+
+/// <summary>
+/// Generates wholly fresh material after each observable key-reference collision (normative section 8.2, V046-V048).
+/// </summary>
+internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntropy entropy, ISensitiveBufferObserver? observer = null) {
+    private const int _maximumAttempts = 16;
+
+    /// <summary>
+    /// Generates material whose reference is accepted by a local/durable collision predicate.
+    /// </summary>
+    internal PayloadProtectionMaterial Generate(Func<string, bool> isAvailable, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(isAvailable);
+        for (int attempt = 0; attempt < _maximumAttempts; attempt++) {
+            cancellationToken.ThrowIfCancellationRequested();
+            string keyReference = entropy.CreateKeyReference();
+            byte[] dek = new byte[32];
+            try {
+                entropy.FillDataEncryptionKey(dek);
+                if (!CanonicalUlid.IsValid(keyReference)) {
+                    throw new PayloadProtectionFormatException();
+                }
+
+                if (isAvailable(keyReference)) {
+                    return new PayloadProtectionMaterial(keyReference, 1, dek);
+                }
+            }
+            catch {
+                Clear(dek);
+                throw;
+            }
+
+            Clear(dek);
+        }
+
+        throw new PayloadProtectionFormatException();
+    }
+
+    private void Clear(byte[] buffer) {
+        CryptographicOperations.ZeroMemory(buffer);
+        observer?.BufferCleared(SensitiveBufferKind.DataEncryptionKey, buffer);
+    }
+}

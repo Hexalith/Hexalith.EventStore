@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.PayloadProtection\Hexalith.EventStore.PayloadProtection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Shouldly" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Hexalith.EventStore.Contracts.Tests\Security\Fixtures\PayloadProtectionV2\*.json"
+          Link="Fixtures\PayloadProtectionV2\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\vector-execution.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

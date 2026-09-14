@@ -1,0 +1,12 @@
+namespace Hexalith.EventStore.PayloadProtection;
+
+/// <summary>
+/// Carries fresh per-payload cryptographic material transferred to the core for one invocation.
+/// </summary>
+/// <param name="KeyReference">The fresh canonical key reference.</param>
+/// <param name="DekVersion">The positive DEK version.</param>
+/// <param name="DataEncryptionKey">The mutable 32-byte DEK whose ownership transfers to the core.</param>
+internal sealed record PayloadProtectionMaterial(
+    string KeyReference,
+    uint DekVersion,
+    byte[] DataEncryptionKey);
