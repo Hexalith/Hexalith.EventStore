@@ -135,6 +135,7 @@ internal static class PayloadCryptography
     internal static bool HasExpectedNonce(PayloadProtectionEnvelope envelope)
     {
         Span<byte> expectedNonce = stackalloc byte[PayloadProtectionLimits.NonceBytes];
+        expectedNonce.Clear();
         BinaryPrimitives.WriteUInt64BigEndian(expectedNonce[4..], envelope.FieldOrdinal);
         return envelope.Nonce.AsSpan().SequenceEqual(expectedNonce);
     }

@@ -65,7 +65,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
 - `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 201-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
+- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 217-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
@@ -94,7 +94,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   complete local path/budget validation and at least one non-null selection.
   This makes V041/V045 zero-material-call behavior directly observable without
   implementing Story 8.5 lifecycle storage.
-- The six required test areas contain 51 unique vector traits and execute 201
+- The six required test areas contain 51 unique vector traits and execute 217
   passing cases after the review-loop re-derivation audit. Approval packet
   `AR-20260914-02` accepts the evidence-backed constructible interpretations
   for V008/V016/V023/V030/V038/V039 without weakening bounds or importing
@@ -199,10 +199,16 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   cleanup and configured limits, caller isolation, malformed wire keys,
   authenticated residual markers, reconstruction bounds, and resolver
   isolation. The complete focused gate now passes 201/201 with no skips.
+- 2026-09-14: Closed the final review findings for canonical nonce validation,
+  path-decoding and disposal cancellation, exact wrapper/raw-token behavior,
+  frozen vector ownership, exact writer/reader maxima, invalid-material
+  cleanup, and snapshot callback isolation. The complete focused gate passes
+  217/217 with no skips, and all release, analyzer, style, preservation, and
+  packaging checks pass.
 
 ## Review Triage Log
 
-- Five independent review batches were triaged below. All surviving Story 8.3
+- Six independent review batches were triaged below. All surviving Story 8.3
   findings were patched and independently verified; rejected findings retain
   their evidence, and the externally authored FrontComposer gitlink remains
   out of scope. Requirement renegotiation and human approval are recorded in
@@ -387,6 +393,34 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC5-03 | high | patch | carried within this iteration's BH5-01 root cause: escaped reserved names accompanying a valid wrapper reach lookup before rejection. |
 | EC5-04 | medium | patch | A process-wide meter listener can capture concurrent valid results not in the test's limited set, causing nondeterministic failures; isolate diagnostics tests from parallel execution. |
 | EC5-05 | medium | defer | carried: the FrontComposer gitlink is the same already-logged externally authored out-of-scope history and is not patched or deferred again. |
+| BH6-01 | false | reject | `PayloadProtectionMaterial` explicitly transfers fresh, one-invocation material to the core, while durable reuse detection/reservation belongs to Story 8.5; the claimed reuse requires an internal caller to violate that seam contract. |
+| BH6-02 | false | reject | The generator emits initial version 1, while the core intentionally accepts every positive recorded version so the same byte engine can process later rotation/re-encryption material without owning lifecycle policy. |
+| BH6-03 | false | reject | Enumerator implementation faults are caller-code failures rather than malformed serialized input; acquisition, `MoveNext`, and `Current` already preserve caller-cancellation precedence, while disposal precedence is tracked separately as EC6-04. |
+| BH6-04 | medium | patch | `JsonPointer.Decode` can inspect the complete 2,048-byte selected path without the required 256-byte cancellation observation; thread an internal cancellation/checkpoint seam through path validation. |
+| BH6-05 | low | reject | carried from BH5-02: a single framework token read/copy is capped by the 16 MiB payload ceiling, and replacing `Utf8JsonReader` primitives to interrupt one token would add disproportionate parser complexity for bounded latency. |
+| BH6-06 | false | reject | A null nested identity is explicit programmer misuse already specified and tested as `ArgumentNullException`; validation happens before any resolver call, and serialized carrier failures still use the typed unreadable result. |
+| BH6-07 | false | reject | V046 owns the generator's concurrent collision/reservation behavior; the core consumes the documented fresh-material factory once per payload and cannot add durable reuse state without importing Story 8.5 lifecycle ownership. |
+| BH6-08 | low | reject | carried from BH2-11/VG2-06: V138 resource values are deliberately observational, while deterministic input ceilings, overlap, cancellation, and zero resolver calls are asserted. |
+| BH6-09 | medium | patch | V040 proves semantic round trips but not exact restoration of alternate valid token spellings or selected-value whitespace, leaving the byte-oriented rewrite invariant under-tested. |
+| BH6-10 | medium | patch | The editable execution manifest and reflected traits can replace an unsampled assigned ID while retaining the 201-case minimum; derive and assert the exact frozen ownership set independently. |
+| BH6-11 | medium | defer | carried: the FrontComposer gitlink advance remains the already-recorded externally authored change and is neither patched nor deferred again by Story 8.3. |
+| BH6-12 | false | reject | The command is a working-tree preservation check and did pass; baseline-to-review FrontComposer provenance is separately disclosed in the completion artifact and prior carried rows rather than hidden by that command. |
+| BH6-13 | false | reject | `AR-20260914-02` binds the requirements evidence reviewed by the human and conditionally authorizes later implementation closure; subsequent verification revisions do not amend those approved requirements and cannot be retroactively represented as human-reviewed bytes. |
+| VG6-01 | medium | patch | Pre-verified gap: exact frozen ownership is not derived independently of editable `vector-execution.json`, so an assigned vector and trait can be replaced together. |
+| VG6-02 | medium | patch | Pre-verified gap: V001 extracts the carrier through JSON parsing but never asserts the core writer's complete canonical wrapper bytes. |
+| VG6-03 | medium | patch | Pre-verified gap: the complete reader lacks zero-resolver cases for an otherwise valid wrapper with an extra member, non-string carrier, or escaped carrier value. |
+| VG6-04 | medium | patch | Pre-verified gap: core writer projection and authenticated reader reconstruction exercise over-limit rejection but not successful exact byte/node/depth maxima. |
+| VG6-05 | medium | patch | Pre-verified gap: invalid factory-material tests do not retain non-null DEK arrays or prove event/snapshot cleanup and observer notification. |
+| VG6-06 | medium | patch | Pre-verified gap: event callback mutation proves stable snapshots, but snapshot protection has no equivalent material-callback mutation regression. |
+| EC6-01 | high | patch | `EnvelopeCodec.ValidateFields` writes only the final eight bytes of a 12-byte stack nonce before comparison; explicitly clear the four-byte prefix. |
+| EC6-02 | high | patch | `PayloadCryptography.HasExpectedNonce` likewise compares four uninitialized stack bytes; explicitly clear the expected nonce before writing the ordinal. |
+| EC6-03 | false | reject | carried from EC2-05: a bounded orphan after successful reservation and cancellation is explicitly permitted by the frozen ordered-reservation protocol; durable release/activation is Story 8.5-owned. |
+| EC6-04 | medium | patch | Enumerator disposal can replace an in-flight caller cancellation with an arbitrary disposal exception; dispose through a cancellation-precedence guard. |
+| EC6-05 | medium | patch | `ReadProtectedWrappers` has no final cancellation check, so cancellation within its last 255 non-object nodes can return metadata mismatch instead of cancellation. |
+| EC6-06 | false | reject | The factory-returned DEK's ownership explicitly transfers to the core; aliasing it with another caller reference does not revoke that transfer, and zeroing the transferred key is the required behavior. |
+| EC6-07 | false | reject | The same transferred-ownership rule applies when a snapshot byte array is deliberately returned as the DEK; the core must zero material whose ownership the factory transferred. |
+| EC6-08 | high | patch | carried within EC6-01's root cause: canonical envelope validation reads an uncleared four-byte stack prefix. |
+| EC6-09 | false | reject | carried within EC6-06's ownership result: the array returned as cryptographic material is transferred to the core and must be zeroed even when the caller deliberately aliases it. |
 
 ## Design Notes
 
@@ -397,13 +431,13 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 201 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 217 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
 **Observed results (2026-09-14):** both independent V001-V003 verifiers passed;
-focused Release tests passed 201/201 with no skips; code-style verification and
+focused Release tests passed 217/217 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
 solution Release build, and `git diff --check` passed; release packing plus both
 validators produced exactly 14 archives. Stories 8.4/8.5 remain unauthorized

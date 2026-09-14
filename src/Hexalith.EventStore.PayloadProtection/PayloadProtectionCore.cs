@@ -132,7 +132,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     context,
                     manifest.Paths[index],
                     checked((uint)index),
-                    manifest.Commitment);
+                    manifest.Commitment,
+                    cancellationToken);
             }
 
             PayloadCryptography.EnsurePlatformSupport();
@@ -156,7 +157,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     material.KeyReference,
                     material.DekVersion,
                     checked((uint)index),
-                    manifest.Commitment);
+                    manifest.Commitment,
+                    cancellationToken);
                 PayloadProtectionEnvelope? envelope = null;
                 byte[]? envelopeBytes = null;
                 try
@@ -311,7 +313,12 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 [string.Empty],
                 snapshot: true,
                 cancellationToken: cancellationToken);
-            _ = AadCodec.ValidateBeforeMaterial(context, string.Empty, 0, manifest.Commitment);
+            _ = AadCodec.ValidateBeforeMaterial(
+                context,
+                string.Empty,
+                0,
+                manifest.Commitment,
+                cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             PayloadCryptography.EnsurePlatformSupport();
             material = InvokeMaterialFactory(materialFactory, cancellationToken);
@@ -322,7 +329,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 material.KeyReference,
                 material.DekVersion,
                 0,
-                manifest.Commitment);
+                manifest.Commitment,
+                cancellationToken);
             try
             {
                 envelope = PayloadCryptography.Encrypt(
@@ -432,7 +440,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             manifest = ProtectedPathManifestCodec.Create(
                 wrapperPaths,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken,
+                checkpoint: traversalCheckpoint);
             ProtectedWrapper? first = null;
             var wrappersByPath = new Dictionary<string, ProtectedWrapper>(wrappers.Count, StringComparer.Ordinal);
             for (int index = 0; index < wrappers.Count; index++)
@@ -470,7 +479,9 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     wrapper.Envelope.KeyReference,
                     wrapper.Envelope.DekVersion,
                     wrapper.Envelope.FieldOrdinal,
-                    manifest.Commitment);
+                    manifest.Commitment,
+                    cancellationToken,
+                    traversalCheckpoint);
                 CheckCancellation(index, cancellationToken, traversalCheckpoint);
                 totalCiphertext = checked(totalCiphertext + wrapper.Envelope.Ciphertext.Length);
                 prospectiveOutputBytes = checked(
@@ -539,7 +550,9 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     wrapper.Envelope.KeyReference,
                     wrapper.Envelope.DekVersion,
                     wrapper.Envelope.FieldOrdinal,
-                    manifest.Commitment);
+                    manifest.Commitment,
+                    cancellationToken,
+                    traversalCheckpoint);
                 byte[] plaintext;
                 try
                 {
@@ -557,7 +570,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 }
 
                 int remainingNodes = checked(PayloadProtectionLimits.JsonNodes - prospectiveNodeCount);
-                int wrapperDepth = BoundedJsonDocument.GetDepth(document.Resolve(wrapper.Path, cancellationToken: cancellationToken));
+                int wrapperDepth = BoundedJsonDocument.GetDepth(document.Resolve(
+                    wrapper.Path,
+                    cancellationToken: cancellationToken,
+                    checkpoint: traversalCheckpoint));
                 int remainingDepth = checked(PayloadProtectionLimits.JsonDepth - wrapperDepth);
                 if (remainingNodes < 1 || remainingDepth < 0)
                 {
@@ -720,7 +736,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 envelope.KeyReference,
                 envelope.DekVersion,
                 0,
-                manifest.Commitment);
+                manifest.Commitment,
+                cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             PayloadCryptography.EnsurePlatformSupport();
             try
@@ -757,7 +774,14 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ConsistencyMismatch);
             }
 
-            byte[] aad = AadCodec.Write(context, string.Empty, envelope.KeyReference, envelope.DekVersion, 0, manifest.Commitment);
+            byte[] aad = AadCodec.Write(
+                context,
+                string.Empty,
+                envelope.KeyReference,
+                envelope.DekVersion,
+                0,
+                manifest.Commitment,
+                cancellationToken);
             try
             {
                 plaintext = PayloadCryptography.Decrypt(envelope, aad, dek, observer);

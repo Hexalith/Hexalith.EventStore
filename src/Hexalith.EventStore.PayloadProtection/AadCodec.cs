@@ -45,7 +45,9 @@ internal static class AadCodec
         string keyReference,
         uint dekVersion,
         uint fieldOrdinal,
-        ReadOnlySpan<byte> manifestCommitment)
+        ReadOnlySpan<byte> manifestCommitment,
+        CancellationToken cancellationToken = default,
+        Action<int>? checkpoint = null)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(context.Identity);
@@ -54,7 +56,13 @@ internal static class AadCodec
             throw new PayloadProtectionFormatException();
         }
 
-        return ValidateBeforeMaterial(context, propertyPath, fieldOrdinal, manifestCommitment);
+        return ValidateBeforeMaterial(
+            context,
+            propertyPath,
+            fieldOrdinal,
+            manifestCommitment,
+            cancellationToken,
+            checkpoint);
     }
 
     /// <summary>
@@ -64,7 +72,9 @@ internal static class AadCodec
         PayloadProtectionContext context,
         string propertyPath,
         uint fieldOrdinal,
-        ReadOnlySpan<byte> manifestCommitment)
+        ReadOnlySpan<byte> manifestCommitment,
+        CancellationToken cancellationToken = default,
+        Action<int>? checkpoint = null)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(context.Identity);
@@ -83,7 +93,11 @@ internal static class AadCodec
             throw new PayloadProtectionFormatException();
         }
 
-        _ = JsonPointer.Decode(propertyPath, allowRoot: snapshot);
+        _ = JsonPointer.Decode(
+            propertyPath,
+            allowRoot: snapshot,
+            cancellationToken,
+            checkpoint);
         int valuesLength = checked(
             CanonicalText.GetByteCount(context.Identity.TenantId, 1, 256)
             + CanonicalText.GetByteCount(context.Identity.Domain, 1, 128)
@@ -114,7 +128,9 @@ internal static class AadCodec
         string keyReference,
         uint dekVersion,
         uint fieldOrdinal,
-        ReadOnlySpan<byte> manifestCommitment)
+        ReadOnlySpan<byte> manifestCommitment,
+        CancellationToken cancellationToken = default,
+        Action<int>? checkpoint = null)
     {
         int totalLength = Validate(
             context,
@@ -122,7 +138,9 @@ internal static class AadCodec
             keyReference,
             dekVersion,
             fieldOrdinal,
-            manifestCommitment);
+            manifestCommitment,
+            cancellationToken,
+            checkpoint);
         byte[]? tenant = null;
         byte[]? domain = null;
         byte[]? aggregate = null;

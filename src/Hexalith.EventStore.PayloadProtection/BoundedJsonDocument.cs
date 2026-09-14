@@ -123,7 +123,11 @@ internal sealed class BoundedJsonDocument : IDisposable
         CancellationToken cancellationToken = default,
         Action<int>? checkpoint = null)
     {
-        IReadOnlyList<string> segments = JsonPointer.Decode(pointer, allowRoot);
+        IReadOnlyList<string> segments = JsonPointer.Decode(
+            pointer,
+            allowRoot,
+            cancellationToken,
+            checkpoint);
         int currentIndex = 0;
         int comparisons = 0;
         Span<byte> digest = stackalloc byte[32];
@@ -323,6 +327,7 @@ internal sealed class BoundedJsonDocument : IDisposable
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             return wrappers;
         }
         catch

@@ -17,10 +17,16 @@ internal static class JsonPointer
     /// <summary>
     /// Validates and decodes a pointer into reference tokens.
     /// </summary>
-    internal static IReadOnlyList<string> Decode(string pointer, bool allowRoot)
+    internal static IReadOnlyList<string> Decode(
+        string pointer,
+        bool allowRoot,
+        CancellationToken cancellationToken = default,
+        Action<int>? checkpoint = null)
     {
         ArgumentNullException.ThrowIfNull(pointer);
+        cancellationToken.ThrowIfCancellationRequested();
         _ = CanonicalText.GetByteCount(pointer, allowRoot ? 0 : 1, PayloadProtectionLimits.PathBytes);
+        cancellationToken.ThrowIfCancellationRequested();
         if (pointer.Length == 0)
         {
             if (!allowRoot)
@@ -28,6 +34,7 @@ internal static class JsonPointer
                 throw new PayloadProtectionFormatException();
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             return [];
         }
 
@@ -38,12 +45,24 @@ internal static class JsonPointer
 
         string[] encoded = pointer[1..].Split('/');
         var decoded = new string[encoded.Length];
+        int examinedBytes = 0;
+        CheckCancellation(ref examinedBytes, 1, cancellationToken, checkpoint);
         for (int index = 0; index < encoded.Length; index++)
         {
+            if (index > 0)
+            {
+                CheckCancellation(ref examinedBytes, 1, cancellationToken, checkpoint);
+            }
+
             var builder = new StringBuilder(encoded[index].Length);
             for (int offset = 0; offset < encoded[index].Length; offset++)
             {
                 char character = encoded[index][offset];
+                CheckCancellation(
+                    ref examinedBytes,
+                    GetUtf8ByteCount(character),
+                    cancellationToken,
+                    checkpoint);
                 if (character != '~')
                 {
                     _ = builder.Append(character);
@@ -55,6 +74,7 @@ internal static class JsonPointer
                     throw new PayloadProtectionFormatException();
                 }
 
+                CheckCancellation(ref examinedBytes, 1, cancellationToken, checkpoint);
                 _ = encoded[index][offset] switch
                 {
                     '0' => builder.Append('~'),
@@ -66,8 +86,36 @@ internal static class JsonPointer
             decoded[index] = builder.ToString();
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return decoded;
     }
+
+    private static void CheckCancellation(
+        ref int examinedBytes,
+        int byteCount,
+        CancellationToken cancellationToken,
+        Action<int>? checkpoint)
+    {
+        for (int index = 0; index < byteCount; index++)
+        {
+            examinedBytes = checked(examinedBytes + 1);
+            if (examinedBytes == 1 || (examinedBytes & 255) == 0)
+            {
+                checkpoint?.Invoke(examinedBytes);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+        }
+    }
+
+    private static int GetUtf8ByteCount(char character)
+        => character switch
+        {
+            <= '\u007f' => 1,
+            <= '\u07ff' => 2,
+            >= '\udc00' and <= '\udfff' => 0,
+            >= '\ud800' and <= '\udbff' => 4,
+            _ => 3,
+        };
 
     /// <summary>
     /// Parses one canonical array index token.

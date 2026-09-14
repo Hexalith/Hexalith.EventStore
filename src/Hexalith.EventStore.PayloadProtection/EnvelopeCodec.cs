@@ -144,6 +144,7 @@ internal static class EnvelopeCodec
         }
 
         Span<byte> expectedNonce = stackalloc byte[PayloadProtectionLimits.NonceBytes];
+        expectedNonce.Clear();
         BinaryPrimitives.WriteUInt64BigEndian(expectedNonce[4..], envelope.FieldOrdinal);
         if (!envelope.Nonce.AsSpan().SequenceEqual(expectedNonce))
         {

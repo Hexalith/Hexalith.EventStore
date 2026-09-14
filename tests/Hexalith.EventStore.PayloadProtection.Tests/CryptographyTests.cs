@@ -36,7 +36,10 @@ public sealed class CryptographyTests
         byte[] encoded = EnvelopeCodec.Write(envelope);
         Convert.ToHexString(encoded).ToLowerInvariant().ShouldBe(TestFixture.EnvelopeHex);
         Base64UrlCodec.Encode(encoded).ShouldBe(TestFixture.EnvelopeBase64Url);
-        TestFixture.ReadWrapper(TestFixture.Protect()).ShouldBe(TestFixture.EnvelopeBase64Url);
+        CoreProtectionResult protectedResult = TestFixture.Protect();
+        TestFixture.ReadWrapper(protectedResult).ShouldBe(TestFixture.EnvelopeBase64Url);
+        string expectedEvent = "{\"email\":" + expected.GetProperty("wrapper").GetString() + ",\"name\":\"Alice\"}";
+        protectedResult.PayloadBytes.ShouldBe(Encoding.UTF8.GetBytes(expectedEvent));
     }
 
     /// <summary>V002 returns the complete G-001 plaintext only after tag verification.</summary>
@@ -62,6 +65,27 @@ public sealed class CryptographyTests
         protectedSnapshot.SnapshotTypeId.ShouldBe("hx-snapshot-v1:party-state");
         result.IsReadable.ShouldBeTrue();
         result.PayloadBytes.ShouldBe(original);
+    }
+
+    /// <summary>Verifies snapshot protection encrypts the stable pre-callback input snapshot.</summary>
+    [Fact]
+    public async Task SnapshotProtection_UsesStableInputSnapshotAcrossFactoryMutationAsync()
+    {
+        byte[] payload = "{\"name\":\"Alice\",\"items\":[1,2]}"u8.ToArray();
+        byte[] expected = [.. payload];
+
+        ProtectedSnapshotPayloadV2 protectedSnapshot = TestFixture.ProtectSnapshot(
+            payload,
+            materialFactory: () =>
+            {
+                payload.AsSpan().Fill((byte)' ');
+                return TestFixture.Material();
+            });
+        CoreUnprotectionResult result = await TestFixture.UnprotectSnapshotAsync(protectedSnapshot);
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(expected);
+        payload.ShouldAllBe(static value => value == (byte)' ');
     }
 
     /// <summary>Verifies snapshot carrier tampering returns one atomic authenticated mismatch.</summary>
@@ -233,21 +257,25 @@ public sealed class CryptographyTests
     [InlineData("dek-length")]
     public void InvalidFactoryMaterial_IsRejectedByEventAndSnapshotWriters(string shape)
     {
-        PayloadProtectionMaterial factory() => shape switch
-        {
-            "null" => null!,
-            "reference" => new PayloadProtectionMaterial("invalid", 1, TestFixture.Dek()),
-            "version" => new PayloadProtectionMaterial(TestFixture.KeyReference, 0, TestFixture.Dek()),
-            "dek-null" => new PayloadProtectionMaterial(TestFixture.KeyReference, 1, null!),
-            _ => new PayloadProtectionMaterial(TestFixture.KeyReference, 1, new byte[31]),
-        };
-
-        Should.Throw<PayloadProtectionCryptographicException>(() => new PayloadProtectionCore().ProtectEvent(
+        var eventKeys = new List<byte[]>();
+        RecordingBufferObserver eventObserver = new();
+        Should.Throw<PayloadProtectionCryptographicException>(() => new PayloadProtectionCore(eventObserver).ProtectEvent(
             "{\"value\":1}"u8.ToArray(),
             ["/value"],
             TestFixture.Context(),
-            factory));
-        Should.Throw<PayloadProtectionCryptographicException>(() => TestFixture.ProtectSnapshot(materialFactory: factory));
+            () => CreateInvalidMaterial(shape, eventKeys)));
+        eventKeys.ShouldAllBe(static key => key.All(static value => value == 0));
+        eventObserver.Observed.Count(static kind => kind == SensitiveBufferKind.DataEncryptionKey)
+            .ShouldBe(eventKeys.Count);
+
+        var snapshotKeys = new List<byte[]>();
+        RecordingBufferObserver snapshotObserver = new();
+        Should.Throw<PayloadProtectionCryptographicException>(() => TestFixture.ProtectSnapshot(
+            materialFactory: () => CreateInvalidMaterial(shape, snapshotKeys),
+            observer: snapshotObserver));
+        snapshotKeys.ShouldAllBe(static key => key.All(static value => value == 0));
+        snapshotObserver.Observed.Count(static kind => kind == SensitiveBufferKind.DataEncryptionKey)
+            .ShouldBe(snapshotKeys.Count);
     }
 
     /// <summary>Verifies each protected payload requests material exactly once.</summary>
@@ -476,5 +504,30 @@ public sealed class CryptographyTests
         result.PayloadBytes.ShouldBeNull();
         result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
         resolverCalls.ShouldBe(0);
+    }
+
+    private static PayloadProtectionMaterial CreateInvalidMaterial(
+        string shape,
+        ICollection<byte[]> transferredKeys)
+    {
+        byte[]? key = shape switch
+        {
+            "null" or "dek-null" => null,
+            "dek-length" => new byte[31],
+            _ => TestFixture.Dek(),
+        };
+        if (key is not null)
+        {
+            transferredKeys.Add(key);
+        }
+
+        return shape switch
+        {
+            "null" => null!,
+            "reference" => new PayloadProtectionMaterial("invalid", 1, key!),
+            "version" => new PayloadProtectionMaterial(TestFixture.KeyReference, 0, key!),
+            "dek-null" => new PayloadProtectionMaterial(TestFixture.KeyReference, 1, null!),
+            _ => new PayloadProtectionMaterial(TestFixture.KeyReference, 1, key!),
+        };
     }
 }

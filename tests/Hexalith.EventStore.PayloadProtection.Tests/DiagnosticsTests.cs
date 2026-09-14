@@ -161,21 +161,27 @@ public sealed class DiagnosticsTests
     [Fact]
     public void ExecutionManifest_ContainsExactlyTheAuthorizedVectors()
     {
+        using JsonDocument ownership = TestFixture.ReadFrozenFixture("vector-ownership.json");
+        string[] frozenOwned = [.. ownership.RootElement.GetProperty("assignments").EnumerateArray()
+            .Where(static assignment => assignment.GetProperty("ownerStory").GetString() == "8.3")
+            .SelectMany(static assignment => Enumerable.Range(
+                assignment.GetProperty("first").GetInt32(),
+                assignment.GetProperty("last").GetInt32() - assignment.GetProperty("first").GetInt32() + 1))
+            .Select(static vector => $"V{vector:D3}")
+            .OrderBy(ParseVectorNumber)];
+        string[] expectedOwned = [.. Enumerable.Range(4, 45)
+            .Concat([135, 136, 138])
+            .Select(static vector => $"V{vector:D3}")];
+        frozenOwned.ShouldBe(expectedOwned);
+
         string path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "vector-execution.json");
         using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(path));
         string[] inherited = [.. document.RootElement.GetProperty("inherited").EnumerateArray().Select(static value => value.GetString()!)];
         string[] owned = [.. document.RootElement.GetProperty("owned").EnumerateArray().Select(static value => value.GetString()!)];
         inherited.ShouldBe(["V001", "V002", "V003"]);
-        owned.Length.ShouldBe(48);
-        owned.Distinct(StringComparer.Ordinal).Count().ShouldBe(48);
-        owned.ShouldContain("V004");
-        owned.ShouldContain("V048");
-        owned.ShouldContain("V135");
-        owned.ShouldContain("V136");
-        owned.ShouldContain("V138");
-        owned.ShouldNotContain("V137");
+        owned.ShouldBe(frozenOwned);
 
-        string[] expected = [.. inherited.Concat(owned).OrderBy(ParseVectorNumber)];
+        string[] expected = [.. inherited.Concat(frozenOwned).OrderBy(ParseVectorNumber)];
         string[] discovered = [.. typeof(DiagnosticsTests).Assembly.GetTypes()
             .SelectMany(static type => type.GetMethods())
             .SelectMany(static method => method.CustomAttributes)
@@ -187,11 +193,6 @@ public sealed class DiagnosticsTests
             .OrderBy(ParseVectorNumber)];
         discovered.ShouldBe(expected);
 
-        using JsonDocument ownership = TestFixture.ReadFrozenFixture("vector-ownership.json");
-        JsonElement storyAssignment = ownership.RootElement.GetProperty("assignments").EnumerateArray()
-            .Single(static assignment => assignment.GetProperty("ownerStory").GetString() == "8.3"
-                && assignment.GetProperty("first").GetInt32() == 4);
-        storyAssignment.GetProperty("last").GetInt32().ShouldBe(48);
         ownership.RootElement.GetProperty("normativeDigest").GetString().ShouldBe(
             document.RootElement.GetProperty("normativeDigest").GetString());
     }

@@ -42,7 +42,7 @@ internal static class ProtectedPathManifestCodec
                 throw;
             }
 
-            using (enumerator)
+            try
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 while (MoveNext(enumerator, cancellationToken))
@@ -68,7 +68,11 @@ internal static class ProtectedPathManifestCodec
                     _ = pathValues.EnsureCapacity(count);
                     _ = encodedPaths.EnsureCapacity(count);
                     string pathSnapshot = new(path.AsSpan());
-                    _ = JsonPointer.Decode(pathSnapshot, allowRoot: snapshot);
+                    _ = JsonPointer.Decode(
+                        pathSnapshot,
+                        allowRoot: snapshot,
+                        cancellationToken,
+                        checkpoint);
                     if (snapshot != (pathSnapshot.Length == 0))
                     {
                         throw new PayloadProtectionFormatException();
@@ -88,6 +92,10 @@ internal static class ProtectedPathManifestCodec
                     pathValues.Add(pathSnapshot);
                     encodedPaths.Add(encodedPath);
                 }
+            }
+            finally
+            {
+                DisposeEnumerator(enumerator, cancellationToken);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -209,6 +217,21 @@ internal static class ProtectedPathManifestCodec
             bool result = enumerator.MoveNext();
             cancellationToken.ThrowIfCancellationRequested();
             return result;
+        }
+        catch
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw;
+        }
+    }
+
+    private static void DisposeEnumerator(
+        IEnumerator<string> enumerator,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            enumerator.Dispose();
         }
         catch
         {

@@ -74,6 +74,36 @@ public sealed class JsonTransformTests
         resolverCalls.ShouldBe(0);
     }
 
+    /// <summary>Verifies every forbidden carrier shape is rejected before key resolution.</summary>
+    [Theory]
+    [InlineData("extra-member")]
+    [InlineData("non-string")]
+    [InlineData("escaped-value")]
+    public async Task ForbiddenCarrierShape_IsRejectedBeforeLookupAsync(string shape)
+    {
+        string carrier = TestFixture.EnvelopeBase64Url;
+        string wrapper = shape switch
+        {
+            "extra-member" => "{\"$pdenc\":\"" + carrier + "\",\"extra\":0}",
+            "non-string" => "{\"$pdenc\":0}",
+            _ => "{\"$pdenc\":\"\\u0053" + carrier[1..] + "\"}",
+        };
+        byte[] payload = Encoding.UTF8.GetBytes("{\"email\":" + wrapper + ",\"name\":\"Alice\"}");
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            payload,
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(0);
+    }
+
     /// <summary>V027 detects removed, plaintext-substituted, duplicated, and added wrappers before plaintext escapes.</summary>
     [Fact]
     [Trait("Vector", "V027")]
@@ -410,6 +440,27 @@ public sealed class JsonTransformTests
         using JsonDocument expected = JsonDocument.Parse(original);
         using JsonDocument actual = JsonDocument.Parse(result.PayloadBytes!);
         JsonElement.DeepEquals(expected.RootElement, actual.RootElement).ShouldBeTrue();
+    }
+
+    /// <summary>V040 restores alternate valid raw token spellings byte for byte.</summary>
+    [Theory]
+    [InlineData("{\"value\": [ 1 , 2 ] }")]
+    [InlineData("{\"value\":\"\\u0061\"}")]
+    [InlineData("{\"value\":1.00e+02}")]
+    [Trait("Vector", "V040")]
+    public async Task V040_AlternateRawTokens_RoundTripExactBytesAsync(string json)
+    {
+        byte[] original = Encoding.UTF8.GetBytes(json);
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            original,
+            ["/value"],
+            TestFixture.Context(),
+            TestFixture.Material);
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(original);
     }
 
     private static async Task AssertWrapperSetMismatchAsync(

@@ -554,6 +554,82 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         resolverCalls.ShouldBe(1);
     }
 
+    /// <summary>Verifies the reader accepts the exact protected byte maximum and exact reconstructed traversal limits.</summary>
+    [Theory]
+    [InlineData("bytes")]
+    [InlineData("nodes")]
+    [InlineData("depth")]
+    public async Task EventReader_AcceptsExactReconstructionLimitsAsync(string boundary)
+    {
+        byte[] protectedPayload;
+        int expectedNodes = 0;
+        int expectedDepth = 0;
+        if (boundary == "bytes")
+        {
+            byte[] canonical = TestFixture.Protect().PayloadBytes;
+            protectedPayload = new byte[PayloadProtectionLimits.PayloadBytes];
+            canonical.CopyTo(protectedPayload, 0);
+            protectedPayload.AsSpan(canonical.Length).Fill((byte)' ');
+        }
+        else
+        {
+            string path;
+            byte[] plaintext;
+            string protectedTemplate;
+            if (boundary == "nodes")
+            {
+                path = "/0";
+                plaintext = "[0,0]"u8.ToArray();
+                protectedTemplate = "[{0},"
+                    + string.Join(',', Enumerable.Repeat("0", PayloadProtectionLimits.JsonNodes - 4))
+                    + "]";
+                expectedNodes = PayloadProtectionLimits.JsonNodes;
+            }
+            else
+            {
+                path = string.Concat(Enumerable.Repeat("/0", 63));
+                plaintext = "[0]"u8.ToArray();
+                protectedTemplate = new string('[', 63) + "{0}" + new string(']', 63);
+                expectedDepth = PayloadProtectionLimits.JsonDepth;
+            }
+
+            ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create([path]);
+            byte[] aad = TestFixture.Aad(path: path, commitment: manifest.Commitment);
+            PayloadProtectionEnvelope envelope = PayloadCryptography.Encrypt(
+                plaintext,
+                aad,
+                TestFixture.Dek(),
+                TestFixture.KeyReference,
+                1,
+                0);
+            string wrapper = "{\"$pdenc\":\"" + Base64UrlCodec.Encode(EnvelopeCodec.Write(envelope)) + "\"}";
+            protectedPayload = Encoding.UTF8.GetBytes(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                protectedTemplate,
+                wrapper));
+        }
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedPayload);
+
+        result.IsReadable.ShouldBeTrue();
+        if (boundary == "bytes")
+        {
+            protectedPayload.Length.ShouldBe(PayloadProtectionLimits.PayloadBytes);
+        }
+        else
+        {
+            using BoundedJsonDocument reconstructed = BoundedJsonDocument.Inspect(result.PayloadBytes!, default);
+            if (boundary == "nodes")
+            {
+                reconstructed.NodeCount.ShouldBe(expectedNodes);
+            }
+            else
+            {
+                reconstructed.MaximumDepth.ShouldBe(expectedDepth);
+            }
+        }
+    }
+
     /// <summary>Verifies predictable wrapper byte, node, and depth expansion fails before material creation.</summary>
     [Theory]
     [InlineData("bytes")]
@@ -597,6 +673,58 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         materialCalls.ShouldBe(0);
         observer.Observed.ShouldNotContain(SensitiveBufferKind.SelectedPlaintext);
         observer.Observed.ShouldNotContain(SensitiveBufferKind.DataEncryptionKey);
+    }
+
+    /// <summary>Verifies predictable wrapper byte, node, and depth projection accepts each exact maximum.</summary>
+    [Theory]
+    [InlineData("bytes")]
+    [InlineData("nodes")]
+    [InlineData("depth")]
+    public void PredictableProtectedOutputExpansion_AcceptsExactMaximum(string boundary)
+    {
+        byte[] payload;
+        string path;
+        if (boundary == "bytes")
+        {
+            int wrapperLength = Encoding.UTF8.GetByteCount(
+                "{\"$pdenc\":\"" + Base64UrlCodec.Encode(new byte[83]) + "\"}");
+            int inputLength = PayloadProtectionLimits.PayloadBytes - wrapperLength + 1;
+            payload = new byte[inputLength];
+            "{\"v\":0}"u8.CopyTo(payload);
+            payload.AsSpan(7).Fill((byte)' ');
+            path = "/v";
+        }
+        else if (boundary == "nodes")
+        {
+            payload = Encoding.UTF8.GetBytes(
+                "[" + string.Join(',', Enumerable.Repeat("0", PayloadProtectionLimits.JsonNodes - 2)) + "]");
+            path = "/0";
+        }
+        else
+        {
+            payload = Encoding.UTF8.GetBytes(new string('[', 63) + "0" + new string(']', 63));
+            path = string.Concat(Enumerable.Repeat("/0", 63));
+        }
+
+        CoreProtectionResult result = new PayloadProtectionCore().ProtectEvent(
+            payload,
+            [path],
+            TestFixture.Context(),
+            TestFixture.Material);
+
+        using BoundedJsonDocument protectedDocument = BoundedJsonDocument.Inspect(result.PayloadBytes, default);
+        if (boundary == "bytes")
+        {
+            result.PayloadBytes.Length.ShouldBe(PayloadProtectionLimits.PayloadBytes);
+        }
+        else if (boundary == "nodes")
+        {
+            protectedDocument.NodeCount.ShouldBe(PayloadProtectionLimits.JsonNodes);
+        }
+        else
+        {
+            protectedDocument.MaximumDepth.ShouldBe(PayloadProtectionLimits.JsonDepth);
+        }
     }
 
     /// <summary>Verifies event missing and wrong-length keys map to closed outcomes and clear transferred bytes.</summary>
@@ -696,12 +824,13 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
     /// <summary>Verifies cancellation is observable during manifest enumeration, sorting, encoding, and hashing.</summary>
     [Theory]
     [InlineData("enumeration", 256)]
+    [InlineData("decoding", 256)]
     [InlineData("sorting", 256)]
     [InlineData("encoding", 512)]
     [InlineData("hashing", 768)]
     public void Manifest_CancellationCheckpointsCoverEveryBoundedPhase(string phase, int target)
     {
-        string[] paths = phase is "encoding" or "hashing"
+        string[] paths = phase is "decoding" or "encoding" or "hashing"
             ? ["/" + new string('a', 767)]
             : [.. Enumerable.Range(0, 768).Select(index => $"/p{767 - index:D4}")];
         using var source = new CancellationTokenSource();
@@ -716,10 +845,39 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         Should.Throw<OperationCanceledException>(() => ProtectedPathManifestCodec.Create(
             paths,
             cancellationToken: source.Token,
-            checkpoint: phase == "enumeration" ? cancel : null,
+            checkpoint: phase is "enumeration" or "decoding" ? cancel : null,
             sortCheckpoint: phase == "sorting" ? cancel : null,
             encodingCheckpoint: phase == "encoding" ? cancel : null,
             hashCheckpoint: phase == "hashing" ? cancel : null));
+    }
+
+    /// <summary>Caller cancellation remains authoritative when enumerator disposal also fails.</summary>
+    [Fact]
+    public void Manifest_CallerCancellationWinsOverEnumeratorDisposalFailure()
+    {
+        using var source = new CancellationTokenSource();
+        static IEnumerable<string> paths()
+        {
+            try
+            {
+                yield return "/value";
+            }
+            finally
+            {
+                throw new InvalidOperationException();
+            }
+        }
+
+        Should.Throw<OperationCanceledException>(() => ProtectedPathManifestCodec.Create(
+            paths(),
+            cancellationToken: source.Token,
+            checkpoint: count =>
+            {
+                if (count == 1)
+                {
+                    source.Cancel();
+                }
+            }));
     }
 
     /// <summary>Cancellation raised by an external enumeration outcome wins immediately.</summary>
@@ -741,6 +899,7 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
     /// <summary>Verifies cancellation during discovered-path decoding and replacement copy/sort work.</summary>
     [Theory]
     [InlineData("path", 256)]
+    [InlineData("pointer-decode", 256)]
     [InlineData("replacement-copy", 256)]
     [InlineData("replacement-sort", 256)]
     public void JsonTransformation_CancellationCoversBoundedInnerWork(string phase, int target)
@@ -761,6 +920,19 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
                 + TestFixture.EnvelopeBase64Url + "\"}}");
             using BoundedJsonDocument document = BoundedJsonDocument.Parse(payload, default);
             Should.Throw<OperationCanceledException>(() => document.ReadProtectedWrappers(source.Token, cancel));
+            return;
+        }
+
+        if (phase == "pointer-decode")
+        {
+            string member = new('p', PayloadProtectionLimits.PathBytes - 1);
+            using BoundedJsonDocument document = BoundedJsonDocument.Parse(
+                Encoding.UTF8.GetBytes("{\"" + member + "\":0}"),
+                default);
+            Should.Throw<OperationCanceledException>(() => document.Resolve(
+                "/" + member,
+                cancellationToken: source.Token,
+                checkpoint: cancel));
             return;
         }
 
