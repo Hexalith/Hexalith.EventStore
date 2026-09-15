@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -255,6 +255,10 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   Chunks 2-6 (bounded JSON engine, core orchestration and crypto, tests, evidence, and the
   non-8.3 carry-along) are NOT yet reviewed. No frozen authority byte, Contracts type,
   fixture, `.slnx` entry, or release-manifest entry changed.
+- 2026-09-15: Rebound the executable verification and completion evidence to
+  the third-pass implementation: the focused gate is 254/254, current source,
+  test, and CI hashes replace superseded values, and review chunks 2-6 remain
+  explicitly pending rather than being represented as closed.
 
 ## Review Triage Log
 
@@ -527,6 +531,30 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC8-05 | low | patch | A throwing operations-counter listener is caught around both instruments and therefore suppresses the duration measurement; isolate each best-effort instrument recording call. |
 | EC8-06 | low | reject | carried from the second-pass low disposition: `BoundedJsonDocument` is internal and every production use is `using`-scoped, so adding disposal guards to all accessors is disproportionate for an unreachable everyday path. |
 | EC8-07 | medium | patch | The AggregateActor behavior change is real but separately authored and excluded; the Story 8.3 completion evidence must disclose it rather than implying FrontComposer is the baseline diff's only external change. |
+| BH9-01 | false | reject | carried from BH6-13: `AR-20260914-02` records the requirements evidence reviewed at commit `220e722d` and conditionally authorizes later closure; rebinding the mutable implementation verification must not be represented as a retroactive human approval of different bytes. |
+| BH9-02 | high | defer | carried from EC7-10: the live GitHub ruleset does not require `ci / payload-protection`; that owner-only external mutation remains outside frozen Story 8.3 and is not deferred again. |
+| BH9-03 | medium | defer | carried from the third-pass CI decision: the advisory matrix still does not directly build PayloadProtection and uses incompatible VSTest flags under Microsoft.Testing.Platform; the dedicated direct-project lane is the Story 8.3 gate, and the broader advisory-job defect was already left to its owner. |
+| BH9-04 | low | reject | carried from BH5-02: a single framework JSON-token read is bounded by the 16 MiB payload ceiling; replacing `Utf8JsonReader` to make an individual token interruptible adds disproportionate parser complexity for bounded latency. |
+| BH9-05 | medium | defer | carried from BH8-08: null, whitespace, or slash-only `CommandStatusPath` is a real misconfiguration defect in separately authored command-status work excluded from Story 8.3; it is not deferred again. |
+| BH9-06 | medium | defer | carried from BH8-10: the abstract `GetCommandStatusAsync` addition breaks external interface implementors, but that public-contract change is separately authored command-status work excluded from Story 8.3; it is not deferred again. |
+| BH9-07 | medium | defer | carried from BH8-12: the reusable fake's global unrecorded command-status response can hide cross-command polling defects, but it belongs to separately authored command-status work and is not deferred again. |
+| BH9-08 | medium | defer | `CommandStatusQueryResponse.MessageId` explicitly permits legacy `null`, while the separately authored gateway rejects every such response; legacy status polling can therefore fail despite the contract, outside Story 8.3. |
+| BH9-09 | medium | defer | carried from BH8-13: no actor-to-router-to-handler test proves a non-null no-op result payload crosses the production boundary, but that separately authored Server change is excluded from Story 8.3 and is not deferred again. |
+| BH9-10 | medium | defer | carried from DW-516: the Story 8.3 resolver seam cannot express revocation, denial, or unsupported versions; the richer typed outcome belongs to Stories 8.5/8.6 and is not deferred again. |
+| BH9-11 | medium | defer | carried from DW-518: Story 8.3 emits an activity source and meter but frozen intent forbids the Server/host integration that registers them; the Story 8.7/8.8 work is not deferred again. |
+| BH9-12 | medium | defer | carried from DW-519: without the Story 8.4 persisted-format routing input, plaintext JSON cannot be distinguished from stripped protected content; this later-story seam is not deferred again. |
+| EC9-01 | medium | defer | carried from the third-pass CI decision and BH9-03: on a clean runner the advisory job does not build PayloadProtection before `--no-build`; the broader advisory-job defect was already left to its owner. |
+| EC9-02 | medium | defer | carried from BH8-08: `CommandStatusPath` misconfiguration can throw or route incorrectly in separately authored command-status work; it is not deferred again. |
+| EC9-03 | medium | defer | Same verified root cause as BH9-08: the contract documents legacy null message identifiers, but the gateway's strict correlation guard rejects them; this separately authored client behavior is outside Story 8.3. |
+| EC9-04 | medium | defer | `CommandStatus.Rejected` explicitly includes infrastructure rejections with `FailureReason` and no `RejectionEventType`, while `CommandStatusQueryResponse.IsRejected` claims domain-rejection semantics from status alone; callers can misclassify infrastructure conflicts in separately authored command-status work. |
+| EC9-05 | low | reject | carried from BH5-02: the maximum individual JSON-token scan is bounded by the 16 MiB input ceiling, and interruptible framework parsing would require disproportionate replacement machinery. |
+| EC9-06 | low | reject | carried from BH5-05: canonical carrier decode is capped near 1.4 MiB and followed by cancellation checks; threading cancellation through the closed codec adds complexity for bounded latency. |
+| EC9-07 | low | reject | A malicious or defective synchronous material callback can block after cancellation because its internal Story 8.3 seam has no token, but the spec requires cancellation precedence after callback outcomes and adding an asynchronous/token-bearing provider seam imports Story 8.5 lifecycle complexity for an uncommon misuse case. |
+| EC9-08 | low | reject | A malicious or defective synchronous collision predicate can block until it returns, but it is a bounded internal Story 8.3 test seam and adding cancellation-aware durable reservation changes the Story 8.5-owned lifecycle contract for an uncommon misuse case. |
+| EC9-09 | medium | defer | carried from BH8-10: the new abstract gateway member is source-breaking separately authored public Client work excluded from Story 8.3; it is not deferred again. |
+| VG9-01 | high | defer | carried from EC7-10: the active repository ruleset omits `ci / payload-protection`; the pre-verified owner-only settings action remains external to Story 8.3 and is not deferred again. |
+| VG9-02 | medium | defer | carried from BH8-13: existing tests do not transport a sentinel no-op payload across the actor-router production seam, but the pre-verified gap belongs to separately authored Server work and is not deferred again. |
+| VG9-03 | medium | defer | carried from BH8-08: no test covers invalid `CommandStatusPath`, and the verified defect belongs to separately authored Client work excluded from Story 8.3; it is not deferred again. |
 
 ## Design Notes
 
@@ -537,13 +565,13 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 252 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 254 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
 **Observed results (2026-09-15):** both independent V001-V003 verifiers passed;
-focused Release tests passed 250/250 with no skips; code-style verification and
+focused Release tests passed 254/254 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
 solution Release build, and `git diff --check` passed; release packing plus both
 validators produced exactly 14 archives. Stories 8.4/8.5 remain unauthorized
@@ -696,4 +724,6 @@ zero skips.
 - `ProtectedPathManifestCodec.Create(allowEmpty: true)` can emit a count-0 HXPM manifest outside section 7.2's "count is 1..4096" — `low`, and a repeat of the second-pass disposition at `ProtectedPathManifestCodec.cs:103`. The zero-path manifest is only a validation vehicle; `PayloadProtectionCore.cs:56` short-circuits to pass-through before those bytes reach AAD.
 - Manifest path values are retained as un-zeroable managed strings despite the cleanup list naming "manifest paths" — `low`. Paths are not plaintext under section 15.1, and the string representation is systemic across `ProtectedWrapper`, `PayloadProtectionEnvelope` and `PayloadProtectionMaterial`; converting is a redesign, not a correction.
 - `PayloadProtectionFormatException` carries no bounded reason code — `low`, and a repeat of the second-pass disposition. Local-mismatch opacity is what authority section 12 requires here; the closed reason vocabulary is Story 8.4's routing scope.
-- The spec records "focused Release tests passed 250/250" while the frozen command and change log both require 252 (measured: 252) — rejected because its only fix is to edit the spec under review. Flagged here so the next pass can correct it alongside its own change-log entry.
+- The spec recorded "focused Release tests passed 250/250" after the suite had
+  advanced — resolved in the current implementation handoff by rebinding the
+  command and observed result to the verified 254/254 suite.

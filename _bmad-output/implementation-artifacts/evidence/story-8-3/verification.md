@@ -10,8 +10,9 @@ Stories 8.4/8.5. The constructibility interpretations approved by
 2026-09-15 the human EventStore owner authorized and applied the V004
 amendment-list and authority section 8.4 Server-ownership corrections.
 The follow-up review's final-collision cancellation and independent-instrument
-diagnostics findings are patched; their two focused regressions and the full
-252-case suite pass with no failures or skips.
+diagnostics findings are patched. The third-pass codec/wire-format review added
+two more regressions; the current 254-case suite passes with no failures or
+skips.
 
 ## Content Binding
 
@@ -20,13 +21,13 @@ relative path, and exclude generated `bin/` and `obj/` content.
 
 | Inventory | Files | SHA-256 |
 | --- | ---: | --- |
-| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 35 | `556066e7569ba4581129c4c5b8e8bbe45ddf9f200d26d590fda475c3ce51ad0b` |
-| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `57093353583860650310e7d6c48f7844a30fd71afc26957da04d6521d0b39f7d` |
+| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 35 | `7b38a14684876ccd7611e7861986dccc898537d16d30e5e6676edf60f6ac75b9` |
+| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `98be46dd3b80a01fe5928d7cefb58e385c70167bef5b089b8c70c2f2174d003e` |
 | Core project | 1 | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | 1 | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | 1 | `3cc4898d645fb0cf31481abebfe5730d0869d385b13d8f96960c58841bd75297` |
-| GitHub focused lane | 1 | `7d5eb4526c8bb861a3db1e3146e3169f9a5f1299f96842131a58d48d9f54bf49` |
-| Local focused lane | 1 | `3e5b339ed8dd4b9dc65a785bdca4424af59799a355f0dfb0e1696f2c978e8650` |
+| GitHub focused lane | 1 | `dd5f9816bb36d6c71d90bfcee087b1abdad352df1d91220a46fe6b7afbac758c` |
+| Local focused lane | 1 | `c68b27821d6582cece7e088c16bbcb9103ba6dacce36e1a86af40d2295db183a` |
 
 The production inventory contains one internal documented type per C# file:
 limits/exceptions/results/context/material, strict canonical text/ULID/base64url,
@@ -44,7 +45,7 @@ manifest. Tests load the linked Story 8.2 G-001, NIST, and ownership fixtures
 read-only rather than relying only on duplicated constants. The manifest
 assigns inherited V001-V003 and 48 Story 8.3 vectors V004-V048/V135-V136/V138;
 all 51 identifiers have a corresponding xUnit trait, the complete suite
-contains 252 cases, and none is skipped.
+contains 254 cases, and none is skipped.
 
 ## Verification Results
 
@@ -52,16 +53,16 @@ contains 252 cases, and none is skipped.
 | --- | --- |
 | `node scripts/payload-protection/verify-golden-vectors.mjs` | PASS V001-V003; frozen bytes unchanged |
 | `python3 scripts/payload-protection/verify-golden-vectors.py` | PASS V001-V003; independent frozen bytes unchanged |
-| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false` then `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 252 --fail-skips on --no-ansi` | PASS 252/252; zero warnings, failures, or skips after the follow-up review fixes |
+| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false -p:GenerateDocumentationFile=true` then `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 254 --fail-skips on --no-ansi` | PASS 254/254; zero warnings, failures, or skips after the third-pass review fixes |
 | Focused `dotnet test --filter-method` runs for `MaterialGeneration_CancellationDuringFinalCollisionCleanupWins` and `ThrowingOperationsCounterListener_DoesNotSuppressDurationMeasurement` | PASS 1/1 each after the follow-up review patches; focused Release build passed with zero warnings/errors |
-| `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --filter-method "Hexalith.EventStore.PayloadProtection.Tests.LimitsAndConcurrencyTests.V138_HostileConcurrentLoad_IsBoundedAndCancellableAsync" --output Detailed --no-ansi` | PASS; 16 hostile unprotect calls met at an in-core barrier; 1,398,212-character input; cancellation checkpoints 1/256/512; 92,566,920 process-wide allocated bytes; 93.019ms; observations only |
+| `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --filter-method "Hexalith.EventStore.PayloadProtection.Tests.LimitsAndConcurrencyTests.V138_HostileConcurrentLoad_IsBoundedAndCancellableAsync" --output Detailed --no-ansi` | PASS 1/1; 16 hostile unprotect calls met at an in-core barrier; 1,398,212-character input; cancellation checkpoints 1/256/512; 92,572,992 process-wide allocated bytes; 65.168ms; observations only |
 | The two exact `dotnet format style` commands and one-type/Allman/LF scans below | PASS; zero formatter or structural-style violations |
 | `dotnet build` for the core and focused test projects with `--no-restore -warnaserror -p:GenerateDocumentationFile=true` | PASS sequentially; zero undocumented public/protected/internal-member warnings |
 | `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release --no-restore -m:1 -nodeReuse:false` | PASS; zero warnings/errors. The AOT and trim analyzers are `EnableAotAnalyzer`/`EnableTrimAnalyzer` project properties on the core, so they apply to every build of it, including the blocking focused lane, and no command-line flag is required. Scope limit: project properties do not propagate to project references, so the frozen `Hexalith.EventStore.Contracts` dependency is not analyzed. That dependency does not satisfy these analyzers at HEAD (12 IL2026/IL3050 diagnostics in `QueryResult.cs`, `EventStorePayloadSerialization.cs`, `DomainServiceWireResult.cs`, and `EventStorePayloadProtectionMetadataCarrier.cs`); fixing it is outside Story 8.3. This result therefore covers the core's own compilation only, which a control probe confirms is genuinely analyzed. |
 | `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore -m:1 -nodeReuse:false` | PASS; zero warnings/errors |
 | `package_dir="$(mktemp -d /tmp/eventstore-story-8-3-packages.XXXXXX)"; python3 scripts/pack-release-packages.py "$package_dir" 999.0.0-ci-test; python3 scripts/validate-nuget-packages.py "$package_dir"; python3 tools/validate-release-packages.py "$package_dir" 999.0.0-ci-test` | PASS; exactly the existing 14 archives; PayloadProtection excluded |
 | The exact dependency/surface/preservation commands below | PASS; one direct Contracts reference, no forbidden dependency/public type, and frozen solution/release manifest unchanged |
-| `actionlint .github/workflows/ci.yml` and `bash -n scripts/ci-local.sh` | PASS; both direct lanes require 252 tests and fail on skips |
+| `actionlint .github/workflows/ci.yml` and `bash -n scripts/ci-local.sh` | PASS; both direct lanes require 254 tests and fail on skips |
 | `git diff --check` | PASS |
 
 The structural and preservation rows are replayable from the repository root
@@ -231,12 +232,12 @@ comparison, not a CAVP validation certificate.
 
 ## Third-Pass Review Addendum (2026-09-15)
 
-The rows above record the evidence as observed before the third independent review.
-They are preserved unchanged. This addendum records what that review changed.
+The rows above have been rebound to the implementation after the third
+independent review. This addendum records what that review changed.
 
 ### Suite count
 
-The focused suite is now **254 cases**, not 252. The third pass added two regressions:
+The focused suite is **254 cases**. The third pass added two regressions:
 `EnvelopeTests.V004_WriterNonceDerivation_IsEnforced` and
 `AadPathTests.V031_NonBmpPointerToken_IsBudgetedByUtf8ByteCount`. The blocking lane floor
 was raised to 254 in `scripts/ci-local.sh` and in the new `.github/workflows/ci.yml`

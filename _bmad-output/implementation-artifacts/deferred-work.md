@@ -4548,3 +4548,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add an actor-to-handler-to-HTTP no-op result-payload integration test.
   evidence: The separately authored AggregateActor test proves actor output and existing tests prove handler/controller behavior in isolation, but no test composes the path that must preserve a no-op payload to the caller; Story 8.3 excludes Server changes.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Align legacy-null command-status response support between the public contract and gateway validation.
+  evidence: `CommandStatusQueryResponse.MessageId` documents null as a supported legacy representation, but `EventStoreGatewayClient.IsValidCommandStatus` rejects it unconditionally, making those records unreadable; this was introduced by separately authored command-status work outside Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Distinguish domain rejection from infrastructure rejection in `CommandStatusQueryResponse.IsRejected`.
+  evidence: `CommandStatus.Rejected` explicitly covers domain and infrastructure failures, but `IsRejected` returns true from the canonical status pair alone even when `RejectionEventType` is null and only `FailureReason` identifies an infrastructure rejection; the client-facing subset can therefore misclassify separately authored command-status results outside Story 8.3.

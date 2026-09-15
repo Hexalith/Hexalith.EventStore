@@ -2,18 +2,18 @@
 
 ## Disposition
 
-Implementation, technical verification, and multi-pass independent review
-completed on 2026-09-15 against
+Implementation and technical verification completed on 2026-09-15 against
 EventStore baseline `e8886ec4c277460de3d3208b3fc0b9c261c4967d`, Story 8.2 approval
 packet `AR-20260914-01`, and normative digest
 `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`.
 
 Approval packet `AR-20260914-02` amended and reapproved the frozen Story 8.3
-requirements to the safe, constructible interpretations proven below. The
-implementation has no open material Story 8.3 code finding. On 2026-09-15 the
-human EventStore owner authorized and applied the V004 amendment-list and
-authority section 8.4 Server-ownership corrections. Stories 8.4 and 8.5 remain
-unauthorized pending their predecessor checks and exact approval.
+requirements to the safe, constructible interpretations proven below. No open
+material Story 8.3 code finding is currently known, but the third independent
+review has completed only codec/wire-format chunk 1 of 6; chunks 2-6 remain.
+On 2026-09-15 the human EventStore owner authorized and applied the V004
+amendment-list and authority section 8.4 Server-ownership corrections. Stories
+8.4 and 8.5 remain unauthorized pending completed review and exact approval.
 
 ## Delivered Scope
 
@@ -26,7 +26,7 @@ unauthorized pending their predecessor checks and exact approval.
 - Added a non-packable xUnit v3/Shouldly test project with linked immutable Story
   8.2 fixtures and a separate vector-execution manifest.
 - Implemented traits for all 51 assigned identifiers: inherited V001-V003 plus
-  V004-V048/V135-V136/V138. The focused suite contains 252 test cases;
+  V004-V048/V135-V136/V138. The focused suite contains 254 test cases;
   Story 8.5-owned policy portions of V038/V039 are not claimed.
 - Closed the Step-3 audit gaps for strict carrier/header matrices, exact
   resolver inputs, constructible AAD sources/boundaries, independent manifest
@@ -50,6 +50,10 @@ unauthorized pending their predecessor checks and exact approval.
 - Closed two follow-up runtime findings so cancellation during the final
   collision cleanup wins over retry exhaustion and a faulting operations
   counter cannot suppress the duration measurement.
+- Closed the third-pass codec/wire-format findings with fail-closed invariant-
+  globalization handling, enforced writer nonce derivation, single-sourced
+  wire constants, distinct manifest cancellation checkpoints, bounded non-BMP
+  pointer accounting, and documented codec buffer ownership.
 - Story 8.3 edits preserved Contracts, frozen fixtures/verifiers, Server/no-op
   hooks, domain and Parties code, `Hexalith.EventStore.slnx`,
   `tools/release-packages.json`, topology, and persisted data. The baseline diff
@@ -59,22 +63,22 @@ unauthorized pending their predecessor checks and exact approval.
   gitlink advance, and two later FrontComposer gitlink advances. Those excluded
   changes were not authored, altered, reverted, or approved by this workflow.
 - Added blocking direct-project GitHub and local CI lanes with the exact
-  252-case minimum and skipped-test failure policy.
+  254-case minimum and skipped-test failure policy.
 
 ## Content Binding
 
 | Artifact | SHA-256 |
 | --- | --- |
 | Requirements amendment approval | `1d511941c09d12e1d3a09a82968fc82737dcd786b0b35082c75584b6e7358537` |
-| Sorted production source/project hash stream (35 files) | `556066e7569ba4581129c4c5b8e8bbe45ddf9f200d26d590fda475c3ce51ad0b` |
-| Sorted focused-test/project/manifest hash stream (12 files) | `57093353583860650310e7d6c48f7844a30fd71afc26957da04d6521d0b39f7d` |
+| Sorted production source/project hash stream (35 files) | `7b38a14684876ccd7611e7861986dccc898537d16d30e5e6676edf60f6ac75b9` |
+| Sorted focused-test/project/manifest hash stream (12 files) | `98be46dd3b80a01fe5928d7cefb58e385c70167bef5b089b8c70c2f2174d003e` |
 | Core project | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | `3cc4898d645fb0cf31481abebfe5730d0869d385b13d8f96960c58841bd75297` |
-| GitHub focused lane | `7d5eb4526c8bb861a3db1e3146e3169f9a5f1299f96842131a58d48d9f54bf49` |
-| Local focused lane | `3e5b339ed8dd4b9dc65a785bdca4424af59799a355f0dfb0e1696f2c978e8650` |
+| GitHub focused lane | `dd5f9816bb36d6c71d90bfcee087b1abdad352df1d91220a46fe6b7afbac758c` |
+| Local focused lane | `c68b27821d6582cece7e088c16bbcb9103ba6dacce36e1a86af40d2295db183a` |
 | Preflight evidence | `ab3a5d7ac7dc4838e91b0ecc4bc3d77438f22a545d25ec92cba9dcf89ff2c8a2` |
-| Verification evidence | `8967a77eebd5fedca3bc0b6751282df204bd35327ee201398676310f64015925` |
+| Verification evidence | `a06eb4c11053c15c23dc096735926a1f250e956bfafabd882a8c1727355cc785` |
 | Unchanged release manifest | `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
 | Unchanged solution | `dd9c0a74a6ca81d50e05ddcfd336f4f92882d77afa313287d69cf2bc87e7fc74` |
 
@@ -86,7 +90,7 @@ counts, and observed load values are in
 
 - Both independent frozen-vector verifiers passed V001-V003 unchanged.
 - An explicit focused Release build passed with zero warnings/errors, then the
-  no-build gate passed 252/252 with zero failures or skips.
+  no-build gate passed 254/254 with zero failures or skips.
 - The two follow-up regression methods passed 1/1 independently and as part of
   that complete focused-suite rerun.
 - The core Release build passed with zero warnings and errors under the AOT and
@@ -98,7 +102,7 @@ counts, and observed load values are in
   `.gitattributes` LF checks also passed.
 - The complete `.slnx` Release build passed with zero warnings and errors.
 - The direct GitHub workflow passed `actionlint` and the local mirror passed
-  `bash -n`; both require all 252 cases and fail on skips.
+  `bash -n`; both require all 254 cases and fail on skips.
 - Existing release packaging and both validators produced exactly 14 archives;
   the new non-packable project was absent as required.
 - Dependency, public-surface, solution/release-preservation, vector-coverage,
@@ -124,12 +128,13 @@ V016's required pre-lookup ordinal consistency rejection are detailed in the
 verification evidence. `AR-20260914-02` explicitly accepts these
 interpretations for Story 8.3 only; the shared authority bytes remain unchanged.
 
-Thirteen independent adversarial review layers were completed; every surviving
-mutable Story 8.3 finding was patched and reverified, and the carried
-FrontComposer gitlink remains explicitly out of scope. The human-authorized
-V004 amendment-list and section 8.4 boundary corrections are recorded in the
-amended `AR-20260914-02` packet and frozen requirements block. No separate human
-completion approval beyond that requirements approval is claimed. No package,
-provider, lifecycle, compatibility, Server/snapshot integration, deployment,
-NIST CAVP certification, later vector, or G5 claim is authorized by this
-artifact.
+All surviving findings from the completed review layers, including third-pass
+chunk 1, were patched and reverified, and the carried FrontComposer gitlink
+remains explicitly out of scope. Third-pass chunks 2-6 are still pending, so
+this artifact does not claim final independent-review closure. The human-
+authorized V004 amendment-list and section 8.4 boundary corrections are
+recorded in the amended `AR-20260914-02` packet and frozen requirements block.
+No separate human completion approval beyond that requirements approval is
+claimed. No package, provider, lifecycle, compatibility, Server/snapshot
+integration, deployment, NIST CAVP certification, later vector, or G5 claim is
+authorized by this artifact.
