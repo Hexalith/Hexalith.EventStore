@@ -1,3 +1,4 @@
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 8, 14, and 15.
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 
@@ -8,8 +9,6 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// </summary>
 internal sealed class CryptographicPayloadProtectionEntropy : IPayloadProtectionEntropy
 {
-    private const string _alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-
     /// <inheritdoc/>
     public string CreateKeyReference()
     {
@@ -34,7 +33,7 @@ internal sealed class CryptographicPayloadProtectionEntropy : IPayloadProtection
                 }
             }
 
-            encoded[characterIndex] = _alphabet[symbol];
+            encoded[characterIndex] = PayloadProtectionWireFormat.CrockfordBase32Alphabet[symbol];
         }
 
         CryptographicOperations.ZeroMemory(value);

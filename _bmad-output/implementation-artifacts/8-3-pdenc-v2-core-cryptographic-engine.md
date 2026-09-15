@@ -10,8 +10,10 @@ packet `AR-20260914-01`, and normative digest
 
 Approval packet `AR-20260914-02` amended and reapproved the frozen Story 8.3
 requirements to the safe, constructible interpretations proven below. The
-implementation has no open material Story 8.3 review finding. Stories 8.4 and
-8.5 remain unauthorized pending their predecessor checks and exact approval.
+implementation has no open material Story 8.3 code finding. On 2026-09-15 the
+human EventStore owner authorized and applied the V004 amendment-list and
+authority section 8.4 Server-ownership corrections. Stories 8.4 and 8.5 remain
+unauthorized pending their predecessor checks and exact approval.
 
 ## Delivered Scope
 
@@ -24,7 +26,7 @@ implementation has no open material Story 8.3 review finding. Stories 8.4 and
 - Added a non-packable xUnit v3/Shouldly test project with linked immutable Story
   8.2 fixtures and a separate vector-execution manifest.
 - Implemented traits for all 51 assigned identifiers: inherited V001-V003 plus
-  V004-V048/V135-V136/V138. The applicable core behavior passes 246 test cases;
+  V004-V048/V135-V136/V138. The applicable core behavior passes 250 test cases;
   Story 8.5-owned policy portions of V038/V039 are not claimed.
 - Closed the Step-3 audit gaps for strict carrier/header matrices, exact
   resolver inputs, constructible AAD sources/boundaries, independent manifest
@@ -40,28 +42,33 @@ implementation has no open material Story 8.3 review finding. Stories 8.4 and
   no-leak record formatting, production escaped-name and snapshot-ordinal
   regressions, explicit resolver ownership, direct snapshot plaintext
   transfer, corrected collision taxonomy/null flow, and dead-guard removal.
+- Closed all 13 mutable second-pass actions with independent snapshot golden
+  bytes, explicit path-to-ordinal alignment, zero-token and `\/` path coverage,
+  complete normative source citations, centralized HXAD/HXPM/key/ULID
+  constants, corrected pre-material validation and pass-through diagnostics,
+  and removal of dead or allocation-backed format logic.
 - Story 8.3 edits preserved Contracts, frozen fixtures/verifiers, Server/no-op
   hooks, domain and Parties code, `Hexalith.EventStore.slnx`,
   `tools/release-packages.json`, topology, and persisted data. The baseline diff
   also contains a separately authored FrontComposer gitlink advance recorded as
   out of scope in the review ledger; this workflow did not alter or approve it.
 - Added blocking direct-project GitHub and local CI lanes with the exact
-  246-case minimum and skipped-test failure policy.
+  250-case minimum and skipped-test failure policy.
 
 ## Content Binding
 
 | Artifact | SHA-256 |
 | --- | --- |
-| Requirements amendment approval | `cd95ab5546939d2f79338c354ea1bf4456c50093cf0525dafb7b82cebab4d3a6` |
-| Sorted production source/project hash stream (35 files) | `0091e0e1ca5df251ea7b6848f3b07b0b61706bea8a15d3367c502e62a625a5c3` |
-| Sorted focused-test/project/manifest hash stream (12 files) | `95bf5c61f7affe592373b2ab8e51ce5eae1d5bf5ed24bd664e48364c2ff3f06d` |
+| Requirements amendment approval | `1d511941c09d12e1d3a09a82968fc82737dcd786b0b35082c75584b6e7358537` |
+| Sorted production source/project hash stream (35 files) | `ca01ac25d93799b155d3e248ce0ca7dc83603e03e7f9117416c93252364cfa49` |
+| Sorted focused-test/project/manifest hash stream (12 files) | `41a39fe7bad22fb927fb2578be9afb56add4502bd46b4e863fcf1e436c4bc4a8` |
 | Core project | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | `3cc4898d645fb0cf31481abebfe5730d0869d385b13d8f96960c58841bd75297` |
-| GitHub focused lane | `911f7bbcae8e3be7a166ebd89ca8ef708dd3ae6eb1699171c4a636f35cf5d68f` |
-| Local focused lane | `21adfb774006812eaeb85888a1dd93a8b8197ee1a39672a1e8264f5fd3de0d25` |
+| GitHub focused lane | `6bf9416938488b3aa19e70593e08f0c9da5cb38c98516ad8b0740fec6d99fe21` |
+| Local focused lane | `93f597d3c9af1c005b5c5276e4013046f27d5862a222feb5e561b5551eb7b0e5` |
 | Preflight evidence | `ab3a5d7ac7dc4838e91b0ecc4bc3d77438f22a545d25ec92cba9dcf89ff2c8a2` |
-| Verification evidence | `9779a8dfcb1a9ec8e48decf463e8cf8495e82df546a3e847034f4cc49feeaadd` |
+| Verification evidence | `f85771917830d5147c5362e82737061874f190a01a803a8cf67e30a1ee90d92e` |
 | Unchanged release manifest | `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
 | Unchanged solution | `dd9c0a74a6ca81d50e05ddcfd336f4f92882d77afa313287d69cf2bc87e7fc74` |
 
@@ -73,7 +80,7 @@ counts, and observed load values are in
 
 - Both independent frozen-vector verifiers passed V001-V003 unchanged.
 - An explicit focused Release build passed with zero warnings/errors, then the
-  no-build gate passed 246/246 with zero failures or skips.
+  no-build gate passed 250/250 with zero failures or skips.
 - The core Release build passed with zero warnings and errors under the AOT and
   trim analyzers, which are enabled as project properties and therefore apply to
   every build of the core, including the blocking focused lane. Those properties
@@ -83,7 +90,7 @@ counts, and observed load values are in
   `.gitattributes` LF checks also passed.
 - The complete `.slnx` Release build passed with zero warnings and errors.
 - The direct GitHub workflow passed `actionlint` and the local mirror passed
-  `bash -n`; both require all 246 cases and fail on skips.
+  `bash -n`; both require all 250 cases and fail on skips.
 - Existing release packaging and both validators produced exactly 14 archives;
   the new non-packable project was absent as required.
 - Dependency, public-surface, solution/release-preservation, vector-coverage,
@@ -109,10 +116,12 @@ V016's required pre-lookup ordinal consistency rejection are detailed in the
 verification evidence. `AR-20260914-02` explicitly accepts these
 interpretations for Story 8.3 only; the shared authority bytes remain unchanged.
 
-Nine independent adversarial review layers were completed; every surviving
-Story 8.3 finding was patched and reverified, and the carried FrontComposer
-gitlink remains explicitly out of scope. No separate human completion approval
-beyond the requirements approval in `AR-20260914-02` is claimed. No package,
+Thirteen independent adversarial review layers were completed; every surviving
+mutable Story 8.3 finding was patched and reverified, and the carried
+FrontComposer gitlink remains explicitly out of scope. The human-authorized
+V004 amendment-list and section 8.4 boundary corrections are recorded in the
+amended `AR-20260914-02` packet and frozen requirements block. No separate human
+completion approval beyond that requirements approval is claimed. No package,
 provider, lifecycle, compatibility, Server/snapshot integration, deployment,
 NIST CAVP certification, later vector, or G5 claim is authorized by this
 artifact.

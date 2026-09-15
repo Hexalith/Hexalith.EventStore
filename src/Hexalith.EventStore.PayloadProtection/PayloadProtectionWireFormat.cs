@@ -1,5 +1,4 @@
-using System.Text;
-
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 6-8, 14, and 15.
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>
@@ -7,13 +6,26 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// </summary>
 internal static class PayloadProtectionWireFormat
 {
-    private static readonly byte[] _protectedSerializationFormatUtf8 = Encoding.UTF8.GetBytes(ProtectedSerializationFormat);
-
     /// <summary>Gets the unprotected JSON serialization format.</summary>
     internal const string UnprotectedSerializationFormat = "json";
 
     /// <summary>Gets the pdenc-v2 protected JSON serialization format.</summary>
     internal const string ProtectedSerializationFormat = "json+pdenc-v2";
+
+    /// <summary>Gets the canonical Crockford-base32 alphabet used by ULID key references.</summary>
+    internal const string CrockfordBase32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+    /// <summary>Gets the exact number of ASCII characters in a canonical ULID key reference.</summary>
+    internal const int KeyReferenceCharacters = 26;
+
+    /// <summary>Gets the required HXAD schema version.</summary>
+    internal const byte AadSchemaVersion = 1;
+
+    /// <summary>Gets the required HXAD field count.</summary>
+    internal const byte AadFieldCount = 11;
+
+    /// <summary>Gets the required HXPM schema version.</summary>
+    internal const byte ManifestSchemaVersion = 1;
 
     /// <summary>Gets the envelope-version field offset.</summary>
     internal const int EnvelopeVersionOffset = 4;
@@ -79,8 +91,14 @@ internal static class PayloadProtectionWireFormat
     internal const byte KeyReferenceKind = 1;
 
     /// <summary>Gets the exact protected serialization format as UTF-8 bytes.</summary>
-    internal static ReadOnlySpan<byte> ProtectedSerializationFormatUtf8 => _protectedSerializationFormatUtf8;
+    internal static ReadOnlySpan<byte> ProtectedSerializationFormatUtf8 => "json+pdenc-v2"u8;
+
+    /// <summary>Gets the exact HXAD authenticated-data magic as ASCII bytes.</summary>
+    internal static ReadOnlySpan<byte> AadMagic => "HXAD"u8;
 
     /// <summary>Gets the exact HXP2 envelope magic as ASCII bytes.</summary>
     internal static ReadOnlySpan<byte> EnvelopeMagic => "HXP2"u8;
+
+    /// <summary>Gets the exact HXPM protected-path manifest magic as ASCII bytes.</summary>
+    internal static ReadOnlySpan<byte> ManifestMagic => "HXPM"u8;
 }

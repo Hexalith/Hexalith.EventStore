@@ -1,3 +1,4 @@
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 7, 8, 14, and 15.
 using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using System.Security.Cryptography;
@@ -155,8 +156,8 @@ internal static class ProtectedPathManifestCodec
             ValidateOverlap(sortedEncodedPaths, cancellationToken, checkpoint);
 
             encoded = new byte[checked((int)totalLength)];
-            "HXPM"u8.CopyTo(encoded);
-            encoded[4] = 1;
+            PayloadProtectionWireFormat.ManifestMagic.CopyTo(encoded);
+            encoded[4] = PayloadProtectionWireFormat.ManifestSchemaVersion;
             BinaryPrimitives.WriteUInt32BigEndian(encoded.AsSpan(5), checked((uint)sortedPaths.Length));
             int offset = 9;
             int encodedPathCount = 0;

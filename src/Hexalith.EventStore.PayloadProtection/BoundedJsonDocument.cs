@@ -1,3 +1,4 @@
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 6-8, 14, and 15.
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;

@@ -1,3 +1,4 @@
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 10, 14, and 15.
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
@@ -55,14 +56,15 @@ internal static class PayloadProtectionDiagnostics
     internal static void Record(
         PayloadProtectionOperation operation,
         PayloadProtectionDiagnosticResult result,
-        double durationMilliseconds)
+        double durationMilliseconds,
+        bool protectedFormat = true)
     {
         try
         {
             TagList tags = default;
             tags.Add("operation", operation == PayloadProtectionOperation.Protect ? "protect" : "unprotect");
             tags.Add("result", ResultToken(result));
-            tags.Add("format_version", "v2");
+            tags.Add("format_version", protectedFormat ? "v2" : "none");
             _operations.Add(1, tags);
             _duration.Record(durationMilliseconds, tags);
         }

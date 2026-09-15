@@ -3,6 +3,9 @@
 - Approver: human EventStore owner in the current interactive BMad build session.
 - UTC timestamp: `2026-09-14T09:52:51Z`.
 - Decision: **AMENDED REQUIREMENTS APPROVED; STORY 8.3 REVIEW AUTHORIZED**.
+- Approval addendum: at `2026-09-15T11:02:04Z`, the human EventStore owner in
+  the current interactive BMad build session authorized the V004 interpretation
+  and the authority section 8.4 Server-ownership correction recorded below.
 - Reviewed repository commit: `220e722df0f088bd6790b4815eedd3e993de09fb`.
 - Normative Story 8.1 SHA-256, unchanged:
   `de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e`.
@@ -21,8 +24,10 @@ recorded in `verification.md`. The accepted interpretations are:
 
 1. V008 preserves HXP2 version `02` and rejects `03`/`ff` at the version byte;
    unsupported identifier/flag fields continue to exercise `02`/`ff`.
-2. V016 performs the exact substituted lookup for a valid DEK-version change,
-   while ordinal inconsistency is rejected locally before lookup.
+2. V004 envelope-ordinal bit flips at offsets 16-19 and V016 ordinal-only
+   substitutions are rejected locally before lookup because manifest/ordinal
+   consistency is mandatory. V016 still performs the exact substituted lookup
+   for a valid DEK-version change.
 3. V023 proves raw AAD format absence/emptiness and v1 substitution without
    inventing a nullable or caller-selected format source at the byte-core seam.
 4. V030 retains the 4,096-byte total-AAD defensive cap and proves the exact
@@ -32,6 +37,9 @@ recorded in `verification.md`. The accepted interpretations are:
 5. V038/V039 prove core-owned bounded depth/cycle-equivalent and cancellation
    behavior. Policy discovery, converter/getter execution, and policy-fault
    mapping stay assigned to Story 8.5.
+6. Authority section 8.4's durable metadata allowlist and `Unprotected()`
+   pairing are Server-owned and excluded from Story 8.3 because this core-engine
+   story forbids Server persistence integration.
 
 These interpretations supersede contrary registry wording for Story 8.3 only.
 The shared payload-protection authority, Story 8.2 Contracts and fixtures, G-001

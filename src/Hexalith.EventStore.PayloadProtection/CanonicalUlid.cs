@@ -1,3 +1,4 @@
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 6-8 and 14.
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>
@@ -5,21 +6,19 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// </summary>
 internal static class CanonicalUlid
 {
-    private const string _alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-
     /// <summary>
     /// Determines whether a value is the canonical 26-character uppercase representation of 128 ULID bits.
     /// </summary>
     internal static bool IsValid(string? value)
     {
-        if (value is null || value.Length != PayloadProtectionLimits.KeyReferenceBytes || value[0] > '7')
+        if (value is null || value.Length != PayloadProtectionWireFormat.KeyReferenceCharacters || value[0] > '7')
         {
             return false;
         }
 
         foreach (char character in value)
         {
-            if (!_alphabet.Contains(character, StringComparison.Ordinal))
+            if (!PayloadProtectionWireFormat.CrockfordBase32Alphabet.Contains(character, StringComparison.Ordinal))
             {
                 return false;
             }

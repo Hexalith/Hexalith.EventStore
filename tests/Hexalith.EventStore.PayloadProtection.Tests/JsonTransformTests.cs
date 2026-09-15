@@ -10,6 +10,40 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 /// </summary>
 public sealed class JsonTransformTests
 {
+    /// <summary>Verifies zero-token JSON inputs stay inside the closed writer and reader failure surfaces.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    public async Task MissingJsonRoot_IsRejectedWithoutExternalWorkAsync(string json)
+    {
+        byte[] payload = Encoding.UTF8.GetBytes(json);
+        int materialCalls = 0;
+        int resolverCalls = 0;
+
+        Should.Throw<PayloadProtectionFormatException>(() => BoundedJsonDocument.Parse(payload, default));
+        Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectEvent(
+            payload,
+            ["/value"],
+            TestFixture.Context(),
+            () =>
+            {
+                materialCalls++;
+                return TestFixture.Material();
+            }));
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            payload,
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        materialCalls.ShouldBe(0);
+        resolverCalls.ShouldBe(0);
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+    }
+
     /// <summary>Verifies invalid UTF-8 inside a JSON string is rejected before writer-side material creation.</summary>
     [Fact]
     public void InvalidUtf8String_IsRejectedByWriterBeforeMaterialCreation()
@@ -377,6 +411,7 @@ public sealed class JsonTransformTests
     [Theory]
     [InlineData("a\\u007eb", "/a~0b")]
     [InlineData("a\\u002fb", "/a~1b")]
+    [InlineData("a\\/b", "/a~1b")]
     [InlineData("a\\\"b", "/a\"b")]
     [InlineData("a\\\\b", "/a\\b")]
     [InlineData("\\uD83D\\uDE00", "/😀")]
@@ -601,8 +636,10 @@ public sealed class JsonTransformTests
     [Trait("Vector", "V040")]
     public async Task V040_MixedNullSelection_RebuildsManifestAndCompactsOrdinalAsync(bool nullPathFirst)
     {
-        byte[] original = "{\"a\":null,\"b\":\"secret\"}"u8.ToArray();
-        string[] paths = nullPathFirst ? ["/a", "/b"] : ["/b", "/a"];
+        byte[] original = "{\"z\":\"last\",\"a\":null,\"m\":\"middle\",\"b\":\"first\"}"u8.ToArray();
+        string[] paths = nullPathFirst
+            ? ["/a", "/z", "/m", "/b"]
+            : ["/z", "/m", "/b", "/a"];
 
         CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
             original,
@@ -610,14 +647,19 @@ public sealed class JsonTransformTests
             TestFixture.Context(),
             TestFixture.Material);
 
-        protectedResult.ProtectedPathCount.ShouldBe(1);
+        protectedResult.ProtectedPathCount.ShouldBe(3);
         using (JsonDocument document = JsonDocument.Parse(protectedResult.PayloadBytes))
         {
             document.RootElement.GetProperty("a").ValueKind.ShouldBe(JsonValueKind.Null);
-            PayloadProtectionEnvelope envelope = EnvelopeCodec.Read(Base64UrlCodec.Decode(
+            PayloadProtectionEnvelope b = EnvelopeCodec.Read(Base64UrlCodec.Decode(
                 document.RootElement.GetProperty("b").GetProperty("$pdenc").GetString()));
-            envelope.FieldOrdinal.ShouldBe((uint)0);
-            envelope.Nonce.ShouldAllBe(static value => value == 0);
+            PayloadProtectionEnvelope m = EnvelopeCodec.Read(Base64UrlCodec.Decode(
+                document.RootElement.GetProperty("m").GetProperty("$pdenc").GetString()));
+            PayloadProtectionEnvelope z = EnvelopeCodec.Read(Base64UrlCodec.Decode(
+                document.RootElement.GetProperty("z").GetProperty("$pdenc").GetString()));
+            b.FieldOrdinal.ShouldBe((uint)0);
+            m.FieldOrdinal.ShouldBe((uint)1);
+            z.FieldOrdinal.ShouldBe((uint)2);
         }
 
         CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);

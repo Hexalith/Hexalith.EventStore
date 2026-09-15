@@ -53,17 +53,33 @@ public sealed class CryptographyTests
         Encoding.UTF8.GetString(result.PayloadBytes!).ShouldBe("{\"email\":\"alice@example.com\",\"name\":\"Alice\"}");
     }
 
-    /// <summary>Verifies the root-manifest snapshot seam round-trips complete authenticated JSON.</summary>
+    /// <summary>Verifies the root-manifest snapshot seam against independently pinned manifest, AAD, and envelope bytes.</summary>
     [Fact]
     public async Task Snapshot_RoundTripsCompleteAuthenticatedJsonAsync()
     {
-        byte[] original = "{\"name\":\"Alice\",\"items\":[1,2]}"u8.ToArray();
+        const string manifestHex = "4858504d010000000100000000";
+        const string aadHex = "4858414401020b0001010000000874656e616e742d610201000000077061727469657303010000000870617274792d303104010000001a68782d736e617073686f742d76313a70617274792d737461746505010000000006010000001a30314a30303030303030303030303030303030303030303030300702000000040000000108010000000d6a736f6e2b7064656e632d7632090200000004000000000a030000000800000000000000010b04000000204da57a91925670ffad09e327b661781b5b280ef33160ea4b27aa76b396c41796";
+        const string envelopeHex = "4858503202010101001c001a00000001000000000c1000000000001030314a3030303030303030303030303030303030303030303030000000000000000000000000759edbbfd849a1872ae9c55c7b49b3e481b97b2699ef6a7a28b1e974f2059283";
+        const string envelopeBase64Url = "SFhQMgIBAQEAHAAaAAAAAQAAAAAMEAAAAAAAEDAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAAAAAAAdZ7bv9hJoYcq6cVce0mz5IG5eyaZ72p6KLHpdPIFkoM";
+        byte[] original = "{\"name\":\"Alice\"}"u8.ToArray();
+        ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create([string.Empty], snapshot: true);
+        byte[] aad = AadCodec.Write(
+            TestFixture.SnapshotContext(),
+            string.Empty,
+            TestFixture.KeyReference,
+            1,
+            0,
+            manifest.Commitment);
         ProtectedSnapshotPayloadV2 protectedSnapshot = TestFixture.ProtectSnapshot(original);
 
         CoreUnprotectionResult result = await TestFixture.UnprotectSnapshotAsync(protectedSnapshot);
 
+        Convert.ToHexString(manifest.Encoded).ToLowerInvariant().ShouldBe(manifestHex);
+        Convert.ToHexString(aad).ToLowerInvariant().ShouldBe(aadHex);
         protectedSnapshot.Format.ShouldBe("json+pdenc-v2");
         protectedSnapshot.SnapshotTypeId.ShouldBe("hx-snapshot-v1:party-state");
+        protectedSnapshot.Envelope.ShouldBe(envelopeBase64Url);
+        Convert.ToHexString(Base64UrlCodec.Decode(protectedSnapshot.Envelope)).ToLowerInvariant().ShouldBe(envelopeHex);
         result.IsReadable.ShouldBeTrue();
         result.PayloadBytes.ShouldBe(original);
     }

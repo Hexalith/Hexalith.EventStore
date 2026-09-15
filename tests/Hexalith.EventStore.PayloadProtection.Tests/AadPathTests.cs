@@ -100,6 +100,24 @@ public sealed class AadPathTests
         }
     }
 
+    /// <summary>Verifies pre-material AAD validation derives and enforces the payload kind from the canonical path shape.</summary>
+    [Fact]
+    public void PreMaterialValidation_RejectsPayloadKindAndPathShapeMismatch()
+    {
+        byte[] commitment = new byte[32];
+
+        Should.Throw<PayloadProtectionFormatException>(() => AadCodec.ValidateBeforeMaterial(
+            TestFixture.Context(),
+            string.Empty,
+            0,
+            commitment));
+        Should.Throw<PayloadProtectionFormatException>(() => AadCodec.ValidateBeforeMaterial(
+            TestFixture.SnapshotContext(),
+            "/value",
+            0,
+            commitment));
+    }
+
     /// <summary>Verifies invalid event context cannot bypass validation through empty-selection pass-through.</summary>
     [Fact]
     public void EmptySelection_InvalidEventContext_IsRejectedWithoutMaterialCreation()

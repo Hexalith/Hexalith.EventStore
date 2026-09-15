@@ -1,3 +1,4 @@
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 7, 14, and 15.
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Hexalith.EventStore.Contracts.Security;
@@ -84,12 +85,11 @@ internal static class AadCodec
             throw new PayloadProtectionFormatException();
         }
 
-        bool snapshot = context.PayloadKind == PayloadProtectionPayloadKind.Snapshot;
-        ValidateContext(context, context.PayloadKind);
-        if (snapshot != (propertyPath.Length == 0))
-        {
-            throw new PayloadProtectionFormatException();
-        }
+        PayloadProtectionPayloadKind expectedKind = propertyPath.Length == 0
+            ? PayloadProtectionPayloadKind.Snapshot
+            : PayloadProtectionPayloadKind.Event;
+        ValidateContext(context, expectedKind);
+        bool snapshot = expectedKind == PayloadProtectionPayloadKind.Snapshot;
 
         _ = JsonPointer.Decode(
             propertyPath,
@@ -154,12 +154,15 @@ internal static class AadCodec
             bool snapshot = context.PayloadKind == PayloadProtectionPayloadKind.Snapshot;
             payloadType = CanonicalText.Encode(context.PayloadTypeId, snapshot ? 16 : 1, snapshot ? 128 : 1024);
             path = CanonicalText.Encode(propertyPath, snapshot ? 0 : 1, PayloadProtectionLimits.PathBytes);
-            key = CanonicalText.Encode(keyReference, 26, 26);
+            key = CanonicalText.Encode(
+                keyReference,
+                PayloadProtectionWireFormat.KeyReferenceCharacters,
+                PayloadProtectionWireFormat.KeyReferenceCharacters);
             result = new byte[totalLength];
-            "HXAD"u8.CopyTo(result);
-            result[4] = 1;
+            PayloadProtectionWireFormat.AadMagic.CopyTo(result);
+            result[4] = PayloadProtectionWireFormat.AadSchemaVersion;
             result[5] = (byte)context.PayloadKind;
-            result[6] = 11;
+            result[6] = PayloadProtectionWireFormat.AadFieldCount;
             int offset = 8;
             offset = WriteField(result, offset, 1, 1, tenant);
             offset = WriteField(result, offset, 2, 1, domain);

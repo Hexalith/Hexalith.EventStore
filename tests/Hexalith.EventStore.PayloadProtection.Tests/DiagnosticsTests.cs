@@ -130,6 +130,11 @@ public sealed class DiagnosticsTests
         listener.Start();
 
         _ = TestFixture.Protect();
+        _ = new PayloadProtectionCore().ProtectEvent(
+            "{\"value\":null}"u8.ToArray(),
+            ["/value"],
+            TestFixture.Context(),
+            TestFixture.Material);
         _ = await TestFixture.UnprotectAsync(TestFixture.WrapperPayloadBytes());
         Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectEvent(
             "{\"malformed-canary\":"u8.ToArray(),
@@ -171,16 +176,17 @@ public sealed class DiagnosticsTests
             "eventstore.payload_protection.duration",
             "eventstore.payload_protection.operations",
         ];
-        var expectedOutcomes = new (string Operation, string Result)[] {
-            ("protect", "success"),
-            ("protect", "malformed"),
-            ("protect", "cancelled"),
-            ("protect", "cryptographic-failure"),
-            ("unprotect", "success"),
-            ("unprotect", "authentication-failed"),
-            ("unprotect", "unavailable"),
-            ("unprotect", "missing-key"),
-            ("unprotect", "consistency-mismatch"),
+        var expectedOutcomes = new (string Operation, string Result, string FormatVersion)[] {
+            ("protect", "success", "v2"),
+            ("protect", "success", "none"),
+            ("protect", "malformed", "v2"),
+            ("protect", "cancelled", "v2"),
+            ("protect", "cryptographic-failure", "v2"),
+            ("unprotect", "success", "v2"),
+            ("unprotect", "authentication-failed", "v2"),
+            ("unprotect", "unavailable", "v2"),
+            ("unprotect", "missing-key", "v2"),
+            ("unprotect", "consistency-mismatch", "v2"),
         };
 
         measurements.Count.ShouldBe(expectedOutcomes.Length * instruments.Length);
@@ -196,16 +202,16 @@ public sealed class DiagnosticsTests
             instruments.ShouldContain(instrument);
             tags.Length.ShouldBe(3);
             tags.Select(static tag => tag.Key).Order().ShouldBe(["format_version", "operation", "result"]);
-            tags.Single(static tag => tag.Key == "format_version").Value.ShouldBe("v2");
         }
 
-        foreach ((string operation, string result) in expectedOutcomes)
+        foreach ((string operation, string result, string formatVersion) in expectedOutcomes)
         {
             foreach (string instrument in instruments)
             {
                 measurements.Count(measurement => measurement.Instrument == instrument
                     && measurement.Tags.Single(static tag => tag.Key == "operation").Value as string == operation
-                    && measurement.Tags.Single(static tag => tag.Key == "result").Value as string == result)
+                    && measurement.Tags.Single(static tag => tag.Key == "result").Value as string == result
+                    && measurement.Tags.Single(static tag => tag.Key == "format_version").Value as string == formatVersion)
                     .ShouldBe(1);
             }
         }

@@ -1,3 +1,4 @@
+// Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 5-8, 14, and 15.
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -39,6 +40,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         List<(BoundedJsonNode Node, byte[] Plaintext)>? selectedValues = null;
         List<JsonReplacement>? replacements = null;
         byte[]? transformed = null;
+        bool protectedDiagnosticFormat = true;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -70,6 +72,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     PayloadProtectionWireFormat.UnprotectedSerializationFormat,
                     0);
                 transformed = null;
+                protectedDiagnosticFormat = false;
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
                 return result;
             }
@@ -124,6 +127,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     PayloadProtectionWireFormat.UnprotectedSerializationFormat,
                     0);
                 transformed = null;
+                protectedDiagnosticFormat = false;
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
                 return result;
             }
@@ -131,9 +135,21 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             manifest = ProtectedPathManifestCodec.Create(
                 nonNullPaths,
                 cancellationToken: cancellationToken);
+            if (selectedValues.Count != manifest.Paths.Count)
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
             for (int index = 0; index < manifest.Paths.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // requestedManifest.Paths is canonical and filtering nulls preserves its order. Assert that
+                // recreating the non-null manifest cannot detach a selected plaintext from its ordinal.
+                if (!string.Equals(nonNullPaths[index], manifest.Paths[index], StringComparison.Ordinal))
+                {
+                    throw new PayloadProtectionFormatException();
+                }
+
                 _ = AadCodec.ValidateBeforeMaterial(
                     context,
                     manifest.Paths[index],
@@ -267,7 +283,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Protect,
                 diagnosticResult,
-                stopwatch.Elapsed.TotalMilliseconds);
+                stopwatch.Elapsed.TotalMilliseconds,
+                protectedDiagnosticFormat);
         }
     }
 
@@ -347,11 +364,12 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 envelopeBytes = EnvelopeCodec.Write(envelope);
                 string encodedEnvelope = Base64UrlCodec.Encode(envelopeBytes);
                 cancellationToken.ThrowIfCancellationRequested();
-                diagnosticResult = PayloadProtectionDiagnosticResult.Success;
-                return new ProtectedSnapshotPayloadV2(
+                var result = new ProtectedSnapshotPayloadV2(
                     PayloadProtectionWireFormat.ProtectedSerializationFormat,
                     context.PayloadTypeId,
                     encodedEnvelope);
+                diagnosticResult = PayloadProtectionDiagnosticResult.Success;
+                return result;
             }
             finally
             {
@@ -446,7 +464,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 observer: observer,
                 ownedBufferKind: SensitiveBufferKind.InputSnapshot);
             wrappers = document.ReadProtectedWrappers(cancellationToken, traversalCheckpoint);
-            if (wrappers.Count is < 1 or > PayloadProtectionLimits.ProtectedPaths)
+            if (wrappers.Count < 1)
             {
                 return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch);
             }
