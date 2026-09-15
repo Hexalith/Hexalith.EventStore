@@ -4513,3 +4513,23 @@ status: open
 - source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add `ci / payload-protection` to the protected branch's required status checks.
   evidence: The active GitHub ruleset queried on 2026-09-15 requires seven contexts but omits `ci / payload-protection`, so the standalone focused job can fail without blocking merge; frozen Story 8.3 intent explicitly excludes external-resource mutations, requiring repository-owner action outside this build.
+
+## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-15, chunk A second pass)
+
+### DW-518: The pdenc-v2 activity source and meter are never registered, so every metric and span the core emits is dropped.
+
+origin: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-15, chunk A)
+location: src/Hexalith.EventStore.PayloadProtection/PayloadProtectionDiagnostics.cs:12; src/Hexalith.EventStore.ServiceDefaults/Extensions.cs:29-33
+source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+severity: medium
+reason: `PayloadProtectionDiagnostics` creates an `ActivitySource` and a `Meter` both named `Hexalith.EventStore.PayloadProtection` and publishes `eventstore.payload_protection.operations` and `.duration`. `ServiceDefaults.ActivitySourceNames` contains exactly three entries -- `Hexalith.EventStore`, `Microsoft.AspNetCore.SignalR.Server`, `Microsoft.AspNetCore.SignalR.Client` -- and `ConfigureOpenTelemetry` calls `AddSource`/`AddMeter` only over that array, so no host collects the core's telemetry. `Name` is `internal`, so a host cannot reference the constant even if the array were extended. This is correct for Story 8.3, whose frozen boundary forbids Server and host integration; the registration belongs with Story 8.7 (server persistence and snapshot integration) or Story 8.8 (package and release integration). Recorded here because nothing else in the repository links the emitted names to the registration site, and the observability this story built is invisible until someone makes that link.
+status: open
+
+### DW-519: A legitimately unprotected `json` event payload is indistinguishable from one whose wrappers were stripped.
+
+origin: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-15, chunk A)
+location: src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:449
+source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+severity: medium
+reason: `ProtectEvent` legitimately returns format `json` with zero wrappers whenever no path is selected or every selected path resolves to JSON null -- the authority's V041 PASS case (`spec-shared-payload-protection-engine.md:1976`) and its null-skipping rule (lines 367, 1098). `TryUnprotectEventAsync` takes no persisted-format parameter, so when it meets such a payload `wrappers.Count is < 1` returns `BytesMetadataMismatch`, the same bounded reason an attacker-stripped payload produces. The core cannot separate the two without knowing the stored `serializationFormat`. That parameter is the reader-routing surface authority section 12.1 (Routing precedence) defines and Story 8.4 (Compatibility readers and mixed-history routing) owns; adding it here would create the routing seam Story 8.3's frozen boundary withholds. Carry into the Story 8.4 reader contract so the distinction arrives with routing rather than being retrofitted.
+status: open
