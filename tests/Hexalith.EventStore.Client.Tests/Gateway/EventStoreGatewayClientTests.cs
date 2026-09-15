@@ -15,6 +15,85 @@ namespace Hexalith.EventStore.Client.Tests.Gateway;
 
 public class EventStoreGatewayClientTests {
     [Fact]
+    public async Task GetCommandStatusAsync_UsesConfiguredPathAndDeserializesRejectedStatus() {
+        HttpRequestMessage? observedRequest = null;
+        using HttpClient httpClient = CreateClient(request => {
+            observedRequest = request;
+            return Task.FromResult(Json(
+                HttpStatusCode.OK,
+                "{\"correlationId\":\"corr-1\",\"status\":\"Rejected\",\"statusCode\":5,\"messageId\":\"message/1\"}"));
+        });
+        var options = new EventStoreGatewayClientOptions { CommandStatusPath = "custom/status/" };
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(options));
+
+        CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message/1")).ShouldNotBeNull();
+
+        observedRequest.ShouldNotBeNull().RequestUri!.AbsolutePath.ShouldBe("/custom/status/message%2F1");
+        response.MessageId.ShouldBe("message/1");
+        response.IsRejected.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_ReturnsNullForMissingStatus() {
+        using HttpClient httpClient = CreateClient(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        CommandStatusQueryResponse? response = await client.GetCommandStatusAsync("message-1");
+
+        response.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"correlationId\":\"corr-1\",\"status\":\"Completed\",\"statusCode\":4}")]
+    public async Task GetCommandStatusAsync_RejectsIncompleteSuccessfulBodies(string json) {
+        using HttpClient httpClient = CreateClient(_ =>
+            Task.FromResult(Json(HttpStatusCode.OK, json)));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException exception = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => client.GetCommandStatusAsync("message-1"));
+
+        exception.StatusCode.ShouldBe((int)HttpStatusCode.OK);
+        exception.Detail.ShouldBe("Command status response body was incomplete or inconsistent.");
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_RejectsAResponseForAnotherMessage() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(
+            HttpStatusCode.OK,
+            "{\"correlationId\":\"corr-1\",\"status\":\"Completed\",\"statusCode\":4,\"messageId\":\"other-message\"}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        _ = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => client.GetCommandStatusAsync("message-1"));
+    }
+
+    [Theory]
+    [InlineData("Completed", (int)CommandStatus.Rejected)]
+    [InlineData("Rejected", (int)CommandStatus.Completed)]
+    [InlineData("completed", (int)CommandStatus.Completed)]
+    [InlineData("Unknown", 999)]
+    public async Task GetCommandStatusAsync_RejectsContradictoryOrNonCanonicalStatusRepresentations(
+        string status,
+        int statusCode) {
+        string json = JsonSerializer.Serialize(new {
+            correlationId = "corr-1",
+            status,
+            statusCode,
+            messageId = "message-1",
+        });
+        using HttpClient httpClient = CreateClient(_ =>
+            Task.FromResult(Json(HttpStatusCode.OK, json)));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        _ = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => client.GetCommandStatusAsync("message-1"));
+    }
+
+    [Fact]
     public async Task SubmitCommandAsync_PostsContractRequestAndReturnsCorrelationId() {
         HttpRequestMessage? observedRequest = null;
         string? observedBody = null;

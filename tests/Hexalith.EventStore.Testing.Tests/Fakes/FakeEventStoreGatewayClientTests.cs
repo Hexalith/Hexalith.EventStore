@@ -13,6 +13,30 @@ namespace Hexalith.EventStore.Testing.Tests.Fakes;
 
 public class FakeEventStoreGatewayClientTests {
     [Fact]
+    public async Task GetCommandStatusAsync_ReturnsConfiguredResponse() {
+        var expected = new CommandStatusQueryResponse("corr-1", "Rejected", 5, "RejectedEvent", "message-1");
+        var fake = new FakeEventStoreGatewayClient { CommandStatusResponse = expected };
+
+        CommandStatusQueryResponse? response = await fake.GetCommandStatusAsync("message-1");
+
+        response.ShouldBeSameAs(expected);
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_PropagatesConfiguredExceptionAndCancellation() {
+        var failure = new InvalidOperationException("status unavailable");
+        var fake = new FakeEventStoreGatewayClient { CommandStatusException = failure };
+
+        (await Should.ThrowAsync<InvalidOperationException>(() =>
+            fake.GetCommandStatusAsync("message-1"))).ShouldBeSameAs(failure);
+
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() =>
+            new FakeEventStoreGatewayClient().GetCommandStatusAsync("message-1", cancellation.Token));
+    }
+
+    [Fact]
     public async Task SubmitCommandAsync_RecordsRequestAndReturnsConfiguredResponse() {
         var fake = new FakeEventStoreGatewayClient {
             CommandResponse = new SubmitCommandResponse("corr-1"),

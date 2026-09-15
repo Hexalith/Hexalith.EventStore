@@ -102,9 +102,18 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         }
 
         try {
-            return await response.Content
+            CommandStatusQueryResponse? result = await response.Content
                 .ReadFromJsonAsync<CommandStatusQueryResponse>(JsonOptions, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (!IsValidCommandStatus(result, messageId)) {
+                throw new EventStoreGatewayException(
+                    (int)response.StatusCode,
+                    response.ReasonPhrase ?? "OK",
+                    detail: "Command status response body was incomplete or inconsistent.");
+            }
+
+            return result;
         }
         catch (JsonException ex) {
             throw new EventStoreGatewayException(
@@ -113,6 +122,20 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 detail: "Command status response body could not be parsed.",
                 innerException: ex);
         }
+    }
+
+    private static bool IsValidCommandStatus(CommandStatusQueryResponse? response, string requestedMessageId) {
+        if (response is null
+            || string.IsNullOrWhiteSpace(response.CorrelationId)
+            || string.IsNullOrWhiteSpace(response.MessageId)
+            || !string.Equals(response.MessageId, requestedMessageId, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(response.Status)
+            || !Enum.TryParse(response.Status, ignoreCase: false, out CommandStatus parsed)
+            || !string.Equals(Enum.GetName(parsed), response.Status, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        return response.StatusCode == (int)parsed;
     }
 
     /// <inheritdoc />

@@ -20,5 +20,5 @@ public sealed record CommandStatusQueryResponse(
     /// <summary>Gets a value indicating whether the command reached the domain-rejected terminal state.</summary>
     public bool IsRejected
         => StatusCode == (int)CommandStatus.Rejected
-            || string.Equals(Status, nameof(CommandStatus.Rejected), StringComparison.Ordinal);
+            && string.Equals(Status, nameof(CommandStatus.Rejected), StringComparison.Ordinal);
 }
