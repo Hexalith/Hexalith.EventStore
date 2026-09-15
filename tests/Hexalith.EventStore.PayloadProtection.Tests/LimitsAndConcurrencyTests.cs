@@ -216,6 +216,28 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         entropy.FillCount.ShouldBe(16);
     }
 
+    /// <summary>Verifies cancellation during final collision cleanup wins over retry exhaustion.</summary>
+    [Fact]
+    public void MaterialGeneration_CancellationDuringFinalCollisionCleanupWins()
+    {
+        using var source = new CancellationTokenSource();
+        string[] collisions = [.. Enumerable.Repeat(TestFixture.KeyReference, 16)];
+        var entropy = new SequenceEntropy(collisions);
+        var observer = new RecordingBufferObserver(_ =>
+        {
+            if (entropy.FillCount == 16)
+            {
+                source.Cancel();
+            }
+        });
+
+        Should.Throw<OperationCanceledException>(() => new PayloadProtectionMaterialGenerator(entropy, observer)
+            .Generate(_ => false, source.Token));
+
+        entropy.FillCount.ShouldBe(16);
+        observer.Observed.Count.ShouldBe(16);
+    }
+
     /// <summary>Verifies the default material generator executes the production CSPRNG entropy implementation.</summary>
     [Fact]
     public void ProductionEntropy_GeneratesDistinctCanonicalReferencesAndKeys()

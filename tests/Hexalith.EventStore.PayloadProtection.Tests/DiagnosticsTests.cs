@@ -103,6 +103,37 @@ public sealed class DiagnosticsTests
         durationFaults.ShouldBe(2);
     }
 
+    /// <summary>Verifies a throwing operation-counter listener cannot suppress the duration measurement.</summary>
+    [Fact]
+    public void ThrowingOperationsCounterListener_DoesNotSuppressDurationMeasurement()
+    {
+        int operationFaults = 0;
+        int durationMeasurements = 0;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name)
+            {
+                current.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, _, _) =>
+        {
+            operationFaults++;
+            throw new InvalidOperationException();
+        });
+        listener.SetMeasurementEventCallback<double>((_, _, _, _) => durationMeasurements++);
+        listener.Start();
+
+        PayloadProtectionDiagnostics.Record(
+            PayloadProtectionOperation.Protect,
+            PayloadProtectionDiagnosticResult.Success,
+            1);
+
+        operationFaults.ShouldBe(1);
+        durationMeasurements.ShouldBe(1);
+    }
+
     /// <summary>Verifies both instruments emit exact closed tags for every constructible core outcome.</summary>
     [Fact]
     public async Task Metrics_ExposeOnlyClosedLowCardinalityTagsAsync()

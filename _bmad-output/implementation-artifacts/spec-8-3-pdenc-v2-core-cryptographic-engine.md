@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -65,7 +65,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
 - `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 250-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
+- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 252-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
@@ -94,7 +94,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   complete local path/budget validation and at least one non-null selection.
   This makes V041/V045 zero-material-call behavior directly observable without
   implementing Story 8.5 lifecycle storage.
-- The six required test areas contain 51 unique vector traits and execute 250
+- The six required test areas contain 51 unique vector traits and execute 252
   passing cases after the review-loop re-derivation audit. Approval packet
   `AR-20260914-02` accepts the evidence-backed constructible interpretations
   for V008/V016/V023/V030/V038/V039 without weakening bounds or importing
@@ -127,6 +127,10 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   The human EventStore owner then authorized the two remaining document patches;
   the V004 amendment-list and authority section 8.4 Server-ownership corrections
   are applied in the approval packet and frozen requirements block.
+- 2026-09-15: Closed two follow-up runtime findings by making final-collision
+  cancellation win after DEK cleanup and isolating best-effort metric
+  instruments; added one focused regression for each and raised the lane floor
+  to 252 cases.
 - 2026-09-14: Independent review found missing snapshot proof, plaintext
   string/DOM and uncleared staging copies, validation/use races, quadratic and
   uncancellable manifest work, pre-external-call validation gaps, unbounded
@@ -482,6 +486,33 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC7-08 | low | reject | The production-entropy assertions can fail only on astronomically improbable valid CSPRNG collisions/all-zero 256-bit keys; weakening the only production-path test is not justified by an everyday-negligible risk. |
 | EC7-09 | false | reject | carried from BH2-11/VG2-06: V138 resource values are expressly observational by Design Notes, while deterministic limits, concurrency, cancellation, and zero backend calls are asserted. |
 | EC7-10 | high | defer | The live active GitHub ruleset omits `ci / payload-protection`, so its failure does not block merge; branch-rule mutation is an external resource explicitly excluded by frozen Story 8.3 intent and requires owner action. |
+| BH8-01 | medium | patch | The baseline diff contains separately committed idempotency-adapter, command-status, AggregateActor, and FrontComposer changes excluded by Story 8.3, but the completion artifact discloses only one FrontComposer advance; correct the evidence narrative without claiming or reverting the external work. |
+| BH8-02 | false | reject | The content-binding table explicitly binds the named Story 8.3 production, test, CI, and evidence inventories; it does not claim to hash every out-of-scope file present after the preserved baseline. |
+| BH8-03 | medium | defer | carried from BH4-02 and BH7-01: the FrontComposer gitlink continued from the already-recorded external `4e6ce047` target to `12523054` in separately authored commit `163acb77`; Story 8.3 neither owns nor reverts that evolving external history. |
+| BH8-04 | false | reject | carried from BH6-12: the preservation command establishes the Story 8.3 working-tree delta, while baseline-to-current external changes require accurate disclosure rather than pretending the command compares commit history. |
+| BH8-05 | high | defer | carried from EC7-10: `ci / payload-protection` is not a required GitHub context; the already-recorded owner-only ruleset action remains external to Story 8.3 and is not deferred again. |
+| BH8-06 | false | reject | Concurrent commit `610f64ee` now rejects null, incomplete, cross-message, noncanonical, unknown, and name/code-inconsistent command-status bodies in `IsValidCommandStatus`. |
+| BH8-07 | false | reject | Concurrent commit `610f64ee` changed `CommandStatusQueryResponse.IsRejected` to require both the rejected status code and the exact rejected status name. |
+| BH8-08 | medium | defer | `CommandStatusPath` still accepts null, whitespace, and slash-only configuration, causing a null dereference or an identifier-only route; this public Client option was introduced by separately authored command-status work explicitly excluded from Story 8.3. |
+| BH8-09 | false | reject | Concurrent commit `610f64ee` added focused Client tests for configured/escaped routing, 404, invalid bodies, cross-message responses, and contradictory status representations. |
+| BH8-10 | medium | defer | Adding abstract `GetCommandStatusAsync` to the released `IEventStoreGatewayClient` breaks source compatibility for external implementations; the public-contract change is separately authored and explicitly excluded from Story 8.3. |
+| BH8-11 | false | reject | The Client DTO deliberately documents a caller-facing subset of the Server response, current shared fields align, and no present wire mismatch was demonstrated; speculative future drift does not establish this claimed defect. |
+| BH8-12 | medium | defer | The reusable fake returns one global status without recording or routing by `messageId`, so it can hide cross-command polling defects; this separately authored Testing-package surface is excluded from Story 8.3. |
+| BH8-13 | medium | defer | The new AggregateActor no-op payload test and existing handler/controller tests do not exercise the actor-to-handler-to-HTTP path together, so caller-visible preservation can still regress; the Server change is separately authored and excluded from Story 8.3. |
+| BH8-14 | false | reject | The focused built xUnit assembly invocation for `StateMachineIntegrationTests.ProcessCommand_NoOp_WithResultPayload_PreservesTerminalPayload` passed 1/1 with zero skips; the unrelated full-project failures do not invalidate this focused path. |
+| BH8-15 | false | reject | Story 8.3 requires exact vector, boundary, and behavior gates, not a coverage-percentage artifact; `coverlet.collector` is repository-standard test infrastructure and its presence creates no missing acceptance condition. |
+| VG8-01 | medium | patch | Pre-verified against the staged review snapshot: the new Client status-read path lacked executable contract tests. Concurrent commit `610f64ee` supplied the requested configured-path, escaping, 404, deserialization, and invalid-response cases before triage completed. |
+| VG8-02 | medium | patch | Pre-verified against the staged review snapshot: the published fake lacked response, exception, and cancellation tests. Concurrent commit `610f64ee` supplied those focused cases before triage completed. |
+| VG8-03 | high | defer | carried from EC7-10: the active ruleset omits `ci / payload-protection`; the owner-only external mutation is already recorded and is not deferred again. |
+| VG8-04 | false | reject | Concurrent commit `610f64ee` rejects successful JSON `null`, `{}`, missing identities, mismatched message IDs, and inconsistent status fields before returning a result. |
+| VG8-05 | false | reject | Concurrent commit `610f64ee` requires both status representations for `IsRejected`, disproving the filed contradictory-OR behavior. |
+| EC8-01 | false | reject | Concurrent commit `610f64ee` added `IsValidCommandStatus`, which rejects every stated null, incomplete, inconsistent, and cross-message trigger. |
+| EC8-02 | medium | defer | carried with BH8-08: null, whitespace, or slash-only `CommandStatusPath` remains invalid but belongs to the separately authored public Client feature, not Story 8.3. |
+| EC8-03 | false | reject | Concurrent commit `610f64ee` changed the property to an exact conjunction, so contradictory status representations are no longer reported as rejected. |
+| EC8-04 | medium | patch | Cancellation arriving while the sixteenth collided DEK is cleared falls through to `PayloadProtectionCryptographicException`; recheck caller cancellation after collision cleanup before exhausting retries. |
+| EC8-05 | low | patch | A throwing operations-counter listener is caught around both instruments and therefore suppresses the duration measurement; isolate each best-effort instrument recording call. |
+| EC8-06 | low | reject | carried from the second-pass low disposition: `BoundedJsonDocument` is internal and every production use is `using`-scoped, so adding disposal guards to all accessors is disproportionate for an unreachable everyday path. |
+| EC8-07 | medium | patch | The AggregateActor behavior change is real but separately authored and excluded; the Story 8.3 completion evidence must disclose it rather than implying FrontComposer is the baseline diff's only external change. |
 
 ## Design Notes
 
@@ -492,7 +523,7 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 250 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 252 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.

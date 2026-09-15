@@ -26,7 +26,7 @@ unauthorized pending their predecessor checks and exact approval.
 - Added a non-packable xUnit v3/Shouldly test project with linked immutable Story
   8.2 fixtures and a separate vector-execution manifest.
 - Implemented traits for all 51 assigned identifiers: inherited V001-V003 plus
-  V004-V048/V135-V136/V138. The applicable core behavior passes 250 test cases;
+  V004-V048/V135-V136/V138. The focused suite contains 252 test cases;
   Story 8.5-owned policy portions of V038/V039 are not claimed.
 - Closed the Step-3 audit gaps for strict carrier/header matrices, exact
   resolver inputs, constructible AAD sources/boundaries, independent manifest
@@ -47,28 +47,34 @@ unauthorized pending their predecessor checks and exact approval.
   complete normative source citations, centralized HXAD/HXPM/key/ULID
   constants, corrected pre-material validation and pass-through diagnostics,
   and removal of dead or allocation-backed format logic.
+- Closed two follow-up runtime findings so cancellation during the final
+  collision cleanup wins over retry exhaustion and a faulting operations
+  counter cannot suppress the duration measurement.
 - Story 8.3 edits preserved Contracts, frozen fixtures/verifiers, Server/no-op
   hooks, domain and Parties code, `Hexalith.EventStore.slnx`,
   `tools/release-packages.json`, topology, and persisted data. The baseline diff
-  also contains a separately authored FrontComposer gitlink advance recorded as
-  out of scope in the review ledger; this workflow did not alter or approve it.
+  also contains separately committed idempotency intent-adapter work,
+  command-status client/contract/fake/test work including the AggregateActor
+  no-op result preservation change, the previously disclosed FrontComposer
+  gitlink advance, and two later FrontComposer gitlink advances. Those excluded
+  changes were not authored, altered, reverted, or approved by this workflow.
 - Added blocking direct-project GitHub and local CI lanes with the exact
-  250-case minimum and skipped-test failure policy.
+  252-case minimum and skipped-test failure policy.
 
 ## Content Binding
 
 | Artifact | SHA-256 |
 | --- | --- |
 | Requirements amendment approval | `1d511941c09d12e1d3a09a82968fc82737dcd786b0b35082c75584b6e7358537` |
-| Sorted production source/project hash stream (35 files) | `ca01ac25d93799b155d3e248ce0ca7dc83603e03e7f9117416c93252364cfa49` |
-| Sorted focused-test/project/manifest hash stream (12 files) | `41a39fe7bad22fb927fb2578be9afb56add4502bd46b4e863fcf1e436c4bc4a8` |
+| Sorted production source/project hash stream (35 files) | `556066e7569ba4581129c4c5b8e8bbe45ddf9f200d26d590fda475c3ce51ad0b` |
+| Sorted focused-test/project/manifest hash stream (12 files) | `57093353583860650310e7d6c48f7844a30fd71afc26957da04d6521d0b39f7d` |
 | Core project | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | `3cc4898d645fb0cf31481abebfe5730d0869d385b13d8f96960c58841bd75297` |
-| GitHub focused lane | `6bf9416938488b3aa19e70593e08f0c9da5cb38c98516ad8b0740fec6d99fe21` |
-| Local focused lane | `93f597d3c9af1c005b5c5276e4013046f27d5862a222feb5e561b5551eb7b0e5` |
+| GitHub focused lane | `7d5eb4526c8bb861a3db1e3146e3169f9a5f1299f96842131a58d48d9f54bf49` |
+| Local focused lane | `3e5b339ed8dd4b9dc65a785bdca4424af59799a355f0dfb0e1696f2c978e8650` |
 | Preflight evidence | `ab3a5d7ac7dc4838e91b0ecc4bc3d77438f22a545d25ec92cba9dcf89ff2c8a2` |
-| Verification evidence | `f85771917830d5147c5362e82737061874f190a01a803a8cf67e30a1ee90d92e` |
+| Verification evidence | `8967a77eebd5fedca3bc0b6751282df204bd35327ee201398676310f64015925` |
 | Unchanged release manifest | `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
 | Unchanged solution | `dd9c0a74a6ca81d50e05ddcfd336f4f92882d77afa313287d69cf2bc87e7fc74` |
 
@@ -80,7 +86,9 @@ counts, and observed load values are in
 
 - Both independent frozen-vector verifiers passed V001-V003 unchanged.
 - An explicit focused Release build passed with zero warnings/errors, then the
-  no-build gate passed 250/250 with zero failures or skips.
+  no-build gate passed 252/252 with zero failures or skips.
+- The two follow-up regression methods passed 1/1 independently and as part of
+  that complete focused-suite rerun.
 - The core Release build passed with zero warnings and errors under the AOT and
   trim analyzers, which are enabled as project properties and therefore apply to
   every build of the core, including the blocking focused lane. Those properties
@@ -90,7 +98,7 @@ counts, and observed load values are in
   `.gitattributes` LF checks also passed.
 - The complete `.slnx` Release build passed with zero warnings and errors.
 - The direct GitHub workflow passed `actionlint` and the local mirror passed
-  `bash -n`; both require all 250 cases and fail on skips.
+  `bash -n`; both require all 252 cases and fail on skips.
 - Existing release packaging and both validators produced exactly 14 archives;
   the new non-packable project was absent as required.
 - Dependency, public-surface, solution/release-preservation, vector-coverage,

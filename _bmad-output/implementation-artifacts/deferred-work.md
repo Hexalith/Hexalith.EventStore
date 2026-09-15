@@ -4533,3 +4533,18 @@ source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
 severity: medium
 reason: `ProtectEvent` legitimately returns format `json` with zero wrappers whenever no path is selected or every selected path resolves to JSON null -- the authority's V041 PASS case (`spec-shared-payload-protection-engine.md:1976`) and its null-skipping rule (lines 367, 1098). `TryUnprotectEventAsync` takes no persisted-format parameter, so when it meets such a payload `wrappers.Count is < 1` returns `BytesMetadataMismatch`, the same bounded reason an attacker-stripped payload produces. The core cannot separate the two without knowing the stored `serializationFormat`. That parameter is the reader-routing surface authority section 12.1 (Routing precedence) defines and Story 8.4 (Compatibility readers and mixed-history routing) owns; adding it here would create the routing seam Story 8.3's frozen boundary withholds. Carry into the Story 8.4 reader contract so the distinction arrives with routing rather than being retrofitted.
 status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Validate `EventStoreGatewayClientOptions.CommandStatusPath` before command-status requests are constructed.
+  evidence: Separately authored command-status code accepts null, whitespace, and slash-only paths, which can produce a null dereference or identifier-only request route; Story 8.3 explicitly excludes public Client work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Restore source compatibility for external `IEventStoreGatewayClient` implementers after adding command-status reads.
+  evidence: Separately authored commit `555c9047` added an abstract interface member to a released Client contract; existing external implementations must now add it, while Story 8.3 explicitly excludes public-contract changes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Make the reusable gateway fake record and route command-status reads by message identifier.
+  evidence: The separately authored Testing-package fake returns one global response and ignores the requested `messageId`, so it can hide cross-command polling defects; Story 8.3 excludes that public test surface.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Add an actor-to-handler-to-HTTP no-op result-payload integration test.
+  evidence: The separately authored AggregateActor test proves actor output and existing tests prove handler/controller behavior in isolation, but no test composes the path that must preserve a no-op payload to the caller; Story 8.3 excludes Server changes.

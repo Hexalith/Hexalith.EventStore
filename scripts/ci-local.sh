@@ -132,7 +132,7 @@ if want_tier 1; then
   dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj \
     --no-build \
     --configuration Release \
-    --minimum-expected-tests 250 \
+    --minimum-expected-tests 252 \
     --fail-skips on \
     --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests \
     --report-xunit-trx \

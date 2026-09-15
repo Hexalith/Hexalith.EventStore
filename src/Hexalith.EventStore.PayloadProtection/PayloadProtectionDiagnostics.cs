@@ -59,18 +59,26 @@ internal static class PayloadProtectionDiagnostics
         double durationMilliseconds,
         bool protectedFormat = true)
     {
+        TagList tags = default;
+        tags.Add("operation", operation == PayloadProtectionOperation.Protect ? "protect" : "unprotect");
+        tags.Add("result", ResultToken(result));
+        tags.Add("format_version", protectedFormat ? "v2" : "none");
         try
         {
-            TagList tags = default;
-            tags.Add("operation", operation == PayloadProtectionOperation.Protect ? "protect" : "unprotect");
-            tags.Add("result", ResultToken(result));
-            tags.Add("format_version", protectedFormat ? "v2" : "none");
             _operations.Add(1, tags);
+        }
+        catch
+        {
+            // Each metric is best effort and cannot suppress the other instrument or change operation outcomes.
+        }
+
+        try
+        {
             _duration.Record(durationMilliseconds, tags);
         }
         catch
         {
-            // Metrics are best effort and cannot change cryptographic ownership or returned results.
+            // Each metric is best effort and cannot suppress the other instrument or change operation outcomes.
         }
     }
 

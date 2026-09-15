@@ -61,6 +61,7 @@ internal sealed class PayloadProtectionMaterialGenerator(
             }
 
             Clear(dek);
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         throw new PayloadProtectionCryptographicException();
