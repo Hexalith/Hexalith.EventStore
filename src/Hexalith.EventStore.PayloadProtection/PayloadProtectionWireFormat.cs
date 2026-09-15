@@ -16,13 +16,28 @@ internal static class PayloadProtectionWireFormat
     internal const string CrockfordBase32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
     /// <summary>Gets the exact number of ASCII characters in a canonical ULID key reference.</summary>
-    internal const int KeyReferenceCharacters = 26;
+    internal const int KeyReferenceCharacters = PayloadProtectionLimits.KeyReferenceBytes;
 
     /// <summary>Gets the required HXAD schema version.</summary>
     internal const byte AadSchemaVersion = 1;
 
     /// <summary>Gets the required HXAD field count.</summary>
     internal const byte AadFieldCount = 11;
+
+    /// <summary>Gets the fixed HXAD header byte count that precedes the first field.</summary>
+    internal const int AadHeaderBytes = 8;
+
+    /// <summary>Gets the fixed per-field HXAD header byte count (identifier, type, and u32 length).</summary>
+    internal const int AadFieldHeaderBytes = 6;
+
+    /// <summary>Gets the HXAD reserved-byte offset, which is always zero.</summary>
+    internal const int AadReservedOffset = 7;
+
+    /// <summary>Gets the durable HXAD payload-kind byte for an event.</summary>
+    internal const byte AadPayloadKindEvent = 1;
+
+    /// <summary>Gets the durable HXAD payload-kind byte for a snapshot.</summary>
+    internal const byte AadPayloadKindSnapshot = 2;
 
     /// <summary>Gets the required HXPM schema version.</summary>
     internal const byte ManifestSchemaVersion = 1;
@@ -64,16 +79,16 @@ internal static class PayloadProtectionWireFormat
     internal const int CiphertextLengthOffset = 24;
 
     /// <summary>Gets the variable key-reference field offset.</summary>
-    internal const int KeyReferenceOffset = 28;
+    internal const int KeyReferenceOffset = PayloadProtectionLimits.HeaderBytes;
 
     /// <summary>Gets the variable nonce field offset.</summary>
-    internal const int NonceOffset = 54;
+    internal const int NonceOffset = KeyReferenceOffset + PayloadProtectionLimits.KeyReferenceBytes;
 
     /// <summary>Gets the variable ciphertext field offset.</summary>
-    internal const int CiphertextOffset = 66;
+    internal const int CiphertextOffset = NonceOffset + PayloadProtectionLimits.NonceBytes;
 
     /// <summary>Gets the complete fixed envelope overhead around ciphertext.</summary>
-    internal const int EnvelopeFixedOverheadBytes = 82;
+    internal const int EnvelopeFixedOverheadBytes = CiphertextOffset + PayloadProtectionLimits.TagBytes;
 
     /// <summary>Gets the minimum complete envelope length for one ciphertext byte.</summary>
     internal const int MinimumEnvelopeBytes = EnvelopeFixedOverheadBytes + 1;

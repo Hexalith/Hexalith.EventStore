@@ -7,4 +7,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <param name="Start">The replaced value's byte offset.</param>
 /// <param name="Length">The replaced value's byte length.</param>
 /// <param name="Value">The complete replacement JSON bytes.</param>
-internal sealed record JsonReplacement(int Start, int Length, byte[] Value);
+internal sealed record JsonReplacement(int Start, int Length, byte[] Value)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(JsonReplacement);
+}

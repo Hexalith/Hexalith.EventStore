@@ -101,14 +101,20 @@ internal static class AadCodec
             + CanonicalText.GetByteCount(context.Identity.Domain, 1, 128)
             + CanonicalText.GetByteCount(context.Identity.AggregateId, 1, 256)
             + CanonicalText.GetByteCount(context.PayloadTypeId, snapshot ? 16 : 1, snapshot ? 128 : 1024)
-            + CanonicalText.GetByteCount(propertyPath, snapshot ? 0 : 1, PayloadProtectionLimits.PathBytes)
+            + CanonicalText.GetByteCount(
+                propertyPath,
+                snapshot ? 0 : 1,
+                snapshot ? 0 : PayloadProtectionLimits.PathBytes)
             + PayloadProtectionLimits.KeyReferenceBytes
             + 4
             + PayloadProtectionWireFormat.ProtectedSerializationFormatUtf8.Length
             + 4
             + 8
             + manifestCommitment.Length);
-        int totalLength = checked(8 + (11 * 6) + valuesLength);
+        int totalLength = checked(
+            PayloadProtectionWireFormat.AadHeaderBytes
+            + (PayloadProtectionWireFormat.AadFieldCount * PayloadProtectionWireFormat.AadFieldHeaderBytes)
+            + valuesLength);
         if (totalLength > PayloadProtectionLimits.AadBytes)
         {
             throw new PayloadProtectionFormatException();
@@ -120,6 +126,10 @@ internal static class AadCodec
     /// <summary>
     /// Encodes authenticated identity and envelope fields into canonical AAD.
     /// </summary>
+    /// <remarks>
+    /// Ownership of the returned record transfers to the caller, which must zero it on every exit.
+    /// Every buffer allocated inside this method is zeroed before an unsuccessful return.
+    /// </remarks>
     internal static byte[] Write(
         PayloadProtectionContext context,
         string propertyPath,
@@ -153,17 +163,26 @@ internal static class AadCodec
             aggregate = CanonicalText.Encode(context.Identity.AggregateId, 1, 256);
             bool snapshot = context.PayloadKind == PayloadProtectionPayloadKind.Snapshot;
             payloadType = CanonicalText.Encode(context.PayloadTypeId, snapshot ? 16 : 1, snapshot ? 128 : 1024);
-            path = CanonicalText.Encode(propertyPath, snapshot ? 0 : 1, PayloadProtectionLimits.PathBytes);
+            path = CanonicalText.Encode(
+                propertyPath,
+                snapshot ? 0 : 1,
+                snapshot ? 0 : PayloadProtectionLimits.PathBytes);
             key = CanonicalText.Encode(
                 keyReference,
-                PayloadProtectionWireFormat.KeyReferenceCharacters,
-                PayloadProtectionWireFormat.KeyReferenceCharacters);
+                PayloadProtectionLimits.KeyReferenceBytes,
+                PayloadProtectionLimits.KeyReferenceBytes);
             result = new byte[totalLength];
             PayloadProtectionWireFormat.AadMagic.CopyTo(result);
             result[4] = PayloadProtectionWireFormat.AadSchemaVersion;
-            result[5] = (byte)context.PayloadKind;
+            result[5] = context.PayloadKind switch
+            {
+                PayloadProtectionPayloadKind.Event => PayloadProtectionWireFormat.AadPayloadKindEvent,
+                PayloadProtectionPayloadKind.Snapshot => PayloadProtectionWireFormat.AadPayloadKindSnapshot,
+                _ => throw new PayloadProtectionFormatException(),
+            };
             result[6] = PayloadProtectionWireFormat.AadFieldCount;
-            int offset = 8;
+            result[PayloadProtectionWireFormat.AadReservedOffset] = 0;
+            int offset = PayloadProtectionWireFormat.AadHeaderBytes;
             offset = WriteField(result, offset, 1, 1, tenant);
             offset = WriteField(result, offset, 2, 1, domain);
             offset = WriteField(result, offset, 3, 1, aggregate);
@@ -214,20 +233,19 @@ internal static class AadCodec
         byte type,
         ReadOnlySpan<byte> value)
     {
-        Span<byte> header = destination.Slice(offset, 6);
+        Span<byte> header = destination.Slice(offset, PayloadProtectionWireFormat.AadFieldHeaderBytes);
         header[0] = identifier;
         header[1] = type;
         BinaryPrimitives.WriteUInt32BigEndian(header[2..], checked((uint)value.Length));
-        value.CopyTo(destination[(offset + 6)..]);
-        return checked(offset + 6 + value.Length);
+        value.CopyTo(destination[(offset + PayloadProtectionWireFormat.AadFieldHeaderBytes)..]);
+        return checked(offset + PayloadProtectionWireFormat.AadFieldHeaderBytes + value.Length);
     }
 
     private static void ValidateSnapshotTypeId(string? value)
     {
         const string prefix = "hx-snapshot-v1:";
         int length = CanonicalText.GetByteCount(value, 16, 128);
-        if (value is null
-            || length != value.Length
+        if (length != value!.Length
             || !value.StartsWith(prefix, StringComparison.Ordinal)
             || value.Length == prefix.Length)
         {

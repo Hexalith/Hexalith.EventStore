@@ -13,6 +13,10 @@ internal static class ProtectedPathManifestCodec
     /// <summary>
     /// Snapshots, validates, sorts, and encodes a complete path set with bounded enumeration and cancellation.
     /// </summary>
+    /// <remarks>
+    /// Ownership of the returned encoded manifest and commitment transfers to the caller, which must zero
+    /// both on every exit. Every buffer allocated here is zeroed before an unsuccessful return.
+    /// </remarks>
     internal static ProtectedPathManifest Create(
         IEnumerable<string> paths,
         bool snapshot = false,
@@ -153,7 +157,7 @@ internal static class ProtectedPathManifestCodec
                 sortedEncodedPaths[index] = encodedPaths[order[index]];
             }
 
-            ValidateOverlap(sortedEncodedPaths, cancellationToken, checkpoint);
+            ValidateOverlap(sortedEncodedPaths, cancellationToken, checkpoint, sortCheckpoint);
 
             encoded = new byte[checked((int)totalLength)];
             PayloadProtectionWireFormat.ManifestMagic.CopyTo(encoded);
@@ -321,7 +325,8 @@ internal static class ProtectedPathManifestCodec
     private static void ValidateOverlap(
         IReadOnlyList<byte[]> paths,
         CancellationToken cancellationToken,
-        Action<int>? checkpoint)
+        Action<int>? checkpoint,
+        Action<int>? sortCheckpoint)
     {
         int examinedBytes = 0;
         byte[][] descendantPrefixes = new byte[paths.Count][];
@@ -364,8 +369,8 @@ internal static class ProtectedPathManifestCodec
             {
                 Array.Sort(descendantPrefixes, 0, prefixCount, Comparer<byte[]>.Create((left, right) =>
                 {
-                    CheckCancellation(ref comparisons, cancellationToken, checkpoint);
-                    return Compare(left, right, cancellationToken, checkpoint);
+                    CheckCancellation(ref comparisons, cancellationToken, sortCheckpoint);
+                    return Compare(left, right, cancellationToken, sortCheckpoint);
                 }));
             }
             catch (InvalidOperationException exception)

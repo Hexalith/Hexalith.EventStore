@@ -119,8 +119,7 @@ internal static class JsonPointer
     {
         if (segment.Length == 0
             || (segment.Length > 1 && segment[0] == '0')
-            || !int.TryParse(segment, NumberStyles.None, CultureInfo.InvariantCulture, out int result)
-            || result < 0)
+            || !int.TryParse(segment, NumberStyles.None, CultureInfo.InvariantCulture, out int result))
         {
             throw new PayloadProtectionFormatException();
         }

@@ -25,14 +25,46 @@ internal static class Base64UrlCodec
     }
 
     /// <summary>
-    /// Encodes bytes without padding.
+    /// Encodes bytes without padding into a single zeroed staging buffer.
     /// </summary>
     internal static string Encode(ReadOnlySpan<byte> value)
-        => Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    {
+        int length = GetEncodedLength(value.Length);
+        int paddedLength = checked((value.Length + 2) / 3 * 4);
+        char[] padded = new char[paddedLength];
+        try
+        {
+            if (!Convert.TryToBase64Chars(value, padded, out int charactersWritten)
+                || charactersWritten != paddedLength)
+            {
+                throw new PayloadProtectionFormatException();
+            }
+
+            for (int index = 0; index < length; index++)
+            {
+                padded[index] = padded[index] switch
+                {
+                    '+' => '-',
+                    '/' => '_',
+                    _ => padded[index],
+                };
+            }
+
+            return new string(padded, 0, length);
+        }
+        finally
+        {
+            Array.Clear(padded);
+        }
+    }
 
     /// <summary>
     /// Decodes a bounded string after rejecting oversize before scanning or copying it.
     /// </summary>
+    /// <remarks>
+    /// Ownership of the returned buffer transfers to the caller, which must zero it on every exit.
+    /// Every staging buffer allocated here is cleared before returning.
+    /// </remarks>
     internal static byte[] Decode(string? value)
     {
         if (value is null || value.Length > PayloadProtectionLimits.EnvelopeTextCharacters)

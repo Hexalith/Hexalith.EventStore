@@ -228,3 +228,63 @@ historical routing, policy discovery, key storage/provider lifecycle, snapshot
 or Server integration, registration, publication, production certification,
 or V127/V128 no-leak approval evidence. The NIST test is an informal vector
 comparison, not a CAVP validation certificate.
+
+## Third-Pass Review Addendum (2026-09-15)
+
+The rows above record the evidence as observed before the third independent review.
+They are preserved unchanged. This addendum records what that review changed.
+
+### Suite count
+
+The focused suite is now **254 cases**, not 252. The third pass added two regressions:
+`EnvelopeTests.V004_WriterNonceDerivation_IsEnforced` and
+`AadPathTests.V031_NonBmpPointerToken_IsBudgetedByUtf8ByteCount`. The blocking lane floor
+was raised to 254 in `scripts/ci-local.sh` and in the new `.github/workflows/ci.yml`
+`payload-protection` job. Both new cases were mutation-verified: disabling the guard each
+one covers turns that case, and only that case, red.
+
+### AC3 scope boundary for observed zeroing
+
+AC3 requires that every engine-owned sensitive buffer is *observed* zeroed. The approved
+reading for Story 8.3 is: `ISensitiveBufferObserver` instruments every buffer that
+**survives a codec call** — the DEK, selected and decrypted plaintext, transformed output,
+`ProtectedPathManifest.Encoded`/`Commitment`, and `PayloadProtectionEnvelope.Nonce`/
+`Ciphertext`/`Tag` — through `PayloadProtectionCore`, `PayloadCryptography`,
+`BoundedJsonDocument`, and `PayloadProtectionMaterialGenerator`.
+
+Buffers that are internal to a single codec call — `AadCodec.Write`'s six per-field identity
+arrays, `Base64UrlCodec`'s decode and encode staging, `ProtectedPathManifestCodec`'s
+`encodedPath` and `descendantPrefixes` copies — are zeroed unconditionally on every exit with
+`CryptographicOperations.ZeroMemory`/`Array.Clear`, but are **not** routed through the
+observer. They never escape their call frame, so no caller can observe them at all. This is a
+deliberate scope boundary, not an omission; instrumenting them would add an observer parameter
+to four internal codecs for buffers with no reachable observer. Each of those four codecs now
+documents the caller's ownership and zeroing obligation at its return seam.
+
+### Canonical NFC rejection no longer depends on ICU being present
+
+`CanonicalText` previously gated non-NFC input solely on `string.IsNormalized`. Under
+globalization-invariant mode that API returns `true` for every input, so a decomposed spelling
+was accepted into durable AAD — the exact durable-identity aliasing normative section 7.1
+forbids. Reproduced before the fix: `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` failed
+`V029_UnicodeCanonicalization_IsRejectNotNormalize(value: "Te\u0301", valid: False)` at 251/252.
+
+`CanonicalText` now probes the platform normalizer once (U+00C5 must not report as Form D) and
+throws `PayloadProtectionCryptographicException` on every call when normalization is inert,
+matching the existing `AesGcm.IsSupported` platform-capability precedent in `PayloadCryptography`.
+Verified after the fix: 254/254 with ICU present, and under
+`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` the engine fails closed on every protected operation
+instead of accepting a non-NFC identity.
+
+### Blocking CI lane restored
+
+`.github/workflows/ci.yml` gained a `payload-protection` job that restores, builds with
+`-warnaserror`, and runs the project directly with `--minimum-expected-tests 254 --fail-skips on`,
+mirroring `scripts/ci-local.sh`. `Hexalith.EventStore.slnx` and the 14-package release inventory
+are unchanged; the engine remains outside both. Commit `7d6402c1` had moved the suite to
+`advisory-tests.yml`, where `continue-on-error: true`, a solution build that excludes the project,
+and VSTest flags under a `Microsoft.Testing.Platform` pin meant it executed zero tests. The stated
+reason for that move does not hold: `tools/validate-oq8-platform-evidence.py:3360` binds
+`.github/workflows/ci.yml` with `sha256_git_file(COMPLETED_V1_CLOSURE_COMMIT, ...)` against frozen
+commit `17e47a39`, never the live file, so the live workflow is not sealed. The unrelated VSTest
+flag defect in `advisory-tests.yml` affects all four of its projects and is left for its owner.

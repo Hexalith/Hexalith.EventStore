@@ -10,4 +10,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal readonly record struct BoundedJsonLookupKey(
     int ParentIndex,
     bool IsArrayIndex,
-    ulong Value);
+    ulong Value)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(BoundedJsonLookupKey);
+}

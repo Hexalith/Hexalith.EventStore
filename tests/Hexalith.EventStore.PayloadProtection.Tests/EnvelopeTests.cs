@@ -172,6 +172,29 @@ public sealed class EnvelopeTests
         await AssertLocalCarrierMismatchAsync(Base64UrlCodec.Encode(envelope));
     }
 
+    /// <summary>V004 rejects a written envelope whose nonce does not derive from its field ordinal.</summary>
+    [Fact]
+    [Trait("Vector", "V004")]
+    public void V004_WriterNonceDerivation_IsEnforced()
+    {
+        PayloadProtectionEnvelope golden = TestFixture.Envelope();
+        golden.FieldOrdinal.ShouldBe(0u);
+        golden.Nonce.ShouldAllBe(value => value == 0);
+
+        // The golden nonce derives from ordinal 0, so any other ordinal must be rejected.
+        Should.Throw<PayloadProtectionFormatException>(
+            () => EnvelopeCodec.Write(golden with { FieldOrdinal = 1 }));
+
+        // ... and ordinal 0 must reject any nonce that is not the derived all-zero value.
+        byte[] nonce = [.. golden.Nonce];
+        nonce[^1] = 1;
+        Should.Throw<PayloadProtectionFormatException>(
+            () => EnvelopeCodec.Write(golden with { Nonce = nonce }));
+
+        // The unmutated golden still round-trips, so the guard rejects only the mismatch.
+        EnvelopeCodec.Write(golden).ShouldBe(Convert.FromHexString(TestFixture.EnvelopeHex));
+    }
+
     private static async Task AssertLocalCarrierMismatchAsync(string envelope)
     {
         int resolverCalls = 0;

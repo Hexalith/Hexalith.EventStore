@@ -1,5 +1,6 @@
 // Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 6, 8, 14, and 15.
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -57,7 +58,7 @@ internal static class EnvelopeCodec
         }
         catch
         {
-            System.Security.Cryptography.CryptographicOperations.ZeroMemory(result);
+            CryptographicOperations.ZeroMemory(result);
             throw;
         }
     }
@@ -65,6 +66,10 @@ internal static class EnvelopeCodec
     /// <summary>
     /// Parses an envelope after validating its fixed header and checked total length.
     /// </summary>
+    /// <remarks>
+    /// Ownership of the returned nonce, ciphertext, and tag transfers to the caller, which must zero
+    /// them on every exit. Each is zeroed here before an unsuccessful return.
+    /// </remarks>
     internal static PayloadProtectionEnvelope Read(ReadOnlySpan<byte> value)
     {
         if (value.Length < PayloadProtectionWireFormat.MinimumEnvelopeBytes
@@ -141,17 +146,17 @@ internal static class EnvelopeCodec
         {
             if (nonce is not null)
             {
-                System.Security.Cryptography.CryptographicOperations.ZeroMemory(nonce);
+                CryptographicOperations.ZeroMemory(nonce);
             }
 
             if (ciphertext is not null)
             {
-                System.Security.Cryptography.CryptographicOperations.ZeroMemory(ciphertext);
+                CryptographicOperations.ZeroMemory(ciphertext);
             }
 
             if (tag is not null)
             {
-                System.Security.Cryptography.CryptographicOperations.ZeroMemory(tag);
+                CryptographicOperations.ZeroMemory(tag);
             }
         }
     }

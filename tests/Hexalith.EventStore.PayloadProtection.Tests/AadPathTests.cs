@@ -348,10 +348,15 @@ public sealed class AadPathTests
         }
     }
 
-    /// <summary>V030 accepts the maximum constructible valid AAD and rejects a field maximum-plus-one.</summary>
+    /// <summary>
+    /// V030 accepts the 3,617-byte runtime-constructible AAD maximum and rejects the first
+    /// individually over-bound path. Per approval packet <c>AR-20260914-02</c> the 4,096-byte total
+    /// cap stays a defensive bound: no combination of field maxima can reach it, so the rejection
+    /// below is produced by the 2,048-byte path bound, not by the total-length check.
+    /// </summary>
     [Fact]
     [Trait("Vector", "V030")]
-    public void V030_AadTotalLength_IsBoundedAfterEveryFieldBound()
+    public void V030_AadTotalLength_IsBoundedByTheConstructibleFieldMaxima()
     {
         string payloadType = new('p', 1024);
         string path = "/" + new string('x', 2047);
@@ -361,6 +366,29 @@ public sealed class AadPathTests
         maximum.Length.ShouldBe(3617);
         maximum.Length.ShouldBeLessThan(PayloadProtectionLimits.AadBytes);
         Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(context, path + "x"));
+    }
+
+    /// <summary>V031 budgets a non-BMP pointer token by its four UTF-8 bytes, not its UTF-16 units.</summary>
+    [Fact]
+    [Trait("Vector", "V031")]
+    public void V031_NonBmpPointerToken_IsBudgetedByUtf8ByteCount()
+    {
+        const string emoji = "\ud83d\ude00";
+        string pointer = "/" + string.Concat(Enumerable.Repeat(emoji, 128));
+        List<int> checkpoints = [];
+
+        IReadOnlyList<string> tokens = JsonPointer.Decode(
+            pointer,
+            allowRoot: false,
+            CancellationToken.None,
+            checkpoints.Add);
+
+        tokens.Count.ShouldBe(1);
+        tokens[0].ShouldBe(string.Concat(Enumerable.Repeat(emoji, 128)));
+
+        // One leading separator plus 128 x 4 UTF-8 bytes is 513, so the cadence stops at 512.
+        // Counting a surrogate pair as two 3-byte characters would reach 768 instead.
+        checkpoints.ShouldBe([1, 256, 512]);
     }
 
     /// <summary>V031 assigns ordinals by unsigned UTF-8 path order, independent of input order.</summary>

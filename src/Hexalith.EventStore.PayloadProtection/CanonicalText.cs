@@ -10,6 +10,8 @@ internal static class CanonicalText
 {
     private static readonly UTF8Encoding _strictUtf8 = new(false, true);
 
+    private static readonly bool _normalizationIsFunctional = ProbeNormalization();
+
     /// <summary>
     /// Encodes and validates a canonical text field.
     /// </summary>
@@ -39,6 +41,11 @@ internal static class CanonicalText
         if (value.Length > maximumBytes)
         {
             throw new PayloadProtectionFormatException();
+        }
+
+        if (!_normalizationIsFunctional)
+        {
+            throw new PayloadProtectionCryptographicException();
         }
 
         try
@@ -74,6 +81,30 @@ internal static class CanonicalText
         catch (EncoderFallbackException)
         {
             throw new PayloadProtectionFormatException();
+        }
+    }
+
+    /// <summary>
+    /// Determines whether the platform normalizer actually normalizes.
+    /// </summary>
+    /// <remarks>
+    /// Globalization-invariant mode reports every string as already normalized, which would silently
+    /// accept a decomposed durable identity that normative section 7.1 requires the engine to reject.
+    /// U+00C5 is composed, so a working normalizer reports it as not Form D.
+    /// </remarks>
+    private static bool ProbeNormalization()
+    {
+        try
+        {
+            return !"\u00c5".IsNormalized(NormalizationForm.FormD);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return false;
         }
     }
 
