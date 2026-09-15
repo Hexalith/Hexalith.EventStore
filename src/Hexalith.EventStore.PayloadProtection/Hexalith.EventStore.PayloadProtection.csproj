@@ -3,6 +3,8 @@
   <PropertyGroup>
     <Description>Provider-neutral pdenc-v2 cryptographic codecs and JSON transformation engine for Hexalith.EventStore</Description>
     <IsPackable>false</IsPackable>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,8 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj"
-                      AdditionalProperties="EnableAotAnalyzer=false;EnableTrimAnalyzer=false" />
+    <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

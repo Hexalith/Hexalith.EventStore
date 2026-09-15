@@ -211,8 +211,116 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
     {
         string[] collisions = [.. Enumerable.Repeat(TestFixture.KeyReference, 16)];
         var entropy = new SequenceEntropy(collisions);
-        Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionMaterialGenerator(entropy).Generate(_ => false));
+        Should.Throw<PayloadProtectionCryptographicException>(
+            () => new PayloadProtectionMaterialGenerator(entropy).Generate(_ => false));
         entropy.FillCount.ShouldBe(16);
+    }
+
+    /// <summary>Verifies the default material generator executes the production CSPRNG entropy implementation.</summary>
+    [Fact]
+    public void ProductionEntropy_GeneratesDistinctCanonicalReferencesAndKeys()
+    {
+        var generator = new PayloadProtectionMaterialGenerator();
+        PayloadProtectionMaterial first = generator.Generate(_ => true);
+        PayloadProtectionMaterial second = generator.Generate(_ => true);
+        try
+        {
+            CanonicalUlid.IsValid(first.KeyReference).ShouldBeTrue();
+            CanonicalUlid.IsValid(second.KeyReference).ShouldBeTrue();
+            first.KeyReference.ShouldNotBe(second.KeyReference);
+            first.DekVersion.ShouldBe((uint)1);
+            second.DekVersion.ShouldBe((uint)1);
+            first.DataEncryptionKey.Length.ShouldBe(32);
+            second.DataEncryptionKey.Length.ShouldBe(32);
+            first.DataEncryptionKey.ShouldNotBe(second.DataEncryptionKey);
+            first.DataEncryptionKey.ShouldContain(static value => value != 0);
+            second.DataEncryptionKey.ShouldContain(static value => value != 0);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(first.DataEncryptionKey);
+            CryptographicOperations.ZeroMemory(second.DataEncryptionKey);
+        }
+    }
+
+    /// <summary>Verifies a throwing observer cannot change a successful protection or stop later cleanup.</summary>
+    [Fact]
+    public void ThrowingObserver_DoesNotChangeProtectionOrLaterCleanup()
+    {
+        RecordingBufferObserver observer = new(_ => throw new InvalidOperationException());
+
+        CoreProtectionResult result = TestFixture.Protect(observer);
+
+        result.ProtectedPathCount.ShouldBe(1);
+        observer.Observed.ShouldContain(SensitiveBufferKind.InputSnapshot);
+        observer.Observed.ShouldContain(SensitiveBufferKind.SelectedPlaintext);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+        observer.Observed.ShouldContain(SensitiveBufferKind.ProtectedOutput);
+        observer.Observed.ShouldContain(SensitiveBufferKind.AuthenticatedData);
+    }
+
+    /// <summary>Verifies a throwing observer cannot change authenticated reconstruction or stop later cleanup.</summary>
+    [Fact]
+    public async Task ThrowingObserver_DoesNotChangeUnprotectionOrLaterCleanupAsync()
+    {
+        RecordingBufferObserver observer = new(_ => throw new InvalidOperationException());
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            TestFixture.WrapperPayloadBytes(),
+            observer: observer);
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe("{\"email\":\"alice@example.com\",\"name\":\"Alice\"}"u8.ToArray());
+        observer.Observed.ShouldContain(SensitiveBufferKind.InputSnapshot);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DecryptedPlaintext);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+        observer.Observed.ShouldContain(SensitiveBufferKind.ProtectedOutput);
+        observer.Observed.ShouldContain(SensitiveBufferKind.AuthenticatedData);
+    }
+
+    /// <summary>Verifies a throwing observer cannot alter parsing or disposal of the owned input snapshot.</summary>
+    [Fact]
+    public void ThrowingObserver_DoesNotChangeParseOrOwnedSnapshotCleanup()
+    {
+        RecordingBufferObserver observer = new(_ => throw new InvalidOperationException());
+
+        using (BoundedJsonDocument document = BoundedJsonDocument.Parse(
+            "{\"value\":1}"u8,
+            default,
+            observer: observer))
+        {
+            document.Resolve("/value").ValueKind.ShouldBe(JsonValueKind.Number);
+        }
+
+        observer.Observed.ShouldBe([SensitiveBufferKind.InputSnapshot]);
+    }
+
+    /// <summary>Verifies throwing collision observers cannot stop fresh-material retries or subsequent cleanup.</summary>
+    [Fact]
+    public void ThrowingObserver_DoesNotChangeMaterialGenerationOrLaterCleanup()
+    {
+        var entropy = new SequenceEntropy([
+            "01J00000000000000000000000",
+            "01J00000000000000000000001",
+            "01J00000000000000000000002",
+            "01J00000000000000000000003",
+        ]);
+        RecordingBufferObserver observer = new(_ => throw new InvalidOperationException());
+        int attempts = 0;
+
+        PayloadProtectionMaterial material = new PayloadProtectionMaterialGenerator(entropy, observer)
+            .Generate(_ => ++attempts == 4);
+
+        attempts.ShouldBe(4);
+        entropy.FillCount.ShouldBe(4);
+        observer.Observed.ShouldBe([
+            SensitiveBufferKind.DataEncryptionKey,
+            SensitiveBufferKind.DataEncryptionKey,
+            SensitiveBufferKind.DataEncryptionKey,
+        ]);
+        material.KeyReference.ShouldBe("01J00000000000000000000003");
+        material.DataEncryptionKey.ShouldAllBe(static value => value == 4);
+        CryptographicOperations.ZeroMemory(material.DataEncryptionKey);
     }
 
     /// <summary>V048 keeps restart/clone attempts state-free and records no repeated-DEK detector claim.</summary>
@@ -456,10 +564,77 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
             TestFixture.Context(),
             TestFixture.Material);
 
-        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+        int resolverCalls = 0;
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            protectedResult.PayloadBytes,
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
 
         result.IsReadable.ShouldBeTrue();
         result.PayloadBytes.ShouldBe(payload);
+        resolverCalls.ShouldBe(1);
+    }
+
+    /// <summary>Verifies successful protections share no material or ordinal state through one concurrent core instance.</summary>
+    [Fact]
+    public async Task ConcurrentProtections_OnOneCoreKeepPerCallKeysAndNoncesIsolatedAsync()
+    {
+        const int invocationCount = 4;
+        var core = new PayloadProtectionCore();
+        using var barrier = new Barrier(invocationCount);
+        Task<(byte[] Original, string KeyReference, byte[] Key, CoreProtectionResult Protected, CoreUnprotectionResult Unprotected)>[] tasks =
+            [.. Enumerable.Range(0, invocationCount).Select(index => Task.Factory.StartNew(
+                () =>
+                {
+                    barrier.SignalAndWait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+                    byte[] original = Encoding.UTF8.GetBytes($"{{\"left\":{index},\"right\":{index + 1}}}");
+                    string keyReference = TestFixture.KeyReference[..^1]
+                        + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    byte[] key = [.. Enumerable.Repeat(checked((byte)(index + 1)), 32)];
+                    CoreProtectionResult protectedResult = core.ProtectEvent(
+                        original,
+                        ["/left", "/right"],
+                        TestFixture.Context(),
+                        () => new PayloadProtectionMaterial(keyReference, 1, [.. key]));
+                    CoreUnprotectionResult unprotected = core.TryUnprotectEventAsync(
+                        protectedResult.PayloadBytes,
+                        TestFixture.Context(),
+                        (resolvedReference, version, _) =>
+                        {
+                            resolvedReference.ShouldBe(keyReference);
+                            version.ShouldBe((uint)1);
+                            return ValueTask.FromResult<byte[]?>([.. key]);
+                        }).AsTask().GetAwaiter().GetResult();
+                    return (original, keyReference, key, protectedResult, unprotected);
+                },
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default))];
+
+        var results = await Task.WhenAll(tasks);
+
+        results.Select(static result => result.KeyReference).Distinct(StringComparer.Ordinal).Count()
+            .ShouldBe(invocationCount);
+        foreach ((byte[] original, string keyReference, byte[] key, CoreProtectionResult protectedResult, CoreUnprotectionResult unprotected) in results)
+        {
+            unprotected.IsReadable.ShouldBeTrue();
+            unprotected.PayloadBytes.ShouldBe(original);
+            using JsonDocument document = JsonDocument.Parse(protectedResult.PayloadBytes);
+            PayloadProtectionEnvelope left = EnvelopeCodec.Read(Base64UrlCodec.Decode(
+                document.RootElement.GetProperty("left").GetProperty("$pdenc").GetString()));
+            PayloadProtectionEnvelope right = EnvelopeCodec.Read(Base64UrlCodec.Decode(
+                document.RootElement.GetProperty("right").GetProperty("$pdenc").GetString()));
+            left.KeyReference.ShouldBe(keyReference);
+            right.KeyReference.ShouldBe(keyReference);
+            left.FieldOrdinal.ShouldBe((uint)0);
+            right.FieldOrdinal.ShouldBe((uint)1);
+            BinaryPrimitives.ReadUInt64BigEndian(left.Nonce.AsSpan(4)).ShouldBe((ulong)0);
+            BinaryPrimitives.ReadUInt64BigEndian(right.Nonce.AsSpan(4)).ShouldBe((ulong)1);
+            CryptographicOperations.ZeroMemory(key);
+        }
     }
 
     /// <summary>Verifies aggregate reader ciphertext above 8 MiB is rejected before resolving a key.</summary>

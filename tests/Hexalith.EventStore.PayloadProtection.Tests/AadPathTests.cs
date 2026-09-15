@@ -345,17 +345,6 @@ public sealed class AadPathTests
         Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(context, path + "x"));
     }
 
-    /// <summary>V031 escapes tilde and slash in serialized member names.</summary>
-    [Theory]
-    [InlineData("a~b", "/a~0b")]
-    [InlineData("a/b", "/a~1b")]
-    [Trait("Vector", "V031")]
-    public void V031_PathEscaping_IsCanonical(string member, string expected)
-    {
-        ("/" + JsonPointer.Escape(member)).ShouldBe(expected);
-        JsonPointer.Decode(expected, allowRoot: false).Single().ShouldBe(member);
-    }
-
     /// <summary>V031 assigns ordinals by unsigned UTF-8 path order, independent of input order.</summary>
     [Fact]
     [Trait("Vector", "V031")]
@@ -408,6 +397,34 @@ public sealed class AadPathTests
         {
             Should.Throw<PayloadProtectionFormatException>(() => document.Resolve(pointer));
         }
+    }
+
+    /// <summary>V033 protects the distinguishable element at canonical index ten and restores exact source bytes.</summary>
+    [Fact]
+    [Trait("Vector", "V033")]
+    public async Task V033_ArrayIndexTen_RoundTripsTheExactElementAsync()
+    {
+        byte[] original =
+            "{\"items\":[\"zero\",\"one\",\"two\",\"three\",\"four\",\"five\",\"six\",\"seven\",\"eight\",\"nine\",\"ten\"]}"u8.ToArray();
+
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            original,
+            ["/items/10"],
+            TestFixture.Context(),
+            TestFixture.Material);
+
+        using (JsonDocument document = JsonDocument.Parse(protectedResult.PayloadBytes))
+        {
+            JsonElement items = document.RootElement.GetProperty("items");
+            items[1].GetString().ShouldBe("one");
+            items[9].GetString().ShouldBe("nine");
+            items[10].GetProperty("$pdenc").GetString().ShouldNotBeNullOrEmpty();
+        }
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(original);
     }
 
     private static void AssertAadSubstitutionFails(AggregateIdentity identity)

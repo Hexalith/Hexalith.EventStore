@@ -10,6 +10,133 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 /// </summary>
 public sealed class JsonTransformTests
 {
+    /// <summary>Verifies invalid UTF-8 inside a JSON string is rejected before writer-side material creation.</summary>
+    [Fact]
+    public void InvalidUtf8String_IsRejectedByWriterBeforeMaterialCreation()
+    {
+        byte[] payload = [.. "{\"value\":\""u8, 0xc3, (byte)'(', .. "\"}"u8];
+        byte[] original = [.. payload];
+        int materialCalls = 0;
+
+        Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectEvent(
+            payload,
+            ["/value"],
+            TestFixture.Context(),
+            () =>
+            {
+                materialCalls++;
+                return TestFixture.Material();
+            }));
+
+        materialCalls.ShouldBe(0);
+        payload.ShouldBe(original);
+    }
+
+    /// <summary>Verifies invalid UTF-8 anywhere in the protected JSON carrier is rejected before reader-side key lookup.</summary>
+    [Fact]
+    public async Task InvalidUtf8String_InProtectedCarrier_IsRejectedBeforeLookupAsync()
+    {
+        byte[] payload =
+        [
+            .. "{\"email\":{\"$pdenc\":\""u8,
+            .. Encoding.ASCII.GetBytes(TestFixture.EnvelopeBase64Url),
+            .. "\"},\"other\":\""u8,
+            0xc3,
+            (byte)'(',
+            .. "\"}"u8,
+        ];
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            payload,
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies authenticated invalid UTF-8 plaintext remains atomic and never becomes a readable result.</summary>
+    [Fact]
+    public async Task InvalidUtf8String_InAuthenticatedPlaintext_IsRejectedAfterAuthenticationAsync()
+    {
+        byte[] invalidPlaintext = [(byte)'\"', 0xc3, (byte)'(', (byte)'\"'];
+        PayloadProtectionEnvelope envelope = PayloadCryptography.Encrypt(
+            invalidPlaintext,
+            TestFixture.Aad(),
+            TestFixture.Dek(),
+            TestFixture.KeyReference,
+            1,
+            0);
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            TestFixture.WrapperPayloadBytes(Base64UrlCodec.Encode(EnvelopeCodec.Write(envelope))),
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(1);
+    }
+
+    /// <summary>Verifies resolver-side caller mutation cannot alter the reader's owned protected-input snapshot.</summary>
+    [Fact]
+    public async Task EventReader_UsesStableInputSnapshotAcrossResolverMutationAsync()
+    {
+        byte[] original = "{\"email\":\"alice@example.com\",\"name\":\"Alice\"}"u8.ToArray();
+        byte[] callerOwnedProtected = new PayloadProtectionCore().ProtectEvent(
+            original,
+            ["/email"],
+            TestFixture.Context(),
+            TestFixture.Material).PayloadBytes;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            callerOwnedProtected,
+            keyResolver: (_, _, _) =>
+            {
+                callerOwnedProtected.AsSpan().Fill((byte)' ');
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(original);
+        callerOwnedProtected.ShouldAllBe(static value => value == (byte)' ');
+    }
+
+    /// <summary>Verifies authenticated null selected plaintext is rejected atomically after one exact lookup.</summary>
+    [Fact]
+    public async Task EventReader_RejectsAuthenticatedNullPlaintextAsync()
+    {
+        PayloadProtectionEnvelope envelope = PayloadCryptography.Encrypt(
+            "null"u8,
+            TestFixture.Aad(),
+            TestFixture.Dek(),
+            TestFixture.KeyReference,
+            1,
+            0);
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            TestFixture.WrapperPayloadBytes(Base64UrlCodec.Encode(EnvelopeCodec.Write(envelope))),
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(1);
+    }
+
     /// <summary>Verifies the writer rejects every pre-existing reserved wrapper member before encryption.</summary>
     [Theory]
     [InlineData("{\"$pdenc\":\"value\",\"email\":\"a\"}")]
@@ -246,6 +373,31 @@ public sealed class JsonTransformTests
         result.PayloadBytes.ShouldBe(original);
     }
 
+    /// <summary>V031 exercises the production decoder for JSON-escaped member names and preserves their raw spelling.</summary>
+    [Theory]
+    [InlineData("a\\u007eb", "/a~0b")]
+    [InlineData("a\\u002fb", "/a~1b")]
+    [InlineData("a\\\"b", "/a\"b")]
+    [InlineData("a\\\\b", "/a\\b")]
+    [InlineData("\\uD83D\\uDE00", "/😀")]
+    [Trait("Vector", "V031")]
+    public async Task V031_JsonEscapedMemberName_RoundTripsThroughProductionPathAsync(
+        string encodedMemberName,
+        string path)
+    {
+        byte[] original = Encoding.UTF8.GetBytes("{\"" + encodedMemberName + "\":{\"value\":1}}");
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            original,
+            [path],
+            TestFixture.Context(),
+            TestFixture.Material);
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(original);
+    }
+
     /// <summary>Verifies decoded-equivalent duplicate member spellings fail locally on writer and reader paths.</summary>
     [Theory]
     [InlineData("protect")]
@@ -440,6 +592,38 @@ public sealed class JsonTransformTests
         using JsonDocument expected = JsonDocument.Parse(original);
         using JsonDocument actual = JsonDocument.Parse(result.PayloadBytes!);
         JsonElement.DeepEquals(expected.RootElement, actual.RootElement).ShouldBeTrue();
+    }
+
+    /// <summary>V040 rebuilds the manifest from non-null selections and compacts ordinals independent of request order.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("Vector", "V040")]
+    public async Task V040_MixedNullSelection_RebuildsManifestAndCompactsOrdinalAsync(bool nullPathFirst)
+    {
+        byte[] original = "{\"a\":null,\"b\":\"secret\"}"u8.ToArray();
+        string[] paths = nullPathFirst ? ["/a", "/b"] : ["/b", "/a"];
+
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            original,
+            paths,
+            TestFixture.Context(),
+            TestFixture.Material);
+
+        protectedResult.ProtectedPathCount.ShouldBe(1);
+        using (JsonDocument document = JsonDocument.Parse(protectedResult.PayloadBytes))
+        {
+            document.RootElement.GetProperty("a").ValueKind.ShouldBe(JsonValueKind.Null);
+            PayloadProtectionEnvelope envelope = EnvelopeCodec.Read(Base64UrlCodec.Decode(
+                document.RootElement.GetProperty("b").GetProperty("$pdenc").GetString()));
+            envelope.FieldOrdinal.ShouldBe((uint)0);
+            envelope.Nonce.ShouldAllBe(static value => value == 0);
+        }
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(original);
     }
 
     /// <summary>V040 restores alternate valid raw token spellings byte for byte.</summary>

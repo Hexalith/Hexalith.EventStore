@@ -65,7 +65,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
 - `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 217-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
+- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 246-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
@@ -94,7 +94,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   complete local path/budget validation and at least one non-null selection.
   This makes V041/V045 zero-material-call behavior directly observable without
   implementing Story 8.5 lifecycle storage.
-- The six required test areas contain 51 unique vector traits and execute 217
+- The six required test areas contain 51 unique vector traits and execute 246
   passing cases after the review-loop re-derivation audit. Approval packet
   `AR-20260914-02` accepts the evidence-backed constructible interpretations
   for V008/V016/V023/V030/V038/V039 without weakening bounds or importing
@@ -206,9 +206,36 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   217/217 with no skips, and all release, analyzer, style, preservation, and
   packaging checks pass.
 
+- 2026-09-15: Independent four-layer code review of chunk A
+  (`src/Hexalith.EventStore.PayloadProtection/`, 34 files) recorded 14 patch
+  action items, 1 deferral (DW-516), and 1 decision, with 18 findings rejected
+  on verification. The decision was resolved and applied: the AOT/trim analyzers
+  became project properties on the core and the `AdditionalProperties` override
+  on the frozen Contracts reference was removed, so the analysis now runs on
+  every build including the blocking lane rather than in one manual command CI
+  never invoked. Contracts' own 12 IL2026/IL3050 violations are tracked as
+  DW-517. No engine source changed; the focused gate remains 217/217 with no
+  skips and the frozen vectors, solution, and 14-package boundary are unchanged.
+  Status returns to `in-progress` pending the 14 action items, of which the
+  material one is that invalid UTF-8 inside JSON string values is accepted by
+  both writer and reader against authority sections 6.1 and 6.3.
+- 2026-09-15: Closed all 14 independent-review patch items with strict UTF-8
+  validation, production entropy coverage, centralized wire constants,
+  no-leak record formatting, escaped-member and snapshot-ordinal regressions,
+  explicit resolver ownership, direct snapshot plaintext transfer, corrected
+  failure taxonomy/null flow, and removal of dead guards. The focused gate now
+  passes 226/226 with no skips; analyzer, style, documentation, solution,
+  preservation, and 14-package checks remain clean.
+- 2026-09-15: Closed the final review verification gaps with 20 focused cases
+  covering post-auth nonce validation, mixed null manifests, multi-digit array
+  paths, observer/diagnostic isolation, reader input snapshots, resolver and
+  factory cancellation boundaries, shared-key consistency, maximum-wrapper
+  lookup count, and concurrent successful core use. The focused gate now passes
+  246/246 with no skips; the frozen intent and production wire bytes are unchanged.
+
 ## Review Triage Log
 
-- Six independent review batches were triaged below. All surviving Story 8.3
+- Nine independent review layers were triaged below. All surviving Story 8.3
   findings were patched and independently verified; rejected findings retain
   their evidence, and the externally authored FrontComposer gitlink remains
   out of scope. Requirement renegotiation and human approval are recorded in
@@ -421,6 +448,35 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC6-07 | false | reject | The same transferred-ownership rule applies when a snapshot byte array is deliberately returned as the DEK; the core must zero material whose ownership the factory transferred. |
 | EC6-08 | high | patch | carried within EC6-01's root cause: canonical envelope validation reads an uncleared four-byte stack prefix. |
 | EC6-09 | false | reject | carried within EC6-06's ownership result: the array returned as cryptographic material is transferred to the core and must be zeroed even when the caller deliberately aliases it. |
+| BH7-01 | medium | defer | carried from BH-01/VG-05/EC-11: the baseline contains the externally authored FrontComposer gitlink advance; Story 8.3 neither owns nor approves it, so it is not patched or deferred again. |
+| BH7-02 | false | reject | carried from BH6-12: the cited `git diff --name-only` command is only the working-tree preservation check; the baseline gitlink drift is separately disclosed in the completion artifact and review ledger. |
+| BH7-03 | false | reject | carried from BH4-03: `in-review` in the spec and `in-progress` in sprint tracking are the required Step-4 intermediate state; final synchronization follows successful review. |
+| BH7-04 | false | reject | The suite covers the required 768 cancellation boundary in `Manifest_CancellationCheckpointsCoverEveryBoundedPhase`; V138 separately proves in-core hostile-read overlap, checkpoints 1/256/512, and zero resolver calls, so the aggregate requirement is exercised. |
+| BH7-05 | low | reject | Deterministic CLR allocation failure is not injectable here, while every allocation-adjacent ownership transition was traced and cleanup itself is allocation-free; adding allocator seams throughout the core is disproportionate for an OOM-only verification gap. |
+| BH7-06 | medium | patch | No test makes `ISensitiveBufferObserver` throw, so removal of the best-effort guards could change outcomes and interrupt later cleanup; add focused protect, unprotect, parse, and material-generation coverage. |
+| BH7-07 | medium | patch | No test uses throwing activity or meter callbacks, so the diagnostic-listener isolation catches can regress without detection; add a nonparallel end-to-end regression. |
+| BH7-08 | medium | patch | Reader input is copied before lookup, but no resolver mutates the caller buffer to prove the reader continues from its owned snapshot; add an exact-output mutation regression. |
+| BH7-09 | medium | patch | The authenticated event-root `null` rejection has no complete-reader test, so deleting the guard leaves the suite green; add a validly authenticated null wrapper regression. |
+| BH7-10 | medium | patch | The pre-lookup shared key-reference/DEK-version consistency guard lacks mixed-wrapper tests; add both mutations and require zero resolver calls. |
+| BH7-11 | medium | patch | The complete 4,096-wrapper success test does not count resolver calls, leaving provider-call amplification undetected; assert exactly one shared-DEK resolution. |
+| BH7-12 | medium | patch | No successful `ProtectEvent` calls run concurrently through one core instance, so per-call state and nonce isolation can regress; add concurrent protected round trips with fresh material. |
+| VG7-01 | medium | patch | Pre-verified gap: V010's nonce-bit mutations invalidate authentication and never exercise either post-auth deterministic-nonce guard; add valid-tag noncanonical-nonce cases for event and snapshot readers. |
+| VG7-02 | medium | patch | Pre-verified gap: V033 resolves `/items/10` without asserting the selected node; add a distinguishable complete-core multi-digit array round trip. |
+| VG7-03 | medium | patch | Pre-verified gap: no test mixes selected null and non-null paths, so manifest rebuilding and ordinal compaction are unprotected; cover both input orders. |
+| VG7-04 | medium | patch | Pre-verified gap duplicating BH7-09: the full event reader lacks an authenticated-null-wrapper regression. |
+| VG7-05 | medium | patch | Pre-verified gap: material factories never throw in tests, leaving exception closure and caller-cancellation precedence unverified for both writers. |
+| VG7-06 | medium | patch | Pre-verified gap: neither reader tests a resolver-owned `OperationCanceledException` while the caller token remains active; require `ProviderUnavailable`. |
+| VG7-07 | medium | patch | Pre-verified gap duplicating BH7-07: only well-behaved activity and meter listeners are tested. |
+| EC7-01 | false | reject | Authority section 6.1 explicitly permits insignificant JSON whitespace on reads; the wrapper still enforces one literal unescaped `$pdenc` string member and canonical carrier bytes. |
+| EC7-02 | low | reject | A caller snapshot copy can delay cancellation only for the fixed 16 MiB input ceiling; chunked copy machinery is disproportionate for this bounded everyday-negligible delay. |
+| EC7-03 | low | reject | carried from BH6-05: strict UTF-8 validation and one framework token read are capped by the 16 MiB payload limit; replacing framework primitives for intra-token cancellation is disproportionate. |
+| EC7-04 | low | reject | carried from BH5-05: carrier decoding is capped at about 1.4 MiB and immediately followed by cancellation checks; threading cancellation through closed codecs is disproportionate. |
+| EC7-05 | false | reject | carried from the prior key-resolver-timeout rejection: the core supplies the caller token, while enforcing provider timeouts belongs to the excluded Story 8.5 lifecycle seam. |
+| EC7-06 | false | reject | carried from EC7-05 for the snapshot reader; the same caller-token and later-story ownership boundary applies. |
+| EC7-07 | false | reject | carried from EC7-05/EC7-06: a resolver that violates its cancellation contract does not make this Story 8.3 byte core own timeout policy. |
+| EC7-08 | low | reject | The production-entropy assertions can fail only on astronomically improbable valid CSPRNG collisions/all-zero 256-bit keys; weakening the only production-path test is not justified by an everyday-negligible risk. |
+| EC7-09 | false | reject | carried from BH2-11/VG2-06: V138 resource values are expressly observational by Design Notes, while deterministic limits, concurrency, cancellation, and zero backend calls are asserted. |
+| EC7-10 | high | defer | The live active GitHub ruleset omits `ci / payload-protection`, so its failure does not block merge; branch-rule mutation is an external resource explicitly excluded by frozen Story 8.3 intent and requires owner action. |
 
 ## Design Notes
 
@@ -431,14 +487,67 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 217 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 246 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
 **Observed results (2026-09-14):** both independent V001-V003 verifiers passed;
-focused Release tests passed 217/217 with no skips; code-style verification and
+focused Release tests passed 246/246 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
 solution Release build, and `git diff --check` passed; release packing plus both
 validators produced exactly 14 archives. Stories 8.4/8.5 remain unauthorized
 pending independent review and exact approval.
+
+### Review Findings
+
+Independent four-layer code review, 2026-09-14, against baseline
+`e8886ec4c277460de3d3208b3fc0b9c261c4967d`..`accada16`, chunk A
+(`src/Hexalith.EventStore.PayloadProtection/`, 34 files, 4,423 insertions).
+Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor.
+Every claim was re-verified at its cited location before a verdict was rendered.
+
+- [x] [Review][Decision] csproj disables the AOT/trim analyzers on frozen Contracts, and the story's zero-warning evidence depends on it — RESOLVED 2026-09-15, applied. `AdditionalProperties="EnableAotAnalyzer=false;EnableTrimAnalyzer=false"` was the repository's only use of those properties, and it existed solely to let one manual command in `verification.md:54` pass; the blocking lane (`ci.yml:135-141`) never passed the flags, so CI had never run these analyzers at all. Measured: removing the override and building with the flags fails with 12 IL2026/IL3050 errors, every one emitted by Contracts' own compilation and none by core source; a control probe (`JsonSerializer.Serialize(object)` injected into the core) does fail the build, proving the core was genuinely analyzed. Because the diagnostics come from a different project's compilation, a core-side `NoWarn`/`IsAotCompatible` could not have suppressed them. Fix applied: `EnableAotAnalyzer`/`EnableTrimAnalyzer` promoted to project properties on the core and the `AdditionalProperties` override removed — project properties do not propagate to project references, which is exactly why the command-line flags leaked into Contracts. The analysis is now permanent and CI-enforced instead of a manual command, and the second-MSBuild-configuration hazard that would have surfaced when Story 8.8 adds this project to `Hexalith.EventStore.slnx` is gone. Verified: core build clean with no flags; control probe still fails on core code; CI-equivalent restore plus `-warnaserror` build of the test project clean; suite 217/217 with zero skips. The documented command dropped the two flags — leaving them would make them global again and reintroduce the 12 errors. Content Binding hashes for the production stream, core project, and verification evidence were recomputed. Contracts' own AOT/trim violations remain open and are tracked as DW-517.
+
+- [x] [Review][Patch] Invalid UTF-8 inside JSON string values is never rejected, by writer or reader [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:494] — RESOLVED 2026-09-15: strict validation now covers complete input and authenticated plaintext bytes, with writer and reader regressions.
+- [x] [Review][Patch] `ProtectSnapshot` is the only entry point with no `OverflowException` to typed-failure mapping [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:353] — RESOLVED 2026-09-15: overflow maps to the bounded format exception used by event protection.
+- [x] [Review][Patch] The production entropy implementation has no caller and no test, and mutations to it survive the suite [src/Hexalith.EventStore.PayloadProtection/CryptographicPayloadProtectionEntropy.cs:9] — RESOLVED 2026-09-15: the generator defaults to production entropy and a regression proves fresh references and nonzero distinct keys.
+- [x] [Review][Patch] `JsonPointer.Escape` has no production caller; the V031-tagged escaping test asserts it instead of the production escaper [src/Hexalith.EventStore.PayloadProtection/JsonPointer.cs:14] — RESOLVED 2026-09-15: the dead helper/test were removed and V031 now round-trips escaped source names through the complete core.
+- [x] [Review][Patch] Five new internal records drop the Story 8.2 no-leak `ToString()` override [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionContext.cs:13] — RESOLVED 2026-09-15: each sensitive record returns only its type name and diagnostics tests enforce the boundary.
+- [x] [Review][Patch] The escaped-member-name decode path has zero test coverage and survives injected defects [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:889] — RESOLVED 2026-09-15: five production round trips cover tilde, slash, quote, backslash, and surrogate-pair spellings.
+- [x] [Review][Patch] The snapshot non-zero `FieldOrdinal` pre-lookup guard has zero test coverage [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:724] — RESOLVED 2026-09-15: a snapshot regression requires local consistency rejection with zero resolver calls.
+- [x] [Review][Patch] The `keyResolver` DEK buffer-ownership transfer is undocumented at the seam [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:402] — RESOLVED 2026-09-15: both unprotect seams document transfer and clearing on every exit.
+- [x] [Review][Patch] Envelope wire offsets are duplicated as magic numbers across two files [src/Hexalith.EventStore.PayloadProtection/EnvelopeCodec.cs:21] — RESOLVED 2026-09-15: `PayloadProtectionWireFormat` centralizes all HXP2 identifiers, offsets, and sizes.
+- [x] [Review][Patch] The `json+pdenc-v2` / `json` format literals are repeated at six sites with no shared constant [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:212] — RESOLVED 2026-09-15: the same wire-format authority now owns both format constants and encoded protected-format bytes.
+- [x] [Review][Patch] Snapshot unprotect copies decrypted plaintext instead of transferring ownership, doubling peak residency [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:808] — RESOLVED 2026-09-15: success transfers the owned buffer directly; failure still clears it.
+- [x] [Review][Patch] Three guards cannot fire by construction and give false assurance [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:147] — RESOLVED 2026-09-15: all three unreachable checks were removed.
+- [x] [Review][Patch] Key-generation collision exhaustion is reported as a format failure and classified `Malformed` [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionMaterialGenerator.cs:60] — RESOLVED 2026-09-15: exhaustion is now a cryptographic failure with a focused assertion.
+- [x] [Review][Patch] `ValidateMaterial` null-checks a non-nullable parameter its caller reaches via `material!` [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:898] — RESOLVED 2026-09-15: nullable factory flow is explicit while ownership is retained before validation so invalid returned DEKs are cleared.
+
+- [x] [Review][Defer] The key resolver cannot signal revocation, denial, or unsupported version, leaving five `UnreadableProtectedDataReason` members unreachable [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:402] — deferred: real, but the resolver seam's richness is assigned to Story 8.5 (Policy And Key-Lifecycle Mechanics) and Story 8.6 (provider adapter); not constructible at the Story 8.3 byte-core boundary. Tracked as DW-516.
+
+#### Rejected
+
+False — the claimed bad outcome does not occur:
+
+- Neither new project is registered in `Hexalith.EventStore.slnx` (3 layers) — mandated, not omitted: the frozen spec requires the lane "without adding either project to `Hexalith.EventStore.slnx`", lists the frozen `.slnx` in every KEEP set, and assigns solution/release integration to Story 8.8. `.github/workflows/ci.yml:113-163` builds both with `-warnaserror` and runs the suite as a blocking lane.
+- Ordinal-derived nonces plus an undocumented DEK-freshness obligation risk AES-GCM nonce reuse (2 layers) — refuted by the frozen authority: §8.1 specifies "fresh for each event or snapshot protection write" and nonce construction ID `01`; §8.2 carries the uniqueness argument and forbids DEK reuse across events, retries, and migrations. `PayloadProtectionMaterial` documents "fresh per-payload cryptographic material", and `PayloadProtectionMaterialGenerator` produces a new DEK and ULID per call with collision retry. Cross-call reuse detection is impossible in a stateless per-call core by design.
+- `EnvelopeCodec.Read` should validate the nonce invariant at parse time — would break the frozen requirement. The spec mandates "post-auth nonce/ordinal validation" to retain V010 authenticated-mismatch semantics; the story's own BH-14 patch moved this check after `Decrypt` deliberately.
+- Pass-through protect rejects payloads that legitimately contain a `$pdenc` member — `$pdenc` is the authority's reserved wrapper marker and the spec requires residual and emergent marker rejection. Fail-closed on a reserved name is the specified behavior.
+- The non-protected JSON skeleton is not bound into the AAD, so tampered unprotected fields authenticate — the AAD is the frozen 11-field §7.1 structure; adding a skeleton digest would change the frozen wire format, which the spec forbids. Whole-record integrity is not this engine's contract.
+- The key resolver has no timeout, so unprotect can hang — the core passes the caller's `CancellationToken` through; timeout policy is caller-owned and, for lifecycle, Story 8.5-owned.
+- A null `JsonReplacement.Value` escapes as a `NullReferenceException` — not constructible: `JsonReplacement` is internal and built only inside `PayloadProtectionCore` from non-null wrapper and plaintext buffers.
+- `BoundedJsonLookupKey` truncates SHA-256 and the reader may resolve the wrong member — collision handling exists and is consulted: `BoundedJsonDocument.cs:17,156,747-777` maintains and reads a `Dictionary<BoundedJsonLookupKey, List<int>>`.
+- The csproj omits `GenerateDocumentationFile` — matches repository convention; XML documentation is generated only when `ApiReferenceBuild=true` on packable projects, and this project is non-packable.
+- `PayloadProtectionMaterialGenerator` hard-codes `DekVersion` to 1 — §8.3 assigns DEK/KEK version semantics to lifecycle, which is Story 8.5-owned; the generator is an authorized V046-V048 seam.
+
+Low — real but not worth the fix:
+
+- No `ObjectDisposedException` guard on `BoundedJsonDocument` accessors — the type is internal and every use is `using`-scoped inside the core; the fix adds guards to every accessor.
+- No all-zero-DEK rejection in `ValidateMaterial` — only reachable through a defective internal entropy seam whose sole production implementation uses `RandomNumberGenerator.Fill`.
+- `PayloadProtectionDiagnostics` switches on `PayloadProtectionOperation` without a default throw — the enum has exactly two members; speculative future-proofing.
+- `Base64UrlCodec.Encode` leaves up to four unzeroed managed strings — its only inputs are complete envelopes, which are the persisted public artifact; no plaintext is involved.
+- `AadCodec` and `EnvelopeCodec` zero their staging buffers without notifying `ISensitiveBufferObserver` — the spec mandates zeroing, which they do; observability is not required, and threading the observer changes several static signatures.
+- `PayloadCryptography.HasExpectedNonce` lacks an `ArgumentNullException.ThrowIfNull` guard — both call sites pass an envelope already validated non-null by `Decrypt`.
+- `PayloadProtectionContext` duplicates three of the four fields of the frozen `PayloadProtectionOccurrenceContext` rather than composing it — an internal superset that adds `AggregateIdentity`; noted for Story 8.7, which will need an adapter either way.
+- `TryUnprotectEventAsync` re-resolves each wrapper by path solely to read its depth — a bounded per-wrapper cost; carrying depth on `ProtectedWrapper` is more than a direct correction.

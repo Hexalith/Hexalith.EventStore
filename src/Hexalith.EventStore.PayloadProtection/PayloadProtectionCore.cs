@@ -65,7 +65,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             if (requestedManifest.Paths.Count == 0)
             {
                 transformed = document.CopyPayload(cancellationToken);
-                var result = new CoreProtectionResult(transformed, "json", 0);
+                var result = new CoreProtectionResult(
+                    transformed,
+                    PayloadProtectionWireFormat.UnprotectedSerializationFormat,
+                    0);
                 transformed = null;
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
                 return result;
@@ -116,7 +119,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             if (nonNullPaths.Count == 0)
             {
                 transformed = document.CopyPayload(cancellationToken);
-                var result = new CoreProtectionResult(transformed, "json", 0);
+                var result = new CoreProtectionResult(
+                    transformed,
+                    PayloadProtectionWireFormat.UnprotectedSerializationFormat,
+                    0);
                 transformed = null;
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
                 return result;
@@ -138,18 +144,13 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             PayloadCryptography.EnsurePlatformSupport();
             material = InvokeMaterialFactory(materialFactory, cancellationToken);
-            ValidateMaterial(material);
+            material = ValidateMaterial(material);
             replacements = new List<JsonReplacement>(manifest.Paths.Count);
             for (int index = 0; index < manifest.Paths.Count; index++)
             {
                 encryptionCheckpoint?.Invoke(index);
                 cancellationToken.ThrowIfCancellationRequested();
                 string path = manifest.Paths[index];
-                if (!string.Equals(nonNullPaths[index], path, StringComparison.Ordinal))
-                {
-                    throw new PayloadProtectionFormatException();
-                }
-
                 (BoundedJsonNode node, byte[] plaintext) = selectedValues[index];
                 byte[] aad = AadCodec.Write(
                     context,
@@ -209,7 +210,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            var protectionResult = new CoreProtectionResult(transformed, "json+pdenc-v2", manifest.Paths.Count);
+            var protectionResult = new CoreProtectionResult(
+                transformed,
+                PayloadProtectionWireFormat.ProtectedSerializationFormat,
+                manifest.Paths.Count);
             transformed = null;
             diagnosticResult = PayloadProtectionDiagnosticResult.Success;
             return protectionResult;
@@ -322,7 +326,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             cancellationToken.ThrowIfCancellationRequested();
             PayloadCryptography.EnsurePlatformSupport();
             material = InvokeMaterialFactory(materialFactory, cancellationToken);
-            ValidateMaterial(material);
+            material = ValidateMaterial(material);
             byte[] aad = AadCodec.Write(
                 context,
                 string.Empty,
@@ -344,7 +348,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 string encodedEnvelope = Base64UrlCodec.Encode(envelopeBytes);
                 cancellationToken.ThrowIfCancellationRequested();
                 diagnosticResult = PayloadProtectionDiagnosticResult.Success;
-                return new ProtectedSnapshotPayloadV2("json+pdenc-v2", context.PayloadTypeId, encodedEnvelope);
+                return new ProtectedSnapshotPayloadV2(
+                    PayloadProtectionWireFormat.ProtectedSerializationFormat,
+                    context.PayloadTypeId,
+                    encodedEnvelope);
             }
             finally
             {
@@ -360,6 +367,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         {
             diagnosticResult = PayloadProtectionDiagnosticResult.CryptographicFailure;
             throw;
+        }
+        catch (OverflowException)
+        {
+            throw new PayloadProtectionFormatException();
         }
         finally
         {
@@ -396,6 +407,15 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     /// <summary>
     /// Authenticates every event wrapper before transferring any reconstructed plaintext.
     /// </summary>
+    /// <param name="protectedPayloadBytes">The caller-owned protected JSON bytes.</param>
+    /// <param name="context">The trusted authenticated event occurrence.</param>
+    /// <param name="keyResolver">
+    /// Resolves an exact key reference and version. Ownership of every returned non-null mutable DEK transfers to the core,
+    /// which clears it on every exit.
+    /// </param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <param name="traversalCheckpoint">An optional bounded-work test checkpoint.</param>
+    /// <returns>The complete authenticated event JSON or one bounded unreadable reason.</returns>
     internal async ValueTask<CoreUnprotectionResult> TryUnprotectEventAsync(
         byte[] protectedPayloadBytes,
         PayloadProtectionContext context,
@@ -535,10 +555,6 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             var replacements = new List<JsonReplacement>(orderedWrappers.Length);
             int prospectiveNodeCount = checked(document.NodeCount - (orderedWrappers.Length * 2));
-            if (prospectiveNodeCount < 1)
-            {
-                throw new PayloadProtectionFormatException();
-            }
 
             for (int index = 0; index < orderedWrappers.Length; index++)
             {
@@ -680,6 +696,14 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     /// <summary>
     /// Authenticates and returns one root-manifest snapshot plaintext without Server registry integration.
     /// </summary>
+    /// <param name="protectedSnapshot">The validated durable snapshot carrier.</param>
+    /// <param name="context">The trusted authenticated snapshot occurrence.</param>
+    /// <param name="keyResolver">
+    /// Resolves an exact key reference and version. Ownership of every returned non-null mutable DEK transfers to the core,
+    /// which clears it on every exit.
+    /// </param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>The complete authenticated snapshot JSON or one bounded unreadable reason.</returns>
     internal async ValueTask<CoreUnprotectionResult> TryUnprotectSnapshotAsync(
         ProtectedSnapshotPayloadV2 protectedSnapshot,
         PayloadProtectionContext context,
@@ -694,14 +718,16 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         byte[]? dek = null;
         byte[]? plaintext = null;
-        byte[]? output = null;
         PayloadProtectionEnvelope? envelope = null;
         ProtectedPathManifest? manifest = null;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             AadCodec.ValidateContext(context, PayloadProtectionPayloadKind.Snapshot);
-            if (!string.Equals(protectedSnapshot.Format, "json+pdenc-v2", StringComparison.Ordinal)
+            if (!string.Equals(
+                    protectedSnapshot.Format,
+                    PayloadProtectionWireFormat.ProtectedSerializationFormat,
+                    StringComparison.Ordinal)
                 || !string.Equals(protectedSnapshot.SnapshotTypeId, context.PayloadTypeId, StringComparison.Ordinal)
                 || protectedSnapshot.Envelope is null
                 || protectedSnapshot.Envelope.Length > PayloadProtectionLimits.EnvelopeTextCharacters)
@@ -791,8 +817,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 Clear(aad, SensitiveBufferKind.AuthenticatedData);
             }
 
-            if (!PayloadCryptography.HasExpectedNonce(envelope)
-                || plaintext.Length > PayloadProtectionLimits.CiphertextBytes)
+            if (!PayloadCryptography.HasExpectedNonce(envelope))
             {
                 throw new PayloadProtectionFormatException();
             }
@@ -805,10 +830,9 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 }
             }
 
-            output = [.. plaintext];
             cancellationToken.ThrowIfCancellationRequested();
-            CoreUnprotectionResult result = CoreUnprotectionResult.Readable(output);
-            output = null;
+            CoreUnprotectionResult result = CoreUnprotectionResult.Readable(plaintext);
+            plaintext = null;
             diagnosticResult = PayloadProtectionDiagnosticResult.Success;
             return result;
         }
@@ -833,11 +857,6 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         }
         finally
         {
-            if (output is not null)
-            {
-                Clear(output, SensitiveBufferKind.AbandonedOutput);
-            }
-
             if (plaintext is not null)
             {
                 Clear(plaintext, SensitiveBufferKind.DecryptedPlaintext);
@@ -863,7 +882,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         }
     }
 
-    private PayloadProtectionMaterial InvokeMaterialFactory(
+    private PayloadProtectionMaterial? InvokeMaterialFactory(
         Func<PayloadProtectionMaterial> materialFactory,
         CancellationToken cancellationToken)
     {
@@ -892,10 +911,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        return material!;
+        return material;
     }
 
-    private static void ValidateMaterial(PayloadProtectionMaterial material)
+    private static PayloadProtectionMaterial ValidateMaterial(PayloadProtectionMaterial? material)
     {
         if (material is null
             || !CanonicalUlid.IsValid(material.KeyReference)
@@ -905,6 +924,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         {
             throw new PayloadProtectionCryptographicException();
         }
+
+        return material;
     }
 
     private static byte[] CreateWrapper(string encodedEnvelope)
@@ -927,7 +948,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
     private static int GetWrapperLength(int plaintextLength)
     {
-        int envelopeLength = checked(82 + plaintextLength);
+        int envelopeLength = checked(PayloadProtectionWireFormat.EnvelopeFixedOverheadBytes + plaintextLength);
         return checked(WrapperPrefix.Length + Base64UrlCodec.GetEncodedLength(envelopeLength) + WrapperSuffix.Length);
     }
 

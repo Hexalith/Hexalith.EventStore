@@ -5,9 +5,14 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// <summary>
 /// Generates wholly fresh material after each observable key-reference collision (normative section 8.2, V046-V048).
 /// </summary>
-internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntropy entropy, ISensitiveBufferObserver? observer = null)
+/// <param name="entropy">The entropy source, or <see langword="null"/> to use the production CSPRNG implementation.</param>
+/// <param name="observer">An optional test-only cleared-buffer observer.</param>
+internal sealed class PayloadProtectionMaterialGenerator(
+    IPayloadProtectionEntropy? entropy = null,
+    ISensitiveBufferObserver? observer = null)
 {
     private const int _maximumAttempts = 16;
+    private readonly IPayloadProtectionEntropy _entropy = entropy ?? new CryptographicPayloadProtectionEntropy();
 
     /// <summary>
     /// Generates material whose reference is accepted by a local/durable collision predicate.
@@ -21,7 +26,7 @@ internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntro
             string keyReference;
             try
             {
-                keyReference = entropy.CreateKeyReference();
+                keyReference = _entropy.CreateKeyReference();
             }
             catch
             {
@@ -33,7 +38,7 @@ internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntro
             byte[] dek = new byte[32];
             try
             {
-                entropy.FillDataEncryptionKey(dek);
+                _entropy.FillDataEncryptionKey(dek);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!CanonicalUlid.IsValid(keyReference))
                 {
@@ -57,7 +62,7 @@ internal sealed class PayloadProtectionMaterialGenerator(IPayloadProtectionEntro
             Clear(dek);
         }
 
-        throw new PayloadProtectionFormatException();
+        throw new PayloadProtectionCryptographicException();
     }
 
     private void Clear(byte[] buffer)

@@ -4489,3 +4489,27 @@ source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: high
 reason: The Story 3.14/3.15 handler-pin cascade is correctly asserted at `CorrectedDeployedRuntimeParityClosureTests.cs:2257`, but only inside `tests/Hexalith.EventStore.Contracts.Tests`, which `.github/workflows/ci.yml:24-42` excludes from `unit-test-projects`; it runs solely as `ci / contracts`. Re-verified live 2026-09-13: the required contexts are `advisory`, `ci / build-and-test`, `ci / tenants-source-mode`, `codeql / analyze`, `commitlint / commitlint`, `dependency-review / dependency-review`, `live-sidecar` — `ci / contracts` is not among them, and the one required job running a Python validator (`live-sidecar`) uses a gate-input set containing none of the three handler files. Net: no required check observes the pins, which is why `4502913c` merged green over a 204-red lane. Owner decision 2026-09-13 (Decision 2): **add `ci / contracts` to the required checks, after DW-509 lands.** Sequencing is mandatory — the job is currently red for the unrelated `global.json` gate-input reason, so requiring it first would block every merge. The two alternatives were examined and rejected: moving the validators into `ci / build-and-test` would require changing `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main` (shared, submodule-owned) and would wire in `validate-corrected-deployed-runtime-parity.py`, which exits 1 at HEAD on its pre-existing receipt gate; folding Contracts back into `unit-test-projects` would drop the `--filter-not-trait "Category=HeavyweightContainerPublish"` exclusion, which `ContainerPublishingGovernanceTests.cs:1006` asserts must be present in `ci.yml`. This is a repository-settings change, owner-only; not applied by this review.
 status: open
+
+## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-14)
+
+### DW-516: The pdenc-v2 key-resolver seam cannot signal revocation, denial, or unsupported version.
+
+origin: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-14, chunk A)
+location: src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:402,690
+source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+severity: medium
+reason: Both unprotect entry points take the resolver as `Func<string, uint, CancellationToken, ValueTask<byte[]?>>`. A `null` return maps to `MissingKey`, any thrown exception maps to `ProviderUnavailable`, and a wrong-length buffer maps to `ConsistencyMismatch`. There is no channel for a revoked, deleted, denied, or unsupported-version key, so `UnreadableProtectedDataReason` members covering those states cannot be produced by the core and a revocation is reported as a retryable availability fault. This is correct for Story 8.3: the frozen spec assigns policy-fault mapping to Story 8.5 (Policy And Key-Lifecycle Mechanics) and real provider semantics to Story 8.6 (Azure Key Vault Production Adapter Conformance), and no provider exists at the byte-core boundary to produce the distinction. Carry this into the Story 8.5 resolver-contract design so the richer outcome is introduced with the lifecycle mechanics rather than retrofitted after a provider ships.
+status: open
+
+### DW-517: `Hexalith.EventStore.Contracts` does not satisfy the AOT/trim analyzers.
+
+origin: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-15, decision resolution)
+location: src/Hexalith.EventStore.Contracts/Queries/QueryResult.cs:125,151; Serialization/EventStorePayloadSerialization.cs:42; Results/DomainServiceWireResult.cs:29; Security/EventStorePayloadProtectionMetadataCarrier.cs:175,212
+source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+severity: low
+reason: Measured 2026-09-15 — `dotnet build src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj -c Release -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` fails with 12 IL2026/IL3050 diagnostics across six call sites, all reflection-based `System.Text.Json` usage (`Deserialize<TValue>`, `SerializeToUtf8Bytes`, `JsonSerializerOptions.MakeReadOnly`). This is pre-existing and unrelated to Story 8.3: it was discovered only because Story 8.3 briefly propagated those analyzer properties into Contracts through a `ProjectReference`. Story 8.3 now enables the analyzers as project properties on `Hexalith.EventStore.PayloadProtection` only, so the core is analyzed and Contracts is untouched. Nothing is currently broken — the analyzers are off by default everywhere else, and no EventStore project is published AOT or trimmed. Resolving it would mean adopting `System.Text.Json` source generation in Contracts, which is a frozen public-contract assembly; that belongs to whoever owns a Contracts serialization change, not to Epic 8. Revisit if native-AOT or trimmed publication is ever adopted.
+status: open
+
+- source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Add `ci / payload-protection` to the protected branch's required status checks.
+  evidence: The active GitHub ruleset queried on 2026-09-15 requires seven contexts but omits `ci / payload-protection`, so the standalone focused job can fail without blocking merge; frozen Story 8.3 intent explicitly excludes external-resource mutations, requiring repository-owner action outside this build.

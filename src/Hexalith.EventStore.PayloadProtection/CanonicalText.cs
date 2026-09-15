@@ -97,4 +97,19 @@ internal static class CanonicalText
             throw new PayloadProtectionFormatException();
         }
     }
+
+    /// <summary>
+    /// Rejects a byte sequence that is not well-formed UTF-8 without materializing plaintext text.
+    /// </summary>
+    internal static void ValidateUtf8(ReadOnlySpan<byte> value)
+    {
+        try
+        {
+            _ = _strictUtf8.GetCharCount(value);
+        }
+        catch (DecoderFallbackException)
+        {
+            throw new PayloadProtectionFormatException();
+        }
+    }
 }

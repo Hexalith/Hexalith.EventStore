@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection.Tests;
@@ -128,6 +129,34 @@ public sealed class CryptographyTests
         resolverCalls.ShouldBe(0);
     }
 
+    /// <summary>Verifies a snapshot envelope with a non-root ordinal is rejected before key lookup.</summary>
+    [Fact]
+    public async Task Snapshot_NonZeroFieldOrdinal_IsRejectedBeforeLookupAsync()
+    {
+        PayloadProtectionEnvelope envelope = TestFixture.Envelope() with
+        {
+            FieldOrdinal = 1,
+            Nonce = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        };
+        var protectedSnapshot = new ProtectedSnapshotPayloadV2(
+            PayloadProtectionWireFormat.ProtectedSerializationFormat,
+            TestFixture.SnapshotContext().PayloadTypeId,
+            Base64UrlCodec.Encode(EnvelopeCodec.Write(envelope)));
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectSnapshotAsync(
+            protectedSnapshot,
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(0);
+    }
+
     /// <summary>Verifies snapshot key outcomes use the closed missing, consistency, and unavailable taxonomy.</summary>
     [Theory]
     [InlineData("missing", UnreadableProtectedDataReason.MissingKey)]
@@ -171,7 +200,7 @@ public sealed class CryptographyTests
             observer: successObserver);
         success.IsReadable.ShouldBeTrue();
         successObserver.Observed.ShouldContain(SensitiveBufferKind.SelectedPlaintext);
-        successObserver.Observed.ShouldContain(SensitiveBufferKind.DecryptedPlaintext);
+        successObserver.Observed.ShouldNotContain(SensitiveBufferKind.DecryptedPlaintext);
         successObserver.Observed.Count(static kind => kind == SensitiveBufferKind.DataEncryptionKey).ShouldBe(2);
         successObserver.Observed.ShouldContain(SensitiveBufferKind.ProtectedOutput);
 
@@ -303,6 +332,93 @@ public sealed class CryptographyTests
         snapshotCalls.ShouldBe(1);
     }
 
+    /// <summary>Verifies ordinary factory faults are closed and caller cancellation wins for both writers.</summary>
+    [Theory]
+    [InlineData("event", false)]
+    [InlineData("event", true)]
+    [InlineData("snapshot", false)]
+    [InlineData("snapshot", true)]
+    public void ThrowingMaterialFactory_IsClosedAndPreservesCancellationPrecedence(
+        string payloadKind,
+        bool cancelBeforeThrow)
+    {
+        using var source = new CancellationTokenSource();
+        int factoryCalls = 0;
+        PayloadProtectionMaterial Factory()
+        {
+            factoryCalls++;
+            if (cancelBeforeThrow)
+            {
+                source.Cancel();
+            }
+
+            throw new InvalidOperationException();
+        }
+
+        void Protect()
+        {
+            if (payloadKind == "event")
+            {
+                _ = new PayloadProtectionCore().ProtectEvent(
+                    "{\"value\":1}"u8.ToArray(),
+                    ["/value"],
+                    TestFixture.Context(),
+                    Factory,
+                    cancellationToken: source.Token);
+            }
+            else
+            {
+                _ = TestFixture.ProtectSnapshot(
+                    materialFactory: Factory,
+                    cancellationToken: source.Token);
+            }
+        }
+
+        if (cancelBeforeThrow)
+        {
+            Should.Throw<OperationCanceledException>(Protect);
+        }
+        else
+        {
+            Should.Throw<PayloadProtectionCryptographicException>(Protect);
+        }
+
+        factoryCalls.ShouldBe(1);
+    }
+
+    /// <summary>Verifies resolver-owned cancellation maps to provider unavailability while the caller token remains active.</summary>
+    [Theory]
+    [InlineData("event")]
+    [InlineData("snapshot")]
+    public async Task ResolverOwnedCancellation_IsProviderUnavailableAsync(string payloadKind)
+    {
+        using var source = new CancellationTokenSource();
+        int resolverCalls = 0;
+        ValueTask<byte[]?> Resolver(string keyReference, uint version, CancellationToken cancellationToken)
+        {
+            _ = keyReference;
+            _ = version;
+            _ = cancellationToken;
+            resolverCalls++;
+            throw new OperationCanceledException(source.Token);
+        }
+
+        CoreUnprotectionResult result = payloadKind == "event"
+            ? await TestFixture.UnprotectAsync(
+                TestFixture.WrapperPayloadBytes(),
+                cancellationToken: source.Token,
+                keyResolver: Resolver)
+            : await TestFixture.UnprotectSnapshotAsync(
+                TestFixture.ProtectSnapshot(),
+                cancellationToken: source.Token,
+                keyResolver: Resolver);
+
+        source.IsCancellationRequested.ShouldBeFalse();
+        resolverCalls.ShouldBe(1);
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
+    }
+
     /// <summary>V003 reproduces the named NIST CAVP AES-256-GCM Count 0 tag.</summary>
     [Fact]
     [Trait("Vector", "V003")]
@@ -351,6 +467,62 @@ public sealed class CryptographyTests
             result.PayloadBytes.ShouldBeNull();
             resolverCalls.ShouldBe(1);
         }
+    }
+
+    /// <summary>V010 rejects valid-tag event and snapshot envelopes whose nonce prefix is noncanonical.</summary>
+    [Fact]
+    [Trait("Vector", "V010")]
+    public async Task V010_AuthenticatedNoncanonicalNonce_IsRejectedAfterLookupAsync()
+    {
+        byte[] noncanonicalNonce = new byte[PayloadProtectionLimits.NonceBytes];
+        noncanonicalNonce[0] = 1;
+        PayloadProtectionEnvelope eventEnvelope = EncryptWithNonce(
+            TestFixture.Plaintext(),
+            TestFixture.Aad(),
+            noncanonicalNonce);
+        int eventLookups = 0;
+
+        CoreUnprotectionResult eventResult = await TestFixture.UnprotectAsync(
+            TestFixture.WrapperPayloadBytes(EncodeWithUncheckedNonce(eventEnvelope)),
+            keyResolver: (_, _, _) =>
+            {
+                eventLookups++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        eventResult.PayloadBytes.ShouldBeNull();
+        eventResult.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        eventLookups.ShouldBe(1);
+
+        ProtectedPathManifest snapshotManifest = ProtectedPathManifestCodec.Create([string.Empty], snapshot: true);
+        byte[] snapshotAad = AadCodec.Write(
+            TestFixture.SnapshotContext(),
+            string.Empty,
+            TestFixture.KeyReference,
+            1,
+            0,
+            snapshotManifest.Commitment);
+        PayloadProtectionEnvelope snapshotEnvelope = EncryptWithNonce(
+            "{\"name\":\"Alice\"}"u8,
+            snapshotAad,
+            noncanonicalNonce);
+        var protectedSnapshot = new ProtectedSnapshotPayloadV2(
+            PayloadProtectionWireFormat.ProtectedSerializationFormat,
+            TestFixture.SnapshotContext().PayloadTypeId,
+            EncodeWithUncheckedNonce(snapshotEnvelope));
+        int snapshotLookups = 0;
+
+        CoreUnprotectionResult snapshotResult = await TestFixture.UnprotectSnapshotAsync(
+            protectedSnapshot,
+            keyResolver: (_, _, _) =>
+            {
+                snapshotLookups++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        snapshotResult.PayloadBytes.ShouldBeNull();
+        snapshotResult.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        snapshotLookups.ShouldBe(1);
     }
 
     /// <summary>V011 rejects every independently flipped tag bit.</summary>
@@ -469,6 +641,40 @@ public sealed class CryptographyTests
         }
     }
 
+    /// <summary>Verifies mixed wrapper key references and versions are rejected before the shared-key lookup.</summary>
+    [Theory]
+    [InlineData("reference")]
+    [InlineData("version")]
+    public async Task MixedWrapperKeyIdentity_IsRejectedBeforeLookupAsync(string component)
+    {
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            "{\"left\":1,\"right\":2}"u8.ToArray(),
+            ["/left", "/right"],
+            TestFixture.Context(),
+            TestFixture.Material);
+        JsonObject payload = JsonNode.Parse(protectedResult.PayloadBytes)!.AsObject();
+        JsonObject rightWrapper = payload["right"]!.AsObject();
+        PayloadProtectionEnvelope rightEnvelope = EnvelopeCodec.Read(Base64UrlCodec.Decode(
+            rightWrapper["$pdenc"]!.GetValue<string>()));
+        rightEnvelope = component == "reference"
+            ? rightEnvelope with { KeyReference = "01J00000000000000000000001" }
+            : rightEnvelope with { DekVersion = 2 };
+        rightWrapper["$pdenc"] = Base64UrlCodec.Encode(EnvelopeCodec.Write(rightEnvelope));
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            Encoding.UTF8.GetBytes(payload.ToJsonString()),
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(0);
+    }
+
     /// <summary>V017 proves every one of the eleven encoded AAD fields is independently authenticated.</summary>
     [Theory]
     [InlineData(14)]
@@ -504,6 +710,28 @@ public sealed class CryptographyTests
         result.PayloadBytes.ShouldBeNull();
         result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
         resolverCalls.ShouldBe(0);
+    }
+
+    private static PayloadProtectionEnvelope EncryptWithNonce(
+        ReadOnlySpan<byte> plaintext,
+        ReadOnlySpan<byte> aad,
+        byte[] nonce)
+    {
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] tag = new byte[PayloadProtectionLimits.TagBytes];
+        PayloadCryptography.EncryptAesGcm(TestFixture.Dek(), nonce, plaintext, ciphertext, tag, aad);
+        return new PayloadProtectionEnvelope(TestFixture.KeyReference, 1, 0, nonce, ciphertext, tag);
+    }
+
+    private static string EncodeWithUncheckedNonce(PayloadProtectionEnvelope envelope)
+    {
+        byte[] canonicalNonce = new byte[PayloadProtectionLimits.NonceBytes];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(
+            canonicalNonce.AsSpan(4),
+            envelope.FieldOrdinal);
+        byte[] encoded = EnvelopeCodec.Write(envelope with { Nonce = canonicalNonce });
+        envelope.Nonce.CopyTo(encoded, PayloadProtectionWireFormat.NonceOffset);
+        return Base64UrlCodec.Encode(encoded);
     }
 
     private static PayloadProtectionMaterial CreateInvalidMaterial(

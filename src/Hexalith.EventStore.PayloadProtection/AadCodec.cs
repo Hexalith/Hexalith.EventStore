@@ -9,8 +9,6 @@ namespace Hexalith.EventStore.PayloadProtection;
 /// </summary>
 internal static class AadCodec
 {
-    private static ReadOnlySpan<byte> Format => "json+pdenc-v2"u8;
-
     /// <summary>
     /// Validates every context-derived AAD source without allocating the final AAD record.
     /// </summary>
@@ -106,7 +104,7 @@ internal static class AadCodec
             + CanonicalText.GetByteCount(propertyPath, snapshot ? 0 : 1, PayloadProtectionLimits.PathBytes)
             + PayloadProtectionLimits.KeyReferenceBytes
             + 4
-            + Format.Length
+            + PayloadProtectionWireFormat.ProtectedSerializationFormatUtf8.Length
             + 4
             + 8
             + manifestCommitment.Length);
@@ -172,7 +170,12 @@ internal static class AadCodec
             Span<byte> version = stackalloc byte[4];
             BinaryPrimitives.WriteUInt32BigEndian(version, dekVersion);
             offset = WriteField(result, offset, 7, 2, version);
-            offset = WriteField(result, offset, 8, 1, Format);
+            offset = WriteField(
+                result,
+                offset,
+                8,
+                1,
+                PayloadProtectionWireFormat.ProtectedSerializationFormatUtf8);
             Span<byte> ordinal = stackalloc byte[4];
             BinaryPrimitives.WriteUInt32BigEndian(ordinal, fieldOrdinal);
             offset = WriteField(result, offset, 9, 2, ordinal);

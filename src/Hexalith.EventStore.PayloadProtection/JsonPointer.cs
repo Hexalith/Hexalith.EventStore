@@ -9,12 +9,6 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal static class JsonPointer
 {
     /// <summary>
-    /// Escapes one serialized JSON member name.
-    /// </summary>
-    internal static string Escape(string segment)
-        => segment.Replace("~", "~0", StringComparison.Ordinal).Replace("/", "~1", StringComparison.Ordinal);
-
-    /// <summary>
     /// Validates and decodes a pointer into reference tokens.
     /// </summary>
     internal static IReadOnlyList<string> Decode(

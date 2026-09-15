@@ -11,4 +11,8 @@ internal sealed record ProtectedWrapper(
     string Path,
     PayloadProtectionEnvelope Envelope,
     int Start,
-    int Length);
+    int Length)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(ProtectedWrapper);
+}

@@ -14,4 +14,8 @@ internal sealed record PayloadProtectionContext(
     AggregateIdentity Identity,
     string PayloadTypeId,
     PayloadProtectionPayloadKind PayloadKind,
-    ulong RecordSequence);
+    ulong RecordSequence)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(PayloadProtectionContext);
+}

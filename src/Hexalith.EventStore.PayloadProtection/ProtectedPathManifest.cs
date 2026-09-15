@@ -9,4 +9,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed record ProtectedPathManifest(
     IReadOnlyList<string> Paths,
     byte[] Encoded,
-    byte[] Commitment);
+    byte[] Commitment)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(ProtectedPathManifest);
+}

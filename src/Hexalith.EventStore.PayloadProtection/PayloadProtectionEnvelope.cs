@@ -15,4 +15,8 @@ internal sealed record PayloadProtectionEnvelope(
     uint FieldOrdinal,
     byte[] Nonce,
     byte[] Ciphertext,
-    byte[] Tag);
+    byte[] Tag)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(PayloadProtectionEnvelope);
+}

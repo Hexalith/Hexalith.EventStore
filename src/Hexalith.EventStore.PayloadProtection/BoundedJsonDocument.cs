@@ -515,6 +515,8 @@ internal sealed class BoundedJsonDocument : IDisposable
                 throw new PayloadProtectionFormatException();
             }
 
+            CanonicalText.ValidateUtf8(utf8Json);
+
             List<BoundedJsonNode>? nodes = [];
             containers = [];
             var reader = new Utf8JsonReader(

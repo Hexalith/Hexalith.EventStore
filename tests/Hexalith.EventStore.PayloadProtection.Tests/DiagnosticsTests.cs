@@ -13,6 +13,20 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 [Collection(DiagnosticsCollection.Name)]
 public sealed class DiagnosticsTests
 {
+    /// <summary>Verifies sensitive internal records render only their bounded type names.</summary>
+    [Fact]
+    public void SensitiveRecords_ToStringDoesNotRenderProtectedFields()
+    {
+        PayloadProtectionEnvelope envelope = TestFixture.Envelope();
+        ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create(["/email"]);
+
+        TestFixture.Context().ToString().ShouldBe(nameof(PayloadProtectionContext));
+        TestFixture.Material().ToString().ShouldBe(nameof(PayloadProtectionMaterial));
+        envelope.ToString().ShouldBe(nameof(PayloadProtectionEnvelope));
+        manifest.ToString().ShouldBe(nameof(ProtectedPathManifest));
+        new ProtectedWrapper("/email", envelope, 0, 1).ToString().ShouldBe(nameof(ProtectedWrapper));
+    }
+
     /// <summary>Verifies both exact source/activity names and absence of payload identity tags.</summary>
     [Fact]
     public async Task Activities_ExposeOnlyClosedCoreNamesAsync()
@@ -39,6 +53,54 @@ public sealed class DiagnosticsTests
             && !activity.Events.Any()
             && !activity.Links.Any()
             && !activity.Baggage.Any()).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies throwing process-wide diagnostic callbacks cannot alter end-to-end core outcomes.</summary>
+    [Fact]
+    public async Task ThrowingDiagnosticCallbacks_DoNotChangeProtectOrUnprotectOutcomesAsync()
+    {
+        int stoppedActivityCallbacks = 0;
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = static source => source.Name == PayloadProtectionDiagnostics.Name,
+            Sample = static (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = _ =>
+            {
+                Interlocked.Increment(ref stoppedActivityCallbacks);
+                throw new InvalidOperationException();
+            },
+        };
+        ActivitySource.AddActivityListener(activityListener);
+
+        int operationMeasurements = 0;
+        int durationFaults = 0;
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name)
+            {
+                current.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((_, _, _, _) =>
+            Interlocked.Increment(ref operationMeasurements));
+        meterListener.SetMeasurementEventCallback<double>((_, _, _, _) =>
+        {
+            Interlocked.Increment(ref durationFaults);
+            throw new InvalidOperationException();
+        });
+        meterListener.Start();
+
+        CoreProtectionResult protectedResult = TestFixture.Protect();
+        CoreUnprotectionResult unprotected = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+
+        protectedResult.ProtectedPathCount.ShouldBe(1);
+        unprotected.IsReadable.ShouldBeTrue();
+        unprotected.PayloadBytes.ShouldBe(
+            "{\"email\":\"alice@example.com\",\"name\":\"Alice\"}"u8.ToArray());
+        stoppedActivityCallbacks.ShouldBe(2);
+        operationMeasurements.ShouldBe(2);
+        durationFaults.ShouldBe(2);
     }
 
     /// <summary>Verifies both instruments emit exact closed tags for every constructible core outcome.</summary>

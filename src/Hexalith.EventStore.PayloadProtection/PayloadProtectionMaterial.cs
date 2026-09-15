@@ -9,4 +9,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed record PayloadProtectionMaterial(
     string KeyReference,
     uint DekVersion,
-    byte[] DataEncryptionKey);
+    byte[] DataEncryptionKey)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(PayloadProtectionMaterial);
+}
