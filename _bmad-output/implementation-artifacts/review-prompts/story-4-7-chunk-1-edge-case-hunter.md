@@ -227,7 +227,7 @@ index 62ad3fee..80d18b0b 100644
 +        _fixture.SkipIfUnavailable();
 +        await WaitForTenantsApiAliveAsync();
 +
-+        string token = CreateDemoJwt();
++        string demoToken = CreateDemoJwt();
 +        string tenantId = $"provenance-{Guid.NewGuid():N}";
 +        string tenantName = $"Provenance {Guid.NewGuid():N}";
 +        const string tenantDescription = "Created by the Story 4.7 persisted-route proof";
@@ -240,7 +240,7 @@ index 62ad3fee..80d18b0b 100644
 +                "global-administrators",
 +                nameof(BootstrapGlobalAdmin),
 +                new BootstrapGlobalAdmin("admin-user")),
-+            token,
++            demoToken,
 +            timeout.Token,
 +            allowAlreadyBootstrappedConflict: true);
 +        (bootstrapStatus.Status == "Completed"
@@ -254,7 +254,7 @@ index 62ad3fee..80d18b0b 100644
 +                tenantId,
 +                nameof(CreateTenant),
 +                new CreateTenant(tenantId, tenantName, tenantDescription)),
-+            token,
++            demoToken,
 +            timeout.Token);
 +        if (createStatus.Status == "PublishFailed") {
 +            Assert.Skip($"Aspire pub/sub publication is unavailable: {createStatus.FailureReason ?? "unknown reason"}");

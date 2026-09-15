@@ -155,7 +155,7 @@ public class BackupWriteToolsTests {
     [Fact]
     public async Task TriggerBackup_RejectsUnsafeDescriptionThatPreviewWouldRewrite()
     {
-        await AssertPreviewMatchRejectionAsync("Password=secret");
+        await AssertPreviewMatchRejectionAsync("Password=[redacted]");
     }
 
     [Fact]

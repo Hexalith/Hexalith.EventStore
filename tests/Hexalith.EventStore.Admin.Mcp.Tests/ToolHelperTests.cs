@@ -181,7 +181,7 @@ public class ToolHelperTests {
 
     [Fact]
     public void ValidatePreviewMatchesExecution_ReturnsError_WhenValueContainsUnsafeMarker() {
-        string? result = ToolHelper.ValidatePreviewMatchesExecution(("Password=secret", "description"));
+        string? result = ToolHelper.ValidatePreviewMatchesExecution(("Password=[redacted]", "description"));
 
         _ = result.ShouldNotBeNull();
         using var doc = JsonDocument.Parse(result);

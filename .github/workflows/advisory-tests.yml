@@ -23,6 +23,7 @@ env:
     tests/Hexalith.EventStore.Admin.UI.E2E
     tests/Hexalith.EventStore.DeferredWorkGovernance.Tests
     tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests
+    tests/Hexalith.EventStore.PayloadProtection.Tests
 
 jobs:
   advisory:

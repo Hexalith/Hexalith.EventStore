@@ -4302,7 +4302,7 @@ decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-r
   summary: Story 4.14 pending-review history lacks a direct immutable mutation test.
   evidence: Existing coverage mutates `observations.json` and exact directory contents but does not rewrite the pending fields in `review-records.json` and assert fail-closed rejection.
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
-  summary: Protected-content scanning rejects `password=` but not the equally secret-like `password:` form.
+  summary: Protected-content scanning rejects `password=<value>` but not the equally secret-like `password: <value>` form.
   evidence: A credential embedded in an otherwise permitted reviewer finding or evidence string can pass the pre-existing leakage scan and be committed.
   tracked_as: DW-504 — close together; this bullet carries no id of its own.
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
@@ -4372,14 +4372,14 @@ reason: Both CTRF inputs were routed through `read_bounded_raw_input` by this ch
 duplicate_of: id-less bullet "Story 4.14 `observations.json` is parsed before any input-size bound is enforced." under `## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12, resumed build)`; and `run2-blind-10`. Closing DW-503 closes all three.
 status: open
 
-### DW-504: Protected-content scanning rejects `password=` but not `password:`.
+### DW-504: Protected-content scanning rejects `password=<value>` but not `password: <value>`.
 
 origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12 Group O)
 location: tools/validate-oq8-platform-evidence.py:818
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: A credential written in the `password:` form can pass the leakage scan and be committed inside an otherwise permitted reviewer finding or evidence string, while this same change hardened the surrounding scanner with depth/node bounds and placeholder/claim scans. Duplicate of the id-less entry filed by the same change and of `run2-edge-01`; recorded here only so the class has a citable id — close both together.
-duplicate_of: id-less bullet "Protected-content scanning rejects `password=` but not the equally secret-like `password:` form." under `## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12, resumed build)`; and `run2-edge-01`. Closing DW-504 closes all three.
+duplicate_of: id-less bullet "Protected-content scanning rejects `password=<value>` but not the equally secret-like `password: <value>` form." under `## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-12, resumed build)`; and `run2-edge-01`. Closing DW-504 closes all three.
 status: open
 
 ### DW-505: Story 4.15 is pinned at sprint review plus spec done, now hardened by an always-on repository probe.
