@@ -27,7 +27,7 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// </summary>
 public sealed class CommandsControllerTrustedExtensionTests {
     private const string ReservedKey = "provider:selectionValidation";
-    private const string SecretValue = "SECRET-VERDICT-VALUE";
+    private const string OpaqueVerdictValue = "opaque-verdict-value";
 
     [Fact]
     public async Task Exactly_one_accepting_policy_passes_the_reserved_extension_to_admission() {
@@ -37,14 +37,14 @@ public sealed class CommandsControllerTrustedExtensionTests {
         CommandsController controller = CreateController(
             mediator,
             new TestLogger<CommandsController>(),
-            [new PredicatePolicy(static (_, _, key, value) => key == ReservedKey && value == SecretValue)]);
+            [new PredicatePolicy(static (_, _, key, value) => key == ReservedKey && value == OpaqueVerdictValue)]);
 
         IActionResult result = await controller.Submit(Request(), CancellationToken.None);
 
         result.ShouldBeOfType<AcceptedResult>();
         await mediator.Received(1).Send(
             Arg.Is<SubmitCommand>(command => command.Extensions != null
-                && command.Extensions[ReservedKey] == SecretValue),
+                && command.Extensions[ReservedKey] == OpaqueVerdictValue),
             Arg.Any<CancellationToken>());
     }
 
@@ -66,7 +66,7 @@ public sealed class CommandsControllerTrustedExtensionTests {
         problem.ContentTypes.ShouldContain("application/problem+json");
         await mediator.DidNotReceiveWithAnyArgs().Send(default!, default);
         logger.Messages.ShouldContain(message => message.Contains(ReservedKey, StringComparison.Ordinal));
-        logger.Messages.ShouldAllBe(message => !message.Contains(SecretValue, StringComparison.Ordinal));
+        logger.Messages.ShouldAllBe(message => !message.Contains(OpaqueVerdictValue, StringComparison.Ordinal));
     }
 
     private static CommandsController CreateController(
@@ -93,7 +93,7 @@ public sealed class CommandsControllerTrustedExtensionTests {
         CommandType: "ActivateAgent",
         Payload: JsonSerializer.SerializeToElement(new { }),
         CorrelationId: "correlation-1",
-        Extensions: new Dictionary<string, string> { [ReservedKey] = SecretValue },
+        Extensions: new Dictionary<string, string> { [ReservedKey] = OpaqueVerdictValue },
         IdempotencyKey: "message-1");
 
     private sealed class PredicatePolicy(
