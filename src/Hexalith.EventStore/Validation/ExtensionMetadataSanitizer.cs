@@ -46,7 +46,7 @@ public partial class ExtensionMetadataSanitizer(IOptions<ExtensionMetadataOption
                     $"Extension value length {kvp.Value.Length} exceeds maximum of {_options.MaxValueLength}.");
             }
 
-            // Validate key character set: printable ASCII identifiers only [a-zA-Z0-9_.-]
+            // Validate key character set: printable ASCII identifiers only [a-zA-Z0-9_.:-]
             if (!KeyPattern().IsMatch(kvp.Key)) {
                 return SanitizeResult.Failure("Extension key contains invalid characters.");
             }
@@ -96,8 +96,8 @@ public partial class ExtensionMetadataSanitizer(IOptions<ExtensionMetadataOption
         return false;
     }
 
-    // Key pattern: alphanumeric + dots, hyphens, underscores
-    [GeneratedRegex(@"^[a-zA-Z0-9][a-zA-Z0-9._-]*$", RegexOptions.Compiled)]
+    // Key pattern: alphanumeric + dots, colons, hyphens, underscores
+    [GeneratedRegex(@"^[a-zA-Z0-9][a-zA-Z0-9._:-]*$", RegexOptions.Compiled)]
     private static partial Regex KeyPattern();
 
     // XSS patterns

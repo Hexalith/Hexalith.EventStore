@@ -21,7 +21,11 @@ namespace Hexalith.EventStore.Controllers;
 [Route("api/v1/commands")]
 [Consumes("application/json")]
 [Tags("Commands")]
-public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer extensionSanitizer, ILogger<CommandsController> logger) : ControllerBase {
+public class CommandsController(
+    IMediator mediator,
+    ExtensionMetadataSanitizer extensionSanitizer,
+    ILogger<CommandsController> logger,
+    IEnumerable<ITrustedCommandExtensionPolicy>? trustedExtensionPolicies = null) : ControllerBase {
     private const string GlobalAdminExtensionKey = "actor:globalAdmin";
 
     // ES-1 DoS guard for the optional domain-service result payload.
@@ -106,7 +110,28 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             return sanitizationResponse;
         }
 
-        Dictionary<string, string>? extensions = BuildTrustedExtensions(request.Extensions);
+        (Dictionary<string, string>? extensions, string? rejectedExtensionKey) = BuildTrustedExtensions(request);
+        if (rejectedExtensionKey is not null) {
+            logger.LogWarning(
+                "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, ExtensionKey={ExtensionKey}",
+                "ReservedExtensionMetadataRejected",
+                correlationId,
+                request.Tenant,
+                request.Domain,
+                rejectedExtensionKey);
+
+            const string reason = "Reserved extension metadata is not trusted for this authenticated caller and command.";
+            ProblemDetails problemDetails = ValidationProblemDetailsFactory.Create(
+                reason,
+                new Dictionary<string, string> { ["extensions"] = reason },
+                correlationId,
+                request.Tenant);
+            problemDetails.Instance = HttpContext?.Request.Path;
+
+            var trustResponse = new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status400BadRequest };
+            trustResponse.ContentTypes.Add("application/problem+json");
+            return trustResponse;
+        }
 
         var command = new SubmitCommand(
             MessageId: request.MessageId,
@@ -167,9 +192,10 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         }
     }
 
-    private Dictionary<string, string>? BuildTrustedExtensions(IDictionary<string, string>? requestExtensions) {
+    private (Dictionary<string, string>? Extensions, string? RejectedExtensionKey) BuildTrustedExtensions(SubmitCommandRequest request) {
+        IDictionary<string, string>? requestExtensions = request.Extensions;
         if (requestExtensions is null || requestExtensions.Count == 0) {
-            return null;
+            return (null, null);
         }
 
         var trustedExtensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -181,10 +207,18 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
                 continue;
             }
 
+            if (extension.Key.Contains(':', StringComparison.Ordinal)) {
+                int acceptedPolicyCount = trustedExtensionPolicies?.Count(policy =>
+                    policy.Accepts(User, request, extension.Key, extension.Value)) ?? 0;
+                if (acceptedPolicyCount != 1) {
+                    return (null, extension.Key);
+                }
+            }
+
             trustedExtensions[extension.Key] = extension.Value;
         }
 
-        return trustedExtensions.Count > 0 ? trustedExtensions : null;
+        return (trustedExtensions.Count > 0 ? trustedExtensions : null, null);
     }
 
     private static bool IsGlobalAdministrator(ClaimsPrincipal principal)
