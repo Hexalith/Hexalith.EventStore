@@ -5,7 +5,7 @@ using System.Diagnostics.Metrics;
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>
-/// Emits only the closed operation, result, reason, and format fields permitted by normative sections 10.8 and 15.2.
+/// Emits only the closed operation, result, and format fields permitted by normative sections 10.8 and 15.2.
 /// </summary>
 internal static class PayloadProtectionDiagnostics
 {
@@ -38,10 +38,18 @@ internal static class PayloadProtectionDiagnostics
     /// <summary>
     /// Stops an activity without allowing listener callbacks to affect the operation.
     /// </summary>
-    internal static void Stop(Activity? activity)
+    /// <param name="activity">The activity to stop, or <see langword="null"/> when nothing sampled it.</param>
+    /// <param name="result">
+    /// The bounded outcome. It sets <see cref="ActivityStatusCode"/> only: no description is attached, because
+    /// normative section 15.2 forbids any cryptographic, provider, or payload detail on a trace status.
+    /// </param>
+    internal static void Stop(Activity? activity, PayloadProtectionDiagnosticResult result)
     {
         try
         {
+            _ = activity?.SetStatus(result == PayloadProtectionDiagnosticResult.Success
+                ? ActivityStatusCode.Ok
+                : ActivityStatusCode.Error);
             activity?.Dispose();
         }
         catch

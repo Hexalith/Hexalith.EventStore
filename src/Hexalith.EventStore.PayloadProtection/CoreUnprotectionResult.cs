@@ -20,4 +20,7 @@ internal sealed record CoreUnprotectionResult(
 
     /// <summary>Creates an unreadable result with no plaintext.</summary>
     internal static CoreUnprotectionResult Unreadable(UnreadableProtectedDataReason reason) => new(null, reason);
+
+    /// <inheritdoc/>
+    public override string ToString() => nameof(CoreUnprotectionResult);
 }

@@ -18,6 +18,21 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     /// <summary>
     /// Protects selected event paths as one atomic transformation using stable byte and path snapshots.
     /// </summary>
+    /// <param name="payloadBytes">The caller-owned serialized event JSON. It is snapshotted and never mutated.</param>
+    /// <param name="selectedPaths">The canonical RFC 6901 paths to protect.</param>
+    /// <param name="context">The trusted authenticated event occurrence.</param>
+    /// <param name="materialFactory">
+    /// Supplies the cryptographic material for this one payload. The factory MUST return a wholly fresh DEK and key
+    /// reference on every invocation: normative section 8.2 derives each nonce from the field ordinal alone, so reusing
+    /// a DEK across two payloads repeats an AES-GCM (key, nonce) pair and destroys confidentiality and integrity for
+    /// both. The core cannot detect that reuse. Ownership of the returned mutable DEK transfers to the core, which
+    /// clears it on every exit.
+    /// </param>
+    /// <param name="maximumProtectedValueBytes">The configured per-value write ceiling.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <param name="encryptionCheckpoint">An optional per-ordinal encryption test checkpoint.</param>
+    /// <param name="traversalCheckpoint">An optional bounded-work test checkpoint for parsing, manifest and rewrite phases.</param>
+    /// <returns>The complete transformed payload, or the unchanged payload when nothing was selected.</returns>
     internal CoreProtectionResult ProtectEvent(
         byte[] payloadBytes,
         IReadOnlyCollection<string> selectedPaths,
@@ -25,7 +40,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         Func<PayloadProtectionMaterial> materialFactory,
         int maximumProtectedValueBytes = PayloadProtectionLimits.CiphertextBytes,
         CancellationToken cancellationToken = default,
-        Action<int>? encryptionCheckpoint = null)
+        Action<int>? encryptionCheckpoint = null,
+        Action<int>? traversalCheckpoint = null)
     {
         ArgumentNullException.ThrowIfNull(payloadBytes);
         ArgumentNullException.ThrowIfNull(selectedPaths);
@@ -53,10 +69,12 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             requestedManifest = ProtectedPathManifestCodec.Create(
                 selectedPaths,
                 cancellationToken: cancellationToken,
-                allowEmpty: true);
+                allowEmpty: true,
+                checkpoint: traversalCheckpoint);
             using BoundedJsonDocument document = BoundedJsonDocument.Parse(
                 payloadBytes,
                 cancellationToken,
+                traversalCheckpoint,
                 observer: observer,
                 ownedBufferKind: SensitiveBufferKind.InputSnapshot);
             if (document.ContainsProtectedMember)
@@ -86,7 +104,10 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 string path = requestedManifest.Paths[index];
-                BoundedJsonNode node = document.Resolve(path, cancellationToken: cancellationToken);
+                BoundedJsonNode node = document.Resolve(
+                    path,
+                    cancellationToken: cancellationToken,
+                    checkpoint: traversalCheckpoint);
                 if (node.ValueKind == JsonValueKind.Null)
                 {
                     continue;
@@ -134,7 +155,8 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             manifest = ProtectedPathManifestCodec.Create(
                 nonNullPaths,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken,
+                checkpoint: traversalCheckpoint);
             if (selectedValues.Count != manifest.Paths.Count)
             {
                 throw new PayloadProtectionFormatException();
@@ -155,9 +177,11 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     manifest.Paths[index],
                     checked((uint)index),
                     manifest.Commitment,
-                    cancellationToken);
+                    cancellationToken,
+                    traversalCheckpoint);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             PayloadCryptography.EnsurePlatformSupport();
             material = InvokeMaterialFactory(materialFactory, cancellationToken);
             material = ValidateMaterial(material);
@@ -219,7 +243,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 }
             }
 
-            transformed = document.Rewrite(replacements, cancellationToken);
+            transformed = document.Rewrite(replacements, cancellationToken, traversalCheckpoint);
             using (BoundedJsonDocument validated = BoundedJsonDocument.Inspect(transformed, cancellationToken))
             {
                 _ = validated.NodeCount;
@@ -279,7 +303,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             ClearManifest(manifest);
             ClearManifest(requestedManifest);
 
-            PayloadProtectionDiagnostics.Stop(activity);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Protect,
                 diagnosticResult,
@@ -291,6 +315,17 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     /// <summary>
     /// Protects one complete snapshot as the root-path v2 envelope without Server or registry integration.
     /// </summary>
+    /// <param name="snapshotBytes">The caller-owned serialized snapshot JSON. It is snapshotted and never mutated.</param>
+    /// <param name="context">The trusted authenticated snapshot occurrence.</param>
+    /// <param name="materialFactory">
+    /// Supplies the cryptographic material for this one snapshot under the same contract as
+    /// <see cref="ProtectEvent"/>: a wholly fresh DEK and key reference per invocation, because the ordinal-derived
+    /// nonce of normative section 8.2 makes any DEK reuse an AES-GCM (key, nonce) repeat the core cannot detect.
+    /// Ownership of the returned mutable DEK transfers to the core, which clears it on every exit.
+    /// </param>
+    /// <param name="maximumProtectedValueBytes">The configured snapshot write ceiling.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>The durable protected snapshot carrier.</returns>
     internal ProtectedSnapshotPayloadV2 ProtectSnapshot(
         byte[] snapshotBytes,
         PayloadProtectionContext context,
@@ -414,7 +449,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             ClearManifest(manifest);
 
-            PayloadProtectionDiagnostics.Stop(activity);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Protect,
                 diagnosticResult,
@@ -432,14 +467,20 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     /// which clears it on every exit.
     /// </param>
     /// <param name="cancellationToken">The caller cancellation token.</param>
-    /// <param name="traversalCheckpoint">An optional bounded-work test checkpoint.</param>
+    /// <param name="traversalCheckpoint">An optional bounded-work test checkpoint for every traversal counter.</param>
+    /// <param name="rewriteSortCheckpoint">
+    /// An optional checkpoint for the rewrite replacement-sort counter. It is separate from
+    /// <paramref name="traversalCheckpoint"/> because the two count independent work and binding one delegate to both
+    /// interleaves them into a single non-monotonic stream that no bounded-work assertion can read.
+    /// </param>
     /// <returns>The complete authenticated event JSON or one bounded unreadable reason.</returns>
     internal async ValueTask<CoreUnprotectionResult> TryUnprotectEventAsync(
         byte[] protectedPayloadBytes,
         PayloadProtectionContext context,
         Func<string, uint, CancellationToken, ValueTask<byte[]?>> keyResolver,
         CancellationToken cancellationToken = default,
-        Action<int>? traversalCheckpoint = null)
+        Action<int>? traversalCheckpoint = null,
+        Action<int>? rewriteSortCheckpoint = null)
     {
         ArgumentNullException.ThrowIfNull(protectedPayloadBytes);
         ArgumentNullException.ThrowIfNull(context);
@@ -545,12 +586,6 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 throw;
             }
-            catch (OperationCanceledException)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                diagnosticResult = PayloadProtectionDiagnosticResult.Unavailable;
-                return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
-            }
             catch
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -609,7 +644,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     cancellationToken: cancellationToken,
                     checkpoint: traversalCheckpoint));
                 int remainingDepth = checked(PayloadProtectionLimits.JsonDepth - wrapperDepth);
-                if (remainingNodes < 1 || remainingDepth < 0)
+                if (remainingNodes < 1 || remainingDepth < 1)
                 {
                     throw new PayloadProtectionFormatException();
                 }
@@ -618,7 +653,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                     plaintext,
                     cancellationToken,
                     maximumNodes: remainingNodes,
-                    maximumDepth: Math.Max(1, remainingDepth)))
+                    maximumDepth: remainingDepth))
                 {
                     if (plaintextDocument.Root.ValueKind == JsonValueKind.Null
                         || plaintextDocument.ContainsProtectedMember
@@ -638,7 +673,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 replacements,
                 cancellationToken,
                 traversalCheckpoint,
-                traversalCheckpoint);
+                rewriteSortCheckpoint);
             using (BoundedJsonDocument validated = BoundedJsonDocument.Inspect(reconstructed, cancellationToken))
             {
                 if (validated.ContainsProtectedMember)
@@ -703,7 +738,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             ClearManifest(manifest);
 
-            PayloadProtectionDiagnostics.Stop(activity);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Unprotect,
                 diagnosticResult,
@@ -791,12 +826,6 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 throw;
-            }
-            catch (OperationCanceledException)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                diagnosticResult = PayloadProtectionDiagnosticResult.Unavailable;
-                return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
             }
             catch
             {
@@ -892,7 +921,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             ClearManifest(manifest);
 
-            PayloadProtectionDiagnostics.Stop(activity);
+            PayloadProtectionDiagnostics.Stop(activity, diagnosticResult);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Unprotect,
                 diagnosticResult,

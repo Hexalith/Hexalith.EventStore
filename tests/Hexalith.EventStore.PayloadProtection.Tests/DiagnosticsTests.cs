@@ -25,6 +25,11 @@ public sealed class DiagnosticsTests
         envelope.ToString().ShouldBe(nameof(PayloadProtectionEnvelope));
         manifest.ToString().ShouldBe(nameof(ProtectedPathManifest));
         new ProtectedWrapper("/email", envelope, 0, 1).ToString().ShouldBe(nameof(ProtectedWrapper));
+        TestFixture.Protect().ToString().ShouldBe(nameof(CoreProtectionResult));
+        CoreUnprotectionResult
+            .Unreadable(UnreadableProtectedDataReason.MissingKey)
+            .ToString()
+            .ShouldBe(nameof(CoreUnprotectionResult));
     }
 
     /// <summary>Verifies both exact source/activity names and absence of payload identity tags.</summary>
@@ -254,6 +259,108 @@ public sealed class DiagnosticsTests
         rendered.ShouldNotContain(TestFixture.KeyReference);
         rendered.ShouldNotContain("malformed-canary");
         rendered.ShouldNotContain("provider-secret-canary");
+    }
+
+    /// <summary>Verifies snapshot operations and the remaining unprotect outcomes emit their exact closed tokens.</summary>
+    [Fact]
+    public async Task Metrics_CoverSnapshotOperationsAndRemainingUnprotectOutcomesAsync()
+    {
+        var measurements = new ConcurrentBag<(
+            string Meter,
+            string Instrument,
+            KeyValuePair<string, object?>[] Tags)>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, current) =>
+        {
+            if (instrument.Meter.Name == PayloadProtectionDiagnostics.Name)
+            {
+                current.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, _, tags, _) =>
+        {
+            measurements.Add((instrument.Meter.Name, instrument.Name, tags.ToArray()));
+        });
+        listener.SetMeasurementEventCallback<double>((instrument, _, tags, _) =>
+        {
+            measurements.Add((instrument.Meter.Name, instrument.Name, tags.ToArray()));
+        });
+        listener.Start();
+
+        ProtectedSnapshotPayloadV2 snapshot = TestFixture.ProtectSnapshot();
+        _ = await TestFixture.UnprotectSnapshotAsync(snapshot);
+        _ = await TestFixture.UnprotectSnapshotAsync(
+            snapshot,
+            keyResolver: (_, _, _) => ValueTask.FromResult<byte[]?>(null));
+        _ = await TestFixture.UnprotectAsync("{\"name\":\"Alice\"}"u8.ToArray());
+        using (var cancelled = new CancellationTokenSource())
+        {
+            await cancelled.CancelAsync();
+            _ = await Should.ThrowAsync<OperationCanceledException>(
+                async () => await TestFixture.UnprotectAsync(
+                    TestFixture.WrapperPayloadBytes(),
+                    cancellationToken: cancelled.Token));
+        }
+
+        listener.Dispose();
+        string[] instruments = [
+            "eventstore.payload_protection.duration",
+            "eventstore.payload_protection.operations",
+        ];
+        var expectedOutcomes = new (string Operation, string Result, string FormatVersion)[] {
+            ("protect", "success", "v2"),
+            ("unprotect", "success", "v2"),
+            ("unprotect", "missing-key", "v2"),
+            ("unprotect", "malformed", "v2"),
+            ("unprotect", "cancelled", "v2"),
+        };
+
+        measurements.Count.ShouldBe(expectedOutcomes.Length * instruments.Length);
+        foreach ((string operation, string result, string formatVersion) in expectedOutcomes)
+        {
+            foreach (string instrument in instruments)
+            {
+                measurements.Count(measurement => measurement.Instrument == instrument
+                    && measurement.Tags.Single(static tag => tag.Key == "operation").Value as string == operation
+                    && measurement.Tags.Single(static tag => tag.Key == "result").Value as string == result
+                    && measurement.Tags.Single(static tag => tag.Key == "format_version").Value as string == formatVersion)
+                    .ShouldBe(1);
+            }
+        }
+
+        string rendered = string.Join('|', measurements.SelectMany(static measurement => measurement.Tags)
+            .Select(static tag => $"{tag.Key}={tag.Value}"));
+        rendered.ShouldNotContain("tenant-a");
+        rendered.ShouldNotContain("Alice");
+        rendered.ShouldNotContain(TestFixture.KeyReference);
+    }
+
+    /// <summary>Verifies every activity closes with its bounded outcome status and no description or tag.</summary>
+    [Fact]
+    public async Task Activities_CarryOutcomeStatusWithoutDescriptionAsync()
+    {
+        var observed = new ConcurrentBag<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = static source => source.Name == PayloadProtectionDiagnostics.Name,
+            Sample = static (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = observed.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        _ = TestFixture.Protect();
+        _ = await TestFixture.UnprotectAsync("{\"name\":\"Alice\"}"u8.ToArray());
+
+        observed
+            .Single(static activity => activity.OperationName == "EventStore.PayloadProtection.Protect")
+            .Status
+            .ShouldBe(ActivityStatusCode.Ok);
+        observed
+            .Single(static activity => activity.OperationName == "EventStore.PayloadProtection.Unprotect")
+            .Status
+            .ShouldBe(ActivityStatusCode.Error);
+        observed.All(static activity => activity.StatusDescription is null).ShouldBeTrue();
+        observed.All(static activity => !activity.TagObjects.Any()).ShouldBeTrue();
     }
 
     /// <summary>Verifies the execution manifest assigns exactly the inherited and Story 8.3-owned vector set.</summary>

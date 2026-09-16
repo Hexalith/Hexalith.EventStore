@@ -46,10 +46,6 @@ internal static class PayloadCryptography
             tag = null;
             return envelope;
         }
-        catch (CryptographicException)
-        {
-            throw new PayloadProtectionCryptographicException();
-        }
         finally
         {
             Clear(nonce);

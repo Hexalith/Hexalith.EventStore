@@ -238,6 +238,88 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         observer.Observed.Count.ShouldBe(16);
     }
 
+    /// <summary>Verifies aggregate writer plaintext above 8 MiB is rejected before any material is created.</summary>
+    [Fact]
+    public void EventWriter_RejectsCumulativeSelectedPlaintextOverMaximumBeforeMaterial()
+    {
+        const int pathCount = 9;
+        const int valueLength = 932_068;
+        ((long)pathCount * valueLength).ShouldBeGreaterThan(PayloadProtectionLimits.SelectedPlaintextBytes);
+        ((long)(pathCount - 1) * valueLength).ShouldBeLessThanOrEqualTo(PayloadProtectionLimits.SelectedPlaintextBytes);
+        valueLength.ShouldBeLessThanOrEqualTo(PayloadProtectionLimits.CiphertextBytes);
+        string[] paths = [.. Enumerable.Range(0, pathCount).Select(static index => $"/p{index}")];
+        var builder = new StringBuilder("{");
+        for (int index = 0; index < pathCount; index++)
+        {
+            if (index > 0)
+            {
+                _ = builder.Append(',');
+            }
+
+            _ = builder.Append("\"p").Append(index).Append("\":\"")
+                .Append((char)('a' + index), valueLength - 2)
+                .Append('"');
+        }
+
+        byte[] payload = Encoding.UTF8.GetBytes(builder.Append('}').ToString());
+        payload.Length.ShouldBeLessThanOrEqualTo(PayloadProtectionLimits.PayloadBytes);
+        int materialCalls = 0;
+
+        _ = Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectEvent(
+            payload,
+            paths,
+            TestFixture.Context(),
+            () =>
+            {
+                materialCalls++;
+                return TestFixture.Material();
+            }));
+
+        materialCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies the writer exposes the same bounded-work checkpoint seam the reader already had.</summary>
+    [Fact]
+    public void ProtectEvent_ObservesBoundedWorkCheckpoints()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("{\"email\":\"alice@example.com\",\"name\":\"Alice\"}");
+        var observed = new List<int>();
+
+        CoreProtectionResult result = new PayloadProtectionCore().ProtectEvent(
+            payload,
+            ["/email"],
+            TestFixture.Context(),
+            TestFixture.Material,
+            traversalCheckpoint: observed.Add);
+
+        result.ProtectedPathCount.ShouldBe(1);
+        observed.ShouldNotBeEmpty();
+        observed.ShouldAllBe(static count => count >= 1);
+    }
+
+    /// <summary>Verifies the rewrite sort counter is a seam distinct from every traversal counter.</summary>
+    [Fact]
+    public async Task RewriteSortCheckpoint_IsSeparateFromEveryTraversalCounterAsync()
+    {
+        CoreProtectionResult protectedPayload = new PayloadProtectionCore().ProtectEvent(
+            Encoding.UTF8.GetBytes("{\"email\":\"alice@example.com\",\"name\":\"Bob\"}"),
+            ["/email", "/name"],
+            TestFixture.Context(),
+            TestFixture.Material);
+        protectedPayload.ProtectedPathCount.ShouldBe(2);
+        var sortCounts = new List<int>();
+
+        CoreUnprotectionResult result = await new PayloadProtectionCore().TryUnprotectEventAsync(
+            protectedPayload.PayloadBytes,
+            TestFixture.Context(),
+            (_, _, _) => ValueTask.FromResult<byte[]?>(TestFixture.Dek()),
+            rewriteSortCheckpoint: sortCounts.Add);
+
+        result.IsReadable.ShouldBeTrue();
+        sortCounts.ShouldNotBeEmpty();
+        sortCounts[0].ShouldBe(1);
+    }
+
     /// <summary>Verifies the default material generator executes the production CSPRNG entropy implementation.</summary>
     [Fact]
     public void ProductionEntropy_GeneratesDistinctCanonicalReferencesAndKeys()

@@ -17,13 +17,20 @@ concurrency:
 permissions:
   contents: read
 
+# Lane assignment for tests/Hexalith.EventStore.PayloadProtection.Tests: it runs in the BLOCKING
+# .github/workflows/payload-protection.yml lane, not in this advisory job. It is deliberately absent
+# from Hexalith.EventStore.slnx, so the solution build below produces no output for it and the
+# --no-build step here could never have executed it. This comment is also how
+# ReleasePackageManifestTests.Test_projects_are_classified_into_release_live_advisory_or_deferred_lanes
+# sees the assignment: that classifier reads only ci.yml, integration.yml, this file and docs/ci.md,
+# and the other three are Story 4.15 v3 sealed gate inputs.
+
 env:
   UseHexalithProjectReferences: 'false'
   ADVISORY_TEST_PROJECTS: |
     tests/Hexalith.EventStore.Admin.UI.E2E
     tests/Hexalith.EventStore.DeferredWorkGovernance.Tests
     tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests
-    tests/Hexalith.EventStore.PayloadProtection.Tests
 
 jobs:
   advisory:
@@ -71,10 +78,13 @@ jobs:
             [ -z "$proj" ] && continue
             name=$(basename "$proj")
             echo "::group::$name"
-            dotnet test "$proj" --no-build --configuration Release \
-              --logger "trx;LogFileName=${name}.trx" \
+            dotnet test --project "$proj/$name.csproj" --no-build --configuration Release \
               --results-directory "TestResults/${name}" \
-              --collect:"XPlat Code Coverage" || status=1
+              --report-xunit-trx \
+              --report-xunit-trx-filename "${name}.trx" \
+              --coverage \
+              --coverage-output-format cobertura \
+              --coverage-output coverage.cobertura.xml || status=1
             echo "::endgroup::"
           done <<< "$ADVISORY_TEST_PROJECTS"
           exit $status

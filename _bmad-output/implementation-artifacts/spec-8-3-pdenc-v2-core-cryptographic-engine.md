@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -794,3 +794,84 @@ zero skips.
 - [Rejected][false] Null replacements or null replacement values escape as runtime exceptions — the internal callers construct non-null records from owned non-null wrapper/plaintext buffers; hostile serialized input cannot create these values.
 - [Rejected][false] Zero-length equal-start replacements make ordering ambiguous — production replacements always cover a non-empty indexed JSON value or wrapper, and duplicate/overlapping paths are rejected before construction.
 - [Rejected][low] Operations after `BoundedJsonDocument.Dispose` can observe cleared bytes — the type is internal and every production use is `using`-scoped; adding disposal guards to every accessor is disproportionate for an unreachable normal path.
+
+### Review Findings (third pass, chunk 3 of 6, 2026-09-16)
+
+Chunk 3 is the core-orchestration and cryptography group: `PayloadProtectionCore.cs`,
+`PayloadCryptography.cs`, `PayloadProtectionDiagnostics.cs`,
+`PayloadProtectionMaterialGenerator.cs`, `CryptographicPayloadProtectionEntropy.cs`,
+`PayloadProtectionLimits.cs`, the sixteen supporting records/enums/interfaces/exceptions,
+and the core `.csproj` (22 files, 1,796 added lines). Four independent layers ran.
+Chunks 4-6 (tests, evidence, non-8.3 carry-along) remain unreviewed.
+
+- [x] [Review][Decision] Story 8.3 has no blocking CI gate, and the chunk-1 evidence that authorized restoring one is refuted — Commit `dee2d9cf` removed the `payload-protection` job from `.github/workflows/ci.yml`, so nothing merge- or release-blocking builds or runs the pdenc-v2 engine; it is not even a compile gate, because `Hexalith.EventStore.slnx` contains neither project and nothing in the solution references them. `dee2d9cf`'s stated fallback is false: `.github/workflows/advisory-tests.yml` is `continue-on-error: true` (`:32`), restores and builds only `Hexalith.EventStore.slnx` (`:56`, `:59`), then runs `dotnet test "$proj" --no-build` (`:74`) against a project that build never produced output for, under VSTest-only flags on a `Microsoft.Testing.Platform` runner. `scripts/ci-local.sh:132-139` still pins `--minimum-expected-tests 263 --fail-skips on` but is wired to no workflow and no hook. This directly contradicts the Code Map line requiring `.github/workflows/ci.yml` to "run the focused project as a blocking direct test lane with the current complete 263-case minimum" and the `[x]` execution task claiming that lane was added. **The chunk-1 refutation recorded above is wrong:** it cited only `tools/validate-oq8-platform-evidence.py:3361`, the v1 historical binding `sha256_git_file(COMPLETED_V1_CLOSURE_COMMIT, ...)`. The Story 4.15 **v3** gate reads the live worktree file — `:2892-2898` calls `read_bounded_regular_snapshot(ROOT / relative, ...)` for every path in `V3_GATE_INPUT_PATHS`, which includes `SUCCESSOR_SOURCE_PATHS` and therefore `.github/workflows/ci.yml` (`:155-157`, `:272`), and `:3005-3006` asserts `sha256_bytes(current_bytes) == expected` under "Story 4.15 v3 gate-input identity drift". So editing the live `ci.yml` does break a sealed gate, and `dee2d9cf` was correct to revert it. Two frozen constraints now conflict — the Story 8.3 blocking-lane requirement and the Story 4.15 v3 worktree seal — and only the human owner can choose between re-sealing the v3 manifest, adding a separate unsealed blocking workflow, hardening `advisory-tests.yml`, or amending the Story 8.3 requirement. **RESOLVED 2026-09-16 by the human EventStore owner: option 1.** Restore the deleted job verbatim into a new unsealed workflow `.github/workflows/payload-protection.yml` rather than into `ci.yml`, so no v3 gate input changes. Verified safe: the validator's workflow gate inputs are the fixed literal pair `.github/workflows/ci.yml` and `.github/workflows/integration.yml` (`tools/validate-oq8-platform-evidence.py:155-157`, `:272`); `advisory-tests.yml` is absent from the validator entirely, and no test enumerates `.github/workflows/`, so an additional workflow file is unconstrained. Two items were split out of this decision and are recorded as separate patches below.
+- [x] [Review][Patch] Restore the blocking 263-case PayloadProtection lane in a new unsealed `.github/workflows/payload-protection.yml` (resolution of the decision above) [.github/workflows/payload-protection.yml]
+- [x] [Review][Patch] `advisory-tests.yml` executes zero tests for all four of its projects: the job restores and builds only `Hexalith.EventStore.slnx`, then runs `dotnet test --no-build` with VSTest-only flags on a `Microsoft.Testing.Platform` runner [.github/workflows/advisory-tests.yml:56-77]
+- [x] [Review][Patch] `ProtectEvent` reaches the external material factory with no cancellation check after its final AAD validation [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:159-162]
+- [x] [Review][Patch] The writer material seam is undocumented, so the caller-owned per-payload freshness obligation whose breach is catastrophic AES-GCM key/nonce reuse is stated nowhere at the call site [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:18-28, 291-299]
+- [x] [Review][Patch] The writer-side cumulative selected-plaintext bound has no test, while its reader-side twin does [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:101]
+- [x] [Review][Patch] Snapshot operations and the unprotect `malformed`/`cancelled`/`cryptographic-failure` tokens are emitted but never asserted [tests/Hexalith.EventStore.PayloadProtection.Tests/DiagnosticsTests.cs:210-221]
+- [x] [Review][Patch] Checkpoint seams are inconsistent: `Rewrite`'s two distinct counters receive one delegate, and `ProtectEvent` exposes no traversal checkpoint at all [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:637-641, 57, 222]
+- [x] [Review][Patch] `PayloadCryptography.Encrypt`'s `catch (CryptographicException)` is unreachable [src/Hexalith.EventStore.PayloadProtection/PayloadCryptography.cs:49-52]
+- [x] [Review][Patch] A redundant `catch (OperationCanceledException)` clause is fully subsumed by the following bare `catch` in both readers [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:548-559, 795-806]
+- [x] [Review][Patch] `CoreProtectionResult` and `CoreUnprotectionResult` omit the no-leak `ToString()` override their five sibling records carry, and one of them holds authenticated plaintext [src/Hexalith.EventStore.PayloadProtection/CoreProtectionResult.cs:10, CoreUnprotectionResult.cs:11]
+- [x] [Review][Patch] The diagnostics type documents a `reason` field it never emits, and `Stop` closes every activity with no status or result tag [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionDiagnostics.cs:8, 41-51]
+- [x] [Review][Patch] The reader's `remainingDepth < 0` disjunct and `Math.Max(1, remainingDepth)` clamp are unreachable [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionCore.cs:611-621]
+
+
+#### Chunk 3 patch outcome (2026-09-16)
+
+All 12 patches applied and verified. The focused gate moves **263 -> 268**; both blocking floors
+(`.github/workflows/payload-protection.yml`, `scripts/ci-local.sh:135`) were raised to 268. Debug and
+Release build clean under `-warnaserror`, and `Oq8PlatformClosureTests` stays green, confirming that
+`.github/workflows/ci.yml` was not touched and the Story 4.15 v3 seal still holds.
+
+Five new cases were added and four were **mutation-verified** — disabling the writer cumulative-plaintext
+bound, the writer traversal checkpoint, the activity outcome status, or the snapshot missing-key bucket
+each turns its case red.
+
+One honest exception. The cancellation check restored before `ProtectEvent`'s material factory
+(`PayloadProtectionCore.cs:166`) has **no armed test**. The case first written for it passed with the
+guard deleted: every checkpoint-reachable window is already closed by `AadCodec`'s own invoke-then-throw
+cadence, so the only window the new line closes is cancellation requested concurrently between
+`ValidateBeforeMaterial`'s last internal check and its return. That is not deterministically
+constructible at this seam. Rather than keep a case that proves nothing, it was deleted. The guard is
+retained as normative-section-8.1 symmetry with the three sibling seams
+(`ProtectSnapshot:350`, `TryUnprotectEventAsync:542`, `TryUnprotectSnapshotAsync:786`), and is recorded
+here as unverified by construction rather than as proven.
+
+One constraint surfaced while applying the CI patches. Removing the engine from
+`ADVISORY_TEST_PROJECTS` turned
+`ReleasePackageManifestTests.Test_projects_are_classified_into_release_live_advisory_or_deferred_lanes`
+red: it enumerates every `tests/**/*.csproj` and requires each one to appear as a substring of
+`ci.yml`, `integration.yml`, `advisory-tests.yml` or `docs/ci.md`. It has no knowledge of other
+workflows, and three of those four files plus the test itself are Story 4.15 v3 sealed gate inputs.
+`advisory-tests.yml` is the only writable channel, so the project's lane assignment is now recorded
+there as a comment naming the blocking workflow it actually runs in. Full Contracts lane re-verified
+at **2023/2023**.
+
+Two items remain open and are **not** closed by these patches:
+
+- **Owner action, outside the repository.** The new `payload-protection` job must be added to `main`'s
+  required-checks ruleset. Until then it reports on pull requests without blocking a merge.
+- `advisory-tests.yml` keeps `continue-on-error: true` for its remaining three suites. Its flag defect is
+  fixed (they now execute; they previously did not), but making those suites blocking is their owner's
+  decision, not Story 8.3's.
+
+#### Rejected (third pass, chunk 3)
+
+- [Rejected][false] The production entropy implementation has zero test coverage — `LimitsAndConcurrencyTests.cs:243` constructs `new PayloadProtectionMaterialGenerator()`, whose default `_entropy` is `CryptographicPayloadProtectionEntropy`, and asserts `CanonicalUlid.IsValid` on two distinct references plus 32-byte non-zero keys. The proposed off-by-one mutation in the Crockford bit-packing loop yields an invalid ULID and fails that test.
+- [Rejected][false] `CoreUnprotectionResult.IsReadable` is dead code with no caller — it is asserted at `AadPathTests.cs:472`, `DiagnosticsTests.cs:98,306,322`, `EnvelopeTests.cs:31`, `CryptographyTests.cs:52,83,103,217` and `JsonTransformTests.cs:143`.
+- [Rejected][false] Trailing `null` slots in `orderedWrappers` raise an uncaught `NullReferenceException` — `ProtectedPathManifestCodec.ValidateOverlap` throws `PayloadProtectionFormatException` on adjacent equal sorted paths (`ProtectedPathManifestCodec.cs:350-358`), so `Create` rejects duplicates instead of de-duplicating and `manifest.Paths.Count` always equals `wrappers.Count`.
+- [Rejected][false] The two `ProtectEvent` count/order guards cannot fail by construction — unlike the reader clamp filed above, these are a deliberate, commented assertion (`PayloadProtectionCore.cs:146-147`) protecting the plaintext-to-ordinal pairing that binds each value to its AAD. No harm from retaining them was shown.
+- [Rejected][false] `CoreUnprotectionResult` can be built with both members null or both non-null — the record is internal and constructed only through `Readable` and `Unreadable`, which each pin one member to `null`.
+- [Rejected][false] The sync `Func<PayloadProtectionMaterial>` protect seam and the hard-coded `DekVersion` 1 are defects — authority section 8.2 mints a new reference at version 1 for every new event or snapshot write; version increments belong to re-encryption, which is Story 8.5-owned. The async provider seam is Story 8.7 integration.
+- [Rejected][low] The `format_version` tag is effectively constant on every unprotect — true, but the correct token for a non-v2 rejection is undefined at this seam, and `DiagnosticsTests.cs:210-221` already pins the dimension; changing it would add a parameter and a branch for no operator benefit.
+- [Rejected][low] The cleared-buffer observer can only ever see zeros, and `Clear(byte[], SensitiveBufferKind)` has no null guard — `RecordingBufferObserver` records the buffer *kind*, and the tests assert exact per-kind counts, so category coverage is proved; proving no buffer was missed needs a redesign. `CryptographicOperations.ZeroMemory` takes a `Span<byte>`, so a null array converts to an empty span rather than throwing, and no call site passes null.
+- [Rejected][low] A host clock before 1970 or beyond the 48-bit millisecond range escapes as a raw `OverflowException` — reachable only on a misconfigured clock, and the fix adds a guard for a condition never shown to occur.
+- [Rejected][low] A wrong-length or all-zero DEK span is accepted — `PayloadProtectionMaterialGenerator.Generate` allocates the 32-byte buffer itself, and the production entropy path is covered by a non-zero assertion.
+- [Rejected][low] A throwing `isAvailable` collision predicate lets a provider exception escape the bounded surface — the predicate is caller-supplied, so its own exception returns to the caller that raised it; nothing crosses a trust boundary.
+- [Rejected][low] An exception outside the catch chain makes `TryUnprotect*Async` throw instead of returning a bounded reason — no reachable escaping type was demonstrated, and the proposed blanket `catch (Exception)` would mask genuine defects.
+- [Rejected] Resolver denial, quota and revocation collapse into `ProviderUnavailable` — already accepted and tracked as DW-516.
+- [Rejected] Unsupported envelope versions and parse faults should map to `UnknownMetadataVersion`/`MalformedMetadata` — already rejected in chunk 1; the closed reason vocabulary is Story 8.4's routing scope and section 12 requires local-mismatch opacity here.
+- [Rejected] `BoundedJsonLookupKey` retains only a 64-bit name digest — chunk 2 scope, already closed; the reviewer filed it at low confidence and `Resolve` does still call `PropertyNameEquals`.

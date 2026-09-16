@@ -10,4 +10,8 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed record CoreProtectionResult(
     byte[] PayloadBytes,
     string SerializationFormat,
-    int ProtectedPathCount);
+    int ProtectedPathCount)
+{
+    /// <inheritdoc/>
+    public override string ToString() => nameof(CoreProtectionResult);
+}
