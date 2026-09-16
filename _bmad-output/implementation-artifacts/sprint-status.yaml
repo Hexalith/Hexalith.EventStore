@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-09-15
+# last_updated: 2026-09-16
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-09-15'
+last_updated: '2026-09-16'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -257,7 +257,7 @@ development_status:
   8-1-shared-payload-protection-security-spec-and-adr: done
   # Story 8.2 is approved and done; Story 8.3 closed every review action item but only chunk 1 of 6 has been independently reviewed; Stories 8.4-8.11 remain predecessor/evidence gated.
   8-2-payload-protection-contracts-and-golden-vectors: done
-  8-3-pdenc-v2-core-cryptographic-engine: review
+  8-3-pdenc-v2-core-cryptographic-engine: in-progress
   8-4-compatibility-readers-and-mixed-history-routing: backlog
   8-5-policy-and-key-lifecycle-mechanics: backlog
   8-6-azure-key-vault-production-adapter-conformance: backlog

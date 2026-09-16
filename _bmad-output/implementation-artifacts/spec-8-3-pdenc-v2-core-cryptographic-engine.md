@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -727,3 +727,36 @@ zero skips.
 - The spec recorded "focused Release tests passed 250/250" after the suite had
   advanced — resolved in the current implementation handoff by rebinding the
   command and observed result to the verified 254/254 suite.
+
+### Review Findings (third pass, chunk 2 of 6, 2026-09-16)
+
+- [ ] [Review][Patch] Parser-frame disposal allocates before clearing retained decoded member names [src/Hexalith.EventStore.PayloadProtection/JsonContainerFrame.cs:126]
+- [ ] [Review][Patch] Failed parse and cancellation exits do not verify owned input-snapshot cleanup [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:642]
+- [ ] [Review][Patch] Rewrite cancellation does not verify abandoned-output cleanup [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:444]
+- [ ] [Review][Patch] A malformed later wrapper does not verify cleanup of previously parsed envelope buffers [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:334]
+- [ ] [Review][Patch] Discovered-wrapper path exact/max-plus-one boundaries are unverified [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:808]
+- [ ] [Review][Patch] An over-limit unselected member path lacks a complete-core preservation regression [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:519]
+- [ ] [Review][Patch] Literal multibyte UTF-8 member-name discovery lacks a complete reader round trip [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:870]
+
+#### Rejected (third pass, chunk 2)
+
+- [Rejected][low] Full-input UTF-8 validation and a single maximum-size JSON token can delay cancellation — the work is capped by the 16 MiB payload ceiling, and replacing framework parsing for intra-token checkpoints is disproportionate.
+- [Rejected][low] `JsonContainerFrame.SetProperty` has no cancellation seam inside one property copy/hash/compare — the token is payload-bounded, node checkpoints remain enforced, and an incremental hashing/copy redesign is disproportionate.
+- [Rejected][low] `CopyPayload` performs one uncancellable payload clone — it checks cancellation immediately before and after the fixed 16 MiB maximum copy, so chunking adds complexity for bounded latency.
+- [Rejected][false] `CopyRawValue` is uncancellable and has unclear ownership — production callers check cancellation before the selected-value copy, cap it at 1 MiB, retain the returned owned array, and clear it in the core cleanup path.
+- [Rejected][low] Wrapper decoding happens before an over-limit discovered path is rejected — decoding is capped near 1.4 MiB, cleared in `finally`, and reordering merely trades one bounded allocation for another without changing safety.
+- [Rejected][false] Wrapper discovery rescans documents known to contain no protected member — the proportional scan is bounded to 65,536 indexed nodes, checks cancellation every 256 children/nodes, and violates no acceptance constraint.
+- [Rejected][low] Discovered property paths scan their raw token before decoding it — both passes are bounded and cancellation-aware; retaining extra parser state or replacing the decoder is not justified for this bounded case.
+- [Rejected][false] Mutable `BoundedJsonNode` instances can corrupt the index after parsing — all mutation sites are confined to index construction, and no current caller mutates an exposed node.
+- [Rejected][false] Buffer-ownership contracts are absent across the bounded JSON API — the type and method documentation already identifies the owned snapshot, stable borrowed buffer, ownership-transfer copy, and wrapper/rewrite roles; no diverging caller was demonstrated.
+- [Rejected][low] The truncated-hash collision fallback lacks a forced-collision test seam — a natural 64-bit SHA-256-prefix collision is negligible, and adding a production hashing seam solely for this case is disproportionate.
+- [Rejected][medium] Broad `Rewrite` malformed-range and boundary coverage is missing — caller-produced ranges are non-null, positive, bounded indexed nodes and exact core output maxima are already tested; only abandoned-output cleanup remains actionable and is recorded above.
+- [Rejected][low] Cancellation can arrive during the initial owned-input snapshot copy — the copy is capped at 16 MiB and preceded by a cancellation check; chunked snapshot machinery is disproportionate.
+- [Rejected][low] Cancellation can arrive while one maximum-size token is parsed — this duplicates the bounded intra-token limitation above and does not create unbounded work.
+- [Rejected][low] Property comparison and carrier decoding lack internal cancellation checkpoints — child traversal is cancellable, carrier decoding is capped near 1.4 MiB with immediate checks, and deeper token/codec cancellation would add disproportionate plumbing.
+- [Rejected][false] `CopyRawValue` accepts a node from another document — the type and method are internal, and every production call passes the node returned by the same document's `Resolve` method.
+- [Rejected][low] `CopyPayload` can delay cancellation during its clone — this duplicates the bounded-copy finding above; pre/post checks and abandoned-result cleanup are present.
+- [Rejected][false] `Rewrite` can allocate from an unbounded replacement count — both production callers derive replacements from the 4,096-path ceiling, so no reachable unbounded list was demonstrated.
+- [Rejected][false] Null replacements or null replacement values escape as runtime exceptions — the internal callers construct non-null records from owned non-null wrapper/plaintext buffers; hostile serialized input cannot create these values.
+- [Rejected][false] Zero-length equal-start replacements make ordering ambiguous — production replacements always cover a non-empty indexed JSON value or wrapper, and duplicate/overlapping paths are rejected before construction.
+- [Rejected][low] Operations after `BoundedJsonDocument.Dispose` can observe cleared bytes — the type is internal and every production use is `using`-scoped; adding disposal guards to every accessor is disproportionate for an unreachable normal path.
