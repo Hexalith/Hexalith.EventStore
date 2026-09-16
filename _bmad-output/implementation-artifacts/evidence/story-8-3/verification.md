@@ -11,8 +11,9 @@ Stories 8.4/8.5. The constructibility interpretations approved by
 amendment-list and authority section 8.4 Server-ownership corrections.
 The follow-up review's final-collision cancellation and independent-instrument
 diagnostics findings are patched. The third-pass codec/wire-format review added
-two more regressions; the current 254-case suite passes with no failures or
-skips.
+two regressions, and its bounded-JSON review added nine more focused cases plus
+one allocation-free disposal correction; the current 263-case suite passes
+with no failures or skips.
 
 ## Content Binding
 
@@ -21,13 +22,13 @@ relative path, and exclude generated `bin/` and `obj/` content.
 
 | Inventory | Files | SHA-256 |
 | --- | ---: | --- |
-| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 35 | `7b38a14684876ccd7611e7861986dccc898537d16d30e5e6676edf60f6ac75b9` |
-| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `98be46dd3b80a01fe5928d7cefb58e385c70167bef5b089b8c70c2f2174d003e` |
+| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 35 | `cd690ba00e901db9d13e4d48d21e5846337a295f80f71650cb21ffbf647fec80` |
+| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `b5b3204247bd050cbe7d46f8b0d939a303627142b5ba5f33875aa41a05e0b341` |
 | Core project | 1 | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | 1 | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | 1 | `3cc4898d645fb0cf31481abebfe5730d0869d385b13d8f96960c58841bd75297` |
-| GitHub focused lane | 1 | `dd5f9816bb36d6c71d90bfcee087b1abdad352df1d91220a46fe6b7afbac758c` |
-| Local focused lane | 1 | `c68b27821d6582cece7e088c16bbcb9103ba6dacce36e1a86af40d2295db183a` |
+| GitHub focused lane | 1 | `0bff9d790e7163ffecd928ef09ba357e61cf823589d6f1fb3c094a9608a6a4fe` |
+| Local focused lane | 1 | `eb60d2aabf5c49dfb9fa37bec2e897ff3cc3b8cad3c432a5d97ddc0c5802c05d` |
 
 The production inventory contains one internal documented type per C# file:
 limits/exceptions/results/context/material, strict canonical text/ULID/base64url,
@@ -45,7 +46,7 @@ manifest. Tests load the linked Story 8.2 G-001, NIST, and ownership fixtures
 read-only rather than relying only on duplicated constants. The manifest
 assigns inherited V001-V003 and 48 Story 8.3 vectors V004-V048/V135-V136/V138;
 all 51 identifiers have a corresponding xUnit trait, the complete suite
-contains 254 cases, and none is skipped.
+contains 263 cases, and none is skipped.
 
 ## Verification Results
 
@@ -53,7 +54,7 @@ contains 254 cases, and none is skipped.
 | --- | --- |
 | `node scripts/payload-protection/verify-golden-vectors.mjs` | PASS V001-V003; frozen bytes unchanged |
 | `python3 scripts/payload-protection/verify-golden-vectors.py` | PASS V001-V003; independent frozen bytes unchanged |
-| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false -p:GenerateDocumentationFile=true` then `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 254 --fail-skips on --no-ansi` | PASS 254/254; zero warnings, failures, or skips after the third-pass review fixes |
+| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false -p:GenerateDocumentationFile=true` then `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 263 --fail-skips on --no-ansi` | PASS 263/263; zero warnings, failures, or skips after the third-pass bounded-JSON fixes |
 | Focused `dotnet test --filter-method` runs for `MaterialGeneration_CancellationDuringFinalCollisionCleanupWins` and `ThrowingOperationsCounterListener_DoesNotSuppressDurationMeasurement` | PASS 1/1 each after the follow-up review patches; focused Release build passed with zero warnings/errors |
 | `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --filter-method "Hexalith.EventStore.PayloadProtection.Tests.LimitsAndConcurrencyTests.V138_HostileConcurrentLoad_IsBoundedAndCancellableAsync" --output Detailed --no-ansi` | PASS 1/1; 16 hostile unprotect calls met at an in-core barrier; 1,398,212-character input; cancellation checkpoints 1/256/512; 92,572,992 process-wide allocated bytes; 65.168ms; observations only |
 | The two exact `dotnet format style` commands and one-type/Allman/LF scans below | PASS; zero formatter or structural-style violations |
@@ -62,7 +63,7 @@ contains 254 cases, and none is skipped.
 | `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore -m:1 -nodeReuse:false` | PASS; zero warnings/errors |
 | `package_dir="$(mktemp -d /tmp/eventstore-story-8-3-packages.XXXXXX)"; python3 scripts/pack-release-packages.py "$package_dir" 999.0.0-ci-test; python3 scripts/validate-nuget-packages.py "$package_dir"; python3 tools/validate-release-packages.py "$package_dir" 999.0.0-ci-test` | PASS; exactly the existing 14 archives; PayloadProtection excluded |
 | The exact dependency/surface/preservation commands below | PASS; one direct Contracts reference, no forbidden dependency/public type, and frozen solution/release manifest unchanged |
-| `actionlint .github/workflows/ci.yml` and `bash -n scripts/ci-local.sh` | PASS; both direct lanes require 254 tests and fail on skips |
+| `actionlint .github/workflows/ci.yml` and `bash -n scripts/ci-local.sh` | PASS; both direct lanes require 263 tests and fail on skips |
 | `git diff --check` | PASS |
 
 The structural and preservation rows are replayable from the repository root
@@ -115,8 +116,9 @@ decrypted-plaintext buffers only after `CryptographicOperations.ZeroMemory`.
 The review-loop audit expanded exact coverage from 137 to 217 passing test
 cases, the first independent-review patches expanded it to 226, and final
 review hardening expanded it to 246, the second-pass review expanded it to 250,
-and the follow-up review added two focused regressions for a 252-case suite,
-without expanding the core into Story 8.5:
+the follow-up review added two focused regressions for a 252-case suite, the
+third-pass codec review raised it to 254, and bounded-JSON review raised it to
+263, without expanding the core into Story 8.5:
 
 - V004-V014 now assert that every locally invalid carrier/header exit performs
   zero key lookups. V007 separately covers forbidden alphabet, padding,
@@ -184,6 +186,13 @@ without expanding the core into Story 8.5:
   upper bound; derives pre-material payload kind from path shape; avoids runtime
   format-byte initialization; distinguishes pass-through diagnostics; and
   aligns snapshot success recording with result construction.
+- The third-pass bounded-JSON patch directly enumerates parser-frame retained
+  names so zeroing begins without allocating a values collection. Focused
+  cleanup regressions observe failed/cancelled parse snapshots, abandoned
+  rewrite output, and every earlier envelope buffer when a later wrapper is
+  malformed. Boundary regressions prove exact/max-plus-one discovered paths,
+  preserve an unselected over-limit path through a complete protected round
+  trip, and authenticate literal multibyte UTF-8 member names.
 
 Some registry wording cannot be implemented literally without contradicting
 other frozen rules. HXP2 envelope version `02` is the required valid value, so
@@ -289,3 +298,20 @@ reason for that move does not hold: `tools/validate-oq8-platform-evidence.py:336
 `.github/workflows/ci.yml` with `sha256_git_file(COMPLETED_V1_CLOSURE_COMMIT, ...)` against frozen
 commit `17e47a39`, never the live file, so the live workflow is not sealed. The unrelated VSTest
 flag defect in `advisory-tests.yml` affects all four of its projects and is left for its owner.
+
+## Third-Pass Review Addendum (chunk 2 of 6, 2026-09-16)
+
+All seven bounded-JSON findings are closed. `JsonContainerFrame.Dispose` now
+uses the dictionary's struct enumerator, avoiding the lazy values-collection
+allocation that could precede retained-name zeroing. A warmed allocation
+regression reports zero bytes allocated by disposal.
+
+The other six findings were verification gaps rather than runtime failures.
+Nine focused cases now prove owned input-snapshot zeroing on malformed and
+cancelled parses, abandoned-output zeroing when rewrite cancellation arrives
+after allocation, cleanup of a valid earlier envelope when a later wrapper is
+malformed, exact 2,048-byte discovered-path acceptance and 2,049-byte
+rejection, byte-exact preservation of an unselected over-limit member path,
+and a complete protect/read round trip for a literal multibyte NFC member.
+Both blocking lane floors were raised from 254 to 263. Review chunks 3-6 remain
+pending; this evidence does not represent final independent-review closure.

@@ -4556,3 +4556,27 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Distinguish domain rejection from infrastructure rejection in `CommandStatusQueryResponse.IsRejected`.
   evidence: `CommandStatus.Rejected` explicitly covers domain and infrastructure failures, but `IsRejected` returns true from the canonical status pair alone even when `RejectionEventType` is null and only `FailureReason` identifies an infrastructure rejection; the client-facing subset can therefore misclassify separately authored command-status results outside Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Reject contradictory command-status bodies that carry rejection-only metadata for a non-rejected state.
+  evidence: `EventStoreGatewayClient.IsValidCommandStatus` checks only correlation, message identity, and the status name/code pair, so a completed response with `RejectionEventType` is accepted; this belongs to separately authored Client work outside Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Reject case-distinct duplicate trusted-extension keys before policy evaluation and dictionary insertion.
+  evidence: Separately authored trusted-extension code evaluates request keys independently and then stores them in an ordinal-ignore-case dictionary, so differently cased spellings collapse by last-write selection outside Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Add endpoint-specific ProblemDetails verification for `GetCommandStatusAsync`.
+  evidence: The separately authored command-status tests cover successful and missing statuses but do not prove that a non-404 error preserves status, detail, correlation, reason code, errors, and extensions through `EventStoreGatewayException`.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Add malformed and empty successful-body verification for `GetCommandStatusAsync`.
+  evidence: The separately authored Client tests exercise semantic status validation but not the method-specific `JsonException` translation, so its public exception abstraction can regress outside Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Verify caller cancellation in the legacy default `IEventStoreGatewayClient.GetCommandStatusAsync` implementation.
+  evidence: The default method checks an already-cancelled token, but the legacy compatibility test covers only the uncancelled null result, leaving separately authored cancellation behavior unprotected outside Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Verify trusted-extension admission when several policies are registered and exactly one accepts.
+  evidence: The separately authored controller implements acceptance by counting matching policies, but tests cover only one registered accepter, zero accepters, and two accepters, so composed policy behavior can regress outside Story 8.3.

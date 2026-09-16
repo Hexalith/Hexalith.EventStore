@@ -151,7 +151,7 @@ jobs:
           dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj
           --no-build
           --configuration Release
-          --minimum-expected-tests 254
+          --minimum-expected-tests 263
           --fail-skips on
           --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests
           --report-xunit-trx

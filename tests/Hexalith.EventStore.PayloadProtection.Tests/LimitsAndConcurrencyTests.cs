@@ -317,6 +317,139 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         observer.Observed.ShouldBe([SensitiveBufferKind.InputSnapshot]);
     }
 
+    /// <summary>Verifies parser-frame disposal clears retained member-name bytes without allocating first.</summary>
+    [Fact]
+    public void ParserFrameDisposal_ClearsRetainedNamesWithoutAllocation()
+    {
+        JsonContainerFrame warmup = CreateFrameWithRetainedName();
+        warmup.Dispose();
+        JsonContainerFrame frame = CreateFrameWithRetainedName();
+
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        frame.Dispose();
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+
+        allocated.ShouldBe(0);
+    }
+
+    /// <summary>Verifies failed and cancelled parses clear the owned input snapshot before propagating.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ParseFailureOrCancellation_ClearsOwnedInputSnapshot(bool cancel)
+    {
+        using var source = new CancellationTokenSource();
+        byte[] payload = cancel
+            ? Encoding.UTF8.GetBytes("{" + string.Join(',', Enumerable.Range(0, 512).Select(index => $"\"p{index}\":{index}")) + "}")
+            : "{\"secret\":1"u8.ToArray();
+        byte[] original = [.. payload];
+        RecordingBufferObserver observer = new();
+
+        if (cancel)
+        {
+            Should.Throw<OperationCanceledException>(() => BoundedJsonDocument.Parse(
+                payload,
+                source.Token,
+                count =>
+                {
+                    if (count == 256)
+                    {
+                        source.Cancel();
+                    }
+                },
+                observer));
+        }
+        else
+        {
+            Should.Throw<PayloadProtectionFormatException>(() => BoundedJsonDocument.Parse(
+                payload,
+                default,
+                observer: observer));
+        }
+
+        observer.Observed.ShouldBe([SensitiveBufferKind.InputSnapshot]);
+        payload.ShouldBe(original);
+    }
+
+    /// <summary>Verifies cancellation after rewrite allocation clears the abandoned output buffer.</summary>
+    [Fact]
+    public void RewriteCancellation_ClearsAbandonedOutput()
+    {
+        using var source = new CancellationTokenSource();
+        RecordingBufferObserver observer = new();
+        using BoundedJsonDocument document = BoundedJsonDocument.Parse(
+            "{\"value\":0}"u8,
+            default,
+            observer: observer);
+        BoundedJsonNode value = document.Resolve("/value");
+        var replacements = new[]
+        {
+            new JsonReplacement(value.Start, value.Length, Encoding.UTF8.GetBytes("\"" + new string('x', 1022) + "\"")),
+        };
+
+        Should.Throw<OperationCanceledException>(() => document.Rewrite(
+            replacements,
+            source.Token,
+            checkpoint: count =>
+            {
+                if (count == 256)
+                {
+                    source.Cancel();
+                }
+            }));
+
+        observer.Observed.ShouldContain(SensitiveBufferKind.AbandonedOutput);
+    }
+
+    /// <summary>Verifies a malformed later wrapper clears every buffer retained by an earlier parsed envelope.</summary>
+    [Fact]
+    public void MalformedLaterWrapper_ClearsPreviouslyParsedEnvelopeBuffers()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes(
+            "{\"first\":{\"$pdenc\":\"" + TestFixture.EnvelopeBase64Url
+            + "\"},\"second\":{\"$pdenc\":\"AA\"}}");
+        RecordingBufferObserver observer = new();
+        using BoundedJsonDocument document = BoundedJsonDocument.Parse(payload, default, observer: observer);
+
+        Should.Throw<PayloadProtectionFormatException>(() => document.ReadProtectedWrappers(default));
+
+        observer.Observed.Count(static kind => kind == SensitiveBufferKind.ProtectedOutput).ShouldBe(5);
+    }
+
+    /// <summary>Verifies discovered wrapper paths accept the exact UTF-8 cap and reject its first excess byte.</summary>
+    [Theory]
+    [InlineData(PayloadProtectionLimits.PathBytes - 1, true)]
+    [InlineData(PayloadProtectionLimits.PathBytes, false)]
+    public void DiscoveredWrapperPath_EnforcesExactUtf8Boundary(int memberNameBytes, bool accepted)
+    {
+        string memberName = new('p', memberNameBytes);
+        byte[] payload = Encoding.UTF8.GetBytes(
+            "{\"" + memberName + "\":{\"$pdenc\":\"" + TestFixture.EnvelopeBase64Url + "\"}}");
+        RecordingBufferObserver observer = new();
+        using BoundedJsonDocument document = BoundedJsonDocument.Parse(payload, default, observer: observer);
+
+        if (!accepted)
+        {
+            Should.Throw<PayloadProtectionFormatException>(() => document.ReadProtectedWrappers(default));
+            observer.Observed.Count(static kind => kind == SensitiveBufferKind.ProtectedOutput).ShouldBe(4);
+            return;
+        }
+
+        IReadOnlyList<ProtectedWrapper> wrappers = document.ReadProtectedWrappers(default);
+        try
+        {
+            wrappers.Count.ShouldBe(1);
+            wrappers[0].Path.ShouldBe("/" + memberName);
+            Encoding.UTF8.GetByteCount(wrappers[0].Path).ShouldBe(PayloadProtectionLimits.PathBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(wrappers[0].Envelope.Nonce);
+            CryptographicOperations.ZeroMemory(wrappers[0].Envelope.Ciphertext);
+            CryptographicOperations.ZeroMemory(wrappers[0].Envelope.Tag);
+        }
+    }
+
     /// <summary>Verifies throwing collision observers cannot stop fresh-material retries or subsequent cleanup.</summary>
     [Fact]
     public void ThrowingObserver_DoesNotChangeMaterialGenerationOrLaterCleanup()
@@ -1251,5 +1384,18 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         string json = "{" + string.Join(',', Enumerable.Range(0, count).Select(index => $"\"p{index:D4}\":{index}")) + "}";
         string[] paths = [.. Enumerable.Range(0, count).Select(index => $"/p{index:D4}")];
         return (Encoding.UTF8.GetBytes(json), paths);
+    }
+
+    private static JsonContainerFrame CreateFrameWithRetainedName()
+    {
+        var reader = new Utf8JsonReader("{\"secret\":0}"u8);
+        reader.Read().ShouldBeTrue();
+        reader.Read().ShouldBeTrue();
+        var frame = new JsonContainerFrame(0, JsonValueKind.Object);
+        frame.SetProperty(
+            reader,
+            checked((int)reader.TokenStartIndex),
+            checked((int)(reader.BytesConsumed - reader.TokenStartIndex)));
+        return frame;
     }
 }

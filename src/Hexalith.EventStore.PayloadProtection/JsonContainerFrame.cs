@@ -123,8 +123,9 @@ internal sealed class JsonContainerFrame(int nodeIndex, JsonValueKind valueKind)
     /// <inheritdoc/>
     public void Dispose()
     {
-        foreach (List<byte[]> collisions in _memberNames.Values)
+        foreach (KeyValuePair<ulong, List<byte[]>> entry in _memberNames)
         {
+            List<byte[]> collisions = entry.Value;
             for (int index = 0; index < collisions.Count; index++)
             {
                 CryptographicOperations.ZeroMemory(collisions[index]);

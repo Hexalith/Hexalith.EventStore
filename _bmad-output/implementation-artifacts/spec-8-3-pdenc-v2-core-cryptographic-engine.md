@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -65,7 +65,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
 - `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 254-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
+- `.github/workflows/ci.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 263-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
@@ -94,7 +94,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   complete local path/budget validation and at least one non-null selection.
   This makes V041/V045 zero-material-call behavior directly observable without
   implementing Story 8.5 lifecycle storage.
-- The six required test areas contain 51 unique vector traits and execute 252
+- The six required test areas contain 51 unique vector traits and execute 263
   passing cases after the review-loop re-derivation audit. Approval packet
   `AR-20260914-02` accepts the evidence-backed constructible interpretations
   for V008/V016/V023/V030/V038/V039 without weakening bounds or importing
@@ -259,6 +259,12 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   the third-pass implementation: the focused gate is 254/254, current source,
   test, and CI hashes replace superseded values, and review chunks 2-6 remain
   explicitly pending rather than being represented as closed.
+- 2026-09-16: Closed all seven third-pass bounded-JSON review patches with
+  allocation-free frame disposal, explicit failed/cancelled parse and rewrite
+  cleanup evidence, prior-envelope cleanup on later malformed wrappers, exact
+  discovered-path limits, over-limit unselected-path preservation, and literal
+  multibyte wrapper discovery. The focused gate is now 263/263; review chunks
+  3-6 remain pending.
 
 ## Review Triage Log
 
@@ -555,6 +561,34 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | VG9-01 | high | defer | carried from EC7-10: the active repository ruleset omits `ci / payload-protection`; the pre-verified owner-only settings action remains external to Story 8.3 and is not deferred again. |
 | VG9-02 | medium | defer | carried from BH8-13: existing tests do not transport a sentinel no-op payload across the actor-router production seam, but the pre-verified gap belongs to separately authored Server work and is not deferred again. |
 | VG9-03 | medium | defer | carried from BH8-08: no test covers invalid `CommandStatusPath`, and the verified defect belongs to separately authored Client work excluded from Story 8.3; it is not deferred again. |
+| BH10-01 | medium | defer | carried from BH9-03/EC9-01: the advisory matrix still does not build PayloadProtection before its `--no-build` invocation; the dedicated Story 8.3 lane is the executable gate and the broader advisory defect is not deferred again. |
+| BH10-02 | high | defer | carried from EC7-10/BH9-02/VG9-01: the active ruleset still omits `ci / payload-protection`; the owner-only external mutation remains outside Story 8.3 and is not deferred again. |
+| BH10-03 | false | reject | carried from BH6-12/BH7-02/BH8-04: the cited command is intentionally a working-tree preservation check, while baseline-to-current external history is disclosed separately in the completion artifact and triage ledger. |
+| BH10-04 | medium | defer | carried from BH-01 and later FrontComposer rows: the baseline contains externally authored gitlink advances that Story 8.3 neither owns nor reverts, so they are not deferred again. |
+| BH10-05 | false | reject | The checked task list covers implementation acceptance, not completion of every independent-review chunk; the spec remains `in-review` and both the spec and completion artifact explicitly state that chunks 3-6 are pending. |
+| BH10-06 | false | reject | The style and one-type scans cover every Story 8.3-owned C# file; the Client, Contracts, Server, and related test changes are separately committed work explicitly excluded and disclosed by this story. |
+| BH10-07 | medium | defer | carried from BH8-08/BH9-05/EC9-02: invalid `CommandStatusPath` values can still throw or route incorrectly in separately authored Client work and are not deferred again. |
+| BH10-08 | medium | defer | carried from BH9-08/EC9-03: the gateway still rejects legacy null message identifiers despite the contract allowing them; that separately authored Client issue is not deferred again. |
+| BH10-09 | medium | defer | carried from EC9-04: `IsRejected` still cannot distinguish an infrastructure rejection without a rejection event type from a domain rejection; the separately authored Contracts issue is not deferred again. |
+| BH10-10 | medium | defer | `IsValidCommandStatus` accepts a terminal non-rejected response carrying a rejection-only event type, so a contradictory server body can cross the separately authored Client boundary. |
+| BH10-11 | medium | defer | carried from BH8-12/BH9-07: the reusable fake still returns one global unrecorded response and can hide cross-command routing errors; it is not deferred again. |
+| BH10-12 | medium | defer | carried from BH8-13/BH9-09/VG9-02: no actor-to-handler-to-HTTP test transports a sentinel no-op payload, but that separately authored Server gap is not deferred again. |
+| BH10-13 | low | reject | The cited rows are a historical point-in-time triage record and later rows capture the concurrent compatibility change; rewriting the build spec is not a code correction and review findings whose fix is spec editing are rejected. |
+| BH10-14 | medium | defer | Case-distinct request extension keys collapse into the case-insensitive trusted dictionary after separate policy evaluation, allowing last-write selection in separately authored trusted-extension work. |
+| BH10-15 | false | reject | A policy exception fails closed before mediator admission and the registered `GlobalExceptionHandler` converts it to bounded RFC ProblemDetails; the claimed raw or unclassified escape does not occur. |
+| BH10-16 | false | reject | The unified baseline diff contains separately committed work, but the current working-tree patch is Story 8.3-only and its completion artifact now discloses the idempotency, command-status, AggregateActor, and FrontComposer changes rather than claiming them. |
+| EC10-01 | medium | defer | carried from BH8-08/BH9-05/EC9-02: invalid `CommandStatusPath` configuration remains a real separately authored Client defect and is not deferred again. |
+| EC10-02 | medium | defer | carried from BH9-08/EC9-03: strict message correlation still rejects contract-permitted legacy null identifiers in separately authored Client work and is not deferred again. |
+| EC10-03 | medium | defer | carried from EC9-04: the status-only `IsRejected` property still misclassifies infrastructure rejection as domain rejection in separately authored Contracts work and is not deferred again. |
+| EC10-04 | medium | defer | carried from BH8-12/BH9-07: the reusable fake's global status response can still hide cross-command routing defects and is not deferred again. |
+| EC10-05 | false | reject | A throwing policy cannot authorize the extension or reach admission; the repository's global exception handler produces a bounded 500 ProblemDetails response, so the stated unsafe escape is disproved. |
+| EC10-06 | false | reject | The owner already resolved this exact codec-observability question: call-frame staging is zeroed unconditionally, and the observer evidence contract covers buffers that survive a codec call. |
+| EC10-07 | high | defer | carried from EC7-10/BH9-02/VG9-01: the active ruleset still does not require the focused job; that external owner action is not deferred again. |
+| VG10-01 | high | defer | carried from EC7-10/BH9-02/VG9-01: the pre-verified active-ruleset gap remains external to Story 8.3 and is not deferred again. |
+| VG10-02 | medium | defer | Pre-verified: `GetCommandStatusAsync` has no endpoint-specific ProblemDetails regression, so its separately authored public Client error contract can drift without a focused failure. |
+| VG10-03 | medium | defer | Pre-verified: malformed or empty successful command-status bodies do not exercise the method's `JsonException` translation, leaving the separately authored Client exception abstraction unprotected. |
+| VG10-04 | medium | defer | Pre-verified: the interface default checks cancellation, but the legacy-implementation test does not, so a regression can silently ignore caller cancellation in separately authored compatibility code. |
+| VG10-05 | medium | defer | Pre-verified: policy composition with several registered policies and exactly one accepter is implemented but untested, so separately authored trusted-extension admission can regress. |
 
 ## Design Notes
 
@@ -565,13 +599,13 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 254 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 263 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
-**Observed results (2026-09-15):** both independent V001-V003 verifiers passed;
-focused Release tests passed 254/254 with no skips; code-style verification and
+**Observed results (2026-09-16):** both independent V001-V003 verifiers passed;
+focused Release tests passed 263/263 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
 solution Release build, and `git diff --check` passed; release packing plus both
 validators produced exactly 14 archives. Stories 8.4/8.5 remain unauthorized
@@ -730,13 +764,13 @@ zero skips.
 
 ### Review Findings (third pass, chunk 2 of 6, 2026-09-16)
 
-- [ ] [Review][Patch] Parser-frame disposal allocates before clearing retained decoded member names [src/Hexalith.EventStore.PayloadProtection/JsonContainerFrame.cs:126]
-- [ ] [Review][Patch] Failed parse and cancellation exits do not verify owned input-snapshot cleanup [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:642]
-- [ ] [Review][Patch] Rewrite cancellation does not verify abandoned-output cleanup [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:444]
-- [ ] [Review][Patch] A malformed later wrapper does not verify cleanup of previously parsed envelope buffers [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:334]
-- [ ] [Review][Patch] Discovered-wrapper path exact/max-plus-one boundaries are unverified [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:808]
-- [ ] [Review][Patch] An over-limit unselected member path lacks a complete-core preservation regression [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:519]
-- [ ] [Review][Patch] Literal multibyte UTF-8 member-name discovery lacks a complete reader round trip [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:870]
+- [x] [Review][Patch] Parser-frame disposal allocates before clearing retained decoded member names [src/Hexalith.EventStore.PayloadProtection/JsonContainerFrame.cs:126] — RESOLVED 2026-09-16: disposal now enumerates the dictionary directly instead of allocating its values collection first; a warmed allocation regression requires zero disposal-thread allocations.
+- [x] [Review][Patch] Failed parse and cancellation exits do not verify owned input-snapshot cleanup [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:642] — RESOLVED 2026-09-16: malformed and checkpoint-cancelled parses both observe the owned snapshot only after zeroing and preserve caller bytes.
+- [x] [Review][Patch] Rewrite cancellation does not verify abandoned-output cleanup [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:444] — RESOLVED 2026-09-16: cancellation after output allocation now has direct zeroing-observer evidence for `AbandonedOutput`.
+- [x] [Review][Patch] A malformed later wrapper does not verify cleanup of previously parsed envelope buffers [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:334] — RESOLVED 2026-09-16: a valid first wrapper followed by a malformed second carrier proves all three retained envelope fields and both decode buffers are cleared.
+- [x] [Review][Patch] Discovered-wrapper path exact/max-plus-one boundaries are unverified [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:808] — RESOLVED 2026-09-16: complete wrapper discovery accepts an exact 2,048-byte pointer and rejects the 2,049-byte form while clearing decoded envelope state.
+- [x] [Review][Patch] An over-limit unselected member path lacks a complete-core preservation regression [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:519] — RESOLVED 2026-09-16: a selected sibling protects and authenticates while the over-limit unselected member round-trips byte for byte.
+- [x] [Review][Patch] Literal multibyte UTF-8 member-name discovery lacks a complete reader round trip [src/Hexalith.EventStore.PayloadProtection/BoundedJsonDocument.cs:870] — RESOLVED 2026-09-16: a literal NFC multibyte member is protected, discovered, authenticated, and restored through the complete core.
 
 #### Rejected (third pass, chunk 2)
 

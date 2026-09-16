@@ -391,6 +391,7 @@ public sealed class JsonTransformTests
     [Theory]
     [InlineData("a~b", "/a~0b")]
     [InlineData("a/b", "/a~1b")]
+    [InlineData("é", "/é")]
     [Trait("Vector", "V031")]
     public async Task V031_EscapedMemberName_RoundTripsThroughCompleteCoreAsync(string memberName, string path)
     {
@@ -401,6 +402,25 @@ public sealed class JsonTransformTests
             TestFixture.Context(),
             TestFixture.Material);
 
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
+
+        result.IsReadable.ShouldBeTrue();
+        result.PayloadBytes.ShouldBe(original);
+    }
+
+    /// <summary>Verifies an unselected member whose eventual pointer exceeds the path cap is preserved byte for byte.</summary>
+    [Fact]
+    public async Task OverLimitUnselectedMemberPath_IsPreservedThroughCompleteCoreAsync()
+    {
+        string unselectedMember = new('u', PayloadProtectionLimits.PathBytes + 1);
+        byte[] original = Encoding.UTF8.GetBytes(
+            "{\"selected\":\"secret\",\"" + unselectedMember + "\":{\"value\":1}}");
+
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            original,
+            ["/selected"],
+            TestFixture.Context(),
+            TestFixture.Material);
         CoreUnprotectionResult result = await TestFixture.UnprotectAsync(protectedResult.PayloadBytes);
 
         result.IsReadable.ShouldBeTrue();
