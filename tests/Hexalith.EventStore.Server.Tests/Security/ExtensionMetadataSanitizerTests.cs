@@ -17,6 +17,16 @@ public class ExtensionMetadataSanitizerTests {
         return new ExtensionMetadataSanitizer(Options.Create(options));
     }
 
+    [Fact]
+    public void Colon_namespaced_key_is_syntactically_valid_for_a_later_trust_policy() {
+        ExtensionMetadataSanitizer sanitizer = CreateSanitizer();
+
+        SanitizeResult result = sanitizer.Sanitize(
+            new Dictionary<string, string> { ["provider:selectionValidation"] = "Valid" });
+
+        result.IsSuccess.ShouldBeTrue();
+    }
+
     // --- Task 8.2: Null/empty extensions ---
 
     [Fact]

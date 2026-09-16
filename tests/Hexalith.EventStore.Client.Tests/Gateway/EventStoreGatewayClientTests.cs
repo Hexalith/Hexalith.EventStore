@@ -6,6 +6,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Streams;
 
 using Microsoft.Extensions.Options;
 
@@ -14,6 +15,15 @@ using Shouldly;
 namespace Hexalith.EventStore.Client.Tests.Gateway;
 
 public class EventStoreGatewayClientTests {
+    [Fact]
+    public async Task GetCommandStatusAsync_LegacyImplementationWithoutStatusSupportFailsClosed() {
+        IEventStoreGatewayClient client = new LegacyGatewayClient();
+
+        CommandStatusQueryResponse? response = await client.GetCommandStatusAsync("message-1");
+
+        response.ShouldBeNull();
+    }
+
     [Fact]
     public async Task GetCommandStatusAsync_UsesConfiguredPathAndDeserializesRejectedStatus() {
         HttpRequestMessage? observedRequest = null;
@@ -941,6 +951,30 @@ public class EventStoreGatewayClientTests {
         };
 
     private sealed record CounterDto(int Count);
+
+    private sealed class LegacyGatewayClient : IEventStoreGatewayClient {
+        public Task<SubmitCommandResponse> SubmitCommandAsync(
+            SubmitCommandRequest request,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<EventStoreQueryResult> SubmitQueryAsync(
+            SubmitQueryRequest request,
+            string? ifNoneMatch = null,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<EventStoreQueryResult<T>> SubmitQueryAsync<T>(
+            SubmitQueryRequest request,
+            string? ifNoneMatch = null,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<StreamReadPage> ReadStreamAsync(
+            StreamReadRequest request,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+    }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
