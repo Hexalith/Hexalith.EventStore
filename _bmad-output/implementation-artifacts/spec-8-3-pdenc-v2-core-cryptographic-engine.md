@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -65,7 +65,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
 - `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/payload-protection.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 291-case minimum (updated when the suite changes), plus the dedicated invariant-globalization regression, while preserving V138 as observation-only and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging. The required `ci / build-and-test` lane guards the workflow contents through `ReleasePackageManifestTests`.
+- `.github/workflows/payload-protection.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 292-case minimum (updated when the suite changes), plus the dedicated invariant-globalization regression, while preserving V138 as observation-only and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging. The required `ci / build-and-test` lane guards the workflow contents through `ReleasePackageManifestTests`.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
@@ -94,7 +94,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   complete local path/budget validation and at least one non-null selection.
   This makes V041/V045 zero-material-call behavior directly observable without
   implementing Story 8.5 lifecycle storage.
-- The six required test areas contain 51 unique vector traits and execute 291
+- The six required test areas contain 51 unique vector traits and execute 292
   passing cases after the review-loop re-derivation audit. Approval packet
   `AR-20260914-02` accepts the evidence-backed constructible interpretations
   for V008/V016/V023/V030/V038/V039 without weakening bounds or importing
@@ -753,13 +753,13 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 291 --fail-skips on --no-ansi` and the same built project under `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` filtered to `V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams` with a one-test floor -- expected: all core vectors and the inert-normalizer fail-closed path pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 292 --fail-skips on --no-ansi` and the same built project under `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` filtered to `V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams` with a one-test floor -- expected: all core vectors and the inert-normalizer fail-closed path pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
 **Observed results (2026-09-17):** both independent V001-V003 verifiers passed;
-focused Release tests passed 291/291 and the invariant-globalization invocation
+focused Release tests passed 292/292 and the invariant-globalization invocation
 passed 1/1 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
 solution Release build, and `git diff --check` passed; release packing plus both
@@ -1152,3 +1152,35 @@ groups for follow-up runs: 2, 3, 4a, 4b, 5, 6.
 - [Rejected][false] `ParseArrayIndex` lacks a null guard (edge-case layer) — same unreachable null as above; `BoundedJsonDocument.Resolve` only passes `Decode` tokens.
 - [Rejected][false] `Base64UrlCodec.Encode` length math can `OverflowException` for a huge span — production callers only encode `EnvelopeCodec.Write` output, already capped at `EnvelopeBytes`; the `checked` overflow is not a reachable carrier path.
 - [Rejected][low] `AadCodec.Write` does not re-check cancellation between `Validate` and the AAD allocations — the remaining work is the already-validated 4,096-byte record; chunked AAD write cancellation was rejected on the previous group-1 pass as disproportionate.
+
+### Review Findings (chunk 1 codec/wire-format, 2026-09-17)
+
+Independent four-layer review of chunk 1 (wire codecs / manifest / envelope): 11 files,
++1,673 / −0, baseline `e8886ec4`…`652be5dd`. Blind Hunter, Edge Case Hunter, and
+Verification Gap Reviewer returned findings. Acceptance Auditor returned an empty
+result list and is recorded as failed/empty. Remaining groups for follow-up runs:
+2, 3, 4, 5, 6.
+
+- [x] [Review][Patch] Prefix-sharing sibling selections have no acceptance test — RESOLVED 2026-09-17: `V036_PrefixSharingSiblingSelection_IsAccepted` protects `{"a":{"b":1},"a-foo":2}` at `["/a", "/a-foo"]`, asserts `Create` returns two paths, and pins `ProtectedPathCount == 2`. Treating a sorted predecessor as a raw byte-prefix overlap (instead of exact equality) was mutation-verified to fail this case while V036's reject rows stay red. The focused floor is now 292. [tests/Hexalith.EventStore.PayloadProtection.Tests/JsonTransformTests.cs:393]
+
+#### Rejected (chunk 1, 2026-09-17)
+
+- [Rejected][false] `JsonPointer.Decode` always materializes discarded `string[]` tokens — selected paths are already caller-owned managed strings; the byte-oriented index rule belongs to `BoundedJsonDocument`, and Decode is the closed RFC 6901 validator for that existing string.
+- [Rejected][low] `Create` feeds one `checkpoint` to enumeration, pointer walking, post-sort copy, and overlap compares — sort/encode/hash already have dedicated callbacks; splitting the mixed remaining counter would add parameters without a demonstrated missed cancel, and everyday callers do not key on the integer.
+- [Rejected][false] `CompareUpperBound` substitutes `'0'` with no named constant — the current overlap detector rejects `/a`+`/a/b` with `/a-foo` interposed; the silent-accept outcome does not occur, and V036 already pins that rule.
+- [Rejected][low] `ProbeNormalization` only checks that U+00C5 is not Form D — globalization-invariant mode already fail-closes through that probe and V029; a Form-C-always-true stub is not a supported runtime, and a second probe would not change everyday identity validation.
+- [Rejected][false] `Base64UrlCodec.Encode` does not reject `value.Length` above `EnvelopeBytes` — production callers only encode `EnvelopeCodec.Write` output, already capped at `EnvelopeBytes`; unbounded `Encode` is not a reachable carrier path.
+- [Rejected][false] Envelope/manifest/wrapper records expose mutable `byte[]` without `Clear` — ownership transfers to the caller by spec; `PayloadProtectionCore.ClearEnvelope` zeros after use, and `ToString` already suppresses payload dumps.
+- [Rejected][false] `AadCodec.WriteField` can leak `ArgumentOutOfRangeException` on a length-accounting bug — `Write` sizes the destination from the same `Validate`+`Encode` counts and then asserts `offset == result.Length`; the non-taxonomy exception is not reachable on this path.
+- [Rejected][false] `WriteField` does not enforce section 7.1 type/length pairing — the private helper is only called with the closed pairs (UTF-8, 4, 8, 32), and `Validate` already requires a 32-byte commitment.
+- [Rejected][false] `JsonPointer.Decode` never rejects empty reference tokens — RFC 6901 allows them, section 7.2 does not forbid empty member names, and a slash-only pointer is still bounded by `PathBytes` before JSON depth is applied at resolve.
+- [Rejected][false] `GetUtf8ByteCount` returns 4/0 for a surrogate pair — `CanonicalText.GetByteCount` already rejected unpaired surrogates; a valid pair is 4 + 0 UTF-8 bytes, which is the correct checkpoint accounting.
+- [Rejected][low] `EnvelopeCodec.Write` omits the Read/Create ownership remarks — Core already zeros successful write buffers; adding remarks does not change a runtime cleanup contract developers already follow at the caller.
+- [Rejected][false] `Create` maps every `OverflowException` to format failure and never asserts SHA-256 returned 32 bytes — 4096-path sort/hash arithmetic cannot overflow the checked counters, and `IncrementalHash` SHA-256 always yields 32 bytes.
+- [Rejected][low] `AadCodec.Write` does not re-check cancellation after `Validate` — the remaining work is the already-validated 4,096-byte record; chunked AAD write cancellation remains disproportionate for that bound.
+- [Rejected][false] `CanonicalUlid.IsValid` and `ParseArrayIndex` have no span overloads — section 6.3 forbids allocating variable ciphertext before header/key-ref validation, not the 26-byte key-ref string; array-index parsing runs on `Decode` tokens that are already `string`.
+- [Rejected][false] `EnvelopeCodec.Read` accepts a nonce `Write` would reject — V010 and the re-derivation require post-auth nonce validation; `PayloadCryptography.HasExpectedNonce` runs after decrypt at `PayloadProtectionCore.cs:636,867`.
+- [Rejected][false] `Base64UrlCodec.Encode` length math can overflow for a huge span — same unreachable carrier path as the oversize-guard claim; `checked` overflow is not a production `Write` output.
+- [Rejected][low] Cancellation after `AadCodec.Validate` can still complete AAD encoding — same 4,096-byte remainder as the Blind Hunter write-path claim; adding a post-Validate checkpoint is not a direct correction worth the extra branch.
+- [Rejected][low] A Form-C-always-true normalizer would accept decomposed identity — the documented inert-normalizer threat is already fail-closed; the hypothetical half-stub is not an everyday platform.
+- [Rejected][false] `ParseArrayIndex` throws `NullReferenceException` on a null segment — `Decode` never yields null tokens, and `BoundedJsonDocument.Resolve` is the only production caller.

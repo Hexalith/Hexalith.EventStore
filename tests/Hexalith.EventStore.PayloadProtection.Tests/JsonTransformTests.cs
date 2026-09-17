@@ -387,6 +387,24 @@ public sealed class JsonTransformTests
         materialCalls.ShouldBe(0);
     }
 
+    /// <summary>V036 accepts prefix-sharing siblings that are not ancestor and descendant.</summary>
+    [Fact]
+    [Trait("Vector", "V036")]
+    public void V036_PrefixSharingSiblingSelection_IsAccepted()
+    {
+        byte[] payload = "{\"a\":{\"b\":1},\"a-foo\":2}"u8.ToArray();
+        ProtectedPathManifest manifest = ProtectedPathManifestCodec.Create(["/a", "/a-foo"]);
+        CoreProtectionResult result = new PayloadProtectionCore().ProtectEvent(
+            payload,
+            ["/a", "/a-foo"],
+            TestFixture.Context(),
+            TestFixture.Material);
+
+        manifest.Paths.Count.ShouldBe(2);
+        result.ProtectedPathCount.ShouldBe(2);
+        result.SerializationFormat.ShouldBe(PayloadProtectionWireFormat.ProtectedSerializationFormat);
+    }
+
     /// <summary>V031 round-trips selected names containing RFC 6901 tilde and slash escapes.</summary>
     [Theory]
     [InlineData("a~b", "/a~0b")]

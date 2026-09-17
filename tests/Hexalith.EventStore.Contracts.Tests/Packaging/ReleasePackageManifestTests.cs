@@ -1020,7 +1020,7 @@ public sealed class ReleasePackageManifestTests
         arguments[Array.IndexOf(arguments, "--project") + 1].ShouldBe(
             "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj");
         arguments.Count(static argument => argument == "--minimum-expected-tests").ShouldBe(1);
-        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("291");
+        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("292");
         arguments.Count(static argument => argument == "--fail-skips").ShouldBe(1);
         arguments[Array.IndexOf(arguments, "--fail-skips") + 1].ShouldBe("on");
 
