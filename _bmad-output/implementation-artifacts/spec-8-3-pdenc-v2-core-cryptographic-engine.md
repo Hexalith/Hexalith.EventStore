@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -280,6 +280,11 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   trusted-extension and Hexalith.Builds changes. The 290-case focused gate and
   115-case required Contracts guard both pass with no skips; the full-diff pass
   supersedes the remaining partial-chunk review plan.
+- 2026-09-17: Closed both fifth-pass group-1 codec findings. Base64url staging
+  arrays now use non-elidable cryptographic zeroing, and the protected JSON
+  format label is derived from the canonical UTF-8 wire bytes so AAD and result
+  labels cannot drift independently. The focused Release gate remains 290/290
+  with no skips.
 
 ## Review Triage Log
 
@@ -638,6 +643,36 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC11-09 | medium | patch | `SequenceEntropy` now encodes fill numbers above 255 into each deterministic DEK, and the concurrent 300-fill regression requires every key to be distinct. |
 | EC11-10 | high | patch | grouped with BH11-13: the YAML-aware guard binds the active test command and fails closed on job/step bypass conditions. |
 | EC11-11 | medium | patch | The completion evidence now discloses the separately authored trusted-extension policy and sanitizer work, so the Story 8.3 preservation claim no longer obscures the intentional colon-key behavior change. |
+| BH12-01 | high | defer | carried from BH11-12: the active ruleset still omits the standalone Payload Protection check; the owner-only external mutation remains outside frozen Story 8.3 and is not deferred again. |
+| BH12-02 | medium | patch | The owner handoff added by this story names `ci / payload-protection`, but the standalone workflow/job pair emits `Payload Protection / payload-protection`; correct the actionable deferred-work entry without rewriting historical triage rows. |
+| BH12-03 | medium | defer | carried from BH11-05: invalid `CommandStatusPath` configuration remains a separately authored Client defect and is not deferred again. |
+| BH12-04 | high | defer | carried from BH11-01: the gateway still rejects contract-permitted legacy null message identifiers in separately authored Client work and is not deferred again. |
+| BH12-05 | medium | defer | carried from BH11-03: status-only `IsRejected` still misclassifies infrastructure rejection as domain rejection in separately authored Contracts work and is not deferred again. |
+| BH12-06 | medium | defer | carried from BH11-04: non-rejected responses can still carry rejection-only metadata in separately authored Client work and are not deferred again. |
+| BH12-07 | medium | defer | carried from BH11-07: successful in-flight reads still discard `Retry-After` in separately authored Client work and are not deferred again. |
+| BH12-08 | medium | defer | carried from BH11-08: the reusable fake still ignores status identifiers and records no history; it is not deferred again. |
+| BH12-09 | high | defer | carried from BH11-09: case-distinct trusted-extension keys can still collapse after policy evaluation in separately authored Server work and are not deferred again. |
+| BH12-10 | medium | defer | carried from VG11-04: multi-policy/exactly-one-accepter coverage remains absent from separately authored trusted-extension tests and is not deferred again. |
+| BH12-11 | medium | defer | carried from BH11-10: the no-op payload test's checkpoint assertion remains vacuous when no checkpoint is captured; it is not deferred again. |
+| BH12-12 | medium | defer | carried from BH11-11: no actor-to-handler-to-HTTP test transports a sentinel no-op payload in separately authored Server work; it is not deferred again. |
+| BH12-13 | medium | defer | carried from VG11-01: endpoint-specific ProblemDetails coverage remains absent from separately authored command-status Client tests and is not deferred again. |
+| BH12-14 | medium | defer | carried from VG11-02: malformed-successful-body translation coverage remains absent from separately authored Client tests and is not deferred again. |
+| BH12-15 | medium | defer | carried from VG11-03: the concrete HTTP path still lacks an already-cancelled, no-request regression in separately authored Client work and is not deferred again. |
+| BH12-16 | high | defer | carried from EC11-06/EC11-07 and DW-516: the resolver seams cannot express denial, revocation, or unsupported versions; the richer lifecycle outcome belongs to Stories 8.5/8.6 and is not deferred again. |
+| BH12-17 | medium | defer | carried from BH9-11/DW-518: host registration for the new telemetry belongs to later integration stories and is not deferred again. |
+| BH12-18 | medium | defer | carried from BH9-12/DW-519: persisted-format downgrade detection belongs to Story 8.4 routing and is not deferred again. |
+| BH12-19 | false | reject | carried from BH9-01/BH6-13: the approval packet binds its approval-time requirements evidence; later verification revisions must not be relabeled as human-approved bytes. |
+| VG12-01 | medium | defer | Pre-verified: no test asserts the default `CommandStatusPath` route, so separately authored Client defaults can drift while configured-path tests stay green. |
+| VG12-02 | medium | defer | Pre-verified: trusted-extension tests do not assert that policies receive the authenticated principal and exact submitted command; this gap belongs to separately authored Server work. |
+| VG12-03 | medium | defer | carried from VG10-04: cancellation of the legacy interface default remains untested in separately authored compatibility code and is not deferred again. |
+| VG12-04 | medium | defer | carried from VG11-02: malformed command-status JSON translation remains untested in separately authored Client work and is not deferred again. |
+| VG12-05 | medium | defer | Pre-verified: no gateway JSON test binds and asserts `RejectionEventType`, so separately authored Client serialization coverage can miss field loss. |
+| VG12-06 | high | defer | carried from BH11-01/VG11-05: the concrete gateway still rejects contract-permitted legacy null message identifiers in separately authored Client work and is not deferred again. |
+| EC12-01 | medium | defer | carried from EC11-03: invalid `CommandStatusPath` handling remains a separately authored Client defect and is not deferred again. |
+| EC12-02 | medium | defer | carried from EC11-04: contradictory rejection-only metadata remains accepted for non-rejected statuses in separately authored Client work and is not deferred again. |
+| EC12-03 | high | defer | carried from BH11-09: case-distinct trusted-extension keys can still collapse after policy evaluation in separately authored Server work and are not deferred again. |
+| EC12-04 | medium | defer | The REST-generator fake ignores caller cancellation in its separately authored status-read override, so generated-client tests can mask cancellation regressions. |
+| EC12-05 | medium | defer | The sample API fake has the same separately authored cancellation omission, so sample tests can mask status-read cancellation regressions. |
 
 ## Design Notes
 
@@ -998,8 +1033,8 @@ findings; Verification Gap Reviewer and Acceptance Auditor returned empty result
 those two layers are recorded as failed/empty and this group review may be incomplete.
 Remaining groups: 2, 3, 4a, 4b, 5, 6.
 
-- [ ] [Review][Patch] `Base64UrlCodec` zeros staging `char[]`/`byte[]` with `Array.Clear`, which the JIT may elide, leaving envelope ciphertext or decoded carrier bytes in the heap after encode/failed-decode [src/Hexalith.EventStore.PayloadProtection/Base64UrlCodec.cs:57,106,202,208]
-- [ ] [Review][Patch] `ProtectedSerializationFormat` and `ProtectedSerializationFormatUtf8` are independent literals of `json+pdenc-v2`, so the AAD format field can drift from the JSON format label Core compares [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionWireFormat.cs:13,109]
+- [x] [Review][Patch] `Base64UrlCodec` zeros staging `char[]`/`byte[]` with `Array.Clear`, which the JIT may elide, leaving envelope ciphertext or decoded carrier bytes in the heap after encode/failed-decode — RESOLVED 2026-09-17: every byte staging array now uses `CryptographicOperations.ZeroMemory`, and character staging arrays are zeroed through their byte spans with the same non-elidable primitive. [src/Hexalith.EventStore.PayloadProtection/Base64UrlCodec.cs:60,109,205,211]
+- [x] [Review][Patch] `ProtectedSerializationFormat` and `ProtectedSerializationFormatUtf8` are independent literals of `json+pdenc-v2`, so the AAD format field can drift from the JSON format label Core compares — RESOLVED 2026-09-17: the string label is derived once from the canonical UTF-8 wire span, leaving one literal source for both representations. [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionWireFormat.cs:15,112]
 
 #### Rejected (fifth pass, group 1)
 

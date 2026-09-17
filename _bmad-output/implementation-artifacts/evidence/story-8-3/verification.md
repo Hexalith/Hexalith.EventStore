@@ -14,7 +14,9 @@ The follow-up review's final-collision cancellation and independent-instrument
 diagnostics findings are patched. The fourth pass hardened active-workflow
 binding, malformed-parse cancellation precedence, and deterministic entropy
 distinctness while strengthening existing cases; the current 290-case suite
-passes with no failures or skips.
+passes with no failures or skips. Fifth-pass group 1 additionally replaced
+base64url staging `Array.Clear` calls with non-elidable cryptographic zeroing
+and single-sourced the protected format label from its canonical UTF-8 bytes.
 
 ## Content Binding
 
@@ -23,7 +25,7 @@ relative path, and exclude generated `bin/` and `obj/` content.
 
 | Inventory | Files | SHA-256 |
 | --- | ---: | --- |
-| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 35 | `85adefa366f9026340f634cb92a564032e34fa648064561d7d64c5a410fdb4cd` |
+| `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 35 | `f6cf266c83d1d79ca23b5e92547aff5e908d29bea43e93ae36dac3c0434711f5` |
 | `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `863412576147db58c24343dc0bd13c9359e98ea73dd5824360b0f8975d7c10dd` |
 | Core project | 1 | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | 1 | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
@@ -278,7 +280,7 @@ reading for Story 8.3 is: `ISensitiveBufferObserver` instruments every buffer th
 Buffers that are internal to a single codec call — `AadCodec.Write`'s six per-field identity
 arrays, `Base64UrlCodec`'s decode and encode staging, `ProtectedPathManifestCodec`'s
 `encodedPath` and `descendantPrefixes` copies — are zeroed unconditionally on every exit with
-`CryptographicOperations.ZeroMemory`/`Array.Clear`, but are **not** routed through the
+`CryptographicOperations.ZeroMemory`, but are **not** routed through the
 observer. They never escape their call frame, so no caller can observe them at all. This is a
 deliberate scope boundary, not an omission; instrumenting them would add an observer parameter
 to four internal codecs for buffers with no reachable observer. Each of those four codecs now

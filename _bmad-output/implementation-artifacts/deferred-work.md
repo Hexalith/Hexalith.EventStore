@@ -4511,8 +4511,8 @@ reason: Measured 2026-09-15 — `dotnet build src/Hexalith.EventStore.Contracts/
 status: open
 
 - source_spec: `spec-8-3-pdenc-v2-core-cryptographic-engine.md`
-  summary: Add `ci / payload-protection` to the protected branch's required status checks.
-  evidence: The active GitHub ruleset queried on 2026-09-15 requires seven contexts but omits `ci / payload-protection`, so the standalone focused job can fail without blocking merge; frozen Story 8.3 intent explicitly excludes external-resource mutations, requiring repository-owner action outside this build.
+  summary: Add `Payload Protection / payload-protection` to the protected branch's required status checks.
+  evidence: The active GitHub ruleset queried on 2026-09-15 requires seven contexts but omits `Payload Protection / payload-protection`, so the standalone `Payload Protection` workflow's `payload-protection` job can fail without blocking merge; frozen Story 8.3 intent explicitly excludes external-resource mutations, requiring repository-owner action outside this build.
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-15, chunk A second pass)
 
@@ -4604,3 +4604,21 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Align invalid message-identifier validation between the legacy default and concrete command-status Client implementations.
   evidence: `EventStoreGatewayClient.GetCommandStatusAsync` rejects null or whitespace identifiers, while the compatibility default on `IEventStoreGatewayClient` silently returns no status for the same values. This low-severity public Client consistency issue is separately authored outside Story 8.3.
+
+## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, fifth pass)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Add a command-status Client regression that pins the default request route.
+  evidence: The only URI assertion overrides `CommandStatusPath`; default-configured response handlers do not inspect the request URI, so the separately authored default can drift away from `api/v1/commands/status/{messageId}` while all current Client tests remain green.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Verify trusted-extension policies receive the authenticated principal and exact submitted command.
+  evidence: Existing separately authored Server tests discard both arguments while asserting only extension key/value behavior, so the controller could pass the wrong caller or command context to authorization policies without a focused failure.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Exercise `RejectionEventType` JSON binding through the command-status gateway.
+  evidence: Current separately authored gateway tests deserialize a rejected response without `rejectionEventType`, while fake and Contracts tests construct records directly; serializer drift can therefore drop the rejection-event identity without a failing Client test.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Preserve caller cancellation in the REST-generator and sample command-status gateway fakes.
+  evidence: Both separately authored fake overrides ignore their `CancellationToken`, so a pre-cancelled status read returns a value instead of cancellation and tests using those fakes can mask cancellation-contract regressions.

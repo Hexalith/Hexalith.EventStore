@@ -1,4 +1,7 @@
 // Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 6, 14, and 15.
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>
@@ -54,7 +57,7 @@ internal static class Base64UrlCodec
         }
         finally
         {
-            Array.Clear(padded);
+            CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(padded.AsSpan()));
         }
     }
 
@@ -103,7 +106,7 @@ internal static class Base64UrlCodec
         }
         finally
         {
-            Array.Clear(characters);
+            CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(characters.AsSpan()));
         }
     }
 
@@ -199,13 +202,13 @@ internal static class Base64UrlCodec
             {
                 if (decoded is not null)
                 {
-                    Array.Clear(decoded);
+                    CryptographicOperations.ZeroMemory(decoded);
                 }
             }
         }
         finally
         {
-            Array.Clear(padded);
+            CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(padded.AsSpan()));
         }
     }
 }

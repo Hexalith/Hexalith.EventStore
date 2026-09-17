@@ -1,4 +1,6 @@
 // Normative authority: de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e; sections 6-8, 14, and 15.
+using System.Text;
+
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>
@@ -10,7 +12,8 @@ internal static class PayloadProtectionWireFormat
     internal const string UnprotectedSerializationFormat = "json";
 
     /// <summary>Gets the pdenc-v2 protected JSON serialization format.</summary>
-    internal const string ProtectedSerializationFormat = "json+pdenc-v2";
+    internal static string ProtectedSerializationFormat { get; } =
+        Encoding.UTF8.GetString(ProtectedSerializationFormatUtf8);
 
     /// <summary>Gets the canonical Crockford-base32 alphabet used by ULID key references.</summary>
     internal const string CrockfordBase32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";

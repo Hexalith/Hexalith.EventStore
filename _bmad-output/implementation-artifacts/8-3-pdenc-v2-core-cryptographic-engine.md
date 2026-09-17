@@ -71,6 +71,9 @@ amendment-list and authority section 8.4 Server-ownership corrections. Stories
   simultaneous malformed-JSON failure, proving 300 deterministic entropy fills
   are distinct, correcting the replayable preservation check for the one
   Story-owned Contracts guard, and fixing out-of-scope baseline disclosure.
+- Closed both fifth-pass group-1 codec findings by applying non-elidable
+  cryptographic zeroing to all base64url staging arrays and deriving the
+  protected JSON string label from its canonical UTF-8 wire bytes.
 - Story 8.3 edits preserved Contracts, frozen fixtures/verifiers, Server/no-op
   hooks, domain and Parties code, `Hexalith.EventStore.slnx`,
   `tools/release-packages.json`, topology, and persisted data. The baseline diff
@@ -90,7 +93,7 @@ amendment-list and authority section 8.4 Server-ownership corrections. Stories
 | Artifact | SHA-256 |
 | --- | --- |
 | Requirements amendment approval | `1d511941c09d12e1d3a09a82968fc82737dcd786b0b35082c75584b6e7358537` |
-| Sorted production source/project hash stream (35 files) | `85adefa366f9026340f634cb92a564032e34fa648064561d7d64c5a410fdb4cd` |
+| Sorted production source/project hash stream (35 files) | `f6cf266c83d1d79ca23b5e92547aff5e908d29bea43e93ae36dac3c0434711f5` |
 | Sorted focused-test/project/manifest hash stream (12 files) | `863412576147db58c24343dc0bd13c9359e98ea73dd5824360b0f8975d7c10dd` |
 | Core project | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
@@ -98,7 +101,7 @@ amendment-list and authority section 8.4 Server-ownership corrections. Stories
 | GitHub focused lane | `12344282faad41c129378a1cccab53bae6ee5f4f3f75a97be733653e9109edd7` |
 | Local focused lane | `5c632674e428481c5f2e1f20a4316229659569b8cba152743b76a76703a6ec07` |
 | Preflight evidence | `ab3a5d7ac7dc4838e91b0ecc4bc3d77438f22a545d25ec92cba9dcf89ff2c8a2` |
-| Verification evidence | `cbd8352c6f3d5abda991a017712d953f35c61aca63a6cbada0805f122e321500` |
+| Verification evidence | `78920ae9352068d6221063369a0d99f9d4b2163ce67e3f7c06f9f4986e9d51f3` |
 | Unchanged release manifest | `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
 | Unchanged solution | `dd9c0a74a6ca81d50e05ddcfd336f4f92882d77afa313287d69cf2bc87e7fc74` |
 
