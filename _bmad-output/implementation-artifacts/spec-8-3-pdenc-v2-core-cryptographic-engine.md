@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
