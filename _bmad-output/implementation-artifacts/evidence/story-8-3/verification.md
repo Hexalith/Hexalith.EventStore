@@ -13,10 +13,12 @@ amendment-list and authority section 8.4 Server-ownership corrections.
 The follow-up review's final-collision cancellation and independent-instrument
 diagnostics findings are patched. The fourth pass hardened active-workflow
 binding, malformed-parse cancellation precedence, and deterministic entropy
-distinctness while strengthening existing cases; the current 290-case suite
+distinctness while strengthening existing cases; the current 291-case suite
 passes with no failures or skips. Fifth-pass group 1 additionally replaced
 base64url staging `Array.Clear` calls with non-elidable cryptographic zeroing
 and single-sourced the protected format label from its canonical UTF-8 bytes.
+The independent chunk-1 follow-up now exercises fail-closed behavior in an
+invariant-globalization process and pins multibyte UTF-8 field ceilings.
 
 ## Content Binding
 
@@ -26,12 +28,13 @@ relative path, and exclude generated `bin/` and `obj/` content.
 | Inventory | Files | SHA-256 |
 | --- | ---: | --- |
 | `src/Hexalith.EventStore.PayloadProtection` (`*.cs`, `*.csproj`) | 35 | `f6cf266c83d1d79ca23b5e92547aff5e908d29bea43e93ae36dac3c0434711f5` |
-| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `863412576147db58c24343dc0bd13c9359e98ea73dd5824360b0f8975d7c10dd` |
+| `tests/Hexalith.EventStore.PayloadProtection.Tests` source/project/manifest | 12 | `0a5e5064a3567c119bf0dbc6e99f1f5eb79e83ecfeb573509ef8a4e590911c2a` |
 | Core project | 1 | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | 1 | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | 1 | `dfa6a44ccdab595af6081d7b2c752e5f01870aeb74265d76940e43c5ba336ea8` |
-| GitHub focused lane | 1 | `12344282faad41c129378a1cccab53bae6ee5f4f3f75a97be733653e9109edd7` |
-| Local focused lane | 1 | `5c632674e428481c5f2e1f20a4316229659569b8cba152743b76a76703a6ec07` |
+| GitHub focused lane | 1 | `10c2dd3c86918712759fe0abfc8352d4b129b74c28af96213da9e08966208017` |
+| Local focused lane | 1 | `8d55cc01e219d5ca4be2875b5bfb108a125063154633f5735cf787a0c8aaf7b3` |
+| Required-lane workflow guard | 1 | `581ac10f4ecc0ccfc254618473afba5a967adb266ced92d73504a927d084cb83` |
 
 The production inventory contains one internal documented type per C# file:
 limits/exceptions/results/context/material, strict canonical text/ULID/base64url,
@@ -49,7 +52,7 @@ manifest. Tests load the linked Story 8.2 G-001, NIST, and ownership fixtures
 read-only rather than relying only on duplicated constants. The manifest
 assigns inherited V001-V003 and 48 Story 8.3 vectors V004-V048/V135-V136/V138;
 all 51 identifiers have a corresponding xUnit trait, the complete suite
-contains 290 cases, and none is skipped.
+contains 291 cases, and none is skipped.
 
 ## Verification Results
 
@@ -57,8 +60,9 @@ contains 290 cases, and none is skipped.
 | --- | --- |
 | `node scripts/payload-protection/verify-golden-vectors.mjs` | PASS V001-V003; frozen bytes unchanged |
 | `python3 scripts/payload-protection/verify-golden-vectors.py` | PASS V001-V003; independent frozen bytes unchanged |
-| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false -p:GenerateDocumentationFile=true` then `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 290 --fail-skips on --no-ansi` | PASS 290/290; zero warnings, failures, or skips after the full-diff fourth-pass fixes |
-| `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false` then direct xUnit class execution for `ReleasePackageManifestTests` | PASS 115/115; the YAML-aware required-lane guard binds the active focused workflow command, 290-case floor, and fail-skips policy |
+| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false -p:GenerateDocumentationFile=true` then `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 291 --fail-skips on --no-ansi` | PASS 291/291; zero warnings, failures, or skips after the independent chunk-1 follow-up |
+| `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --filter-method Hexalith.EventStore.PayloadProtection.Tests.AadPathTests.V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams --minimum-expected-tests 1 --fail-skips on --no-ansi` | PASS 1/1; both `ProtectEvent` and `AadCodec.Write` fail closed with `PayloadProtectionCryptographicException` when the platform normalizer is inert |
+| `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release --no-restore -warnaserror -m:1 -nodeReuse:false` then direct xUnit class execution for `ReleasePackageManifestTests` | PASS 115/115; the YAML-aware required-lane guard binds the active focused workflow command, 291-case floor, invariant-globalization invocation, and fail-skips policies |
 | Focused `dotnet test --filter-method` runs for `MaterialGeneration_CancellationDuringFinalCollisionCleanupWins` and `ThrowingOperationsCounterListener_DoesNotSuppressDurationMeasurement` | PASS 1/1 each after the follow-up review patches; focused Release build passed with zero warnings/errors |
 | `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --filter-method "Hexalith.EventStore.PayloadProtection.Tests.LimitsAndConcurrencyTests.V138_HostileConcurrentLoad_IsBoundedAndCancellableAsync" --output Detailed --no-ansi` | PASS 1/1; 16 hostile unprotect calls met at an in-core barrier; 1,398,212-character input; cancellation checkpoints 1/256/512; 92,572,992 process-wide allocated bytes; 65.168ms; observations only |
 | The two exact `dotnet format style` commands and one-type/Allman/LF/trailing-whitespace scans below | PASS; zero focused-project formatter or structural-style violations. `dotnet format whitespace` is not used because the tracked `.gitattributes` forces LF while the repository-wide `.editorconfig` requests CRLF; the explicit tracked-LF scans pass. |
@@ -67,7 +71,7 @@ contains 290 cases, and none is skipped.
 | `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore -m:1 -nodeReuse:false` | PASS; zero warnings/errors |
 | `package_dir="$(mktemp -d /tmp/eventstore-story-8-3-packages.XXXXXX)"; python3 scripts/pack-release-packages.py "$package_dir" 999.0.0-ci-test; python3 scripts/validate-nuget-packages.py "$package_dir"; python3 tools/validate-release-packages.py "$package_dir" 999.0.0-ci-test` | PASS; exactly the existing 14 archives; PayloadProtection excluded |
 | The exact dependency/surface/preservation commands below | PASS; one direct Contracts reference, no forbidden dependency/public type, and frozen solution/release manifest unchanged |
-| `actionlint .github/workflows/payload-protection.yml .github/workflows/advisory-tests.yml` and `bash -n scripts/ci-local.sh` | PASS; both direct lanes require 290 tests and fail on skips |
+| `actionlint .github/workflows/payload-protection.yml .github/workflows/advisory-tests.yml` and `bash -n scripts/ci-local.sh` | PASS; both direct lanes require 291 tests, run the invariant-globalization regression, and fail on skips |
 | `git diff --check` | PASS |
 
 The structural and preservation rows are replayable from the repository root
@@ -264,7 +268,7 @@ At this checkpoint the focused suite was **254 cases**. The third pass added two
 `AadPathTests.V031_NonBmpPointerToken_IsBudgetedByUtf8ByteCount`. The blocking lane floor
 was raised to 254 in `scripts/ci-local.sh` and in the then-proposed `.github/workflows/ci.yml`
 `payload-protection` job. That workflow placement was subsequently refuted and replaced by
-the owner-authorized `.github/workflows/payload-protection.yml`; the current 290-case state is
+the owner-authorized `.github/workflows/payload-protection.yml`; the current 291-case state is
 bound in the tables above. Both new cases were mutation-verified: disabling the guard each
 one covers turns that case, and only that case, red.
 
@@ -308,7 +312,7 @@ Chunk 3 later proved that Story 4.15's v3 gate reads and seals the live workflow
 the historical commit, so that placement was reverted. The human EventStore owner authorized
 an equivalent direct-project job in the unsealed `.github/workflows/payload-protection.yml`.
 It restores, builds with `-warnaserror`, and runs the project directly with the current
-`--minimum-expected-tests 290 --fail-skips on`, mirroring `scripts/ci-local.sh`.
+`--minimum-expected-tests 291 --fail-skips on`, mirroring `scripts/ci-local.sh`.
 `Hexalith.EventStore.slnx`, `.github/workflows/ci.yml`, and the 14-package release inventory
 remain unchanged; the engine remains outside the solution and package inventory.
 
@@ -352,3 +356,18 @@ concurrent 300-fill case now requires 300 distinct DEKs. The replayable
 preservation check permits exactly the Story-owned `ReleasePackageManifestTests`
 edit while continuing to reject every other protected path. Focused verification
 remains 290/290 and the Contracts guard remains 115/115, both with zero skips.
+
+## Independent Chunk-1 Follow-up Addendum (2026-09-17)
+
+The two surviving codec/wire-format review findings are closed. V021 and V022
+now reject NFC values whose UTF-16 length is within the field limit but whose
+strict UTF-8 encoding exceeds it. A new V029 regression exercises both
+`ProtectEvent` and `AadCodec.Write`, and the blocking GitHub/local lanes rerun
+that exact method in an invariant-globalization process. The required Contracts
+guard parses and binds the extra workflow step and environment setting.
+
+Both fixes were mutation-verified. Removing the `_normalizationIsFunctional`
+guard made the dedicated invariant invocation fail 0/1, and replacing the
+strict UTF-8 byte ceiling with `value.Length` made both focused V021 and V022
+tests fail 0/1. Restored-source verification passed 291/291 plus the dedicated
+invariant invocation 1/1, with no failures or skips.

@@ -132,11 +132,21 @@ if want_tier 1; then
   dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj \
     --no-build \
     --configuration Release \
-    --minimum-expected-tests 290 \
+    --minimum-expected-tests 291 \
     --fail-skips on \
     --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests \
     --report-xunit-trx \
     --report-xunit-trx-filename payload-protection-results.trx
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \
+    dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj \
+    --no-build \
+    --configuration Release \
+    --filter-method Hexalith.EventStore.PayloadProtection.Tests.AadPathTests.V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams \
+    --minimum-expected-tests 1 \
+    --fail-skips on \
+    --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests \
+    --report-xunit-trx \
+    --report-xunit-trx-filename payload-protection-invariant-globalization-results.trx
   for project in "${TIER1_PROJECTS[@]}"; do
     run_test_project "${project}" "test-results.trx"
   done

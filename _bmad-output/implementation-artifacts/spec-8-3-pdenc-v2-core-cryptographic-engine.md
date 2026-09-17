@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -65,7 +65,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 - `src/Hexalith.EventStore.PayloadProtection/{Base64UrlCodec,PayloadProtectionCore,PayloadProtectionDiagnostics,PayloadCryptography}.cs` -- reject oversized string carriers before scanning or copying; reject configured snapshot oversize before JSON parsing; preserve and clear ownership when cancellation wins after material creation; recheck cancellation after snapshot AAD validation and before lookup; prevent diagnostic listeners from changing operation outcomes; and classify unsupported AES-GCM as a bounded cryptographic failure rather than malformed input.
 - `src/Hexalith.EventStore.PayloadProtection/{PayloadCryptography,PayloadProtectionDiagnostics,CryptographicPayloadProtectionEntropy}.cs` -- retain full-path V010 authenticated-mismatch semantics with post-auth nonce/ordinal validation, map encryption failures and typed read outcomes to closed diagnostics, and remove reliance on Contracts' transitive `Hexalith.Commons.UniqueIds` compile surface.
 - `tests/Hexalith.EventStore.PayloadProtection.Tests/` -- load and assert the linked immutable G-001, NIST, and ownership fixtures rather than relying only on duplicated constants; add snapshot positive/tamper, reserved-marker writer rejection, carrier metadata/type mismatch, canonical snapshot-type, and key-outcome/cleanup tests; mutable-input/path isolation; exact output/reconstruction maxima including pre-material wrapper-induced depth/node/byte expansion and reader-side cumulative plaintext; full-reader V010-V012 and escaped `~`/`/` member-name round trips; genuine in-core gated hostile-unprotect V138 concurrency plus cancellation during wide lookup/wrapper/path/replacement scans and manifest enumeration/sort/encoding/hash with checkpoints 1/256/512/768; exact discovered vector-trait membership; literal/escaped decoded-equivalent duplicate names and obfuscated-wrapper rejection; malformed wire-key zero-lookup cases; invalid-context empty-selection rejection; zero-material-call assertions for every locally invalid JSON/path/output selection; a complete 4,096-wrapper read; event and snapshot missing/wrong-length keys; invalid factory-material matrices for event and snapshot; one material factory call per payload; exceptional generator cleanup and post-key-reference cancellation; post-factory/resolver cancellation cleanup and precedence; protected-result format labels; exact per-operation protect/unprotect metrics and activities; unsupported-AES classification where constructibly testable; and observer/allocation-failure cleanup. Keep one C# type per file and document all internal helpers.
-- `.github/workflows/payload-protection.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 290-case minimum (updated when the suite changes) while preserving V138 as observation-only, and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging. The required `ci / build-and-test` lane guards the workflow contents through `ReleasePackageManifestTests`.
+- `.github/workflows/payload-protection.yml` and `scripts/ci-local.sh` -- run the focused project as a blocking direct test lane with the current complete 291-case minimum (updated when the suite changes), plus the dedicated invariant-globalization regression, while preserving V138 as observation-only and without adding either project to `Hexalith.EventStore.slnx` or changing release packaging. The required `ci / build-and-test` lane guards the workflow contents through `ReleasePackageManifestTests`.
 - All changed C# must satisfy the tracked Allman-brace and XML-documentation rules; verify whitespace formatting as well as analyzer/style diagnostics.
 
 ## Tasks & Acceptance
@@ -94,7 +94,7 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   complete local path/budget validation and at least one non-null selection.
   This makes V041/V045 zero-material-call behavior directly observable without
   implementing Story 8.5 lifecycle storage.
-- The six required test areas contain 51 unique vector traits and execute 290
+- The six required test areas contain 51 unique vector traits and execute 291
   passing cases after the review-loop re-derivation audit. Approval packet
   `AR-20260914-02` accepts the evidence-backed constructible interpretations
   for V008/V016/V023/V030/V038/V039 without weakening bounds or importing
@@ -285,6 +285,11 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
   format label is derived from the canonical UTF-8 wire bytes so AAD and result
   labels cannot drift independently. The focused Release gate remains 290/290
   with no skips.
+- 2026-09-17: Closed both independent chunk-1 follow-up findings with a
+  mutation-armed invariant-globalization invocation and NFC multibyte UTF-8
+  ceiling cases for event payload types and property paths. The complete
+  focused gate now passes 291/291, and the separate invariant invocation passes
+  1/1 with no skips.
 
 ## Review Triage Log
 
@@ -673,6 +678,71 @@ Approval packet `AR-20260914-02` reapproves the following evidence-backed Story 
 | EC12-03 | high | defer | carried from BH11-09: case-distinct trusted-extension keys can still collapse after policy evaluation in separately authored Server work and are not deferred again. |
 | EC12-04 | medium | defer | The REST-generator fake ignores caller cancellation in its separately authored status-read override, so generated-client tests can mask cancellation regressions. |
 | EC12-05 | medium | defer | The sample API fake has the same separately authored cancellation omission, so sample tests can mask status-read cancellation regressions. |
+| BH13-01 | high | defer | carried from EC7-10/BH12-01: the standalone Payload Protection check remains absent from the active required-check ruleset; that owner-only external mutation is outside Story 8.3 and is not deferred again. |
+| BH13-02 | medium | defer | carried from BH9-10/DW-516: the byte-core resolver still cannot express revocation, deletion, denial, or unsupported versions; the richer lifecycle result belongs to Stories 8.5/8.6 and is not deferred again. |
+| BH13-03 | medium | defer | carried from BH9-11/DW-518: host registration for the PayloadProtection activity source and meter belongs to later integration work and is not deferred again. |
+| BH13-04 | medium | defer | carried from BH9-12/DW-519: persisted-format routing is required to distinguish legitimate plaintext from stripped wrappers and belongs to Story 8.4. |
+| BH13-05 | medium | defer | carried from the third-pass chunk-4a deferral: an authority-owned snapshot golden and non-empty external AES-GCM vector require Story 8.2 fixture ownership and are not deferred again. |
+| BH13-06 | medium | defer | carried from BH8-08/BH12-03: invalid `CommandStatusPath` configuration remains a separately authored Client defect and is not deferred again. |
+| BH13-07 | high | defer | carried from BH9-08/BH12-04: the gateway rejects contract-permitted legacy null message identifiers in separately authored Client work and is not deferred again. |
+| BH13-08 | medium | defer | carried from EC9-04/BH12-05: status-only `IsRejected` still misclassifies infrastructure rejection as domain rejection in separately authored Contracts work. |
+| BH13-09 | medium | defer | carried from BH10-10/BH12-06: non-rejected responses can carry rejection-only metadata in separately authored Client work and are not deferred again. |
+| BH13-10 | medium | defer | carried from BH11-07/BH12-07: successful in-flight status reads discard `Retry-After` in separately authored Client work and are not deferred again. |
+| BH13-11 | medium | defer | carried from BH8-12/BH12-08: the reusable fake still ignores status identifiers and records no history; it is not deferred again. |
+| BH13-12 | medium | defer | carried from EC12-04/EC12-05: the REST-generator and sample command-status fakes ignore caller cancellation in separately authored tests and are not deferred again. |
+| BH13-13 | high | defer | carried from BH10-14/BH12-09: case-distinct trusted-extension keys can collapse after policy evaluation in separately authored Server work and are not deferred again. |
+| BH13-14 | medium | defer | carried from BH8-13/BH12-12: no actor-to-handler-to-HTTP test transports a sentinel no-op payload in separately authored Server work. |
+| BH13-15 | medium | defer | carried from BH11-10/BH12-11: the no-op payload test's checkpoint assertion remains vacuous when no checkpoint is captured. |
+| BH13-16 | low | defer | carried from EC11-02: invalid message-identifier behavior remains inconsistent between the compatibility default and concrete Client implementations. |
+| EC13-01 | high | defer | carried from BH11-01/BH12-04: legacy status records with a null message identifier remain unreadable through the separately authored concrete gateway. |
+| EC13-02 | medium | defer | carried from BH8-08/BH12-03: null, empty, whitespace, or slash-only `CommandStatusPath` values remain invalid in separately authored Client work. |
+| EC13-03 | low | defer | carried from EC11-02: the interface compatibility default and concrete implementations still disagree on invalid message identifiers. |
+| EC13-04 | medium | defer | A successful status response whose content stream raises `HttpRequestException` or `IOException` can bypass the gateway exception abstraction because only `JsonException` is translated; this separately authored Client surface is outside Story 8.3. |
+| EC13-05 | false | reject | carried from BH10-15/EC10-05: a throwing trusted-extension policy cannot authorize admission, and the registered global handler converts the failure to bounded ProblemDetails rather than exposing an unsafe response. |
+| EC13-06 | medium | defer | carried from EC12-04: the REST-generator command-status fake ignores its cancellation token and can mask cancellation regressions. |
+| EC13-07 | medium | defer | carried from EC12-05: the sample command-status fake has the same separately authored cancellation omission. |
+| EC13-08 | false | reject | carried from BH8-01/EC8-07/BH10-16: the no-op payload behavior change is separately authored and explicitly disclosed in the completion evidence, so Story 8.3 no longer claims it as unchanged owned behavior. |
+| VG13-01 | high | defer | carried from EC7-10/BH12-01: the active required-check ruleset omits the standalone Payload Protection job; the owner-only settings action is not deferred again. |
+| VG13-02 | medium | defer | carried from BH8-13/BH12-12: a sentinel no-op payload is not transported through a composed actor/router/handler/HTTP test in separately authored Server work. |
+| VG13-03 | medium | defer | carried from VG12-01: the default command-status request route remains unpinned in separately authored Client tests. |
+| VG13-04 | medium | defer | carried from VG12-05: `RejectionEventType` JSON binding remains unverified through the separately authored gateway client. |
+| VG13-05 | medium | defer | carried from VG10-02/VG10-03/BH12-13/BH12-14: status-specific ProblemDetails and malformed/empty successful-body translation remain unverified in separately authored Client tests. |
+| VG13-06 | medium | defer | carried from VG10-04/VG11-03/BH12-15: legacy-default and concrete command-status cancellation behavior remains incompletely verified in separately authored Client work. |
+| VG13-07 | medium | defer | carried from VG12-02: trusted-extension tests still do not prove policies receive the authenticated principal and exact submitted command. |
+| VG13-08 | medium | defer | carried from VG10-05/VG11-04/BH12-10: multi-policy admission with exactly one accepter remains untested in separately authored Server work. |
+| VG13-09 | high | defer | carried from BH9-08/BH12-04: the concrete gateway remains incompatible with the contract-permitted legacy null message identifier. |
+| VG13-10 | medium | defer | carried from EC9-04/BH12-05: `IsRejected` still cannot distinguish infrastructure rejection from domain rejection. |
+| VG13-11 | medium | defer | carried from BH8-08/BH12-03: invalid `CommandStatusPath` values remain a separately authored Client configuration defect. |
+| VG13-12 | high | defer | carried from BH10-14/BH12-09: case-distinct trusted-extension keys can still collapse after separate policy evaluation. |
+| BH14-01 | false | reject | carried from BH10-16: the baseline comparison intentionally includes unrelated committed history, while the current Story 8.3 working-tree changes are disclosed and do not silently claim ownership of those production changes. |
+| BH14-02 | high | defer | carried from EC7-10/BH12-01/BH13-01: the active required-check ruleset still omits the standalone Payload Protection job; that owner-only settings action remains outside Story 8.3 and is not deferred again. |
+| BH14-03 | false | reject | carried from BH12-19: `AR-20260914-02` binds the approval-time requirements evidence, not a mutable later verification report, so the later verification digest does not invalidate the recorded approval. |
+| BH14-04 | medium | defer | carried from BH9-12/BH13-04/DW-519: persisted-format routing is required to distinguish legitimate plaintext from stripped wrappers and belongs to Story 8.4. |
+| BH14-05 | medium | defer | carried from BH9-10/BH13-02/DW-516: the byte-core resolver still cannot express revocation, deletion, denial, or unsupported versions; that lifecycle result belongs to Stories 8.5/8.6 and is not deferred again. |
+| BH14-06 | medium | defer | carried from BH9-11/BH13-03/DW-518: host registration for the Payload Protection activity source and meter belongs to later integration work and is not deferred again. |
+| BH14-07 | low | reject | carried from BH2-11/VG2-06: V138 is an observational bounded-workload probe by approved design and intentionally records, rather than invents, a performance gate. |
+| BH14-08 | medium | defer | carried from BH13-05: an authority-owned snapshot golden requires Story 8.2 fixture ownership and is not deferred again. |
+| BH14-09 | medium | defer | carried from BH13-05: a non-empty external AES-GCM vector requires Story 8.2 fixture ownership and is not deferred again. |
+| BH14-10 | medium | defer | carried from BH8-08/BH12-03/BH13-06: invalid `CommandStatusPath` configuration remains a separately authored Client defect and is not deferred again. |
+| BH14-11 | high | defer | carried from BH9-08/BH12-04/BH13-07: the gateway rejects contract-permitted legacy null message identifiers in separately authored Client work and is not deferred again. |
+| BH14-12 | medium | defer | carried from EC9-04/BH12-05/BH13-08: status-only `IsRejected` still misclassifies infrastructure rejection as domain rejection in separately authored Contracts work. |
+| BH14-13 | medium | defer | carried from BH10-10/BH12-06/BH13-09: non-rejected responses can carry rejection-only metadata in separately authored Client work and are not deferred again. |
+| BH14-14 | medium | defer | carried from EC13-04: a successful status response can leak response-body transport exceptions past the separately authored Client gateway abstraction; the existing deferral is not duplicated. |
+| BH14-15 | medium | defer | carried from BH11-07/BH12-07/BH13-10: successful in-flight status reads discard `Retry-After` in separately authored Client work and are not deferred again. |
+| BH14-16 | high | defer | carried from BH10-14/BH12-09/BH13-13: case-distinct trusted-extension keys can collapse after policy evaluation in separately authored Server work and are not deferred again. |
+| BH14-17 | medium | defer | carried from BH8-12/BH12-08/BH13-11: the reusable fake still ignores status identifiers and records no history; it is not deferred again. |
+| BH14-18 | medium | defer | carried from BH11-10/BH12-11/BH13-15: the no-op payload test's checkpoint assertion remains vacuous when no checkpoint is captured. |
+| BH14-19 | medium | defer | carried from EC12-04/EC12-05/BH13-12: the REST-generator and sample command-status fakes ignore caller cancellation in separately authored tests and are not deferred again. |
+| BH14-20 | false | reject | the cited deferred-work row is an append-only point-in-time record from before the interface gained its compatibility default; later review rows already record the current default-method behavior, so rewriting history is not a code fix. |
+| EC14-01 | medium | defer | carried from BH8-08/BH12-03/BH13-06: null, empty, whitespace, or slash-only `CommandStatusPath` values remain invalid in separately authored Client work and are not deferred again. |
+| EC14-02 | false | reject | carried from BH10-15/EC10-05/EC13-05: a throwing trusted-extension policy cannot authorize admission, and the registered global handler converts the failure to bounded ProblemDetails. |
+| EC14-03 | high | defer | carried from BH10-14/BH12-09/BH13-13: case-distinct trusted-extension keys can collapse after separate policy evaluation in separately authored Server work and are not deferred again. |
+| EC14-04 | low | reject | carried from EC8-06: `BoundedJsonDocument` is internal and every production use is `using`-scoped, so adding disposal guards to all accessors is disproportionate for an unreachable normal path. |
+| EC14-05 | low | reject | carried from the third-pass diagnostics review: `PayloadProtectionOperation` is internal, has exactly two members, and all callers pass explicit valid constants; guarding undefined future enum values is speculative. |
+| EC14-06 | low | reject | carried from BH9-04/EC9-05: a single JSON token is capped by the 16 MiB payload bound and surrounded by cancellation checkpoints; an interruptible token parser would add disproportionate machinery for bounded work. |
+| EC14-07 | false | reject | carried from BH8-01/EC8-07/BH10-16/EC13-08: the no-op payload behavior is separately authored and explicitly disclosed in completion evidence, so Story 8.3 does not claim that behavior as unchanged. |
+| VG14-01 | medium | defer | pre-verified; carried from VG12-01/VG13-03: the default command-status request route remains unpinned in separately authored Client tests and is not deferred again. |
+| VG14-02 | medium | defer | pre-verified; carried from VG10-02/VG10-03/BH12-13/BH12-14/VG13-05: non-404 status-specific ProblemDetails translation remains unverified in separately authored Client tests and is not deferred again. |
 
 ## Design Notes
 
@@ -683,13 +753,14 @@ Keep types internal until a frozen later-story seam requires otherwise. V046-V04
 **Commands:**
 - Story 8.1 normative digest plus packet-bound `sha256sum` preflight -- expected: all approved identities match.
 - `node scripts/payload-protection/verify-golden-vectors.mjs` and `python3 scripts/payload-protection/verify-golden-vectors.py` -- expected: V001-V003 pass unchanged.
-- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 290 --fail-skips on --no-ansi` -- expected: all core vectors pass with no skip/unrun.
+- `dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Release --no-build --minimum-expected-tests 291 --fail-skips on --no-ansi` and the same built project under `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` filtered to `V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams` with a one-test floor -- expected: all core vectors and the inert-normalizer fail-closed path pass with no skip/unrun.
 - `dotnet build src/Hexalith.EventStore.PayloadProtection/Hexalith.EventStore.PayloadProtection.csproj --configuration Release -m:1 -nodeReuse:false -p:EnableAotAnalyzer=true -p:EnableTrimAnalyzer=true` and `dotnet build Hexalith.EventStore.slnx --configuration Release -m:1 -nodeReuse:false` -- expected: zero warnings/errors.
 - Existing release pack and both package validators in a temporary directory -- expected: exactly 14 archives; the new project is excluded.
 - `git diff --check` -- expected: no whitespace errors.
 
 **Observed results (2026-09-17):** both independent V001-V003 verifiers passed;
-focused Release tests passed 290/290 with no skips; code-style verification and
+focused Release tests passed 291/291 and the invariant-globalization invocation
+passed 1/1 with no skips; code-style verification and
 the LF-normalization scan, the AOT/trim-analyzed core Release build, the complete
 solution Release build, and `git diff --check` passed; release packing plus both
 validators produced exactly 14 archives. The required Contracts packaging-test
@@ -1060,8 +1131,8 @@ Independent four-layer review of chunk 1 after the fifth-pass codec patches: 8 f
 Verification Gap Reviewer returned findings; Acceptance Auditor returned none. Remaining
 groups for follow-up runs: 2, 3, 4a, 4b, 5, 6.
 
-- [ ] [Review][Patch] The inert-normalizer fail-closed path in `CanonicalText.GetByteCount` never runs in the suite — V029 asserts `PayloadProtectionFormatException` for `Te\u0301` on a working ICU normalizer, and no PayloadProtection test or focused workflow sets `InvariantGlobalization` / `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT`. Deleting `_normalizationIsFunctional` leaves CI green; a globalization-invariant host then accepts decomposed durable identity because `IsNormalized` returns true unconditionally. Add a dedicated invocation that asserts `ProtectEvent` / `AadCodec.Write` throws `PayloadProtectionCryptographicException` when the platform normalizer is inert. [src/Hexalith.EventStore.PayloadProtection/CanonicalText.cs:46]
-- [ ] [Review][Patch] Event AAD UTF-8 field ceilings are pinned only with ASCII — V021/V022 accept `new string('t', 1024)` / `"/" + 2047 ASCII p` and reject the UTF-16 `maximum + 1` spellings, which the `value.Length > maximumBytes` fast reject already covers. Snapshot type tests `café`; event `PayloadTypeId` and selected paths do not. Changing the UTF-8 `byteCount` comparison to `value.Length` leaves V021/V022 green while `new string('\u00e9', 513)` and `"/" + new string('\u00e9', 1024)` emit over-budget HXAD fields. Extend V021 and V022 with one in-range UTF-16 / over-budget UTF-8 NFC case each. [tests/Hexalith.EventStore.PayloadProtection.Tests/AadPathTests.cs:69]
+- [x] [Review][Patch] The inert-normalizer fail-closed path in `CanonicalText.GetByteCount` never runs in the suite — RESOLVED 2026-09-17: V029 now exercises `ProtectEvent` and `AadCodec.Write` in both normal and inert-normalizer processes; GitHub/local lanes run the invariant process explicitly, and the required Contracts guard binds that step. Removing `_normalizationIsFunctional` was mutation-verified to fail the dedicated invocation. [src/Hexalith.EventStore.PayloadProtection/CanonicalText.cs:46]
+- [x] [Review][Patch] Event AAD UTF-8 field ceilings are pinned only with ASCII — RESOLVED 2026-09-17: V021 and V022 now reject NFC values whose UTF-16 lengths remain within their limits while strict UTF-8 reaches 1,026 payload-type bytes and 2,049 path bytes. Replacing the byte-count comparison with `value.Length` was mutation-verified to fail both focused cases. [tests/Hexalith.EventStore.PayloadProtection.Tests/AadPathTests.cs:69]
 
 #### Rejected (independent chunk 1, 2026-09-17)
 

@@ -987,15 +987,29 @@ public sealed class ReleasePackageManifestTests
             .Select(static node => node.ShouldBeOfType<YamlMappingNode>())
             .Single(step => step.Children.TryGetValue(new YamlScalarNode("name"), out YamlNode? name)
                 && name is YamlScalarNode { Value: "Run PayloadProtection vectors" });
+        YamlMappingNode invariantStep = steps.Children
+            .Select(static node => node.ShouldBeOfType<YamlMappingNode>())
+            .Single(step => step.Children.TryGetValue(new YamlScalarNode("name"), out YamlNode? name)
+                && name is YamlScalarNode { Value: "Verify invariant-globalization fail closed" });
         string command = testStep.Children[new YamlScalarNode("run")]
             .ShouldBeOfType<YamlScalarNode>()
             .Value
             .ShouldNotBeNull();
+        string invariantCommand = invariantStep.Children[new YamlScalarNode("run")]
+            .ShouldBeOfType<YamlScalarNode>()
+            .Value
+            .ShouldNotBeNull();
+        YamlMappingNode invariantEnvironment = invariantStep.Children[new YamlScalarNode("env")]
+            .ShouldBeOfType<YamlMappingNode>();
 
         job.Children.ContainsKey(new YamlScalarNode("if")).ShouldBeFalse();
         job.Children.ContainsKey(new YamlScalarNode("continue-on-error")).ShouldBeFalse();
         testStep.Children.ContainsKey(new YamlScalarNode("if")).ShouldBeFalse();
         testStep.Children.ContainsKey(new YamlScalarNode("continue-on-error")).ShouldBeFalse();
+        invariantStep.Children.ContainsKey(new YamlScalarNode("if")).ShouldBeFalse();
+        invariantStep.Children.ContainsKey(new YamlScalarNode("continue-on-error")).ShouldBeFalse();
+        invariantEnvironment.Children[new YamlScalarNode("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT")]
+            .ShouldBe(new YamlScalarNode("1"));
         command.ShouldNotContain("#");
         command.ShouldNotContain(";");
         command.ShouldNotContain("||");
@@ -1006,9 +1020,26 @@ public sealed class ReleasePackageManifestTests
         arguments[Array.IndexOf(arguments, "--project") + 1].ShouldBe(
             "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj");
         arguments.Count(static argument => argument == "--minimum-expected-tests").ShouldBe(1);
-        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("290");
+        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("291");
         arguments.Count(static argument => argument == "--fail-skips").ShouldBe(1);
         arguments[Array.IndexOf(arguments, "--fail-skips") + 1].ShouldBe("on");
+
+        invariantCommand.ShouldNotContain("#");
+        invariantCommand.ShouldNotContain(";");
+        invariantCommand.ShouldNotContain("||");
+        string[] invariantArguments = Regex.Split(invariantCommand.Trim(), @"\s+");
+        invariantArguments[0].ShouldBe("dotnet");
+        invariantArguments[1].ShouldBe("test");
+        invariantArguments.Count(static argument => argument == "--project").ShouldBe(1);
+        invariantArguments[Array.IndexOf(invariantArguments, "--project") + 1].ShouldBe(
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj");
+        invariantArguments.Count(static argument => argument == "--filter-method").ShouldBe(1);
+        invariantArguments[Array.IndexOf(invariantArguments, "--filter-method") + 1].ShouldBe(
+            "Hexalith.EventStore.PayloadProtection.Tests.AadPathTests.V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams");
+        invariantArguments.Count(static argument => argument == "--minimum-expected-tests").ShouldBe(1);
+        invariantArguments[Array.IndexOf(invariantArguments, "--minimum-expected-tests") + 1].ShouldBe("1");
+        invariantArguments.Count(static argument => argument == "--fail-skips").ShouldBe(1);
+        invariantArguments[Array.IndexOf(invariantArguments, "--fail-skips") + 1].ShouldBe("on");
     }
 
     [Fact]

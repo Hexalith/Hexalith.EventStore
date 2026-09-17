@@ -4622,3 +4622,9 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Preserve caller cancellation in the REST-generator and sample command-status gateway fakes.
   evidence: Both separately authored fake overrides ignore their `CancellationToken`, so a pre-cancelled status read returns a value instead of cancellation and tests using those fakes can mask cancellation-contract regressions.
+
+## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, sixth pass)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Translate command-status response-body transport failures through the public gateway exception abstraction.
+  evidence: After a successful response header, `GetCommandStatusAsync` catches only `JsonException`; a content stream that raises `HttpRequestException` or `IOException` can therefore escape as a raw transport exception. This separately authored Client surface is outside Story 8.3.

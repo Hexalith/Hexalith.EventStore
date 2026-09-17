@@ -27,7 +27,7 @@ amendment-list and authority section 8.4 Server-ownership corrections. Stories
 - Added a non-packable xUnit v3/Shouldly test project with linked immutable Story
   8.2 fixtures and a separate vector-execution manifest.
 - Implemented traits for all 51 assigned identifiers: inherited V001-V003 plus
-  V004-V048/V135-V136/V138. The focused suite contains 290 test cases;
+  V004-V048/V135-V136/V138. The focused suite contains 291 test cases;
   Story 8.5-owned policy portions of V038/V039 are not claimed.
 - Closed the Step-3 audit gaps for strict carrier/header matrices, exact
   resolver inputs, constructible AAD sources/boundaries, independent manifest
@@ -74,6 +74,10 @@ amendment-list and authority section 8.4 Server-ownership corrections. Stories
 - Closed both fifth-pass group-1 codec findings by applying non-elidable
   cryptographic zeroing to all base64url staging arrays and deriving the
   protected JSON string label from its canonical UTF-8 wire bytes.
+- Closed both independent chunk-1 follow-up findings with mutation-armed
+  invariant-globalization coverage through `ProtectEvent` and `AadCodec.Write`,
+  plus multibyte NFC cases that distinguish UTF-8 byte ceilings from UTF-16
+  character counts.
 - Story 8.3 edits preserved Contracts, frozen fixtures/verifiers, Server/no-op
   hooks, domain and Parties code, `Hexalith.EventStore.slnx`,
   `tools/release-packages.json`, topology, and persisted data. The baseline diff
@@ -85,8 +89,9 @@ amendment-list and authority section 8.4 Server-ownership corrections. Stories
   Those excluded changes were not authored, altered, reverted, or approved by
   this workflow.
 - Added blocking direct-project GitHub and local CI lanes with the exact
-  290-case minimum and skipped-test failure policy, plus a required-lane test
-  that binds the GitHub workflow contents.
+  291-case minimum, a separate invariant-globalization invocation, and
+  skipped-test failure policies, plus a required-lane test that binds both
+  GitHub workflow commands and the invariant environment setting.
 
 ## Content Binding
 
@@ -94,14 +99,15 @@ amendment-list and authority section 8.4 Server-ownership corrections. Stories
 | --- | --- |
 | Requirements amendment approval | `1d511941c09d12e1d3a09a82968fc82737dcd786b0b35082c75584b6e7358537` |
 | Sorted production source/project hash stream (35 files) | `f6cf266c83d1d79ca23b5e92547aff5e908d29bea43e93ae36dac3c0434711f5` |
-| Sorted focused-test/project/manifest hash stream (12 files) | `863412576147db58c24343dc0bd13c9359e98ea73dd5824360b0f8975d7c10dd` |
+| Sorted focused-test/project/manifest hash stream (12 files) | `0a5e5064a3567c119bf0dbc6e99f1f5eb79e83ecfeb573509ef8a4e590911c2a` |
 | Core project | `c73a8db3b4eb994adbbdf5bd90ea9e9d9bacac5b5ac9dd792ff3021f56e4fbe9` |
 | Test project | `5b29d17454fd11c65965c6cc66deb70571f7c995d9512384f28b38d37185aed5` |
 | Vector execution manifest | `dfa6a44ccdab595af6081d7b2c752e5f01870aeb74265d76940e43c5ba336ea8` |
-| GitHub focused lane | `12344282faad41c129378a1cccab53bae6ee5f4f3f75a97be733653e9109edd7` |
-| Local focused lane | `5c632674e428481c5f2e1f20a4316229659569b8cba152743b76a76703a6ec07` |
+| GitHub focused lane | `10c2dd3c86918712759fe0abfc8352d4b129b74c28af96213da9e08966208017` |
+| Local focused lane | `8d55cc01e219d5ca4be2875b5bfb108a125063154633f5735cf787a0c8aaf7b3` |
+| Required-lane workflow guard | `581ac10f4ecc0ccfc254618473afba5a967adb266ced92d73504a927d084cb83` |
 | Preflight evidence | `ab3a5d7ac7dc4838e91b0ecc4bc3d77438f22a545d25ec92cba9dcf89ff2c8a2` |
-| Verification evidence | `78920ae9352068d6221063369a0d99f9d4b2163ce67e3f7c06f9f4986e9d51f3` |
+| Verification evidence | `1c3b04414689584a87a2a56d5a9428e31277ff78685285c0dee07be1832f663b` |
 | Unchanged release manifest | `6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae` |
 | Unchanged solution | `dd9c0a74a6ca81d50e05ddcfd336f4f92882d77afa313287d69cf2bc87e7fc74` |
 
@@ -113,7 +119,9 @@ counts, and observed load values are in
 
 - Both independent frozen-vector verifiers passed V001-V003 unchanged.
 - An explicit focused Release build passed with zero warnings/errors, then the
-  no-build gate passed 290/290 with zero failures or skips.
+  no-build gate passed 291/291 with zero failures or skips. The separate
+  invariant-globalization invocation passed 1/1 and proved both core write paths
+  fail closed when normalization support is inert.
 - The two follow-up regression methods passed 1/1 independently and as part of
   that complete focused-suite rerun.
 - The core Release build passed with zero warnings and errors under the AOT and
@@ -125,9 +133,10 @@ counts, and observed load values are in
   `.gitattributes` LF checks also passed.
 - The complete `.slnx` Release build passed with zero warnings and errors.
 - The direct GitHub workflow passed `actionlint` and the local mirror passed
-  `bash -n`; both require all 290 cases and fail on skips. The required
-  Contracts packaging-test class passed 115/115 and asserts the workflow's
-  project path, floor, and fail-skips policy.
+  `bash -n`; both require all 291 cases, run the invariant regression, and fail
+  on skips. The required Contracts packaging-test class passed 115/115 and
+  asserts both workflow invocations, their floors, fail-skips policies, and the
+  invariant environment setting.
 - Existing release packaging and both validators produced exactly 14 archives;
   the new non-packable project was absent as required.
 - Dependency, public-surface, solution/release-preservation, vector-coverage,

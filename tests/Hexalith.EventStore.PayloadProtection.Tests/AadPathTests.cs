@@ -69,6 +69,10 @@ public sealed class AadPathTests
         TestFixture.Aad(TestFixture.Context() with { PayloadTypeId = new string('t', 1024) }).ShouldNotBeEmpty();
         Should.Throw<PayloadProtectionFormatException>(
             () => TestFixture.Aad(TestFixture.Context() with { PayloadTypeId = new string('t', 1025) }));
+        Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(TestFixture.Context() with
+        {
+            PayloadTypeId = new string('\u00e9', 513),
+        }));
         AssertAadSubstitutionFails(
             TestFixture.Context() with { PayloadTypeId = "Hexalith.Parties.Contracts.Events.partyCreated" });
     }
@@ -175,6 +179,7 @@ public sealed class AadPathTests
         Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(path: "email"));
         TestFixture.Aad(path: "/" + new string('p', 2047)).ShouldNotBeEmpty();
         Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(path: "/" + new string('p', 2048)));
+        Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(path: "/" + new string('\u00e9', 1024)));
         byte[] changed = TestFixture.Aad(path: "/Email");
         Should.Throw<PayloadProtectionAuthenticationException>(
             () => PayloadCryptography.Decrypt(TestFixture.Envelope(), changed, TestFixture.Dek()));
@@ -380,6 +385,37 @@ public sealed class AadPathTests
         else
         {
             Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(changed));
+        }
+    }
+
+    /// <summary>V029 fails closed through both core write seams when the platform normalizer is inert.</summary>
+    [Fact]
+    [Trait("Vector", "V029")]
+    public void V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams()
+    {
+        bool normalizationIsFunctional = !"\u00c5".IsNormalized(NormalizationForm.FormD);
+        Action protectEvent = () => new PayloadProtectionCore().ProtectEvent(
+            "{\"email\":\"alice@example.com\"}"u8.ToArray(),
+            ["/email"],
+            TestFixture.Context(),
+            TestFixture.Material);
+        Action writeAad = () => AadCodec.Write(
+            TestFixture.Context(),
+            "/email",
+            TestFixture.KeyReference,
+            1,
+            0,
+            new byte[32]);
+
+        if (normalizationIsFunctional)
+        {
+            protectEvent.ShouldNotThrow();
+            writeAad.ShouldNotThrow();
+        }
+        else
+        {
+            Should.Throw<PayloadProtectionCryptographicException>(protectEvent);
+            Should.Throw<PayloadProtectionCryptographicException>(writeAad);
         }
     }
 

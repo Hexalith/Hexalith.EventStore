@@ -64,11 +64,26 @@ jobs:
           dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj
           --no-build
           --configuration Release
-          --minimum-expected-tests 290
+          --minimum-expected-tests 291
           --fail-skips on
           --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests
           --report-xunit-trx
           --report-xunit-trx-filename payload-protection-results.trx
+          -p:UseHexalithProjectReferences=false
+
+      - name: Verify invariant-globalization fail closed
+        env:
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
+        run: >-
+          dotnet test --project tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj
+          --no-build
+          --configuration Release
+          --filter-method Hexalith.EventStore.PayloadProtection.Tests.AadPathTests.V029_InertPlatformNormalizer_FailsClosedThroughCoreWriteSeams
+          --minimum-expected-tests 1
+          --fail-skips on
+          --results-directory TestResults/Hexalith.EventStore.PayloadProtection.Tests
+          --report-xunit-trx
+          --report-xunit-trx-filename payload-protection-invariant-globalization-results.trx
           -p:UseHexalithProjectReferences=false
 
       - name: Upload PayloadProtection test results
