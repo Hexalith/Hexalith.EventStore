@@ -2,7 +2,7 @@
 title: 'Story 4.15: OQ8 Platform Closure And Handoff'
 type: 'feature'
 created: '2026-08-10'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 story_key: '4-15-oq8-platform-closure-and-handoff'
 baseline_commit: '699ca71206cd280dc6b770d83c338495bfe70fab'
@@ -897,3 +897,36 @@ Owner resolved all three Decisions in-session. None of the three is executable i
 - **Decision 3** — **applied.** Story 3.15 is already open (`sprint-status.yaml:151` `in-progress`, spec frontmatter `in-progress`, `review_loop_iteration: 6`), so no new story or sprint key was created and `sprint-status.yaml` was not touched. A fifth, unchecked Execution task was added to `spec-3-15-corrected-deployed-runtime-parity-closure.md` naming the single authorized re-mint and binding DW-506, DW-507, DW-508, DW-509 and DW-511 to it. DW-512's gitlink governance is better placed on `3-16-latest-compatible-dependency-and-root-submodule-refresh`, which is already in `backlog`.
 
 **Lifecycle deliberately not synced.** `spec` frontmatter stays `done` and the sprint row stays `review`. Setting the row to `in-progress` makes `--lifecycle-mode final` fail with `Lifecycle status drift`, which `CheckedInRepositoryLifecyclePassesWithoutMutation` asserts exits 0, turning the whole Contracts lane red. This is the accepted DW-497/DW-505 inversion, re-confirmed here: after every edit in this review, `validate-oq8-platform-evidence.py` still exits 0 in both default and `--lifecycle-mode final`.
+
+### Review Findings
+
+_Chunked code review, validator pass (2026-09-17). Baseline `699ca712` → HEAD `0a9fd0c3`. File: `tools/validate-oq8-platform-evidence.py` (3,648 additions / 169 deletions). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor; all four reported._
+
+- [ ] [Review][Patch] Pin the historical SDK successor manifest to immutable Git bytes or a fixed reviewed digest — the selector and v3 identity derive `manifestSha256` from the mutable worktree manifest, so a coherently reformatted and resealed historical packet is accepted despite the declared immutable-predecessor rule. [tools/validate-oq8-platform-evidence.py:1893-1896,2958-2964]
+- [ ] [Review][Patch] Cross-check fresh-capture state-component and resiliency hashes against repository inputs — `validate_observations` accepts any syntactically valid SHA-256 values, allowing unrelated configuration identities into an accepted fresh capture. [tools/validate-oq8-platform-evidence.py:1223-1228,1545-1562]
+- [ ] [Review][Patch] Enforce the evidentiary PostgreSQL counter relationships for admission, terminal, tombstone, and total rows — those fields are only nonnegative, so zero or decreasing admission/terminal/tombstone counts can pass despite the claimed execution and compaction outcomes. [tools/validate-oq8-platform-evidence.py:1329-1351]
+- [ ] [Review][Patch] Resolve historical-v1 DAPR component identities from the completed-v1 Git snapshot — historical validation hashes live deployment YAML, so legitimate later configuration changes invalidate immutable v1 evidence. [tools/validate-oq8-platform-evidence.py:3981-3993]
+- [ ] [Review][Patch] Require the historical SDK successor directory to equal its declared file set — its manifest validates listed artifacts but ignores undeclared files, unlike the v1, v2, and v3 evidence directories. [tools/validate-oq8-platform-evidence.py:1680-1707]
+- [ ] [Review][Patch] Reject symlinked path components for v1 closure and historical SDK successor artifacts — leaf-only checks allow either evidence directory or its `reviews` directory to resolve through an external symlink. [tools/validate-oq8-platform-evidence.py:1603-1707,2132-2162]
+- [ ] [Review][Patch] Bound v1 packet, historical manifest/artifact, candidate-JSON, and sprint-status reads before parsing — several paths use unbounded `read_text`/`json.load`, and JSON depth/node plus sprint-size limits run only after input allocation and parsing. [tools/validate-oq8-platform-evidence.py:760-836,1579-1707,3706-3708]
+- [ ] [Review][Patch] Redact complete private path tokens from unexpected exception messages — `PRIVATE_PATH_RE.sub` replaces only `/home/`, `/Users/`, or the Windows prefix, leaving usernames and path tails visible and missing `/root` and `/tmp`. [tools/validate-oq8-platform-evidence.py:638,4223-4228]
+- [ ] [Review][Patch] Parse Story frontmatter status with matching quote delimiters — the independent optional quote groups accept malformed values such as `status: 'done"` as a valid lifecycle status. [tools/validate-oq8-platform-evidence.py:3682-3694]
+- [ ] [Review][Patch] Use exact-integer checks for every v1 `schemaVersion` — equality checks accept JSON `true` as integer `1` in packet, environment, command, and review records. [tools/validate-oq8-platform-evidence.py:3925-4053]
+- [ ] [Review][Patch] Add reachable PostgreSQL semantic-image mutation tests — current v2 rows fail on historical hash drift before exercising either workflow/fixture extractor, while active v3 has no coherent image-drift mutation. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs:182,325,4230]
+- [ ] [Review][Patch] Add active-v3 directory and manifest integrity mutations — exact-tree, manifest ordering/checksum, symlink, and artifact-size guards have no negative v3 coverage although analogous v2 rules do. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs:173-179,325]
+- [ ] [Review][Patch] Add a validator-level exact requirements hash mutation — existing dependency tests cover availability, version, and shadowing, while static governance checks accept same-shape unapproved hashes and never exercise the exact validator comparison. [tools/validate-oq8-platform-evidence.py:3501-3507]
+- [ ] [Review][Patch] Remove the Python 3.12-only backslash from the f-string expression or declare and enforce Python 3.12+ — the published source-only handoff invokes unconstrained `python3`, so Python 3.10/3.11 fail at parse time before validation. [tools/validate-oq8-platform-evidence.py:3501-3505]
+
+- [x] [Review][Defer] Current-source closure does not verify all 24 declared capability paths against HEAD, index, and worktree [tools/validate-oq8-platform-evidence.py:267-272,1953-2120,2892-3006] — deferred: high-severity but previously accepted as DW-496; `validate_source_state` reads frozen landed/completed-v1 blobs and v3 intentionally binds a reduced current path set, so a changed older capability path can coexist with a successful current closure until the authority model is redesigned and the sealed packet is reminted.
+
+#### Rejected (2026-09-17 validator pass)
+
+- false: v3 must require HEAD ancestry from `COMPLETED_V2_CLOSURE_COMMIT` — AC2 deliberately anchors Git ancestry at `LANDED_SOURCE`; v2 predecessor integrity is independently content-bound and validated before v3.
+- false: ordinary JSON review receipts require an external signature trust anchor — the approved story contract requires named, content-bound repository receipts, not cryptographic reviewer authentication; changing that threat model is a new architecture decision.
+- false: fresh capture can self-authorize any DAPR runtime version — direct capture mode intentionally takes an expected version from its caller, while the content-bound integration workflow fixes that argument to the reviewed current runtime.
+- false: `--historical-v1-only` must ignore the SDK successor and selector — the approved lineage contract validates the minimum successor inventory in every historical mode; the flag limits current-source authorization rather than inventory integrity.
+- low: predictable `.tmp` support-output writes can follow a pre-existing symlink — exploitation requires an attacker already able to race or prepopulate the caller-selected output directory, and atomic no-follow replacement is more than a direct correction.
+- low: inherited `GIT_*` variables can redirect identity proofs — no normal caller path was demonstrated, CI owns its environment, and comprehensive Git environment scrubbing adds policy and compatibility complexity.
+- low: PyYAML trust validation does not rehash every installed distribution file — hash-checked installation plus exact version and module-origin validation covers the supported bootstrap; post-install environment compromise is outside this validator's repository-integrity boundary.
+- low: symlink inspection and later opening have a TOCTOU window — this is the already accepted DW-454 single-writer-CI limitation and a portable descriptor-relative traversal would be disproportionate.
+- low: reaping a killed Git child uses an unbounded `wait()` — an unreapable post-`SIGKILL` process requires an exceptional kernel-level stall, while a second timeout/reaping abstraction adds complexity to an otherwise bounded path.

@@ -4628,3 +4628,11 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Translate command-status response-body transport failures through the public gateway exception abstraction.
   evidence: After a successful response header, `GetCommandStatusAsync` catches only `JsonException`; a content stream that raises `HttpRequestException` or `IOException` can therefore escape as a raw transport exception. This separately authored Client surface is outside Story 8.3.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-17, validator pass)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Redesign the current-source authority model so every declared OQ8 capability path is verified against HEAD, index, and worktree rather than only frozen historical blobs or the reduced v3 gate-input set.
+  severity: high
+  status: open
+  evidence: `validate_source_state` claims all 24 non-evolved capability paths must remain byte-equivalent but verifies them only at `LANDED_SOURCE` and `COMPLETED_V1_CLOSURE_COMMIT`; active v3 binds a smaller current path set. This is the already accepted DW-496 gap and requires a sealed-packet remint rather than a local mechanical patch.
