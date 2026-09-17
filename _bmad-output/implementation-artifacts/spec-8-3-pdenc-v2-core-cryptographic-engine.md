@@ -2,7 +2,7 @@
 title: 'pdenc-v2 core cryptographic engine'
 type: 'feature'
 created: '2026-09-14'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'e8886ec4c277460de3d3208b3fc0b9c261c4967d'
 route: 'dispatch'
 review_loop_iteration: 4
@@ -989,3 +989,31 @@ refuted that way and are listed under Rejected.
 - [Rejected][false] `vector-execution.json` leads a reader to believe V137 is covered by Story 8.3 — the manifest correctly lists `V137` under `laterStory`, and the runtime trait enumeration contains exactly V001-V048, V135, V136 and V138. Any overclaim lives in commit and story prose, which is chunk-5 evidence scope.
 - [Rejected] The spec's Code Map and Verification section still cite the 263-case minimum and still name `.github/workflows/ci.yml` as the blocking lane, both superseded by the chunk-3 patches (268, `payload-protection.yml`) — the fix is to edit the spec under review, and the narration belongs to chunk 5.
 - [Rejected] V030's 4,096-byte total-AAD cap is knowingly unfalsifiable — explicitly authorized by amendment AR-20260914-02, which retains the defensive cap while fixing the executable boundary at the 3,617-byte constructible maximum, and the test documents this in place.
+
+### Review Findings (fifth pass, group 1 of 6, 2026-09-17)
+
+Independent four-layer review of group 1 (wire codecs / manifest / envelope): 11 files,
++1556 / −0, baseline `e8886ec4`…`3a438f74`. Blind Hunter and Edge Case Hunter returned
+findings; Verification Gap Reviewer and Acceptance Auditor returned empty result lists, so
+those two layers are recorded as failed/empty and this group review may be incomplete.
+Remaining groups: 2, 3, 4a, 4b, 5, 6.
+
+- [ ] [Review][Patch] `Base64UrlCodec` zeros staging `char[]`/`byte[]` with `Array.Clear`, which the JIT may elide, leaving envelope ciphertext or decoded carrier bytes in the heap after encode/failed-decode [src/Hexalith.EventStore.PayloadProtection/Base64UrlCodec.cs:57,106,202,208]
+- [ ] [Review][Patch] `ProtectedSerializationFormat` and `ProtectedSerializationFormatUtf8` are independent literals of `json+pdenc-v2`, so the AAD format field can drift from the JSON format label Core compares [src/Hexalith.EventStore.PayloadProtection/PayloadProtectionWireFormat.cs:13,109]
+
+#### Rejected (fifth pass, group 1)
+
+- [Rejected][false] `CanonicalText.Encode` can leave a partial UTF-8 buffer on `EncoderFallbackException` — `GetByteCount` already ran the same strict encoder on an immutable string, so `GetBytes` cannot throw that exception on the production path.
+- [Rejected][low] `AadCodec.Write` does not zero stackalloc DEK-version/ordinal/sequence spans or checkpoint every 256 AAD bytes — the stack frame dies on return, and the copy is capped at 4,096 bytes after `Validate` already checkpointed path decode; chunked AAD write machinery is disproportionate.
+- [Rejected][false] Snapshot AAD accepts any `fieldOrdinal` in `0..4095` when the path is empty — `PayloadProtectionCore` hard-codes ordinal `0` on snapshot protect/unprotect (`PayloadProtectionCore.cs:387,803-817`) and `Snapshot_NonZeroFieldOrdinal_IsRejectedBeforeLookupAsync` already rejects a non-zero snapshot envelope before lookup.
+- [Rejected][false] `WriteField` does not enforce type/length pairing or map `OverflowException` — the private helper is only called with the closed pairs (type 2/4 bytes, 3/8, 4/32), and `Validate` sizes the destination so `Slice`/`CopyTo` cannot overflow on that path.
+- [Rejected][false] `EnvelopeCodec.Write` never writes flags/reserved and `Encoding.ASCII.GetBytes` can substitute `?` — `new byte[length]` zero-fills offsets 22–23, `Read` rejects nonzero flags, and `ValidateFields` requires a canonical ULID before the ASCII copy.
+- [Rejected][false] `EnvelopeCodec.Read` allocates `CanonicalText.Decode` before nonce copies and `CanonicalUlid.IsValid` is only a charset check — section 6.3 forbids variable ciphertext allocation before header/key-ref validation, not the 26-byte key-ref string; Crockford alphabet plus first-character `<= '7'` is equivalent to parse-and-re-encode for this closed alphabet.
+- [Rejected][low] `EnvelopeCodec.Read`/`Write` have no `CancellationToken` while copying up to 1 MiB — the bound is the everyday envelope ceiling; adding chunked copy cancellation is the same class of complexity previously rejected for the 16 MiB snapshot snapshot-copy.
+- [Rejected][low] `ProtectedPathManifestCodec.Create` discards `JsonPointer.Decode` tokens and never asserts `offset == encoded.Length` — overlap detection already runs on encoded bytes, the length accumulator matches the write loop, and a byte-oriented pointer validator would add branches rather than a direct correction.
+- [Rejected][low] Manifest checkpoint callbacks mix enumeration counts, sort comparisons, and byte indexes — spec 7.2/re-derivation requires a check at least every 256 units of those kinds, not one shared unit; splitting counters would add seam complexity without a demonstrated missed cancel.
+- [Rejected][false] `JsonPointer.Decode` never applies `ParseArrayIndex`, so `/00` enters HXAD/HXPM — array-index canonicity is only knowable against JSON; `BoundedJsonDocument` calls `ParseArrayIndex` on array traversal, and V033 rejects `/items/00` there. Applying it in `Decode` would reject a legitimate object member named `00`.
+- [Rejected][false] Envelope/manifest/wrapper records store mutable arrays without defensive copy or `IDisposable` — ownership transfer to the caller is the specified cleanup model; `PayloadProtectionCore.ClearEnvelope` zeros after use, and `ToString` already suppresses payload dumps.
+- [Rejected][low] Private codec helpers lack XML `<param>` docs — CS1591 is not generated for this non-packable project, and the required XML surface is public/internal types already documented.
+- [Rejected][false] `EnvelopeCodec.Read` skips the ordinal-nonce check `Write` enforces — V010 and the re-derivation require post-auth nonce validation; `PayloadCryptography.HasExpectedNonce` runs after decrypt (`PayloadProtectionCore.cs:636,867`). Hostile nonces must parse so authentication can fail closed.
+- [Rejected][false] `Base64UrlCodec.Encode` lacks the Decode oversize guard — production callers only encode `EnvelopeCodec.Write` output, which is already capped at `EnvelopeBytes`; unbounded `Encode` is not a reachable carrier path.
