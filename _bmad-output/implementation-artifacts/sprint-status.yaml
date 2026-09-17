@@ -257,7 +257,7 @@ development_status:
   8-1-shared-payload-protection-security-spec-and-adr: done
   # Story 8.2 is approved and done; Story 8.3 has completed independent-review chunks 1-3 of 6 (all chunk-3 action items applied and mutation-verified) plus chunk 4a (test scaffolding, envelope, AAD/path, cryptography), whose 24 patch findings are open action items in the spec; chunks 4b, 5 and 6 remain unreviewed; Stories 8.4-8.11 remain predecessor/evidence gated.
   8-2-payload-protection-contracts-and-golden-vectors: done
-  8-3-pdenc-v2-core-cryptographic-engine: in-progress
+  8-3-pdenc-v2-core-cryptographic-engine: review
   8-4-compatibility-readers-and-mixed-history-routing: backlog
   8-5-policy-and-key-lifecycle-mechanics: backlog
   8-6-azure-key-vault-production-adapter-conformance: backlog

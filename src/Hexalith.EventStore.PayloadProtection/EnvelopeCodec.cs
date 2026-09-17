@@ -97,6 +97,8 @@ internal static class EnvelopeCodec
         uint dekVersion = BinaryPrimitives.ReadUInt32BigEndian(value[PayloadProtectionWireFormat.DekVersionOffset..]);
         uint ordinal = BinaryPrimitives.ReadUInt32BigEndian(value[PayloadProtectionWireFormat.FieldOrdinalOffset..]);
         uint ciphertextLength = BinaryPrimitives.ReadUInt32BigEndian(value[PayloadProtectionWireFormat.CiphertextLengthOffset..]);
+        // The complete-envelope bounds above subsume the ciphertext endpoints for the current
+        // fixed overhead. Retain the field checks as defense in depth and for writer symmetry.
         if (dekVersion == 0
             || ordinal >= PayloadProtectionLimits.ProtectedPaths
             || ciphertextLength is 0 or > PayloadProtectionLimits.CiphertextBytes)

@@ -33,7 +33,7 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         result.PayloadBytes.ShouldNotBeSameAs(original);
         result.PayloadBytes.ShouldBe(original);
         result.ProtectedPathCount.ShouldBe(0);
-        result.SerializationFormat.ShouldBe("json");
+        result.SerializationFormat.ShouldBe(PayloadProtectionWireFormat.UnprotectedSerializationFormat);
         materialCalls.ShouldBe(0);
     }
 
@@ -43,7 +43,7 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
     public void V042_OneSelectedValue_UsesOrdinalZeroNonce()
     {
         CoreProtectionResult result = TestFixture.Protect();
-        result.SerializationFormat.ShouldBe("json+pdenc-v2");
+        result.SerializationFormat.ShouldBe(PayloadProtectionWireFormat.ProtectedSerializationFormat);
         PayloadProtectionEnvelope envelope = EnvelopeCodec.Read(Base64UrlCodec.Decode(TestFixture.ReadWrapper(result)));
         envelope.FieldOrdinal.ShouldBe((uint)0);
         envelope.Nonce.ShouldAllBe(static value => value == 0);
@@ -144,6 +144,33 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         (firstObserver.Observed.Count + secondObserver.Observed.Count).ShouldBe(1);
         materials.Single(static material => material.KeyReference != collision)
             .DataEncryptionKey.ShouldAllBe(static value => value == 2);
+    }
+
+    /// <summary>Verifies deterministic entropy stays bounded and thread-safe beyond one byte of fills.</summary>
+    [Fact]
+    public void SequenceEntropy_SupportsConcurrentUseBeyond255FillsAndNamesExhaustion()
+    {
+        const int count = 300;
+        var entropy = new SequenceEntropy(Enumerable.Range(0, count).Select(static value => value.ToString()));
+        var references = new ConcurrentBag<string>();
+        var keys = new ConcurrentBag<byte[]>();
+
+        Parallel.For(0, count, _ =>
+        {
+            references.Add(entropy.CreateKeyReference());
+            byte[] key = new byte[32];
+            entropy.FillDataEncryptionKey(key);
+            keys.Add(key);
+        });
+
+        references.Count.ShouldBe(count);
+        references.Distinct(StringComparer.Ordinal).Count().ShouldBe(count);
+        keys.Count.ShouldBe(count);
+        keys.ShouldAllBe(static key => key.Any(static value => value != 0));
+        keys.Select(Convert.ToHexString).Distinct(StringComparer.Ordinal).Count().ShouldBe(count);
+        entropy.FillCount.ShouldBe(count);
+        Should.Throw<InvalidOperationException>(() => entropy.CreateKeyReference())
+            .Message.ShouldBe("The deterministic key-reference sequence is exhausted.");
     }
 
     /// <summary>V047 rejects a duplicate ordinal before resolving any key.</summary>
@@ -440,6 +467,19 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
                     }
                 },
                 observer));
+
+            using var parsingFailureSource = new CancellationTokenSource();
+            RecordingBufferObserver parsingFailureObserver = new();
+            Should.Throw<OperationCanceledException>(() => BoundedJsonDocument.Parse(
+                "{}"u8,
+                parsingFailureSource.Token,
+                _ =>
+                {
+                    parsingFailureSource.Cancel();
+                    throw new JsonException();
+                },
+                parsingFailureObserver));
+            parsingFailureObserver.Observed.ShouldBe([SensitiveBufferKind.InputSnapshot]);
         }
         else
         {
@@ -627,9 +667,14 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         observer.Observed.ShouldNotContain(SensitiveBufferKind.SelectedPlaintext);
         observer.Observed.ShouldNotContain(SensitiveBufferKind.DataEncryptionKey);
 
-        byte[] oversizedEnvelope = new byte[82 + PayloadProtectionLimits.CiphertextBytes + 1];
+        byte[] oversizedEnvelope = new byte[
+            PayloadProtectionWireFormat.EnvelopeFixedOverheadBytes
+            + PayloadProtectionLimits.CiphertextBytes
+            + 1];
         Convert.FromHexString(TestFixture.EnvelopeHex).AsSpan(0, 66).CopyTo(oversizedEnvelope);
-        BinaryPrimitives.WriteUInt32BigEndian(oversizedEnvelope.AsSpan(24), PayloadProtectionLimits.CiphertextBytes + 1);
+        BinaryPrimitives.WriteUInt32BigEndian(
+            oversizedEnvelope.AsSpan(PayloadProtectionWireFormat.CiphertextLengthOffset),
+            PayloadProtectionLimits.CiphertextBytes + 1);
         Should.Throw<PayloadProtectionFormatException>(() => EnvelopeCodec.Read(oversizedEnvelope));
     }
 
@@ -1147,7 +1192,9 @@ public sealed class LimitsAndConcurrencyTests(ITestOutputHelper output)
         string outcome,
         UnreadableProtectedDataReason expected)
     {
-        byte[]? transferred = outcome == "wrong-length" ? new byte[31] : null;
+        byte[]? transferred = outcome == "wrong-length"
+            ? [.. Enumerable.Repeat((byte)0xa5, 31)]
+            : null;
         RecordingBufferObserver observer = new();
 
         CoreUnprotectionResult result = await TestFixture.UnprotectAsync(

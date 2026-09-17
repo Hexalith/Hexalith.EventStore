@@ -637,6 +637,7 @@ internal sealed class BoundedJsonDocument : IDisposable
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or OverflowException)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             throw new PayloadProtectionFormatException();
         }
         finally

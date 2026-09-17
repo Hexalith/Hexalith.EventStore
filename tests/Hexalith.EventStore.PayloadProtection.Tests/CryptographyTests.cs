@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+using System.Buffers.Binary;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -53,7 +53,50 @@ public sealed class CryptographyTests
         Encoding.UTF8.GetString(result.PayloadBytes!).ShouldBe("{\"email\":\"alice@example.com\",\"name\":\"Alice\"}");
     }
 
-    /// <summary>Verifies the root-manifest snapshot seam against independently pinned manifest, AAD, and envelope bytes.</summary>
+    /// <summary>Verifies valid foreign scope and occurrence contexts fail authentication end to end.</summary>
+    [Theory]
+    [InlineData("tenant")]
+    [InlineData("aggregate")]
+    [InlineData("sequence")]
+    public async Task EventReader_CrossScopeContext_ReturnsNoPlaintextAndClearsOwnedBuffersAsync(string component)
+    {
+        CoreProtectionResult protectedResult = TestFixture.Protect();
+        PayloadProtectionContext context = component switch
+        {
+            "tenant" => TestFixture.Context() with
+            {
+                Identity = new("tenant-b", "parties", "party-01"),
+            },
+            "aggregate" => TestFixture.Context() with
+            {
+                Identity = new("tenant-a", "parties", "party-02"),
+            },
+            _ => TestFixture.Context(sequence: 2),
+        };
+        RecordingBufferObserver observer = new();
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            protectedResult.PayloadBytes,
+            context: context,
+            observer: observer,
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(1);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DataEncryptionKey);
+        observer.Observed.ShouldContain(SensitiveBufferKind.DecryptedPlaintext);
+    }
+
+    /// <summary>
+    /// Verifies the root-manifest snapshot seam against Story 8.3-owned regression pins. These
+    /// bytes are not an authority-owned G-001-class independent golden.
+    /// </summary>
     [Fact]
     public async Task Snapshot_RoundTripsCompleteAuthenticatedJsonAsync()
     {
@@ -76,7 +119,7 @@ public sealed class CryptographyTests
 
         Convert.ToHexString(manifest.Encoded).ToLowerInvariant().ShouldBe(manifestHex);
         Convert.ToHexString(aad).ToLowerInvariant().ShouldBe(aadHex);
-        protectedSnapshot.Format.ShouldBe("json+pdenc-v2");
+        protectedSnapshot.Format.ShouldBe(PayloadProtectionWireFormat.ProtectedSerializationFormat);
         protectedSnapshot.SnapshotTypeId.ShouldBe("hx-snapshot-v1:party-state");
         protectedSnapshot.Envelope.ShouldBe(envelopeBase64Url);
         Convert.ToHexString(Base64UrlCodec.Decode(protectedSnapshot.Envelope)).ToLowerInvariant().ShouldBe(envelopeHex);
@@ -184,7 +227,9 @@ public sealed class CryptographyTests
     {
         ProtectedSnapshotPayloadV2 protectedSnapshot = TestFixture.ProtectSnapshot();
         RecordingBufferObserver observer = new();
-        byte[]? transferred = outcome == "wrong-length" ? new byte[31] : null;
+        byte[]? transferred = outcome == "wrong-length"
+            ? [.. Enumerable.Repeat((byte)0xa5, 31)]
+            : null;
 
         CoreUnprotectionResult result = await TestFixture.UnprotectSnapshotAsync(
             protectedSnapshot,
@@ -238,7 +283,9 @@ public sealed class CryptographyTests
     public void Snapshot_ConfiguredMaximum_IsEnforcedBeforeMaterialCreation()
     {
         const int maximum = 1024;
-        byte[] exact = Encoding.UTF8.GetBytes("\"" + new string('x', maximum - 2) + "\"");
+        const int jsonStringDelimiterBytes = 2;
+        byte[] exact = Encoding.UTF8.GetBytes(
+            "\"" + new string('x', maximum - jsonStringDelimiterBytes) + "\"");
         int exactMaterialCalls = 0;
         _ = new PayloadProtectionCore().ProtectSnapshot(
             exact,
@@ -251,7 +298,8 @@ public sealed class CryptographyTests
             maximumProtectedValueBytes: maximum);
         exactMaterialCalls.ShouldBe(1);
 
-        byte[] over = Encoding.UTF8.GetBytes("\"" + new string('x', maximum - 1) + "\"");
+        byte[] over = Encoding.UTF8.GetBytes(
+            "\"" + new string('x', maximum - jsonStringDelimiterBytes + 1) + "\"");
         int overMaterialCalls = 0;
         Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectSnapshot(
             over,
@@ -263,6 +311,40 @@ public sealed class CryptographyTests
             },
             maximumProtectedValueBytes: maximum));
         overMaterialCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies both writers reject configured ceilings outside the closed 1..1 MiB range.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(PayloadProtectionLimits.CiphertextBytes + 1)]
+    public void Writers_RejectConfiguredMaximumOutsideTheClosedRange(int maximumProtectedValueBytes)
+    {
+        int eventMaterialCalls = 0;
+        int snapshotMaterialCalls = 0;
+
+        Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectEvent(
+            "{\"value\":1}"u8.ToArray(),
+            ["/value"],
+            TestFixture.Context(),
+            () =>
+            {
+                eventMaterialCalls++;
+                return TestFixture.Material();
+            },
+            maximumProtectedValueBytes: maximumProtectedValueBytes));
+        Should.Throw<PayloadProtectionFormatException>(() => new PayloadProtectionCore().ProtectSnapshot(
+            "{\"value\":1}"u8.ToArray(),
+            TestFixture.SnapshotContext(),
+            () =>
+            {
+                snapshotMaterialCalls++;
+                return TestFixture.Material();
+            },
+            maximumProtectedValueBytes: maximumProtectedValueBytes));
+
+        eventMaterialCalls.ShouldBe(0);
+        snapshotMaterialCalls.ShouldBe(0);
     }
 
     /// <summary>Verifies snapshot resolver cancellation wins after every outcome and clears transferred material.</summary>
@@ -309,6 +391,7 @@ public sealed class CryptographyTests
             ["/value"],
             TestFixture.Context(),
             () => CreateInvalidMaterial(shape, eventKeys)));
+        eventKeys.Count.ShouldBe(shape is "reference" or "version" or "dek-length" ? 1 : 0);
         eventKeys.ShouldAllBe(static key => key.All(static value => value == 0));
         eventObserver.Observed.Count(static kind => kind == SensitiveBufferKind.DataEncryptionKey)
             .ShouldBe(eventKeys.Count);
@@ -318,6 +401,7 @@ public sealed class CryptographyTests
         Should.Throw<PayloadProtectionCryptographicException>(() => TestFixture.ProtectSnapshot(
             materialFactory: () => CreateInvalidMaterial(shape, snapshotKeys),
             observer: snapshotObserver));
+        snapshotKeys.Count.ShouldBe(shape is "reference" or "version" or "dek-length" ? 1 : 0);
         snapshotKeys.ShouldAllBe(static key => key.All(static value => value == 0));
         snapshotObserver.Observed.Count(static kind => kind == SensitiveBufferKind.DataEncryptionKey)
             .ShouldBe(snapshotKeys.Count);
@@ -442,16 +526,32 @@ public sealed class CryptographyTests
     {
         using JsonDocument fixture = TestFixture.ReadFrozenFixture("nist-gcm-256-count0.json");
         JsonElement root = fixture.RootElement;
+        JsonElement profile = root.GetProperty("profile");
         byte[] key = Convert.FromHexString(root.GetProperty("keyHex").GetString()!);
         byte[] nonce = Convert.FromHexString(root.GetProperty("ivHex").GetString()!);
-        byte[] tag = new byte[16];
+        byte[] plaintext = Convert.FromHexString(root.GetProperty("plaintextHex").GetString()!);
+        byte[] aad = Convert.FromHexString(root.GetProperty("aadHex").GetString()!);
+        byte[] expectedCiphertext = Convert.FromHexString(root.GetProperty("ciphertextHex").GetString()!);
+        byte[] ciphertext = new byte[plaintext.Length];
+        byte[] tag = new byte[PayloadProtectionLimits.TagBytes];
+
+        profile.GetProperty("keyBits").GetInt32().ShouldBe(key.Length * 8);
+        profile.GetProperty("ivBits").GetInt32().ShouldBe(nonce.Length * 8);
+        profile.GetProperty("plaintextBits").GetInt32().ShouldBe(plaintext.Length * 8);
+        profile.GetProperty("aadBits").GetInt32().ShouldBe(aad.Length * 8);
+        profile.GetProperty("tagBits").GetInt32().ShouldBe(tag.Length * 8);
+        plaintext.ShouldBeEmpty();
+        aad.ShouldBeEmpty();
+        expectedCiphertext.ShouldBeEmpty();
+
         PayloadCryptography.EncryptAesGcm(
             key,
             nonce,
-            [],
-            [],
+            plaintext,
+            ciphertext,
             tag,
-            []);
+            aad);
+        ciphertext.ShouldBe(expectedCiphertext);
         Convert.ToHexString(tag).ToLowerInvariant().ShouldBe(root.GetProperty("tagHex").GetString());
     }
 
@@ -467,10 +567,11 @@ public sealed class CryptographyTests
             nonce[bit / 8] ^= checked((byte)(1 << (bit % 8)));
             var mutated = baseline with { Nonce = nonce };
             Should.Throw<PayloadProtectionAuthenticationException>(
-                () => PayloadCryptography.Decrypt(mutated, TestFixture.Aad(), TestFixture.Dek()));
+                () => PayloadCryptography.Decrypt(mutated, TestFixture.Aad(), TestFixture.Dek()),
+                $"bit={bit}");
 
             byte[] encoded = Convert.FromHexString(TestFixture.EnvelopeHex);
-            encoded[54 + (bit / 8)] ^= checked((byte)(1 << (bit % 8)));
+            encoded[PayloadProtectionWireFormat.NonceOffset + (bit / 8)] ^= checked((byte)(1 << (bit % 8)));
             int resolverCalls = 0;
             CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
                 TestFixture.WrapperPayloadBytes(Base64UrlCodec.Encode(encoded)),
@@ -479,9 +580,9 @@ public sealed class CryptographyTests
                     resolverCalls++;
                     return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
                 });
-            result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
-            result.PayloadBytes.ShouldBeNull();
-            resolverCalls.ShouldBe(1);
+            result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch, $"bit={bit}");
+            result.PayloadBytes.ShouldBeNull($"bit={bit}");
+            resolverCalls.ShouldBe(1, $"bit={bit}");
         }
     }
 
@@ -552,11 +653,12 @@ public sealed class CryptographyTests
             byte[] tag = [.. baseline.Tag];
             tag[bit / 8] ^= checked((byte)(1 << (bit % 8)));
             Should.Throw<PayloadProtectionAuthenticationException>(
-                () => PayloadCryptography.Decrypt(baseline with { Tag = tag }, TestFixture.Aad(), TestFixture.Dek()));
+                () => PayloadCryptography.Decrypt(baseline with { Tag = tag }, TestFixture.Aad(), TestFixture.Dek()),
+                $"bit={bit}");
             CoreUnprotectionResult result = await TestFixture.UnprotectAsync(TestFixture.WrapperPayloadBytes(
                 Base64UrlCodec.Encode(EnvelopeCodec.Write(baseline with { Tag = tag }))));
-            result.PayloadBytes.ShouldBeNull();
-            result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+            result.PayloadBytes.ShouldBeNull($"bit={bit}");
+            result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch, $"bit={bit}");
         }
     }
 
@@ -571,11 +673,12 @@ public sealed class CryptographyTests
             byte[] ciphertext = [.. baseline.Ciphertext];
             ciphertext[bit / 8] ^= checked((byte)(1 << (bit % 8)));
             Should.Throw<PayloadProtectionAuthenticationException>(
-                () => PayloadCryptography.Decrypt(baseline with { Ciphertext = ciphertext }, TestFixture.Aad(), TestFixture.Dek()));
+                () => PayloadCryptography.Decrypt(baseline with { Ciphertext = ciphertext }, TestFixture.Aad(), TestFixture.Dek()),
+                $"bit={bit}");
             CoreUnprotectionResult result = await TestFixture.UnprotectAsync(TestFixture.WrapperPayloadBytes(
                 Base64UrlCodec.Encode(EnvelopeCodec.Write(baseline with { Ciphertext = ciphertext }))));
-            result.PayloadBytes.ShouldBeNull();
-            result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+            result.PayloadBytes.ShouldBeNull($"bit={bit}");
+            result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch, $"bit={bit}");
         }
     }
 
@@ -585,7 +688,7 @@ public sealed class CryptographyTests
     public async Task V013_AlgorithmSubstitution_IsRejectedLocallyWithoutLookupAsync()
     {
         byte[] bytes = Convert.FromHexString(TestFixture.EnvelopeHex);
-        bytes[5] = 2;
+        bytes[PayloadProtectionWireFormat.AlgorithmIdentifierOffset] = 2;
         Should.Throw<PayloadProtectionFormatException>(() => EnvelopeCodec.Read(bytes));
         await AssertLocalMismatchWithoutLookupAsync(bytes);
     }
@@ -598,7 +701,7 @@ public sealed class CryptographyTests
     public async Task V014_VersionSubstitution_IsRejectedLocallyWithoutLookupAsync(byte version)
     {
         byte[] bytes = Convert.FromHexString(TestFixture.EnvelopeHex);
-        bytes[4] = version;
+        bytes[PayloadProtectionWireFormat.EnvelopeVersionOffset] = version;
         Should.Throw<PayloadProtectionFormatException>(() => EnvelopeCodec.Read(bytes));
         await AssertLocalMismatchWithoutLookupAsync(bytes);
     }
@@ -630,8 +733,8 @@ public sealed class CryptographyTests
     [Trait("Vector", "V016")]
     public async Task V016_KeyVersionAndOrdinalSubstitution_FailsAuthenticationAsync(uint version, uint ordinal)
     {
-        byte[] nonce = new byte[12];
-        System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(nonce.AsSpan(4), ordinal);
+        byte[] nonce = new byte[PayloadProtectionLimits.NonceBytes];
+        BinaryPrimitives.WriteUInt64BigEndian(nonce.AsSpan(4), ordinal);
         PayloadProtectionEnvelope envelope = TestFixture.Envelope() with
         {
             DekVersion = version,
@@ -691,26 +794,67 @@ public sealed class CryptographyTests
         resolverCalls.ShouldBe(0);
     }
 
+    /// <summary>Verifies relocating a valid wrapper to another protected path fails closed.</summary>
+    [Fact]
+    public async Task RelocatedWrapper_IsRejectedWithoutPlaintextAsync()
+    {
+        CoreProtectionResult protectedResult = new PayloadProtectionCore().ProtectEvent(
+            "{\"left\":1,\"right\":2}"u8.ToArray(),
+            ["/left", "/right"],
+            TestFixture.Context(),
+            TestFixture.Material);
+        JsonObject payload = JsonNode.Parse(protectedResult.PayloadBytes)!.AsObject();
+        string leftEnvelope = payload["left"]!.AsObject()["$pdenc"]!.GetValue<string>();
+        payload["right"]!.AsObject()["$pdenc"] = leftEnvelope;
+        int resolverCalls = 0;
+
+        CoreUnprotectionResult result = await TestFixture.UnprotectAsync(
+            Encoding.UTF8.GetBytes(payload.ToJsonString()),
+            keyResolver: (_, _, _) =>
+            {
+                resolverCalls++;
+                return ValueTask.FromResult<byte[]?>(TestFixture.Dek());
+            });
+
+        result.PayloadBytes.ShouldBeNull();
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.BytesMetadataMismatch);
+        resolverCalls.ShouldBe(0);
+    }
+
     /// <summary>V017 proves every one of the eleven encoded AAD fields is independently authenticated.</summary>
     [Theory]
-    [InlineData(14)]
-    [InlineData(28)]
-    [InlineData(41)]
-    [InlineData(55)]
-    [InlineData(107)]
-    [InlineData(119)]
-    [InlineData(151)]
-    [InlineData(161)]
-    [InlineData(180)]
-    [InlineData(193)]
-    [InlineData(215)]
+    [InlineData((byte)1)]
+    [InlineData((byte)2)]
+    [InlineData((byte)3)]
+    [InlineData((byte)4)]
+    [InlineData((byte)5)]
+    [InlineData((byte)6)]
+    [InlineData((byte)7)]
+    [InlineData((byte)8)]
+    [InlineData((byte)9)]
+    [InlineData((byte)10)]
+    [InlineData((byte)11)]
     [Trait("Vector", "V017")]
-    public void V017_AadFieldMatrix_AuthenticatesEveryField(int byteOffset)
+    public void V017_AadFieldMatrix_AuthenticatesEveryField(byte fieldIdentifier)
     {
+        using JsonDocument fixture = TestFixture.ReadFrozenFixture("g-001.json");
+        JsonElement field = fixture.RootElement
+            .GetProperty("aadFields")
+            .EnumerateArray()
+            .Single(value => value.GetProperty("id").GetByte() == fieldIdentifier);
         byte[] aad = TestFixture.Aad();
-        aad[byteOffset] ^= 1;
+        int fieldHeaderOffset = FindAadFieldHeader(aad, fieldIdentifier);
+        int valueOffset = fieldHeaderOffset + PayloadProtectionWireFormat.AadFieldHeaderBytes;
+        int valueLength = BinaryPrimitives.ReadInt32BigEndian(aad.AsSpan(fieldHeaderOffset + 2));
+        aad[fieldHeaderOffset].ShouldBe(fieldIdentifier);
+        aad[fieldHeaderOffset + 1].ShouldBe(field.GetProperty("type").GetByte());
+        Convert.ToHexString(aad.AsSpan(valueOffset, valueLength)).ToLowerInvariant().ShouldBe(
+            field.GetProperty("valueHex").GetString());
+
+        aad[valueOffset] ^= 1;
         Should.Throw<PayloadProtectionAuthenticationException>(
-                () => PayloadCryptography.Decrypt(TestFixture.Envelope(), aad, TestFixture.Dek()));
+            () => PayloadCryptography.Decrypt(TestFixture.Envelope(), aad, TestFixture.Dek()),
+            $"field={fieldIdentifier}");
     }
 
     private static async Task AssertLocalMismatchWithoutLookupAsync(byte[] envelope)
@@ -728,6 +872,23 @@ public sealed class CryptographyTests
         resolverCalls.ShouldBe(0);
     }
 
+    private static int FindAadFieldHeader(ReadOnlySpan<byte> aad, byte fieldIdentifier)
+    {
+        int offset = PayloadProtectionWireFormat.AadHeaderBytes;
+        while (offset < aad.Length)
+        {
+            if (aad[offset] == fieldIdentifier)
+            {
+                return offset;
+            }
+
+            int valueLength = BinaryPrimitives.ReadInt32BigEndian(aad[(offset + 2)..]);
+            offset = checked(offset + PayloadProtectionWireFormat.AadFieldHeaderBytes + valueLength);
+        }
+
+        throw new InvalidOperationException($"AAD field {fieldIdentifier} was not found.");
+    }
+
     private static PayloadProtectionEnvelope EncryptWithNonce(
         ReadOnlySpan<byte> plaintext,
         ReadOnlySpan<byte> aad,
@@ -742,7 +903,7 @@ public sealed class CryptographyTests
     private static string EncodeWithUncheckedNonce(PayloadProtectionEnvelope envelope)
     {
         byte[] canonicalNonce = new byte[PayloadProtectionLimits.NonceBytes];
-        System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(
+        BinaryPrimitives.WriteUInt64BigEndian(
             canonicalNonce.AsSpan(4),
             envelope.FieldOrdinal);
         byte[] encoded = EnvelopeCodec.Write(envelope with { Nonce = canonicalNonce });
@@ -757,7 +918,7 @@ public sealed class CryptographyTests
         byte[]? key = shape switch
         {
             "null" or "dek-null" => null,
-            "dek-length" => new byte[31],
+            "dek-length" => [.. Enumerable.Repeat((byte)0xa5, 31)],
             _ => TestFixture.Dek(),
         };
         if (key is not null)

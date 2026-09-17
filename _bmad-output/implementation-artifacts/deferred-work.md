@@ -4586,3 +4586,21 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
   summary: Add an authority-owned frozen snapshot golden and a non-empty AES-GCM known-answer vector, both of which require Story 8.2 fixture ownership.
   evidence: The snapshot wire format's only oracle is the implementation's own output, pinned as literals at `tests/Hexalith.EventStore.PayloadProtection.Tests/CryptographyTests.cs:56-69`; a repo-wide search for the manifest hex, AAD commitment and envelope tag hits only that file, and neither `scripts/payload-protection/verify-golden-vectors.py` nor its `.mjs` sibling mentions snapshots while `g-001.json` is event-only. Separately, the sole third-party known-answer test reads only `keyHex`/`ivHex`/`tagHex` from `nist-gcm-256-count0.json` and hard-codes empty plaintext, ciphertext and AAD (`CryptographyTests.cs:441-459`), so cross-implementation parity is proven only for zero-length input. Future regressions are caught in both cases, but an original encoding error would not be. Story 8.3's constraints forbid changing fixtures or verifiers, so both additions belong to the fixture owner; the in-scope halves (labelling the snapshot pins as story-owned, asserting the NIST fixture's four unread declared fields) are filed as chunk-4a patches.
+
+## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-17, fourth pass)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Preserve successful command-status `Retry-After` guidance in the public gateway Client result.
+  evidence: `CommandStatusController` emits `Retry-After: 1` for every non-terminal successful status, but `EventStoreGatewayClient.GetCommandStatusAsync` returns only `CommandStatusQueryResponse` and discards the response headers, so polling callers cannot follow the Server's advertised cadence. This public Client surface was separately authored outside Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Make the AggregateActor no-op checkpoint scrub assertion non-vacuous.
+  evidence: `ProcessCommand_NoOp_WithResultPayload_PreservesTerminalPayload` applies `ShouldAllBe(state => state.ResultPayload == null)` to `checkpointedStates` without first proving the collection contains the expected processing checkpoint, so removal of all checkpoint writes leaves the assertion green. The AggregateActor change and Server test are separately authored and excluded from Story 8.3.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Verify pre-cancelled `GetCommandStatusAsync` makes no request in the concrete HTTP gateway client.
+  evidence: Existing status-read tests do not cover an already-cancelled token on `EventStoreGatewayClient`; only the separately deferred legacy default cancellation path is named. A focused regression should require `OperationCanceledException` and zero handler requests in the separately authored Client suite.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-8-3-pdenc-v2-core-cryptographic-engine.md`
+  summary: Align invalid message-identifier validation between the legacy default and concrete command-status Client implementations.
+  evidence: `EventStoreGatewayClient.GetCommandStatusAsync` rejects null or whitespace identifiers, while the compatibility default on `IEventStoreGatewayClient` silently returns no status for the same values. This low-severity public Client consistency issue is separately authored outside Story 8.3.

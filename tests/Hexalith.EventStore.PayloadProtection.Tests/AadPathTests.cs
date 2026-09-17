@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Hexalith.EventStore.Contracts.Identity;
@@ -11,10 +10,10 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 /// </summary>
 public sealed class AadPathTests
 {
-    /// <summary>V018 binds tenant identity and rejects absent context.</summary>
+    /// <summary>V018 preserves Contracts tenant validation and authenticates valid tenant substitutions.</summary>
     [Fact]
     [Trait("Vector", "V018")]
-    public void V018_Tenant_IsRequiredAndAuthenticated()
+    public void V018_Tenant_UsesContractsValidationAndAuthenticatedSubstitution()
     {
         Should.Throw<ArgumentNullException>(() => AadCodec.Write(null!, "/email", TestFixture.KeyReference, 1, 0, new byte[32]));
         Should.Throw<ArgumentNullException>(() => TestFixture.Aad(TestFixture.Context() with { Identity = null! }));
@@ -28,10 +27,10 @@ public sealed class AadPathTests
         AssertAadSubstitutionFails(new AggregateIdentity("tenant-b", "parties", "party-01"));
     }
 
-    /// <summary>V019 binds domain identity.</summary>
+    /// <summary>V019 preserves Contracts domain validation and authenticates valid domain substitutions.</summary>
     [Fact]
     [Trait("Vector", "V019")]
-    public void V019_Domain_IsRequiredBoundedAndAuthenticated()
+    public void V019_Domain_UsesContractsValidationAndAuthenticatedSubstitution()
     {
         Should.Throw<ArgumentNullException>(() => new AggregateIdentity("tenant-a", null!, "party-01"));
         Should.Throw<ArgumentException>(() => new AggregateIdentity("tenant-a", string.Empty, "party-01"));
@@ -43,10 +42,10 @@ public sealed class AadPathTests
         AssertAadSubstitutionFails(new AggregateIdentity("tenant-a", "parties-x", "party-01"));
     }
 
-    /// <summary>V020 binds aggregate identity.</summary>
+    /// <summary>V020 preserves Contracts aggregate validation and authenticates valid aggregate substitutions.</summary>
     [Fact]
     [Trait("Vector", "V020")]
-    public void V020_Aggregate_IsRequiredBoundedAndAuthenticated()
+    public void V020_Aggregate_UsesContractsValidationAndAuthenticatedSubstitution()
     {
         Should.Throw<ArgumentNullException>(() => new AggregateIdentity("tenant-a", "parties", null!));
         Should.Throw<ArgumentException>(() => new AggregateIdentity("tenant-a", "parties", string.Empty));
@@ -100,6 +99,24 @@ public sealed class AadPathTests
         }
     }
 
+    /// <summary>Verifies the exact snapshot type byte maximum and the strict ASCII requirement.</summary>
+    [Fact]
+    public void SnapshotTypeId_EnforcesExactByteBoundariesAndAscii()
+    {
+        const string prefix = "hx-snapshot-v1:";
+        string exactMaximum = prefix + new string('a', 128 - prefix.Length);
+
+        AadCodec.ValidateContext(
+            TestFixture.SnapshotContext(exactMaximum),
+            PayloadProtectionPayloadKind.Snapshot);
+        Should.Throw<PayloadProtectionFormatException>(() => AadCodec.ValidateContext(
+            TestFixture.SnapshotContext(exactMaximum + "a"),
+            PayloadProtectionPayloadKind.Snapshot));
+        Should.Throw<PayloadProtectionFormatException>(() => AadCodec.ValidateContext(
+            TestFixture.SnapshotContext(prefix + "café"),
+            PayloadProtectionPayloadKind.Snapshot));
+    }
+
     /// <summary>Verifies pre-material AAD validation derives and enforces the payload kind from the canonical path shape.</summary>
     [Fact]
     public void PreMaterialValidation_RejectsPayloadKindAndPathShapeMismatch()
@@ -113,6 +130,16 @@ public sealed class AadPathTests
             commitment));
         Should.Throw<PayloadProtectionFormatException>(() => AadCodec.ValidateBeforeMaterial(
             TestFixture.SnapshotContext(),
+            "/value",
+            0,
+            commitment));
+        Should.Throw<PayloadProtectionFormatException>(() => AadCodec.ValidateBeforeMaterial(
+            TestFixture.Context(),
+            "/value",
+            0,
+            new byte[31]));
+        Should.Throw<PayloadProtectionFormatException>(() => AadCodec.ValidateBeforeMaterial(
+            TestFixture.Context() with { PayloadKind = (PayloadProtectionPayloadKind)99 },
             "/value",
             0,
             commitment));
@@ -160,16 +187,19 @@ public sealed class AadPathTests
     {
         byte[] baseline = TestFixture.Aad();
         int fieldHeaderOffset = FindAadFieldHeader(baseline, 8);
-        int formatOffset = fieldHeaderOffset + 6;
-        baseline.AsSpan(formatOffset, 13).SequenceEqual("json+pdenc-v2"u8).ShouldBeTrue();
+        int formatOffset = fieldHeaderOffset + PayloadProtectionWireFormat.AadFieldHeaderBytes;
+        int formatLength = PayloadProtectionWireFormat.ProtectedSerializationFormatUtf8.Length;
+        baseline.AsSpan(formatOffset, formatLength)
+            .SequenceEqual(PayloadProtectionWireFormat.ProtectedSerializationFormatUtf8)
+            .ShouldBeTrue();
 
-        byte[] missing = [.. baseline.AsSpan(0, fieldHeaderOffset), .. baseline.AsSpan(formatOffset + 13)];
+        byte[] missing = [.. baseline.AsSpan(0, fieldHeaderOffset), .. baseline.AsSpan(formatOffset + formatLength)];
         AssertRawAadSubstitutionFails(missing);
-        byte[] empty = [.. baseline.AsSpan(0, formatOffset), .. baseline.AsSpan(formatOffset + 13)];
+        byte[] empty = [.. baseline.AsSpan(0, formatOffset), .. baseline.AsSpan(formatOffset + formatLength)];
         empty.AsSpan(fieldHeaderOffset + 2, 4).Clear();
         AssertRawAadSubstitutionFails(empty);
         byte[] v1 = [.. baseline];
-        v1[formatOffset + 12] = (byte)'1';
+        v1[formatOffset + formatLength - 1] = (byte)'1';
         AssertRawAadSubstitutionFails(v1);
     }
 
@@ -181,6 +211,10 @@ public sealed class AadPathTests
     [InlineData("01j00000000000000000000000", (uint)1)]
     [InlineData("81J00000000000000000000000", (uint)1)]
     [InlineData("01I00000000000000000000000", (uint)1)]
+    [InlineData("01L00000000000000000000000", (uint)1)]
+    [InlineData("01O00000000000000000000000", (uint)1)]
+    [InlineData("01U00000000000000000000000", (uint)1)]
+    [InlineData("01J000000000000000000000000", (uint)1)]
     [InlineData("01J00000000000000000000000", (uint)0)]
     [Trait("Vector", "V024")]
     public void V024_KeyReferenceAndVersion_InvalidSourcesAreRejected(string? keyReference, uint version)
@@ -307,7 +341,31 @@ public sealed class AadPathTests
         AssertRawAadSubstitutionFails(aad);
     }
 
-    /// <summary>V029 accepts NFC and rejects decomposed or unpaired-surrogate sources.</summary>
+    /// <summary>V028 proves field boundaries remain injective when adjacent values contain delimiter-like text.</summary>
+    [Fact]
+    [Trait("Vector", "V028")]
+    public void V028_LengthDelimitedFields_PreventCrossFieldBoundaryCollisions()
+    {
+        byte[] typePathLeft = TestFixture.Aad(
+            TestFixture.Context() with { PayloadTypeId = "x/y" },
+            "/z");
+        byte[] typePathRight = TestFixture.Aad(
+            TestFixture.Context() with { PayloadTypeId = "x" },
+            "/y/z");
+        typePathLeft.ShouldNotBe(typePathRight);
+
+        byte[] identityLeft = TestFixture.Aad(TestFixture.Context() with
+        {
+            Identity = new AggregateIdentity("x-y", "z", "party-01"),
+        });
+        byte[] identityRight = TestFixture.Aad(TestFixture.Context() with
+        {
+            Identity = new AggregateIdentity("x", "y-z", "party-01"),
+        });
+        identityLeft.ShouldNotBe(identityRight);
+    }
+
+    /// <summary>V029 accepts NFC and rejects decomposed sources.</summary>
     [Theory]
     [InlineData("T\u00e9", true)]
     [InlineData("Te\u0301", false)]
@@ -322,9 +380,16 @@ public sealed class AadPathTests
         else
         {
             Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(changed));
-            PayloadProtectionContext surrogate = TestFixture.Context() with { PayloadTypeId = "T\ud800" };
-            Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(surrogate));
         }
+    }
+
+    /// <summary>V029 rejects an unpaired-surrogate source independently of normalization theory data.</summary>
+    [Fact]
+    [Trait("Vector", "V029")]
+    public void V029_UnpairedSurrogate_IsRejected()
+    {
+        PayloadProtectionContext surrogate = TestFixture.Context() with { PayloadTypeId = "T\ud800" };
+        Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(surrogate));
     }
 
     /// <summary>V029 accepts printable boundaries and rejects every frozen control boundary.</summary>
@@ -363,7 +428,14 @@ public sealed class AadPathTests
         var identity = new AggregateIdentity(new string('t', 64), new string('d', 64), new string('a', 256));
         PayloadProtectionContext context = TestFixture.Context() with { Identity = identity, PayloadTypeId = payloadType };
         byte[] maximum = TestFixture.Aad(context, path);
-        maximum.Length.ShouldBe(3617);
+        const int schemaOnlyMaximum = 3873;
+        const int contractsTenantMaximum = 64;
+        const int contractsDomainMaximum = 64;
+        const int aadTenantMaximum = 256;
+        const int aadDomainMaximum = 128;
+        const int constructibilityDelta = (aadTenantMaximum - contractsTenantMaximum)
+            + (aadDomainMaximum - contractsDomainMaximum);
+        maximum.Length.ShouldBe(schemaOnlyMaximum - constructibilityDelta);
         maximum.Length.ShouldBeLessThan(PayloadProtectionLimits.AadBytes);
         Should.Throw<PayloadProtectionFormatException>(() => TestFixture.Aad(context, path + "x"));
     }
@@ -429,6 +501,7 @@ public sealed class AadPathTests
     [InlineData("/items/00", false)]
     [InlineData("/items/-", false)]
     [InlineData("/items/+1", false)]
+    [InlineData("/items/11", false)]
     [Trait("Vector", "V033")]
     public void V033_ArrayIndices_UseCanonicalDecimal(string pointer, bool valid)
     {

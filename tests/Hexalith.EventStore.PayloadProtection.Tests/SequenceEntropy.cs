@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+
 namespace Hexalith.EventStore.PayloadProtection.Tests;
 
 /// <summary>
@@ -8,6 +10,7 @@ internal sealed class SequenceEntropy : IPayloadProtectionEntropy
     private readonly Action? _keyReferenceCheckpoint;
     private readonly Exception? _fillException;
     private readonly Queue<string> _references;
+    private readonly Lock _sync = new();
     private int _fill;
 
     /// <summary>Initializes deterministic entropy with an optional post-reference checkpoint.</summary>
@@ -22,12 +25,20 @@ internal sealed class SequenceEntropy : IPayloadProtectionEntropy
     }
 
     /// <summary>Gets how many DEKs were filled.</summary>
-    internal int FillCount => _fill;
+    internal int FillCount => Volatile.Read(ref _fill);
 
     /// <inheritdoc/>
     public string CreateKeyReference()
     {
-        string result = _references.Dequeue();
+        string result;
+        lock (_sync)
+        {
+            if (!_references.TryDequeue(out result!))
+            {
+                throw new InvalidOperationException("The deterministic key-reference sequence is exhausted.");
+            }
+        }
+
         _keyReferenceCheckpoint?.Invoke();
         return result;
     }
@@ -35,7 +46,17 @@ internal sealed class SequenceEntropy : IPayloadProtectionEntropy
     /// <inheritdoc/>
     public void FillDataEncryptionKey(Span<byte> destination)
     {
-        destination.Fill(checked((byte)Interlocked.Increment(ref _fill)));
+        int fill = Interlocked.Increment(ref _fill);
+        if (fill <= byte.MaxValue)
+        {
+            destination.Fill(checked((byte)fill));
+        }
+        else
+        {
+            destination.Clear();
+            BinaryPrimitives.WriteInt32BigEndian(destination[^sizeof(int)..], fill);
+        }
+
         if (_fillException is not null)
         {
             throw _fillException;

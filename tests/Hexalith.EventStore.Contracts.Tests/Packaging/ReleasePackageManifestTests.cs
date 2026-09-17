@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using YamlDotNet.RepresentationModel;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
@@ -968,12 +969,56 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
+    public void Payload_protection_workflow_preserves_the_complete_blocking_vector_lane()
+    {
+        string root = FindRepositoryRoot();
+        using var reader = new StreamReader(Path.Combine(root, ".github", "workflows", "payload-protection.yml"));
+        var yaml = new YamlStream();
+        yaml.Load(reader);
+
+        YamlMappingNode document = yaml.Documents.Single().RootNode.ShouldBeOfType<YamlMappingNode>();
+        YamlMappingNode jobs = document.Children[new YamlScalarNode("jobs")]
+            .ShouldBeOfType<YamlMappingNode>();
+        YamlMappingNode job = jobs.Children[new YamlScalarNode("payload-protection")]
+            .ShouldBeOfType<YamlMappingNode>();
+        YamlSequenceNode steps = job.Children[new YamlScalarNode("steps")]
+            .ShouldBeOfType<YamlSequenceNode>();
+        YamlMappingNode testStep = steps.Children
+            .Select(static node => node.ShouldBeOfType<YamlMappingNode>())
+            .Single(step => step.Children.TryGetValue(new YamlScalarNode("name"), out YamlNode? name)
+                && name is YamlScalarNode { Value: "Run PayloadProtection vectors" });
+        string command = testStep.Children[new YamlScalarNode("run")]
+            .ShouldBeOfType<YamlScalarNode>()
+            .Value
+            .ShouldNotBeNull();
+
+        job.Children.ContainsKey(new YamlScalarNode("if")).ShouldBeFalse();
+        job.Children.ContainsKey(new YamlScalarNode("continue-on-error")).ShouldBeFalse();
+        testStep.Children.ContainsKey(new YamlScalarNode("if")).ShouldBeFalse();
+        testStep.Children.ContainsKey(new YamlScalarNode("continue-on-error")).ShouldBeFalse();
+        command.ShouldNotContain("#");
+        command.ShouldNotContain(";");
+        command.ShouldNotContain("||");
+        string[] arguments = Regex.Split(command.Trim(), @"\s+");
+        arguments[0].ShouldBe("dotnet");
+        arguments[1].ShouldBe("test");
+        arguments.Count(static argument => argument == "--project").ShouldBe(1);
+        arguments[Array.IndexOf(arguments, "--project") + 1].ShouldBe(
+            "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj");
+        arguments.Count(static argument => argument == "--minimum-expected-tests").ShouldBe(1);
+        arguments[Array.IndexOf(arguments, "--minimum-expected-tests") + 1].ShouldBe("290");
+        arguments.Count(static argument => argument == "--fail-skips").ShouldBe(1);
+        arguments[Array.IndexOf(arguments, "--fail-skips") + 1].ShouldBe("on");
+    }
+
+    [Fact]
     public void Test_projects_are_classified_into_release_live_advisory_or_deferred_lanes()
     {
         string root = FindRepositoryRoot();
         string ci = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string advisory = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
+        string payloadProtection = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"));
         string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
         string[] deferredProjects = DeferredTestLaneProjects(docs);
 
@@ -991,6 +1036,7 @@ public sealed class ReleasePackageManifestTests
             bool classified = ci.Contains(project, StringComparison.Ordinal)
                 || integration.Contains(project, StringComparison.Ordinal)
                 || advisory.Contains(project, StringComparison.Ordinal)
+                || payloadProtection.Contains(project, StringComparison.Ordinal)
                 || deferredProjects.Contains(project, StringComparer.Ordinal);
             if (!classified)
             {

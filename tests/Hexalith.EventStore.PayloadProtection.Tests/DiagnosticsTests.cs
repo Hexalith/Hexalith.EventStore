@@ -200,7 +200,8 @@ public sealed class DiagnosticsTests
             keyResolver: (_, _, _) => ValueTask.FromResult<byte[]?>(null));
         _ = await TestFixture.UnprotectAsync(
             TestFixture.WrapperPayloadBytes(),
-            keyResolver: (_, _, _) => ValueTask.FromResult<byte[]?>(new byte[31]));
+            keyResolver: (_, _, _) => ValueTask.FromResult<byte[]?>(
+                [.. Enumerable.Repeat((byte)0xa5, 31)]));
         Should.Throw<PayloadProtectionCryptographicException>(() => new PayloadProtectionCore().ProtectEvent(
             "{\"value\":1}"u8.ToArray(),
             ["/value"],
@@ -382,6 +383,10 @@ public sealed class DiagnosticsTests
 
         string path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "vector-execution.json");
         using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(path));
+        document.RootElement.GetProperty("schemaVersion").GetInt32().ShouldBe(1);
+        document.RootElement.GetProperty("story").GetString().ShouldBe("8.3");
+        string[] manifestProperties = [.. document.RootElement.EnumerateObject().Select(static property => property.Name)];
+        manifestProperties.ShouldBe(["schemaVersion", "story", "normativeDigest", "inherited", "owned"]);
         string[] inherited = [.. document.RootElement.GetProperty("inherited").EnumerateArray().Select(static value => value.GetString()!)];
         string[] owned = [.. document.RootElement.GetProperty("owned").EnumerateArray().Select(static value => value.GetString()!)];
         inherited.ShouldBe(["V001", "V002", "V003"]);
