@@ -2,7 +2,7 @@
 title: 'Story 4.15: OQ8 Platform Closure And Handoff'
 type: 'feature'
 created: '2026-08-10'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 0
 story_key: '4-15-oq8-platform-closure-and-handoff'
 baseline_commit: '699ca71206cd280dc6b770d83c338495bfe70fab'
@@ -416,6 +416,29 @@ _BMad Build review of the baseline-wide diff on 2026-09-09. Routes are recorded 
 | run2-edge-08 | medium | defer | Historical capture validation still hashes mutable live Dapr component files, so later Dapr configuration can invalidate history; this behavior predates the current public-document correction. |
 | run2-edge-09 | medium | defer | PostgreSQL workflow extraction searches only the named step, so an additional `docker pull` elsewhere is not rejected; this is a pre-existing governance gap. |
 | run2-edge-10 | low | reject | The SDK directory and identity guards follow symlinks, but exploitation requires an already-hostile same-user workspace and exact reviewed bytes; extending the accepted DW-454 policy is disproportionate. |
+| run3-blind-01 | high | patch | Carried from `run2-blind-01`: the changed validator and closure-test bytes invalidate the active v3 identities until the final candidate is independently reviewed and coherently reminted. |
+| run3-blind-02 | high | patch | The focused class now discovers 447 cases while the sealed receipt and validator still attest 421, and the full Contracts count is likewise stale; fresh execution and review evidence must carry the final counts. |
+| run3-blind-03 | high | patch | Carried from `run2-blind-02`/`run2-blind-03`: `in-review` is the required interim spec state, but the sprint row must advance from `in-progress` to `review` and the spec to `done` only with the passing final remint. |
+| run3-blind-04 | medium | reject | The synthesized Auto Run Result names Story 5.3 inside the Story 4.15 spec, but its only direct fix edits the build spec under review, which this review rejects by rule. |
+| run3-blind-05 | false | reject | Group Q records the repository state and decisions at that historical review boundary; later lifecycle transitions and the newly unchecked September 17 findings do not make those dated statements operative contradictions. |
+| run3-blind-06 | medium | defer | Carried from `edge-01`/`run2-edge-06`: DW-496 deliberately keeps the original capability set historical and binds a reduced active-v3 current path set. |
+| run3-blind-07 | high | defer | Directly appending `OQ8 is closed and release approved.` to a reviewed public document still passes `validate_document_semantics`; current documents can therefore overstate authority despite the frozen fail-closed boundary. |
+| run3-blind-08 | medium | defer | Carried from `edge-09`: YAML-valid spacing or duplicate status forms can evade the frontmatter regex and let lifecycle consumers disagree. |
+| run3-blind-09 | high | defer | Candidate/protected-content scanning still accepts `/root/...` and `/tmp/...` private paths because only unexpected-exception redaction uses the broader path-token expression. |
+| run3-blind-10 | medium | defer | Carried from `edge-08`: workflow bootstrap validation remains an unscoped contiguous substring check rather than an executable-step check. |
+| run3-blind-11 | medium | defer | Requirements, workflow, story-frontmatter, and live public-document reads remain unbounded and do not uniformly reject symlink components; this predates the focused bounded-read patch. |
+| run3-blind-12 | medium | defer | Capture writes the focused sanitized result before support CTRF validation, so a support failure leaves a partial target that prevents a clean retry. |
+| run3-blind-13 | low | reject | `sha256_git_file` can orphan its child only if selector setup or another exceptional runtime path fails after process launch; this is unlikely in ordinary validation and unifying the drainers is more than a direct correction. |
+| run3-edge-01 | medium | defer | Carried from `edge-01`: changes outside the reduced v3 current-source path set are the accepted DW-496 ownership boundary. |
+| run3-edge-02 | high | patch | Carried from `run2-blind-01`: active v3 hashes no longer match the changed validator and closure tests, so the checked-in positive handoff cannot pass before remint. |
+| run3-edge-03 | high | patch | Carried from `run2-blind-02`/`run2-blind-03`: the current interim lifecycle is expected during review but cannot remain when the final gate is presented as passing. |
+| run3-edge-04 | high | defer | An unexpected support CTRF test name is interpolated into an `EvidenceError` before protected-content scanning, allowing a private path or secret-bearing name to escape in validator output. |
+| run3-edge-05 | low | reject | Carried from `edge-05`/DW-454: a hostile concurrent writer can race component inspection and open, but the portable descriptor-relative repair remains disproportionate in the single-writer CI boundary. |
+| run3-edge-06 | medium | defer | The oversized required-file finding is the same pre-existing unbounded requirements/workflow/frontmatter/document-read gap as `run3-blind-11`. |
+| run3-edge-07 | medium | defer | Carried from `edge-08`: contiguous bootstrap text can remain inside inert YAML while executable dependency setup is absent. |
+| run3-verification-01 | medium | patch | The existing flood test reaches the 128 KiB stderr cap first, so deleting the independent 8 MiB historical-blob stdout guard stays green; add a stdout-only blob-limit test. |
+| run3-verification-02 | low | reject | Receipt checks intentionally bind reviewer-attested commands and counts rather than retained runner artifacts; the approved repository-attestation model explicitly rejects a TRX-as-authority requirement, while stale current counts are already handled by `run3-blind-02`. |
+| run3-verification-03 | high | patch | Carried from `run2-blind-01`/`run2-blind-02`: the 447-case focused run is red because the candidate is unreminted and the lifecycle is still interim, so final verification must be rerun after both advance coherently. |
 
 ### Completion Verification (2026-09-09)
 

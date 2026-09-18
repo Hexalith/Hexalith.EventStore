@@ -4636,3 +4636,19 @@ status: open
   severity: high
   status: open
   evidence: `validate_source_state` claims all 24 non-evolved capability paths must remain byte-equivalent but verifies them only at `LANDED_SOURCE` and `COMPLETED_V1_CLOSURE_COMMIT`; active v3 binds a smaller current path set. This is the already accepted DW-496 gap and requires a sealed-packet remint rather than a local mechanical patch.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Reject positive release, Folders-closure, or production-readiness claims in current OQ8 public documents.
+  evidence: `validate_document_semantics` checks required phrases and three stale-state literals but does not apply `FORBIDDEN_CLAIM_RE`; appending `OQ8 is closed and release approved.` to a reviewed document was directly accepted.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Apply complete private-path and protected-content sanitization to candidate evidence and validator diagnostics.
+  evidence: Candidate scanning still accepts `/root/...` and `/tmp/...`, and an unexpected support CTRF test name is interpolated into an `EvidenceError` before protected-content scanning, so private path or secret-bearing text can escape despite the frozen leakage boundary.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Bound and reject symlinks for every required OQ8 requirements, workflow, frontmatter, and live-document read.
+  evidence: Those paths still use unbounded `read_text` after the focused candidate, historical-artifact, and sprint-status hardening, so oversized or redirected files can allocate before a controlled failure.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Make OQ8 capture publication transactional across focused and deterministic-support CTRF validation.
+  evidence: `validate_capture` writes `test-results.json` before validating the support CTRF; a support failure leaves a partial target that makes the next clean retry reject the capture directory.

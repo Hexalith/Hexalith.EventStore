@@ -33,6 +33,10 @@ public sealed class Oq8PlatformClosureTests
         "\"eventStorePlatformComplete\"\\s*:\\s*true",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
+    private static readonly Regex RequirementHash = new(
+        "(?<=--hash=sha256:)[0-9a-f]{64}",
+        RegexOptions.CultureInvariant,
+        TimeSpan.FromSeconds(1));
 
     private static readonly string[] SharedFixtureSourceFiles =
     [
@@ -115,6 +119,70 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
+    /// Verifies immutable v1 Dapr identities resolve from the completed-v1 Git snapshot, not later live YAML.
+    /// </summary>
+    [Fact]
+    public void HistoricalV1DaprIdentitiesIgnoreLaterRepositoryConfiguration()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            File.AppendAllText(Path.Combine(fixture, "deploy", "dapr", "statestore-postgresql.yaml"), "\n# later state component\n");
+            File.AppendAllText(Path.Combine(fixture, "deploy", "dapr", "resiliency.yaml"), "\n# later resiliency policy\n");
+
+            (int exitCode, string output) = RunValidator(
+                root,
+                fixture,
+                additionalArguments: ["--historical-v1-only"]);
+
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("v1 historical evidence validation passed; v1 does not authorize current source");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a fresh observation cannot validate when a bound live Dapr configuration input is missing.
+    /// </summary>
+    [Fact]
+    public void FreshObservationRequiresLiveDaprConfigurationInputs()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            File.Delete(Path.Combine(fixture, "deploy", "dapr", "resiliency.yaml"));
+            string observationsPath = Path.Combine(
+                fixture,
+                "_bmad-output",
+                "implementation-artifacts",
+                "evidence",
+                "story-4-14",
+                "e60a3777c581d70b62f67173ccc2372b5b64a425",
+                "observations.json");
+
+            (int exitCode, string output) = RunObservationValidator(
+                root,
+                observationsPath,
+                "1.16.1",
+                "postgres:18.4",
+                fixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Cannot hash evidence path deploy/dapr/resiliency.yaml");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies <c>--historical-v2-only</c> validates v1/v2 without authorizing current source.
     /// </summary>
     [Fact]
@@ -179,8 +247,6 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("oversized-artifact", "Story 4.15 v2 artifact limitations.json exceeds the 65536-byte limit")]
     [InlineData("predecessor-mismatch", "Story 4.15 v2 predecessor link drift")]
     [InlineData("source-drift", "Story 4.15 v2 historical source identity drift: .github/workflows/integration.yml")]
-    [InlineData("semantic-workflow-tag", "Story 4.15 v2 historical source identity drift: .github/workflows/integration.yml")]
-    [InlineData("semantic-fixture-tag", "Story 4.15 v2 historical source identity drift: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs")]
     [InlineData("gate-input-drift", "Story 4.15 v2 historical gate-input identity drift: docs/ci.md")]
     [InlineData("reviewed-index-boolean", "Story 4.15 v2 reviewed index authority type drift")]
     [InlineData("pre-review-name", "Story 4.15 v2 pre-review command name drift: postgres-image-governance")]
@@ -324,6 +390,12 @@ public sealed class Oq8PlatformClosureTests
     /// <param name="expected">The specific diagnostic expected from the validator.</param>
     [Theory]
     [InlineData("missing-successor", "Story 4.15 v3 successor directory is missing or symlinked")]
+    [InlineData("additional-artifact", "Story 4.15 v3 successor file set drift")]
+    [InlineData("reordered-manifest", "Story 4.15 v3 closure manifest is not path-sorted")]
+    [InlineData("malformed-manifest", "Malformed Story 4.15 v3 closure manifest line")]
+    [InlineData("symlinked-artifact", "Story 4.15 v3 artifact limitations.json has a symlinked path component")]
+    [InlineData("symlinked-v3-ancestor", "Story 4.15 v3 successor directory has a symlinked path component")]
+    [InlineData("oversized-artifact", "Story 4.15 v3 artifact limitations.json exceeds the 65536-byte limit")]
     [InlineData("source-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
     [InlineData("oversized-source", "Story 4.15 v3 bound source docs/ci.md exceeds the 524288-byte limit")]
     [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/ci.yml has a symlinked path component")]
@@ -332,6 +404,8 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("landed-source-drift", "Story 4.15 v3 landed source identity drift")]
     [InlineData("head-ancestry-drift", "Story 4.15 v3 HEAD ancestry declaration drift")]
     [InlineData("sdk-link-drift", "Story 4.15 v3 historical SDK successor link drift")]
+    [InlineData("semantic-workflow-image", "Story 4.15 v3 current source PostgreSQL image drift: .github/workflows/integration.yml")]
+    [InlineData("semantic-fixture-image", "Story 4.15 v3 current source PostgreSQL image drift: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs")]
     [InlineData("pre-review-future", "Story 4.15 v3 pre-review execution timestamp is later than current UTC")]
     [InlineData("subject-future", "Story 4.15 v3 review-subject freeze timestamp is later than current UTC")]
     [InlineData("receipt-future", "Story 4.15 v3 security receipt timestamp is later than current UTC")]
@@ -495,6 +569,9 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("reviewed-base-wording")]
     [InlineData("reviewed-resolver-count")]
     [InlineData("review-external-authority")]
+    [InlineData("coherent-sdk-reseal")]
+    [InlineData("additional-sdk-artifact")]
+    [InlineData("symlinked-sdk-ancestor")]
     [InlineData("selector-symlink")]
     [Trait("OQ8Phase", "FinalOnly")]
     public void SuccessorSealMutationsFailClosed(string mutation)
@@ -557,7 +634,7 @@ public sealed class Oq8PlatformClosureTests
                         "Four focused Docker published-port resolver cases and the production OQ8 case passed with no failures or skips.";
                     WriteObject(reviewPath, review);
                     ResealSuccessorArtifacts(artifacts);
-                    expected = "Story 4.15 successor test review findings drift";
+                    expected = "Story 4.15 historical successor manifest identity drift";
                     break;
                 }
                 case "review-external-authority":
@@ -568,7 +645,32 @@ public sealed class Oq8PlatformClosureTests
                     review["authority"]!["externalRepositoryAuthority"] = true;
                     WriteObject(reviewPath, review);
                     ResealSuccessorArtifacts(artifacts);
-                    expected = "External authority overstated: externalRepositoryAuthority";
+                    expected = "Story 4.15 historical successor manifest identity drift";
+                    break;
+                }
+                case "coherent-sdk-reseal":
+                {
+                    string successor = SuccessorPath(artifacts);
+                    string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+                    WriteObject(identityPath, LoadObject(identityPath));
+                    ResealSuccessorArtifacts(artifacts);
+                    expected = "Story 4.15 historical successor manifest identity drift";
+                    break;
+                }
+                case "additional-sdk-artifact":
+                {
+                    string successor = SuccessorPath(artifacts);
+                    File.WriteAllText(Path.Combine(successor, "unreviewed.json"), "{}\n");
+                    expected = "Story 4.15 successor directory file set drift";
+                    break;
+                }
+                case "symlinked-sdk-ancestor":
+                {
+                    string successor = SuccessorPath(artifacts);
+                    string targetPath = Path.Combine(fixture, "historical-sdk-successor-target");
+                    Directory.Move(successor, targetPath);
+                    CreateSymbolicLinkOrSkip(successor, targetPath, directory: true);
+                    expected = "Story 4.15 historical successor directory has a symlinked path component";
                     break;
                 }
                 case "selector-symlink":
@@ -716,6 +818,69 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
+    /// Verifies the validator rejects a same-shape but unapproved dependency artifact hash.
+    /// </summary>
+    [Fact]
+    public void ExactRequirementsHashDriftFailsClosed()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            string requirementsPath = Path.Combine(fixture, "requirements-oq8.txt");
+            string requirements = File.ReadAllText(requirementsPath);
+            Match hash = RequirementHash.Match(requirements);
+            hash.Success.ShouldBeTrue();
+            File.WriteAllText(
+                requirementsPath,
+                requirements.Remove(hash.Index, hash.Length).Insert(hash.Index, new string('0', 64)));
+
+            (int exitCode, string output) = RunValidator(root, fixture, lifecycleMode: "final");
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("OQ8 validator dependency requirement drift");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies mismatched frontmatter quote delimiters cannot satisfy the final lifecycle gate.
+    /// </summary>
+    [Fact]
+    public void MismatchedFrontmatterStatusQuotesFailClosed()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            string specPath = Path.Combine(
+                fixture,
+                "_bmad-output",
+                "implementation-artifacts",
+                "spec-4-15-oq8-platform-closure-and-handoff.md");
+            string spec = File.ReadAllText(specPath).Replace(
+                "status: 'done'",
+                "status: 'done\"",
+                StringComparison.Ordinal);
+            File.WriteAllText(specPath, spec);
+
+            (int exitCode, string output) = RunValidator(root, fixture, lifecycleMode: "final");
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Story 4.15 frontmatter status is missing or ambiguous");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies fresh capture validation requires exactly one explicit runtime while
     /// committed Story 4.14 evidence remains pinned to its observed runtime.
     /// </summary>
@@ -821,6 +986,8 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("nested-missing")]
     [InlineData("postgres-image-drift")]
     [InlineData("postgres-image-identity")]
+    [InlineData("state-component-identity")]
+    [InlineData("resiliency-identity")]
     [InlineData("schema-version-boolean")]
     [InlineData("capture-date-noncanonical")]
     [InlineData("capture-date-invalid")]
@@ -828,6 +995,10 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("counter-boolean")]
     [InlineData("counter-float")]
     [InlineData("counter-negative")]
+    [InlineData("admission-row-delta")]
+    [InlineData("terminal-row-delta")]
+    [InlineData("tombstone-row-delta")]
+    [InlineData("total-row-delta")]
     [InlineData("protected-before")]
     public void FreshObservationSchemaAndSemanticMutationsFailClosed(string mutation)
     {
@@ -868,6 +1039,12 @@ public sealed class Oq8PlatformClosureTests
                 case "postgres-image-identity":
                     observations["runtime"]!["postgresImageIdentity"] = "sha256:1234";
                     break;
+                case "state-component-identity":
+                    observations["profile"]!["stateComponentSha256"] = new string('0', 64);
+                    break;
+                case "resiliency-identity":
+                    observations["profile"]!["resiliencySha256"] = new string('0', 64);
+                    break;
                 case "schema-version-boolean":
                     observations["schemaVersion"] = true;
                     break;
@@ -888,6 +1065,18 @@ public sealed class Oq8PlatformClosureTests
                     break;
                 case "counter-negative":
                     observations["observations"]!["capture"]!["after"]!["totalRows"] = -1;
+                    break;
+                case "admission-row-delta":
+                    observations["observations"]!["capture"]!["after"]!["admissionRows"] = 0;
+                    break;
+                case "terminal-row-delta":
+                    observations["observations"]!["capture"]!["after"]!["terminalRows"] = 0;
+                    break;
+                case "tombstone-row-delta":
+                    observations["observations"]!["capture"]!["after"]!["tombstoneRows"] = 0;
+                    break;
+                case "total-row-delta":
+                    observations["observations"]!["capture"]!["after"]!["totalRows"] = 0;
                     break;
                 case "protected-before":
                     observations["observations"]!["capture"]!["before"]!["protectedSentinelMatches"] = 1;
@@ -1078,6 +1267,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("malformed-json-crosswalk")]
     [InlineData("malformed-json-packet")]
     [InlineData("invalid-utf8-packet")]
+    [InlineData("oversized-packet")]
     [InlineData("closure-manifest-malformed-line")]
     [Trait("OQ8Phase", "FinalOnly")]
     public void EvidenceDriftAndMissingApprovalFailClosed(string mutation)
@@ -1304,12 +1494,17 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("candidate-infinity-subject")]
     [InlineData("candidate-malformed-subject")]
     [InlineData("candidate-invalid-utf8-subject")]
+    [InlineData("candidate-oversized-subject")]
     [InlineData("candidate-document-semantics")]
     [InlineData("candidate-document-stale-state")]
     [InlineData("candidate-story-status-done")]
     [InlineData("candidate-frontmatter-done")]
     [InlineData("candidate-focused-test-shape")]
     [InlineData("candidate-focused-schema-boolean")]
+    [InlineData("candidate-packet-schema-boolean")]
+    [InlineData("candidate-environment-schema-boolean")]
+    [InlineData("candidate-commands-schema-boolean")]
+    [InlineData("candidate-review-records-schema-boolean")]
     [InlineData("candidate-focused-duration-boolean")]
     [InlineData("candidate-focused-duration-negative")]
     [InlineData("candidate-focused-duration-nonfinite")]
@@ -1572,6 +1767,46 @@ public sealed class Oq8PlatformClosureTests
         {
             Directory.Delete(fixture, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Verifies unexpected exception details redact complete private path tokens on POSIX and Windows.
+    /// </summary>
+    [Fact]
+    public void UnexpectedFailureDetailsRedactCompletePrivatePaths()
+    {
+        string root = FindRepositoryRoot();
+        using Process process = CreatePythonProcess(
+            """
+            import importlib.util
+            import sys
+
+            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+            validator = importlib.util.module_from_spec(specification)
+            specification.loader.exec_module(validator)
+
+            def fail_unexpectedly(*args, **kwargs):
+                raise RuntimeError(r"one=/home/alice/repo/secret.json two=/root/private/key three=/tmp/oq8/fixture four=C:\Users\Alice\secret.txt")
+
+            validator.validate_committed_packet = fail_unexpectedly
+            sys.argv = [sys.argv[0], "--root", sys.argv[2], "--git-root", sys.argv[2]]
+            raise SystemExit(validator.main())
+            """);
+        process.StartInfo.ArgumentList.Add(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
+        process.StartInfo.ArgumentList.Add(root);
+
+        (int exitCode, string output, bool timedOut) = RunProcess(process, 5_000);
+
+        timedOut.ShouldBeFalse("Unexpected-failure redaction probe timed out.");
+        exitCode.ShouldBe(1, output);
+        output.ShouldContain("Unexpected validator failure was safely bounded (RuntimeError)");
+        output.ShouldContain("<redacted-path>");
+        output.ShouldNotContain("alice");
+        output.ShouldNotContain("Alice");
+        output.ShouldNotContain("/root/private");
+        output.ShouldNotContain("/tmp/oq8");
+        output.ShouldNotContain("secret.txt");
+        output.ShouldNotContain("Traceback");
     }
 
     /// <summary>
@@ -1976,7 +2211,7 @@ public sealed class Oq8PlatformClosureTests
                     "inline-document-start" => "Sprint-status YAML stream must contain exactly one document",
                     "non-initial-bom" => "Sprint-status BOM is only permitted at stream start",
                     "non-printable-source" => "Sprint-status YAML source contains forbidden characters",
-                    "oversized-source" => "Sprint-status YAML source exceeds the bounded size limit",
+                    "oversized-source" => "Sprint-status YAML source exceeds the 1048576-byte limit",
                     "duplicate-unrelated-key" => "Lifecycle status mapping contains a duplicate key",
                     _ => "Unsupported sprint-status mapping structure",
                 });
@@ -2233,15 +2468,14 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies missing status, spec, documentation, configuration, evidence, and closure paths fail without a traceback.
+    /// Verifies missing status, spec, documentation, evidence, and closure paths fail without a traceback.
     /// </summary>
     /// <param name="relative">The required fixture path to remove.</param>
     /// <param name="expected">The bounded validation failure fragment.</param>
     [Theory]
-    [InlineData("_bmad-output/implementation-artifacts/sprint-status.yaml", "Cannot read evidence path")]
+    [InlineData("_bmad-output/implementation-artifacts/sprint-status.yaml", "Sprint-status YAML source is missing")]
     [InlineData("_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md", "Cannot hash evidence path")]
     [InlineData("docs/concepts/architecture-overview.md", "Cannot read evidence path")]
-    [InlineData("deploy/dapr/resiliency.yaml", "Cannot hash evidence path")]
     [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425/observations.json", "Evidence directory file set drift")]
     [InlineData("_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4/reviews/security.json", "Closure directory file set drift")]
     [Trait("OQ8Phase", "FinalOnly")]
@@ -2300,6 +2534,39 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(1, output);
             output.ShouldContain(closure ? "Closure directory file set drift" : "Evidence directory file set drift");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the immutable v1 closure cannot be reached through a symlinked directory component.
+    /// </summary>
+    [Fact]
+    public void V1ClosureRejectsSymlinkedDirectoryComponent()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            string closure = Path.Combine(
+                fixture,
+                "_bmad-output",
+                "implementation-artifacts",
+                "evidence",
+                "story-4-15",
+                LandedSource);
+            string target = Path.Combine(fixture, "v1-closure-target");
+            Directory.Move(closure, target);
+            CreateSymbolicLinkOrSkip(closure, target, directory: true);
+
+            (int exitCode, string output) = RunValidator(root, fixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("has a symlinked path component");
             output.ShouldNotContain("Traceback");
         }
         finally
@@ -2446,6 +2713,52 @@ public sealed class Oq8PlatformClosureTests
             exitCode.ShouldBe(1, output);
             output.ShouldContain("Git historical-blob identity proof");
             output.ShouldContain("exceeded output limit");
+            output.ShouldNotContain("Traceback");
+            output.Length.ShouldBeLessThan(4096);
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+            Directory.Delete(executableFixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the historical-blob reader independently caps stdout even when Git writes no stderr.
+    /// </summary>
+    [Fact]
+    public void GitHistoricalBlobStdoutLimitFailsSafely()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("POSIX git-shim blob-limit proof requires a Unix host.");
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string fixture = CreateCandidateFixture(root);
+        string executableFixture = Path.Combine(Path.GetTempPath(), "oq8-git-blob-flood-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(executableFixture);
+        try
+        {
+            string gitPath = Path.Combine(executableFixture, "git");
+            File.WriteAllText(
+                gitPath,
+                "#!/bin/sh\nexec python3 -c \"import sys; sys.stdout.buffer.write(b'x' * 8388609)\"\n");
+            File.SetUnixFileMode(
+                gitPath,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+            (int exitCode, string output) = RunValidator(
+                root,
+                fixture,
+                root,
+                preReview: true,
+                executablePathPrefix: executableFixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Git historical-blob identity proof exceeded blob limit");
+            output.ShouldNotContain("exceeded output limit");
             output.ShouldNotContain("Traceback");
             output.Length.ShouldBeLessThan(4096);
         }
@@ -2687,6 +3000,9 @@ public sealed class Oq8PlatformClosureTests
             case "candidate-invalid-utf8-subject":
                 File.WriteAllBytes(subjectPath, [0xff, 0xfe, 0xfd]);
                 break;
+            case "candidate-oversized-subject":
+                File.AppendAllText(subjectPath, new string('x', 1_048_577));
+                break;
             case "candidate-document-semantics":
             {
                 const string relative = "docs/reference/command-api.md";
@@ -2748,6 +3064,56 @@ public sealed class Oq8PlatformClosureTests
                 result["schemaVersion"] = true;
                 WriteObject(path, result);
                 ResealCandidateCapture(fixture, "test-results.json");
+                break;
+            }
+            case "candidate-packet-schema-boolean":
+            {
+                string path = Path.Combine(closure, "capture-packet-v1.json");
+                JsonObject capture = LoadObject(path);
+                capture["schemaVersion"] = true;
+                WriteObject(path, capture);
+                break;
+            }
+            case "candidate-environment-schema-boolean":
+            {
+                string path = Path.Combine(
+                    artifacts,
+                    "evidence",
+                    "story-4-14",
+                    "e60a3777c581d70b62f67173ccc2372b5b64a425",
+                    "environment.json");
+                JsonObject environment = LoadObject(path);
+                environment["schemaVersion"] = true;
+                WriteObject(path, environment);
+                ResealCandidateCapture(fixture, "environment.json");
+                break;
+            }
+            case "candidate-commands-schema-boolean":
+            {
+                string path = Path.Combine(
+                    artifacts,
+                    "evidence",
+                    "story-4-14",
+                    "e60a3777c581d70b62f67173ccc2372b5b64a425",
+                    "commands.json");
+                JsonObject commands = LoadObject(path);
+                commands["schemaVersion"] = true;
+                WriteObject(path, commands);
+                ResealCandidateCapture(fixture, "commands.json");
+                break;
+            }
+            case "candidate-review-records-schema-boolean":
+            {
+                string path = Path.Combine(
+                    artifacts,
+                    "evidence",
+                    "story-4-14",
+                    "e60a3777c581d70b62f67173ccc2372b5b64a425",
+                    "review-records.json");
+                JsonObject reviews = LoadObject(path);
+                reviews["schemaVersion"] = true;
+                WriteObject(path, reviews);
+                ResealCandidateCapture(fixture, "review-records.json");
                 break;
             }
             case "candidate-focused-duration-boolean":
@@ -2960,12 +3326,17 @@ public sealed class Oq8PlatformClosureTests
         "candidate-duplicate-execution" => "Duplicate JSON field",
         "candidate-nan-subject" or "candidate-infinity-subject" => "Non-finite JSON constant is forbidden",
         "candidate-malformed-subject" or "candidate-invalid-utf8-subject" => "Cannot load JSON evidence",
+        "candidate-oversized-subject" => "exceeds the 1048576-byte limit",
         "candidate-document-semantics" => "OQ8 source-only handoff semantics missing",
         "candidate-document-stale-state" => "Stale OQ8 handoff state remains",
         "candidate-story-status-done" => "Lifecycle status drift: 4-15-oq8-platform-closure-and-handoff",
         "candidate-frontmatter-done" => "Story 4.15 metadata status drift",
         "candidate-focused-test-shape" => "Focused result test must be an object",
         "candidate-focused-schema-boolean" => "Focused result schemaVersion must be an exact integer",
+        "candidate-packet-schema-boolean" => "Packet schemaVersion must be an exact integer",
+        "candidate-environment-schema-boolean" => "Environment schemaVersion must be an exact integer",
+        "candidate-commands-schema-boolean" => "Verification commands schemaVersion must be an exact integer",
+        "candidate-review-records-schema-boolean" => "Capture review records schemaVersion must be an exact integer",
         "candidate-focused-duration-boolean" or "candidate-focused-duration-negative" => "Focused result duration must be a finite non-negative number",
         "candidate-focused-duration-nonfinite" => "Non-finite JSON constant is forbidden",
         "candidate-commands-shape" => "Verification command 0 field set drift",
@@ -2993,6 +3364,8 @@ public sealed class Oq8PlatformClosureTests
         "nested-missing" => "Observation runtime field set drift",
         "postgres-image-drift" => "PostgreSQL image identity drift",
         "postgres-image-identity" => "PostgreSQL immutable identity must be an exact sha256 digest",
+        "state-component-identity" => "PostgreSQL component identity drift",
+        "resiliency-identity" => "Resiliency identity drift",
         "schema-version-boolean" => "Observation schemaVersion must be an exact integer",
         "capture-date-noncanonical" => "Capture date must use YYYY-MM-DD",
         "capture-date-invalid" => "Capture date must be a real UTC calendar date",
@@ -3000,6 +3373,10 @@ public sealed class Oq8PlatformClosureTests
         "counter-boolean" => "Observation topology eventStoreProcessCount must be a non-negative integer",
         "counter-float" => "Writer/failover observation concurrentRequests must be a non-negative integer",
         "counter-negative" => "After capture snapshot totalRows must be a non-negative integer",
+        "admission-row-delta" => "Admission row delta is not exactly four",
+        "terminal-row-delta" => "Terminal row delta is not exactly four",
+        "tombstone-row-delta" => "Tombstone row delta missing",
+        "total-row-delta" => "Total PostgreSQL row count did not increase",
         "protected-before" => "Protected sentinel leakage detected",
         _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown observation mutation."),
     };
@@ -3488,6 +3865,9 @@ public sealed class Oq8PlatformClosureTests
             case "invalid-utf8-packet":
                 File.WriteAllBytes(packetPath, [0xff, 0xfe, 0xfd]);
                 break;
+            case "oversized-packet":
+                File.AppendAllText(packetPath, new string('x', 1_048_577));
+                break;
             case "closure-manifest-malformed-line":
             {
                 string manifestPath = Path.Combine(closure, "closure-sha256.txt");
@@ -3581,7 +3961,8 @@ public sealed class Oq8PlatformClosureTests
         "duplicate-authority-packet-minified" => "Duplicate JSON field",
         "malformed-json-crosswalk" => "Cannot load JSON evidence",
         "malformed-json-packet" => "Cannot load JSON evidence",
-        "invalid-utf8-packet" => "Cannot read evidence path _bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
+        "invalid-utf8-packet" => "OQ8 closure packet is not UTF-8",
+        "oversized-packet" => "OQ8 closure packet exceeds the 1048576-byte limit",
         "closure-manifest-malformed-line" => "Malformed closure manifest line",
         _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown OQ8 closure mutation."),
     };
@@ -3734,18 +4115,6 @@ public sealed class Oq8PlatformClosureTests
                 ResealV2AfterIdentityChange(successor);
                 break;
             }
-            case "semantic-workflow-tag":
-                MutateV2SemanticSource(
-                    fixture,
-                    successor,
-                    ".github/workflows/integration.yml");
-                break;
-            case "semantic-fixture-tag":
-                MutateV2SemanticSource(
-                    fixture,
-                    successor,
-                    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs");
-                break;
             case "gate-input-drift":
             {
                 string identityPath = Path.Combine(successor, "source-artifact-identity.json");
@@ -3891,6 +4260,44 @@ public sealed class Oq8PlatformClosureTests
             case "missing-successor":
                 Directory.Delete(successor, recursive: true);
                 break;
+            case "additional-artifact":
+                File.WriteAllText(Path.Combine(successor, "unreviewed.json"), "{}\n");
+                break;
+            case "reordered-manifest":
+            {
+                string manifestPath = Path.Combine(successor, "closure-sha256.txt");
+                string[] lines = File.ReadAllLines(manifestPath);
+                Array.Reverse(lines);
+                File.WriteAllText(manifestPath, string.Join('\n', lines) + "\n");
+                break;
+            }
+            case "malformed-manifest":
+            {
+                string manifestPath = Path.Combine(successor, "closure-sha256.txt");
+                string[] lines = File.ReadAllLines(manifestPath);
+                lines[0] = "not-a-sha256  limitations.json";
+                File.WriteAllText(manifestPath, string.Join('\n', lines) + "\n");
+                break;
+            }
+            case "symlinked-artifact":
+            {
+                string limitationsPath = Path.Combine(successor, "limitations.json");
+                string target = Path.Combine(fixture, "v3-limitations-target.json");
+                File.Move(limitationsPath, target);
+                CreateSymbolicLinkOrSkip(limitationsPath, target, directory: false);
+                break;
+            }
+            case "symlinked-v3-ancestor":
+            {
+                string ancestor = successor;
+                string target = Path.Combine(fixture, "v3-ancestor-target");
+                Directory.Move(ancestor, target);
+                CreateSymbolicLinkOrSkip(ancestor, target, directory: true);
+                break;
+            }
+            case "oversized-artifact":
+                File.AppendAllText(Path.Combine(successor, "limitations.json"), new string('x', 65_537));
+                break;
             case "source-drift":
                 File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nV3 source drift.\n");
                 break;
@@ -3982,6 +4389,15 @@ public sealed class Oq8PlatformClosureTests
             case "sdk-link-drift":
                 MutateV3Identity(successor, identity => identity["historicalSdkSuccessor"]!["manifestSha256"] = new string('0', 64));
                 break;
+            case "semantic-workflow-image":
+                MutateV3SemanticSource(fixture, successor, ".github/workflows/integration.yml");
+                break;
+            case "semantic-fixture-image":
+                MutateV3SemanticSource(
+                    fixture,
+                    successor,
+                    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs");
+                break;
             case "consumer-install-command-drift":
             {
                 string handoffPath = Path.Combine(successor, "source-only-handoff.json");
@@ -4059,6 +4475,32 @@ public sealed class Oq8PlatformClosureTests
         mutation(identity);
         WriteObject(identityPath, identity);
         ResealV3AfterIdentityChange(successor);
+    }
+
+    private static void MutateV3SemanticSource(string fixture, string successor, string relative)
+    {
+        string sourcePath = Path.Combine(fixture, relative);
+        string source = File.ReadAllText(sourcePath);
+        string mutated = source.Replace(ReviewedPostgresImage, HistoricalPostgresImage, StringComparison.Ordinal);
+        mutated.ShouldNotBe(source);
+        File.WriteAllText(sourcePath, mutated);
+
+        MutateV3Identity(
+            successor,
+            identity =>
+            {
+                JsonObject transitions = identity["sourceTransitions"]!.AsObject();
+                foreach (string path in transitions.Select(entry => entry.Key).ToArray())
+                {
+                    transitions[path]!["successorSha256"] = ComputeSha256(Path.Combine(fixture, path));
+                }
+
+                JsonObject gateInputs = identity["gateInputs"]!.AsObject();
+                foreach (string path in gateInputs.Select(entry => entry.Key).ToArray())
+                {
+                    gateInputs[path] = ComputeSha256(Path.Combine(fixture, path));
+                }
+            });
     }
 
     private static void ResealV3AfterIdentityChange(string successor)
@@ -4225,21 +4667,6 @@ public sealed class Oq8PlatformClosureTests
 
         WriteObject(Path.Combine(successor, "source-only-handoff.json"), handoff);
         ResealV2Manifest(successor);
-    }
-
-    private static void MutateV2SemanticSource(string fixture, string successor, string relative)
-    {
-        string sourcePath = Path.Combine(fixture, relative);
-        string source = File.ReadAllText(sourcePath);
-        string mutated = source.Replace(ReviewedPostgresImage, HistoricalPostgresImage, StringComparison.Ordinal);
-        mutated.ShouldNotBe(source);
-        File.WriteAllText(sourcePath, mutated);
-
-        string identityPath = Path.Combine(successor, "source-artifact-identity.json");
-        JsonObject identity = LoadObject(identityPath);
-        identity["sourceTransitions"]![relative]!["successorSha256"] = ComputeSha256(sourcePath);
-        WriteObject(identityPath, identity);
-        ResealV2AfterIdentityChange(successor);
     }
 
     private static void MutateV2PreReviewCommand(
@@ -5069,7 +5496,8 @@ public sealed class Oq8PlatformClosureTests
         string repositoryRoot,
         string observationsPath,
         string expectedRuntimeVersion,
-        string expectedPostgresImage)
+        string expectedPostgresImage,
+        string? validationRoot = null)
     {
         using Process process = CreatePythonProcess(
             """
@@ -5080,6 +5508,7 @@ public sealed class Oq8PlatformClosureTests
             specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
             validator = importlib.util.module_from_spec(specification)
             specification.loader.exec_module(validator)
+            validator.configure_roots(pathlib.Path(sys.argv[5]), pathlib.Path(sys.argv[1]).parent.parent)
             try:
                 validator.validate_observations(pathlib.Path(sys.argv[2]), sys.argv[3], sys.argv[4])
             except validator.EvidenceError as error:
@@ -5091,6 +5520,7 @@ public sealed class Oq8PlatformClosureTests
         process.StartInfo.ArgumentList.Add(observationsPath);
         process.StartInfo.ArgumentList.Add(expectedRuntimeVersion);
         process.StartInfo.ArgumentList.Add(expectedPostgresImage);
+        process.StartInfo.ArgumentList.Add(validationRoot ?? repositoryRoot);
 
         (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
         timedOut.ShouldBeFalse("OQ8 observation validator timed out.");

@@ -90,6 +90,8 @@ PINNED_PYYAML_HASHES = (
     "c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5",
 )
 MAX_SPRINT_STATUS_BYTES = 1_048_576
+MAX_CANDIDATE_JSON_BYTES = 1_048_576
+MAX_HISTORICAL_MANIFEST_BYTES = 65_536
 MAX_V2_ARTIFACT_BYTES = 65_536
 MAX_V2_BOUND_SOURCE_BYTES = 524_288
 MAX_RAW_CTRF_BYTES = 8 * 1024 * 1024
@@ -99,6 +101,7 @@ SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15
 SUCCESSOR_SELECTOR_PATH = "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json"
 V2_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2"
 V3_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3"
+SDK_SUCCESSOR_MANIFEST_SHA256 = "fd8cc0b86d2cf4f624495c64168e6a2dc727b5aa0f830dca39c382dd28ba094d"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
 FOCUSED_TRAITS = {
     "Category": ["LiveSidecar"],
@@ -310,8 +313,8 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
 V3_REVIEW_DATE = "2026-09-12"
-V3_FINAL_CLOSURE_TEST_COUNT = 421
-V3_FULL_CONTRACTS_TEST_COUNT = 1987
+V3_FINAL_CLOSURE_TEST_COUNT = 448
+V3_FULL_CONTRACTS_TEST_COUNT = 2051
 V3_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
     "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
@@ -636,6 +639,10 @@ EXPECTED_CROSSWALK_INVARIANTS = [
 ]
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRIVATE_PATH_RE = re.compile(r"(?:/home/|/Users/|[A-Za-z]:[\\/]Users[\\/])")
+PRIVATE_PATH_TOKEN_RE = re.compile(
+    r"(?:/(?:home|Users|tmp)/|/root(?:/|\b)|[A-Za-z]:[\\/](?:Users|Temp|tmp)[\\/])"
+    r"[^\s\"'<>]*"
+)
 PLACEHOLDER_RE = re.compile(r"(?:\bTBD\b|\bTODO\b|\bUNKNOWN\b|<[^>]+>)", re.IGNORECASE)
 FORBIDDEN_CLAIM_RE = re.compile(
     r"(?:OQ8\s+(?:is\s+)?closed|Folders\s+OQ8\s+closure|production[- ]ready|release\s+approved)",
@@ -826,9 +833,15 @@ def scan_json_protected_content(value: Any, depth: int = 0, visited: list[int] |
 
 
 def load_candidate_json(path: Path) -> Any:
-    document = load_json(path)
-    scan_json_protected_content(document)
-    return document
+    return load_candidate_json_bytes(
+        read_bounded_regular_snapshot(
+            path,
+            MAX_CANDIDATE_JSON_BYTES,
+            f"Candidate JSON {display_path(path)}",
+            repository_bound=path.is_relative_to(ROOT),
+        ),
+        display_path(path),
+    )
 
 
 def load_candidate_json_bytes(value: bytes, label: str) -> Any:
@@ -1144,10 +1157,61 @@ def read_bounded_raw_input(path: Path, label: str) -> bytes:
     )
 
 
+def decode_utf8(value: bytes, label: str) -> str:
+    try:
+        return value.decode("utf-8")
+    except UnicodeError:
+        fail(f"{label} is not UTF-8")
+
+
+def read_bounded_text_snapshot(
+    path: Path,
+    maximum_bytes: int,
+    label: str,
+    *,
+    repository_bound: bool = True,
+) -> str:
+    return decode_utf8(
+        read_bounded_regular_snapshot(
+            path,
+            maximum_bytes,
+            label,
+            repository_bound=repository_bound,
+        ),
+        label,
+    )
+
+
+def load_bounded_json(
+    path: Path,
+    maximum_bytes: int,
+    label: str,
+    *,
+    repository_bound: bool = True,
+) -> Any:
+    return load_json_bytes(
+        read_bounded_regular_snapshot(
+            path,
+            maximum_bytes,
+            label,
+            repository_bound=repository_bound,
+        ),
+        label,
+    )
+
+
 def relative_tree_entries(root: Path) -> set[str]:
     entries: set[str] = set()
+
+    def fail_enumeration(_: OSError) -> None:
+        fail(f"Cannot enumerate evidence path {display_path(root)}")
+
     try:
-        for directory, directories, files in os.walk(root, followlinks=False):
+        for directory, directories, files in os.walk(
+            root,
+            followlinks=False,
+            onerror=fail_enumeration,
+        ):
             current = Path(directory)
             for name in directories:
                 entries.add((current / name).relative_to(root).as_posix())
@@ -1183,13 +1247,20 @@ def validate_observations(
     path: Path,
     expected_dapr_runtime_version: str,
     expected_postgres_image: str,
+    profile_identity_revision: str | None = None,
 ) -> dict[str, Any]:
     require(
         re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", expected_dapr_runtime_version) is not None,
         "Expected Dapr runtime version must be one exact semantic version",
     )
-    scan_support_safe(path)
-    document = load_json(path)
+    observation_bytes = read_bounded_regular_snapshot(
+        path,
+        MAX_CANDIDATE_JSON_BYTES,
+        "observations.json",
+        repository_bound=path.is_relative_to(ROOT),
+    )
+    scan_support_safe_text(decode_utf8(observation_bytes, "observations.json"), "observations.json")
+    document = load_json_bytes(observation_bytes, "observations.json")
     require(isinstance(document, dict), "observations.json must be an object")
     require_exact_fields(
         document,
@@ -1224,8 +1295,34 @@ def validate_observations(
     require_exact_fields(profile, {"name", "stateStoreType", "stateComponentSha256", "resiliencySha256"}, "Observation profile")
     require(profile.get("name") == PROFILE, "OQ8 profile drift")
     require(profile.get("stateStoreType") == "state.postgresql", "State store is not PostgreSQL")
-    require_sha256(profile.get("stateComponentSha256"), "state component identity")
-    require_sha256(profile.get("resiliencySha256"), "resiliency identity")
+    state_component_sha256 = require_sha256(
+        profile.get("stateComponentSha256"),
+        "state component identity",
+    )
+    resiliency_sha256 = require_sha256(
+        profile.get("resiliencySha256"),
+        "resiliency identity",
+    )
+    if profile_identity_revision is None:
+        expected_state_component_sha256 = sha256_file(ROOT / "deploy/dapr/statestore-postgresql.yaml")
+        expected_resiliency_sha256 = sha256_file(ROOT / "deploy/dapr/resiliency.yaml")
+    else:
+        expected_state_component_sha256 = sha256_git_file(
+            profile_identity_revision,
+            "deploy/dapr/statestore-postgresql.yaml",
+        )
+        expected_resiliency_sha256 = sha256_git_file(
+            profile_identity_revision,
+            "deploy/dapr/resiliency.yaml",
+        )
+    require(
+        state_component_sha256 == expected_state_component_sha256,
+        "PostgreSQL component identity drift",
+    )
+    require(
+        resiliency_sha256 == expected_resiliency_sha256,
+        "Resiliency identity drift",
+    )
 
     runtime = document.get("runtime", {})
     require_exact_fields(runtime, {"dotnet", "dapr", "postgresImage", "postgresImageIdentity"}, "Observation runtime")
@@ -1344,6 +1441,10 @@ def validate_observations(
     require_sha256(before.get("projectionSha256"), "Before projection identity")
     require_sha256(after.get("projectionSha256"), "After projection identity")
     require(after.get("aggregateSequenceTotal") == before.get("aggregateSequenceTotal", 0) + 4, "Eligible execution count is not four")
+    require(after.get("admissionRows") == before.get("admissionRows", 0) + 4, "Admission row delta is not exactly four")
+    require(after.get("terminalRows") == before.get("terminalRows", 0) + 4, "Terminal row delta is not exactly four")
+    require(after.get("tombstoneRows", 0) >= before.get("tombstoneRows", 0) + 1, "Tombstone row delta missing")
+    require(after.get("totalRows", 0) > before.get("totalRows", 0), "Total PostgreSQL row count did not increase")
     require(after.get("aggregateMetadataRows") == before.get("aggregateMetadataRows", 0) + 4, "Aggregate metadata row delta is not exactly four")
     require(after.get("aggregateEventRows") == before.get("aggregateEventRows", 0) + 4, "Aggregate event row delta is not exactly four")
     require(after.get("minimalTombstoneRows", 0) >= before.get("minimalTombstoneRows", 0) + 1, "Minimal tombstone delta missing")
@@ -1578,10 +1679,14 @@ def validate_capture(
 
 def validate_manifest() -> dict[str, str]:
     manifest_path = EVIDENCE / "evidence-sha256.txt"
-    require(manifest_path.is_file(), "Evidence manifest is missing")
-    scan_support_safe(manifest_path)
+    manifest_text = read_bounded_text_snapshot(
+        manifest_path,
+        MAX_HISTORICAL_MANIFEST_BYTES,
+        "Story 4.14 evidence manifest",
+    )
+    scan_support_safe_text(manifest_text, "evidence-sha256.txt")
     manifest: dict[str, str] = {}
-    for line in read_text(manifest_path).splitlines():
+    for line in manifest_text.splitlines():
         parts = line.split("  ", 1)
         require(len(parts) == 2 and SHA256_RE.fullmatch(parts[0]) is not None, "Malformed evidence manifest line")
         digest, name = parts
@@ -1594,13 +1699,21 @@ def validate_manifest() -> dict[str, str]:
     )
     for name, expected in manifest.items():
         path = EVIDENCE / name
-        require(path.is_file(), f"Manifest artifact missing: {name}")
-        require(sha256_file(path) == expected, f"Evidence checksum mismatch: {name}")
-        scan_support_safe(path)
+        artifact_bytes = read_bounded_regular_snapshot(
+            path,
+            MAX_CANDIDATE_JSON_BYTES,
+            f"Story 4.14 evidence artifact {name}",
+        )
+        require(sha256_bytes(artifact_bytes) == expected, f"Evidence checksum mismatch: {name}")
+        scan_support_safe_text(
+            decode_utf8(artifact_bytes, f"Story 4.14 evidence artifact {name}"),
+            name,
+        )
     return manifest
 
 
 def validate_successor_source_identity() -> dict[str, Any]:
+    require_no_symlink_components(SUCCESSOR, "Story 4.15 historical successor directory")
     require(SUCCESSOR.is_dir(), "Story 4.15 successor directory is missing")
 
     identity_path = SUCCESSOR / "source-artifact-identity.json"
@@ -1678,11 +1791,32 @@ def validate_successor_source_identity() -> dict[str, Any]:
 
 
 def validate_successor_manifest() -> dict[str, str]:
+    require_no_symlink_components(SUCCESSOR, "Story 4.15 historical successor directory")
+    require(SUCCESSOR.is_dir(), "Story 4.15 successor directory is missing")
+    require(
+        relative_tree_entries(SUCCESSOR)
+        == SUCCESSOR_FILES | {"successor-sha256.txt", "reviews"},
+        "Story 4.15 successor directory file set drift",
+    )
     manifest_path = SUCCESSOR / "successor-sha256.txt"
-    require(manifest_path.is_file(), "Story 4.15 successor manifest is missing")
-    scan_support_safe(manifest_path)
+    manifest_bytes = read_bounded_regular_snapshot(
+        manifest_path,
+        MAX_HISTORICAL_MANIFEST_BYTES,
+        "Story 4.15 historical successor manifest",
+    )
+    require(
+        sha256_bytes(manifest_bytes) == SDK_SUCCESSOR_MANIFEST_SHA256,
+        "Story 4.15 historical successor manifest identity drift",
+    )
+    require(
+        sha256_git_file(LEGACY_SUCCESSOR_SNAPSHOT_COMMIT, f"{SUCCESSOR_DIRECTORY}/successor-sha256.txt")
+        == SDK_SUCCESSOR_MANIFEST_SHA256,
+        "Story 4.15 historical successor Git manifest identity drift",
+    )
+    manifest_text = decode_utf8(manifest_bytes, "Story 4.15 historical successor manifest")
+    scan_support_safe_text(manifest_text, "successor-sha256.txt")
     manifest: dict[str, str] = {}
-    lines = read_text(manifest_path).splitlines()
+    lines = manifest_text.splitlines()
     require(lines == sorted(lines, key=lambda line: line.split("  ", 1)[-1]), "Story 4.15 successor manifest is not path-sorted")
     for line in lines:
         parts = line.split("  ", 1)
@@ -1700,10 +1834,19 @@ def validate_successor_manifest() -> dict[str, str]:
     require(set(manifest) == SUCCESSOR_FILES, "Story 4.15 successor manifest file set drift")
     for relative, expected in manifest.items():
         artifact = SUCCESSOR / relative
-        require(artifact.is_file(), f"Story 4.15 successor artifact missing: {relative}")
-        require(not artifact.is_symlink(), f"Story 4.15 successor artifact cannot be a symlink: {relative}")
-        require(sha256_file(artifact) == expected, f"Story 4.15 successor checksum mismatch: {relative}")
-        scan_support_safe(artifact)
+        artifact_bytes = read_bounded_regular_snapshot(
+            artifact,
+            MAX_V2_ARTIFACT_BYTES,
+            f"Story 4.15 historical successor artifact {relative}",
+        )
+        require(
+            sha256_bytes(artifact_bytes) == expected,
+            f"Story 4.15 successor checksum mismatch: {relative}",
+        )
+        scan_support_safe_text(
+            decode_utf8(artifact_bytes, f"Story 4.15 historical successor artifact {relative}"),
+            relative,
+        )
     return manifest
 
 
@@ -1892,7 +2035,7 @@ def validate_successor_selector_historical(
             },
             "sdkSuccessor": {
                 "directory": SUCCESSOR_DIRECTORY,
-                "manifestSha256": sha256_file(SUCCESSOR / "successor-sha256.txt"),
+                "manifestSha256": SDK_SUCCESSOR_MANIFEST_SHA256,
                 "files": historical_successor_manifest,
             },
             "v2Successor": {
@@ -2130,11 +2273,17 @@ def validate_source_state(document: dict[str, Any], identity: dict[str, Any]) ->
 
 
 def validate_closure_manifest() -> dict[str, str]:
+    require_no_symlink_components(CLOSURE, "Story 4.15 v1 closure directory")
+    require(CLOSURE.is_dir(), "Story 4.15 closure directory is missing")
     manifest_path = CLOSURE / "closure-sha256.txt"
-    require(manifest_path.is_file(), "Closure manifest is missing")
-    scan_support_safe(manifest_path)
+    manifest_text = read_bounded_text_snapshot(
+        manifest_path,
+        MAX_HISTORICAL_MANIFEST_BYTES,
+        "Story 4.15 v1 closure manifest",
+    )
+    scan_support_safe_text(manifest_text, "closure-sha256.txt")
     manifest: dict[str, str] = {}
-    lines = read_text(manifest_path).splitlines()
+    lines = manifest_text.splitlines()
     require(lines == sorted(lines, key=lambda line: line.split("  ", 1)[-1]), "Closure manifest is not path-sorted")
     for line in lines:
         parts = line.split("  ", 1)
@@ -2156,17 +2305,27 @@ def validate_closure_manifest() -> dict[str, str]:
     )
     for relative, expected in manifest.items():
         path = CLOSURE / relative
-        require(path.is_file(), f"Closure artifact missing: {relative}")
-        require(not path.is_symlink(), f"Closure artifact cannot be a symlink: {relative}")
-        require(sha256_file(path) == expected, f"Closure checksum mismatch: {relative}")
-        scan_support_safe(path)
+        artifact_bytes = read_bounded_regular_snapshot(
+            path,
+            MAX_CANDIDATE_JSON_BYTES,
+            f"Story 4.15 v1 closure artifact {relative}",
+        )
+        require(sha256_bytes(artifact_bytes) == expected, f"Closure checksum mismatch: {relative}")
+        scan_support_safe_text(
+            decode_utf8(artifact_bytes, f"Story 4.15 v1 closure artifact {relative}"),
+            relative,
+        )
 
     validate_validator_identity()
     return manifest
 
 
 def validate_validator_identity() -> str:
-    validator_record = read_text(CLOSURE / "validator-sha256.txt").splitlines()
+    validator_record = read_bounded_text_snapshot(
+        CLOSURE / "validator-sha256.txt",
+        MAX_CANDIDATE_JSON_BYTES,
+        "Story 4.15 v1 validator identity",
+    ).splitlines()
     require(len(validator_record) == 1, "Closure validator identity record is malformed")
     validator_parts = validator_record[0].split("  ", 1)
     require(
@@ -2959,7 +3118,7 @@ def validate_v3_source_identity(snapshots: dict[str, bytes]) -> dict[str, Any]:
         identity.get("historicalSdkSuccessor")
         == {
             "directory": SUCCESSOR_DIRECTORY,
-            "manifestSha256": sha256_file(SUCCESSOR / "successor-sha256.txt"),
+            "manifestSha256": SDK_SUCCESSOR_MANIFEST_SHA256,
         },
         "Story 4.15 v3 historical SDK successor link drift",
     )
@@ -3500,10 +3659,9 @@ def validate_pyyaml_dependency() -> None:
 
     requirement_path = ROOT / "requirements-oq8.txt"
     expected_requirement_lines = [f"{PINNED_PYYAML_REQUIREMENT} \\"]
-    expected_requirement_lines.extend(
-        f"    --hash=sha256:{digest}{' \\' if index < len(PINNED_PYYAML_HASHES) - 1 else ''}"
-        for index, digest in enumerate(PINNED_PYYAML_HASHES)
-    )
+    for index, digest in enumerate(PINNED_PYYAML_HASHES):
+        continuation = " \\" if index < len(PINNED_PYYAML_HASHES) - 1 else ""
+        expected_requirement_lines.append(f"    --hash=sha256:{digest}{continuation}")
     require(read_text(requirement_path).splitlines() == expected_requirement_lines, "OQ8 validator dependency requirement drift")
     required_workflow_fragments = (
         'python3 -m venv "${RUNNER_TEMP}/oq8-python"',
@@ -3687,9 +3845,12 @@ def parse_unique_frontmatter_status(path: Path, story: str) -> str:
     require(closing is not None, f"Malformed Story {story} frontmatter")
     matches: list[str] = []
     for line in lines[1:closing]:
-        match = re.fullmatch(r"status:\s*['\"]?([a-z-]+)['\"]?\s*", line)
+        match = re.fullmatch(
+            r"status:\s*(?:(?P<quote>['\"])(?P<quoted>[a-z-]+)(?P=quote)|(?P<plain>[a-z-]+))\s*",
+            line,
+        )
         if match is not None:
-            matches.append(match.group(1))
+            matches.append(match.group("quoted") or match.group("plain"))
     require(len(matches) == 1, f"Story {story} frontmatter status is missing or ambiguous")
     return matches[0]
 
@@ -3704,7 +3865,11 @@ def validate_document_semantics(relative: str) -> None:
 
 
 def validate_status_and_documents(*, final: bool) -> None:
-    sprint = read_text(ROOT / "_bmad-output/implementation-artifacts/sprint-status.yaml")
+    sprint = read_bounded_text_snapshot(
+        ROOT / "_bmad-output/implementation-artifacts/sprint-status.yaml",
+        MAX_SPRINT_STATUS_BYTES,
+        "Sprint-status YAML source",
+    )
     statuses = parse_development_status(sprint)
     expected_statuses = {
         "epic-4": "in-progress",
@@ -3929,7 +4094,7 @@ def validate_capture_packet(packet: Any) -> None:
         {"schemaVersion", "story", "design", "profile", "baselineCommit", "capturedOn", "evidenceDirectory", "evidenceFiles", "manifestSha256", "matrix", "closureClaimed", "releaseApproved", "story415Status"},
         "Capture packet",
     )
-    require(packet.get("schemaVersion") == 1, "Packet schemaVersion drift")
+    require_exact_integer(packet.get("schemaVersion"), 1, "Packet schemaVersion")
     require(packet.get("story") == "4.14", "Packet story drift")
     require(packet.get("design") == {"version": DESIGN_VERSION, "sha256": DESIGN_SHA256}, "OQ8 design identity drift")
     require(packet.get("profile") == PROFILE, "Packet profile drift")
@@ -3953,20 +4118,39 @@ def validate_capture_packet(packet: Any) -> None:
     require_sha256(packet.get("manifestSha256"), "Manifest identity")
     require(packet["manifestSha256"] == sha256_file(EVIDENCE / "evidence-sha256.txt"), "Packet manifest identity drift")
 
-    observations = validate_observations(EVIDENCE / "observations.json", COMMITTED_DAPR_RUNTIME_VERSION, POSTGRES_TAG)
+    observations = validate_observations(
+        EVIDENCE / "observations.json",
+        COMMITTED_DAPR_RUNTIME_VERSION,
+        POSTGRES_TAG,
+        COMPLETED_V1_CLOSURE_COMMIT,
+    )
     deterministic_support_path = EVIDENCE / "deterministic-support.json"
-    deterministic_support = validate_support_document(load_json(deterministic_support_path))
+    deterministic_support = validate_support_document(
+        load_bounded_json(
+            deterministic_support_path,
+            MAX_CANDIDATE_JSON_BYTES,
+            "Story 4.14 deterministic support",
+        )
+    )
     require(
         observations["observations"]["authority_change"]["deterministicSupportOracles"]
         == deterministic_support["selectors"],
         "Observation and deterministic support oracle identities drifted",
     )
-    source_state = load_json(EVIDENCE / "source-state.json")
+    source_state = load_bounded_json(
+        EVIDENCE / "source-state.json",
+        MAX_CANDIDATE_JSON_BYTES,
+        "Story 4.14 source state",
+    )
     identity = load_candidate_json(CLOSURE / "source-artifact-identity.json")
     validate_source_state(source_state, identity)
-    environment = load_json(EVIDENCE / "environment.json")
+    environment = load_bounded_json(
+        EVIDENCE / "environment.json",
+        MAX_CANDIDATE_JSON_BYTES,
+        "Story 4.14 environment",
+    )
     require_exact_fields(environment, {"schemaVersion", "capturedOn", "runtime", "profile", "executionConfiguration", "artifacts", "limits"}, "Environment")
-    require(environment.get("schemaVersion") == 1, "Environment schemaVersion drift")
+    require_exact_integer(environment.get("schemaVersion"), 1, "Environment schemaVersion")
     require_exact_fields(environment.get("runtime"), {"dotnet", "dapr", "postgresImage", "postgresImageIdentity"}, "Environment runtime")
     require_exact_fields(environment.get("profile"), {"name", "stateStoreType", "stateComponentSha256", "resiliencySha256"}, "Environment profile")
     require_exact_fields(environment.get("executionConfiguration"), {"shippedReleaseEntryAssemblies", "shadowCopiedBeforeLaunch", "environmentName", "testOnlyHostingStartup", "productionConfigurationUntouched", "seams"}, "Environment execution configuration")
@@ -3978,17 +4162,23 @@ def validate_capture_packet(packet: Any) -> None:
     require(environment.get("executionConfiguration") == observations.get("executionConfiguration"), "Execution-configuration disclosure crosswalk drift")
     require(environment.get("artifacts") == observations.get("artifacts"), "Runtime artifact identity crosswalk drift")
     require(environment.get("capturedOn") == observations.get("capturedOn"), "Capture date crosswalk drift")
-    state_component_path = ROOT / "deploy/dapr/statestore-postgresql.yaml"
-    resiliency_path = ROOT / "deploy/dapr/resiliency.yaml"
+    state_component_sha256 = sha256_git_file(
+        COMPLETED_V1_CLOSURE_COMMIT,
+        "deploy/dapr/statestore-postgresql.yaml",
+    )
+    resiliency_sha256 = sha256_git_file(
+        COMPLETED_V1_CLOSURE_COMMIT,
+        "deploy/dapr/resiliency.yaml",
+    )
     require(
         observations["profile"]["stateComponentSha256"]
-        == sha256_file(state_component_path)
+        == state_component_sha256
         == source_state["sourceInputs"]["deploy/dapr/statestore-postgresql.yaml"],
         "PostgreSQL component identity crosswalk drift",
     )
     require(
         observations["profile"]["resiliencySha256"]
-        == sha256_file(resiliency_path)
+        == resiliency_sha256
         == source_state["sourceInputs"]["deploy/dapr/resiliency.yaml"],
         "Resiliency identity crosswalk drift",
     )
@@ -4008,11 +4198,19 @@ def validate_capture_packet(packet: Any) -> None:
         "Environment PostgreSQL projection disclosure drift",
     )
     require(limits.get("rawPostgresqlValuesCommitted") is False, "Environment permits committed raw PostgreSQL values")
-    test_results = load_json(EVIDENCE / "test-results.json")
+    test_results = load_bounded_json(
+        EVIDENCE / "test-results.json",
+        MAX_CANDIDATE_JSON_BYTES,
+        "Story 4.14 focused test result",
+    )
     validate_focused_document(test_results)
-    commands = load_json(EVIDENCE / "commands.json")
+    commands = load_bounded_json(
+        EVIDENCE / "commands.json",
+        MAX_CANDIDATE_JSON_BYTES,
+        "Story 4.14 verification commands",
+    )
     require_exact_fields(commands, {"schemaVersion", "capturedOn", "commands"}, "Verification commands")
-    require(commands.get("schemaVersion") == 1, "Verification commands schemaVersion drift")
+    require_exact_integer(commands.get("schemaVersion"), 1, "Verification commands schemaVersion")
     require(isinstance(commands.get("commands"), list), "Verification commands must be a list")
     for index, command in enumerate(commands["commands"]):
         require_exact_fields(command, {"name", "command", "exitCode", "counts"}, f"Verification command {index}")
@@ -4048,9 +4246,13 @@ def validate_capture_packet(packet: Any) -> None:
         == {"methods": len(EXPECTED_SUPPORT_METHOD_CASES), "passed": SUPPORT_CASE_TOTAL, "failed": 0, "skipped": 0},
         "Recorded deterministic support counts drift",
     )
-    reviews = load_json(EVIDENCE / "review-records.json")
+    reviews = load_bounded_json(
+        EVIDENCE / "review-records.json",
+        MAX_CANDIDATE_JSON_BYTES,
+        "Story 4.14 capture review records",
+    )
     require_exact_fields(reviews, {"schemaVersion", "records", "releaseApproval", "foldersOq8Closure", "story415Status"}, "Capture review records")
-    require(reviews.get("schemaVersion") == 1, "Capture review records schemaVersion drift")
+    require_exact_integer(reviews.get("schemaVersion"), 1, "Capture review records schemaVersion")
     require(
         reviews.get("records") == [
             {"kind": "implementation-verification", "performedOn": "2026-08-10", "result": "passed", "authority": "development-verification-only"},
@@ -4084,12 +4286,16 @@ def validate_capture_packet(packet: Any) -> None:
 
 
 def validate_committed_packet(*, current_source: bool = True) -> None:
-    require(PACKET.is_file(), "OQ8 packet is missing")
     require(EVIDENCE.is_dir(), "OQ8 evidence directory is missing")
-    scan_support_safe(PACKET)
-    outer_packet = load_json(PACKET)
+    packet_bytes = read_bounded_regular_snapshot(
+        PACKET,
+        MAX_CANDIDATE_JSON_BYTES,
+        "OQ8 closure packet",
+    )
+    scan_support_safe_text(decode_utf8(packet_bytes, "OQ8 closure packet"), PACKET.name)
+    outer_packet = load_json_bytes(packet_bytes, "OQ8 closure packet")
     require(isinstance(outer_packet, dict), "Closure packet must be an object")
-    require(outer_packet.get("schemaVersion") == 2, "Closure packet schemaVersion drift")
+    require_exact_integer(outer_packet.get("schemaVersion"), 2, "Closure packet schemaVersion")
     require(set(outer_packet) == {"schemaVersion", "capture", "platformClosure"}, "Closure packet field set drift")
     packet = outer_packet.get("capture", {})
     require(packet == load_candidate_json(CLOSURE / "capture-packet-v1.json"), "Immutable v1 capture packet snapshot drift")
@@ -4222,7 +4428,7 @@ def main() -> int:
         return 1
     except Exception as exception:
         message = re.sub(r"[\r\n\t]+", " ", str(exception)).strip()
-        message = PRIVATE_PATH_RE.sub("<redacted-path>", message)[:256]
+        message = PRIVATE_PATH_TOKEN_RE.sub("<redacted-path>", message)[:256]
         detail = f": {message}" if message else ""
         bounded = EvidenceError(f"Unexpected validator failure was safely bounded ({type(exception).__name__}){detail}")
         print(f"OQ8 evidence validation failed: {bounded}", file=sys.stderr)
