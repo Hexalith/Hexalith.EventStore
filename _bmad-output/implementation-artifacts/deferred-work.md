@@ -4652,3 +4652,9 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Make OQ8 capture publication transactional across focused and deterministic-support CTRF validation.
   evidence: `validate_capture` writes `test-results.json` before validating the support CTRF; a support failure leaves a partial target that makes the next clean retry reject the capture directory.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-18, story-scoped pass)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Bound exact-tree enumeration before comparing sealed OQ8 evidence directories.
+  evidence: `relative_tree_entries` walks an unlimited number and depth of unexpected entries before exact-set rejection, so a hostile evidence directory can consume unbounded time and memory; the helper predates the current Story 4.15 implementation patch.

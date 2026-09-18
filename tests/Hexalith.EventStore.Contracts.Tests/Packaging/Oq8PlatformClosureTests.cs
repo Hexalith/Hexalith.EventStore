@@ -996,9 +996,12 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("counter-float")]
     [InlineData("counter-negative")]
     [InlineData("admission-row-delta")]
+    [InlineData("admission-row-overrun")]
     [InlineData("terminal-row-delta")]
+    [InlineData("terminal-row-overrun")]
     [InlineData("tombstone-row-delta")]
     [InlineData("total-row-delta")]
+    [InlineData("total-row-inconsistent")]
     [InlineData("protected-before")]
     public void FreshObservationSchemaAndSemanticMutationsFailClosed(string mutation)
     {
@@ -1069,14 +1072,25 @@ public sealed class Oq8PlatformClosureTests
                 case "admission-row-delta":
                     observations["observations"]!["capture"]!["after"]!["admissionRows"] = 0;
                     break;
+                case "admission-row-overrun":
+                    observations["observations"]!["capture"]!["after"]!["admissionRows"] =
+                        observations["observations"]!["capture"]!["before"]!["admissionRows"]!.GetValue<int>() + 5;
+                    break;
                 case "terminal-row-delta":
                     observations["observations"]!["capture"]!["after"]!["terminalRows"] = 0;
+                    break;
+                case "terminal-row-overrun":
+                    observations["observations"]!["capture"]!["after"]!["terminalRows"] =
+                        observations["observations"]!["capture"]!["before"]!["terminalRows"]!.GetValue<int>() + 5;
                     break;
                 case "tombstone-row-delta":
                     observations["observations"]!["capture"]!["after"]!["tombstoneRows"] = 0;
                     break;
                 case "total-row-delta":
                     observations["observations"]!["capture"]!["after"]!["totalRows"] = 0;
+                    break;
+                case "total-row-inconsistent":
+                    observations["observations"]!["capture"]!["after"]!["totalRows"] = 1;
                     break;
                 case "protected-before":
                     observations["observations"]!["capture"]!["before"]!["protectedSentinelMatches"] = 1;
@@ -1786,7 +1800,7 @@ public sealed class Oq8PlatformClosureTests
             specification.loader.exec_module(validator)
 
             def fail_unexpectedly(*args, **kwargs):
-                raise RuntimeError(r"one=/home/alice/repo/secret.json two=/root/private/key three=/tmp/oq8/fixture four=C:\Users\Alice\secret.txt")
+                raise RuntimeError(r"one=/home/alice/repo/secret.json two=/root/private/key three=/tmp/oq8/fixture four=C:\Users\Alice\secret.txt five=c:\users\Bob\lower.txt six=\\server\Users\Carol\share.txt")
 
             validator.validate_committed_packet = fail_unexpectedly
             sys.argv = [sys.argv[0], "--root", sys.argv[2], "--git-root", sys.argv[2]]
@@ -1803,6 +1817,9 @@ public sealed class Oq8PlatformClosureTests
         output.ShouldContain("<redacted-path>");
         output.ShouldNotContain("alice");
         output.ShouldNotContain("Alice");
+        output.ShouldNotContain("Bob");
+        output.ShouldNotContain("Carol");
+        output.ShouldNotContain("server");
         output.ShouldNotContain("/root/private");
         output.ShouldNotContain("/tmp/oq8");
         output.ShouldNotContain("secret.txt");
@@ -3373,10 +3390,11 @@ public sealed class Oq8PlatformClosureTests
         "counter-boolean" => "Observation topology eventStoreProcessCount must be a non-negative integer",
         "counter-float" => "Writer/failover observation concurrentRequests must be a non-negative integer",
         "counter-negative" => "After capture snapshot totalRows must be a non-negative integer",
-        "admission-row-delta" => "Admission row delta is not exactly four",
-        "terminal-row-delta" => "Terminal row delta is not exactly four",
+        "admission-row-delta" or "admission-row-overrun" => "Admission row delta is not exactly four",
+        "terminal-row-delta" or "terminal-row-overrun" => "Terminal row delta is not exactly four",
         "tombstone-row-delta" => "Tombstone row delta missing",
         "total-row-delta" => "Total PostgreSQL row count did not increase",
+        "total-row-inconsistent" => "After capture snapshot totalRows is smaller than its disjoint row counts",
         "protected-before" => "Protected sentinel leakage detected",
         _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown observation mutation."),
     };

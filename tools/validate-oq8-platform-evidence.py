@@ -312,9 +312,9 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V3_REVIEW_DATE = "2026-09-12"
-V3_FINAL_CLOSURE_TEST_COUNT = 448
-V3_FULL_CONTRACTS_TEST_COUNT = 2051
+V3_REVIEW_DATE = "2026-09-18"
+V3_FINAL_CLOSURE_TEST_COUNT = 451
+V3_FULL_CONTRACTS_TEST_COUNT = 2054
 V3_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
     "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
@@ -640,8 +640,9 @@ EXPECTED_CROSSWALK_INVARIANTS = [
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRIVATE_PATH_RE = re.compile(r"(?:/home/|/Users/|[A-Za-z]:[\\/]Users[\\/])")
 PRIVATE_PATH_TOKEN_RE = re.compile(
-    r"(?:/(?:home|Users|tmp)/|/root(?:/|\b)|[A-Za-z]:[\\/](?:Users|Temp|tmp)[\\/])"
-    r"[^\s\"'<>]*"
+    r"(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
+    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:users|home)[\\/])[^\s\"'<>]*",
+    re.IGNORECASE,
 )
 PLACEHOLDER_RE = re.compile(r"(?:\bTBD\b|\bTODO\b|\bUNKNOWN\b|<[^>]+>)", re.IGNORECASE)
 FORBIDDEN_CLAIM_RE = re.compile(
@@ -1450,6 +1451,22 @@ def validate_observations(
     require(after.get("minimalTombstoneRows", 0) >= before.get("minimalTombstoneRows", 0) + 1, "Minimal tombstone delta missing")
     require(after.get("directoryRows", 0) > before.get("directoryRows", 0), "Digest directory state missing")
     require(after.get("lifecycleRows", 0) > before.get("lifecycleRows", 0), "Tenant lifecycle state missing")
+    for label, snapshot in (("Before", before), ("After", after)):
+        disjoint_rows = sum(
+            snapshot.get(field, 0)
+            for field in (
+                "admissionRows",
+                "tombstoneRows",
+                "directoryRows",
+                "lifecycleRows",
+                "aggregateMetadataRows",
+                "aggregateEventRows",
+            )
+        )
+        require(
+            snapshot.get("totalRows", 0) >= disjoint_rows,
+            f"{label} capture snapshot totalRows is smaller than its disjoint row counts",
+        )
     require(
         before.get("protectedSentinelMatches") == 0
         and after.get("protectedSentinelMatches") == 0

@@ -2,7 +2,7 @@
 title: 'Story 4.15: OQ8 Platform Closure And Handoff'
 type: 'feature'
 created: '2026-08-10'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 story_key: '4-15-oq8-platform-closure-and-handoff'
 baseline_commit: '699ca71206cd280dc6b770d83c338495bfe70fab'
@@ -439,6 +439,48 @@ _BMad Build review of the baseline-wide diff on 2026-09-09. Routes are recorded 
 | run3-verification-01 | medium | patch | The existing flood test reaches the 128 KiB stderr cap first, so deleting the independent 8 MiB historical-blob stdout guard stays green; add a stdout-only blob-limit test. |
 | run3-verification-02 | low | reject | Receipt checks intentionally bind reviewer-attested commands and counts rather than retained runner artifacts; the approved repository-attestation model explicitly rejects a TRX-as-authority requirement, while stale current counts are already handled by `run3-blind-02`. |
 | run3-verification-03 | high | patch | Carried from `run2-blind-01`/`run2-blind-02`: the 447-case focused run is red because the candidate is unreminted and the lifecycle is still interim, so final verification must be rerun after both advance coherently. |
+| run4-verification-01 | medium | defer | Carried from `run2-blind-15`: Story 4.14 review-history immutability still lacks a coherently resealed `review-records.json` body mutation, and the code remains as that row describes. |
+| run4-verification-02 | high | patch | Carried from `run3-blind-01`/`run3-blind-02`: the active v3 identity still pins `4eee5819...`/`0a12d62a...` while the live validator/tests hash to `ec3bb9c3...`/`9eb3f25b...`, and its 421/1987 receipt counts remain stale. |
+| run4-edge-01 | medium | defer | Carried from `run3-blind-12`: capture still writes the focused sanitized result before support CTRF validation, so a support failure leaves a partial directory that rejects a clean retry. |
+| run4-edge-02 | medium | defer | Carried from `run3-blind-11`/`run3-edge-06`: required workflow, specification, frontmatter, and public-document reads remain unbounded before controlled validation. |
+| run4-edge-03 | low | reject | Carried from `run3-edge-05`/DW-454: swapping a validated path component before open is possible only with a concurrent hostile workspace writer, and the descriptor-relative repair remains disproportionate in the accepted single-writer boundary. |
+| run4-edge-04 | medium | defer | `pick_methods.py` accepts blank required fields and caller-supplied duplicate numeric IDs in extra-method overlays, so lookups can silently resolve incomplete or wrong methods; this separately authored BMAD utility is not Story 4.15 work. |
+| run4-edge-05 | medium | defer | The deprecated `bmad-create-story` skill was deleted while tracked help prerequisites and the v6-shim README still name it as retained, leaving legacy callers unresolved; this BMAD migration is unrelated to Story 4.15. |
+| run4-edge-06 | medium | defer | Carried from `edge-01`/`run3-edge-01`: active v3 intentionally checks its reduced gate-input set, so older declared capability paths can drift under the accepted DW-496 authority boundary. |
+| run4-blind-01 | high | patch | Carried from `run3-blind-01`: changed validator and closure-test bytes still invalidate the checked-in v3 source identities until a reviewed remint is performed. |
+| run4-blind-02 | high | patch | Carried from `run3-blind-02`: the validator now requires 448/2051 tests while the sealed receipt still attests 421/1987, so fresh execution and review evidence remain required. |
+| run4-blind-03 | high | patch | Carried from `run3-blind-03`/`run3-edge-03`: `in-review`/`in-progress` are valid interim states, but the final lifecycle test cannot pass until the reviewed remint advances them coherently. |
+| run4-blind-04 | high | patch | Carried from `run3-verification-03`: the stale v3 fixture fails at source identity before many negative mutations reach their intended guards, so final verification must be rerun after remint. |
+| run4-blind-05 | medium | defer | Fresh-capture profile identity hashes follow repository Dapr configuration symlinks without a regular-file or repository-bound snapshot guard, allowing the evidence identity to depend on an external target; this predates the current review. |
+| run4-blind-06 | medium | defer | Carried from `run3-blind-11`: story frontmatter and public-document inputs still use unbounded, symlink-following text reads. |
+| run4-blind-07 | medium | reject | The open review ledger now contradicts both itself and the hardened validator for several previously reverted patches, but the only direct correction edits this build's spec and is rejected by review rule. |
+| run4-blind-08 | low | reject | The Spec Change Log omits later review activity, but `review_loop_iteration` counts spec loopbacks rather than review groups; correcting the remaining metadata would edit the spec under review. |
+| run4-blind-09 | false | reject | Carried from `run3-blind-05`: the cited `done`/`review` narrative records the historical Group Q boundary and does not claim to describe the later interim lifecycle state. |
+| run4-blind-10 | medium | defer | The tracker cannot parse its ISO-8601-with-offset `generated` timestamp and therefore reports a validation error; the same value predates Story 4.15. |
+| run4-blind-11 | medium | defer | Action item 38 uses the unsupported `rejected` status and is omitted from status summaries; the retrospective item is separately authored outside Story 4.15. |
+| run4-blind-12 | medium | defer | The tracked sprint metadata embeds an absolute private workspace path, making it non-portable and disclosing a local account name; the path predates Story 4.15. |
+| run4-blind-13 | medium | defer | Carried from `blind-13`/`run2-blind-16`: tracked Playwright screenshots, DOM captures, and network traces include transient session material and generated bulk unrelated to this story. |
+| run4-blind-14 | high | defer | Carried from `blind-01`: `bypass-validation=true` can authorize publication from Commitlint alone instead of a successful build/test proof, under the existing owner-ratified release policy. |
+| run4-blind-15 | low | defer | CI and Tenants initialization still consume shared Builds workflow/action code from mutable `@main` references, so exact-source proof semantics can change independently; this policy predates Story 4.15. |
+| run5-blind-01 | high | patch | Carried from `run4-blind-01`: the changed validator and closure-test bytes still invalidate the active v3 source identities, so final validation cannot pass until one coherent reviewed reseal is recorded. |
+| run5-blind-02 | high | patch | Carried from `run4-blind-02`: the validator requires 448/2051 cases while the active test receipt still records 421/1987, so fresh successful execution evidence and dependent seals are required. |
+| run5-blind-03 | high | patch | Carried from `run4-blind-03`: final validation requires sprint status `review` and Story 4.15 metadata `done`; the current interim lifecycle must advance only with the passing reviewed reseal. |
+| run5-blind-04 | medium | defer | Carried from `run3-blind-08`: malformed or YAML-equivalent duplicate frontmatter status declarations can evade the exact regex while one valid declaration remains. |
+| run5-blind-05 | medium | defer | Carried from `run4-blind-05`: fresh Dapr profile identities still use unbounded, symlink-following file hashing, allowing an external, special, or oversized target to supply the reviewed bytes. |
+| run5-blind-06 | low | reject | Carried from `run4-edge-03`/DW-454: replacing a checked path between inspection and open requires a concurrent hostile workspace writer, and descriptor-relative cross-platform handling remains disproportionate in the accepted single-writer boundary. |
+| run5-blind-07 | low | reject | Replacing a historical artifact between its manifest snapshot and later semantic validation is the same accepted concurrent-writer race as DW-454; the fix is more than a direct correction for an unlikely local boundary violation. |
+| run5-blind-08 | high | defer | Carried from `run3-blind-09`: candidate protected-content scans still use the narrower private-path regex and accept private roots such as `/root` and `/tmp`. |
+| run5-blind-09 | high | defer | Carried from `run3-edge-04`: expected `EvidenceError` diagnostics can still reflect an untrusted deterministic-support test name containing private or protected content. |
+| run5-blind-10 | medium | patch | The newly added unexpected-exception redactor is case-sensitive and omits UNC profiles, so lowercase Windows user paths and UNC user-profile paths can leak into CI diagnostics. |
+| run5-blind-11 | medium | defer | Carried from `run4-edge-02`: requirements, workflows, story frontmatter, and public documents are still loaded before a bounded snapshot guard. |
+| run5-blind-12 | medium | defer | `relative_tree_entries` walks an unlimited number and depth of unexpected entries before exact-set rejection, so a hostile evidence directory can consume unbounded time and memory. |
+| run5-blind-13 | medium | patch | Capture validation accepts `totalRows` smaller than the sum of the disjoint admission, tombstone, directory, lifecycle, aggregate-metadata, and aggregate-event row counts, allowing an internally impossible snapshot to validate. |
+| run5-edge-01 | medium | defer | Carried from `run4-blind-05`: fresh Dapr configuration identities can still resolve through symlinked paths outside the repository. |
+| run5-edge-02 | low | reject | Carried from `run4-edge-03`/DW-454: the bounded snapshot check/open race requires a concurrent hostile writer and a complex descriptor-relative repair outside the accepted trust boundary. |
+| run5-edge-03 | low | reject | Adding a successor entry after its exact tree enumeration is another concurrent hostile-writer race under DW-454; no ordinary single-writer validation path accepts the extra artifact. |
+| run5-edge-04 | medium | patch | The unexpected-exception redactor does not match lowercase Windows profile paths or UNC user-profile paths; the direct fix is to make the path-token regex case-insensitive and include UNC roots. |
+| run5-verification-01 | medium | patch | Exact admission and terminal deltas are tested only with zero values; positive overruns would survive a weakening from exact equality to a generic increase, so `before + 5` mutations are required. |
+| run5-verification-other-01 | medium | defer | Carried from `run4-blind-05`: a repository-shaped observation root with symlinked Dapr configuration files is accepted because profile identity uses `sha256_file`. |
 
 ### Completion Verification (2026-09-09)
 

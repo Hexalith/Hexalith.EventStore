@@ -2,18 +2,18 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "issuedAt": "2026-09-12T17:32:21Z",
+  "issuedAt": "2026-09-18T05:51:05Z",
   "decision": "approved",
-  "subjectSha256": "b3aed1c5ff53f1930baaac3e7d142fa218146a96e465d87376f6d765cc412cb5",
+  "subjectSha256": "3dd5f54d6726d620f723ecdd69e4617c434e30b49fbed30eee0e5e7e5e43b40b",
   "limitationsSha256": "2e926cd462c9a6a66bd3a05edf632846d7f19808087cf9fcf5efbdda6bcb62c2",
   "acceptedScope": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
   "findings": [
-    "Security review matched exact frozen subject b3aed1c5ff53f1930baaac3e7d142fa218146a96e465d87376f6d765cc412cb5, its four direct bindings, and all 13 gate inputs.",
-    "Immutable v2 and SDK lineage plus all three source transitions matched their declared identities.",
-    "Landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4, tree 96fdfbba56df41b58889bf7f3b532a64d15314bd, and current HEAD ancestry were verified.",
-    "Negative probes rejected source, tree, object-store, receipt, authority, protected-content, and private-path drift.",
-    "All bound inputs were bounded regular non-symlink files and contained no forbidden protected or private content.",
-    "Release, Folders final closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, and final-consumer authority remain false."
+    "Frozen subject and all four direct bindings matched exactly; the bound validator hash matched current bytes and candidate validation passed.",
+    "V2 predecessor subject and manifest, the historical SDK manifest, landed commit and tree, and required HEAD ancestry all verified.",
+    "All 13 current gate inputs were regular non-symlink files with exact hashes, and all three source-transition hashes matched.",
+    "Current changes strengthen Windows and UNC path redaction plus PostgreSQL row-count consistency; focused security and fail-closed checks passed.",
+    "Receipts bind this subject and its limitations, postdate the freeze, preserve exact scopes, and keep all external-authority fields false.",
+    "Recorded deferred gaps remain explicit limitations and grant no broader release, deployment, consumer, registry, package, or Folders authority."
   ],
   "authority": {
     "eventStorePlatformComplete": true,
