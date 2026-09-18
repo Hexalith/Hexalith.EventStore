@@ -41,21 +41,21 @@
   },
   "successor": {
     "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3",
-    "manifestSha256": "40f0cebdea403a63105fa0a97fc149f238e081a42081cebda82d63937f69e3d4",
+    "manifestSha256": "5f1c3579b23e78f236954f396f27d626ce68664f8935c8baf81efe20c4fb1907",
     "files": {
-      "limitations.json": "2e926cd462c9a6a66bd3a05edf632846d7f19808087cf9fcf5efbdda6bcb62c2",
-      "pre-review-execution.json": "410da456b7f2fed8421e4c0d33040de92b153b12e1c1312e3826c8574e979188",
-      "review-subject.json": "3dd5f54d6726d620f723ecdd69e4617c434e30b49fbed30eee0e5e7e5e43b40b",
-      "reviews/architecture.json": "126bd94c8a726612e267c92667df9a26f06e29c120a97b696be7182b8fb766ba",
-      "reviews/security.json": "91cb30592b138c9528ce2c5cc8804781d818ecee670f9dbb1a23251f0fd10c0d",
-      "reviews/test.json": "9dfb77a7014cd41dbf21e9949274f093ae3294c19800ccec3eef084eccab9011",
-      "source-artifact-identity.json": "3291621b370deb4738bac7b9737e458a5ba830d73b0900f2b0e53d577607f775",
-      "source-only-handoff.json": "206bf58c8205ed61bf383c28ed47b464cfb8813ff60d107ae97802d9208f2020",
-      "validator-sha256.txt": "98a46fb58bc74f55cff31d915d06bbae962fbdf265e53aa52095cdb55945e676"
+      "limitations.json": "73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41",
+      "pre-review-execution.json": "8cabbd9c45d20c959de482f4e3147f6421bb0714146b3c7316674f7af4a5f302",
+      "review-subject.json": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
+      "reviews/architecture.json": "b231f54e48c4e0e942fe84a56b1b2d7bdd46b001fa3cc51978b858552da95079",
+      "reviews/security.json": "cf187659d310ae1c1cdc8eb52746d1921c60f6cf8adcf8b44727144ea1228b28",
+      "reviews/test.json": "ace5eccb026f4a43d45608706a3dfa1eba69391b55082d0fc36721c7026df502",
+      "source-artifact-identity.json": "c691ba7dac6b4d422bf76f5c79fff1e956b55d4a2c1b7a7c5d7804bcf0121bdd",
+      "source-only-handoff.json": "87dd3fb30cd5af0092e481987cc041f4a0719c492b0c71d654155d3732d22bda",
+      "validator-sha256.txt": "5079ad801d864a8ce774c775ba5b38586174f0b03f4bfb2a5889bfc18c4ae277"
     },
-    "sourceIdentitySha256": "3291621b370deb4738bac7b9737e458a5ba830d73b0900f2b0e53d577607f775",
-    "reviewSubjectSha256": "3dd5f54d6726d620f723ecdd69e4617c434e30b49fbed30eee0e5e7e5e43b40b",
-    "handoffSha256": "206bf58c8205ed61bf383c28ed47b464cfb8813ff60d107ae97802d9208f2020"
+    "sourceIdentitySha256": "c691ba7dac6b4d422bf76f5c79fff1e956b55d4a2c1b7a7c5d7804bcf0121bdd",
+    "reviewSubjectSha256": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
+    "handoffSha256": "87dd3fb30cd5af0092e481987cc041f4a0719c492b0c71d654155d3732d22bda"
   },
   "authority": {
     "eventStorePlatformComplete": true,

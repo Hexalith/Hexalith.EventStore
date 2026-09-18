@@ -294,6 +294,7 @@ V3_LIMITATIONS = [
     "The v3 landed-commit, landed-tree, and HEAD-ancestry proofs resolve through the local Git object store, so a shallow or history-rewritten clone that lacks commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 fails closed rather than validating.",
     "The immutable Story 4.14 capture remains historical evidence of Dapr runtime 1.18.1; the current content-bound integration workflow and fresh OQ8 capture lane require Dapr runtime 1.18.2, without granting runtime-pin authority.",
     "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
+    "Exact-tree enumeration before sealed OQ8 directory comparison is not depth- or entry-count-bounded, so a hostile evidence tree can consume unbounded time or memory before fail-closed rejection; remediation remains deferred as DW-520.",
     "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority.",
 ]
 V3_CONTRACTS_RESTORE_COMMAND = "dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -m:1 -p:Configuration=Release -p:UseHexalithProjectReferences=false"
@@ -313,8 +314,8 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
 V3_REVIEW_DATE = "2026-09-18"
-V3_FINAL_CLOSURE_TEST_COUNT = 451
-V3_FULL_CONTRACTS_TEST_COUNT = 2054
+V3_FINAL_CLOSURE_TEST_COUNT = 458
+V3_FULL_CONTRACTS_TEST_COUNT = 2061
 V3_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
     "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
@@ -641,7 +642,11 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRIVATE_PATH_RE = re.compile(r"(?:/home/|/Users/|[A-Za-z]:[\\/]Users[\\/])")
 PRIVATE_PATH_TOKEN_RE = re.compile(
     r"(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
-    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:users|home)[\\/])[^\s\"'<>]*",
+    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:(?:profiles?|home)[\\/])?(?:users|home)[\\/])"
+    r"(?:(?![ \t]+[A-Za-z][A-Za-z0-9_-]*=(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)"
+    r"|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
+    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:(?:profiles?|home)[\\/])?(?:users|home)[\\/]))"
+    r"[^\"<>\r\n])*",
     re.IGNORECASE,
 )
 PLACEHOLDER_RE = re.compile(r"(?:\bTBD\b|\bTODO\b|\bUNKNOWN\b|<[^>]+>)", re.IGNORECASE)
@@ -852,7 +857,7 @@ def load_candidate_json_bytes(value: bytes, label: str) -> Any:
 
 
 def write_json(path: Path, value: Any) -> None:
-    path.mkdir(parents=True, exist_ok=True) if path.suffix == "" else path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(f"{path.suffix}.tmp")
     with temporary.open("w", encoding="utf-8", newline="\n") as stream:
         json.dump(value, stream, indent=2, sort_keys=False)
@@ -1441,6 +1446,15 @@ def validate_observations(
     require_sha256(before.get("schemaSha256"), "PostgreSQL schema identity")
     require_sha256(before.get("projectionSha256"), "Before projection identity")
     require_sha256(after.get("projectionSha256"), "After projection identity")
+    for label, snapshot in (("Before", before), ("After", after)):
+        require(
+            snapshot.get("terminalRows", 0) <= snapshot.get("admissionRows", 0),
+            f"{label} capture snapshot terminalRows exceeds admissionRows",
+        )
+        require(
+            snapshot.get("minimalTombstoneRows", 0) <= snapshot.get("tombstoneRows", 0),
+            f"{label} capture snapshot minimalTombstoneRows exceeds tombstoneRows",
+        )
     require(after.get("aggregateSequenceTotal") == before.get("aggregateSequenceTotal", 0) + 4, "Eligible execution count is not four")
     require(after.get("admissionRows") == before.get("admissionRows", 0) + 4, "Admission row delta is not exactly four")
     require(after.get("terminalRows") == before.get("terminalRows", 0) + 4, "Terminal row delta is not exactly four")

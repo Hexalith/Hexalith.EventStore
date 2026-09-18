@@ -2,17 +2,19 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "architecture",
   "reviewer": "Winston (System Architect)",
-  "issuedAt": "2026-09-18T05:51:04Z",
+  "issuedAt": "2026-09-18T16:09:08Z",
   "decision": "approved",
-  "subjectSha256": "3dd5f54d6726d620f723ecdd69e4617c434e30b49fbed30eee0e5e7e5e43b40b",
-  "limitationsSha256": "2e926cd462c9a6a66bd3a05edf632846d7f19808087cf9fcf5efbdda6bcb62c2",
+  "subjectSha256": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
+  "limitationsSha256": "73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41",
   "acceptedScope": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, and source-only authority boundaries",
   "findings": [
-    "Exact frozen subject, four direct bindings, 13 gate inputs, and three source transitions matched their current repository bytes.",
-    "V1, the SDK successor, and v2 historical evidence validated, and predecessor identities matched the completed-v2 closure.",
-    "The landed commit and tree resolved exactly, and the landed commit is an ancestor of current HEAD.",
-    "Validator changes preserve historical/current separation and strengthen bounded snapshots, row consistency, and path redaction.",
-    "Observation and redaction mutations passed, while the source-only authority boundary keeps every external authority false."
+    "All four subject bindings, 13 regular non-symlink gate inputs, and three predecessor/current source transitions match exact bytes.",
+    "V1, SDK, and completed-v2 lineage reconcile; landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 resolves to tree 96fdfbba56df41b58889bf7f3b532a64d15314bd and is an ancestor of HEAD.",
+    "The bound eight-command pre-review record is structurally exact and chronologically valid; independent historical validation, builds, workflow validation, and the LiveSidecar test passed.",
+    "All seven limitations are exact; DW-520 remains open and accurately discloses unbounded exact-tree enumeration.",
+    "The suffixless-output correction and complete private-path redaction correction are sound, and both focused regressions passed.",
+    "Authority remains narrowly source-only; every release, Folders, package, registry, deployment, runtime-pin, migration, external-repository, and final-consumer authority remains false.",
+    "No blocking architecture findings remain."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

@@ -2,17 +2,18 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "test",
   "reviewer": "Murat (Test Architect)",
-  "issuedAt": "2026-09-18T05:51:06Z",
+  "issuedAt": "2026-09-18T16:25:08Z",
   "decision": "approved",
-  "subjectSha256": "3dd5f54d6726d620f723ecdd69e4617c434e30b49fbed30eee0e5e7e5e43b40b",
-  "limitationsSha256": "2e926cd462c9a6a66bd3a05edf632846d7f19808087cf9fcf5efbdda6bcb62c2",
+  "subjectSha256": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
+  "limitationsSha256": "73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41",
   "acceptedScope": "historical v1/v2 validation, active v3 selector and bootstrap coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the full Contracts lane",
   "findings": [
-    "Frozen subject, all four direct bindings, 13 gate inputs, predecessor hashes, landed tree, and HEAD ancestry reconciled exactly.",
-    "The pre-review record contains the exact eight canonical commands with all eight successful, one focused test passed, and zero failures or skips.",
-    "OQ8 discovery is exactly 451 cases; the serialized preassembly run produced 425 passes and 26 expected final-assembly-dependent failures, with zero independent failures or skips.",
-    "Full Contracts discovery is exactly 2054 cases; the serialized preassembly run produced 2028 passes and the same 26 expected final-assembly-dependent failures, with zero independent failures or skips.",
-    "Exact positive admission and terminal overruns, inconsistent total-row accounting, and lowercase-drive and UNC redaction have falsifiable assertions; the focused mutation checks passed."
+    "The exact frozen subject SHA-256 92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536, limitations SHA-256 73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41, four direct bindings, and all 13 gate inputs reconcile with current candidate bytes.",
+    "The bound pre-review record confirms the exact workflow-static-validation command passed and the exact focused LiveSidecar command passed 1 of 1 with zero failures or skips.",
+    "The exact authorized Oq8PlatformClosureTests command completed 458 of 458 cases passed with zero failures or skips and xUnit duration 221.602 seconds; completion was observed before 2026-09-18T16:18:38Z and before the full run began.",
+    "The exact authorized full Contracts command ran from wrapper start 2026-09-18T16:18:52Z through wrapper finish 2026-09-18T16:22:34Z and reported 2061 of 2061 cases passed with zero failures or skips in 3m40.574s.",
+    "The retained Contracts TRX records start 2026-09-18T16:18:57.6607435+00:00, finish 2026-09-18T16:22:33.5311512+00:00, 2061 distinct results all Passed, counters total/executed/passed 2061, every failure/skip/error counter zero, and SHA-256 76b9b343cb7324384110049a0f986d1d436385a1c825cff5c38da1f453973576.",
+    "All four required verification records are accepted; approval remains source-only and grants no release, Folders-final-closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
   ],
   "verification": [
     {
@@ -40,8 +41,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 451,
-      "passed": 451,
+      "tests": 458,
+      "passed": 458,
       "failed": 0,
       "skipped": 0
     },
@@ -50,8 +51,8 @@
       "command": "dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --results-directory TestResults/Hexalith.EventStore.Contracts.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.Contracts.Tests.trx --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml -p:UseHexalithProjectReferences=false",
       "exitCode": 0,
       "result": "passed",
-      "tests": 2054,
-      "passed": 2054,
+      "tests": 2061,
+      "passed": 2061,
       "failed": 0,
       "skipped": 0
     }

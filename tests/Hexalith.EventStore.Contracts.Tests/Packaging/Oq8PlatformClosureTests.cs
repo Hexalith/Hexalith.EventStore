@@ -411,6 +411,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("receipt-future", "Story 4.15 v3 security receipt timestamp is later than current UTC")]
     [InlineData("handoff-future", "Story 4.15 v3 handoff assembly timestamp is later than current UTC")]
     [InlineData("receipt-rejected", "Story 4.15 v3 security review is not approved")]
+    [InlineData("limitation-text", "Story 4.15 v3 limitation text or order drift")]
     [InlineData("test-receipt-rejected", "Story 4.15 v3 test review is not approved")]
     [InlineData("test-verification-missing", "Story 4.15 v3 test review field set drift")]
     [InlineData("test-verification-failed", "Story 4.15 v3 test review verification oq8-platform-closure:failed count drift")]
@@ -1001,7 +1002,12 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("terminal-row-overrun")]
     [InlineData("tombstone-row-delta")]
     [InlineData("total-row-delta")]
-    [InlineData("total-row-inconsistent")]
+    [InlineData("terminal-subset-before")]
+    [InlineData("terminal-subset-after")]
+    [InlineData("minimal-tombstone-subset-before")]
+    [InlineData("minimal-tombstone-subset-after")]
+    [InlineData("total-row-inconsistent-before")]
+    [InlineData("total-row-inconsistent-after")]
     [InlineData("protected-before")]
     public void FreshObservationSchemaAndSemanticMutationsFailClosed(string mutation)
     {
@@ -1071,6 +1077,7 @@ public sealed class Oq8PlatformClosureTests
                     break;
                 case "admission-row-delta":
                     observations["observations"]!["capture"]!["after"]!["admissionRows"] = 0;
+                    observations["observations"]!["capture"]!["after"]!["terminalRows"] = 0;
                     break;
                 case "admission-row-overrun":
                     observations["observations"]!["capture"]!["after"]!["admissionRows"] =
@@ -1080,17 +1087,41 @@ public sealed class Oq8PlatformClosureTests
                     observations["observations"]!["capture"]!["after"]!["terminalRows"] = 0;
                     break;
                 case "terminal-row-overrun":
+                    observations["observations"]!["capture"]!["before"]!["admissionRows"] = 1;
                     observations["observations"]!["capture"]!["after"]!["terminalRows"] =
                         observations["observations"]!["capture"]!["before"]!["terminalRows"]!.GetValue<int>() + 5;
+                    observations["observations"]!["capture"]!["after"]!["admissionRows"] = 5;
                     break;
                 case "tombstone-row-delta":
                     observations["observations"]!["capture"]!["after"]!["tombstoneRows"] = 0;
+                    observations["observations"]!["capture"]!["after"]!["minimalTombstoneRows"] = 0;
                     break;
                 case "total-row-delta":
                     observations["observations"]!["capture"]!["after"]!["totalRows"] = 0;
                     break;
-                case "total-row-inconsistent":
-                    observations["observations"]!["capture"]!["after"]!["totalRows"] = 1;
+                case "terminal-subset-before":
+                    observations["observations"]!["capture"]!["before"]!["terminalRows"] = 1;
+                    observations["observations"]!["capture"]!["after"]!["terminalRows"] = 5;
+                    break;
+                case "terminal-subset-after":
+                    observations["observations"]!["capture"]!["after"]!["terminalRows"] = 5;
+                    break;
+                case "minimal-tombstone-subset-before":
+                    observations["observations"]!["capture"]!["before"]!["minimalTombstoneRows"] = 1;
+                    observations["observations"]!["capture"]!["after"]!["minimalTombstoneRows"] = 2;
+                    break;
+                case "minimal-tombstone-subset-after":
+                    observations["observations"]!["capture"]!["after"]!["minimalTombstoneRows"] = 2;
+                    break;
+                case "total-row-inconsistent-before":
+                    observations["observations"]!["capture"]!["before"]!["aggregateMetadataRows"] = 1;
+                    observations["observations"]!["capture"]!["after"]!["aggregateMetadataRows"] = 5;
+                    observations["observations"]!["capture"]!["before"]!["totalRows"] =
+                        SumDisjointObservationRows(observations["observations"]!["capture"]!["before"]!) - 1;
+                    break;
+                case "total-row-inconsistent-after":
+                    observations["observations"]!["capture"]!["after"]!["totalRows"] =
+                        SumDisjointObservationRows(observations["observations"]!["capture"]!["after"]!) - 1;
                     break;
                 case "protected-before":
                     observations["observations"]!["capture"]!["before"]!["protectedSentinelMatches"] = 1;
@@ -1752,6 +1783,46 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
+    /// Verifies portable JSON output supports a filename without a suffix.
+    /// </summary>
+    [Fact]
+    public void WriteJsonSupportsSuffixlessOutputPath()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = Path.Combine(Path.GetTempPath(), "oq8-suffixless-output-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        string output = Path.Combine(fixture, "sanitized");
+        try
+        {
+            using Process process = CreatePythonProcess(
+                """
+                import importlib.util
+                import pathlib
+                import sys
+
+                specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+                validator = importlib.util.module_from_spec(specification)
+                specification.loader.exec_module(validator)
+                validator.write_json(pathlib.Path(sys.argv[2]), {"passed": True})
+                """);
+            process.StartInfo.ArgumentList.Add(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
+            process.StartInfo.ArgumentList.Add(output);
+
+            (int exitCode, string processOutput, bool timedOut) = RunProcess(process, 5_000);
+
+            timedOut.ShouldBeFalse("Suffixless-output probe timed out.");
+            exitCode.ShouldBe(0, processOutput);
+            File.Exists(output).ShouldBeTrue();
+            Directory.Exists(output).ShouldBeFalse();
+            LoadObject(output)["passed"]!.GetValue<bool>().ShouldBeTrue();
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Verifies hostile duplicate-key names are never reflected in bounded validator output.
     /// </summary>
     [Fact]
@@ -1800,7 +1871,7 @@ public sealed class Oq8PlatformClosureTests
             specification.loader.exec_module(validator)
 
             def fail_unexpectedly(*args, **kwargs):
-                raise RuntimeError(r"one=/home/alice/repo/secret.json two=/root/private/key three=/tmp/oq8/fixture four=C:\Users\Alice\secret.txt five=c:\users\Bob\lower.txt six=\\server\Users\Carol\share.txt")
+                raise RuntimeError(r"one=/home/alice/repo/secret.json two=/root/private/key three=/tmp/oq8/fixture four=C:\Users\Alice\secret.txt five=c:\users\Bob\lower.txt six=\\server\Users\Carol\share.txt seven=/var/tmp/OQ8 Private/validator.log eight=C:\Users\Alice\Secret Project\password.txt nine=\\server\profiles\Users\Carol\secret.txt ten=/home/alice/O'Brien/secret eleven=C:\Users\Alice\Secret Foo=bar\password.txt")
 
             validator.validate_committed_packet = fail_unexpectedly
             sys.argv = [sys.argv[0], "--root", sys.argv[2], "--git-root", sys.argv[2]]
@@ -1820,8 +1891,17 @@ public sealed class Oq8PlatformClosureTests
         output.ShouldNotContain("Bob");
         output.ShouldNotContain("Carol");
         output.ShouldNotContain("server");
+        output.ShouldNotContain("profiles");
+        output.ShouldNotContain("Secret Project");
+        output.ShouldNotContain("OQ8 Private");
+        output.ShouldNotContain("O'Brien");
+        output.ShouldNotContain("Brien");
+        output.ShouldNotContain("Foo=bar");
         output.ShouldNotContain("/root/private");
         output.ShouldNotContain("/tmp/oq8");
+        output.ShouldNotContain("/var/tmp");
+        output.ShouldNotContain("validator.log");
+        output.ShouldNotContain("password.txt");
         output.ShouldNotContain("secret.txt");
         output.ShouldNotContain("Traceback");
     }
@@ -3394,10 +3474,26 @@ public sealed class Oq8PlatformClosureTests
         "terminal-row-delta" or "terminal-row-overrun" => "Terminal row delta is not exactly four",
         "tombstone-row-delta" => "Tombstone row delta missing",
         "total-row-delta" => "Total PostgreSQL row count did not increase",
-        "total-row-inconsistent" => "After capture snapshot totalRows is smaller than its disjoint row counts",
+        "terminal-subset-before" => "Before capture snapshot terminalRows exceeds admissionRows",
+        "terminal-subset-after" => "After capture snapshot terminalRows exceeds admissionRows",
+        "minimal-tombstone-subset-before" => "Before capture snapshot minimalTombstoneRows exceeds tombstoneRows",
+        "minimal-tombstone-subset-after" => "After capture snapshot minimalTombstoneRows exceeds tombstoneRows",
+        "total-row-inconsistent-before" => "Before capture snapshot totalRows is smaller than its disjoint row counts",
+        "total-row-inconsistent-after" => "After capture snapshot totalRows is smaller than its disjoint row counts",
         "protected-before" => "Protected sentinel leakage detected",
         _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown observation mutation."),
     };
+
+    private static int SumDisjointObservationRows(JsonNode snapshot) =>
+        new[]
+        {
+            "admissionRows",
+            "tombstoneRows",
+            "directoryRows",
+            "lifecycleRows",
+            "aggregateMetadataRows",
+            "aggregateEventRows",
+        }.Sum(field => snapshot[field]!.GetValue<int>());
 
     private static void InsertDuplicateJsonField(string path, string original, string replacement)
     {
@@ -4363,6 +4459,15 @@ public sealed class Oq8PlatformClosureTests
                 receipt["decision"] = "rejected";
                 WriteObject(receiptPath, receipt);
                 ResealV3Receipt(successor, "security");
+                break;
+            }
+            case "limitation-text":
+            {
+                string limitationsPath = Path.Combine(successor, "limitations.json");
+                JsonObject limitations = LoadObject(limitationsPath);
+                limitations["limitations"]![6] = "Unreviewed limitation text.";
+                WriteObject(limitationsPath, limitations);
+                ResealV3Manifest(successor);
                 break;
             }
             case "test-receipt-rejected":

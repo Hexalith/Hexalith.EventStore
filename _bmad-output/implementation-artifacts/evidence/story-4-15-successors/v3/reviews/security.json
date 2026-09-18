@@ -2,18 +2,19 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "issuedAt": "2026-09-18T05:51:05Z",
+  "issuedAt": "2026-09-18T16:09:09Z",
   "decision": "approved",
-  "subjectSha256": "3dd5f54d6726d620f723ecdd69e4617c434e30b49fbed30eee0e5e7e5e43b40b",
-  "limitationsSha256": "2e926cd462c9a6a66bd3a05edf632846d7f19808087cf9fcf5efbdda6bcb62c2",
+  "subjectSha256": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
+  "limitationsSha256": "73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41",
   "acceptedScope": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
   "findings": [
-    "Frozen subject and all four direct bindings matched exactly; the bound validator hash matched current bytes and candidate validation passed.",
-    "V2 predecessor subject and manifest, the historical SDK manifest, landed commit and tree, and required HEAD ancestry all verified.",
-    "All 13 current gate inputs were regular non-symlink files with exact hashes, and all three source-transition hashes matched.",
-    "Current changes strengthen Windows and UNC path redaction plus PostgreSQL row-count consistency; focused security and fail-closed checks passed.",
-    "Receipts bind this subject and its limitations, postdate the freeze, preserve exact scopes, and keep all external-authority fields false.",
-    "Recorded deferred gaps remain explicit limitations and grant no broader release, deployment, consumer, registry, package, or Folders authority."
+    "All four subject bindings, 13 gate-input hashes, and three predecessor/current transition endpoints match exact current bytes; the validator is bound as 5ae0515be54e0143907d83729b9405b69b059b004f705bbd6f0ba7bdb720acd9.",
+    "Predecessor lineage is intact: v1, SDK successor, and v2 trees remain unchanged; the v2 identities match immutable history, and landed commit 5e8f175b2ced4715f7c6f765386812cc1001dbb4 resolves to tree 96fdfbba56df41b58889bf7f3b532a64d15314bd and is an ancestor of HEAD.",
+    "Chronology is valid: the pre-review execution strictly precedes the freeze, and fresh receipts and handoff remain required after the freeze.",
+    "Authority is constrained to source-only EventStore platform completion, and every release, Folders, package, registry, deployment, runtime-pin, migration, external-repository, and final-consumer authority is false.",
+    "Unexpected-exception redaction independently passed for apostrophes, spaces, temporary and root paths, lowercase Windows paths, nested UNC profiles, multiple assignments, tabs, and whitespace-plus-name path segments without leaking identifying suffixes or traceback content.",
+    "Suffixless JSON output independently passed: the destination is a regular file, its sibling temporary file is removed, and no destination directory is created.",
+    "DW-520 remains explicitly accepted: exact-tree enumeration is not depth- or entry-count-bounded and may consume unbounded resources on a hostile evidence tree."
   ],
   "authority": {
     "eventStorePlatformComplete": true,
