@@ -81,14 +81,18 @@ public class ReplayControllerTests {
         return new ClaimsPrincipal(identity);
     }
 
-    private async Task SeedArchivedCommand(string tenant, string correlationId, CommandStatus status) {
+    private async Task SeedArchivedCommand(
+        string tenant,
+        string correlationId,
+        CommandStatus status,
+        Dictionary<string, string>? extensions = null) {
         var archived = new ArchivedCommand(
             Tenant: tenant,
             Domain: "orders",
             AggregateId: "agg-001",
             CommandType: "CreateOrder",
             Payload: [1, 2, 3],
-            Extensions: null,
+            Extensions: extensions,
             OriginalTimestamp: DateTimeOffset.UtcNow);
 
         await _archiveStore.WriteCommandAsync(tenant, correlationId, archived, CancellationToken.None).ConfigureAwait(false);
@@ -125,6 +129,36 @@ public class ReplayControllerTests {
         responseMessageId.ShouldNotBeNullOrWhiteSpace();
         CorrelationIdMiddleware.IsValidIdentifier(responseMessageId).ShouldBeTrue();
         responseMessageId.ShouldNotBe(response.CorrelationId);
+    }
+
+    [Fact]
+    public async Task Replay_StripsColonNamespacedExtensionsAndPreservesCaseDistinctOrdinaryKeysBeforeResubmission() {
+        string correlationId = Guid.NewGuid().ToString();
+        await SeedArchivedCommand(
+            "tenant-a",
+            correlationId,
+            CommandStatus.Rejected,
+            new Dictionary<string, string> {
+                ["provider:selectionValidation"] = "Valid",
+                ["trace-id"] = "trace-1",
+                ["TRACE-ID"] = "trace-2",
+            });
+        SubmitCommand? submitted = null;
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                submitted = callInfo.Arg<SubmitCommand>();
+                return new SubmitCommandResult(submitted.CorrelationId);
+            });
+        ReplayController controller = CreateController();
+
+        IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
+
+        result.ShouldBeOfType<AcceptedResult>();
+        Dictionary<string, string> extensions = submitted.ShouldNotBeNull().Extensions.ShouldNotBeNull();
+        extensions.ShouldBe(new Dictionary<string, string> {
+            ["trace-id"] = "trace-1",
+            ["TRACE-ID"] = "trace-2",
+        });
     }
 
     [Fact]

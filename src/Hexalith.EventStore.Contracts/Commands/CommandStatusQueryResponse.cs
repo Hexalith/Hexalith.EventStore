@@ -17,8 +17,26 @@ public sealed record CommandStatusQueryResponse(
     string? RejectionEventType = null,
     string? MessageId = null)
 {
-    /// <summary>Gets a value indicating whether the command reached the domain-rejected terminal state.</summary>
+    /// <summary>
+    /// Gets the bounded failure reason when the rejection or terminal failure was infrastructural.
+    /// </summary>
+    public string? FailureReason { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the command reached a canonical domain-rejected terminal state.
+    /// Infrastructure rejections use the same lifecycle status but carry <see cref="FailureReason"/> instead of a
+    /// rejection event type and therefore return <see langword="false"/>.
+    /// </summary>
     public bool IsRejected
         => StatusCode == (int)CommandStatus.Rejected
-            && string.Equals(Status, nameof(CommandStatus.Rejected), StringComparison.Ordinal);
+            && string.Equals(Status, nameof(CommandStatus.Rejected), StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(RejectionEventType)
+            && string.IsNullOrWhiteSpace(FailureReason)
+            && Retryable is not true;
+
+    /// <summary>
+    /// Gets whether the platform has armed an automatic retry, or <c>null</c> for a legacy record that carries no
+    /// recovery signal.
+    /// </summary>
+    public bool? Retryable { get; init; }
 }

@@ -46,7 +46,25 @@ public partial class ExtensionMetadataSanitizer(IOptions<ExtensionMetadataOption
                     $"Extension value length {kvp.Value.Length} exceeds maximum of {_options.MaxValueLength}.");
             }
 
-            // Validate key character set: printable ASCII identifiers only [a-zA-Z0-9_.:-]
+            // Scan keys as well as values: a syntactically valid namespaced key such as
+            // "javascript:alert" must not bypass the injection checks.
+            if (XssPattern().IsMatch(kvp.Key)) {
+                return SanitizeResult.Failure("Extension key contains XSS injection pattern.");
+            }
+
+            if (SqlInjectionPattern().IsMatch(kvp.Key)) {
+                return SanitizeResult.Failure("Extension key contains SQL injection pattern.");
+            }
+
+            if (LdapInjectionPattern().IsMatch(kvp.Key)) {
+                return SanitizeResult.Failure("Extension key contains LDAP injection pattern.");
+            }
+
+            if (PathTraversalPattern().IsMatch(kvp.Key)) {
+                return SanitizeResult.Failure("Extension key contains path traversal pattern.");
+            }
+
+            // Validate key grammar. Each optional colon introduces a non-empty namespace segment.
             if (!KeyPattern().IsMatch(kvp.Key)) {
                 return SanitizeResult.Failure("Extension key contains invalid characters.");
             }
@@ -96,8 +114,8 @@ public partial class ExtensionMetadataSanitizer(IOptions<ExtensionMetadataOption
         return false;
     }
 
-    // Key pattern: alphanumeric + dots, colons, hyphens, underscores
-    [GeneratedRegex(@"^[a-zA-Z0-9][a-zA-Z0-9._:-]*$", RegexOptions.Compiled)]
+    // Key pattern: one or more non-empty alphanumeric-anchored segments separated by single colons.
+    [GeneratedRegex(@"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?(?::[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?)*$", RegexOptions.Compiled)]
     private static partial Regex KeyPattern();
 
     // XSS patterns

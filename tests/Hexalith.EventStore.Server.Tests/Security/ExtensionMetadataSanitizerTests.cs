@@ -27,6 +27,43 @@ public class ExtensionMetadataSanitizerTests {
         result.IsSuccess.ShouldBeTrue();
     }
 
+    [Fact]
+    public void Global_admin_key_is_syntactically_valid_for_gateway_owned_handling() {
+        ExtensionMetadataSanitizer sanitizer = CreateSanitizer();
+
+        SanitizeResult result = sanitizer.Sanitize(
+            new Dictionary<string, string> { ["actor:globalAdmin"] = "true" });
+
+        result.IsSuccess.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(":provider")]
+    [InlineData("provider:")]
+    [InlineData("provider::selection")]
+    [InlineData("a:::b")]
+    [InlineData("provider:selection.")]
+    [InlineData("provider.:selection")]
+    public void Malformed_colon_namespaces_are_rejected(string key) {
+        ExtensionMetadataSanitizer sanitizer = CreateSanitizer();
+
+        SanitizeResult result = sanitizer.Sanitize(new Dictionary<string, string> { [key] = "value" });
+
+        result.IsSuccess.ShouldBeFalse();
+        result.RejectionReason.ShouldBe("Extension key contains invalid characters.");
+    }
+
+    [Fact]
+    public void Injection_patterns_in_keys_are_rejected() {
+        ExtensionMetadataSanitizer sanitizer = CreateSanitizer();
+
+        SanitizeResult result = sanitizer.Sanitize(
+            new Dictionary<string, string> { ["javascript:alert"] = "value" });
+
+        result.IsSuccess.ShouldBeFalse();
+        result.RejectionReason.ShouldBe("Extension key contains XSS injection pattern.");
+    }
+
     // --- Task 8.2: Null/empty extensions ---
 
     [Fact]

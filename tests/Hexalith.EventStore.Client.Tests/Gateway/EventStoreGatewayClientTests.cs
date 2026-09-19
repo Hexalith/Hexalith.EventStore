@@ -31,7 +31,7 @@ public class EventStoreGatewayClientTests {
             observedRequest = request;
             return Task.FromResult(Json(
                 HttpStatusCode.OK,
-                "{\"correlationId\":\"corr-1\",\"status\":\"Rejected\",\"statusCode\":5,\"messageId\":\"message/1\"}"));
+                "{\"correlationId\":\"corr-1\",\"status\":\"Rejected\",\"statusCode\":5,\"rejectionEventType\":\"OrderRejected\",\"messageId\":\"message/1\"}"));
         });
         var options = new EventStoreGatewayClientOptions { CommandStatusPath = "custom/status/" };
         var client = new EventStoreGatewayClient(httpClient, Options.Create(options));
@@ -57,7 +57,6 @@ public class EventStoreGatewayClientTests {
     [Theory]
     [InlineData("null")]
     [InlineData("{}")]
-    [InlineData("{\"correlationId\":\"corr-1\",\"status\":\"Completed\",\"statusCode\":4}")]
     public async Task GetCommandStatusAsync_RejectsIncompleteSuccessfulBodies(string json) {
         using HttpClient httpClient = CreateClient(_ =>
             Task.FromResult(Json(HttpStatusCode.OK, json)));
@@ -68,6 +67,58 @@ public class EventStoreGatewayClientTests {
 
         exception.StatusCode.ShouldBe((int)HttpStatusCode.OK);
         exception.Detail.ShouldBe("Command status response body was incomplete or inconsistent.");
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_AcceptsLegacyResponseWithoutMessageId() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(
+            HttpStatusCode.OK,
+            "{\"correlationId\":\"message-1\",\"status\":\"Completed\",\"statusCode\":4}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message-1")).ShouldNotBeNull();
+
+        response.MessageId.ShouldBeNull();
+        response.FailureReason.ShouldBeNull();
+        response.Retryable.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_RejectsLegacyResponseWithoutRequestedIdentity() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(
+            HttpStatusCode.OK,
+            "{\"correlationId\":\"another-identifier\",\"status\":\"Completed\",\"statusCode\":4}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        _ = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => client.GetCommandStatusAsync("message-1"));
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_AcceptsCorrelationLookupResolvedToAnotherMessageId() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(
+            HttpStatusCode.OK,
+            "{\"correlationId\":\"correlation-1\",\"status\":\"Completed\",\"statusCode\":4,\"messageId\":\"message-1\"}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("correlation-1")).ShouldNotBeNull();
+
+        response.MessageId.ShouldBe("message-1");
+        response.CorrelationId.ShouldBe("correlation-1");
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_PreservesInfrastructureFailureAndRetryabilityEvidence() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(
+            HttpStatusCode.OK,
+            "{\"correlationId\":\"corr-1\",\"status\":\"Rejected\",\"statusCode\":5,\"failureReason\":\"BackpressureExceeded\",\"messageId\":\"message-1\",\"retryable\":true}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message-1")).ShouldNotBeNull();
+
+        response.FailureReason.ShouldBe("BackpressureExceeded");
+        response.Retryable.ShouldBe(true);
+        response.IsRejected.ShouldBeFalse();
     }
 
     [Fact]
