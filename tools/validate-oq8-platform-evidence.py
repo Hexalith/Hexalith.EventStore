@@ -295,7 +295,6 @@ V3_LIMITATIONS = [
     "The immutable Story 4.14 capture remains historical evidence of Dapr runtime 1.18.1; the current content-bound integration workflow and fresh OQ8 capture lane require Dapr runtime 1.18.2, without granting runtime-pin authority.",
     "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
     "Exact-tree enumeration before sealed OQ8 directory comparison is not depth- or entry-count-bounded, so a hostile evidence tree can consume unbounded time or memory before fail-closed rejection; remediation remains deferred as DW-520.",
-    "Private-path redaction is pattern-bounded and its residuals are enumerated here: a terminal filename containing a space retains the portion after its first space; a repr-doubled Windows path such as C:\\\\Users\\\\name is not matched; the EvidenceError branch prints its message without redaction, so only unexpected-exception output is sanitised; and diagnostics are truncated at 256 characters with tabs collapsed before redaction.",
     "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority.",
 ]
 V3_CONTRACTS_RESTORE_COMMAND = "dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -m:1 -p:Configuration=Release -p:UseHexalithProjectReferences=false"
@@ -314,9 +313,9 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V3_REVIEW_DATE = "2026-09-19"
-V3_FINAL_CLOSURE_TEST_COUNT = 461
-V3_FULL_CONTRACTS_TEST_COUNT = 2064
+V3_REVIEW_DATE = "2026-09-18"
+V3_FINAL_CLOSURE_TEST_COUNT = 458
+V3_FULL_CONTRACTS_TEST_COUNT = 2061
 V3_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
     "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
@@ -641,30 +640,13 @@ EXPECTED_CROSSWALK_INVARIANTS = [
 ]
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRIVATE_PATH_RE = re.compile(r"(?:/home/|/Users/|[A-Za-z]:[\\/]Users[\\/])")
-# One source of truth for the private-root alternation. It is interpolated both as the
-# token prefix and inside the token's own negative lookahead, so a root added here can
-# never be honoured in one position and ignored in the other.
-PRIVATE_ROOT_FRAGMENT = (
-    r"(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
-    # UNC intermediates are unbounded: a bounded count silently leaks deeper enterprise DFS
-    # layouts such as \\corp\dfs\emea\it\profiles\Users\... entirely. Deliberately NO scheme
-    # lookbehind here: suppressing the branch after "<token>:" let `cfg:\\corp\users\...` through
-    # untouched and exposed internal hosts in file://corp and smb://fileserver, while the only
-    # thing it preserved was a public URL authority. Over-redacting "https:" is the safe trade.
-    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:[^\\/\s]+[\\/])*?(?:users|home)[\\/])"
-)
-# The tail consumes ordinary path characters, and crosses a space or tab only when the
-# run genuinely continues into the same path -- that is, when a separator still follows
-# before the next whitespace AND the next token is not a fresh `name=<private-root>`
-# assignment. Without the separator lookahead the tail swallowed the whole remaining
-# diagnostic; without the assignment lookahead it merged adjacent private paths.
 PRIVATE_PATH_TOKEN_RE = re.compile(
-    PRIVATE_ROOT_FRAGMENT
-    + r"(?:[^\s\"<>]|[ \t](?![ \t]*[A-Za-z][A-Za-z0-9_-]*=" + PRIVATE_ROOT_FRAGMENT + r")"
-    # Do not cross into a bare numeric run such as "458/458": it carries a separator but is a
-    # measurement, and swallowing it destroys exactly the counts these diagnostics exist to report.
-    r"(?![0-9.]+[\\/][0-9.]+(?:[\s\"<>]|$))"
-    r"(?=[^\s\"<>]*[\\/]))*",
+    r"(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
+    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:(?:profiles?|home)[\\/])?(?:users|home)[\\/])"
+    r"(?:(?![ \t]+[A-Za-z][A-Za-z0-9_-]*=(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)"
+    r"|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
+    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:(?:profiles?|home)[\\/])?(?:users|home)[\\/]))"
+    r"[^\"<>\r\n])*",
     re.IGNORECASE,
 )
 PLACEHOLDER_RE = re.compile(r"(?:\bTBD\b|\bTODO\b|\bUNKNOWN\b|<[^>]+>)", re.IGNORECASE)

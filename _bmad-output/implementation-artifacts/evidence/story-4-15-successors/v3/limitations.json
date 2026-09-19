@@ -7,7 +7,6 @@
     "The immutable Story 4.14 capture remains historical evidence of Dapr runtime 1.18.1; the current content-bound integration workflow and fresh OQ8 capture lane require Dapr runtime 1.18.2, without granting runtime-pin authority.",
     "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
     "Exact-tree enumeration before sealed OQ8 directory comparison is not depth- or entry-count-bounded, so a hostile evidence tree can consume unbounded time or memory before fail-closed rejection; remediation remains deferred as DW-520.",
-    "Private-path redaction is pattern-bounded and its residuals are enumerated here: a terminal filename containing a space retains the portion after its first space; a repr-doubled Windows path such as C:\\\\Users\\\\name is not matched; the EvidenceError branch prints its message without redaction, so only unexpected-exception output is sanitised; and diagnostics are truncated at 256 characters with tabs collapsed before redaction.",
     "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority."
   ]
 }

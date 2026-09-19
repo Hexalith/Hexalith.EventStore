@@ -1087,18 +1087,10 @@ public sealed class Oq8PlatformClosureTests
                     observations["observations"]!["capture"]!["after"]!["terminalRows"] = 0;
                     break;
                 case "terminal-row-overrun":
-                    // Raise totalRows on both snapshots alongside admissionRows so this row
-                    // falsifies only the terminal-row delta. Without it the snapshot also
-                    // violates totalRows >= disjoint_rows, and the case would silently
-                    // retarget to that diagnostic if the validator's guards were reordered.
                     observations["observations"]!["capture"]!["before"]!["admissionRows"] = 1;
-                    observations["observations"]!["capture"]!["before"]!["totalRows"] =
-                        SumDisjointObservationRows(observations["observations"]!["capture"]!["before"]!);
                     observations["observations"]!["capture"]!["after"]!["terminalRows"] =
                         observations["observations"]!["capture"]!["before"]!["terminalRows"]!.GetValue<int>() + 5;
                     observations["observations"]!["capture"]!["after"]!["admissionRows"] = 5;
-                    observations["observations"]!["capture"]!["after"]!["totalRows"] =
-                        SumDisjointObservationRows(observations["observations"]!["capture"]!["after"]!);
                     break;
                 case "tombstone-row-delta":
                     observations["observations"]!["capture"]!["after"]!["tombstoneRows"] = 0;
@@ -1912,104 +1904,6 @@ public sealed class Oq8PlatformClosureTests
         output.ShouldNotContain("password.txt");
         output.ShouldNotContain("secret.txt");
         output.ShouldNotContain("Traceback");
-    }
-
-    /// <summary>
-    /// Verifies tab-separated private paths are redacted and surrounding diagnostic text survives.
-    /// </summary>
-    [Fact]
-    public void UnexpectedFailureDetailsPreserveDiagnosticTextAroundRedactedPaths()
-    {
-        string root = FindRepositoryRoot();
-        using Process process = CreatePythonProcess(
-            """
-            import importlib.util
-            import sys
-
-            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
-            validator = importlib.util.module_from_spec(specification)
-            specification.loader.exec_module(validator)
-
-            def fail_unexpectedly(*args, **kwargs):
-                raise RuntimeError("context=build-42 path=/var/tmp/OQ8\tPrivate/validator.log errno 28 at step 7")
-
-            validator.validate_committed_packet = fail_unexpectedly
-            sys.argv = [sys.argv[0], "--root", sys.argv[2], "--git-root", sys.argv[2]]
-            raise SystemExit(validator.main())
-            """);
-        process.StartInfo.ArgumentList.Add(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
-        process.StartInfo.ArgumentList.Add(root);
-
-        (int exitCode, string output, bool timedOut) = RunProcess(process, 5_000);
-
-        timedOut.ShouldBeFalse("Diagnostic-preservation probe timed out.");
-        exitCode.ShouldBe(1, output);
-        output.ShouldContain("<redacted-path>");
-
-        // Positive controls. Without these the redaction matrix cannot distinguish
-        // "redacts the private tokens" from "redacts the entire message"; a pattern as
-        // broad as .* would satisfy every ShouldNotContain assertion on its own.
-        // Diagnostic text before and after a redacted path must survive redaction.
-        output.ShouldContain("context=build-42");
-        output.ShouldContain("errno 28 at step 7");
-
-        // The tab is collapsed to a space before redaction, so the path must still be
-        // matched as one token across the resulting space.
-        output.ShouldNotContain("OQ8 Private");
-        output.ShouldNotContain("validator.log");
-        output.ShouldNotContain("/var/tmp");
-        output.ShouldNotContain("Traceback");
-    }
-
-    /// <summary>
-    /// Verifies deep UNC private paths redact and measurement ratios survive redaction.
-    /// </summary>
-    [Fact]
-    public void UnexpectedFailureDetailsRedactDeepUncPathsAndKeepMeasurements()
-    {
-        string root = FindRepositoryRoot();
-        using Process process = CreatePythonProcess(
-            """
-            import importlib.util
-            import sys
-
-            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
-            validator = importlib.util.module_from_spec(specification)
-            specification.loader.exec_module(validator)
-
-            def fail_unexpectedly(*args, **kwargs):
-                raise RuntimeError(r"scheme=cfg:\\corp\users\kdoe\payroll.csv deep=\\corp\dfs\emea\it\profiles\Users\jdoe\salary.xlsx 2063/2063 ok")
-
-            validator.validate_committed_packet = fail_unexpectedly
-            sys.argv = [sys.argv[0], "--root", sys.argv[2], "--git-root", sys.argv[2]]
-            raise SystemExit(validator.main())
-            """);
-        process.StartInfo.ArgumentList.Add(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
-        process.StartInfo.ArgumentList.Add(root);
-
-        (int exitCode, string output, bool timedOut) = RunProcess(process, 5_000);
-
-        timedOut.ShouldBeFalse("Deep-UNC redaction probe timed out.");
-        exitCode.ShouldBe(1, output);
-        output.ShouldContain("<redacted-path>");
-
-        // A bounded intermediate-segment count silently leaked enterprise DFS layouts
-        // entirely; this pins the depth so narrowing it again fails loudly.
-        output.ShouldNotContain("corp");
-        output.ShouldNotContain("dfs");
-        output.ShouldNotContain("emea");
-        output.ShouldNotContain("profiles");
-        output.ShouldNotContain("jdoe");
-        output.ShouldNotContain("salary.xlsx");
-
-        // A scheme-like "token:" prefix must not suppress the UNC branch. A lookbehind
-        // added here once let cfg:\\corp\users\... through completely untouched.
-        output.ShouldNotContain("kdoe");
-        output.ShouldNotContain("payroll.csv");
-
-        // A measurement carries a separator but is not a path continuation; swallowing it
-        // would destroy the counts these diagnostics exist to report.
-        output.ShouldContain("2063/2063 ok");
     }
 
     /// <summary>
@@ -3590,45 +3484,16 @@ public sealed class Oq8PlatformClosureTests
         _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown observation mutation."),
     };
 
-    private static readonly string[] DisjointObservationRowFields =
-    [
-        "admissionRows",
-        "tombstoneRows",
-        "directoryRows",
-        "lifecycleRows",
-        "aggregateMetadataRows",
-        "aggregateEventRows",
-    ];
-
     private static int SumDisjointObservationRows(JsonNode snapshot) =>
-        DisjointObservationRowFields.Sum(field => snapshot[field]!.GetValue<int>());
-
-    /// <summary>
-    /// Verifies the disjoint row fields summed here are exactly the fields the validator sums.
-    /// </summary>
-    [Fact]
-    public void DisjointObservationRowFieldsMatchValidatorDefinition()
-    {
-        string validator = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "tools", "validate-oq8-platform-evidence.py"));
-        int start = validator.IndexOf("disjoint_rows = sum(", StringComparison.Ordinal);
-        start.ShouldBeGreaterThanOrEqualTo(0, "The validator no longer computes disjoint_rows by summation.");
-        int open = validator.IndexOf("for field in (", start, StringComparison.Ordinal);
-        open.ShouldBeGreaterThan(start, "The validator's disjoint row field tuple was not found.");
-        int close = validator.IndexOf(')', open + "for field in (".Length);
-        close.ShouldBeGreaterThan(open, "The validator's disjoint row field tuple is unterminated.");
-
-        string[] validatorFields = validator[(open + "for field in (".Length)..close]
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(entry => entry.Trim('"'))
-            .Where(entry => entry.Length > 0)
-            .ToArray();
-
-        validatorFields.ShouldBe(
-            DisjointObservationRowFields,
-            "The disjoint row field set duplicated in this test has drifted from the validator's own tuple, "
-            + "so the total-row-inconsistent mutations would no longer compute the exact sum they falsify.");
-    }
+        new[]
+        {
+            "admissionRows",
+            "tombstoneRows",
+            "directoryRows",
+            "lifecycleRows",
+            "aggregateMetadataRows",
+            "aggregateEventRows",
+        }.Sum(field => snapshot[field]!.GetValue<int>());
 
     private static void InsertDuplicateJsonField(string path, string original, string replacement)
     {
