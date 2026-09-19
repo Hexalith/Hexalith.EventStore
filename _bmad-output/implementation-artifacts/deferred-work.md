@@ -4397,3 +4397,15 @@ severity: low
 reason: `fix(oq8): reseal platform closure evidence` has an empty body, but the same commit rewrites `PRIVATE_PATH_TOKEN_RE`, changes `write_json` output semantics and adds two fail-closed PostgreSQL subset invariants. Anyone bisecting for a redaction or observation-validation regression will not find it under a reseal subject.
 status: open
 note: Not actionable without rewriting published history; recorded so future bisects know to look at this commit.
+
+## Deferred from: post-commit triage of spec-4-15-oq8-platform-closure-and-handoff (2026-09-19, revert of b74910e4)
+
+### DW-524: `main` publishes a Story 4.15 v3 security approval whose nested-UNC redaction claim is false.
+
+origin: post-commit triage of spec-4-15-oq8-platform-closure-and-handoff (2026-09-19, revert of b74910e4)
+location: _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/reviews/security.json (findings[4]); tools/validate-oq8-platform-evidence.py:643-651 (`PRIVATE_PATH_TOKEN_RE`), :4462
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: high
+reason: The sealed receipt is `decision: approved` and attests that unexpected-exception redaction "independently passed for ... nested UNC profiles ... without leaking identifying suffixes". Measured on the bound validator (identity `5ae0515b…`, the state restored by the revert of `b74910e4`): `PRIVATE_PATH_TOKEN_RE` accepts at most one `profiles`/`home` segment between the UNC host and `users`, so `\\corp\dfs\emea\it\profiles\Users\jdoe\salary.xlsx` passes through the `<redacted-path>` substitution verbatim while `\\corp\profiles\Users\jdoe\salary.xlsx` is redacted. The claim holds only for the single-level fixture the receipt was issued against. The round-3 reseal that tried to widen the pattern (`b74910e4`) was rejected by the security and test reviewers on independent blocking findings (the deep-UNC depth control is green by construction because the `scheme=` case shares its probe message and absorbs the `deep=` token; the `//` UNC branch has no control at all) and has been reverted, so the false approval remains the published receipt. The receipt schema requires `decision == "approved"`, so a withdrawal cannot be expressed in the evidence tree; any reseal overwrites the receipt rather than recording that this one was wrong.
+status: open
+note: Fix path = a round-4 reseal that (a) splits the deep-UNC and `scheme=` probes into separate RuntimeError messages and separate facts, with both mutation controls (`{0,3}` depth bound and re-added lookbehind) shown red; (b) adds a control for the `//` branch (`file://corp/users/...`, `smb://fileserver/users/...`); (c) records this withdrawal in `limitations.json`, since the receipt schema cannot; (d) re-runs both lanes against post-re-stamp bytes. Longer term, a denylist keyed on `users|home` segments cannot support a completeness claim (every round found new residuals: `\\corp\profiles\jdoe\secret.txt`, `C:\Data\jdoe`, `~/secret`, `%USERPROFILE%\`, 8.3 `C:\USERS~1\`); that needs a structural approach in its own story.
