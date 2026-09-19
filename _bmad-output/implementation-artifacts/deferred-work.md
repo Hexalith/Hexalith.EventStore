@@ -4057,8 +4057,9 @@ location: _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: high
 reason: `global.json` begins `7b 0d 0a` (CRLF). Its worktree sha256 is `75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654`, which is exactly the pinned `gateInputs` value, while `git cat-file blob HEAD:global.json` hashes to `25b36d45123efa1d03786506dadad7546069f8563cddd4b509849b5c3631e9f5`. `.gitattributes` carries `* text=auto` and has no rule for `global.json`; of the 13 v3 gate inputs it is the only one whose pin matches the worktree rather than the committed blob. Measured: substituting the committed blob makes `validate-oq8-platform-evidence.py` fail closed with `Story 4.15 v3 gate-input identity drift: global.json`, exit 1, and CI at `dfc0ac55` shows `ci / contracts` failing with 23 such failures — identical at the control `17779677`, so this is pre-existing. Consequence: every "validator exits 0 in all four modes" and "Contracts 1987/0/0" measurement in the Group O and Group P records is reproducible only on a CRLF worktree, and the Group P Decision 3 disposition was closed on that basis. This is the Story 3.3 CRLF-in-worktree/LF-in-index class, which leaves `git status` clean. Fix = add `global.json text eol=lf` to `.gitattributes` and re-mint that digest across `source-artifact-identity.json`, `review-subject.json` and `pre-review-execution.json`, plus an `Oq8PlatformClosureTests` case asserting every `gateInputs` entry equals `git cat-file blob HEAD:<path>`. Sealed work — batch into the DW-508 re-mint.
-blocks: DW-515 — `ci / contracts` cannot be made a required check until this lands, because the 23 failures it causes are in that job.
-status: open
+blocks: (cleared 2026-09-19) DW-515 is no longer blocked by this entry: the mechanism was resolved by `76051c70`, so `ci / contracts` can now be sequenced on its own merits.
+status: done 2026-09-19 (code review, Story 4.15 Group R)
+resolution: Resolved by `76051c70` (`fix(gitattributes): enforce crlf for global.json and lf for v3 evidence`), which added `global.json text eol=crlf` at `.gitattributes:38`. Note the fix is the INVERSE of the remediation prescribed above: rather than normalising the file to LF and re-minting the digest, it makes the CRLF worktree form deterministic on every checkout, so the existing sealed pin `75eb0b35...` is what a clean clone now materialises. Verified 2026-09-19 at local HEAD: `git check-attr text eol -- global.json` reports `text: set` / `eol: crlf`; the worktree hash equals the sealed v3 gate-input pin; and the validator exits 0 in all four modes (default, `--historical-v1-only`, `--historical-v2-only`, `--lifecycle-mode final`). The prescribed acceptance test -- "an `Oq8PlatformClosureTests` case asserting every `gateInputs` entry equals `git cat-file blob HEAD:<path>`" -- was never added and is UNSATISFIABLE under the chosen approach, because `global.json`'s pin deliberately does not equal the committed blob (12 of 13 gate inputs match the blob; `global.json` matches only the worktree). Residual risk is carried forward as Group R decision #10: `.gitattributes` is not itself a gate input and its hash is pinned nowhere, so removing line 38 silently re-breaks the gate with no sealed guard noticing. That is folded into the Group R reseal.
 
 ### DW-510: Two required checks, `advisory` and `ci / build-and-test`, are red on `main`.
 
@@ -4117,6 +4118,7 @@ source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: high
 reason: The Story 3.14/3.15 handler-pin cascade is correctly asserted at `CorrectedDeployedRuntimeParityClosureTests.cs:2257`, but only inside `tests/Hexalith.EventStore.Contracts.Tests`, which `.github/workflows/ci.yml:24-42` excludes from `unit-test-projects`; it runs solely as `ci / contracts`. Re-verified live 2026-09-13: the required contexts are `advisory`, `ci / build-and-test`, `ci / tenants-source-mode`, `codeql / analyze`, `commitlint / commitlint`, `dependency-review / dependency-review`, `live-sidecar` — `ci / contracts` is not among them, and the one required job running a Python validator (`live-sidecar`) uses a gate-input set containing none of the three handler files. Net: no required check observes the pins, which is why `4502913c` merged green over a 204-red lane. Owner decision 2026-09-13 (Decision 2): **add `ci / contracts` to the required checks, after DW-509 lands.** Sequencing is mandatory — the job is currently red for the unrelated `global.json` gate-input reason, so requiring it first would block every merge. The two alternatives were examined and rejected: moving the validators into `ci / build-and-test` would require changing `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main` (shared, submodule-owned) and would wire in `validate-corrected-deployed-runtime-parity.py`, which exits 1 at HEAD on its pre-existing receipt gate; folding Contracts back into `unit-test-projects` would drop the `--filter-not-trait "Category=HeavyweightContainerPublish"` exclusion, which `ContainerPublishingGovernanceTests.cs:1006` asserts must be present in `ci.yml`. This is a repository-settings change, owner-only; not applied by this review.
 status: open
+unblocked: 2026-09-19 (code review, Story 4.15 Group R) -- DW-509 is resolved, so the stated sequencing precondition is met. Requiring `ci / contracts` is now gated only on the Group R reseal landing and being published, since `main` is currently red at the pushed tip `2d680d7d` for unrelated sealed gate-input drift.
 
 ## Deferred from: code review of spec-8-3-pdenc-v2-core-cryptographic-engine (2026-09-14)
 
@@ -4363,3 +4365,35 @@ status: open
 - source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
   summary: Prevent integer overflow when computing aggregate event-range endpoints.
   evidence: Range readers use unchecked `int` addition for the exclusive endpoint, so a valid request near `int.MaxValue` can overflow into an empty or truncated read; this actor issue is unrelated to Story 4.15.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-19, Group R)
+
+### DW-521: No required check observes any guard the Story 4.15 v3 reseal adds, and the sealed 2061 Contracts figure is not structurally protected.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-19, Group R)
+location: .github/workflows/ci.yml:24-42,45,90-94; repository ruleset `repos/Hexalith/Hexalith.EventStore/rules/branches/main`
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: high
+reason: The live `main` ruleset requires `advisory`, `ci / build-and-test`, `ci / tenants-source-mode`, `codeql / analyze`, `commitlint / commitlint`, `dependency-review / dependency-review` and `live-sidecar`; `ci / contracts` is absent and is the only lane running these tests, and `.github/workflows/ci.yml` never invokes `validate-oq8-platform-evidence.py` as a step (0 occurrences) — it only places the pinned interpreter on `PATH`. So the six new observation mutations, the `limitation-text` mutation, the suffixless-output test and the expanded redaction matrix can all go red without blocking a merge. Separately, `V3_FINAL_CLOSURE_TEST_COUNT` (458) is structurally protected because every case is an `InlineData` inside the sealed gate input `Oq8PlatformClosureTests.cs`, but `V3_FULL_CONTRACTS_TEST_COUNT` (2061) is not: only 3 of the 68 `*Tests.cs` files in `Hexalith.EventStore.Contracts.Tests` are among the 13 sealed gate inputs, so a case added to any of the other 65 leaves the sealed attestation stale with no signal.
+status: open
+note: Pre-existing; already owner-routed as DW-515 (ruleset change, owner-only) and DW-496 / `run6-blind-01` (reduced current path set, accepted). Recorded here because this reseal materially increases what the unenforced lane is the sole observer of.
+
+### DW-522: Roughly 100 absolute `/home/<user>/...` paths remain in the deferred-work ledger against the frozen Never constraint.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-19, Group R)
+location: _bmad-output/implementation-artifacts/deferred-work.md; _bmad-output/implementation-artifacts/deferred-work-archive.md
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: The 2026-09-18 story-scoped pass replaced exactly one absolute `source_spec` path and marked the frozen "Never ... commit ... private paths" violation closed. Measured: 126 occurrences at `dc39ea8d` and `fc8876df`, 100 at HEAD after `9de3fc77` removed 26 as a side effect of the archive split; 34 more in `deferred-work-archive.md`; 87 tracked files repo-wide. This is the second time the class has been patched one instance at a time (the Group G block, 19 paths, was the first).
+status: open
+note: A durable fix is a `Contracts.Tests` assertion over the ledger rejecting absolute home paths, not another single-entry edit.
+
+### DW-523: The Story 4.15 reseal commit subject conceals behavioral validator changes.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-19, Group R)
+location: commit fc8876df; tools/validate-oq8-platform-evidence.py:643-651,857-865,1449-1457
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: low
+reason: `fix(oq8): reseal platform closure evidence` has an empty body, but the same commit rewrites `PRIVATE_PATH_TOKEN_RE`, changes `write_json` output semantics and adds two fail-closed PostgreSQL subset invariants. Anyone bisecting for a redaction or observation-validation regression will not find it under a reseal subject.
+status: open
+note: Not actionable without rewriting published history; recorded so future bisects know to look at this commit.
