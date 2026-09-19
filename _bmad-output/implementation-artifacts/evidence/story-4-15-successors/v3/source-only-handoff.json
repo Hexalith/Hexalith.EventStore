@@ -1,18 +1,18 @@
 {
   "schema": "hexalith.eventstore.story-4-15-successor-source-only-handoff/v3",
-  "assembledAt": "2026-09-18T16:25:09Z",
+  "assembledAt": "2026-09-19T23:50:48Z",
   "story": "4.15",
   "predecessor": {
     "completedV2ClosureCommit": "83b32fcfad7bb608098aebccdc15002636ffb431",
     "reviewSubjectSha256": "f67dabaee86a7383f845225fecf33487597b432a40eb01b16ec033b7b40ed107",
     "closureManifestSha256": "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
   },
-  "reviewSubjectSha256": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
-  "limitationsSha256": "73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41",
+  "reviewSubjectSha256": "29880d6b3ebb9a67d69d0ff2f70afd138a7c81cfd2938fcd437de5d863ede913",
+  "limitationsSha256": "d90b0dae9f5954aaeb5bf0cab82073fd1fef506ac203d798d24854fbd56cd0a9",
   "reviewReceipts": {
-    "architecture": "b231f54e48c4e0e942fe84a56b1b2d7bdd46b001fa3cc51978b858552da95079",
-    "security": "cf187659d310ae1c1cdc8eb52746d1921c60f6cf8adcf8b44727144ea1228b28",
-    "test": "ace5eccb026f4a43d45608706a3dfa1eba69391b55082d0fc36721c7026df502"
+    "architecture": "b16d1c881aaca85bc8ddf9258867bf21c06ef2b63b9c16c650593f88db11a3d2",
+    "security": "ef344209ca2fd73619da002c3fb2fd2c0e25530a28720fe4c70fd164013cac93",
+    "test": "3606c053cc20cf2c578b146d289ac9dbecb751ac9643d6c108bcbd5b3ab55383"
   },
   "consumerInstructions": {
     "mode": "source-only",

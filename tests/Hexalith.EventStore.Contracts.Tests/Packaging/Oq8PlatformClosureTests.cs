@@ -55,6 +55,7 @@ public sealed class Oq8PlatformClosureTests
         "docs/ci.md",
         "docs/guides/configuration-reference.md",
         "docs/reference/command-api.md",
+        ".gitattributes",
         ".github/workflows/ci.yml",
         ".github/workflows/integration.yml",
         "global.json",
@@ -397,6 +398,7 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("symlinked-v3-ancestor", "Story 4.15 v3 successor directory has a symlinked path component")]
     [InlineData("oversized-artifact", "Story 4.15 v3 artifact limitations.json exceeds the 65536-byte limit")]
     [InlineData("source-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
+    [InlineData("gitattributes-gate-input-drift", "Story 4.15 v3 gate-input identity drift: .gitattributes")]
     [InlineData("oversized-source", "Story 4.15 v3 bound source docs/ci.md exceeds the 524288-byte limit")]
     [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/ci.yml has a symlinked path component")]
     [InlineData("symlinked-gate-ancestor", "Story 4.15 v3 bound source docs/ci.md has a symlinked path component")]
@@ -411,7 +413,8 @@ public sealed class Oq8PlatformClosureTests
     [InlineData("receipt-future", "Story 4.15 v3 security receipt timestamp is later than current UTC")]
     [InlineData("handoff-future", "Story 4.15 v3 handoff assembly timestamp is later than current UTC")]
     [InlineData("receipt-rejected", "Story 4.15 v3 security review is not approved")]
-    [InlineData("limitation-text", "Story 4.15 v3 limitation text or order drift")]
+    [InlineData("limitation-residual-text", "Story 4.15 v3 limitation text or order drift")]
+    [InlineData("limitation-authority-text", "Story 4.15 v3 limitation text or order drift")]
     [InlineData("test-receipt-rejected", "Story 4.15 v3 test review is not approved")]
     [InlineData("test-verification-missing", "Story 4.15 v3 test review field set drift")]
     [InlineData("test-verification-failed", "Story 4.15 v3 test review verification oq8-platform-closure:failed count drift")]
@@ -890,6 +893,7 @@ public sealed class Oq8PlatformClosureTests
     {
         string root = FindRepositoryRoot();
         string fixture = Path.Combine(Path.GetTempPath(), "oq8-runtime-mode-" + Guid.NewGuid().ToString("N"));
+        string historicalFixture = CreateFixture(root);
         Directory.CreateDirectory(fixture);
         string committed = Path.Combine(
             root,
@@ -900,6 +904,14 @@ public sealed class Oq8PlatformClosureTests
             "e60a3777c581d70b62f67173ccc2372b5b64a425",
             "observations.json");
         string fresh = Path.Combine(fixture, "observations.json");
+        string historical = Path.Combine(
+            historicalFixture,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "story-4-14",
+            "e60a3777c581d70b62f67173ccc2372b5b64a425",
+            "observations.json");
         try
         {
             JsonObject observations = LoadObject(committed);
@@ -909,6 +921,21 @@ public sealed class Oq8PlatformClosureTests
 
             (int freshExitCode, string freshOutput) = RunObservationValidator(root, fresh, "1.18.2", ReviewedPostgresImage);
             freshExitCode.ShouldBe(0, freshOutput);
+
+            JsonObject historicalObservations = LoadObject(historical);
+            historicalObservations["observations"]!["capture"]!["before"]!["terminalRows"] = 1;
+            historicalObservations["observations"]!["capture"]!["after"]!["terminalRows"] = 5;
+            WriteObject(historical, historicalObservations);
+            ResealCandidateCapture(historicalFixture, "observations.json");
+
+            (int freshSubsetExitCode, string freshSubsetOutput) =
+                RunObservationValidator(root, historical, "1.18.1", HistoricalPostgresImage, historicalFixture);
+            freshSubsetExitCode.ShouldBe(1, freshSubsetOutput);
+            freshSubsetOutput.ShouldContain("Before capture snapshot terminalRows exceeds admissionRows");
+
+            (int historicalSubsetExitCode, string historicalSubsetOutput) =
+                RunCapturePacketValidator(root, historicalFixture);
+            historicalSubsetExitCode.ShouldBe(0, historicalSubsetOutput);
 
             (int freshCrossModeExitCode, string freshCrossModeOutput) = RunObservationValidator(root, fresh, "1.18.1", ReviewedPostgresImage);
             freshCrossModeExitCode.ShouldBe(1, freshCrossModeOutput);
@@ -973,6 +1000,7 @@ public sealed class Oq8PlatformClosureTests
         finally
         {
             Directory.Delete(fixture, recursive: true);
+            Directory.Delete(historicalFixture, recursive: true);
         }
     }
 
@@ -1088,9 +1116,13 @@ public sealed class Oq8PlatformClosureTests
                     break;
                 case "terminal-row-overrun":
                     observations["observations"]!["capture"]!["before"]!["admissionRows"] = 1;
+                    observations["observations"]!["capture"]!["before"]!["totalRows"] =
+                        SumDisjointObservationRows(observations["observations"]!["capture"]!["before"]!);
                     observations["observations"]!["capture"]!["after"]!["terminalRows"] =
                         observations["observations"]!["capture"]!["before"]!["terminalRows"]!.GetValue<int>() + 5;
                     observations["observations"]!["capture"]!["after"]!["admissionRows"] = 5;
+                    observations["observations"]!["capture"]!["after"]!["totalRows"] =
+                        SumDisjointObservationRows(observations["observations"]!["capture"]!["after"]!);
                     break;
                 case "tombstone-row-delta":
                     observations["observations"]!["capture"]!["after"]!["tombstoneRows"] = 0;
@@ -1792,6 +1824,7 @@ public sealed class Oq8PlatformClosureTests
         string fixture = Path.Combine(Path.GetTempPath(), "oq8-suffixless-output-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(fixture);
         string output = Path.Combine(fixture, "sanitized");
+        string failedOutput = Path.Combine(fixture, "failed");
         try
         {
             using Process process = CreatePythonProcess(
@@ -1804,9 +1837,16 @@ public sealed class Oq8PlatformClosureTests
                 validator = importlib.util.module_from_spec(specification)
                 specification.loader.exec_module(validator)
                 validator.write_json(pathlib.Path(sys.argv[2]), {"passed": True})
+                try:
+                    validator.write_json(pathlib.Path(sys.argv[3]), {"invalid": object()})
+                except TypeError:
+                    pass
+                else:
+                    raise SystemExit("Unserializable JSON unexpectedly succeeded")
                 """);
             process.StartInfo.ArgumentList.Add(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
             process.StartInfo.ArgumentList.Add(output);
+            process.StartInfo.ArgumentList.Add(failedOutput);
 
             (int exitCode, string processOutput, bool timedOut) = RunProcess(process, 5_000);
 
@@ -1814,6 +1854,9 @@ public sealed class Oq8PlatformClosureTests
             exitCode.ShouldBe(0, processOutput);
             File.Exists(output).ShouldBeTrue();
             Directory.Exists(output).ShouldBeFalse();
+            File.Exists(output + ".tmp").ShouldBeFalse();
+            File.Exists(failedOutput).ShouldBeFalse();
+            File.Exists(failedOutput + ".tmp").ShouldBeFalse();
             LoadObject(output)["passed"]!.GetValue<bool>().ShouldBeTrue();
         }
         finally
@@ -1904,6 +1947,125 @@ public sealed class Oq8PlatformClosureTests
         output.ShouldNotContain("password.txt");
         output.ShouldNotContain("secret.txt");
         output.ShouldNotContain("Traceback");
+    }
+
+    /// <summary>
+    /// Verifies private-path redaction preserves diagnostic text on both sides of a redacted token.
+    /// </summary>
+    [Fact]
+    public void UnexpectedFailureDetailsPreserveDiagnosticTextAroundRedactedPaths()
+    {
+        string root = FindRepositoryRoot();
+        (int exitCode, string output, bool timedOut) = RunUnexpectedFailureRedactionProbe(
+            root,
+            "context=build-42 path=/var/tmp/OQ8\tPrivate/validator.log errno 28 at step 7");
+
+        timedOut.ShouldBeFalse("Diagnostic-preservation probe timed out.");
+        exitCode.ShouldBe(1, output);
+        output.ShouldContain("<redacted-path>");
+        output.ShouldContain("context=build-42");
+        output.ShouldContain("errno 28 at step 7");
+        output.ShouldNotContain("OQ8 Private");
+        output.ShouldNotContain("validator.log");
+        output.ShouldNotContain("/var/tmp");
+        output.ShouldNotContain("Traceback");
+    }
+
+    /// <summary>
+    /// Verifies a deep UNC profile path is fully redacted and a bounded-depth mutation leaks it.
+    /// </summary>
+    [Fact]
+    public void DeepUncRedactionIsMutationSensitive()
+    {
+        const string message = "deep=\\\\corp\\dfs\\emea\\it\\profiles\\Users\\jdoe\\salary.xlsx 2068/2068 ok";
+        string root = FindRepositoryRoot();
+
+        (int exitCode, string output, bool timedOut) = RunUnexpectedFailureRedactionProbe(root, message);
+
+        timedOut.ShouldBeFalse("Deep-UNC redaction probe timed out.");
+        exitCode.ShouldBe(1, output);
+        output.ShouldContain("<redacted-path>");
+        output.ShouldContain("2068/2068 ok");
+        output.ShouldNotContain("corp");
+        output.ShouldNotContain("dfs");
+        output.ShouldNotContain("emea");
+        output.ShouldNotContain("profiles");
+        output.ShouldNotContain("jdoe");
+        output.ShouldNotContain("salary.xlsx");
+
+        (int mutatedExitCode, string mutatedOutput, bool mutationTimedOut) =
+            RunUnexpectedFailureRedactionProbe(root, message, "depth-bound");
+
+        mutationTimedOut.ShouldBeFalse("Deep-UNC depth mutation probe timed out.");
+        mutatedExitCode.ShouldBe(1, mutatedOutput);
+        mutatedOutput.ShouldContain("jdoe");
+        mutatedOutput.ShouldContain("salary.xlsx");
+    }
+
+    /// <summary>
+    /// Verifies a scheme-prefixed UNC path is fully redacted and a scheme lookbehind mutation leaks it.
+    /// </summary>
+    [Fact]
+    public void SchemePrefixedUncRedactionIsMutationSensitive()
+    {
+        const string message = "scheme=cfg:\\\\corp\\users\\kdoe\\payroll.csv";
+        string root = FindRepositoryRoot();
+
+        (int exitCode, string output, bool timedOut) = RunUnexpectedFailureRedactionProbe(root, message);
+
+        timedOut.ShouldBeFalse("Scheme-UNC redaction probe timed out.");
+        exitCode.ShouldBe(1, output);
+        output.ShouldContain("scheme=cfg:<redacted-path>");
+        output.ShouldNotContain("corp");
+        output.ShouldNotContain("kdoe");
+        output.ShouldNotContain("payroll.csv");
+
+        (int mutatedExitCode, string mutatedOutput, bool mutationTimedOut) =
+            RunUnexpectedFailureRedactionProbe(root, message, "scheme-lookbehind");
+
+        mutationTimedOut.ShouldBeFalse("Scheme-UNC lookbehind mutation probe timed out.");
+        mutatedExitCode.ShouldBe(1, mutatedOutput);
+        mutatedOutput.ShouldContain("kdoe");
+        mutatedOutput.ShouldContain("payroll.csv");
+    }
+
+    /// <summary>
+    /// Verifies slash-form UNC hosts and identifying suffixes are redacted and require the slash branch.
+    /// </summary>
+    [Fact]
+    public void SlashUncRedactionIsMutationSensitive()
+    {
+        string root = FindRepositoryRoot();
+
+        (int fileExitCode, string fileOutput, bool fileTimedOut) =
+            RunUnexpectedFailureRedactionProbe(root, "path=file://corp/users/jdoe/salary.xlsx");
+        (int smbExitCode, string smbOutput, bool smbTimedOut) =
+            RunUnexpectedFailureRedactionProbe(root, "path=smb://fileserver/users/kdoe/payroll.csv");
+
+        fileTimedOut.ShouldBeFalse("file slash-UNC redaction probe timed out.");
+        smbTimedOut.ShouldBeFalse("smb slash-UNC redaction probe timed out.");
+        fileExitCode.ShouldBe(1, fileOutput);
+        smbExitCode.ShouldBe(1, smbOutput);
+        fileOutput.ShouldContain("file:<redacted-path>");
+        smbOutput.ShouldContain("smb:<redacted-path>");
+        fileOutput.ShouldNotContain("corp");
+        smbOutput.ShouldNotContain("fileserver");
+        fileOutput.ShouldNotContain("jdoe");
+        smbOutput.ShouldNotContain("kdoe");
+        fileOutput.ShouldNotContain("salary.xlsx");
+        smbOutput.ShouldNotContain("payroll.csv");
+
+        (int mutatedFileExitCode, string mutatedFileOutput, bool mutatedFileTimedOut) =
+            RunUnexpectedFailureRedactionProbe(root, "path=file://corp/users/jdoe/salary.xlsx", "remove-slash-unc");
+        (int mutatedSmbExitCode, string mutatedSmbOutput, bool mutatedSmbTimedOut) =
+            RunUnexpectedFailureRedactionProbe(root, "path=smb://fileserver/users/kdoe/payroll.csv", "remove-slash-unc");
+
+        mutatedFileTimedOut.ShouldBeFalse("file slash-UNC alternation mutation probe timed out.");
+        mutatedSmbTimedOut.ShouldBeFalse("smb slash-UNC alternation mutation probe timed out.");
+        mutatedFileExitCode.ShouldBe(1, mutatedFileOutput);
+        mutatedSmbExitCode.ShouldBe(1, mutatedSmbOutput);
+        mutatedFileOutput.ShouldContain("corp");
+        mutatedSmbOutput.ShouldContain("fileserver");
     }
 
     /// <summary>
@@ -3484,16 +3646,44 @@ public sealed class Oq8PlatformClosureTests
         _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown observation mutation."),
     };
 
+    private static readonly string[] DisjointObservationRowFields =
+    [
+        "admissionRows",
+        "tombstoneRows",
+        "directoryRows",
+        "lifecycleRows",
+        "aggregateMetadataRows",
+        "aggregateEventRows",
+    ];
+
     private static int SumDisjointObservationRows(JsonNode snapshot) =>
-        new[]
-        {
-            "admissionRows",
-            "tombstoneRows",
-            "directoryRows",
-            "lifecycleRows",
-            "aggregateMetadataRows",
-            "aggregateEventRows",
-        }.Sum(field => snapshot[field]!.GetValue<int>());
+        DisjointObservationRowFields.Sum(field => snapshot[field]!.GetValue<int>());
+
+    /// <summary>
+    /// Verifies the observation mutation helper sums the exact fields used by the validator.
+    /// </summary>
+    [Fact]
+    public void DisjointObservationRowFieldsMatchValidatorDefinition()
+    {
+        string validator = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "tools", "validate-oq8-platform-evidence.py"));
+        int start = validator.IndexOf("disjoint_rows = sum(", StringComparison.Ordinal);
+        start.ShouldBeGreaterThanOrEqualTo(0, "The validator no longer computes disjoint_rows by summation.");
+        int open = validator.IndexOf("for field in (", start, StringComparison.Ordinal);
+        open.ShouldBeGreaterThan(start, "The validator's disjoint row field tuple was not found.");
+        int close = validator.IndexOf(')', open + "for field in (".Length);
+        close.ShouldBeGreaterThan(open, "The validator's disjoint row field tuple is unterminated.");
+
+        string[] validatorFields = validator[(open + "for field in (".Length)..close]
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(entry => entry.Trim('"'))
+            .Where(entry => entry.Length > 0)
+            .ToArray();
+
+        validatorFields.ShouldBe(
+            DisjointObservationRowFields,
+            "The test and validator must sum the same disjoint observation counters.");
+    }
 
     private static void InsertDuplicateJsonField(string path, string original, string replacement)
     {
@@ -4415,6 +4605,9 @@ public sealed class Oq8PlatformClosureTests
             case "source-drift":
                 File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nV3 source drift.\n");
                 break;
+            case "gitattributes-gate-input-drift":
+                File.AppendAllText(Path.Combine(fixture, ".gitattributes"), "\n# unreviewed line-ending rule\n");
+                break;
             case "oversized-source":
                 File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), new string('x', 524_288));
                 break;
@@ -4461,11 +4654,20 @@ public sealed class Oq8PlatformClosureTests
                 ResealV3Receipt(successor, "security");
                 break;
             }
-            case "limitation-text":
+            case "limitation-residual-text":
             {
                 string limitationsPath = Path.Combine(successor, "limitations.json");
                 JsonObject limitations = LoadObject(limitationsPath);
                 limitations["limitations"]![6] = "Unreviewed limitation text.";
+                WriteObject(limitationsPath, limitations);
+                ResealV3Manifest(successor);
+                break;
+            }
+            case "limitation-authority-text":
+            {
+                string limitationsPath = Path.Combine(successor, "limitations.json");
+                JsonObject limitations = LoadObject(limitationsPath);
+                limitations["limitations"]![7] = "Unreviewed limitation text.";
                 WriteObject(limitationsPath, limitations);
                 ResealV3Manifest(successor);
                 break;
@@ -5615,12 +5817,70 @@ public sealed class Oq8PlatformClosureTests
         return (exitCode, output);
     }
 
+    private static (int ExitCode, string Output, bool TimedOut) RunUnexpectedFailureRedactionProbe(
+        string repositoryRoot,
+        string message,
+        string mutation = "none")
+    {
+        using Process process = CreatePythonProcess(
+            """
+            import importlib.util
+            import re
+            import sys
+
+            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+            validator = importlib.util.module_from_spec(specification)
+            specification.loader.exec_module(validator)
+
+            mutations = {
+                "depth-bound": (
+                    r"(?:[^\\/\s]+[\\/])*?",
+                    r"(?:[^\\/\s]+[\\/]){0,3}?",
+                ),
+                "scheme-lookbehind": (
+                    r"(?:\\\\|//)[^\\/\s]+[\\/]",
+                    r"(?<![A-Za-z0-9+.-]:)(?:\\\\|//)[^\\/\s]+[\\/]",
+                ),
+                "remove-slash-unc": (
+                    r"(?:\\\\|//)",
+                    r"(?:\\\\)",
+                ),
+            }
+            mutation = sys.argv[4]
+            failure_message = sys.argv[3]
+            if mutation != "none":
+                old, new = mutations[mutation]
+                pattern = validator.PRIVATE_PATH_TOKEN_RE.pattern
+                if pattern.count(old) != 2:
+                    raise RuntimeError(f"Mutation {mutation} did not find both root fragments")
+                validator.PRIVATE_PATH_TOKEN_RE = re.compile(
+                    pattern.replace(old, new),
+                    validator.PRIVATE_PATH_TOKEN_RE.flags,
+                )
+
+            def fail_unexpectedly(*args, **kwargs):
+                raise RuntimeError(failure_message)
+
+            validator.validate_committed_packet = fail_unexpectedly
+            sys.argv = [sys.argv[0], "--root", sys.argv[2], "--git-root", sys.argv[2]]
+            raise SystemExit(validator.main())
+            """);
+        process.StartInfo.WorkingDirectory = repositoryRoot;
+        process.StartInfo.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "validate-oq8-platform-evidence.py"));
+        process.StartInfo.ArgumentList.Add(repositoryRoot);
+        process.StartInfo.ArgumentList.Add(message);
+        process.StartInfo.ArgumentList.Add(mutation);
+
+        return RunProcess(process, 5_000);
+    }
+
     private static (int ExitCode, string Output) RunObservationValidator(
         string repositoryRoot,
         string observationsPath,
         string expectedRuntimeVersion,
         string expectedPostgresImage,
-        string? validationRoot = null)
+        string? validationRoot = null,
+        bool historical = false)
     {
         using Process process = CreatePythonProcess(
             """
@@ -5633,7 +5893,12 @@ public sealed class Oq8PlatformClosureTests
             specification.loader.exec_module(validator)
             validator.configure_roots(pathlib.Path(sys.argv[5]), pathlib.Path(sys.argv[1]).parent.parent)
             try:
-                validator.validate_observations(pathlib.Path(sys.argv[2]), sys.argv[3], sys.argv[4])
+                validator.validate_observations(
+                    pathlib.Path(sys.argv[2]),
+                    sys.argv[3],
+                    sys.argv[4],
+                    historical=sys.argv[6] == "true",
+                )
             except validator.EvidenceError as error:
                 print(str(error))
                 raise SystemExit(1)
@@ -5644,9 +5909,42 @@ public sealed class Oq8PlatformClosureTests
         process.StartInfo.ArgumentList.Add(expectedRuntimeVersion);
         process.StartInfo.ArgumentList.Add(expectedPostgresImage);
         process.StartInfo.ArgumentList.Add(validationRoot ?? repositoryRoot);
+        process.StartInfo.ArgumentList.Add(historical ? "true" : "false");
 
         (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
         timedOut.ShouldBeFalse("OQ8 observation validator timed out.");
+        return (exitCode, output);
+    }
+
+    private static (int ExitCode, string Output) RunCapturePacketValidator(
+        string repositoryRoot,
+        string validationRoot)
+    {
+        using Process process = CreatePythonProcess(
+            """
+            import importlib.util
+            import pathlib
+            import sys
+
+            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+            validator = importlib.util.module_from_spec(specification)
+            specification.loader.exec_module(validator)
+            validator.configure_roots(pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[1]).parent.parent)
+            try:
+                validator.validate_capture_packet(
+                    validator.load_candidate_json(pathlib.Path(sys.argv[3]))
+                )
+            except validator.EvidenceError as error:
+                print(str(error))
+                raise SystemExit(1)
+            """);
+        process.StartInfo.WorkingDirectory = repositoryRoot;
+        process.StartInfo.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "validate-oq8-platform-evidence.py"));
+        process.StartInfo.ArgumentList.Add(validationRoot);
+        process.StartInfo.ArgumentList.Add(Path.Combine(CandidateClosure(validationRoot), "capture-packet-v1.json"));
+
+        (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
+        timedOut.ShouldBeFalse("OQ8 capture-packet validator timed out.");
         return (exitCode, output);
     }
 

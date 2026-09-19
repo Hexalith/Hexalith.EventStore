@@ -4409,3 +4409,27 @@ severity: high
 reason: The sealed receipt is `decision: approved` and attests that unexpected-exception redaction "independently passed for ... nested UNC profiles ... without leaking identifying suffixes". Measured on the bound validator (identity `5ae0515b…`, the state restored by the revert of `b74910e4`): `PRIVATE_PATH_TOKEN_RE` accepts at most one `profiles`/`home` segment between the UNC host and `users`, so `\\corp\dfs\emea\it\profiles\Users\jdoe\salary.xlsx` passes through the `<redacted-path>` substitution verbatim while `\\corp\profiles\Users\jdoe\salary.xlsx` is redacted. The claim holds only for the single-level fixture the receipt was issued against. The round-3 reseal that tried to widen the pattern (`b74910e4`) was rejected by the security and test reviewers on independent blocking findings (the deep-UNC depth control is green by construction because the `scheme=` case shares its probe message and absorbs the `deep=` token; the `//` UNC branch has no control at all) and has been reverted, so the false approval remains the published receipt. The receipt schema requires `decision == "approved"`, so a withdrawal cannot be expressed in the evidence tree; any reseal overwrites the receipt rather than recording that this one was wrong.
 status: open
 note: Fix path = a round-4 reseal that (a) splits the deep-UNC and `scheme=` probes into separate RuntimeError messages and separate facts, with both mutation controls (`{0,3}` depth bound and re-added lookbehind) shown red; (b) adds a control for the `//` branch (`file://corp/users/...`, `smb://fileserver/users/...`); (c) records this withdrawal in `limitations.json`, since the receipt schema cannot; (d) re-runs both lanes against post-re-stamp bytes. Longer term, a denylist keyed on `users|home` segments cannot support a completeness claim (every round found new residuals: `\\corp\profiles\jdoe\secret.txt`, `C:\Data\jdoe`, `~/secret`, `%USERPROFILE%\`, 8.3 `C:\USERS~1\`); that needs a structural approach in its own story.
+
+## Settlement from: spec-4-15-v3-round-4-reseal (2026-09-19)
+
+### DW-525: Round-4 measurement supersedes DW-521's historical Story 4.15 v3 counts.
+
+origin: implementation of spec-4-15-v3-round-4-reseal (2026-09-19)
+location: tools/validate-oq8-platform-evidence.py (`V3_GATE_INPUT_PATHS`, `V3_FINAL_CLOSURE_TEST_COUNT`, `V3_FULL_CONTRACTS_TEST_COUNT`); Story 4.15 v3 successor evidence
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: low
+reason: DW-521 correctly measured the prior sealed generation at 13 gate inputs, 458 focused closure cases, and 2061 full Contracts cases. The round-4 reseal adds `.gitattributes` as the fourteenth gate input and seven test cases, and both pre-restamp and post-restamp direct-assembly runs measured 465 focused cases and 2068 full Contracts cases with zero failures or skips. DW-521's enforcement concern remains open and owner-routed; its 13/458/2061 figures are historical rather than current.
+status: done
+resolution: The canonical current Story 4.15 v3 packet and validator now bind 14 gate inputs, 465 focused closure cases, and 2068 full Contracts cases without rewriting the append-only DW-521 record.
+
+## Settlement from: review of spec-4-15-v3-round-4-reseal (2026-09-20)
+
+### DW-526: The round-4 successor withdraws and replaces the false approval recorded by DW-524.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20)
+location: Story 4.15 v3 successor limitations, security receipt, manifest, and active selector
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: high
+reason: DW-524 correctly described the published state when recorded. The completed round-4 successor binds limitation 7, which explicitly withdraws the prior false nested-UNC approval, and fresh architecture, security, and test approvals all bind frozen subject `29880d6b3ebb9a67d69d0ff2f70afd138a7c81cfd2938fcd437de5d863ede913`. Independent deep-UNC, scheme-prefixed UNC, slash-UNC, and historical caller-path controls passed before review, and the final post-restamp mutation, focused, full, and validator gates passed.
+status: done
+resolution: The active v3 selector now binds final manifest `3e7bbdd6a599075f11bbd717c682ec4b0f6fe46fd8eb50a57dd50ae401016913`, whose replacement security receipt `ef344209ca2fd73619da002c3fb2fd2c0e25530a28720fe4c70fd164013cac93` approves only the current frozen subject. The superseded false approval remains historical evidence and no longer authorizes current source.

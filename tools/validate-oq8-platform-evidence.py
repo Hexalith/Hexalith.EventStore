@@ -272,7 +272,7 @@ V3_SOURCE_PATHS = {
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
     "docs/ci.md",
 }
-V3_GATE_INPUT_PATHS = SUCCESSOR_SOURCE_PATHS | set(V2_SOURCE_PATHS) | V2_GATE_INPUT_PATHS
+V3_GATE_INPUT_PATHS = SUCCESSOR_SOURCE_PATHS | set(V2_SOURCE_PATHS) | V2_GATE_INPUT_PATHS | {".gitattributes"}
 V3_SELECTION_DATE = "2026-09-09"
 V3_SELECTION_REASON = (
     "Unify the SDK, PostgreSQL image-governance, and current-source successors under one "
@@ -284,9 +284,9 @@ V3_BINDING_RULE = (
     "SDK and current gate input only from regular non-symlink candidate files."
 )
 V3_REVIEW_SCOPES = {
-    "architecture": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, and source-only authority boundaries",
-    "security": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, receipt binding, and external-authority exclusions",
-    "test": "historical v1/v2 validation, active v3 selector and bootstrap coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the full Contracts lane",
+    "architecture": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, line-ending gate authority, complete limitations, and source-only authority boundaries",
+    "security": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, deep and scheme-prefixed and slash-UNC redaction, prior-approval withdrawal, receipt binding, and external-authority exclusions",
+    "test": "historical v1/v2 validation, active v3 selector and bootstrap coverage, UNC redaction mutation controls, limitation coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the direct-assembly full Contracts lane",
 }
 V3_LIMITATIONS = [
     "Story 4.15 v1, the SDK 10.0.400 successor, and v2 remain immutable historical evidence and do not authorize source bytes changed after completed-v2 closure commit 83b32fcfad7bb608098aebccdc15002636ffb431.",
@@ -295,11 +295,12 @@ V3_LIMITATIONS = [
     "The immutable Story 4.14 capture remains historical evidence of Dapr runtime 1.18.1; the current content-bound integration workflow and fresh OQ8 capture lane require Dapr runtime 1.18.2, without granting runtime-pin authority.",
     "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
     "Exact-tree enumeration before sealed OQ8 directory comparison is not depth- or entry-count-bounded, so a hostile evidence tree can consume unbounded time or memory before fail-closed rejection; remediation remains deferred as DW-520.",
+    "Private-path redaction is intentionally incomplete: non-users/home UNC roots, generic drive and home shorthand, 8.3 paths, terminal filenames containing spaces, repr-doubled Windows paths, and EvidenceError messages can remain visible; unexpected-exception redaction runs before the 256-character output truncation. Because the approved receipt schema can encode only decision approved, this limitation withdraws the prior false security approval for nested-UNC redaction; the new receipts bind only the round-4 subject.",
     "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority.",
 ]
 V3_CONTRACTS_RESTORE_COMMAND = "dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -m:1 -p:Configuration=Release -p:UseHexalithProjectReferences=false"
 V3_CONTRACTS_BUILD_COMMAND = "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false"
-V3_CONTRACTS_TEST_COMMAND = "dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --results-directory TestResults/Hexalith.EventStore.Contracts.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.Contracts.Tests.trx --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml -p:UseHexalithProjectReferences=false"
+V3_CONTRACTS_TEST_COMMAND = "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noColor"
 V3_ACTIONLINT_COMMAND = "actionlint .github/workflows/ci.yml .github/workflows/integration.yml"
 V3_LIVE_SIDECAR_BUILD_COMMAND = "dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj --configuration Release -warnaserror -m:1 -p:UseHexalithProjectReferences=false"
 V3_LIVE_SIDECAR_TEST_COMMAND = "dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -method Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants -noColor"
@@ -313,9 +314,9 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V3_REVIEW_DATE = "2026-09-18"
-V3_FINAL_CLOSURE_TEST_COUNT = 458
-V3_FULL_CONTRACTS_TEST_COUNT = 2061
+V3_REVIEW_DATE = "2026-09-19"
+V3_FINAL_CLOSURE_TEST_COUNT = 465
+V3_FULL_CONTRACTS_TEST_COUNT = 2068
 V3_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
     "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
@@ -640,13 +641,17 @@ EXPECTED_CROSSWALK_INVARIANTS = [
 ]
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PRIVATE_PATH_RE = re.compile(r"(?:/home/|/Users/|[A-Za-z]:[\\/]Users[\\/])")
-PRIVATE_PATH_TOKEN_RE = re.compile(
+# One source of truth for private roots used both at the token boundary and when
+# separating adjacent name=<private-path> assignments.
+PRIVATE_ROOT_FRAGMENT = (
     r"(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
-    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:(?:profiles?|home)[\\/])?(?:users|home)[\\/])"
-    r"(?:(?![ \t]+[A-Za-z][A-Za-z0-9_-]*=(?:/(?:home|users|tmp|var/tmp)/|/root(?:/|\b)"
-    r"|[a-z]:[\\/](?:users|temp|tmp)[\\/]"
-    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:(?:profiles?|home)[\\/])?(?:users|home)[\\/]))"
-    r"[^\"<>\r\n])*",
+    r"|(?:\\\\|//)[^\\/\s]+[\\/](?:[^\\/\s]+[\\/])*?(?:users|home)[\\/])"
+)
+PRIVATE_PATH_TOKEN_RE = re.compile(
+    PRIVATE_ROOT_FRAGMENT
+    + r"(?:[^\s\"<>]|[ \t](?![ \t]*[A-Za-z][A-Za-z0-9_-]*=" + PRIVATE_ROOT_FRAGMENT + r")"
+    r"(?![0-9.]+[\\/][0-9.]+(?:[\s\"<>]|$))"
+    r"(?=[^\s\"<>]*[\\/]))*",
     re.IGNORECASE,
 )
 PLACEHOLDER_RE = re.compile(r"(?:\bTBD\b|\bTODO\b|\bUNKNOWN\b|<[^>]+>)", re.IGNORECASE)
@@ -859,10 +864,13 @@ def load_candidate_json_bytes(value: bytes, label: str) -> Any:
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(f"{path.suffix}.tmp")
-    with temporary.open("w", encoding="utf-8", newline="\n") as stream:
-        json.dump(value, stream, indent=2, sort_keys=False)
-        stream.write("\n")
-    temporary.replace(path)
+    try:
+        with temporary.open("w", encoding="utf-8", newline="\n") as stream:
+            json.dump(value, stream, indent=2, sort_keys=False)
+            stream.write("\n")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def sha256_file(path: Path) -> str:
@@ -1254,6 +1262,7 @@ def validate_observations(
     expected_dapr_runtime_version: str,
     expected_postgres_image: str,
     profile_identity_revision: str | None = None,
+    historical: bool = False,
 ) -> dict[str, Any]:
     require(
         re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", expected_dapr_runtime_version) is not None,
@@ -1446,15 +1455,16 @@ def validate_observations(
     require_sha256(before.get("schemaSha256"), "PostgreSQL schema identity")
     require_sha256(before.get("projectionSha256"), "Before projection identity")
     require_sha256(after.get("projectionSha256"), "After projection identity")
-    for label, snapshot in (("Before", before), ("After", after)):
-        require(
-            snapshot.get("terminalRows", 0) <= snapshot.get("admissionRows", 0),
-            f"{label} capture snapshot terminalRows exceeds admissionRows",
-        )
-        require(
-            snapshot.get("minimalTombstoneRows", 0) <= snapshot.get("tombstoneRows", 0),
-            f"{label} capture snapshot minimalTombstoneRows exceeds tombstoneRows",
-        )
+    if not historical:
+        for label, snapshot in (("Before", before), ("After", after)):
+            require(
+                snapshot.get("terminalRows", 0) <= snapshot.get("admissionRows", 0),
+                f"{label} capture snapshot terminalRows exceeds admissionRows",
+            )
+            require(
+                snapshot.get("minimalTombstoneRows", 0) <= snapshot.get("tombstoneRows", 0),
+                f"{label} capture snapshot minimalTombstoneRows exceeds tombstoneRows",
+            )
     require(after.get("aggregateSequenceTotal") == before.get("aggregateSequenceTotal", 0) + 4, "Eligible execution count is not four")
     require(after.get("admissionRows") == before.get("admissionRows", 0) + 4, "Admission row delta is not exactly four")
     require(after.get("terminalRows") == before.get("terminalRows", 0) + 4, "Terminal row delta is not exactly four")
@@ -4154,6 +4164,7 @@ def validate_capture_packet(packet: Any) -> None:
         COMMITTED_DAPR_RUNTIME_VERSION,
         POSTGRES_TAG,
         COMPLETED_V1_CLOSURE_COMMIT,
+        historical=True,
     )
     deterministic_support_path = EVIDENCE / "deterministic-support.json"
     deterministic_support = validate_support_document(
