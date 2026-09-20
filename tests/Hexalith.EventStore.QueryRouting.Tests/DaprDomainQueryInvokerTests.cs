@@ -90,6 +90,18 @@ public sealed class DaprDomainQueryInvokerTests {
         request.Headers.Authorization.ShouldBeNull();
     }
 
+    [Fact]
+    public void ForwardBearerCredential_MultipleAuthorizationValues_AreIgnored() {
+        var context = new DefaultHttpContext();
+        context.Request.Headers.Authorization = new Microsoft.Extensions.Primitives.StringValues(
+            new[] { BearerCredential, "Bearer second-token" });
+        using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
+
+        DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
+
+        request.Headers.Authorization.ShouldBeNull();
+    }
+
     private static QueryEnvelope Query()
         => new(
             "tenant-a",
