@@ -3455,8 +3455,9 @@ location: tools/validate-oq8-platform-evidence.py:3697-3700,3522-3548
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: Default validation calls validate_status_and_documents(final=True), requiring sprint 4-15 status review and spec frontmatter done. Frozen Always says advance tracking only when the fail-closed validator passes. Isolated --lifecycle-mode final is not the bypass. Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
-status: open
-decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
+status: done
+decision: 2026-09-20 Resolve through Story 4.15 v4 lifecycle separation — Default validation now proves the complete active v4 packet before consulting a bounded mutable lifecycle record; ready-to-close and closed select exact review/done and done/done pairs.
+resolution: Story 4.15 v4 replaced the Boolean final gate with candidate/final/closed phases, preserved v3 as immutable historical evidence, and verified the ready-to-close transition before atomically selecting closed tracking.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Story 3.15's required `docs/ci.md` update leaves the Story 4.15 v3 successor packet unbound, so the complete Contracts suite fails on current-source identity drift until that separately reviewed packet is reminted.
@@ -4017,7 +4018,8 @@ location: tools/validate-oq8-platform-evidence.py:3713; tests/Hexalith.EventStor
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: The final lifecycle map requires sprint `review` and spec `done` simultaneously, and the new `CheckedInRepositoryLifecyclePassesWithoutMutation` runs the final validator against the checked-in repository, so flipping either value turns the entire Contracts lane red with no explanatory message. This hardens the inversion accepted as DW-497; reversing it is that lifecycle-contract decision, not a local fix.
-status: open
+status: done
+resolution: Story 4.15 v4 moved the checked-in probe to select the exact ready-to-close or closed lifecycle mode, added a complete default-validation probe, and made isolated final/closed modes lifecycle-only and explicitly non-authorizing for evidence.
 
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13, Group P)
 

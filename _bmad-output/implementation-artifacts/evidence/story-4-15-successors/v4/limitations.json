@@ -1,0 +1,13 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-limitations/v4",
+  "limitations": [
+    "Story 4.15 v1, the SDK 10.0.400 successor, v2, and v3 remain immutable historical evidence through completed-v3 commit d578e7626df1d8afeada440c7989eb04ba2bdfe6 and do not authorize current v4 source bytes.",
+    "The active v4 successor validates exact current repository gate inputs and content-binds the validator, Contracts tests, and approved Story 4.15 parent-contract evolution.",
+    "The mutable lifecycle record and sprint tracking remain outside the sealed v4 review subject; they can select only ready-to-close or closed tracking after the complete v4 packet validates.",
+    "Isolated final and closed lifecycle modes validate only the bounded lifecycle record and exact repository tracking pair and never approve evidence.",
+    "Historical and current Git identity proofs require a full object store containing completed-v3 commit d578e7626df1d8afeada440c7989eb04ba2bdfe6; shallow or rewritten history fails closed.",
+    "Exact-tree enumeration before sealed OQ8 directory comparison is not depth- or entry-count-bounded, so a hostile evidence tree can consume unbounded time or memory before fail-closed rejection; remediation remains deferred as DW-520.",
+    "Private-path redaction remains intentionally incomplete as disclosed by the completed v3 predecessor; v4 grants no broader diagnostic-safety claim.",
+    "The v4 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority."
+  ]
+}

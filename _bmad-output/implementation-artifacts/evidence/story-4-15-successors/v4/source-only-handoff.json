@@ -1,0 +1,37 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-source-only-handoff/v4",
+  "assembledAt": "2026-09-20T22:25:31Z",
+  "story": "4.15",
+  "predecessor": {
+    "completedV3ClosureCommit": "d578e7626df1d8afeada440c7989eb04ba2bdfe6",
+    "reviewSubjectSha256": "583269ac56f7ca75371b6c70a507a820bf21a4ff1fada790ac91feea34ca8b7e",
+    "closureManifestSha256": "f20a01ba874eaca8e3d99eef065534a8211eef16db601bf9dc1723ef0cc90493"
+  },
+  "reviewSubjectSha256": "7e6a393ece18b322a01157a8b60ea37ede7d8d142d10a4fa65f08c7c35b276cf",
+  "limitationsSha256": "b001594d9419993e9ae33a06b3c584ae36f8b329f3d4ef54c97bbbfa9ddbab58",
+  "reviewReceipts": {
+    "architecture": "f2df4ab0a5231286e0388ccb1f6c70be2b6fbd7a1aad42dfa2cdeeb2150842c8",
+    "security": "c75026cb4e73062a83ce0e3d958c0b30e87a602bc22fd35d13a748f21518b687",
+    "test": "df99f8b6926ad7c0e000cf410b5ce7f08b264454d4fd5bf69ff1d529beba57d5"
+  },
+  "consumerInstructions": {
+    "mode": "source-only",
+    "installCommand": "python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt",
+    "verifyCommand": ".oq8-python/bin/python tools/validate-oq8-platform-evidence.py",
+    "historicalRule": "Validate Story 4.15 v1, the SDK 10.0.400 successor, v2, and v3 only against immutable historical artifacts and Git snapshots through commit d578e7626df1d8afeada440c7989eb04ba2bdfe6.",
+    "currentRule": "Treat current source as evidence-approved only when the complete v4 successor validates; then require the separate lifecycle record and exact sprint/spec pair for ready-to-close or closed state."
+  },
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

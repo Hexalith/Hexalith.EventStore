@@ -21,7 +21,7 @@ context:
 
 ## Boundaries & Constraints
 
-**Always:** Preserve the checksummed Story 4.14 evidence directory unchanged. Bind every approval to one frozen subject containing the design reference, invariant/evidence crosswalk, exact source/artifact identities, limitations, and reviewer scope. Keep the approved test seams and sanitized structural-state limitation explicit. Advance tracking only when the final fail-closed validator passes.
+**Always:** Preserve the checksummed Story 4.14 evidence directory unchanged. Bind every approval to one frozen subject containing the design reference, invariant/evidence crosswalk, exact source/artifact identities, limitations, and reviewer scope. Keep the approved test seams and sanitized structural-state limitation explicit. Advance tracking only after the complete active evidence packet validates and the bounded lifecycle record selects the exact matching Story 4.15 sprint/spec status pair.
 
 **Ask First:** Changing OQ8 design 1.0.0, durable-admission behavior, the production profile, public contracts, or any release, package, registry, deployment, consumer pin, external repository, or submodule state.
 
@@ -1175,3 +1175,7 @@ All `patch` findings surviving the Group 1 and story-files-only review passes ab
 - **Not implemented (rejected as false):** the `postgresImageIdentity == postgresImage` equality check — `postgresImage` is the reviewed multi-platform index while `postgresImageIdentity` is the distinct local configuration digest; implementing it would have introduced a false constraint.
 - Verification observed: Contracts Release build 0 warnings/0 errors; focused closure class 467 passed/0 failed/0 skipped; full Contracts assembly 2070 passed/0 failed/0 skipped; default, `final`, `--historical-v1-only`, and `--historical-v2-only` validator modes all exit 0; `git diff --check` clean. Full detail in `spec-4-15-story-file-diff-review-patches.md`.
 - **Lifecycle unchanged by this closure.** Per the accepted DW-497/DW-505 inversion recorded above, spec frontmatter stays `done` and the sprint row stays `review` — this patch round did not alter that disposition.
+
+#### v4 lifecycle supersession (2026-09-21)
+
+The preceding completion record remains historical. Story 4.15 v4 subsequently separated evidence from lifecycle state and completed the bounded transition to lifecycle `closed`, sprint `done`, and spec `done`. At that transition the focused closure class measured **464/464** and the full Contracts assembly measured **2072/2072**; this corrective pass adds twelve focused cases and measures **476/476**. Per the corrective-review constraint, the wider post-correction full suite is intentionally left to the parent verification run rather than claimed here.
