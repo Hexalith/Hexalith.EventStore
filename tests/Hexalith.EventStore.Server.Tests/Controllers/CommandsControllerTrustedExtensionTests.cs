@@ -37,7 +37,9 @@ public sealed class CommandsControllerTrustedExtensionTests {
         CommandsController controller = CreateController(
             mediator,
             new TestLogger<CommandsController>(),
-            [new PredicatePolicy(static (_, _, key, value) => key == ReservedKey && value == OpaqueVerdictValue)]);
+            [new PredicatePolicy(
+                static (_, _, key) => key == ReservedKey,
+                static (_, _, _, value) => value == OpaqueVerdictValue)]);
 
         IActionResult result = await controller.Submit(Request(), CancellationToken.None);
 
@@ -51,11 +53,13 @@ public sealed class CommandsControllerTrustedExtensionTests {
     [Theory]
     [InlineData(0)]
     [InlineData(2)]
-    public async Task Zero_or_overlapping_accepting_policies_reject_before_admission(int acceptingPolicies) {
+    public async Task Zero_or_overlapping_claiming_policies_reject_before_admission(int acceptingPolicies) {
         IMediator mediator = Substitute.For<IMediator>();
         var logger = new TestLogger<CommandsController>();
         ITrustedCommandExtensionPolicy[] policies = Enumerable.Range(0, acceptingPolicies)
-            .Select(_ => (ITrustedCommandExtensionPolicy)new PredicatePolicy(static (_, _, _, _) => true))
+            .Select(_ => (ITrustedCommandExtensionPolicy)new PredicatePolicy(
+                static (_, _, _) => true,
+                static (_, _, _, _) => true))
             .ToArray();
         CommandsController controller = CreateController(mediator, logger, policies);
 
@@ -67,6 +71,81 @@ public sealed class CommandsControllerTrustedExtensionTests {
         await mediator.DidNotReceiveWithAnyArgs().Send(default!, default);
         logger.Messages.ShouldContain(message => message.Contains(ReservedKey, StringComparison.Ordinal));
         logger.Messages.ShouldAllBe(message => !message.Contains(OpaqueVerdictValue, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Only_the_single_claiming_policy_receives_the_reserved_extension_value() {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitCommandResult("correlation-1"));
+        bool unclaimedPolicyReceivedValue = false;
+        bool claimingPolicyReceivedExtensionDictionary = false;
+        CommandsController controller = CreateController(
+            mediator,
+            new TestLogger<CommandsController>(),
+            [
+                new PredicatePolicy(
+                    static (_, _, _) => false,
+                    (_, _, _, _) => {
+                        unclaimedPolicyReceivedValue = true;
+                        return false;
+                    }),
+                new PredicatePolicy(
+                    static (_, _, key) => key == ReservedKey,
+                    (_, command, _, value) => {
+                        claimingPolicyReceivedExtensionDictionary = command.Extensions is not null;
+                        return value == OpaqueVerdictValue;
+                    }),
+            ]);
+
+        IActionResult result = await controller.Submit(Request(), CancellationToken.None);
+
+        result.ShouldBeOfType<AcceptedResult>();
+        unclaimedPolicyReceivedValue.ShouldBeFalse();
+        claimingPolicyReceivedExtensionDictionary.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Policy_exceptions_fail_closed_without_logging_the_extension_value(bool throwWhileClaiming) {
+        IMediator mediator = Substitute.For<IMediator>();
+        var logger = new TestLogger<CommandsController>();
+        var policy = new PredicatePolicy(
+            (_, _, _) => throwWhileClaiming
+                ? throw new InvalidOperationException(OpaqueVerdictValue)
+                : true,
+            (_, _, _, _) => !throwWhileClaiming
+                ? throw new InvalidOperationException(OpaqueVerdictValue)
+                : true);
+        CommandsController controller = CreateController(mediator, logger, [policy]);
+
+        IActionResult result = await controller.Submit(Request(), CancellationToken.None);
+
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        await mediator.DidNotReceiveWithAnyArgs().Send(default!, default);
+        logger.Messages.ShouldAllBe(message => !message.Contains(OpaqueVerdictValue, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Caller_supplied_global_admin_extension_is_ignored_without_policy_evaluation() {
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitCommandResult("correlation-1"));
+        var policy = new PredicatePolicy(
+            static (_, _, _) => throw new InvalidOperationException("Policy must not inspect actor:globalAdmin."),
+            static (_, _, _, _) => throw new InvalidOperationException("Policy must not receive actor:globalAdmin."));
+        CommandsController controller = CreateController(mediator, new TestLogger<CommandsController>(), [policy]);
+        SubmitCommandRequest request = Request() with {
+            Extensions = new Dictionary<string, string> { ["actor:globalAdmin"] = "true" },
+        };
+
+        IActionResult result = await controller.Submit(request, CancellationToken.None);
+
+        result.ShouldBeOfType<AcceptedResult>();
+        await mediator.Received(1).Send(
+            Arg.Is<SubmitCommand>(command => command.Extensions == null),
+            Arg.Any<CancellationToken>());
     }
 
     private static CommandsController CreateController(
@@ -97,8 +176,12 @@ public sealed class CommandsControllerTrustedExtensionTests {
         IdempotencyKey: "message-1");
 
     private sealed class PredicatePolicy(
+        Func<string, string, string, bool> claims,
         Func<ClaimsPrincipal, SubmitCommandRequest, string, string, bool> accepts)
         : ITrustedCommandExtensionPolicy {
+        public bool Claims(string domain, string commandType, string key)
+            => claims(domain, commandType, key);
+
         public bool Accepts(ClaimsPrincipal principal, SubmitCommandRequest command, string key, string value)
             => accepts(principal, command, key, value);
     }

@@ -16,9 +16,10 @@ public interface IEventStoreGatewayClient {
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reads a command's recorded status through <c>GET /api/v1/commands/status/{messageId}</c>.
+    /// Reads a command's recorded status through <c>GET /api/v1/commands/status/{messageId}</c>, including the
+    /// bounded correlation-identifier compatibility lookup supported by the gateway.
     /// </summary>
-    /// <param name="messageId">The command message identifier returned on the submission receipt.</param>
+    /// <param name="messageId">The command message identifier, or a tracing correlation identifier for compatibility lookup.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The recorded status, or <c>null</c> when no status exists for the identifier.</returns>
     /// <remarks>

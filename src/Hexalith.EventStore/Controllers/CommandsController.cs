@@ -208,9 +208,28 @@ public class CommandsController(
             }
 
             if (extension.Key.Contains(':', StringComparison.Ordinal)) {
-                int acceptedPolicyCount = trustedExtensionPolicies?.Count(policy =>
-                    policy.Accepts(User, request, extension.Key, extension.Value)) ?? 0;
-                if (acceptedPolicyCount != 1) {
+                ITrustedCommandExtensionPolicy[] claimingPolicies;
+                try {
+                    claimingPolicies = trustedExtensionPolicies?
+                        .Where(policy => policy.Claims(request.Domain, request.CommandType, extension.Key))
+                        .Take(2)
+                        .ToArray() ?? [];
+                }
+                catch (Exception) {
+                    return (null, extension.Key);
+                }
+
+                if (claimingPolicies.Length != 1) {
+                    return (null, extension.Key);
+                }
+
+                try {
+                    SubmitCommandRequest policyCommand = request with { Extensions = null };
+                    if (!claimingPolicies[0].Accepts(User, policyCommand, extension.Key, extension.Value)) {
+                        return (null, extension.Key);
+                    }
+                }
+                catch (Exception) {
                     return (null, extension.Key);
                 }
             }

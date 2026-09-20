@@ -127,8 +127,11 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     private static bool IsValidCommandStatus(CommandStatusQueryResponse? response, string requestedMessageId) {
         if (response is null
             || string.IsNullOrWhiteSpace(response.CorrelationId)
-            || string.IsNullOrWhiteSpace(response.MessageId)
-            || !string.Equals(response.MessageId, requestedMessageId, StringComparison.Ordinal)
+            || (response.MessageId is null
+                ? !string.Equals(response.CorrelationId, requestedMessageId, StringComparison.Ordinal)
+                : string.IsNullOrWhiteSpace(response.MessageId)
+                    || (!string.Equals(response.MessageId, requestedMessageId, StringComparison.Ordinal)
+                        && !string.Equals(response.CorrelationId, requestedMessageId, StringComparison.Ordinal)))
             || string.IsNullOrWhiteSpace(response.Status)
             || !Enum.TryParse(response.Status, ignoreCase: false, out CommandStatus parsed)
             || !string.Equals(Enum.GetName(parsed), response.Status, StringComparison.Ordinal)) {

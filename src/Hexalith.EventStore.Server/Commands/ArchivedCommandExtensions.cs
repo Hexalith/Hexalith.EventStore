@@ -67,6 +67,10 @@ public static class ArchivedCommandExtensions {
                 $"Archived command for correlation '{correlationId}' has missing CommandType. The archive may be corrupted.");
         }
 
+        Dictionary<string, string>? replayExtensions = archived.Extensions?
+            .Where(extension => !extension.Key.Contains(':', StringComparison.Ordinal))
+            .ToDictionary(extension => extension.Key, extension => extension.Value, StringComparer.Ordinal);
+
         return new SubmitCommand(
             MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
             Tenant: archived.Tenant,
@@ -76,6 +80,6 @@ public static class ArchivedCommandExtensions {
             Payload: archived.Payload,
             CorrelationId: correlationId,
             UserId: "system",
-            Extensions: archived.Extensions);
+            Extensions: replayExtensions is { Count: > 0 } ? replayExtensions : null);
     }
 }
