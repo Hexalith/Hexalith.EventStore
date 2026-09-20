@@ -2,17 +2,17 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "test",
   "reviewer": "Murat (Test Architect)",
-  "issuedAt": "2026-09-19T23:50:47Z",
+  "issuedAt": "2026-09-20T15:01:03Z",
   "decision": "approved",
-  "subjectSha256": "29880d6b3ebb9a67d69d0ff2f70afd138a7c81cfd2938fcd437de5d863ede913",
-  "limitationsSha256": "d90b0dae9f5954aaeb5bf0cab82073fd1fef506ac203d798d24854fbd56cd0a9",
-  "acceptedScope": "historical v1/v2 validation, active v3 selector and bootstrap coverage, UNC redaction mutation controls, limitation coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the direct-assembly full Contracts lane",
+  "subjectSha256": "583269ac56f7ca75371b6c70a507a820bf21a4ff1fada790ac91feea34ca8b7e",
+  "limitationsSha256": "033819b275bc1de55f673d23b387c86fda4fef1174d4dd68e11310475e253d84",
+  "acceptedScope": "historical v1/v2 validation, active v3 selector and bootstrap coverage, unsafe bootstrap rejection, focused xUnit 4 CTRF conversion, historical-child cleanup, UNC redaction mutation controls, limitation coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the direct-assembly full Contracts lane",
   "findings": [
-    "Frozen subject, limitations, identity, and execution hashes stayed unchanged throughout fresh independent review and initial receipt assembly.",
-    "The packet-level caller regression passed one of one and distinguishes fresh subset rejection from historical validate_capture_packet acceptance for the same resealed observations.",
-    "All 33 v3 mutation cases were exercised within the exact focused lane; the initial assembled packet passed 465 of 465 focused cases with zero failures or skips.",
-    "The initial assembled packet passed 2068 of 2068 full Contracts cases by direct assembly with zero failures or skips.",
-    "These restamped receipts require the unchanged post-restamp focused/full rerun and all four validator modes before final handoff.",
+    "Frozen subject, limitations, identity, execution, validator, and source hashes stayed unchanged throughout independent review.",
+    "The unsafe-bootstrap, valid focused-CTRF, and historical-child cleanup behavioral cases each passed independently with no skip or failure.",
+    "The exact focused closure lane passed 467 of 467 cases with zero failures or skips after receipt assembly.",
+    "The direct-assembly full Contracts lane passed 2070 of 2070 cases with zero failures or skips after receipt assembly.",
+    "Historical v1/v2, actionlint, the focused LiveSidecar production matrix, and all final validator modes passed against the successor bytes.",
     "Approval is source-only and grants none of the excluded external authorities."
   ],
   "verification": [
@@ -41,8 +41,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 465,
-      "passed": 465,
+      "tests": 467,
+      "passed": 467,
       "failed": 0,
       "skipped": 0
     },
@@ -51,8 +51,8 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 2068,
-      "passed": 2068,
+      "tests": 2070,
+      "passed": 2070,
       "failed": 0,
       "skipped": 0
     }

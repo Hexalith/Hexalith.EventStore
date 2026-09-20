@@ -4499,27 +4499,6 @@ severity: high
 reason: The owner-controlled required-check set still does not execute the Story 4.15 evidence validator or require the Contracts lane, and most Contracts test sources remain outside the v3 gate-input set. Consequently, an unrelated test addition can stale the sealed 2068 count without a merge-blocking signal. This reconfirms DW-521 after the round-4 count changed; the ruleset and broader source-binding work remain outside this reseal's authority.
 status: open
 
-## Deferred from: code review of spec-4-15-v3-round-4-reseal (2026-09-20)
-
-- source_spec: `spec-4-15-v3-round-4-reseal.md`
-  summary: Support-safe private-path scanning still does not recognize deep UNC user paths.
-  evidence: Direct probe of `PRIVATE_PATH_RE` against `\\corp\dfs\Users\jdoe\salary.xlsx` and `file://corp/users/jdoe/salary.xlsx` does not match, while `PRIVATE_PATH_TOKEN_RE` redacts both. Reconfirms open DW-528.
-- source_spec: `spec-4-15-v3-round-4-reseal.md`
-  summary: Whitespace-bearing UNC intermediate segments remain visible in unexpected-failure diagnostics.
-  evidence: `\\corp\DFS Root\Users\jdoe\salary.xlsx` is unchanged because the UNC intermediate-segment expression excludes whitespace. Reconfirms open DW-529.
-
-## Deferred from: code review of spec-4-15-v3-round-4-reseal (2026-09-20, second story-file pass)
-
-- source_spec: `spec-4-15-v3-round-4-reseal.md`
-  summary: Hash-bound `.gitattributes` still has no explicit `eol`, and EditorConfig still defaults C# to CRLF.
-  evidence: `git check-attr` reports only `text: auto` on `.gitattributes`; `[*.cs]` inherits `end_of_line = crlf` while `*.cs` is `eol=lf`. Binding `.gitattributes` as a v3 gate input does not close that rewrite path. Reconfirms open DW-527.
-- source_spec: `spec-4-15-v3-round-4-reseal.md`
-  summary: Support-safe private-path scanning still does not recognize deep UNC user paths.
-  evidence: Direct probe of `PRIVATE_PATH_RE` against `\\corp\dfs\Users\jdoe\salary.xlsx` and `file://corp/users/jdoe/salary.xlsx` does not match, while `PRIVATE_PATH_TOKEN_RE` redacts both. Reconfirms open DW-528.
-- source_spec: `spec-4-15-v3-round-4-reseal.md`
-  summary: Whitespace-bearing UNC intermediate segments remain visible in unexpected-failure diagnostics.
-  evidence: `\\corp\DFS Root\Users\jdoe\salary.xlsx` is unchanged because the UNC intermediate-segment expression excludes whitespace. Reconfirms open DW-529.
-
 ## Deferred from: code review of spec-4-15-v3-round-4-reseal (2026-09-20, third story-file pass)
 
 Reconfirmed without new identifiers: DW-528 (support-safe scanner still misses deep UNC user paths) and DW-529 (whitespace-bearing UNC intermediates remain visible).
@@ -4605,3 +4584,7 @@ status: open
 - DW-497 reconfirmed: final validation still requires sprint `review` and spec `done` as success inputs.
 - DW-528 reconfirmed: candidate JSON and support-safe scanners still miss private-path shapes handled by the unexpected-exception redactor.
 - DW-534 reconfirmed: the round-4 limitation set still omits Group R's owner-required deferred-gap sentence and six high `run6-*` disclosures.
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-story-file-diff-review-patches.md`
+  summary: Repository-bound snapshot reads remain exposed to a concurrent pathname replacement between component validation and file open.
+  evidence: `read_bounded_regular_snapshot` checks symlink components and metadata before calling `path.open`, so a concurrent replacement can redirect the opened file; the frozen intent explicitly excludes TOCTOU refactoring, and an atomic open-beneath design is needed to settle the gap.

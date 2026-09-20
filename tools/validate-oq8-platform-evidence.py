@@ -284,9 +284,9 @@ V3_BINDING_RULE = (
     "SDK and current gate input only from regular non-symlink candidate files."
 )
 V3_REVIEW_SCOPES = {
-    "architecture": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, line-ending gate authority, complete limitations, and source-only authority boundaries",
-    "security": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, deep and scheme-prefixed and slash-UNC redaction, prior-approval withdrawal, receipt binding, and external-authority exclusions",
-    "test": "historical v1/v2 validation, active v3 selector and bootstrap coverage, UNC redaction mutation controls, limitation coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the direct-assembly full Contracts lane",
+    "architecture": "v1, SDK, and v2 historical preservation, unified v3 current-source succession, landed Git identity, line-ending gate authority, complete limitations, bounded dependency snapshots, historical-child cleanup, and source-only authority boundaries",
+    "security": "immutable predecessor lineage, landed commit and tree identity, HEAD ancestry, fail-closed source drift, deep and scheme-prefixed and slash-UNC redaction, prior-approval withdrawal, bounded non-symlink bootstrap inputs, child-process cleanup, receipt binding, and external-authority exclusions",
+    "test": "historical v1/v2 validation, active v3 selector and bootstrap coverage, unsafe bootstrap rejection, focused xUnit 4 CTRF conversion, historical-child cleanup, UNC redaction mutation controls, limitation coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the direct-assembly full Contracts lane",
 }
 V3_LIMITATIONS = [
     "Story 4.15 v1, the SDK 10.0.400 successor, and v2 remain immutable historical evidence and do not authorize source bytes changed after completed-v2 closure commit 83b32fcfad7bb608098aebccdc15002636ffb431.",
@@ -295,7 +295,7 @@ V3_LIMITATIONS = [
     "The immutable Story 4.14 capture remains historical evidence of Dapr runtime 1.18.1; the current content-bound integration workflow and fresh OQ8 capture lane require Dapr runtime 1.18.2, without granting runtime-pin authority.",
     "Exact UTC-second timestamps are parsed generically and must not be later than the validator's captured current UTC; chronology remains strictly execution, subject freeze, receipts, then handoff.",
     "Exact-tree enumeration before sealed OQ8 directory comparison is not depth- or entry-count-bounded, so a hostile evidence tree can consume unbounded time or memory before fail-closed rejection; remediation remains deferred as DW-520.",
-    "Private-path redaction is intentionally incomplete: non-users/home UNC roots, generic drive and home shorthand, 8.3 paths, terminal filenames containing spaces, repr-doubled Windows paths, and EvidenceError messages can remain visible; unexpected-exception redaction runs before the 256-character output truncation. Because the approved receipt schema can encode only decision approved, this limitation withdraws the prior false security approval for nested-UNC redaction; the new receipts bind only the round-4 subject.",
+    "Private-path redaction is intentionally incomplete: non-users/home UNC roots, generic drive and home shorthand, 8.3 paths, terminal filenames containing spaces, repr-doubled Windows paths, and EvidenceError messages can remain visible; unexpected-exception redaction runs before the 256-character output truncation. Because the approved receipt schema can encode only decision approved, this limitation withdraws the prior false security approval for nested-UNC redaction; the new receipts bind only this successor subject.",
     "The v3 successor grants no release approval, package authority, registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, Folders final closure, or final-consumer authority.",
 ]
 V3_CONTRACTS_RESTORE_COMMAND = "dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -m:1 -p:Configuration=Release -p:UseHexalithProjectReferences=false"
@@ -314,9 +314,9 @@ V3_PRE_REVIEW_COMMANDS = [
     ("contracts-restore", V3_CONTRACTS_RESTORE_COMMAND, 0),
     ("contracts-build", V3_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V3_REVIEW_DATE = "2026-09-19"
-V3_FINAL_CLOSURE_TEST_COUNT = 465
-V3_FULL_CONTRACTS_TEST_COUNT = 2068
+V3_REVIEW_DATE = "2026-09-20"
+V3_FINAL_CLOSURE_TEST_COUNT = 467
+V3_FULL_CONTRACTS_TEST_COUNT = 2070
 V3_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, and v2 only against their immutable "
     "historical artifacts and Git snapshots. A full Git object store (fetch-depth: 0) is required; "
@@ -1006,6 +1006,7 @@ def sha256_git_file(revision: str, relative: str) -> str:
         "Unsafe Git-bound path",
     )
     label = "Git historical-blob identity proof"
+    selector: selectors.BaseSelector | None = None
     try:
         process = subprocess.Popen(
             ["git", "--no-replace-objects", "show", f"{revision}:{relative}"],
@@ -1016,13 +1017,13 @@ def sha256_git_file(revision: str, relative: str) -> str:
     except OSError:
         fail(f"{label} could not start")
 
-    require(process.stdout is not None and process.stderr is not None, f"{label} output capture failed")
-    selector = selectors.DefaultSelector()
-    digest = hashlib.sha256()
-    errors = bytearray()
-    blob_size = 0
-    deadline = time.monotonic() + GIT_TIMEOUT_SECONDS
     try:
+        require(process.stdout is not None and process.stderr is not None, f"{label} output capture failed")
+        selector = selectors.DefaultSelector()
+        digest = hashlib.sha256()
+        errors = bytearray()
+        blob_size = 0
+        deadline = time.monotonic() + GIT_TIMEOUT_SECONDS
         for stream, kind in ((process.stdout, "blob"), (process.stderr, "error")):
             os.set_blocking(stream.fileno(), False)
             selector.register(stream, selectors.EVENT_READ, kind)
@@ -1068,10 +1069,18 @@ def sha256_git_file(revision: str, relative: str) -> str:
             process.kill()
             process.wait()
         fail(f"{label} failed safely")
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
     finally:
-        selector.close()
-        process.stdout.close()
-        process.stderr.close()
+        if selector is not None:
+            selector.close()
+        if process.stdout is not None:
+            process.stdout.close()
+        if process.stderr is not None:
+            process.stderr.close()
 
     require(return_code == 0, f"{label} failed")
     return digest.hexdigest()
@@ -3703,14 +3712,23 @@ def validate_pyyaml_dependency() -> None:
     for index, digest in enumerate(PINNED_PYYAML_HASHES):
         continuation = " \\" if index < len(PINNED_PYYAML_HASHES) - 1 else ""
         expected_requirement_lines.append(f"    --hash=sha256:{digest}{continuation}")
-    require(read_text(requirement_path).splitlines() == expected_requirement_lines, "OQ8 validator dependency requirement drift")
+    requirement = read_bounded_text_snapshot(
+        requirement_path,
+        MAX_V2_BOUND_SOURCE_BYTES,
+        "OQ8 validator dependency requirement",
+    )
+    require(requirement.splitlines() == expected_requirement_lines, "OQ8 validator dependency requirement drift")
     required_workflow_fragments = (
         'python3 -m venv "${RUNNER_TEMP}/oq8-python"',
         '"${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt',
         'echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"',
     )
     for relative in (".github/workflows/ci.yml", ".github/workflows/integration.yml"):
-        workflow = read_text(ROOT / relative)
+        workflow = read_bounded_text_snapshot(
+            ROOT / relative,
+            MAX_V2_BOUND_SOURCE_BYTES,
+            f"OQ8 validator dependency bootstrap {relative}",
+        )
         require(
             "\n          ".join(required_workflow_fragments) in workflow,
             f"OQ8 validator dependency bootstrap drift: {relative}",

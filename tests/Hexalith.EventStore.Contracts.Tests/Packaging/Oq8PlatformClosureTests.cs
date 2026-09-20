@@ -822,16 +822,17 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies the validator rejects a same-shape but unapproved dependency artifact hash.
+    /// Verifies dependency bootstrap inputs are exact, bounded repository snapshots.
     /// </summary>
     [Fact]
-    public void ExactRequirementsHashDriftFailsClosed()
+    public void DependencyBootstrapInputsFailClosed()
     {
         string root = FindRepositoryRoot();
         string fixture = CreateFixture(root);
         try
         {
             string requirementsPath = Path.Combine(fixture, "requirements-oq8.txt");
+            byte[] requirementsBytes = File.ReadAllBytes(requirementsPath);
             string requirements = File.ReadAllText(requirementsPath);
             Match hash = RequirementHash.Match(requirements);
             hash.Success.ShouldBeTrue();
@@ -844,6 +845,55 @@ public sealed class Oq8PlatformClosureTests
             exitCode.ShouldBe(1, output);
             output.ShouldContain("OQ8 validator dependency requirement drift");
             output.ShouldNotContain("Traceback");
+
+            File.WriteAllBytes(requirementsPath, requirementsBytes);
+            string[] bootstrapPaths =
+            [
+                "requirements-oq8.txt",
+                Path.Combine(".github", "workflows", "ci.yml"),
+                Path.Combine(".github", "workflows", "integration.yml"),
+            ];
+            foreach (string relative in bootstrapPaths)
+            {
+                string path = Path.Combine(fixture, relative);
+                byte[] original = File.ReadAllBytes(path);
+                try
+                {
+                    using (FileStream stream = File.Create(path))
+                    {
+                        stream.SetLength((512 * 1024) + 1);
+                    }
+
+                    (exitCode, output) = RunValidator(root, fixture, lifecycleMode: "final");
+
+                    exitCode.ShouldBe(1, output);
+                    output.ShouldContain("exceeds the 524288-byte limit");
+                    output.ShouldNotContain("Traceback");
+
+                    File.Delete(path);
+                    string target = path + ".target";
+                    File.WriteAllBytes(target, original);
+                    CreateSymbolicLinkOrSkip(path, target, directory: false);
+
+                    (exitCode, output) = RunValidator(root, fixture, lifecycleMode: "final");
+
+                    exitCode.ShouldBe(1, output);
+                    output.ShouldContain("has a symlinked path component");
+                    output.ShouldNotContain("Traceback");
+                    File.Delete(path);
+                    File.Delete(target);
+                }
+                finally
+                {
+                    if (File.Exists(path) || new FileInfo(path).LinkTarget is not null)
+                    {
+                        File.Delete(path);
+                    }
+
+                    File.Delete(path + ".target");
+                    File.WriteAllBytes(path, original);
+                }
+            }
         }
         finally
         {
@@ -1678,6 +1728,67 @@ public sealed class Oq8PlatformClosureTests
             processOutput.ShouldContain(expected);
             processOutput.ShouldNotContain("Traceback");
             File.Exists(output).ShouldBeFalse();
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a passing xUnit 4 focused CTRF record produces the portable result shape.
+    /// </summary>
+    [Fact]
+    public void ValidFocusedCtrfProducesPortableResult()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = Path.Combine(Path.GetTempPath(), "oq8-valid-focused-ctrf-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        try
+        {
+            JsonObject ctrf = new()
+            {
+                ["results"] = new JsonObject
+                {
+                    ["summary"] = new JsonObject
+                    {
+                        ["tests"] = 1,
+                        ["passed"] = 1,
+                        ["failed"] = 0,
+                        ["skipped"] = 0,
+                    },
+                    ["tests"] = new JsonArray
+                    {
+                        new JsonObject
+                        {
+                            ["name"] = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
+                            ["status"] = "passed",
+                            ["duration"] = 12.5,
+                            ["labels"] = new JsonObject
+                            {
+                                ["Category"] = "LiveSidecar",
+                                ["Profile"] = "oq8-postgresql-v1",
+                            },
+                            ["tags"] = new JsonArray("LiveSidecar"),
+                        },
+                    },
+                },
+            };
+            string input = Path.Combine(fixture, "input.json");
+            string output = Path.Combine(fixture, "output.json");
+            WriteObject(input, ctrf);
+
+            (int exitCode, string processOutput) = RunCtrfSanitizer(root, input, output, support: false);
+
+            exitCode.ShouldBe(0, processOutput);
+            File.Exists(output).ShouldBeTrue();
+            JsonObject portable = LoadObject(output);
+            portable["command"]!.GetValue<string>().ShouldContain("-result-ctrf raw-runner-temp");
+            portable["command"]!.GetValue<string>().ShouldNotContain(" -ctrf ");
+            portable["test"]!["status"]!.GetValue<string>().ShouldBe("passed");
+            portable["test"]!["durationMilliseconds"]!.GetValue<double>().ShouldBe(12.5);
+            portable["test"]!["traits"]!["Category"]!.AsArray().Select(node => node!.GetValue<string>()).ShouldBe(["LiveSidecar"]);
+            portable["test"]!["traits"]!["Profile"]!.AsArray().Select(node => node!.GetValue<string>()).ShouldBe(["oq8-postgresql-v1"]);
         }
         finally
         {
@@ -3026,6 +3137,20 @@ public sealed class Oq8PlatformClosureTests
             Directory.Delete(fixture, recursive: true);
             Directory.Delete(executableFixture, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Verifies an interrupted historical-blob read cleans up its child process on every platform.
+    /// </summary>
+    [Fact]
+    public void GitHistoricalBlobInterruptionCleansUpChild()
+    {
+        string root = FindRepositoryRoot();
+
+        (int exitCode, string output) = RunHistoricalGitInterruptProbe(root);
+
+        exitCode.ShouldBe(0, output);
+        output.ShouldContain("KeyboardInterrupt propagated after child cleanup");
     }
 
     /// <summary>
@@ -5814,6 +5939,71 @@ public sealed class Oq8PlatformClosureTests
 
         (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
         timedOut.ShouldBeFalse("OQ8 run_git probe timed out.");
+        return (exitCode, output);
+    }
+
+    private static (int ExitCode, string Output) RunHistoricalGitInterruptProbe(string repositoryRoot)
+    {
+        using Process process = CreatePythonProcess(
+            """
+            import importlib.util
+            import pathlib
+            import sys
+
+            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+            validator = importlib.util.module_from_spec(specification)
+            specification.loader.exec_module(validator)
+            validator.configure_roots(pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[2]))
+
+            class Stream:
+                def fileno(self):
+                    return 1
+
+                def close(self):
+                    pass
+
+            class Child:
+                def __init__(self):
+                    self.stdout = Stream()
+                    self.stderr = Stream()
+                    self.killed = False
+                    self.waited = False
+
+                def poll(self):
+                    return -9 if self.killed else None
+
+                def kill(self):
+                    self.killed = True
+
+                def wait(self, timeout=None):
+                    self.waited = True
+                    return -9
+
+            def interrupt(*args, **kwargs):
+                raise KeyboardInterrupt()
+
+            original_selector = validator.selectors.DefaultSelector
+            original_monotonic = validator.time.monotonic
+            for failure_point in ("selector", "clock"):
+                child = Child()
+                validator.subprocess.Popen = lambda *args, **kwargs: child
+                validator.selectors.DefaultSelector = interrupt if failure_point == "selector" else original_selector
+                validator.time.monotonic = interrupt if failure_point == "clock" else original_monotonic
+                try:
+                    validator.sha256_git_file("HEAD", "requirements-oq8.txt")
+                except KeyboardInterrupt:
+                    if not child.killed or not child.waited:
+                        raise SystemExit(f"Historical Git child was not killed and waited at {failure_point}")
+                else:
+                    raise SystemExit(f"KeyboardInterrupt did not propagate at {failure_point}")
+            print("KeyboardInterrupt propagated after child cleanup")
+            """);
+        process.StartInfo.WorkingDirectory = repositoryRoot;
+        process.StartInfo.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "validate-oq8-platform-evidence.py"));
+        process.StartInfo.ArgumentList.Add(repositoryRoot);
+
+        (int exitCode, string output, bool timedOut) = RunProcess(process, 5_000);
+        timedOut.ShouldBeFalse("Historical Git interruption probe timed out.");
         return (exitCode, output);
     }
 
