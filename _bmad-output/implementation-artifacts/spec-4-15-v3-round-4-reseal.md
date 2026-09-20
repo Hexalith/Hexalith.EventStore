@@ -2,7 +2,7 @@
 title: 'Story 4.15 v3 Round-4 Reseal'
 type: 'bugfix'
 created: '2026-09-19'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'ba7ac196e60db8820525961791eccfacec24633f'

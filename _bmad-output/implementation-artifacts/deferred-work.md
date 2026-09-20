@@ -4433,3 +4433,68 @@ severity: high
 reason: DW-524 correctly described the published state when recorded. The completed round-4 successor binds limitation 7, which explicitly withdraws the prior false nested-UNC approval, and fresh architecture, security, and test approvals all bind frozen subject `29880d6b3ebb9a67d69d0ff2f70afd138a7c81cfd2938fcd437de5d863ede913`. Independent deep-UNC, scheme-prefixed UNC, slash-UNC, and historical caller-path controls passed before review, and the final post-restamp mutation, focused, full, and validator gates passed.
 status: done
 resolution: The active v3 selector now binds final manifest `3e7bbdd6a599075f11bbd717c682ec4b0f6fe46fd8eb50a57dd50ae401016913`, whose replacement security receipt `ef344209ca2fd73619da002c3fb2fd2c0e25530a28720fe4c70fd164013cac93` approves only the current frozen subject. The superseded false approval remains historical evidence and no longer authorizes current source.
+
+## Deferred from: review of spec-4-15-v3-round-4-reseal (2026-09-20, grouped findings)
+
+### DW-527: Hash-bound source files do not share one explicit checkout and editor line-ending policy.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20, BH-01/BH-02)
+location: .gitattributes; .editorconfig; .github/workflows/ci.yml; .github/workflows/integration.yml; tests/Directory.Build.props; tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: The v3 evidence hashes raw bytes, but the workflow YAML and shared props inputs have no explicit `eol` attribute, while `.editorconfig` defaults C# files to CRLF and `.gitattributes` requires LF. A checkout or editor can therefore rewrite reviewed bytes without a semantic source change. The policy predates the round-4 reseal and needs one repository-wide line-ending decision rather than another story-local hash adjustment.
+status: open
+
+### DW-528: Support-safe private-path scanning does not recognize deep UNC user paths.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20, BH-03)
+location: tools/validate-oq8-platform-evidence.py (`PRIVATE_PATH_RE`)
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: A direct probe showed that support-safe content scanning does not match `\\corp\dfs\Users\jdoe\salary.xlsx`, even though unexpected-exception redaction now handles the deep UNC form. The scanner and exception-redaction boundaries predate this reseal and should be reconciled under a structural private-path policy.
+status: open
+
+### DW-529: Whitespace-bearing UNC intermediate segments remain visible in unexpected-failure diagnostics.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20, BH-04/ECH-01)
+location: tools/validate-oq8-platform-evidence.py (`PRIVATE_PATH_TOKEN_RE`)
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: `\\corp\DFS Root\Users\jdoe\salary.xlsx` remains unchanged because the UNC intermediate-segment expression excludes whitespace. Limitation 7 intentionally disclaims complete private-path redaction, so broadening the regex requires a separately reviewed structural fix and mutation matrix.
+status: open
+
+### DW-530: EvidenceError diagnostics can disclose candidate-controlled path text.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20, BH-06)
+location: tools/validate-oq8-platform-evidence.py (`main`, EvidenceError handling and deterministic-support diagnostics)
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: `EvidenceError` text is printed verbatim, while candidate-controlled deterministic-support test names and paths can be interpolated into those errors. Limitation 7 discloses this residual, but a durable fix must sanitize controlled failures without erasing useful bounded diagnostics.
+status: open
+
+### DW-531: JSON publication reuses a predictable sibling temporary filename.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20, BH-08/ECH-02)
+location: tools/validate-oq8-platform-evidence.py (`write_json`)
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: `write_json` writes through `<destination>.tmp`; concurrent writers or a pre-existing filesystem object can collide with that predictable sibling. The round-4 change improves cleanup but does not establish collision-resistant, symlink-safe atomic publication.
+status: open
+
+### DW-532: Review receipts do not carry reviewer-owned authentication or an immutable review transcript.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20, BH-10)
+location: _bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/reviews
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: Receipts content-bind reviewer names, timestamps, decisions, and subject identities, but they have no reviewer-controlled signature or immutable transcript identity. Independent reviews occurred for this reseal, yet the evidence format itself cannot authenticate who issued a receipt.
+status: open
+
+### DW-533: Required CI does not enforce the v3 closure guards or structurally bind the full Contracts count.
+
+origin: review of spec-4-15-v3-round-4-reseal (2026-09-20, BH-13/BH-14)
+location: .github/workflows/ci.yml; repository required-check policy; tools/validate-oq8-platform-evidence.py (`V3_GATE_INPUT_PATHS`, `V3_FULL_CONTRACTS_TEST_COUNT`)
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: high
+reason: The owner-controlled required-check set still does not execute the Story 4.15 evidence validator or require the Contracts lane, and most Contracts test sources remain outside the v3 gate-input set. Consequently, an unrelated test addition can stale the sealed 2068 count without a merge-blocking signal. This reconfirms DW-521 after the round-4 count changed; the ruleset and broader source-binding work remain outside this reseal's authority.
+status: open
