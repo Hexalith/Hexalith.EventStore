@@ -4498,3 +4498,110 @@ source_spec: `spec-4-15-v3-round-4-reseal.md`
 severity: high
 reason: The owner-controlled required-check set still does not execute the Story 4.15 evidence validator or require the Contracts lane, and most Contracts test sources remain outside the v3 gate-input set. Consequently, an unrelated test addition can stale the sealed 2068 count without a merge-blocking signal. This reconfirms DW-521 after the round-4 count changed; the ruleset and broader source-binding work remain outside this reseal's authority.
 status: open
+
+## Deferred from: code review of spec-4-15-v3-round-4-reseal (2026-09-20)
+
+- source_spec: `spec-4-15-v3-round-4-reseal.md`
+  summary: Support-safe private-path scanning still does not recognize deep UNC user paths.
+  evidence: Direct probe of `PRIVATE_PATH_RE` against `\\corp\dfs\Users\jdoe\salary.xlsx` and `file://corp/users/jdoe/salary.xlsx` does not match, while `PRIVATE_PATH_TOKEN_RE` redacts both. Reconfirms open DW-528.
+- source_spec: `spec-4-15-v3-round-4-reseal.md`
+  summary: Whitespace-bearing UNC intermediate segments remain visible in unexpected-failure diagnostics.
+  evidence: `\\corp\DFS Root\Users\jdoe\salary.xlsx` is unchanged because the UNC intermediate-segment expression excludes whitespace. Reconfirms open DW-529.
+
+## Deferred from: code review of spec-4-15-v3-round-4-reseal (2026-09-20, second story-file pass)
+
+- source_spec: `spec-4-15-v3-round-4-reseal.md`
+  summary: Hash-bound `.gitattributes` still has no explicit `eol`, and EditorConfig still defaults C# to CRLF.
+  evidence: `git check-attr` reports only `text: auto` on `.gitattributes`; `[*.cs]` inherits `end_of_line = crlf` while `*.cs` is `eol=lf`. Binding `.gitattributes` as a v3 gate input does not close that rewrite path. Reconfirms open DW-527.
+- source_spec: `spec-4-15-v3-round-4-reseal.md`
+  summary: Support-safe private-path scanning still does not recognize deep UNC user paths.
+  evidence: Direct probe of `PRIVATE_PATH_RE` against `\\corp\dfs\Users\jdoe\salary.xlsx` and `file://corp/users/jdoe/salary.xlsx` does not match, while `PRIVATE_PATH_TOKEN_RE` redacts both. Reconfirms open DW-528.
+- source_spec: `spec-4-15-v3-round-4-reseal.md`
+  summary: Whitespace-bearing UNC intermediate segments remain visible in unexpected-failure diagnostics.
+  evidence: `\\corp\DFS Root\Users\jdoe\salary.xlsx` is unchanged because the UNC intermediate-segment expression excludes whitespace. Reconfirms open DW-529.
+
+## Deferred from: code review of spec-4-15-v3-round-4-reseal (2026-09-20, third story-file pass)
+
+Reconfirmed without new identifiers: DW-528 (support-safe scanner still misses deep UNC user paths) and DW-529 (whitespace-bearing UNC intermediates remain visible).
+
+### DW-534: Group R's deferred-gap limitation sentence and six high run6 disclosures were not restored.
+
+origin: code review of spec-4-15-v3-round-4-reseal (2026-09-20, third story-file pass)
+location: `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/limitations.json`
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: Group R required restoring the sentence that recorded deferred gaps remain explicit limitations, and listing six high `run6-*` deferrals. This chunk only appended the nested-UNC withdrawal to limitation 7. Limitation 8 already denies every external authority, and expanding the frozen Known-residual list would need a new reseal.
+status: open
+
+### DW-535: The parent Story 4.15 spec still names the superseded 2026-09-18 packet.
+
+origin: code review of spec-4-15-v3-round-4-reseal (2026-09-20, third story-file pass)
+location: `_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md`
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: The parent story file still ends on subject `92b189b6…`, counts 458/2061, and the “retained” TRX wording. The active round-4 packet is subject `29880d6b…` with 465/2068. Updating that file is a separate-spec edit outside this story-file chunk.
+status: open
+
+### DW-536: Round-4 test receipt does not disclose that `ci / contracts` filters HeavyweightContainerPublish.
+
+origin: code review of spec-4-15-v3-round-4-reseal (2026-09-20, third story-file pass)
+location: `_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/reviews/test.json`; `.github/workflows/ci.yml`
+source_spec: `spec-4-15-v3-round-4-reseal.md`
+severity: medium
+reason: Group R asked the reseal to say that `ci / contracts` uses `--filter-not-trait "Category=HeavyweightContainerPublish"`, so sealed `2068` is not read as that job's count. Round-4 kept the attested command as unfiltered direct assembly. The filter, the unrequired `ci / contracts` lane, and the unbound full-suite count remain DW-533/DW-515 work, not another packet reseal.
+status: open
+note: Owner decision 2026-09-20: defer. Round-4 kept unfiltered direct assembly; CI filter stays a DW-533/DW-515 concern, not a packet reseal.
+
+## Deferred from: code review of spec-4-15-v3-round-4-reseal (2026-09-20, fifth story-file pass)
+
+Reconfirmed existing open identifiers (no new DW rows): DW-527, DW-528, DW-529, DW-531, DW-534, DW-535, DW-536.
+
+- DW-527: Hash-bound `.gitattributes` still has no explicit `eol`, and EditorConfig still defaults C# to CRLF.
+- DW-528: `PRIVATE_PATH_RE` still misses deep UNC user paths that `PRIVATE_PATH_TOKEN_RE` redacts.
+- DW-529: Whitespace-bearing UNC intermediate segments remain visible because the UNC intermediate class excludes spaces.
+- DW-531: `write_json` still publishes through a predictable `<destination>.tmp` sibling; this pass only reconfirmed the collision path.
+- DW-534: Group R's deferred-gap limitation sentence and six high `run6-*` disclosures were not restored in the frozen eight-item list.
+- DW-535: The parent Story 4.15 spec still names the superseded 2026-09-18 packet.
+- DW-536: The round-4 test receipt still does not disclose that `ci / contracts` filters HeavyweightContainerPublish.
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-20, Group 1 validator)
+
+Reconfirmed existing open identifiers: DW-496, DW-497, DW-520, DW-528. Frozen v3 limitation 7 already discloses unexpected-exception redaction-before-truncation.
+
+- source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Declared current-HEAD / 24-path proof never inspects HEAD or the worktree; v3 live-binds only the reduced gate-input set; public docs are live phrase-checked against frozen v1 hashes.
+  evidence: `git_diff_is_clean` has no callers; `validate_source_state` hashes `LANDED_SOURCE` / `COMPLETED_V1_CLOSURE_COMMIT`; `ChangedOrDeletedBoundCapabilityPathFailsClosed` expects exit 0. Reconfirms DW-496.
+- source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Default and `--lifecycle-mode final` require sprint `review` and spec `done` before the packet can pass.
+  evidence: `validate_status_and_documents(final=True)` is a success condition, not a post-pass tracking update. Reconfirms DW-497.
+- source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Exact-tree enumeration of sealed OQ8 directories is still unbounded.
+  evidence: `relative_tree_entries` uses `os.walk` with no depth or entry cap. Reconfirms DW-520.
+- source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+  summary: Support-safe and candidate-JSON scanners still miss UNC and `/tmp` paths that the exception redactor handles.
+  evidence: `scan_json_protected_content` and `scan_support_safe_text` use `PRIVATE_PATH_RE` only. Reconfirms DW-528.
+
+### DW-537: v1 source-only install command is unhashed while current docs and v3 require hash-pinned PyYAML.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-20, Group 1 validator)
+location: tools/validate-oq8-platform-evidence.py (`EXPECTED_CONSUMER_INSTRUCTIONS`, `DOCUMENT_REQUIRED_TEXT`, `V3_CONSUMER_INSTALL_COMMAND`)
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: Frozen v1 handoff `installCommand` is `pip install --requirement requirements-oq8.txt` with no `--require-hashes --no-deps --only-binary=:all:`. Public-document and v3 consumer instructions already require the hashed bootstrap. Correcting the v1 string remints the v1 subject and receipts.
+status: open
+
+### DW-538: SDK and v2 identity `bindingRule` text claims live worktree/candidate proofs the validators do not perform.
+
+origin: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-20, Group 1 validator)
+location: tools/validate-oq8-platform-evidence.py (`validate_successor_source_identity`, `validate_v2_source_identity`)
+source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
+severity: medium
+reason: SDK `bindingRule` requires every listed current worktree path to match its reviewed SHA-256, but the check is `sha256_git_file(LEGACY_SUCCESSOR_SNAPSHOT_COMMIT, relative)`. v2 `bindingRule` says transitions and gate inputs resolve against current candidate files, but `git_file` / `sha256_git_file` use `COMPLETED_V2_CLOSURE_COMMIT`. Correcting the sealed prose remints those historical packets.
+status: open
+
+## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff.md (2026-09-20, story-files-only review)
+
+- DW-496 reconfirmed: the declared current-HEAD / 24-path proof still validates historical commits while active v3 binds only its reduced gate-input set.
+- DW-497 reconfirmed: final validation still requires sprint `review` and spec `done` as success inputs.
+- DW-528 reconfirmed: candidate JSON and support-safe scanners still miss private-path shapes handled by the unexpected-exception redactor.
+- DW-534 reconfirmed: the round-4 limitation set still omits Group R's owner-required deferred-gap sentence and six high `run6-*` disclosures.
