@@ -753,8 +753,10 @@ public class TenantsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe(expectedFocusId);
     }
 
-    [Fact]
-    public async Task ChangeRoleDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimCompletion() {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ChangeRoleDialog_DenialUsesSafeCopyRestoresFocusAndDoesNotClaimCompletion(bool forbidden) {
         TenantSummary tenant = CreateTenant("tenant-a", "Tenant A", TenantStatusType.Active);
         TenantUser user = new("user-1", "TenantReader");
         SetupTenants([tenant]);
@@ -762,10 +764,12 @@ public class TenantsPageTests : AdminUITestContext {
             .Returns(new TenantDetail("tenant-a", "Tenant A", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-2)));
         _ = _mockTenantApi.GetTenantUsersAsync("tenant-a", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden membership exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden membership exists; bearer secret-value");
         _ = _mockTenantApi.ChangeUserRoleAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden membership exists; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", tenant));
@@ -779,7 +783,9 @@ public class TenantsPageTests : AdminUITestContext {
             "tenant-a", "user-1", "TenantReader", Arg.Any<CancellationToken>());
         TestToastService toast = Services.GetRequiredService<TestToastService>();
         string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
-        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldBe(forbidden
+            ? "Access denied. Administrator permission is required."
+            : "Authentication required. Please sign in again.");
         message.ShouldNotContain("hidden membership");
         message.ShouldNotContain("secret-value");
         message.ShouldNotContain("completed", Case.Insensitive);
@@ -787,15 +793,134 @@ public class TenantsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe("tenant-change-role-tenant-a-user-1");
     }
 
+    [Fact]
+    public async Task AddUser_NormalizesUserIdForConfirmationAndSubmission()
+    {
+        SetupTenants([]);
+        _ = _mockTenantApi.AddUserToTenantAsync(
+                "tenant-a", "user-1", "TenantReader", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "add-op", "Rejected", null));
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No tenants"), TimeSpan.FromSeconds(5));
+        SetPrivateField(cut.Instance, "_expandedTenantId", "tenant-a");
+        SetPrivateField(cut.Instance, "_addUserId", "  user-1  ");
+        SetPrivateField(cut.Instance, "_initiatorId", "tenant-add-test");
+        SetPrivateField(cut.Instance, "_showAddUserDialog", true);
+        cut.Render();
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("User 'user-1' in tenant 'tenant-a'");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnAddUserConfirm"));
+
+        _ = await _mockTenantApi.Received(1).AddUserToTenantAsync(
+            "tenant-a", "user-1", "TenantReader", Arg.Any<CancellationToken>());
+    }
+
     [Theory]
-    [InlineData("create", "tenant-create-button")]
-    [InlineData("disable", "tenant-disable-tenant-a")]
-    [InlineData("enable", "tenant-enable-tenant-disabled")]
-    [InlineData("add", "tenant-add-tenant-a-")]
-    [InlineData("remove", "tenant-remove-tenant-a-user-1")]
+    [InlineData("create", false)]
+    [InlineData("create", true)]
+    [InlineData("disable", false)]
+    [InlineData("disable", true)]
+    [InlineData("enable", false)]
+    [InlineData("enable", true)]
+    [InlineData("add", false)]
+    [InlineData("add", true)]
+    [InlineData("remove", false)]
+    [InlineData("remove", true)]
+    [InlineData("change-role", false)]
+    [InlineData("change-role", true)]
+    public async Task MutationHandler_UnsafeOrOverlongTargetPerformsNoWorkClosesAndRestoresFocus(
+        string action,
+        bool overlong)
+    {
+        SetupTenants([]);
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No tenants"), TimeSpan.FromSeconds(5));
+        string identifier = overlong ? new string('x', 241) : "Bearer secret-token";
+        string focusId = $"focused-{action}";
+        SetPrivateField(cut.Instance, "_initiatorId", focusId);
+        string dialogLabel;
+        string confirmMethod;
+
+        if (action == "create")
+        {
+            SetPrivateField(cut.Instance, "_createTenantId", identifier);
+            SetPrivateField(cut.Instance, "_createName", "Tenant Name");
+            SetPrivateField(cut.Instance, "_showCreateDialog", true);
+            dialogLabel = "Create Tenant";
+            confirmMethod = "OnCreateTenantConfirm";
+        }
+        else if (action is "disable" or "enable")
+        {
+            SetPrivateField(cut.Instance, "_lifecycleTarget", CreateTenant(
+                identifier,
+                "Tenant Name",
+                action == "disable" ? TenantStatusType.Active : TenantStatusType.Disabled));
+            SetPrivateField(cut.Instance, action == "disable" ? "_showDisableDialog" : "_showEnableDialog", true);
+            dialogLabel = action == "disable" ? "Disable Tenant" : "Enable Tenant";
+            confirmMethod = action == "disable" ? "OnDisableConfirm" : "OnEnableConfirm";
+        }
+        else
+        {
+            SetPrivateField(cut.Instance, "_expandedTenantId", "tenant-a");
+            if (action == "add")
+            {
+                SetPrivateField(cut.Instance, "_addUserId", identifier);
+                SetPrivateField(cut.Instance, "_showAddUserDialog", true);
+                dialogLabel = "Add User";
+                confirmMethod = "OnAddUserConfirm";
+            }
+            else if (action == "remove")
+            {
+                SetPrivateField(cut.Instance, "_removeUserTarget", new TenantUser(identifier, "TenantReader"));
+                SetPrivateField(cut.Instance, "_showRemoveUserDialog", true);
+                dialogLabel = "Remove User";
+                confirmMethod = "OnRemoveUserConfirm";
+            }
+            else
+            {
+                SetPrivateField(cut.Instance, "_changeRoleTarget", new TenantUser(identifier, "TenantReader"));
+                SetPrivateField(cut.Instance, "_showChangeRoleDialog", true);
+                dialogLabel = "Change Role";
+                confirmMethod = "OnChangeRoleConfirm";
+            }
+        }
+
+        cut.Render();
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, confirmMethod));
+
+        _ = _mockTenantApi.DidNotReceive().CreateTenantAsync(
+            Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().DisableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().EnableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().AddUserToTenantAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().RemoveUserFromTenantAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockTenantApi.DidNotReceive().ChangeUserRoleAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString().ShouldBe(
+            "The selected target cannot be confirmed because its identifier is not support-safe.");
+        cut.FindAll($"fluent-dialog[aria-label='{dialogLabel}']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(focusId);
+    }
+
+    [Theory]
+    [InlineData("create", "tenant-create-button", true)]
+    [InlineData("create", "tenant-create-button", false)]
+    [InlineData("disable", "tenant-disable-tenant-a", true)]
+    [InlineData("disable", "tenant-disable-tenant-a", false)]
+    [InlineData("enable", "tenant-enable-tenant-disabled", true)]
+    [InlineData("enable", "tenant-enable-tenant-disabled", false)]
+    [InlineData("add", "tenant-add-tenant-a-", true)]
+    [InlineData("add", "tenant-add-tenant-a-", false)]
+    [InlineData("remove", "tenant-remove-tenant-a-user-1", true)]
+    [InlineData("remove", "tenant-remove-tenant-a-user-1", false)]
     public async Task IndependentTenantDenialHandlersUseSafeCopyCloseAndRestoreExactInitiator(
         string action,
-        string expectedFocusId) {
+        string expectedFocusId,
+        bool forbidden) {
         TenantSummary active = CreateTenant("tenant-a", "Tenant A", TenantStatusType.Active);
         TenantSummary disabled = CreateTenant("tenant-disabled", "Tenant Disabled", TenantStatusType.Disabled);
         TenantUser user = new("user-1", "TenantReader");
@@ -804,7 +929,9 @@ public class TenantsPageTests : AdminUITestContext {
             .Returns(new TenantDetail("tenant-a", "Tenant A", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-2)));
         _ = _mockTenantApi.GetTenantUsersAsync("tenant-a", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([user]));
-        var denial = new ForbiddenAccessException("hidden tenant membership exists; bearer secret-value");
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden tenant membership exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden tenant membership exists; bearer secret-value");
         _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<AdminOperationResult?>(denial));
         _ = _mockTenantApi.DisableTenantAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -845,7 +972,9 @@ public class TenantsPageTests : AdminUITestContext {
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, methodName));
 
         string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
-        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldBe(forbidden
+            ? "Access denied. Administrator permission is required."
+            : "Authentication required. Please sign in again.");
         message.ShouldNotContain("hidden tenant");
         message.ShouldNotContain("secret-value");
         message.ShouldNotContain("completed", Case.Insensitive);

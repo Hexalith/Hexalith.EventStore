@@ -364,24 +364,28 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
     }
 
     [Theory]
-    [InlineData("reset", "#projection-reset-button", "projection-reset-button")]
-    [InlineData("replay", "#projection-replay-button", "projection-replay-button")]
-    public async Task ProjectionDialog_ForbiddenUsesSupportSafeCopyAndRestoresFocusWithoutClaimingCompletion(
+    [InlineData("reset", "#projection-reset-button", "projection-reset-button", true)]
+    [InlineData("reset", "#projection-reset-button", "projection-reset-button", false)]
+    [InlineData("replay", "#projection-replay-button", "projection-replay-button", true)]
+    [InlineData("replay", "#projection-replay-button", "projection-replay-button", false)]
+    public async Task ProjectionDialog_DenialUsesSupportSafeCopyAndRestoresFocusWithoutClaimingCompletion(
         string action,
         string buttonSelector,
-        string expectedFocusId)
+        string expectedFocusId,
+        bool forbidden)
     {
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden projection exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden projection exists; bearer secret-value");
         _ = _mockApiClient.GetProjectionDetailAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<ProjectionDetail?>(CreateDetail()));
         _ = _mockApiClient.ResetProjectionAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden projection exists; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         _ = _mockApiClient.ReplayProjectionAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden projection exists; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
             .Add(item => item.TenantId, "tenant-1")
             .Add(item => item.ProjectionName, "counter-projection"));
@@ -394,7 +398,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
 
         TestToastService toast = Services.GetRequiredService<TestToastService>();
         string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
-        message.ShouldBe("Forbidden — insufficient permissions");
+        message.ShouldBe(forbidden ? "Forbidden — insufficient permissions" : "Unauthorized");
         message.ShouldNotContain("hidden projection");
         message.ShouldNotContain("secret-value");
         message.ShouldNotContain("completed", Case.Insensitive);
@@ -517,6 +521,71 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
         message.ShouldNotContain("successfully", Case.Insensitive);
     }
 
+    [Theory]
+    [InlineData("reset", "#projection-reset-button", "Reset request accepted", "Reset request was accepted, but status refresh failed")]
+    [InlineData("replay", "#projection-replay-button", "Replay request accepted", "Replay request was accepted, but status refresh failed")]
+    public async Task AcceptedProjectionRequest_PostAcceptanceRefreshFailureNeverClaimsMutationFailure(
+        string action,
+        string buttonSelector,
+        string acceptedFragment,
+        string refreshFailureFragment)
+    {
+        _ = _mockApiClient.GetProjectionDetailAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<ProjectionDetail?>(CreateDetail()),
+                Task.FromException<ProjectionDetail?>(new InvalidOperationException("refresh failed")));
+        _ = _mockApiClient.ResetProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "reset-op", "Accepted", null));
+        _ = _mockApiClient.ReplayProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "replay-op", "Accepted", null));
+        IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
+            .Add(item => item.TenantId, "tenant-1")
+            .Add(item => item.ProjectionName, "counter-projection"));
+        cut.WaitForAssertion(() => cut.Find(buttonSelector), TimeSpan.FromSeconds(5));
+        await cut.Find(buttonSelector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "reset" ? "ConfirmResetAsync" : "ConfirmReplayAsync"));
+
+        string[] messages = Services.GetRequiredService<TestToastService>().CapturedOptions
+            .Select(option => option.Message?.ToString() ?? string.Empty)
+            .ToArray();
+        messages.ShouldContain(message => message.Contains(acceptedFragment, StringComparison.Ordinal));
+        messages.ShouldContain(message => message.Contains(refreshFailureFragment, StringComparison.Ordinal));
+        messages.ShouldNotContain(message => message.Contains("Projection operation failed", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("reset", "#projection-reset-button")]
+    [InlineData("replay", "#projection-replay-button")]
+    public async Task UnsafeConfirmationTarget_IsNeverSubmitted(string action, string buttonSelector)
+    {
+        ProjectionDetail unsafeDetail = CreateDetail("Bearer secret-token");
+        _ = _mockApiClient.GetProjectionDetailAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ProjectionDetail?>(unsafeDetail));
+        IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
+            .Add(item => item.TenantId, "tenant-1")
+            .Add(item => item.ProjectionName, unsafeDetail.Name));
+        cut.WaitForAssertion(() => cut.Find(buttonSelector), TimeSpan.FromSeconds(5));
+        await cut.Find(buttonSelector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "reset" ? "ConfirmResetAsync" : "ConfirmReplayAsync"));
+
+        _ = _mockApiClient.DidNotReceive().ResetProjectionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
+        _ = _mockApiClient.DidNotReceive().ReplayProjectionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()
+            .ShouldBe("The selected target cannot be confirmed because its identifier is not support-safe.");
+    }
+
     private static async Task InvokePrivateAsync(object instance, string methodName)
     {
         System.Reflection.MethodInfo method = instance.GetType().GetMethod(
@@ -547,8 +616,8 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .GetValue(instance)!;
 
-    private static ProjectionDetail CreateDetail() => new(
-        "counter-projection",
+    private static ProjectionDetail CreateDetail(string name = "counter-projection") => new(
+        name,
         "tenant-1",
         ProjectionStatusType.Running,
         10,

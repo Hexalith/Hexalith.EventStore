@@ -19,6 +19,7 @@ public sealed class InitiatorFocusService(IJSRuntime jsRuntime)
             return;
         }
 
+        await jsRuntime.InvokeVoidAsync("hexalithAdmin.waitForRender").ConfigureAwait(false);
         await jsRuntime.InvokeVoidAsync("hexalithAdmin.focusElementById", elementId).ConfigureAwait(false);
     }
 }

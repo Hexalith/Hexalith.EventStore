@@ -920,9 +920,24 @@
         _bulkActionFailure = null;
         StateHasChanged();
 
-        int totalCount = _selectedIds.Count;
-        IReadOnlyList<IGrouping<string, DeadLetterEntry>> tenantGroups = _allEntries
+        IReadOnlyList<DeadLetterEntry> matchedEntries = _allEntries
             .Where(e => _selectedIds.Contains(e.MessageId))
+            .ToList();
+
+        if (matchedEntries.Count != _selectedIds.Count)
+        {
+            string message = matchedEntries.Count == 0
+                ? "No selected dead-letter commands are available to submit."
+                : "Some selected dead-letter commands are no longer available. Review the selection and try again.";
+            await ToastService.ShowErrorAsync(message).ConfigureAwait(false);
+            await CloseAllDialogsAsync().ConfigureAwait(false);
+            await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
+            _isOperating = false;
+            StateHasChanged();
+            return;
+        }
+
+        IReadOnlyList<IGrouping<string, DeadLetterEntry>> tenantGroups = matchedEntries
             .GroupBy(e => e.TenantId)
             .ToList();
 
@@ -989,21 +1004,14 @@
 
             // Report results
             string capitalizedAction = char.ToUpperInvariant(actionName[0]) + actionName[1..];
-            string pastTense = actionName switch
-            {
-                "retry" => "Retried",
-                "skip" => "Skipped",
-                "archive" => "Archived",
-                _ => capitalizedAction,
-            };
-
             if (failCount == 0)
             {
                 // Full success
-                await ToastService.ShowSuccessAsync($"{pastTense} {totalCount} dead-letter command(s).");
+                await ToastService.ShowSuccessAsync(
+                    $"{capitalizedAction} request accepted for {successCount} dead-letter command(s).").ConfigureAwait(false);
                 _selectedIds = [];
                 await CloseAllDialogsAsync().ConfigureAwait(false);
-                await LoadDataAsync();
+                await LoadDataAsync().ConfigureAwait(false);
                 if (denied)
                 {
                     await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
@@ -1019,9 +1027,9 @@
                     .ToHashSet(StringComparer.Ordinal);
                 string failedIds = BuildFailedMessageSummary(_selectedIds);
                 await ToastService.ShowWarningAsync(
-                    $"{pastTense} {successCount} commands. {failCount} failed: {failureState.Message}. {failedIds}");
+                    $"{capitalizedAction} request accepted for {successCount} commands. {failCount} were not accepted: {failureState.Message}. {failedIds}").ConfigureAwait(false);
                 await CloseAllDialogsAsync().ConfigureAwait(false);
-                await LoadDataAsync();
+                await LoadDataAsync().ConfigureAwait(false);
                 if (denied)
                 {
                     await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);

@@ -152,7 +152,7 @@
             </TitleTemplate>
             <ChildContent>
                 <ConfirmationFacts Target="@Text["SnapshotPolicyTarget", _createTenantId ?? string.Empty, _createDomain ?? string.Empty, _createAggregateType ?? string.Empty]"
-                                   Impact="@Text["SnapshotPolicySetImpact"]"
+                                   Impact="@Text["SnapshotPolicyCreateImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_createTenantId"
                                  Label="Tenant ID" Required="true"
@@ -578,6 +578,14 @@
 
     private async Task OnCreatePolicyConfirm()
     {
+        string confirmationTarget = Text["SnapshotPolicyTarget", _createTenantId ?? string.Empty, _createDomain ?? string.Empty, _createAggregateType ?? string.Empty];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCreateDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         try
@@ -654,6 +662,14 @@
             return;
         }
 
+        string confirmationTarget = Text["SnapshotPolicyTarget", _editPolicy.TenantId, _editPolicy.Domain, _editPolicy.AggregateType];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseEditDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         try
@@ -722,6 +738,14 @@
     {
         if (_deletePolicy is null)
         {
+            return;
+        }
+
+        string confirmationTarget = Text["SnapshotPolicyTarget", _deletePolicy.TenantId, _deletePolicy.Domain, _deletePolicy.AggregateType];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseDeleteDialogAsync().ConfigureAwait(false);
             return;
         }
 
@@ -812,6 +836,14 @@
 
     private async Task OnCreateSnapshotConfirm()
     {
+        string confirmationTarget = Text["SnapshotTarget", _snapshotTenantId ?? string.Empty, _snapshotDomain ?? string.Empty, _snapshotAggregateId ?? string.Empty];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCreateSnapshotDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         try

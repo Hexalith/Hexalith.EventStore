@@ -1,6 +1,7 @@
 @namespace Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.Abstractions.Security
 @using Hexalith.EventStore.Admin.UI.Resources
+@using System.Globalization
 @using Microsoft.Extensions.Localization
 
 @inject IStringLocalizer<AdminResources> Text
@@ -37,10 +38,22 @@
 
     private const int MaxSupportSafeTextLength = 240;
 
+    /// <summary>
+    /// Determines whether a fact can be displayed without redaction or truncation.
+    /// Confirmation handlers use this guard so the displayed target always matches execution.
+    /// </summary>
+    /// <param name="value">The fact value to validate.</param>
+    /// <returns><see langword="true"/> when the value is support-safe and unchanged by rendering.</returns>
+    public static bool IsExactAndSupportSafe(string? value) =>
+        value is not null
+        && value.Length <= MaxSupportSafeTextLength
+        && !UnsafeMarkerDetection.ContainsUnsafeMarker(value)
+        && !ContainsUnsafeDisplayCharacter(value);
+
     private static string ClampSupportSafe(string? value)
     {
         string text = value ?? string.Empty;
-        if (UnsafeMarkerDetection.ContainsUnsafeMarker(text))
+        if (UnsafeMarkerDetection.ContainsUnsafeMarker(text) || ContainsUnsafeDisplayCharacter(text))
         {
             return "[redacted]";
         }
@@ -48,5 +61,19 @@
         return text.Length <= MaxSupportSafeTextLength
             ? text
             : text[..(MaxSupportSafeTextLength - 3)] + "...";
+    }
+
+    private static bool ContainsUnsafeDisplayCharacter(string value)
+    {
+        foreach (System.Text.Rune rune in value.EnumerateRunes())
+        {
+            UnicodeCategory category = System.Text.Rune.GetUnicodeCategory(rune);
+            if (category is UnicodeCategory.Control or UnicodeCategory.Format)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

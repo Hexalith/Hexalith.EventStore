@@ -356,7 +356,7 @@
                 <h3 style="margin: 0;">Add User to @_expandedTenantId</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@Text["TenantUserTarget", _addUserId ?? string.Empty, _expandedTenantId ?? string.Empty]"
+                <ConfirmationFacts Target="@Text["TenantUserTarget", NormalizedAddUserId, _expandedTenantId ?? string.Empty]"
                                    Impact="@Text["TenantAddUserImpact"]"
                                    RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentTextInput @bind-Value="_addUserId"
@@ -516,6 +516,8 @@
     private bool _isAnyDialogOpen =>
         _showCreateDialog || _showDisableDialog || _showEnableDialog
         || _showAddUserDialog || _showRemoveUserDialog || _showChangeRoleDialog;
+
+    private string NormalizedAddUserId => _addUserId?.Trim() ?? string.Empty;
 
     // ---- Computed properties ----
     private int TotalCount => (_tenants ?? []).Count;
@@ -805,6 +807,14 @@
 
     private async Task OnCreateTenantConfirm()
     {
+        string confirmationTarget = Text["TenantTarget", _createTenantId ?? string.Empty];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCreateDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         _operationCts?.Cancel();
@@ -903,6 +913,13 @@
     private async Task OnDisableConfirm()
     {
         if (_lifecycleTarget is null) { return; }
+        if (!ConfirmationFacts.IsExactAndSupportSafe(Text["TenantTarget", _lifecycleTarget.TenantId]))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseLifecycleDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         await ExecuteLifecycleAction(
             ct => TenantApi.DisableTenantAsync(_lifecycleTarget.TenantId, ct),
             "Disable",
@@ -912,6 +929,13 @@
     private async Task OnEnableConfirm()
     {
         if (_lifecycleTarget is null) { return; }
+        if (!ConfirmationFacts.IsExactAndSupportSafe(Text["TenantTarget", _lifecycleTarget.TenantId]))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseLifecycleDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         await ExecuteLifecycleAction(
             ct => TenantApi.EnableTenantAsync(_lifecycleTarget.TenantId, ct),
             "Enable",
@@ -992,6 +1016,15 @@
     private async Task OnAddUserConfirm()
     {
         if (_expandedTenantId is null) { return; }
+        string userId = NormalizedAddUserId;
+        string confirmationTarget = Text["TenantUserTarget", userId, _expandedTenantId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseAddUserDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         _operationCts?.Cancel();
@@ -1001,10 +1034,10 @@
         try
         {
             AdminOperationResult? result = await TenantApi.AddUserToTenantAsync(
-                _expandedTenantId, _addUserId!.Trim(), _addUserRole, _operationCts.Token);
+                _expandedTenantId, userId, _addUserRole, _operationCts.Token);
             if (result?.Success == true)
             {
-                await ToastService.ShowSuccessAsync($"Add-user request accepted for {_addUserId}; refresh to confirm completion.").ConfigureAwait(false);
+                await ToastService.ShowSuccessAsync($"Add-user request accepted for {userId}; refresh to confirm completion.").ConfigureAwait(false);
                 if (_addUserDialog is not null)
                 {
                     await _addUserDialog.HideAsync().ConfigureAwait(false);
@@ -1063,6 +1096,14 @@
     private async Task OnRemoveUserConfirm()
     {
         if (_expandedTenantId is null || _removeUserTarget is null) { return; }
+        string confirmationTarget = Text["TenantUserTarget", _removeUserTarget.UserId, _expandedTenantId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseRemoveUserDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         _operationCts?.Cancel();
@@ -1136,6 +1177,14 @@
     private async Task OnChangeRoleConfirm()
     {
         if (_expandedTenantId is null || _changeRoleTarget is null) { return; }
+        string confirmationTarget = Text["TenantUserTarget", _changeRoleTarget.UserId, _expandedTenantId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseChangeRoleDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         _operationCts?.Cancel();

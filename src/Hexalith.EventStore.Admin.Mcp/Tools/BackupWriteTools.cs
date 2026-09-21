@@ -31,10 +31,8 @@ internal static class BackupWriteTools {
             return validation;
         }
 
-        string target = $"Submit deferred backup request for tenant '{tenantId}'"
-            + (description is not null ? $" ({description})" : string.Empty);
-        string endpoint = $"POST /api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}?includeSnapshots={includeSnapshots.ToString().ToLowerInvariant()}"
-            + (description is not null ? $"&description={Uri.EscapeDataString(description)}" : string.Empty);
+        string target = $"Submit deferred backup request for tenant '{tenantId}'";
+        string endpoint = $"POST /api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}";
         validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
         if (validation is not null) {
             return validation;

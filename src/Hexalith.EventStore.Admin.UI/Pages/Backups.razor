@@ -2,7 +2,6 @@
 
 @using Hexalith.EventStore.Admin.Abstractions.Models.Common
 @using Hexalith.EventStore.Admin.Abstractions.Models.Storage
-@using Hexalith.EventStore.Admin.Abstractions.Security
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
 @using Hexalith.EventStore.Admin.UI.Services.Exceptions
@@ -229,7 +228,7 @@
                 <h3 style="margin: 0;">Create Backup</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@Text["BackupTenantTarget", _createTenantId ?? string.Empty]"
+                <ConfirmationFacts Target="@Text["BackupTenantTarget", NormalizedCreateTenantId]"
                                    Impact="@Text["BackupCreateImpact"]"
                                    RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
@@ -536,7 +535,6 @@
     private bool _isLoading = true;
     private bool _apiUnavailable;
     private bool _disposed;
-    private const int MaxImportPreviewFieldLength = 240;
     private const string BackupCreationDeferredMessage = "Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.";
     private const string BackupValidationDeferredMessage = "Backup validation is deferred. EventStore does not yet have an approved backup manifest and validation model.";
     private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
@@ -596,6 +594,8 @@
 
     private bool _isAnyDialogOpen => _showCreateDialog || _showValidateDialog || _showRestoreDialog || _showExportDialog || _showImportDialog;
 
+    private string NormalizedCreateTenantId => _createTenantId?.Trim() ?? string.Empty;
+
     private void UpdateFilteredJobs()
     {
         _filteredJobs = _jobs?
@@ -621,7 +621,7 @@
         !string.IsNullOrWhiteSpace(_createTenantId)
         && _jobs is not null
         && _jobs.Any(j =>
-            string.Equals(j.TenantId, _createTenantId?.Trim(), StringComparison.OrdinalIgnoreCase)
+            string.Equals(j.TenantId, NormalizedCreateTenantId, StringComparison.OrdinalIgnoreCase)
             && j.JobType == BackupJobType.Backup
             && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
 
@@ -629,7 +629,7 @@
         !string.IsNullOrWhiteSpace(_createTenantId)
         && _jobs is not null
         && _jobs.Any(j =>
-            string.Equals(j.TenantId, _createTenantId?.Trim(), StringComparison.OrdinalIgnoreCase)
+            string.Equals(j.TenantId, NormalizedCreateTenantId, StringComparison.OrdinalIgnoreCase)
             && j.JobType == BackupJobType.Restore
             && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
 
@@ -911,6 +911,15 @@
 
     private async Task OnCreateBackupConfirm()
     {
+        string tenantId = NormalizedCreateTenantId;
+        string confirmationTarget = Text["BackupTenantTarget", tenantId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCreateDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         _operationCts?.Cancel();
@@ -919,7 +928,7 @@
         try
         {
             AdminOperationResult? result = await BackupApi.TriggerBackupAsync(
-                _createTenantId!.Trim(),
+                tenantId,
                 string.IsNullOrWhiteSpace(_createDescription) ? null : _createDescription.Trim(),
                 _createIncludeSnapshots,
                 _operationCts.Token);
@@ -1034,6 +1043,14 @@
     private async Task OnRestoreConfirm()
     {
         if (_restoreTarget is null) return;
+
+        string confirmationTarget = Text["BackupTarget", _restoreTarget.BackupId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseRestoreDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            return;
+        }
 
         _isOperating = true;
         StateHasChanged();
@@ -1267,13 +1284,20 @@
     }
 
     private static bool IsExactSupportSafeImportText(string value)
-        => value.Length <= MaxImportPreviewFieldLength
-        && !UnsafeMarkerDetection.ContainsUnsafeMarker(value);
+        => ConfirmationFacts.IsExactAndSupportSafe(value);
 
     private async Task OnImportConfirm()
     {
         if (_importContent is null || _importTenantId is null)
         {
+            await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            return;
+        }
+
+        string confirmationTarget = Text["BackupTenantTarget", _importTenantId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
             await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }

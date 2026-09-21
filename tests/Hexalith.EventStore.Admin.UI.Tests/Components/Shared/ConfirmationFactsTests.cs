@@ -60,4 +60,19 @@ public class ConfirmationFactsTests : AdminUITestContext
         component.Markup.ShouldNotContain("password");
         component.Markup.ShouldNotContain("private-value");
     }
+
+    [Theory]
+    [InlineData("tenant\u0007")]
+    [InlineData("tenant\u202Ehidden")]
+    [InlineData("tenant\U000E0001hidden")]
+    public void ConfirmationFacts_RedactsControlAndUnicodeFormatCharactersAndRejectsExactConfirmation(string unsafeText)
+    {
+        IRenderedComponent<ConfirmationFacts> component = Render<ConfirmationFacts>(parameters => parameters
+            .Add(item => item.Target, unsafeText)
+            .Add(item => item.Impact, "Safe impact")
+            .Add(item => item.RequiredPermission, "Admin"));
+
+        component.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("[redacted]");
+        ConfirmationFacts.IsExactAndSupportSafe(unsafeText).ShouldBeFalse();
+    }
 }

@@ -17,18 +17,19 @@ public class WriteToolIntentGateTests
     private const string OperationResultJson = """{"success":true,"operationId":"operation-1","message":"Accepted","errorCode":null}""";
 
     [Theory]
-    [InlineData("backup-trigger", "/api/v1/admin/backups/tenant-1?includeSnapshots=true", "Admin", null)]
-    [InlineData("consistency-trigger", "/api/v1/admin/consistency/checks", "Operator", "{\"tenantId\":\"tenant-1\",\"domain\":null,\"checkTypes\":[0]}")]
-    [InlineData("consistency-cancel", "/api/v1/admin/consistency/checks/check-1/cancel", "Admin", null)]
-    [InlineData("projection-pause", "/api/v1/admin/projections/tenant-1/projection-1/pause", "Operator", null)]
-    [InlineData("projection-resume", "/api/v1/admin/projections/tenant-1/projection-1/resume", "Operator", null)]
-    [InlineData("projection-reset", "/api/v1/admin/projections/tenant-1/projection-1/reset", "Operator", "{\"fromPosition\":null}")]
-    [InlineData("projection-replay", "/api/v1/admin/projections/tenant-1/projection-1/replay", "Operator", "{\"fromPosition\":10,\"toPosition\":20}")]
+    [InlineData("backup-trigger", "/api/v1/admin/backups/tenant-1?includeSnapshots=true", "Admin", null, "/api/v1/admin/backups/tenant-1")]
+    [InlineData("consistency-trigger", "/api/v1/admin/consistency/checks", "Operator", "{\"tenantId\":\"tenant-1\",\"domain\":null,\"checkTypes\":[0]}", null)]
+    [InlineData("consistency-cancel", "/api/v1/admin/consistency/checks/check-1/cancel", "Admin", null, null)]
+    [InlineData("projection-pause", "/api/v1/admin/projections/tenant-1/projection-1/pause", "Operator", null, null)]
+    [InlineData("projection-resume", "/api/v1/admin/projections/tenant-1/projection-1/resume", "Operator", null, null)]
+    [InlineData("projection-reset", "/api/v1/admin/projections/tenant-1/projection-1/reset", "Operator", "{\"fromPosition\":null}", null)]
+    [InlineData("projection-replay", "/api/v1/admin/projections/tenant-1/projection-1/replay", "Operator", "{\"fromPosition\":10,\"toPosition\":20}", null)]
     public async Task EveryCallableWriteTool_RequiresIntentAndAttemptsExactlyItsRouteOnce(
         string toolName,
         string expectedPath,
         string expectedPermission,
-        string? expectedRequestBody)
+        string? expectedRequestBody,
+        string? expectedPreviewPath)
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         int requestCount = 0;
@@ -53,8 +54,8 @@ public class WriteToolIntentGateTests
         string falsePreview = await InvokeAsync(toolName, client, false, cancellationToken);
 
         requestCount.ShouldBe(0);
-        AssertPreview(omittedPreview, toolName, expectedPermission, expectedPath);
-        AssertPreview(falsePreview, toolName, expectedPermission, expectedPath);
+        AssertPreview(omittedPreview, toolName, expectedPermission, expectedPreviewPath ?? expectedPath);
+        AssertPreview(falsePreview, toolName, expectedPermission, expectedPreviewPath ?? expectedPath);
 
         _ = await InvokeAsync(toolName, client, true, cancellationToken);
 
@@ -206,7 +207,7 @@ public class WriteToolIntentGateTests
     }
 
     [Fact]
-    public async Task ComposedPreviewFieldsThatExceedTheBound_PerformZeroRequests()
+    public async Task BoundedBackupDescriptionDoesNotOverflowComposedPreviewFields()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         int requestCount = 0;
@@ -219,28 +220,31 @@ public class WriteToolIntentGateTests
         string tenantId = new('t', 64);
         string optionalText = new('x', 180);
 
-        string[] results = await Task.WhenAll(
-            BackupWriteTools.TriggerBackup(
-                client,
-                tenantId,
-                description: optionalText,
-                confirm: true,
-                cancellationToken: cancellationToken),
-            ConsistencyWriteTools.TriggerCheck(
-                client,
-                "SequenceContinuity",
-                tenantId,
-                domain: optionalText,
-                confirm: true,
-                cancellationToken: cancellationToken));
+        string backupPreview = await BackupWriteTools.TriggerBackup(
+            client,
+            tenantId,
+            description: optionalText,
+            confirm: false,
+            cancellationToken: cancellationToken);
+        string consistencyResult = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "SequenceContinuity",
+            tenantId,
+            domain: optionalText,
+            confirm: true,
+            cancellationToken: cancellationToken);
 
         requestCount.ShouldBe(0);
-        foreach (string result in results)
+        using (JsonDocument previewDocument = JsonDocument.Parse(backupPreview))
         {
-            using JsonDocument document = JsonDocument.Parse(result);
-            document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
-            document.RootElement.GetProperty("message").GetString()!.ShouldContain("target");
+            previewDocument.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
+            previewDocument.RootElement.GetProperty("target").GetString()!.Length.ShouldBeLessThanOrEqualTo(240);
+            previewDocument.RootElement.GetProperty("endpoint").GetString()!.Length.ShouldBeLessThanOrEqualTo(240);
+            previewDocument.RootElement.GetProperty("parameters").GetProperty("description").GetString().ShouldBe(optionalText);
         }
+
+        using JsonDocument consistencyDocument = JsonDocument.Parse(consistencyResult);
+        consistencyDocument.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
     }
 
     [Fact]

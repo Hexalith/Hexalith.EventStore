@@ -336,7 +336,7 @@
                 <h3 style="margin: 0;">Run Consistency Check</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@Text["ConsistencyTarget", FormatTenantScope(_triggerTenantId), FormatDomainScope(_triggerDomain)]"
+                <ConfirmationFacts Target="@Text["ConsistencyTarget", FormatTenantScope(NormalizedTriggerTenantId), FormatDomainScope(NormalizedTriggerDomain)]"
                                    Impact="@Text["ConsistencyTriggerImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_triggerTenantId"
@@ -459,6 +459,10 @@
     private bool _isCancelling;
 
     private bool _isAnyDialogOpen => _selectedAnomaly is not null || _showTriggerDialog || _showCancelDialog;
+
+    private string? NormalizedTriggerTenantId => NormalizeScope(_triggerTenantId);
+
+    private string? NormalizedTriggerDomain => NormalizeScope(_triggerDomain);
 
     private ConsistencySummary CurrentSummary => ConsistencySummary.From(_filteredChecks);
 
@@ -788,6 +792,19 @@
 
     private async Task OnTriggerConfirm()
     {
+        string? tenantId = NormalizedTriggerTenantId;
+        string? domain = NormalizedTriggerDomain;
+        string confirmationTarget = Text[
+            "ConsistencyTarget",
+            FormatTenantScope(tenantId),
+            FormatDomainScope(domain)];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseTriggerDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isTriggering = true;
         // Renderer-synchronous: this method is invoked by FluentButton's OnClick on the dispatcher.
         StateHasChanged();
@@ -798,9 +815,6 @@
             if (_checkSnapshotIntegrity) checkTypes.Add(ConsistencyCheckType.SnapshotIntegrity);
             if (_checkProjectionPositions) checkTypes.Add(ConsistencyCheckType.ProjectionPositions);
             if (_checkMetadataConsistency) checkTypes.Add(ConsistencyCheckType.MetadataConsistency);
-
-            string? tenantId = string.IsNullOrWhiteSpace(_triggerTenantId) ? null : _triggerTenantId.Trim();
-            string? domain = string.IsNullOrWhiteSpace(_triggerDomain) ? null : _triggerDomain.Trim();
 
             AdminOperationResult? result;
             try
@@ -880,6 +894,14 @@
     {
         if (_cancelCheckId is null)
         {
+            return;
+        }
+
+        string confirmationTarget = Text["ConsistencyCheckTarget", _cancelCheckId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCancelDialogAsync().ConfigureAwait(false);
             return;
         }
 

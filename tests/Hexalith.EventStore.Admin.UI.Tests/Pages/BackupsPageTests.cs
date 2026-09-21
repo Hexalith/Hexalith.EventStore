@@ -917,6 +917,88 @@ public class BackupsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task CreateBackup_NormalizesTenantForConfirmationAndSubmission()
+    {
+        SetupJobs([]);
+        _ = _mockBackupApi.TriggerBackupAsync(
+                "tenant-a", Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "backup-op", "Deferred", null));
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-create-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-create-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_createTenantId", "  tenant-a  ");
+        cut.Render();
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("Backup data for tenant 'tenant-a'");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateBackupConfirm"));
+
+        _ = await _mockBackupApi.Received(1).TriggerBackupAsync(
+            "tenant-a", Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("create", false)]
+    [InlineData("create", true)]
+    [InlineData("restore", false)]
+    [InlineData("restore", true)]
+    [InlineData("import", false)]
+    [InlineData("import", true)]
+    public async Task DestructiveHandler_UnsafeOrOverlongTargetPerformsNoWorkClosesAndRestoresFocus(
+        string action,
+        bool overlong)
+    {
+        SetupJobs([]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No backups"), TimeSpan.FromSeconds(5));
+        string identifier = overlong ? new string('x', 241) : "Bearer secret-token";
+        string focusId = $"focused-{action}";
+        string dialogLabel;
+        string confirmMethod;
+
+        if (action == "create")
+        {
+            SetPrivateField(cut.Instance, "_createTenantId", identifier);
+            SetPrivateField(cut.Instance, "_createInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showCreateDialog", true);
+            dialogLabel = "Create Backup (deferred)";
+            confirmMethod = "OnCreateBackupConfirm";
+        }
+        else if (action == "restore")
+        {
+            SetPrivateField(cut.Instance, "_restoreTarget", CreateJob(identifier, "tenant-a", BackupJobStatus.Completed, isValidated: true));
+            SetPrivateField(cut.Instance, "_restoreInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showRestoreDialog", true);
+            dialogLabel = "Restore from Backup";
+            confirmMethod = "OnRestoreConfirm";
+        }
+        else
+        {
+            SetPrivateField(cut.Instance, "_importTenantId", identifier);
+            SetPrivateField(cut.Instance, "_importContent", "{\"safe\":true}");
+            SetPrivateField(cut.Instance, "_importInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showImportDialog", true);
+            dialogLabel = "Import Stream";
+            confirmMethod = "OnImportConfirm";
+        }
+
+        cut.Render();
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, confirmMethod));
+
+        _ = _mockBackupApi.DidNotReceive().TriggerBackupAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        _ = _mockBackupApi.DidNotReceive().TriggerRestoreAsync(
+            Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        _ = _mockBackupApi.DidNotReceive().ImportStreamAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message.ShouldBe(
+            "The selected target cannot be confirmed because its identifier is not support-safe.");
+        cut.FindAll($"fluent-dialog[aria-label='{dialogLabel}']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(focusId);
+    }
+
+    [Fact]
     public async Task ImportDialog_AcceptsProducerCamelCaseSchemaAndRequiresEventsArray()
     {
         SetupJobs([]);
@@ -970,6 +1052,8 @@ public class BackupsPageTests : AdminUITestContext {
         CreateImportContent(new string('t', 241), "Counter", "counter-1"),
         CreateImportContent("tenant-a", "clientSecret=secret-value", "counter-1"),
         CreateImportContent("tenant-a", new string('d', 241), "counter-1"),
+        CreateImportContent("tenant-a", "Counter\u0007", "counter-1"),
+        CreateImportContent("tenant-a", "Counter\u202Ehidden", "counter-1"),
         CreateImportContent("tenant-a", "Counter", "https://user%3Apassword@example.test/aggregate"),
         CreateImportContent("tenant-a", "Counter", new string('a', 241)),
     };
@@ -1065,13 +1149,17 @@ public class BackupsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe("backup-restore-Ymstc2FmZQ");
     }
 
-    [Fact]
-    public async Task ImportDialog_ForbiddenDoesNotExposeDetailsOrClaimCompletionAndRestoresInitiator() {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ImportDialog_DenialDoesNotExposeDetailsOrClaimCompletionAndRestoresInitiator(bool forbidden) {
         SetupJobs([]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden stream exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden stream exists; bearer secret-value");
         _ = _mockBackupApi.ImportStreamAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden stream exists; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
         await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
@@ -1084,7 +1172,9 @@ public class BackupsPageTests : AdminUITestContext {
             "tenant-a", "{\"safe\":true}", Arg.Any<CancellationToken>());
         TestToastService toast = Services.GetRequiredService<TestToastService>();
         string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
-        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldBe(forbidden
+            ? "Access denied. Administrator permission is required."
+            : "Authentication required. Please sign in again.");
         message.ShouldNotContain("hidden stream");
         message.ShouldNotContain("secret-value");
         message.ShouldNotContain("completed", Case.Insensitive);
@@ -1125,13 +1215,17 @@ public class BackupsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe("backup-create-button");
     }
 
-    [Fact]
-    public async Task RestoreDialog_ForbiddenUsesFixedCopyClosesAndRestoresExactInitiator() {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RestoreDialog_DenialUsesFixedCopyClosesAndRestoresExactInitiator(bool forbidden) {
         SetupJobs([CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true)]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden backup exists at redis://private; bearer secret-value")
+            : new UnauthorizedAccessException("hidden backup exists at redis://private; bearer secret-value");
         _ = _mockBackupApi.TriggerRestoreAsync(
                 Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden backup exists at redis://private; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Find("#backup-restore-Ymstc2FmZQ"), TimeSpan.FromSeconds(5));
         await cut.Find("#backup-restore-Ymstc2FmZQ").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
@@ -1141,7 +1235,9 @@ public class BackupsPageTests : AdminUITestContext {
         _ = await _mockBackupApi.Received(1).TriggerRestoreAsync(
             "bk-safe", null, false, Arg.Any<CancellationToken>());
         string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
-        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldBe(forbidden
+            ? "Access denied. Administrator permission is required."
+            : "Authentication required. Please sign in again.");
         message.ShouldNotContain("hidden backup");
         message.ShouldNotContain("secret-value");
         cut.FindAll("fluent-dialog[aria-label='Restore from Backup']").ShouldBeEmpty();

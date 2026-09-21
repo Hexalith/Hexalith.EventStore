@@ -123,6 +123,10 @@ window.hexalithAdmin = {
         }
     },
 
+    waitForRender: function () {
+        return new Promise((resolve) => window.requestAnimationFrame(resolve));
+    },
+
     focusElementById: function (elementId) {
         const element = document.getElementById(elementId);
         if (element && typeof element.focus === "function") {

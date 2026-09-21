@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -230,6 +230,43 @@ deferred:
 | EC5-06 | `medium` — carried from BH4-01: the baseline window contains unrelated sprint-status history, but Story 5.4 has no current tracking-file mutation. | defer |
 | VG5-01 | `medium` — Pre-verified gap: the newly recognized query-secret aliases are not exhaustively covered, so removing an alias can leak an observability URL while all current tests remain green. | patch |
 | VG5-02 | `medium` — carried from VG4-01: final browser focus remains unverified beyond mocked interop and awaits the authenticated denial-capable E2E fixture. | defer |
+| BH6-01 | `medium` — Verified: confirmation safety accepts control and Unicode-format characters, so an operator-visible target can be reordered or concealed while remaining executable. | patch |
+| BH6-02 | `medium` — Verified: backup creation displays the raw tenant but submits its trimmed value, breaking exact confirmation binding. | patch |
+| BH6-03 | `medium` — Verified: consistency trigger displays raw tenant/domain scopes but submits trimmed scopes. | patch |
+| BH6-04 | `medium` — Verified: add-user displays the raw user id but submits its trimmed value. | patch |
+| BH6-05 | `false` — No canonical domain/aggregate grammar is established for import, and aggregate identifiers intentionally accept non-whitespace values; bidi/control safety is handled by BH6-01. | reject |
+| BH6-06 | `false` — The approved resource contract intentionally identifies a dead-letter selection by command and tenant counts; exact identifiers remain visible in the selected grid and are not required in the modal facts. | reject |
+| BH6-07 | `medium` — Verified pre-existing issue: dead-letter loading and selection key only by `MessageId`, so a cross-tenant collision can drop or ambiguously select an entry. | defer |
+| BH6-08 | `low` — Verified pre-existing issue: two dead-letter clamp paths append an ellipsis after taking 240 characters, producing 243-character support text. | defer |
+| BH6-09 | `medium` — carried from VG5-02: mocked interop does not establish final browser `activeElement`; the authenticated denial-capable fixture remains unavailable. | defer |
+| BH6-10 | `medium` — Verified pre-existing issue: deferred backup result messages containing one expected keyword are rendered verbatim without a bound or credential scan. | defer |
+| BH6-11 | `false` — carried from BH3-11: production tenant clients construct fixed service-unavailable messages; the claimed raw backend diagnostic path is not reachable through the registered client. | reject |
+| BH6-12 | `medium` — carried from BH5-13: consistency export still renders raw exception text, a pre-existing issue already deferred outside this story. | defer |
+| BH6-13 | `false` — `Authorization: Basic` is already caught by the authorization key detector, and the review demonstrates no current Admin result producer for cookie or PEM material. | reject |
+| BH6-14 | `medium` — carried from EC5-04: the Sample UI trailing-query-slash defect belongs to the pre-existing Story 5.3 token-provider twin. | defer |
+| BH6-15 | `medium` — carried from EC3-14/EC3-16: Sample UI buffering and empty-response classification are pre-existing Story 5.3 token-acquisition work. | defer |
+| BH6-16 | `medium` — carried from BH5-01: baseline-window sprint tracking belongs to independently committed work; Story 5.4 leaves the current tracker unchanged. | defer |
+| EC6-01 | `medium` — Verified duplicate of BH6-02: backup tenant normalization occurs after confirmation rendering. | patch |
+| EC6-02 | `medium` — Verified duplicate of BH6-03: consistency scope normalization occurs after confirmation rendering. | patch |
+| EC6-03 | `medium` — Verified duplicate of BH6-04: add-user normalization occurs after confirmation rendering. | patch |
+| EC6-04 | `medium` — Verified: a partly stale dead-letter selection can execute fewer commands than the confirmation count because only the all-stale case is rejected. | patch |
+| EC6-05 | `false` — carried from EC5-05: earlier tenant groups are separately accepted operations, processing stops at denial, and denied/unattempted groups remain selected. | reject |
+| EC6-06 | `false` — Successful projection operations are outside the intent's focus-restoration conditions, which are cancellation, validation failure, and denial. | reject |
+| EC6-07 | `false` — Successful backup restore is outside the specified focus-restoration conditions. | reject |
+| EC6-08 | `false` — Successful import is outside the specified focus-restoration conditions. | reject |
+| EC6-09 | `false` — Successful consistency trigger is outside the specified focus-restoration conditions. | reject |
+| EC6-10 | `false` — Successful consistency cancellation is outside the specified focus-restoration conditions. | reject |
+| EC6-11 | `false` — Successful dead-letter submission is outside the specified focus-restoration conditions. | reject |
+| EC6-12 | `false` — Successful snapshot policy create/edit is outside the specified focus-restoration conditions. | reject |
+| EC6-13 | `false` — Successful snapshot policy deletion is outside the specified focus-restoration conditions. | reject |
+| EC6-14 | `false` — Successful tenant creation is outside the specified focus-restoration conditions. | reject |
+| EC6-15 | `false` — Successful add-user is outside the specified focus-restoration conditions. | reject |
+| EC6-16 | `false` — Successful remove-user is outside the specified focus-restoration conditions. | reject |
+| EC6-17 | `false` — Successful role change is outside the specified focus-restoration conditions. | reject |
+| EC6-18 | `medium` — carried from BH5-01: the tracker state is historical baseline-window work and is unchanged in the Story 5.4 working patch. | defer |
+| VG6-01 | `medium` — carried from VG4-03: unknown-length oversized OIDC discovery/token coverage remains a deferred Story 5.3 verification gap. | defer |
+| VG6-02 | `medium` — Pre-verified gap: newly duplicated unsafe-target guards outside projection have no caller-path zero-request, safe-error, close, and focus tests. | patch |
+| VG6-03 | `medium` — carried from VG5-02: the render-wait test proves mocked interop ordering but not final browser focus. | defer |
 
 ## Design Notes
 
@@ -440,19 +477,19 @@ _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 
 ### Review Findings — Admin-surface slice (2026-09-21, bmad-code-review)
 
-- [ ] [Review][Patch] Projection reset/replay treat post-accept UI failures as a failed mutation and tear down the dialog [src/Hexalith.EventStore.Admin.UI/Components/ProjectionDetailPanel.razor:531]
-- [ ] [Review][Patch] ConfirmationFacts can show `[redacted]` while the original identifier is still submitted [src/Hexalith.EventStore.Admin.UI/Components/Shared/ConfirmationFacts.razor:43]
-- [ ] [Review][Patch] Dead-letter bulk success claims completed work, including when zero matching rows were attempted [src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor:990]
-- [ ] [Review][Patch] Dead-letter skip facts say "marked skipped" while the dialog body says permanently removed [src/Hexalith.EventStore.Admin.UI/Resources/AdminResources.resx:18]
-- [ ] [Review][Patch] Reset/replay still interpolate raw projection names and call the work "an async operation" beside accepted-request ConfirmationFacts [src/Hexalith.EventStore.Admin.UI/Components/ProjectionDetailPanel.razor:202]
-- [ ] [Review][Patch] `backup-trigger` preview-match can reject composed `target`/`endpoint` after a still-bounded description [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:36]
-- [ ] [Review][Patch] `ValidateEndpoint` trims a trailing slash from the full URI after query strings were allowed [src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs:348]
-- [ ] [Review][Patch] Bounded OIDC reads map every buffering `HttpRequestException` to "exceeded size" and drop the empty-body mapping [src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs:316]
-- [ ] [Review][Patch] `RestoreAsync` runs immediately after `StateHasChanged` with no render/`HideAsync` wait [src/Hexalith.EventStore.Admin.UI/Services/InitiatorFocusService.cs:22]
-- [ ] [Review][Patch] New unsafe-marker detectors miss fragment secrets, token-as-username URLs, and unbounded JWT header decode [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:45]
-- [ ] [Review][Patch] Most destructive 401 close/restore handlers are untested; only create-backup, snapshot create/edit/create-snapshot, and dead-letter mixed retry cover `UnauthorizedAccessException` [src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor:844]
-- [ ] [Review][Patch] Token-client redirect lock is proven only via `AddHttpClient`, not through `AddAdminUI` composition [src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:43]
-- [ ] [Review][Patch] Create Snapshot Policy reuses replace-policy impact copy [src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor:155]
+- [x] [Review][Patch] Projection reset/replay treat post-accept UI failures as a failed mutation and tear down the dialog [src/Hexalith.EventStore.Admin.UI/Components/ProjectionDetailPanel.razor:531]
+- [x] [Review][Patch] ConfirmationFacts can show `[redacted]` while the original identifier is still submitted [src/Hexalith.EventStore.Admin.UI/Components/Shared/ConfirmationFacts.razor:43]
+- [x] [Review][Patch] Dead-letter bulk success claims completed work, including when zero matching rows were attempted [src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor:990]
+- [x] [Review][Patch] Dead-letter skip facts say "marked skipped" while the dialog body says permanently removed [src/Hexalith.EventStore.Admin.UI/Resources/AdminResources.resx:18]
+- [x] [Review][Patch] Reset/replay still interpolate raw projection names and call the work "an async operation" beside accepted-request ConfirmationFacts [src/Hexalith.EventStore.Admin.UI/Components/ProjectionDetailPanel.razor:202]
+- [x] [Review][Patch] `backup-trigger` preview-match can reject composed `target`/`endpoint` after a still-bounded description [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:36]
+- [x] [Review][Patch] `ValidateEndpoint` trims a trailing slash from the full URI after query strings were allowed [src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs:348]
+- [x] [Review][Patch] Bounded OIDC reads map every buffering `HttpRequestException` to "exceeded size" and drop the empty-body mapping [src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs:316]
+- [x] [Review][Patch] `RestoreAsync` runs immediately after `StateHasChanged` with no render/`HideAsync` wait [src/Hexalith.EventStore.Admin.UI/Services/InitiatorFocusService.cs:22]
+- [x] [Review][Patch] New unsafe-marker detectors miss fragment secrets, token-as-username URLs, and unbounded JWT header decode [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:45]
+- [x] [Review][Patch] Most destructive 401 close/restore handlers are untested; only create-backup, snapshot create/edit/create-snapshot, and dead-letter mixed retry cover `UnauthorizedAccessException` [src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor:844]
+- [x] [Review][Patch] Token-client redirect lock is proven only via `AddHttpClient`, not through `AddAdminUI` composition [src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:43]
+- [x] [Review][Patch] Create Snapshot Policy reuses replace-policy impact copy [src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor:155]
 - [x] [Review][Defer] Browser `activeElement` after Fluent dialog teardown is not proven [src/Hexalith.EventStore.Admin.UI/Services/InitiatorFocusService.cs:22] — deferred: spec already records this pending an authenticated Admin UI E2E fixture with controllable write-denial responses; bUnit only records `hexalithAdmin.focusElementById`.
 - [x] [Review][Defer] Published-UI `TokenEndpoint` / audience-parameter keys are missing from the configuration quick-scan table [docs/guides/configuration-reference.md:793] — deferred: Story 5.3 authentication content; already tracked.
 - [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: unchanged pre-existing sentence; already tracked.

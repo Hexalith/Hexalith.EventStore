@@ -424,9 +424,24 @@ public class ToolHelperTests {
     [InlineData("{\"clientSecret\":\"secret-value\"}")]
     [InlineData("{\"apiKey\":\"secret-value\"}")]
     [InlineData("client_secret=secret-value")]
+    [InlineData("https://example.test/callback#access_token=secret-value")]
     [InlineData("https://operator:password@example.test/path")]
     [InlineData("https://operator%3Apassword@example.test/path")]
+    [InlineData("https://secret-token@example.test/path")]
+    [InlineData("https://secret-token%40example.test/path")]
     public void SerializeResult_RedactsCredentialShapesUnderOrdinaryKeys(string credential) {
+        string result = ToolHelper.SerializeResult(new { ordinaryText = credential });
+
+        result.ShouldNotContain(credential);
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("ordinaryText").GetString().ShouldBe("Protected output text redacted.");
+    }
+
+    [Fact]
+    public void SerializeResult_OversizedJwtHeaderIsRedactedWithoutDecodingIt()
+    {
+        string credential = $"{new string('a', 4096)}.payload.signature1234";
+
         string result = ToolHelper.SerializeResult(new { ordinaryText = credential });
 
         result.ShouldNotContain(credential);

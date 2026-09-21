@@ -497,13 +497,89 @@ public class ConsistencyPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public async Task TriggerDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimCompletion() {
+    public async Task TriggerCheck_NormalizesScopesForConfirmationAndSubmission()
+    {
         SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                "tenant-a", "orders", Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "check-op", "Rejected", null));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_triggerTenantId", "  tenant-a  ");
+        SetPrivateField(cut.Instance, "_triggerDomain", "  orders  ");
+        cut.Render();
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("Consistency checks for tenant 'tenant-a' and domain 'orders'");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            "tenant-a", "orders", Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("trigger", false)]
+    [InlineData("trigger", true)]
+    [InlineData("cancel", false)]
+    [InlineData("cancel", true)]
+    public async Task MutationHandler_UnsafeOrOverlongTargetPerformsNoWorkClosesAndRestoresFocus(
+        string action,
+        bool overlong)
+    {
+        SetupChecks([]);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No consistency checks yet"), TimeSpan.FromSeconds(5));
+        string identifier = overlong ? new string('x', 241) : "Bearer secret-token";
+        string focusId = $"focused-{action}";
+        string dialogLabel;
+        string confirmMethod;
+
+        if (action == "trigger")
+        {
+            SetPrivateField(cut.Instance, "_triggerTenantId", identifier);
+            SetPrivateField(cut.Instance, "_triggerDomain", "orders");
+            SetPrivateField(cut.Instance, "_triggerInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showTriggerDialog", true);
+            dialogLabel = "Run Consistency Check";
+            confirmMethod = "OnTriggerConfirm";
+        }
+        else
+        {
+            SetPrivateField(cut.Instance, "_cancelCheckId", identifier);
+            SetPrivateField(cut.Instance, "_cancelInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showCancelDialog", true);
+            dialogLabel = "Cancel Consistency Check";
+            confirmMethod = "OnCancelConfirm";
+        }
+
+        cut.Render();
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, confirmMethod));
+
+        _ = _mockConsistencyApi.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        _ = _mockConsistencyApi.DidNotReceive().CancelCheckAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message.ShouldBe(
+            "The selected target cannot be confirmed because its identifier is not support-safe.");
+        cut.FindAll($"fluent-dialog[aria-label='{dialogLabel}']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(focusId);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TriggerDialog_DenialUsesSafeCopyRestoresFocusAndDoesNotClaimCompletion(bool forbidden) {
+        SetupChecks([]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden tenant exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden tenant exists; bearer secret-value");
         _ = _mockConsistencyApi.TriggerCheckAsync(
                 Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden tenant exists; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<Consistency> cut = Render<Consistency>();
         cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
         await cut.Find("#consistency-trigger-button")
@@ -515,7 +591,9 @@ public class ConsistencyPageTests : AdminUITestContext {
             null, null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
         TestToastService toast = Services.GetRequiredService<TestToastService>();
         string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
-        message.ShouldBe("Access denied. Insufficient permissions.");
+        message.ShouldBe(forbidden
+            ? "Access denied. Insufficient permissions."
+            : "Authentication required. Please sign in again.");
         message.ShouldNotContain("hidden tenant");
         message.ShouldNotContain("secret-value");
         message.ShouldNotContain("completed", Case.Insensitive);
@@ -550,12 +628,16 @@ public class ConsistencyPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe("consistency-trigger-button");
     }
 
-    [Fact]
-    public async Task CancelDialog_ForbiddenUsesSafeCopyClosesAndRestoresExactInitiator() {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CancelDialog_DenialUsesSafeCopyClosesAndRestoresExactInitiator(bool forbidden) {
         SetupChecks([CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden check exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden check exists; bearer secret-value");
         _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden check exists; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<Consistency> cut = Render<Consistency>();
         cut.WaitForAssertion(() => cut.Find("#consistency-cancel-check-running"), TimeSpan.FromSeconds(5));
         await cut.Find("#consistency-cancel-check-running")
@@ -566,7 +648,9 @@ public class ConsistencyPageTests : AdminUITestContext {
         _ = await _mockConsistencyApi.Received(1).CancelCheckAsync(
             "check-running", Arg.Any<CancellationToken>());
         string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
-        message.ShouldBe("Access denied. Administrator permission is required.");
+        message.ShouldBe(forbidden
+            ? "Access denied. Administrator permission is required."
+            : "Authentication required. Please sign in again.");
         message.ShouldNotContain("hidden check");
         message.ShouldNotContain("secret-value");
         cut.FindAll("fluent-dialog[aria-label='Cancel Consistency Check']").ShouldBeEmpty();

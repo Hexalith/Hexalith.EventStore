@@ -4671,3 +4671,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Consistency cancel focus ids embed raw `checkId`.
   evidence: `GetCancelFocusId` concatenates `checkId` without the encoding used by backup/snapshot initiators. Unverified whether produced check ids can contain characters that break `getElementById`.
+
+## Deferred from: bmad-build review of Story 5.4 (2026-09-21)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Key dead-letter UI loading and selection by tenant plus message identifier.
+  evidence: The page's pre-existing `_loadedMessageIds` and `_selectedIds` sets use `MessageId` alone, so a cross-tenant identifier collision can drop or ambiguously select an entry; correcting the selection model is separate from this story's confirmation patch.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Keep dead-letter support text within its declared 240-character bound including ellipses.
+  evidence: The pre-existing `Sanitize` and `BuildFailedMessageSummary` paths take 240 characters and then append `...`, producing 243-character output.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Sanitize deferred backup backend messages before rendering them to operators.
+  evidence: The pre-existing `SelectDeferredResultMessage` accepts any backend message containing `deferred`, `unsupported`, or `unavailable` and returns it verbatim without credential detection or a length bound.

@@ -8,6 +8,8 @@ namespace Hexalith.EventStore.Admin.Abstractions.Security;
 /// used by CLI and MCP redaction paths. Source of truth for the marker vocabulary.
 /// </summary>
 public static partial class UnsafeMarkerDetection {
+    private const int MaxJwtHeaderSegmentLength = 1024;
+
     /// <summary>
     /// Returns <see langword="true"/> when <paramref name="value"/> contains a sentinel marker or
     /// a credential-shaped key=value token.
@@ -42,10 +44,10 @@ public static partial class UnsafeMarkerDetection {
     [GeneratedRegex("\"(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization)\"\\s*:", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex JsonSecretFieldRegex();
 
-    [GeneratedRegex(@"(?:^|[?&;\s])(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization)\s*[=:]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    [GeneratedRegex(@"(?:^|[?&#;\s])(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization)\s*[=:]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex QuerySecretRegex();
 
-    [GeneratedRegex(@"\b[a-z][a-z0-9+.-]*://[^\s/@:]+?(?::|%3a)[^\s/@]+@", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    [GeneratedRegex(@"\b[a-z][a-z0-9+.-]*://[^\s/?#@]+(?:(?::|%3a)[^\s/?#@]*)?(?:@|%40)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex UriUserInfoRegex();
 
     private static bool ContainsJsonWebToken(string value) {
@@ -59,6 +61,10 @@ public static partial class UnsafeMarkerDetection {
     }
 
     private static bool IsJsonWebTokenHeader(string segment) {
+        if (segment.Length > MaxJwtHeaderSegmentLength) {
+            return true;
+        }
+
         try {
             string normalized = segment.Replace('-', '+').Replace('_', '/');
             int paddingLength = (4 - (normalized.Length % 4)) % 4;
