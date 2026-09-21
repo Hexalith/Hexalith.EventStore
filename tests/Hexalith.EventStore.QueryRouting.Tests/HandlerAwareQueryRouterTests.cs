@@ -27,7 +27,7 @@ public sealed class HandlerAwareQueryRouterTests {
         => new("test-tenant", domain, $"{domain}-1", queryType, [], "corr-1", "test-user", Paging: paging);
 
     [Fact]
-    public async Task RouteQueryAsync_HandlerBased_InvokesDomainQueryEndpointAndDoesNotDelegate() {
+    public async Task RouteQueryAsync_HandlerProjectionMetadata_PreservesProjectionEvidence() {
         IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
         _ = registry.SupportsQueryAsync("widget", "get-widget", Arg.Any<CancellationToken>()).Returns(true);
         IQueryRouter inner = Substitute.For<IQueryRouter>();
@@ -46,19 +46,81 @@ public sealed class HandlerAwareQueryRouterTests {
 
         var router = new HandlerAwareQueryRouter(inner, registry, invoker, NullLogger<HandlerAwareQueryRouter>.Instance);
 
-        QueryRouterResult result = await router.RouteQueryAsync(Query("widget", "get-widget"));
+        QueryRouterResult result = await router.RouteQueryAsync(
+            Query("widget", "get-widget") with { ProjectionType = "widget" });
 
         result.Success.ShouldBeTrue();
-        result.ProjectionType.ShouldBeNull();
+        result.ProjectionType.ShouldBe("widget");
         _ = result.Metadata.ShouldNotBeNull();
-        result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.HandlerComputed);
-        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+        result.Metadata.ShouldBeSameAs(metadata);
+        result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Current);
         result.Metadata.IsStale.ShouldBe(false);
         result.Metadata.ProjectionVersion.ShouldBe("widget-v1");
         result.Metadata.IsDegraded.ShouldBe(true);
         result.Metadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch]);
         await invoker.Received(1).InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>());
         await inner.DidNotReceive().RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_HandlerProjectionMetadataWithMismatchedRequestedProjection_FailsClosedToHandlerComputed() {
+        IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
+        _ = registry.SupportsQueryAsync("widget", "get-widget", Arg.Any<CancellationToken>()).Returns(true);
+        IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        var metadata = new QueryResponseMetadata(ETag: "widget-v2", ProjectionVersion: "widget-v2") {
+            Provenance = QueryResponseProvenance.ProjectionBacked,
+            Lifecycle = ProjectionLifecycleState.Current,
+        };
+        _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(payload, projectionType: "widget-v2", metadata));
+        var router = new HandlerAwareQueryRouter(
+            Substitute.For<IQueryRouter>(),
+            registry,
+            invoker,
+            NullLogger<HandlerAwareQueryRouter>.Instance);
+        SubmitQuery query = Query("widget", "get-widget") with { ProjectionType = "widget-v1" };
+
+        QueryRouterResult result = await router.RouteQueryAsync(query);
+
+        result.Success.ShouldBeTrue();
+        result.ProjectionType.ShouldBeNull();
+        result.Metadata.ShouldNotBeNull().Provenance.ShouldBe(QueryResponseProvenance.HandlerComputed);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
+    }
+
+    [Theory]
+    [InlineData(null, QueryResponseProvenance.ProjectionBacked)]
+    [InlineData("", QueryResponseProvenance.ProjectionBacked)]
+    [InlineData("   ", QueryResponseProvenance.ProjectionBacked)]
+    [InlineData("widget", QueryResponseProvenance.Unknown)]
+    [InlineData("widget", QueryResponseProvenance.HandlerComputed)]
+    public async Task RouteQueryAsync_IncompleteProjectionDeclaration_FailsClosedToHandlerComputed(
+        string? projectionType,
+        QueryResponseProvenance provenance) {
+        IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
+        _ = registry.SupportsQueryAsync("widget", "get-widget", Arg.Any<CancellationToken>()).Returns(true);
+        IDomainQueryInvoker invoker = Substitute.For<IDomainQueryInvoker>();
+        JsonElement payload = JsonSerializer.SerializeToElement(new { value = 42 });
+        var metadata = new QueryResponseMetadata(ProjectionVersion: "widget-v1") {
+            Provenance = provenance,
+            Lifecycle = ProjectionLifecycleState.Current,
+        };
+        _ = invoker.InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.FromPayload(payload, projectionType, metadata));
+        var router = new HandlerAwareQueryRouter(
+            Substitute.For<IQueryRouter>(),
+            registry,
+            invoker,
+            NullLogger<HandlerAwareQueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(Query("widget", "get-widget"));
+
+        result.Success.ShouldBeTrue();
+        result.ProjectionType.ShouldBeNull();
+        result.Metadata.ShouldNotBeNull().Provenance.ShouldBe(QueryResponseProvenance.HandlerComputed);
+        result.Metadata.Lifecycle.ShouldBe(ProjectionLifecycleState.Unknown);
     }
 
     [Fact]
