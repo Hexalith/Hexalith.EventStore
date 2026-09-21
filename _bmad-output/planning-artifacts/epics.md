@@ -3640,7 +3640,7 @@ So that downstream consumers receive an exact, non-overstated durable-admission 
 
 **Dependencies:** Completed Story 4.14 packet and independently completed Stories 4.9–4.13.
 
-**Current reconciliation:** Story 4.15 remains `review` because sprint tracking conflicts with the spec frontmatter and packet's `complete` claim. The current packet validates, contains three approvals over review subject `4c4e4674f40477fea9af6513fabe58d6590305dda0816822318596ea23ec9389`, and binds landed source `4b0a7b1d3628a857f131cfbff99030714aefc747` (tree `21f9819026a1338efbab70d69991b3570c1b54f7`). The earlier spec reference to `e5fef514…` is superseded by that later content-bound packet identity. Lifecycle must be reconciled explicitly before this story is called done; Epic 4 remains in progress regardless because Stories 4.5–4.7 are not complete.
+**Current reconciliation:** Story 4.15 is `done`. The active v4 source-only packet carries three fresh approvals over review subject `8ea55fa110380f1fe3de65089fd52adcb77d612631e9b363e0e352c65a11b25b`, preserves v3 byte-for-byte through completed-v3 commit `d578e7626df1d8afeada440c7989eb04ba2bdfe6`, and validates the mutable lifecycle record only after the complete packet. The record and sprint row now select the exact closed `done`/`done` pair. This bounded EventStore-platform completion grants no external, release, package, registry, deployment, runtime-pin, consumer-migration, final-consumer, or Folders-closure authority. Epic 4 remains in progress because Stories 4.5–4.7 are not complete.
 
 **Acceptance Criteria:**
 

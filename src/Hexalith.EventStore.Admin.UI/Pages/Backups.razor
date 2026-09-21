@@ -2,6 +2,7 @@
 
 @using Hexalith.EventStore.Admin.Abstractions.Models.Common
 @using Hexalith.EventStore.Admin.Abstractions.Models.Storage
+@using Hexalith.EventStore.Admin.Abstractions.Security
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
 @using Hexalith.EventStore.Admin.UI.Services.Exceptions
@@ -535,6 +536,7 @@
     private bool _isLoading = true;
     private bool _apiUnavailable;
     private bool _disposed;
+    private const int MaxImportPreviewFieldLength = 240;
     private const string BackupCreationDeferredMessage = "Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.";
     private const string BackupValidationDeferredMessage = "Backup validation is deferred. EventStore does not yet have an approved backup manifest and validation model.";
     private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
@@ -1230,7 +1232,10 @@
 
                 _importTenantId = tenantId;
                 _importContent = content;
-                _importPreview = $"Tenant: {tenantId}\nDomain: {domain}\nAggregate: {aggregateId}\nEvents: {evts.GetArrayLength()}";
+                _importPreview = $"Tenant: {SanitizeImportPreviewField(tenantId)}\n"
+                    + $"Domain: {SanitizeImportPreviewField(domain)}\n"
+                    + $"Aggregate: {SanitizeImportPreviewField(aggregateId)}\n"
+                    + $"Events: {evts.GetArrayLength()}";
             }
             catch (System.Text.Json.JsonException)
             {
@@ -1249,6 +1254,18 @@
         _importError = message;
         await ShowErrorToastBestEffortAsync(message).ConfigureAwait(false);
         await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
+    }
+
+    private static string SanitizeImportPreviewField(string value)
+    {
+        if (UnsafeMarkerDetection.ContainsUnsafeMarker(value))
+        {
+            return "[redacted]";
+        }
+
+        return value.Length <= MaxImportPreviewFieldLength
+            ? value
+            : value[..(MaxImportPreviewFieldLength - 3)] + "...";
     }
 
     private async Task OnImportConfirm()

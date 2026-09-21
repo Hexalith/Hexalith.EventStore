@@ -1,0 +1,8 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-platform-lifecycle-state/v1",
+  "story": "4.15",
+  "state": "closed",
+  "successorDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4",
+  "successorManifestSha256": "a3cd51c6e789715c95194ea4a3c31614ce2f70dec7c099fd5fb2f48e562065f4",
+  "reviewSubjectSha256": "7e6a393ece18b322a01157a8b60ea37ede7d8d142d10a4fa65f08c7c35b276cf"
+}

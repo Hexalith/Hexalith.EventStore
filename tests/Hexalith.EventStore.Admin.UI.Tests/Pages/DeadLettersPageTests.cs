@@ -5,6 +5,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -311,7 +312,7 @@ public class DeadLettersPageTests : AdminUITestContext {
     [Theory]
     [InlineData("forbidden")]
     [InlineData("unauthorized")]
-    public async Task RetryDialog_MixedSuccessThenDenialStopsLaterTenantsClosesAndRestoresInitiator(string denialKind) {
+    public async Task RetryDialog_MixedSuccessThenDenialRetainsDeniedAndUnattemptedGroupsAndRestoresInitiator(string denialKind) {
         List<DeadLetterEntry> entries =
         [
             new("msg-a", "tenant-a", "counter", "agg-a", "corr-a", "Failure", DateTimeOffset.UtcNow, 1, "CommandA"),
@@ -339,6 +340,11 @@ public class DeadLettersPageTests : AdminUITestContext {
             "tenant-b", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
         _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
             "tenant-c", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        HashSet<string> selectedIds = GetSelectedIds(cut.Instance);
+        selectedIds.ShouldNotContain("msg-a");
+        selectedIds.ShouldContain("msg-b");
+        selectedIds.ShouldContain("msg-c");
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString().ShouldContain("2 failed");
         cut.Markup.ShouldNotContain("Retry Dead Letters");
         cut.Markup.ShouldNotContain("secret-value");
         cut.Markup.ShouldNotContain("redis://private");

@@ -11,6 +11,7 @@ public class ToolHelperTests {
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized, "unauthorized")]
     [InlineData(HttpStatusCode.Forbidden, "unauthorized")]
+    [InlineData(HttpStatusCode.BadRequest, "invalid-input")]
     [InlineData(HttpStatusCode.NotFound, "not-found")]
     [InlineData(HttpStatusCode.Conflict, "conflict")]
     [InlineData(HttpStatusCode.UnprocessableEntity, "invalid-operation")]
@@ -199,6 +200,31 @@ public class ToolHelperTests {
         doc.RootElement.GetProperty("message").GetString()!.ShouldContain("tenantId");
     }
 
+    [Theory]
+    [InlineData("tenant-1", true)]
+    [InlineData("a", true)]
+    [InlineData("Tenant-1", false)]
+    [InlineData("tenant_1", false)]
+    [InlineData("-tenant", false)]
+    [InlineData("tenant-", false)]
+    public void ValidateTenantId_EnforcesCanonicalGrammar(string tenantId, bool valid) {
+        string? result = ToolHelper.ValidateTenantId(tenantId);
+
+        (result is null).ShouldBe(valid);
+    }
+
+    [Theory]
+    [InlineData("projection-1", true)]
+    [InlineData(".", false)]
+    [InlineData("..", false)]
+    [InlineData("../projection", false)]
+    [InlineData("projection%2fchild", false)]
+    public void ValidatePathSegments_RejectsNormalizingValues(string value, bool valid) {
+        string? result = ToolHelper.ValidatePathSegments((value, "value"));
+
+        (result is null).ShouldBe(valid);
+    }
+
     [Fact]
     public void SerializeResult_MessageIsBoundedAndRedactsUnsafeMarkers() {
         var data = new {
@@ -350,6 +376,12 @@ public class ToolHelperTests {
             rawResponseBody = "raw body containing PROTECTED_marker",
             stackTrace = "at Provider.Throws() — PROTECTED_marker",
             exceptionText = ProtectedDataLeakSentinel.ProtectedProviderExceptionText,
+            continuationToken = "opaque-cursor-value",
+            cursor = "opaque-cursor-value",
+            configuration = "{\"secret\":\"opaque\"}",
+            rawYamlContent = "secret: opaque",
+            details = "raw consistency details",
+            errorMessage = "raw consistency failure detail",
         };
 
         string result = ToolHelper.SerializeResult(data);
@@ -363,6 +395,26 @@ public class ToolHelperTests {
         doc.RootElement.GetProperty("keyStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
         doc.RootElement.GetProperty("responseStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
         doc.RootElement.GetProperty("diagnostic").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("continuationStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("cursorStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("configurationStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("rawConfigurationStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("detailsStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("errorStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    [Theory]
+    [InlineData("Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature")]
+    [InlineData("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678")]
+    [InlineData("{\"client_secret\":\"secret-value\"}")]
+    [InlineData("client_secret=secret-value")]
+    [InlineData("https://operator:password@example.test/path")]
+    public void SerializeResult_RedactsCredentialShapesUnderOrdinaryKeys(string credential) {
+        string result = ToolHelper.SerializeResult(new { ordinaryText = credential });
+
+        result.ShouldNotContain(credential);
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("ordinaryText").GetString().ShouldBe("Protected output text redacted.");
     }
 
     // P13 — Defense-in-depth recursion bound (MaxSanitizeDepth = 64) is coded inside both

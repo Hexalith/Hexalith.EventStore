@@ -23,8 +23,19 @@ internal static class BackupWriteTools {
         [Description("Include snapshots in backup")] bool includeSnapshots = true,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
+        description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"))
+            ?? ToolHelper.ValidateTenantId(tenantId)
             ?? ToolHelper.ValidatePreviewMatchesExecution((tenantId, "tenantId"), (description, "description"));
+        if (validation is not null) {
+            return validation;
+        }
+
+        string target = $"Submit deferred backup request for tenant '{tenantId}'"
+            + (description is not null ? $" ({description})" : string.Empty);
+        string endpoint = $"POST /api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}?includeSnapshots={includeSnapshots.ToString().ToLowerInvariant()}"
+            + (description is not null ? $"&description={Uri.EscapeDataString(description)}" : string.Empty);
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
         if (validation is not null) {
             return validation;
         }
@@ -32,9 +43,8 @@ internal static class BackupWriteTools {
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "backup-trigger",
-                $"Submit deferred backup request for tenant '{tenantId}'" + (!string.IsNullOrWhiteSpace(description) ? $" ({description})" : string.Empty),
-                $"POST /api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}?includeSnapshots={includeSnapshots.ToString().ToLowerInvariant()}"
-                    + (!string.IsNullOrWhiteSpace(description) ? $"&description={Uri.EscapeDataString(description)}" : string.Empty),
+                target,
+                endpoint,
                 new { tenantId, description, includeSnapshots },
                 "Confirmation submits a request to the currently deferred backup backend. It does not prove backup execution or completion.",
                 "Admin");

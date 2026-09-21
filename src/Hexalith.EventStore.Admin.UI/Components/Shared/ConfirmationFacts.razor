@@ -1,4 +1,5 @@
 @namespace Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.Abstractions.Security
 @using Hexalith.EventStore.Admin.UI.Resources
 @using Microsoft.Extensions.Localization
 
@@ -39,6 +40,11 @@
     private static string ClampSupportSafe(string? value)
     {
         string text = value ?? string.Empty;
+        if (UnsafeMarkerDetection.ContainsUnsafeMarker(text))
+        {
+            return "[redacted]";
+        }
+
         return text.Length <= MaxSupportSafeTextLength
             ? text
             : text[..(MaxSupportSafeTextLength - 3)] + "...";

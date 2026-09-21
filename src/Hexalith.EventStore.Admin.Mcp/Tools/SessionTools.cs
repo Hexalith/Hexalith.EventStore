@@ -23,6 +23,13 @@ internal static class SessionTools {
         tenantId = NormalizeScopeInput(tenantId);
         domain = NormalizeScopeInput(domain);
 
+        string? validation = ToolHelper.ValidatePreviewMatchesExecution(
+            (tenantId, "tenantId"),
+            (domain, "domain"));
+        if (validation is not null) {
+            return Task.FromResult(validation);
+        }
+
         // Validate: can't set and clear the same field
         if (tenantId is not null && clearTenantId) {
             return Task.FromResult(

@@ -32,52 +32,53 @@ internal sealed class ServerTools {
         CancellationToken cancellationToken) {
         try {
             SystemHealthReport? health = await adminApiClient.GetSystemHealthAsync(cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Serialize(new {
+            return ToolHelper.SerializeResult(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = health is null ? "error" : "reachable",
-                details = health is null ? (object)"Admin API returned empty health response" : health,
-            }, ToolHelper.JsonOptions);
+                health,
+                message = health is null ? "Admin API returned empty health response" : null,
+            });
         }
         catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) {
-            return JsonSerializer.Serialize(new {
+            return ToolHelper.SerializeResult(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = "unauthorized",
-                details = "Token may be expired or invalid. Check EVENTSTORE_ADMIN_TOKEN.",
-            }, ToolHelper.JsonOptions);
+                message = "Token may be expired or invalid. Check EVENTSTORE_ADMIN_TOKEN.",
+            });
         }
         catch (HttpRequestException ex) when (ex.StatusCode is not null) {
-            return JsonSerializer.Serialize(new {
+            return ToolHelper.SerializeResult(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = "error",
-                details = $"HTTP {(int)ex.StatusCode} {ex.StatusCode}",
-            }, ToolHelper.JsonOptions);
+                message = $"HTTP {(int)ex.StatusCode} {ex.StatusCode}",
+            });
         }
         catch (HttpRequestException) {
-            return JsonSerializer.Serialize(new {
+            return ToolHelper.SerializeResult(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = "unreachable",
-                details = "Admin API is unreachable.",
-            }, ToolHelper.JsonOptions);
+                message = "Admin API is unreachable.",
+            });
         }
         catch (TaskCanceledException) {
-            return JsonSerializer.Serialize(new {
+            return ToolHelper.SerializeResult(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = "unreachable",
-                details = "Request timed out or was cancelled.",
-            }, ToolHelper.JsonOptions);
+                message = "Request timed out or was cancelled.",
+            });
         }
         catch (JsonException) {
-            return JsonSerializer.Serialize(new {
+            return ToolHelper.SerializeResult(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = "error",
-                details = "Invalid response from Admin API.",
-            }, ToolHelper.JsonOptions);
+                message = "Invalid response from Admin API.",
+            });
         }
     }
 

@@ -52,7 +52,7 @@ public class ServerToolsTests {
         ProtectedDataLeakSentinel.AssertNoLeak([result]);
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
-        doc.RootElement.GetProperty("details").GetString().ShouldBe("Admin API is unreachable.");
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Admin API is unreachable.");
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("error");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
-        doc.RootElement.GetProperty("details").GetString()!.ShouldContain("500");
+        doc.RootElement.GetProperty("message").GetString()!.ShouldContain("500");
     }
 
     [Fact]
@@ -132,6 +132,26 @@ public class ServerToolsTests {
         doc.RootElement.TryGetProperty("serverName", out _).ShouldBeTrue();
         doc.RootElement.TryGetProperty("adminApiStatus", out _).ShouldBeTrue();
         doc.RootElement.TryGetProperty("serverVersion", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Ping_SanitizesCredentialShapedHealthLinks() {
+        string healthJson = GetHealthJson().Replace(
+            "\"traceUrl\": null",
+            "\"traceUrl\": \"https://operator:password@example.test/traces\"",
+            StringComparison.Ordinal);
+        using HttpClient httpClient = CreateMockHttpClient(HttpStatusCode.OK, healthJson);
+        var client = new AdminApiClient(httpClient);
+
+        string result = await ServerTools.Ping(client, CancellationToken.None);
+
+        result.ShouldNotContain("operator:password");
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("health")
+            .GetProperty("observabilityLinks")
+            .GetProperty("traceUrl")
+            .GetString()
+            .ShouldBe("Protected output text redacted.");
     }
 
     private static HttpClient CreateMockHttpClient(HttpStatusCode statusCode, string content)

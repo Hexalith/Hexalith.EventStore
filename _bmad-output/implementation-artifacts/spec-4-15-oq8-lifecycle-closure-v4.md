@@ -2,9 +2,10 @@
 title: 'Story 4.15 OQ8 Lifecycle Closure v4'
 type: 'bugfix'
 created: '2026-09-20'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: '5ab1d01908acbecba9258667f76f670e4549956b'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-4-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md'
@@ -49,11 +50,11 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Validator and Contracts tests -- implement phase/record/v4 lineage and prove malformed, ambiguous, mismatched, oversized, symlinked, and evidence-drift cases fail closed.
-- [ ] Frozen parent contract -- apply exactly the approved `Always` replacement and no other frozen edit.
-- [ ] V4 candidate and reviews -- bind completed v3 commit `d578e7626df1d8afeada440c7989eb04ba2bdfe6`, generate the candidate, run receipt-independent gates, and obtain fresh unchanged-subject architecture/security/test approvals before sealing and selector activation.
-- [ ] Pre-close and transition -- run every required validator and Contracts gate at `ready-to-close`; then change lifecycle record to `closed` and sprint status to `done` together.
-- [ ] Settlement -- rerun post-close gates, mark only DW-497/DW-505 done with resolutions, and reconcile direct Story 4.15 planning statements while Epic 4 and external/readiness authority remain unchanged.
+- [x] Validator and Contracts tests -- implement phase/record/v4 lineage and prove malformed, ambiguous, mismatched, oversized, symlinked, and evidence-drift cases fail closed.
+- [x] Frozen parent contract -- apply exactly the approved `Always` replacement and no other frozen edit.
+- [x] V4 candidate and reviews -- bind completed v3 commit `d578e7626df1d8afeada440c7989eb04ba2bdfe6`, generate the candidate, run receipt-independent gates, and obtain fresh unchanged-subject architecture/security/test approvals before sealing and selector activation.
+- [x] Pre-close and transition -- run every required validator and Contracts gate at `ready-to-close`; then change lifecycle record to `closed` and sprint status to `done` together.
+- [x] Settlement -- rerun post-close gates, mark only DW-497/DW-505 done with resolutions, and reconcile direct Story 4.15 planning statements while Epic 4 and external/readiness authority remain unchanged.
 
 **Acceptance Criteria:**
 - Given a valid active v4 and ready-to-close record, when pre-close verification runs, then default, final, historical v1/v2/v3, focused OQ8, and full Contracts pass without changing sprint `review`.
@@ -63,9 +64,44 @@ context:
 
 ## Implementation Notes
 
+- Added explicit `candidate`, `final`, and `closed` lifecycle phases plus the bounded six-field lifecycle record. Default validation proves the complete active packet and selector before lifecycle; isolated lifecycle modes validate record/selector metadata and tracking only.
+- Preserved v3 against completed commit `d578e7626df1d8afeada440c7989eb04ba2bdfe6` and activated the corrective v4 subject `7e6a393ece18b322a01157a8b60ea37ede7d8d142d10a4fa65f08c7c35b276cf` with manifest `a3cd51c6e789715c95194ea4a3c31614ce2f70dec7c099fd5fb2f48e562065f4`.
+- Fresh architecture, security, and test reviews approved the unchanged final subject. Review feedback corrected selector-dependent pre-review provenance, execution chronology, the full-suite count, and lifecycle-only evidence isolation before sealing.
+- Transitioned the lifecycle record and sprint row together to `closed` / `done`; Epic 4 remains `in-progress` and every non-EventStore platform authority remains false.
+
 ## Spec Change Log
 
+- 2026-09-20: Implemented lifecycle closure v4, sealed fresh evidence, completed pre-close and post-close gates, and reconciled bounded Story 4.15 planning/deferred-work state.
+- 2026-09-21: Corrected selector/lifecycle identity coupling, expanded focused fail-closed mutations, added the parent-story supersession note, and resealed fresh unchanged-subject reviews.
+
 ## Review Triage Log
+
+- Architecture review initially rejected selector-dependent pre-review claims and later rejected stale execution chronology; both were corrected and all receipt-independent commands rerun before the final subject freeze.
+- Test review rejected an inferred full-suite count of 2067; independent discovery established and sealed the exact 2072-case count.
+- The first focused run found three test expectation/probe mismatches; corrected tests were rebound and freshly approved before final execution.
+- The corrective review findings BH-02, BH-06, BH-10, BH-12 through BH-14, ECH-01, ECH-03, VG-01, and VG-02 were implemented; fresh architecture, security, and test reviews approved one unchanged replacement subject.
+
+| ID | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH-01 | false | reject | Historical-v3 mode intentionally validates the pinned v3 directory and completed-v3 Git snapshot without consulting the mutable live selector; it explicitly grants no current-source authority. |
+| BH-02 | low | patch | Isolated lifecycle validation is intentionally non-authorizing, but matching null or malformed selector/record identities can currently pass; validate identity shape while preserving isolation. |
+| BH-03 | false | reject | `final`/`closed` modes explicitly report that evidence was not evaluated; authority and historical-selector approval belong to default validation, which checks both before lifecycle. |
+| BH-04 | low | reject | The exact six-field mutable record selects current state, while the performed pre-close/post-close sequence is recorded in verification; adding actor/history/test-run fields would change the approved contract for negligible runtime benefit. |
+| BH-05 | low | reject | Post-close execution is workflow verification rather than sealed evidence by design; sealing it would create a circular or successor evidence cycle outside the approved lifecycle record. |
+| BH-06 | medium | patch | Default validation validates one selector, then `validate_lifecycle_state` reloads another; a concurrent selector change can mix evidence and lifecycle identities. Reuse the validated selector and expected identities. |
+| BH-07 | false | reject | The approved v4 subject binds the executable validator/tests and approved parent contract; the build wrapper remains mutable workflow state and was never an evidence gate input. |
+| BH-08 | false | reject | The v4 limitation list is scoped to this source-only successor, not the entire repository backlog; required-CI enforcement remains explicitly external and tracked by DW-521/DW-533. |
+| BH-09 | false | reject | Receipts truthfully content-bind named independent reviews without claiming cryptographic identity; authenticated reviewer ownership remains the separate DW-306/DW-532 capability. |
+| BH-10 | medium | patch | The parent story's latest completion section still says sprint `review` and reports obsolete 467/2070 results, contradicting the new closed lifecycle. Add a non-frozen v4 supersession note. |
+| BH-11 | false | reject | The cited ledger passages are dated append-only historical findings; canonical DW-497 and DW-505 now carry `done` plus v4 resolutions, so rewriting history would corrupt provenance. |
+| BH-12 | medium | patch | Existing v4 source-drift tests stop at hash mismatch and do not reach the workflow/fixture PostgreSQL semantic guards; add coherently rebound v4 mutations. |
+| BH-13 | medium | patch | The v4 chronology comparisons have only happy-path coverage; execution/freeze/receipt/handoff ordering and future-time mutations can regress undetected. |
+| BH-14 | medium | patch | The lifecycle suite covers the approved matrix broadly but misses coupled selector/record drift and basic structural identity cases that exercise the new binding guards. |
+| ECH-01 | medium | patch | Same root cause as BH-06: packet and lifecycle can observe different selector reads during one default run. |
+| ECH-02 | low | reject | The pathname-replacement race is real but pre-existing in the shared bounded reader, already tracked as DW-454, and an atomic open-beneath rewrite is disproportionate to this single-writer path. |
+| ECH-03 | medium | patch | Equality alone lets null or non-SHA manifest/subject values pass when both lifecycle and selector are changed; require exact SHA-256-shaped identities and cover them. |
+| VG-01 | medium | patch | Pre-verified gap: no active-v4 mutation falsifies execution/freeze, receipt/freeze, handoff/receipt, or future-time comparisons. |
+| VG-02 | medium | patch | Pre-verified gap: legacy handoff mutations never exercise the active-v4 consumer-instruction and external-authority checks. |
 
 ## Design Notes
 
@@ -78,3 +114,8 @@ The lifecycle record has exact fields `schema`, `story`, `state`, `successorDire
 - `python3 tools/validate-oq8-platform-evidence.py` plus `--lifecycle-mode closed` and all historical modes after transition -- expected: all pass.
 - `dotnet restore` and serialized Release `dotnet build` for `Hexalith.EventStore.Contracts.Tests.csproj`, then direct assembly focused/full runs -- expected: zero errors, failures, or skips; freshly measured v4 counts.
 - `sha256sum --check` for sealed v3 and v4 manifests; `git diff --check` -- expected: unchanged v3 and clean generated diffs.
+
+**Results:**
+- Pre-close default, final, and historical v1/v2/v3 validators passed; focused Contracts passed 464/464 and full Contracts passed 2072/2072 with zero failures or skips.
+- Post-close default, closed, and historical v1/v2/v3 validators passed; final mode correctly rejected the closed record; full Contracts again passed 2072/2072 with zero failures or skips.
+- Corrective verification passed default and closed validation, all historical modes, both sealed manifests, validator-record identity, actionlint, the LiveSidecar Release build and focused production path, the focused Contracts class at 476/476, and the full Contracts assembly at 2084/2084, with zero failures, errors, skips, or not-run cases.

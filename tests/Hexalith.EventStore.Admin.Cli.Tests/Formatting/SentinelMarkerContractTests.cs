@@ -38,6 +38,12 @@ public class SentinelMarkerContractTests {
         string.Concat("Endpoint=sb://example.servicebus.windows.net/;SharedAccess", "Key=foo"),
         string.Concat("Account", "Key=foo"),
         string.Concat("pass", "word=hunter2"),
+        "Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature",
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678",
+        "{\"access_token\":\"secret-value\"}",
+        "{\"client_secret\":\"secret-value\"}",
+        "client_secret=secret-value",
+        "https://operator:password@example.test/path",
         "PROTECTED_marker",
     };
 }

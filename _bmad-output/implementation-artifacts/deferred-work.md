@@ -3455,8 +3455,9 @@ location: tools/validate-oq8-platform-evidence.py:3697-3700,3522-3548
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: Default validation calls validate_status_and_documents(final=True), requiring sprint 4-15 status review and spec frontmatter done. Frozen Always says advance tracking only when the fail-closed validator passes. Isolated --lifecycle-mode final is not the bypass. Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
-status: open
-decision: 2026-09-06 Defer lifecycle contradiction — Keep spec-done / sprint-review split; do not invert the lifecycle gate or renegotiate frozen Always in this Group A pass.
+status: done
+decision: 2026-09-20 Resolve through Story 4.15 v4 lifecycle separation — Default validation now proves the complete active v4 packet before consulting a bounded mutable lifecycle record; ready-to-close and closed select exact review/done and done/done pairs.
+resolution: Story 4.15 v4 replaced the Boolean final gate with candidate/final/closed phases, preserved v3 as immutable historical evidence, and verified the ready-to-close transition before atomically selecting closed tracking.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Story 3.15's required `docs/ci.md` update leaves the Story 4.15 v3 successor packet unbound, so the complete Contracts suite fails on current-source identity drift until that separately reviewed packet is reminted.
@@ -4017,7 +4018,8 @@ location: tools/validate-oq8-platform-evidence.py:3713; tests/Hexalith.EventStor
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: The final lifecycle map requires sprint `review` and spec `done` simultaneously, and the new `CheckedInRepositoryLifecyclePassesWithoutMutation` runs the final validator against the checked-in repository, so flipping either value turns the entire Contracts lane red with no explanatory message. This hardens the inversion accepted as DW-497; reversing it is that lifecycle-contract decision, not a local fix.
-status: open
+status: done
+resolution: Story 4.15 v4 moved the checked-in probe to select the exact ready-to-close or closed lifecycle mode, added a complete default-validation probe, and made isolated final/closed modes lifecycle-only and explicitly non-authorizing for evidence.
 
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13, Group P)
 
@@ -4588,3 +4590,48 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-story-file-diff-review-patches.md`
   summary: Repository-bound snapshot reads remain exposed to a concurrent pathname replacement between component validation and file open.
   evidence: `read_bounded_regular_snapshot` checks symlink components and metadata before calling `path.open`, so a concurrent replacement can redirect the opened file; the frozen intent explicitly excludes TOCTOU refactoring, and an atomic open-beneath design is needed to settle the gap.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Align single-position projection replay semantics between the Admin UI and the inclusive API/MCP contract.
+  evidence: The UI rejects `fromPosition == toPosition` while the API client documents both endpoints as inclusive and MCP permits the same single-position range; this behavior predates the Story 5.4 safety changes.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Separate snapshot mutation cancellation from the page refresh cancellation scope.
+  evidence: Snapshot create, edit, delete-policy, and create-snapshot calls reuse `_loadCts`; a concurrent refresh can cancel a mutation and let `OperationCanceledException` escape, and this cancellation architecture predates Story 5.4.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Map snapshot HTTP 422 responses to bounded UI validation feedback.
+  evidence: `AdminSnapshotApiClient` throws `InvalidOperationException` for 422 while the snapshot mutation handlers do not catch it; the behavior predates the Story 5.4 confirmation/focus changes.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Validate the gateway command-status path before constructing status requests.
+  evidence: An explicitly blank or null `CommandStatusPath` can construct the wrong URI or fail at runtime in `GetCommandStatusAsync`; this gateway feature belongs to separate command-status work in the mixed baseline window.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Exercise oversized unknown-length OIDC discovery and token responses.
+  evidence: Story 5.3 tests use `StringContent` and cover only the known-length precheck, so a chunked-response regression in bounded buffering would remain undetected; token acquisition is outside Story 5.4.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, Host/OpenAPI chunk)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: AppHost advertises an unavailable Admin Swagger URL outside Development.
+  evidence: Reconfirmed `src/Hexalith.EventStore.AppHost/Program.cs:374-376`. Unconditional `EventStore__AdminServer__SwaggerUrl` still points at `{adminServerHttps}/swagger/index.html` for every environment, including publish, while non-Development Admin hosts omit that route. Pre-existing topology wiring; already recorded 2026-09-10 and 2026-09-11. Story 5.4 forbids entering later DAPR/topology stories.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, Host+MCP+CLI+docs)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Live Admin CLI mutation commands still have no confirmation gate.
+  evidence: Reconfirmed callable `projection pause|resume|reset` and other live groups execute without preview/confirm. Story 5.4 only required unavailable stubs to return `ExitCodes.Error`. Already recorded 2026-09-10.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: CLI inventory still says profiles persist to `.eventstore-admin-profiles.json` while `ProfileManager` uses `~/.eventstore/profiles.json`.
+  evidence: Reconfirmed pre-existing sentence in `docs/brownfield/component-inventory.md:61`. Already recorded 2026-09-10 and 2026-09-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: `docs/guides/configuration-reference.md` JWT, AppHost, and publish-mode UI grant edits sit beside the Admin OpenAPI section.
+  evidence: Reconfirmed Story 5.3 / topology content in the mixed baseline window. Story 5.4 Never forbids reworking that authentication surface. Already recorded 2026-09-10 and 2026-09-12.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, Chunk 1 bmad-code-review)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: MCP `ValidateTenantId` allows reserved tenant `system` on backup, projection, and consistency writes.
+  evidence: Canonical grammar in `ToolHelper.ValidateTenantId` matches Epic 5 (`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`) and does not reject `system`. Reserved-name rejection is Story 5.10.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: MCP `consistency-detail` interpolates unvalidated `checkId` into the Admin GET path and into `not-found` error text.
+  evidence: `ConsistencyTools.GetCheckDetail` only runs `ValidateRequired`; write tools in this chunk gained `ValidatePathSegments`, but this read tool was not in the diff.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Published-UI `TokenEndpoint` / audience-parameter keys are documented in prose but missing from the configuration quick-scan table.
+  evidence: Reconfirmed Story 5.3 authentication content in the mixed baseline window (`docs/guides/configuration-reference.md:450-462` versus the scan table at `:793`). Already recorded 2026-09-10 and 2026-09-12.

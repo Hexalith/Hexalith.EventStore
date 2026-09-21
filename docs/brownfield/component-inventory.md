@@ -15,7 +15,7 @@
 - **DAPR infra:** `DaprActors`, `DaprComponents`, `DaprPubSub`, `DaprResiliency`, `DaprHealthHistory`, `Services`
 - **Admin:** `Tenants` (CRUD + roles), `TypeCatalog`, `Index`, `Settings`
 
-### Reusable components (16)
+### Reusable components (15)
 
 `StreamTimelineGrid`, `EventDetailPanel`, `StateDiffViewer`, `BlameViewer`, `BisectTool`,
 `CorrelationTraceMap`, `ProjectionStatusBadge`, `TimelineFilterBar`, `StreamFilterBar`, `ActivityChart`,
@@ -73,10 +73,11 @@ Stdio JSON-RPC 2.0. Env: `EVENTSTORE_ADMIN_URL`, `EVENTSTORE_ADMIN_TOKEN`. Tools
   `tenant-users`, `types-list`.
 - **Write (exact callable set):** `projection-pause`, `projection-resume`, `projection-reset`,
   `projection-replay`, `consistency-trigger`, `consistency-cancel`, `backup-trigger` (deferred;
-  confirmation does not prove execution). Every write
-  requires `confirm=true` before it sends an Admin API request. An omitted or false confirmation
-  returns a non-mutating preview with the target, impact, and required permission; it sends no
-  request. Projection writes and consistency trigger require Operator permission; consistency
+  confirmation does not prove execution). Every write requires valid bounded inputs and
+  `confirm=true` before it sends an Admin API request. For valid inputs, an omitted or false
+  confirmation returns a non-mutating preview with the target, impact, and required permission;
+  invalid inputs return a bounded `invalid-input` result. Neither path sends a request. Projection
+  writes and consistency trigger require Operator permission; consistency
   cancel and backup trigger require Admin permission.
 - **Session context:** `session-set-context`, `session-get-context`, `session-clear-context`
   (`InvestigationSession` singleton keeps agent investigation scope across calls).
