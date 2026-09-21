@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -437,3 +437,34 @@ _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 - [Rejected][false] CamelCase `accessToken`/`clientSecret` keys are unmatched — Admin result models have no such properties; values that are JWT-shaped are already scanned.
 - [Rejected][false] Parsed `password` or `access_token` properties skip field-name redaction — current Admin models serialized through `SerializeResult` do not expose those property names.
 - [Rejected][low] Userinfo URLs with an empty password are unmatched — `scheme://user:@host` is not an everyday Admin health link; the existing userinfo pattern already catches `operator:password@`.
+
+### Review Findings — Admin-surface slice (2026-09-21, bmad-code-review)
+
+- [ ] [Review][Patch] Projection reset/replay treat post-accept UI failures as a failed mutation and tear down the dialog [src/Hexalith.EventStore.Admin.UI/Components/ProjectionDetailPanel.razor:531]
+- [ ] [Review][Patch] ConfirmationFacts can show `[redacted]` while the original identifier is still submitted [src/Hexalith.EventStore.Admin.UI/Components/Shared/ConfirmationFacts.razor:43]
+- [ ] [Review][Patch] Dead-letter bulk success claims completed work, including when zero matching rows were attempted [src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor:990]
+- [ ] [Review][Patch] Dead-letter skip facts say "marked skipped" while the dialog body says permanently removed [src/Hexalith.EventStore.Admin.UI/Resources/AdminResources.resx:18]
+- [ ] [Review][Patch] Reset/replay still interpolate raw projection names and call the work "an async operation" beside accepted-request ConfirmationFacts [src/Hexalith.EventStore.Admin.UI/Components/ProjectionDetailPanel.razor:202]
+- [ ] [Review][Patch] `backup-trigger` preview-match can reject composed `target`/`endpoint` after a still-bounded description [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:36]
+- [ ] [Review][Patch] `ValidateEndpoint` trims a trailing slash from the full URI after query strings were allowed [src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs:348]
+- [ ] [Review][Patch] Bounded OIDC reads map every buffering `HttpRequestException` to "exceeded size" and drop the empty-body mapping [src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs:316]
+- [ ] [Review][Patch] `RestoreAsync` runs immediately after `StateHasChanged` with no render/`HideAsync` wait [src/Hexalith.EventStore.Admin.UI/Services/InitiatorFocusService.cs:22]
+- [ ] [Review][Patch] New unsafe-marker detectors miss fragment secrets, token-as-username URLs, and unbounded JWT header decode [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:45]
+- [ ] [Review][Patch] Most destructive 401 close/restore handlers are untested; only create-backup, snapshot create/edit/create-snapshot, and dead-letter mixed retry cover `UnauthorizedAccessException` [src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor:844]
+- [ ] [Review][Patch] Token-client redirect lock is proven only via `AddHttpClient`, not through `AddAdminUI` composition [src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:43]
+- [ ] [Review][Patch] Create Snapshot Policy reuses replace-policy impact copy [src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor:155]
+- [x] [Review][Defer] Browser `activeElement` after Fluent dialog teardown is not proven [src/Hexalith.EventStore.Admin.UI/Services/InitiatorFocusService.cs:22] — deferred: spec already records this pending an authenticated Admin UI E2E fixture with controllable write-denial responses; bUnit only records `hexalithAdmin.focusElementById`.
+- [x] [Review][Defer] Published-UI `TokenEndpoint` / audience-parameter keys are missing from the configuration quick-scan table [docs/guides/configuration-reference.md:793] — deferred: Story 5.3 authentication content; already tracked.
+- [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: unchanged pre-existing sentence; already tracked.
+- [x] [Review][Defer] Replay UI still requires `from < to` while the API/MCP treat the range as inclusive [src/Hexalith.EventStore.Admin.UI/Components/ProjectionDetailPanel.razor:597] — deferred: pre-existing inclusive-range mismatch; already tracked.
+- [x] [Review][Defer] Capability refresh clears open consistency dialogs without restoring the initiator [src/Hexalith.EventStore.Admin.UI/Pages/Consistency.razor:489] — deferred: pre-existing Story 5.3-era path; not in this slice's Consistency hunks; already tracked.
+- [x] [Review][Defer] MCP maps HTTP 403 to `unauthorized` / expired-token copy [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:174] — deferred: pre-existing Admin MCP error taxonomy; this slice only wrapped the existing mapping.
+- [x] [Review][Defer] Consistency cancel focus ids embed raw `checkId` [src/Hexalith.EventStore.Admin.UI/Pages/Consistency.razor:1039] — deferred: unverified whether produced check ids can contain characters that break `getElementById`; sibling backup/snapshot initiators already encode.
+
+#### Rejected
+
+- [Rejected][false] `session-set-context` no longer treats blank `tenantId` as "leave tenant unchanged" — empty or whitespace tenant is invalid canonical input; omitting `tenantId` (`null`) still leaves tenant unchanged, which matches Epic 5 no-trim/no-repair.
+- [Rejected][false] Explicit `TokenEndpoint` skips `HasSameOrigin` — that skip is the documented trusted-origin override; discovery still origin-checks.
+- [Rejected][false] Accepted-request dialogs omit `RestoreAsync` — Always/AC restore focus after cancel, validation, or denial only; success hide+reload is outside that contract.
+- [Rejected][false] `OnImportFileSelected` `ReadToEndAsync` lacks `ConfigureAwait(false)` — that await was not changed; Always applies to changed production awaits.
+- [Rejected][low] Query secret aliases omit hyphenated names such as `access-token` — everyday Admin OAuth/query shapes use underscore names already in `QuerySecretRegex`; adding hyphen variants is extra detector surface for a rare identifier.

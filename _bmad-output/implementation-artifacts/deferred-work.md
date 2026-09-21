@@ -4647,3 +4647,27 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Preserve trailing slashes inside allowed token-endpoint query values during URI normalization.
   evidence: `AdminApiAccessTokenProvider.ValidateEndpoint` trims the full absolute URI, so a trailing slash in an OAuth resource query can be removed; the token-acquisition code belongs to Story 5.3 and predates Story 5.4.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, Admin-surface slice)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Browser `activeElement` after Fluent dialog teardown is not proven.
+  evidence: bUnit only records `hexalithAdmin.focusElementById`. Spec frontmatter already defers this pending an authenticated Admin UI E2E fixture with controllable write-denial responses.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Published-UI `TokenEndpoint` / audience-parameter keys are missing from the configuration quick-scan table.
+  evidence: Reconfirmed Story 5.3 authentication content (`docs/guides/configuration-reference.md:450-462` versus the scan table at `:793`). Already recorded 2026-09-10, 2026-09-12, and 2026-09-21 Chunk 1.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: CLI inventory still says profiles persist to `.eventstore-admin-profiles.json`.
+  evidence: Reconfirmed pre-existing sentence in `docs/brownfield/component-inventory.md:61` while `ProfileManager` uses `~/.eventstore/profiles.json`. Already recorded 2026-09-10 and 2026-09-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Replay UI still requires `from < to` while API/MCP treat the range as inclusive.
+  evidence: `ProjectionDetailPanel.ConfirmReplayAsync` still rejects `from >= to`. Already recorded as the inclusive single-position mismatch.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Capability refresh clears open consistency dialogs without restoring the initiator.
+  evidence: `RefreshCapabilitiesAsync` was not changed in this Admin-surface slice. Already recorded as Story 5.3-era behavior.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: MCP maps HTTP 403 to `unauthorized` / expired-token copy.
+  evidence: `ToolHelper.HandleHttpException` still folds `Forbidden` into the same `unauthorized` token message. Pre-existing Admin MCP error taxonomy; this slice only wrapped existing serialization.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Consistency cancel focus ids embed raw `checkId`.
+  evidence: `GetCancelFocusId` concatenates `checkId` without the encoding used by backup/snapshot initiators. Unverified whether produced check ids can contain characters that break `getElementById`.
