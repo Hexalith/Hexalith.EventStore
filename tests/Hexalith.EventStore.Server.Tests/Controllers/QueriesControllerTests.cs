@@ -500,6 +500,33 @@ public class QueriesControllerTests {
         _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Submit_ProjectionBackedProducerETag_WinsOverLaterValidatorLookup() {
+        string producerETag = GenerateTestETag();
+        string laterETag = GenerateTestETag();
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(
+                metadata: new QueryResponseMetadata(ETag: producerETag) {
+                    Lifecycle = ProjectionLifecycleState.Current,
+                }));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(laterETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        IActionResult actionResult = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        SubmitQueryResponse response = actionResult.ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<SubmitQueryResponse>();
+        response.Metadata.ShouldNotBeNull().ETag.ShouldBe(producerETag);
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{producerETag}\"");
+        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [InlineData(ProjectionLifecycleState.Rebuilding)]
     [InlineData(ProjectionLifecycleState.Degraded)]
@@ -1367,7 +1394,7 @@ public class QueriesControllerTests {
     }
 
     [Fact]
-    public async Task Submit_ProducerMetadata_MergesWithGatewayMetadataByExplicitRules() {
+    public async Task Submit_ProjectionBackedProducerMetadata_PreservesReadConsistentETagAndMergesOtherFields() {
         string producerETag = GenerateTestETag("producer");
         string gatewayETag = GenerateTestETag("orders");
         JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
@@ -1397,7 +1424,7 @@ public class QueriesControllerTests {
         OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
         SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
         _ = response.Metadata.ShouldNotBeNull();
-        response.Metadata.ETag.ShouldBe(gatewayETag);
+        response.Metadata.ETag.ShouldBe(producerETag);
         response.Metadata.IsNotModified.ShouldBe(false);
         response.Metadata.IsStale.ShouldBe(true);
         response.Metadata.IsDegraded.ShouldBe(true);
@@ -1411,7 +1438,11 @@ public class QueriesControllerTests {
         response.Metadata.Paging.HasMore.ShouldBe(true);
         _ = response.Metadata.WarningCodes.ShouldNotBeNull();
         response.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
-        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{gatewayETag}\"");
+        controller.Response.Headers.ETag.ToString().ShouldBe($"\"{producerETag}\"");
+        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

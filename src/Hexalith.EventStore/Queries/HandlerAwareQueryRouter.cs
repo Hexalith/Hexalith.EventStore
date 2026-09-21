@@ -12,7 +12,8 @@ namespace Hexalith.EventStore.Queries;
 /// <see cref="IDomainQueryHandlerRegistry"/>), the query is invoked against the domain service's
 /// <c>/query</c> endpoint via <see cref="IDomainQueryInvoker"/>; otherwise it delegates to the wrapped
 /// projection-actor router. Handler-based queries do not participate in projection ETag caching (they
-/// compute fresh results), so the returned <see cref="QueryRouterResult.ProjectionType"/> is left null.
+/// compute fresh results) unless the handler explicitly returns a projection type together with
+/// projection-backed response metadata.
 /// </summary>
 /// <remarks>
 /// The wrapped <paramref name="inner"/> is the concrete projection-actor <c>QueryRouter</c>, supplied by the
@@ -73,12 +74,16 @@ public sealed class HandlerAwareQueryRouter(
 
         try {
             JsonElement payload = result.GetPayload();
+            bool isProjectionBacked = !string.IsNullOrWhiteSpace(result.ProjectionType)
+                && result.Metadata?.Provenance is QueryResponseProvenance.ProjectionBacked
+                && (string.IsNullOrWhiteSpace(query.ProjectionType)
+                    || string.Equals(query.ProjectionType, result.ProjectionType, StringComparison.Ordinal));
             return new QueryRouterResult(
                 Success: true,
                 Payload: payload,
                 NotFound: false,
-                ProjectionType: null,
-                Metadata: StampHandlerComputed(result.Metadata));
+                ProjectionType: isProjectionBacked ? result.ProjectionType : null,
+                Metadata: isProjectionBacked ? result.Metadata : StampHandlerComputed(result.Metadata));
         }
         catch (JsonException) {
             return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: "Domain query handler returned a malformed payload.");
