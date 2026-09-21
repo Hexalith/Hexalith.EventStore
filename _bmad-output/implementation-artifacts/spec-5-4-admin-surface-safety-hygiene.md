@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -179,6 +179,34 @@ deferred:
 | EC3-20 | `false` — Cancel-focus on validate/export is outside the intent-contract destructive set. | reject |
 | VG3-01 | `medium` — Pre-verified gap: Create Backup and snapshot create-policy/edit-policy/create-snapshot now close and restore on 401/403, but tests still cover only cancel plus sibling denials, so those four handlers can regress silently. | patch |
 | VG3-02 | `medium` — Pre-verified gap: named-client `AllowAutoRedirect=false` is proven only when tests call `AddHttpClient` directly, not through `AddAdminUI`. That composition is Story 5.3 token acquisition, not this hygiene envelope. | defer |
+| BH4-01 | `medium` — carried: the baseline-window `sprint-status.yaml` changes belong to other completed tracking work; Story 5.4 did not change the current working-tree copy. | defer |
+| BH4-02 | `false` — carried: the 543-file baseline window contains independently committed stories and user work, while Story 5.4 remains identifiable by its own Admin-surface commits and current working-tree changes. | reject |
+| BH4-03 | `medium` — Verified: `ConfirmationFacts` bounds text but does not redact credential-shaped values, so interpolated identifiers can expose support-unsafe content. | patch |
+| BH4-04 | `medium` — Verified: import-file tenant, domain, and aggregate identifiers are rendered directly in `_importPreview`; a crafted file can display unbounded credential-shaped content. | patch |
+| BH4-05 | `medium` — Verified: reset confirmation trusts the numeric component's `Min` metadata and sends a negative programmatically supplied position. | patch |
+| BH4-06 | `medium` — Verified: replay checks presence and ordering but sends negative positions when both values preserve the required order. | patch |
+| BH4-07 | `low` — Verified: the pre-existing UI requires `from < to` although the inclusive API/MCP contract permits a single-position replay; this blocks a narrow legitimate workflow. | defer |
+| BH4-08 | `medium` — Verified pre-existing issue: snapshot mutations reuse `_loadCts`, so a concurrent refresh can cancel a write and escape through an uncaught cancellation. | defer |
+| BH4-09 | `medium` — Verified pre-existing issue: snapshot clients surface HTTP 422 as `InvalidOperationException`, which the mutation handlers do not map to bounded UI feedback. | defer |
+| BH4-10 | `medium` — Verified: after a denial following earlier success, later dead-letter tenant groups are neither attempted nor retained as failures, so their selections disappear. | patch |
+| BH4-11 | `medium` — Verified verification weakness: the Production host test challenges one representative Admin route, so a newly anonymous controller action would not fail the acceptance gate. | patch |
+| BH4-12 | `medium` — carried: bUnit proves only the focus interop call; authenticated browser `activeElement` evidence remains unavailable with the current fixture. | defer |
+| BH4-13 | `false` — The tenant-creation contract has no 64-character maximum; that bound is specific to the MCP preview/execution envelope, so the UI is not bypassing a canonical tenant rule. | reject |
+| BH4-14 | `false` — carried: changing this build's review bookkeeping is not a product correction and findings whose fix edits the build spec are rejected. | reject |
+| EC4-01 | `medium` — Verified: repeated consistency check types remain duplicated in the persisted request and per-stream loop, repeating work and potentially anomaly counts. | patch |
+| EC4-02 | `medium` — Verified duplicate of BH4-10: unattempted dead-letter groups after a denial are omitted from failures and the retained selection. | patch |
+| EC4-03 | `medium` — Verified duplicate of BH4-03: credential-shaped confirmation facts are truncated but not redacted. | patch |
+| EC4-04 | `maybe-false` — carried: final browser focus after projection success cannot be established without observing `activeElement` after Fluent dialog teardown. | defer |
+| EC4-05 | `maybe-false` — carried: final browser focus after backup success cannot be established without observing `activeElement` after Fluent dialog teardown. | defer |
+| EC4-06 | `maybe-false` — carried: final browser focus after consistency success cannot be established without observing `activeElement` after Fluent dialog teardown. | defer |
+| EC4-07 | `maybe-false` — carried: final browser focus after snapshot success cannot be established without observing `activeElement` after Fluent dialog teardown or row removal. | defer |
+| EC4-08 | `maybe-false` — carried: final browser focus after tenant success cannot be established without observing `activeElement` after dialog teardown and refresh. | defer |
+| EC4-09 | `maybe-false` — carried: final browser focus after dead-letter success cannot be established without observing `activeElement` after selection-toolbar removal. | defer |
+| EC4-10 | `medium` — Verified outside Story 5.4: an explicitly blank or null `CommandStatusPath` can fail or construct the wrong gateway request because the new status client does not validate it. | defer |
+| EC4-11 | `medium` — carried duplicate of BH4-01: the tracking-file change is unrelated baseline-window history, not a Story 5.4 working-tree mutation. | defer |
+| VG4-01 | `medium` — carried pre-verified gap: focus tests assert mocked interop only, not final browser `activeElement`; the authenticated denial-capable browser fixture remains unavailable. | defer |
+| VG4-02 | `medium` — carried pre-verified gap: redirect safety is not composed through `AddAdminUI`, but that production token-client registration is Story 5.3 work in the mixed baseline window. | defer |
+| VG4-03 | `medium` — Pre-verified gap outside Story 5.4: oversized unknown-length OIDC responses are not tested, so the Story 5.3 bounded-buffer path could regress while known-length tests stay green. | defer |
 
 ## Design Notes
 
@@ -263,19 +291,19 @@ Reuse one presentation component for confirmation facts, but keep each page resp
 
 _Chunk 1 follow-up review — Host, MCP, CLI, and documentation (2026-09-12)._
 
-- [ ] [Review][Patch] Require an explicit `tenantId` for consistency previews and execution so every confirmation names an exact tenant; keep `domain` optional to mean all domains within that tenant [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:26]
-- [ ] [Review][Patch] Derived MCP target and endpoint fields can truncate even when every raw parameter passes preview/execution validation [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:100]
-- [ ] [Review][Patch] Optional backup description and consistency scopes are not normalized before preview and execution, producing redacted, whitespace, or differently omitted values [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:26]
-- [ ] [Review][Patch] Consistency trigger neither validates advertised check-type names nor serializes them to the server's enum contract, so invalid inputs reach transport and valid confirmed calls bind as HTTP 400 [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:26]
-- [ ] [Review][Patch] Projection reset and replay allow negative event positions to reach the protected downstream endpoint [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionWriteTools.cs:112]
-- [ ] [Review][Patch] The exhaustive write-tool invalid-input gate covers only one empty first argument and misses caller-boundary unsafe, overlong, optional-scope, enum, and numeric cases [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:119]
-- [ ] [Review][Patch] Session context stores the full scope but reports a truncated scope that later queries do not use [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:55]
-- [ ] [Review][Patch] MCP result sanitization exposes continuation cursors, opaque projection configuration, and consistency error/raw-detail fields [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:154]
-- [ ] [Review][Patch] The `ping` tool bypasses the bounded and support-safe MCP result sanitizer [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:35]
-- [ ] [Review][Patch] Unsafe-marker detection permits Bearer tokens, JWT-shaped values, JSON secret fields, `client_secret`, and URI user-info through preview and result text [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:14]
-- [ ] [Review][Patch] HTTP 400 responses are mislabeled as `server-error` instead of bounded invalid input [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:135]
-- [ ] [Review][Patch] The reusable-component inventory says 16 but lists 15 components [docs/brownfield/component-inventory.md:18]
-- [ ] [Review][Patch] Backup Swagger and MCP-client XML still promise a full backup although the registered backend is deferred [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:55]
+- [x] [Review][Patch] Require an explicit `tenantId` for consistency previews and execution so every confirmation names an exact tenant; keep `domain` optional to mean all domains within that tenant [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:26]
+- [x] [Review][Patch] Derived MCP target and endpoint fields can truncate even when every raw parameter passes preview/execution validation [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:100]
+- [x] [Review][Patch] Optional backup description and consistency scopes are not normalized before preview and execution, producing redacted, whitespace, or differently omitted values [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:26]
+- [x] [Review][Patch] Consistency trigger neither validates advertised check-type names nor serializes them to the server's enum contract, so invalid inputs reach transport and valid confirmed calls bind as HTTP 400 [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:26]
+- [x] [Review][Patch] Projection reset and replay allow negative event positions to reach the protected downstream endpoint [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionWriteTools.cs:112]
+- [x] [Review][Patch] The exhaustive write-tool invalid-input gate covers only one empty first argument and misses caller-boundary unsafe, overlong, optional-scope, enum, and numeric cases [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:119]
+- [x] [Review][Patch] Session context stores the full scope but reports a truncated scope that later queries do not use [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:55]
+- [x] [Review][Patch] MCP result sanitization exposes continuation cursors, opaque projection configuration, and consistency error/raw-detail fields [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:154]
+- [x] [Review][Patch] The `ping` tool bypasses the bounded and support-safe MCP result sanitizer [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:35]
+- [x] [Review][Patch] Unsafe-marker detection permits Bearer tokens, JWT-shaped values, JSON secret fields, `client_secret`, and URI user-info through preview and result text [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:14]
+- [x] [Review][Patch] HTTP 400 responses are mislabeled as `server-error` instead of bounded invalid input [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:135]
+- [x] [Review][Patch] The reusable-component inventory says 16 but lists 15 components [docs/brownfield/component-inventory.md:18]
+- [x] [Review][Patch] Backup Swagger and MCP-client XML still promise a full backup although the registered backend is deferred [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:55]
 - [x] [Review][Defer] Valid tenant identifiers `admissions`, `export-stream`, and `import-stream` collide with fixed backup controller routes [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:36] — deferred: the collision predates this change and requires a route/versioning or tenant-compatibility decision outside the Story 5.4 deferred-backup boundary.
 - [x] [Review][Defer] CLI inventory names `.eventstore-admin-profiles.json` instead of `~/.eventstore/profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: this unchanged, pre-existing sentence is already tracked from the earlier Story 5.4 chunk review.
 - [x] [Review][Defer] Authentication documentation omits three published-UI settings from its exhaustive table, omits the symmetric `AllowedAlgorithms` rule, and permits Development HTTP token endpoints that the Aspire helper rejects [docs/guides/configuration-reference.md:419] — deferred: these are Story 5.3 authentication/AppHost findings in the mixed baseline window, which Story 5.4 explicitly excludes from rework.
@@ -292,17 +320,17 @@ _Chunk 1 follow-up review — Host, MCP, CLI, and documentation (2026-09-12)._
 
 _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 
-- [ ] [Review][Patch] Consistency trigger uses a string-array client contract that the real enum-bound controller rejects, and it accepts unadvertised check-type values [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:35]
-- [ ] [Review][Patch] Consistency trigger permits an omitted tenant even though an Operator request is silently narrowed to a tenant the preview cannot name [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:22]
-- [ ] [Review][Patch] Optional backup and consistency inputs are not normalized, so blank values render misleading preview parameters or reach execution as ambiguous scopes [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:26]
-- [ ] [Review][Patch] MCP write boundaries accept path-normalizing identifiers, invalid tenant grammar, and negative projection positions that still perform an HTTP request [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionWriteTools.cs:112]
-- [ ] [Review][Patch] Individually bounded parameters can compose a target or endpoint that is truncated before confirmation while execution uses the full values [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:100]
-- [ ] [Review][Patch] MCP result sanitization does not protect cursors, opaque configuration, raw consistency details, error/status messages, or common credential shapes [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:154]
-- [ ] [Review][Patch] Caller-level intent-gate tests cover only one blank argument and do not exercise unsafe, overlong, optional-scope, enum, path, or numeric cases across all write tools [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:119]
-- [ ] [Review][Patch] Published inventory is already miscounted and its test checks selected literals instead of comparing documentation with the CLI/MCP/component assemblies [docs/brownfield/component-inventory.md:18]
-- [ ] [Review][Patch] MCP documentation promises a preview for every omitted or false confirmation although invalid unconfirmed calls correctly return validation errors [docs/brownfield/component-inventory.md:76]
-- [ ] [Review][Patch] Completion-script inventory assertions embed LF-only multi-line literals and fail on Windows-generated CRLF output [tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/CompletionScriptsTests.cs:107]
-- [ ] [Review][Patch] Backup Swagger and MCP-client XML still promise a full backup although the registered backend always returns Deferred [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:55]
+- [x] [Review][Patch] Consistency trigger uses a string-array client contract that the real enum-bound controller rejects, and it accepts unadvertised check-type values [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:35]
+- [x] [Review][Patch] Consistency trigger permits an omitted tenant even though an Operator request is silently narrowed to a tenant the preview cannot name [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:22]
+- [x] [Review][Patch] Optional backup and consistency inputs are not normalized, so blank values render misleading preview parameters or reach execution as ambiguous scopes [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:26]
+- [x] [Review][Patch] MCP write boundaries accept path-normalizing identifiers, invalid tenant grammar, and negative projection positions that still perform an HTTP request [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionWriteTools.cs:112]
+- [x] [Review][Patch] Individually bounded parameters can compose a target or endpoint that is truncated before confirmation while execution uses the full values [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:100]
+- [x] [Review][Patch] MCP result sanitization does not protect cursors, opaque configuration, raw consistency details, error/status messages, or common credential shapes [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:154]
+- [x] [Review][Patch] Caller-level intent-gate tests cover only one blank argument and do not exercise unsafe, overlong, optional-scope, enum, path, or numeric cases across all write tools [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:119]
+- [x] [Review][Patch] Published inventory is already miscounted and its test checks selected literals instead of comparing documentation with the CLI/MCP/component assemblies [docs/brownfield/component-inventory.md:18]
+- [x] [Review][Patch] MCP documentation promises a preview for every omitted or false confirmation although invalid unconfirmed calls correctly return validation errors [docs/brownfield/component-inventory.md:76]
+- [x] [Review][Patch] Completion-script inventory assertions embed LF-only multi-line literals and fail on Windows-generated CRLF output [tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Config/CompletionScriptsTests.cs:107]
+- [x] [Review][Patch] Backup Swagger and MCP-client XML still promise a full backup although the registered backend always returns Deferred [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:55]
 - [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` instead of `~/.eventstore/profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: unchanged pre-existing text, already tracked by the earlier Story 5.4 review.
 - [x] [Review][Defer] Authentication documentation omits published-UI quick-reference settings and symmetric-mode rules, and permits Development HTTP token endpoints that publish composition rejects [docs/guides/configuration-reference.md:419] — deferred: Story 5.3 authentication/AppHost content from the mixed baseline window; Story 5.4 explicitly excludes reworking that boundary.
 - [x] [Review][Defer] Valid tenant `admissions` collides with the fixed backup route and cannot reach the deferred tenant-backup action [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:36] — deferred: pre-existing controller-route ambiguity requiring a route/versioning or tenant-compatibility decision outside Story 5.4.

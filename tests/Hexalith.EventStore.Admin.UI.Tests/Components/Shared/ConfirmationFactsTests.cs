@@ -42,4 +42,22 @@ public class ConfirmationFactsTests : AdminUITestContext
             text.ShouldNotBe(oversized);
         }
     }
+
+    [Fact]
+    public void ConfirmationFacts_RedactsCredentialShapedValues()
+    {
+        IRenderedComponent<ConfirmationFacts> component = Render<ConfirmationFacts>(parameters => parameters
+            .Add(item => item.Target, "Bearer secret-token")
+            .Add(item => item.Impact, "https://user:password@example.test/resource")
+            .Add(item => item.RequiredPermission, "client_secret=private-value"));
+
+        foreach (string fact in new[] { "target", "impact", "permission" })
+        {
+            component.Find($"[data-confirmation-fact='{fact}']").TextContent.ShouldBe("[redacted]");
+        }
+
+        component.Markup.ShouldNotContain("secret-token");
+        component.Markup.ShouldNotContain("password");
+        component.Markup.ShouldNotContain("private-value");
+    }
 }

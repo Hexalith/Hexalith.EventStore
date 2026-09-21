@@ -331,6 +331,39 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
     }
 
     [Theory]
+    [InlineData("reset", "#projection-reset-button", "_resetFromPosition", "From Position must be non-negative.", "projection-reset-button")]
+    [InlineData("replay", "#projection-replay-button", "_replayFromPosition", "Replay positions must be non-negative.", "projection-replay-button")]
+    public async Task ProjectionDialog_NegativePositionPerformsNoWorkAndRestoresFocus(
+        string action,
+        string buttonSelector,
+        string fieldName,
+        string expectedMessage,
+        string expectedFocusId)
+    {
+        _ = _mockApiClient.GetProjectionDetailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ProjectionDetail?>(CreateDetail()));
+        IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
+            .Add(item => item.TenantId, "tenant-1")
+            .Add(item => item.ProjectionName, "counter-projection"));
+        cut.WaitForAssertion(() => cut.Find(buttonSelector), TimeSpan.FromSeconds(5));
+        await cut.Find(buttonSelector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, fieldName, -1L);
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "reset" ? "ConfirmResetAsync" : "ConfirmReplayAsync"));
+
+        _ = _mockApiClient.DidNotReceive().ResetProjectionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>());
+        _ = _mockApiClient.DidNotReceive().ReplayProjectionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message.ShouldBe(expectedMessage);
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Theory]
     [InlineData("reset", "#projection-reset-button", "projection-reset-button")]
     [InlineData("replay", "#projection-replay-button", "projection-replay-button")]
     public async Task ProjectionDialog_ForbiddenUsesSupportSafeCopyAndRestoresFocusWithoutClaimingCompletion(

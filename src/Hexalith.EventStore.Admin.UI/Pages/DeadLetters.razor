@@ -936,8 +936,9 @@
 
         try
         {
-            foreach (IGrouping<string, DeadLetterEntry> group in tenantGroups)
+            for (int groupIndex = 0; groupIndex < tenantGroups.Count; groupIndex++)
             {
+                IGrouping<string, DeadLetterEntry> group = tenantGroups[groupIndex];
                 _bulkProgressCurrent++;
                 StateHasChanged();
 
@@ -958,18 +959,20 @@
                         failures.Add(BulkActionFailureItem.FromResult(actionName, group.Key, group.Select(e => e.MessageId), result));
                     }
                 }
-                catch (UnauthorizedAccessException ex)
+                catch (Exception ex) when (ex is UnauthorizedAccessException or ForbiddenAccessException)
                 {
                     denied = true;
                     failCount += group.Count();
                     failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
-                    break;
-                }
-                catch (ForbiddenAccessException ex)
-                {
-                    denied = true;
-                    failCount += group.Count();
-                    failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
+                    foreach (IGrouping<string, DeadLetterEntry> unattemptedGroup in tenantGroups.Skip(groupIndex + 1))
+                    {
+                        failCount += unattemptedGroup.Count();
+                        failures.Add(BulkActionFailureItem.FromUnattempted(
+                            actionName,
+                            unattemptedGroup.Key,
+                            unattemptedGroup.Select(e => e.MessageId)));
+                    }
+
                     break;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -1222,6 +1225,19 @@
                 null,
                 null);
         }
+
+        public static BulkActionFailureItem FromUnattempted(
+            string actionName,
+            string tenantId,
+            IEnumerable<string> messageIds) =>
+            new(
+                tenantId,
+                messageIds.ToList(),
+                $"Unable to {actionName} entries because authorization was denied for an earlier tenant group.",
+                null,
+                null,
+                null,
+                null);
     }
 
     public async ValueTask DisposeAsync()

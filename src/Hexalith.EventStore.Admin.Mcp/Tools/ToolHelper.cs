@@ -114,6 +114,44 @@ internal static class ToolHelper {
     }
 
     /// <summary>
+    /// Validates canonical tenant identifiers without trimming or repairing caller input.
+    /// </summary>
+    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="parameterName">The public parameter name.</param>
+    /// <returns>An error JSON string, or <c>null</c> when the identifier is canonical.</returns>
+    internal static string? ValidateTenantId(string tenantId, string parameterName = "tenantId") {
+        if (string.IsNullOrEmpty(tenantId)
+            || tenantId.Length > 64
+            || !IsAsciiLowerOrDigit(tenantId[0])
+            || !IsAsciiLowerOrDigit(tenantId[^1])
+            || tenantId.Any(character => !IsAsciiLowerOrDigit(character) && character != '-')) {
+            return SerializeError(
+                "invalid-input",
+                $"Parameter '{parameterName}' must be a canonical tenant identifier of 1-64 lowercase letters, digits, or interior hyphens.");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Rejects values that could be interpreted as multiple or normalizing URI path segments.
+    /// </summary>
+    /// <param name="parameters">Tuples of path-segment value and public parameter name.</param>
+    /// <returns>An error JSON string, or <c>null</c> when all values are safe single segments.</returns>
+    internal static string? ValidatePathSegments(params (string value, string name)[] parameters) {
+        foreach ((string value, string name) in parameters) {
+            if (value is "." or ".."
+                || value.Any(character => character is '/' or '\\' or '?' or '#' or '%' || char.IsControl(character))) {
+                return SerializeError(
+                    "invalid-input",
+                    $"Parameter '{name}' must be a single non-normalizing URI path segment.");
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Entry point for exception handling in all tool methods.
     /// Catches <see cref="HttpRequestException"/>, <see cref="TaskCanceledException"/>,
     /// and <see cref="JsonException"/>.
@@ -137,6 +175,8 @@ internal static class ToolHelper {
             => SerializeError("unauthorized", "Token may be expired or invalid. Check EVENTSTORE_ADMIN_TOKEN."),
         HttpStatusCode.NotFound
             => SerializeError("not-found", "Requested Admin API resource was not found."),
+        HttpStatusCode.BadRequest
+            => SerializeError("invalid-input", "Admin API rejected the request as invalid."),
         HttpStatusCode.Conflict
             => SerializeError("conflict", "Operation conflict. Inspect safe status fields or retry after refreshing state."),
         HttpStatusCode.UnprocessableEntity
@@ -183,19 +223,18 @@ internal static class ToolHelper {
             return result;
         }
 
-        // Per D2: only apply marker-based string replacement when the immediate property key is in
-        // the raw-capable list. Other string values are preserved verbatim so safe descriptor text
-        // mentioning marker substrings (e.g., "connectionString" in operator guidance) is not corrupted.
         if (node is JsonValue value && value.TryGetValue(out string? text)) {
-            if (propertyName is not null && IsRawCapableProperty(propertyName) && UnsafeMarkerDetection.ContainsUnsafeMarker(text)) {
-                return AdminRedactedContent.DefaultPlaceholder;
-            }
-
             if (IsResultMessageProperty(propertyName) && !string.IsNullOrEmpty(text)) {
                 return JsonValue.Create(SafeText(text, "Protected diagnostic text redacted."));
             }
 
-            return text is null ? null : BoundText(text);
+            return text is null
+                ? null
+                : SafeText(
+                    text,
+                    stage.Equals("mcp-preview", StringComparison.Ordinal)
+                        ? "Preview parameter redacted."
+                        : "Protected output text redacted.");
         }
 
         return node.DeepClone();
@@ -264,7 +303,9 @@ internal static class ToolHelper {
             : value[..(MaxSupportSafeTextLength - 3)] + "...";
 
     private static bool IsResultMessageProperty(string? propertyName)
-        => propertyName is not null && propertyName.Equals("message", StringComparison.OrdinalIgnoreCase);
+        => propertyName is not null
+        && (propertyName.Equals("message", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("statusMessage", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsRawCapableProperty(string propertyName)
         => propertyName.Equals("payloadJson", StringComparison.OrdinalIgnoreCase)
@@ -281,7 +322,13 @@ internal static class ToolHelper {
         || propertyName.Equals("keyAlias", StringComparison.OrdinalIgnoreCase)
         || propertyName.Equals("rawResponseBody", StringComparison.OrdinalIgnoreCase)
         || propertyName.Equals("stackTrace", StringComparison.OrdinalIgnoreCase)
-        || propertyName.Equals("exceptionText", StringComparison.OrdinalIgnoreCase);
+        || propertyName.Equals("exceptionText", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("continuationToken", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("cursor", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("configuration", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("rawYamlContent", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("details", StringComparison.OrdinalIgnoreCase)
+        || propertyName.Equals("errorMessage", StringComparison.OrdinalIgnoreCase);
 
     private static string ToContentKind(string propertyName)
         => propertyName.ToLowerInvariant() switch {
@@ -298,6 +345,10 @@ internal static class ToolHelper {
             "keyalias" => "key-alias",
             "rawresponsebody" => "api-response",
             "stacktrace" or "exceptiontext" => "exception-text",
+            "continuationtoken" or "cursor" => "continuation-cursor",
+            "configuration" or "rawyamlcontent" => "opaque-configuration",
+            "details" => "raw-detail",
+            "errormessage" => "error-detail",
             _ => "protected-content",
         };
 
@@ -316,6 +367,15 @@ internal static class ToolHelper {
             "keyalias" => "keyStatus",
             "rawresponsebody" => "responseStatus",
             "stacktrace" or "exceptiontext" => "diagnostic",
+            "continuationtoken" => "continuationStatus",
+            "cursor" => "cursorStatus",
+            "configuration" => "configurationStatus",
+            "rawyamlcontent" => "rawConfigurationStatus",
+            "details" => "detailsStatus",
+            "errormessage" => "errorStatus",
             _ => "redactedContent",
         };
+
+    private static bool IsAsciiLowerOrDigit(char character)
+        => character is >= 'a' and <= 'z' or >= '0' and <= '9';
 }

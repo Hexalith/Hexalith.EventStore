@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -528,6 +529,24 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         using HttpResponseMessage protectedResponse = await client.GetAsync(
             "/api/v1/admin/streams/GetRecentlyActiveStreams");
         protectedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ProductionEndpointMetadata_ExposesOnlyTheThreeHealthProbesAnonymously()
+    {
+        await using var factory = new ProductionAdminServerHostFactory();
+        using HttpClient client = factory.CreateClient();
+        EndpointDataSource endpointDataSource = factory.Services.GetRequiredService<EndpointDataSource>();
+
+        string[] anonymousRoutes = endpointDataSource.Endpoints
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+            .Select(endpoint => endpoint.RoutePattern.RawText ?? string.Empty)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(route => route, StringComparer.Ordinal)
+            .ToArray();
+
+        anonymousRoutes.ShouldBe(["/alive", "/health", "/ready"]);
     }
 
     [Theory]

@@ -1,3 +1,8 @@
+using System.Reflection;
+using System.Text.RegularExpressions;
+
+using Microsoft.AspNetCore.Components;
+
 namespace Hexalith.EventStore.Admin.UI.Tests;
 
 /// <summary>
@@ -42,6 +47,30 @@ public class AdminSurfaceDocumentationTests
         inventory.ShouldNotContain("`import-stream`");
         overview.ShouldContain("seven confirmation-gated writes");
         overview.ShouldContain("explicitly unavailable");
+    }
+
+    [Fact]
+    public void PublishedReusableComponentInventory_MatchesComponentAssemblyAndDeclaredCount()
+    {
+        string inventory = ReadDoc("docs", "brownfield", "component-inventory.md");
+        Match section = Regex.Match(
+            inventory,
+            @"### Reusable components \((?<count>\d+)\)\s+(?<components>.*?)\s+### API clients & services",
+            RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        section.Success.ShouldBeTrue();
+        string[] documented = Regex.Matches(section.Groups["components"].Value, "`([^`]+)`", RegexOptions.CultureInvariant)
+            .Select(match => match.Groups[1].Value)
+            .ToArray();
+        int declaredCount = int.Parse(section.Groups["count"].Value, System.Globalization.CultureInfo.InvariantCulture);
+        Assembly componentAssembly = typeof(Hexalith.EventStore.Admin.UI.Components.Shared.ConfirmationFacts).Assembly;
+
+        documented.Length.ShouldBe(declaredCount);
+        foreach (string componentName in documented)
+        {
+            componentAssembly.GetTypes()
+                .Any(type => type.Name == componentName && typeof(IComponent).IsAssignableFrom(type))
+                .ShouldBeTrue($"Documented reusable component '{componentName}' does not exist in the Admin UI assembly.");
+        }
     }
 
     private static string ReadDoc(params string[] relativePath)

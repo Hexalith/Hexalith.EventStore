@@ -481,6 +481,12 @@
             return;
         }
 
+        if (_resetFromPosition is < 0)
+        {
+            await FailResetValidationAsync("From Position must be non-negative.").ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         _operatingAction = "reset";
 
@@ -582,6 +588,12 @@
             return;
         }
 
+        if (_replayFromPosition.Value < 0 || _replayToPosition.Value < 0)
+        {
+            await FailReplayValidationAsync("Replay positions must be non-negative.").ConfigureAwait(false);
+            return;
+        }
+
         if (_replayFromPosition.Value >= _replayToPosition.Value)
         {
             await FailReplayValidationAsync("From Position must be strictly less than To Position.").ConfigureAwait(false);
@@ -675,6 +687,12 @@
         _replayValidationError = message;
         await ToastService.ShowErrorAsync(message).ConfigureAwait(false);
         await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
+    }
+
+    private async Task FailResetValidationAsync(string message)
+    {
+        await ToastService.ShowErrorAsync(message).ConfigureAwait(false);
+        await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
     }
 
     private async Task ExecuteOperationAsync(string action, Func<Task> operation)

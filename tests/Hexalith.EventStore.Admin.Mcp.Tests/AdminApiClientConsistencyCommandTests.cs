@@ -1,6 +1,7 @@
 
 using System.Net;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Mcp.Tests;
@@ -17,7 +18,7 @@ public class AdminApiClientConsistencyCommandTests {
             _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await client.TriggerConsistencyCheckAsync(null, null, ["SequenceContinuity"], CancellationToken.None);
+        _ = await client.TriggerConsistencyCheckAsync("tenant-1", null, [ConsistencyCheckType.SequenceContinuity], CancellationToken.None);
 
         _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldBe("/api/v1/admin/consistency/checks");
@@ -32,17 +33,20 @@ public class AdminApiClientConsistencyCommandTests {
             _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await client.TriggerConsistencyCheckAsync("t1", "Orders", ["SequenceContinuity", "SnapshotIntegrity"], CancellationToken.None);
+        _ = await client.TriggerConsistencyCheckAsync(
+            "t1",
+            "Orders",
+            [ConsistencyCheckType.SequenceContinuity, ConsistencyCheckType.SnapshotIntegrity],
+            CancellationToken.None);
 
         _ = capturedBody.ShouldNotBeNull();
-        capturedBody.ShouldContain("SequenceContinuity");
-        capturedBody.ShouldContain("SnapshotIntegrity");
+        capturedBody.ShouldContain("\"checkTypes\":[0,1]");
         capturedBody.ShouldContain("\"tenantId\":\"t1\"");
         capturedBody.ShouldContain("\"domain\":\"Orders\"");
     }
 
     [Fact]
-    public async Task TriggerConsistencyCheckAsync_SendsNullTenantIdWhenNull() {
+    public async Task TriggerConsistencyCheckAsync_SendsRequiredTenantId() {
         string? capturedBody = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedBody = r.Content!.ReadAsStringAsync().Result,
@@ -50,10 +54,10 @@ public class AdminApiClientConsistencyCommandTests {
             _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await client.TriggerConsistencyCheckAsync(null, null, ["SequenceContinuity"], CancellationToken.None);
+        _ = await client.TriggerConsistencyCheckAsync("tenant-1", null, [ConsistencyCheckType.SequenceContinuity], CancellationToken.None);
 
         _ = capturedBody.ShouldNotBeNull();
-        capturedBody.ShouldContain("\"tenantId\":null");
+        capturedBody.ShouldContain("\"tenantId\":\"tenant-1\"");
         capturedBody.ShouldContain("\"domain\":null");
     }
 
@@ -99,7 +103,7 @@ public class AdminApiClientConsistencyCommandTests {
             _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        _ = await client.TriggerConsistencyCheckAsync(null, null, ["SequenceContinuity"], CancellationToken.None);
+        _ = await client.TriggerConsistencyCheckAsync("tenant-1", null, [ConsistencyCheckType.SequenceContinuity], CancellationToken.None);
 
         capturedMethod.ShouldBe(HttpMethod.Post);
     }

@@ -143,6 +143,19 @@ public class SessionToolsTests {
         doc.RootElement.GetProperty("domain").GetString().ShouldBe("Orders");
     }
 
+    [Theory]
+    [InlineData(241)]
+    [InlineData(500)]
+    public async Task SetContext_RejectsScopeThatWouldBeTruncatedAndDoesNotStoreIt(int length) {
+        var session = new InvestigationSession();
+
+        string result = await SessionTools.SetContext(session, domain: new string('d', length));
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        session.GetSnapshot().HasContext.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task GetContext_ReturnsHasContextFalse_Initially() {
         var session = new InvestigationSession();

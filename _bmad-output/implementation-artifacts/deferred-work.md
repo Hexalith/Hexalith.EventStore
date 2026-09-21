@@ -4590,3 +4590,18 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-4-15-story-file-diff-review-patches.md`
   summary: Repository-bound snapshot reads remain exposed to a concurrent pathname replacement between component validation and file open.
   evidence: `read_bounded_regular_snapshot` checks symlink components and metadata before calling `path.open`, so a concurrent replacement can redirect the opened file; the frozen intent explicitly excludes TOCTOU refactoring, and an atomic open-beneath design is needed to settle the gap.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Align single-position projection replay semantics between the Admin UI and the inclusive API/MCP contract.
+  evidence: The UI rejects `fromPosition == toPosition` while the API client documents both endpoints as inclusive and MCP permits the same single-position range; this behavior predates the Story 5.4 safety changes.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Separate snapshot mutation cancellation from the page refresh cancellation scope.
+  evidence: Snapshot create, edit, delete-policy, and create-snapshot calls reuse `_loadCts`; a concurrent refresh can cancel a mutation and let `OperationCanceledException` escape, and this cancellation architecture predates Story 5.4.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Map snapshot HTTP 422 responses to bounded UI validation feedback.
+  evidence: `AdminSnapshotApiClient` throws `InvalidOperationException` for 422 while the snapshot mutation handlers do not catch it; the behavior predates the Story 5.4 confirmation/focus changes.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Validate the gateway command-status path before constructing status requests.
+  evidence: An explicitly blank or null `CommandStatusPath` can construct the wrong URI or fail at runtime in `GetCommandStatusAsync`; this gateway feature belongs to separate command-status work in the mixed baseline window.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Exercise oversized unknown-length OIDC discovery and token responses.
+  evidence: Story 5.3 tests use `StringContent` and cover only the known-length precheck, so a chunked-response regression in bounded buffering would remain undetected; token acquisition is outside Story 5.4.
