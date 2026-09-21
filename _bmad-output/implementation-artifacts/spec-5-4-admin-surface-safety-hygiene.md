@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -207,6 +207,29 @@ deferred:
 | VG4-01 | `medium` — carried pre-verified gap: focus tests assert mocked interop only, not final browser `activeElement`; the authenticated denial-capable browser fixture remains unavailable. | defer |
 | VG4-02 | `medium` — carried pre-verified gap: redirect safety is not composed through `AddAdminUI`, but that production token-client registration is Story 5.3 work in the mixed baseline window. | defer |
 | VG4-03 | `medium` — Pre-verified gap outside Story 5.4: oversized unknown-length OIDC responses are not tested, so the Story 5.3 bounded-buffer path could regress while known-length tests stay green. | defer |
+| BH5-01 | `medium` — carried from BH4-01: the baseline diff contains independently committed sprint-status tracking, while the current Story 5.4 working tree and verification leave `sprint-status.yaml` unchanged. | defer |
+| BH5-02 | `false` — The Verification section defines the required command contract; executed outcomes are workflow evidence, and no story requirement says to duplicate those transient results in the spec. | reject |
+| BH5-03 | `medium` — carried from VG4-01: bUnit proves the requested focus interop call, while final browser `activeElement` still requires the deferred authenticated denial-capable fixture. | defer |
+| BH5-04 | `false` — Requiring a canonical tenant in the MCP consistency tool is the accepted Epic 5 tenant-isolation contract; the broader API/UI capability does not define this MCP write envelope. | reject |
+| BH5-05 | `low` — The generic confirmation mismatch is demonstrated only for unsafe or overlong identifiers, and no additional current executable path beyond the separately verified import-file case is shown; a cross-surface guard would add disproportionate complexity. | reject |
+| BH5-06 | `medium` — Verified pre-existing UI issue: identifiers can be rendered outside `ConfirmationFacts`, so credential-shaped server data could remain visible even when the facts component redacts it. | defer |
+| BH5-07 | `medium` — Verified: the narrowed JWT regex requires both JSON segments to start with `eyJ`, so a valid compact JWT with another base64url payload prefix can evade redaction. | patch |
+| BH5-08 | `medium` — Verified: credential detection omits camelCase JSON/query spellings such as `accessToken`, `refreshToken`, `idToken`, and `clientSecret`. | patch |
+| BH5-09 | `false` — Every current Admin controller action has authorization metadata; the reported anonymous endpoint requires a hypothetical future action and does not occur in the reviewed tree. | reject |
+| BH5-10 | `medium` — carried from BH4-08: snapshot writes reuse the load cancellation token, a pre-existing issue already deferred outside this story. | defer |
+| BH5-11 | `medium` — carried from BH4-09: snapshot HTTP 422 handling remains a pre-existing issue already deferred outside this story. | defer |
+| BH5-12 | `low` — carried from BH4-07: the UI excludes an inclusive single-position replay, a pre-existing narrow workflow limitation already deferred. | defer |
+| BH5-13 | `medium` — Verified pre-existing issue: consistency export renders raw `Exception.Message` text in a toast; blame predates the Story 5.4 baseline. | defer |
+| BH5-14 | `medium` — Verified pre-existing issue: consistency result display/export can expose raw `ErrorMessage`, anomaly `Details`, and the full serialized result. | defer |
+| BH5-15 | `medium` — Verified pre-existing issue: capability refresh clears open consistency dialogs and initiator ids without restoring focus; the code predates the Story 5.4 baseline. | defer |
+| EC5-01 | `false` — No current `SerializeResult` caller supplies a plaintext credential beneath a credential-named property; the trigger requires a hypothetical future result model, while current strings still pass through value detection. | reject |
+| EC5-02 | `medium` — Verified: camelCase credential keys and percent-encoded URI user-info can bypass the shared marker detector and reach CLI, MCP, or UI support text. | patch |
+| EC5-03 | `medium` — Verified: import preview redacts or truncates tenant/domain/aggregate identifiers but confirmation still submits the original tenant and JSON content, so the displayed target can differ from execution. | patch |
+| EC5-04 | `medium` — Verified pre-existing Story 5.3 issue: trimming the full token endpoint URI can remove a trailing slash from an allowed query value and change OAuth resource semantics. | defer |
+| EC5-05 | `false` — Earlier tenant groups are separate authorized operations completed before a later group is denied; the loop performs no calls after denial and retains denied/unattempted groups for retry. | reject |
+| EC5-06 | `medium` — carried from BH4-01: the baseline window contains unrelated sprint-status history, but Story 5.4 has no current tracking-file mutation. | defer |
+| VG5-01 | `medium` — Pre-verified gap: the newly recognized query-secret aliases are not exhaustively covered, so removing an alias can leak an observability URL while all current tests remain green. | patch |
+| VG5-02 | `medium` — carried from VG4-01: final browser focus remains unverified beyond mocked interop and awaits the authenticated denial-capable E2E fixture. | defer |
 
 ## Design Notes
 
@@ -360,10 +383,10 @@ _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 
 ### Review Findings — Host+MCP+CLI+docs chunk (2026-09-21)
 
-- [ ] [Review][Patch] MCP `SafeText` plus `JwtRegex` redacts fully-qualified type names that look like three 8+ dotted tokens [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:226]
-- [ ] [Review][Patch] Session context still accepts non-canonical tenant ids that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:23]
-- [ ] [Review][Patch] Composed backup description and consistency domain preview-match rejections are untested [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:38]
-- [ ] [Review][Patch] Ping empty-health payload after the details-to-message reshape is untested [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:34]
+- [x] [Review][Patch] MCP `SafeText` plus `JwtRegex` redacts fully-qualified type names that look like three 8+ dotted tokens [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:226]
+- [x] [Review][Patch] Session context still accepts non-canonical tenant ids that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:23]
+- [x] [Review][Patch] Composed backup description and consistency domain preview-match rejections are untested [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:38]
+- [x] [Review][Patch] Ping empty-health payload after the details-to-message reshape is untested [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:34]
 - [x] [Review][Defer] Live CLI mutation commands still have no confirmation gate [src/Hexalith.EventStore.Admin.Cli/Commands/Projection/ProjectionPauseCommand.cs:10] — deferred: pre-existing; this story only required unavailable commands to return `ExitCodes.Error`; already tracked in the deferred-work ledger.
 - [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: pre-existing sentence left beside the rewritten backup inventory; already tracked.
 - [x] [Review][Defer] `configuration-reference.md` JWT, AppHost, and publish-mode copy sit beside Admin discovery [docs/guides/configuration-reference.md:139] — deferred: Story 5.3 / topology content in the mixed baseline window; already tracked.
@@ -385,14 +408,14 @@ _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 
 ### Review Findings — Chunk 1 Host+MCP+CLI+docs (2026-09-21, bmad-code-review)
 
-- [ ] [Review][Patch] JWT-shaped redaction treats dotted type names as credentials, so legal projection and catalog names never reach preview or result text [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:38]
-- [ ] [Review][Patch] `session-set-context` still stores non-canonical tenant ids that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:23]
-- [ ] [Review][Patch] `consistency-trigger` accepts numeric `Enum.TryParse` tokens (`"0"` runs `SequenceContinuity`; `"99"` is guarded only by untested `IsDefined`) [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:48]
-- [ ] [Review][Patch] Health-link query secrets other than `client_secret` are not marked unsafe [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:44]
-- [ ] [Review][Patch] `backup-trigger` never exercises non-canonical tenant rejection at the tool boundary [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:183]
-- [ ] [Review][Patch] `ValidateTenantId` 64-character bound is unpinned [tests/Hexalith.EventStore.Admin.Mcp.Tests/ToolHelperTests.cs:210]
-- [ ] [Review][Patch] Composed backup-description and consistency-domain preview-match failures are unproven [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:38]
-- [ ] [Review][Patch] Ping empty-health path is untested after the sanitizer reshape [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:35]
+- [x] [Review][Patch] JWT-shaped redaction treats dotted type names as credentials, so legal projection and catalog names never reach preview or result text [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:38]
+- [x] [Review][Patch] `session-set-context` still stores non-canonical tenant ids that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:23]
+- [x] [Review][Patch] `consistency-trigger` accepts numeric `Enum.TryParse` tokens (`"0"` runs `SequenceContinuity`; `"99"` is guarded only by untested `IsDefined`) [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:48]
+- [x] [Review][Patch] Health-link query secrets other than `client_secret` are not marked unsafe [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:44]
+- [x] [Review][Patch] `backup-trigger` never exercises non-canonical tenant rejection at the tool boundary [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:183]
+- [x] [Review][Patch] `ValidateTenantId` 64-character bound is unpinned [tests/Hexalith.EventStore.Admin.Mcp.Tests/ToolHelperTests.cs:210]
+- [x] [Review][Patch] Composed backup-description and consistency-domain preview-match failures are unproven [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:38]
+- [x] [Review][Patch] Ping empty-health path is untested after the sanitizer reshape [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:35]
 - [x] [Review][Defer] `ValidateTenantId` allows reserved tenant `system` [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:122] — deferred: canonical grammar matches Epic 5; reserved-name rejection is Story 5.10.
 - [x] [Review][Defer] `consistency-detail` embeds unvalidated `checkId` in the GET path and error text [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyTools.cs:46] — deferred: pre-existing read tool; this chunk did not change `ConsistencyTools.cs`.
 - [x] [Review][Defer] Published-UI `TokenEndpoint` / audience-parameter keys are missing from the configuration quick-scan table [docs/guides/configuration-reference.md:793] — deferred: Story 5.3 authentication content in the mixed baseline window; already tracked.

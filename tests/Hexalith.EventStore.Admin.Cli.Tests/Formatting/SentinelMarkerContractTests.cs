@@ -22,6 +22,7 @@ public class SentinelMarkerContractTests {
     [InlineData("Inspect connection string status.")]
     [InlineData("Validate the connectionString property of the diagnostic record.")]
     [InlineData("Operator guidance about passwords (none configured).")]
+    [InlineData("Hexalith.EventStore.Administration")]
     [InlineData("")]
     [InlineData(null)]
     public void BenignTextIsNotFalseFlagged(string? value) => UnsafeMarkerDetection.ContainsUnsafeMarker(value).ShouldBeFalse(
@@ -32,6 +33,24 @@ public class SentinelMarkerContractTests {
     public void RealCredentialShapesAreDetected(string value) => UnsafeMarkerDetection.ContainsUnsafeMarker(value).ShouldBeTrue(
             $"Credential-shaped value '{value}' was not detected by UnsafeMarkerDetection.ContainsUnsafeMarker.");
 
+    [Theory]
+    [InlineData("access_token")]
+    [InlineData("accessToken")]
+    [InlineData("refresh_token")]
+    [InlineData("refreshToken")]
+    [InlineData("id_token")]
+    [InlineData("idToken")]
+    [InlineData("token")]
+    [InlineData("password")]
+    [InlineData("secret")]
+    [InlineData("client_secret")]
+    [InlineData("clientSecret")]
+    [InlineData("api_key")]
+    [InlineData("apiKey")]
+    [InlineData("authorization")]
+    public void EverySupportedQuerySecretAliasIsDetected(string alias)
+        => UnsafeMarkerDetection.ContainsUnsafeMarker($"https://example.test/health?{alias}=secret-value").ShouldBeTrue();
+
     public static TheoryData<string> CredentialShapes => new()
     {
         string.Concat("Server=...;Connection", "String=Endpoint=..."),
@@ -40,10 +59,21 @@ public class SentinelMarkerContractTests {
         string.Concat("pass", "word=hunter2"),
         "Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature",
         "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678",
+        "eyJhbGciOiJIUzI1NiJ9.IHsic3ViIjoiYWRtaW4ifQ.abcdefgh12345678",
+        "IHsiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678",
         "{\"access_token\":\"secret-value\"}",
+        "{\"accessToken\":\"secret-value\"}",
+        "{\"refreshToken\":\"secret-value\"}",
+        "{\"idToken\":\"secret-value\"}",
+        "{\"clientSecret\":\"secret-value\"}",
+        "{\"apiKey\":\"secret-value\"}",
         "{\"client_secret\":\"secret-value\"}",
         "client_secret=secret-value",
+        "https://example.test/health?access_token=secret-value",
+        "https://example.test/health?api_key=secret-value",
+        "https://example.test/health?password=secret-value",
         "https://operator:password@example.test/path",
+        "https://operator%3Apassword@example.test/path",
         "PROTECTED_marker",
     };
 }

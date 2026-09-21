@@ -249,6 +249,8 @@ public class ConsistencyWriteToolsTests {
     [Theory]
     [InlineData("UnknownCheck")]
     [InlineData("SequenceContinuity,UnknownCheck")]
+    [InlineData("0")]
+    [InlineData("99")]
     public async Task TriggerCheck_RejectsUnknownCheckTypesWithoutSendingRequest(string checkTypes) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         int requestCount = 0;

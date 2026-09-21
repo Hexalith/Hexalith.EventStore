@@ -4635,3 +4635,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Published-UI `TokenEndpoint` / audience-parameter keys are documented in prose but missing from the configuration quick-scan table.
   evidence: Reconfirmed Story 5.3 authentication content in the mixed baseline window (`docs/guides/configuration-reference.md:450-462` versus the scan table at `:793`). Already recorded 2026-09-10 and 2026-09-12.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Sanitize credential-shaped identifiers rendered outside Admin UI confirmation facts.
+  evidence: Projection, backup, tenant, and snapshot identifiers can be rendered in titles or explanatory text outside `ConfirmationFacts`; this presentation behavior predates the Story 5.4 facts-component hardening.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Make consistency result display and export support-safe.
+  evidence: `Consistency.razor` still renders raw `Exception.Message`, `ErrorMessage`, and anomaly `Details`, and exports the complete result; these paths predate the Story 5.4 baseline.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Restore consistency-dialog focus when an authentication-state change removes capabilities.
+  evidence: `RefreshCapabilitiesAsync` clears open trigger/cancel dialogs and initiator ids without invoking the focus-restoration path; this Story 5.3-era behavior predates the Story 5.4 baseline.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Preserve trailing slashes inside allowed token-endpoint query values during URI normalization.
+  evidence: `AdminApiAccessTokenProvider.ValidateEndpoint` trims the full absolute URI, so a trailing slash in an OAuth resource query can be removed; the token-acquisition code belongs to Story 5.3 and predates Story 5.4.

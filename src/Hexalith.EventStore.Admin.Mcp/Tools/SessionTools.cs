@@ -20,10 +20,10 @@ internal static class SessionTools {
         [Description("Domain name to scope queries to")] string? domain = null,
         [Description("Set to true to clear the tenant scope")] bool clearTenantId = false,
         [Description("Set to true to clear the domain scope")] bool clearDomain = false) {
-        tenantId = NormalizeScopeInput(tenantId);
         domain = NormalizeScopeInput(domain);
 
-        string? validation = ToolHelper.ValidatePreviewMatchesExecution(
+        string? validation = tenantId is null ? null : ToolHelper.ValidateTenantId(tenantId);
+        validation ??= ToolHelper.ValidatePreviewMatchesExecution(
             (tenantId, "tenantId"),
             (domain, "domain"));
         if (validation is not null) {

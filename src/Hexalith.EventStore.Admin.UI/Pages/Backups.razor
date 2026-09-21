@@ -1230,11 +1230,21 @@
                     return;
                 }
 
+                string confirmationTarget = Text["BackupTenantTarget", tenantId];
+                if (!IsExactSupportSafeImportText(tenantId)
+                    || !IsExactSupportSafeImportText(domain)
+                    || !IsExactSupportSafeImportText(aggregateId)
+                    || !IsExactSupportSafeImportText(confirmationTarget))
+                {
+                    await FailImportFileAsync(Text["BackupImportUnsafeTarget"].Value).ConfigureAwait(false);
+                    return;
+                }
+
                 _importTenantId = tenantId;
                 _importContent = content;
-                _importPreview = $"Tenant: {SanitizeImportPreviewField(tenantId)}\n"
-                    + $"Domain: {SanitizeImportPreviewField(domain)}\n"
-                    + $"Aggregate: {SanitizeImportPreviewField(aggregateId)}\n"
+                _importPreview = $"Tenant: {tenantId}\n"
+                    + $"Domain: {domain}\n"
+                    + $"Aggregate: {aggregateId}\n"
                     + $"Events: {evts.GetArrayLength()}";
             }
             catch (System.Text.Json.JsonException)
@@ -1256,17 +1266,9 @@
         await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
     }
 
-    private static string SanitizeImportPreviewField(string value)
-    {
-        if (UnsafeMarkerDetection.ContainsUnsafeMarker(value))
-        {
-            return "[redacted]";
-        }
-
-        return value.Length <= MaxImportPreviewFieldLength
-            ? value
-            : value[..(MaxImportPreviewFieldLength - 3)] + "...";
-    }
+    private static bool IsExactSupportSafeImportText(string value)
+        => value.Length <= MaxImportPreviewFieldLength
+        && !UnsafeMarkerDetection.ContainsUnsafeMarker(value);
 
     private async Task OnImportConfirm()
     {

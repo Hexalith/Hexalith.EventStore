@@ -940,34 +940,39 @@ public class BackupsPageTests : AdminUITestContext {
         cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Admin");
     }
 
-    [Fact]
-    public async Task ImportDialog_RedactsCredentialShapedIdentifiersAndBoundsEachPreviewField()
+    [Theory]
+    [MemberData(nameof(ImportTargetsThatCannotBeDisplayedExactly))]
+    public async Task ImportDialog_RejectsTargetsThatCannotBeDisplayedExactlyAndRestoresFocus(string content)
     {
         SetupJobs([]);
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
         await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
-        string oversizedDomain = new('d', 280);
-        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = CreateBrowserFile(
-            $$"""{"tenantId":"Bearer secret-token","domain":"{{oversizedDomain}}","aggregateId":"https://user:password@example.test/aggregate","events":[]}""");
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = CreateBrowserFile(content);
 
         await cut.InvokeAsync(() => InvokePrivateAsync(
             cut.Instance,
             "OnImportFileSelected",
             new Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs([file])));
-        cut.Render();
 
-        string preview = GetPrivateField<string>(cut.Instance, "_importPreview");
-        preview.ShouldContain("Tenant: [redacted]");
-        preview.ShouldContain("Aggregate: [redacted]");
-        string domainLine = preview.Split('\n').Single(line => line.StartsWith("Domain: ", StringComparison.Ordinal));
-        domainLine.Length.ShouldBe("Domain: ".Length + 240);
-        domainLine.ShouldEndWith("...");
-        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("[redacted]");
-        cut.Markup.ShouldNotContain("secret-token");
-        cut.Markup.ShouldNotContain("user:password");
-        cut.Markup.ShouldNotContain(oversizedDomain);
+        cut.Markup.ShouldNotContain("Select a previously exported JSON file");
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message.ShouldBe(
+            "Import target identifiers must be support-safe and no more than 240 characters.");
+        _ = _mockBackupApi.DidNotReceive().ImportStreamAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("backup-import-button");
     }
+
+    public static TheoryData<string> ImportTargetsThatCannotBeDisplayedExactly => new()
+    {
+        CreateImportContent("Bearer secret-token", "Counter", "counter-1"),
+        CreateImportContent(new string('t', 241), "Counter", "counter-1"),
+        CreateImportContent("tenant-a", "clientSecret=secret-value", "counter-1"),
+        CreateImportContent("tenant-a", new string('d', 241), "counter-1"),
+        CreateImportContent("tenant-a", "Counter", "https://user%3Apassword@example.test/aggregate"),
+        CreateImportContent("tenant-a", "Counter", new string('a', 241)),
+    };
 
     [Theory]
     [InlineData("{\"tenantId\":\"tenant-a\",\"domain\":\"Counter\",\"aggregateId\":\"counter-1\"}")]
@@ -1227,6 +1232,15 @@ public class BackupsPageTests : AdminUITestContext {
             .Returns(_ => new MemoryStream(bytes, writable: false));
         return file;
     }
+
+    private static string CreateImportContent(string tenantId, string domain, string aggregateId)
+        => System.Text.Json.JsonSerializer.Serialize(new
+        {
+            tenantId,
+            domain,
+            aggregateId,
+            events = Array.Empty<object>(),
+        });
 
     private static T GetPrivateField<T>(object instance, string fieldName)
         => (T)instance.GetType().GetField(

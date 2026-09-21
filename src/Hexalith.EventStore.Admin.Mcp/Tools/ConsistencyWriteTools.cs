@@ -46,7 +46,8 @@ internal static class ConsistencyWriteTools {
         HashSet<ConsistencyCheckType> seenTypes = [];
         foreach (string requestedType in requestedTypes) {
             if (!Enum.TryParse(requestedType, ignoreCase: true, out ConsistencyCheckType parsedType)
-                || !Enum.IsDefined(parsedType)) {
+                || !Enum.IsDefined(parsedType)
+                || !string.Equals(Enum.GetName(parsedType), requestedType, StringComparison.OrdinalIgnoreCase)) {
                 return ToolHelper.SerializeError(
                     "invalid-input",
                     $"Unknown check type '{requestedType}'. Valid types: SequenceContinuity, SnapshotIntegrity, ProjectionPositions, MetadataConsistency");

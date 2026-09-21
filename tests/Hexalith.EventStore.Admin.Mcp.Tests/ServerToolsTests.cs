@@ -25,6 +25,19 @@ public class ServerToolsTests {
     }
 
     [Fact]
+    public async Task Ping_ReturnsBoundedError_WhenApiReturnsEmptyHealth() {
+        using HttpClient httpClient = CreateMockHttpClient(HttpStatusCode.OK, "null");
+        var client = new AdminApiClient(httpClient);
+
+        string result = await ServerTools.Ping(client, CancellationToken.None);
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("error");
+        document.RootElement.GetProperty("health").ValueKind.ShouldBe(JsonValueKind.Null);
+        document.RootElement.GetProperty("message").GetString().ShouldBe("Admin API returned empty health response");
+    }
+
+    [Fact]
     public async Task Ping_ReturnsUnreachable_WhenConnectionFails() {
         // Arrange
         using HttpClient httpClient = CreateThrowingHttpClient(new HttpRequestException("Connection refused"));
@@ -134,18 +147,24 @@ public class ServerToolsTests {
         doc.RootElement.TryGetProperty("serverVersion", out _).ShouldBeTrue();
     }
 
-    [Fact]
-    public async Task Ping_SanitizesCredentialShapedHealthLinks() {
+    [Theory]
+    [InlineData("https://example.test/traces?access_token=secret-value")]
+    [InlineData("https://example.test/traces?api_key=secret-value")]
+    [InlineData("https://example.test/traces?clientSecret=secret-value")]
+    [InlineData("https://example.test/traces?password=secret-value")]
+    [InlineData("https://operator:password@example.test/traces")]
+    [InlineData("https://operator%3Apassword@example.test/traces")]
+    public async Task Ping_SanitizesCredentialShapedHealthLinks(string traceUrl) {
         string healthJson = GetHealthJson().Replace(
             "\"traceUrl\": null",
-            "\"traceUrl\": \"https://operator:password@example.test/traces\"",
+            $"\"traceUrl\": \"{traceUrl}\"",
             StringComparison.Ordinal);
         using HttpClient httpClient = CreateMockHttpClient(HttpStatusCode.OK, healthJson);
         var client = new AdminApiClient(httpClient);
 
         string result = await ServerTools.Ping(client, CancellationToken.None);
 
-        result.ShouldNotContain("operator:password");
+        result.ShouldNotContain(traceUrl);
         using var document = JsonDocument.Parse(result);
         document.RootElement.GetProperty("health")
             .GetProperty("observabilityLinks")

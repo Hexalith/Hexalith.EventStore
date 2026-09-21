@@ -214,6 +214,15 @@ public class ToolHelperTests {
     }
 
     [Theory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public void ValidateTenantId_EnforcesLengthBoundary(int length, bool valid) {
+        string? result = ToolHelper.ValidateTenantId(new string('a', length));
+
+        (result is null).ShouldBe(valid);
+    }
+
+    [Theory]
     [InlineData("projection-1", true)]
     [InlineData(".", false)]
     [InlineData("..", false)]
@@ -406,15 +415,58 @@ public class ToolHelperTests {
     [Theory]
     [InlineData("Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature")]
     [InlineData("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678")]
+    [InlineData("eyJhbGciOiJIUzI1NiJ9.IHsic3ViIjoiYWRtaW4ifQ.abcdefgh12345678")]
+    [InlineData("IHsiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678")]
     [InlineData("{\"client_secret\":\"secret-value\"}")]
+    [InlineData("{\"accessToken\":\"secret-value\"}")]
+    [InlineData("{\"refreshToken\":\"secret-value\"}")]
+    [InlineData("{\"idToken\":\"secret-value\"}")]
+    [InlineData("{\"clientSecret\":\"secret-value\"}")]
+    [InlineData("{\"apiKey\":\"secret-value\"}")]
     [InlineData("client_secret=secret-value")]
     [InlineData("https://operator:password@example.test/path")]
+    [InlineData("https://operator%3Apassword@example.test/path")]
     public void SerializeResult_RedactsCredentialShapesUnderOrdinaryKeys(string credential) {
         string result = ToolHelper.SerializeResult(new { ordinaryText = credential });
 
         result.ShouldNotContain(credential);
         using var document = JsonDocument.Parse(result);
         document.RootElement.GetProperty("ordinaryText").GetString().ShouldBe("Protected output text redacted.");
+    }
+
+    [Theory]
+    [InlineData("access_token")]
+    [InlineData("accessToken")]
+    [InlineData("refresh_token")]
+    [InlineData("refreshToken")]
+    [InlineData("id_token")]
+    [InlineData("idToken")]
+    [InlineData("token")]
+    [InlineData("password")]
+    [InlineData("secret")]
+    [InlineData("client_secret")]
+    [InlineData("clientSecret")]
+    [InlineData("api_key")]
+    [InlineData("apiKey")]
+    [InlineData("authorization")]
+    public void SerializeResult_RedactsEverySupportedQuerySecretAlias(string alias) {
+        string result = ToolHelper.SerializeResult(new {
+            healthLink = $"https://example.test/health?{alias}=secret-value",
+        });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("healthLink").GetString().ShouldBe("Protected output text redacted.");
+    }
+
+    [Fact]
+    public void DottedTypeNamesRemainSupportSafeInPreviewAndResults() {
+        const string dottedTypeName = "Hexalith.EventStore.Administration";
+
+        ToolHelper.ValidatePreviewMatchesExecution((dottedTypeName, "projectionName")).ShouldBeNull();
+        string result = ToolHelper.SerializeResult(new { projectionName = dottedTypeName });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("projectionName").GetString().ShouldBe(dottedTypeName);
     }
 
     // P13 — Defense-in-depth recursion bound (MaxSanitizeDepth = 64) is coded inside both

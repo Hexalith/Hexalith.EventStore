@@ -180,6 +180,7 @@ public class WriteToolIntentGateTests
 
         Task<string>[] attempts =
         [
+            BackupWriteTools.TriggerBackup(client, "Tenant-1", confirm: true, cancellationToken: cancellationToken),
             BackupWriteTools.TriggerBackup(client, "tenant-1", description: unsafeValue, confirm: true, cancellationToken: cancellationToken),
             BackupWriteTools.TriggerBackup(client, "tenant-1", description: overlong, confirm: true, cancellationToken: cancellationToken),
             ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "Tenant-1", confirm: true, cancellationToken: cancellationToken),
@@ -201,6 +202,44 @@ public class WriteToolIntentGateTests
             using JsonDocument document = JsonDocument.Parse(result);
             document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
             document.RootElement.GetProperty("message").GetString()!.Length.ShouldBeLessThanOrEqualTo(240);
+        }
+    }
+
+    [Fact]
+    public async Task ComposedPreviewFieldsThatExceedTheBound_PerformZeroRequests()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        int requestCount = 0;
+        using var handler = new MockHttpMessageHandler((_, _) => {
+                _ = Interlocked.Increment(ref requestCount);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            });
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
+        var client = new AdminApiClient(httpClient);
+        string tenantId = new('t', 64);
+        string optionalText = new('x', 180);
+
+        string[] results = await Task.WhenAll(
+            BackupWriteTools.TriggerBackup(
+                client,
+                tenantId,
+                description: optionalText,
+                confirm: true,
+                cancellationToken: cancellationToken),
+            ConsistencyWriteTools.TriggerCheck(
+                client,
+                "SequenceContinuity",
+                tenantId,
+                domain: optionalText,
+                confirm: true,
+                cancellationToken: cancellationToken));
+
+        requestCount.ShouldBe(0);
+        foreach (string result in results)
+        {
+            using JsonDocument document = JsonDocument.Parse(result);
+            document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+            document.RootElement.GetProperty("message").GetString()!.ShouldContain("target");
         }
     }
 
