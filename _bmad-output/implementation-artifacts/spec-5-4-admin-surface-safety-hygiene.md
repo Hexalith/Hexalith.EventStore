@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -342,3 +342,75 @@ _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 - [Rejected][false] Confirmation must bind to a previous preview with a nonce — the story explicitly forbids adding a preview nonce protocol and defines `confirm=true` as the complete intent gate.
 - [Rejected][false] The callable-write inventory currently misses mutations outside `*WriteTools` — every current callable write and `AdminOperationResult` POST helper is enumerated; the alleged miss requires a hypothetical future convention violation.
 - [Rejected][low] UTF-16 truncation can split a surrogate pair (duplicate edge-case report) — rejected for the same low-frequency, disproportionate-fix reason above.
+
+### Review Findings — Host/OpenAPI chunk (2026-09-21)
+
+- [x] [Review][Defer] AppHost advertises an unavailable Admin Swagger URL outside Development [src/Hexalith.EventStore.AppHost/Program.cs:374] — deferred: pre-existing topology wiring outside this Host/OpenAPI chunk; Story 5.4 forbids later DAPR/topology stories; already tracked in the deferred-work ledger from 2026-09-10 and 2026-09-11.
+
+#### Rejected — Host/OpenAPI chunk (2026-09-21)
+
+- [Rejected][false] Mapped Development OpenAPI/Swagger is anonymous — Story 5.4 Design Notes and the I/O matrix make Development discovery a local aid; `Always` restricts the three-probe anonymous rule to outside Development; `DevelopmentPipeline_WithExplicitEnablement_MapsDiscovery` is the specified unauthenticated 200 proof.
+- [Rejected][false] `ProductionEndpointMetadata_ExposesOnlyTheThreeHealthProbesAnonymously` cannot catch a discovery leak — that test inventories AD-16 `IAllowAnonymous` probes; `ProductionPipeline_AlwaysOmitsDiscovery` already asserts 404 on `/openapi/v1.json`, `/swagger`, and `/swagger/index.html` with redirects disabled, including `Enabled=true`.
+- [Rejected][false] Non-Development environments other than Production are untested — `IsDevelopment()` is the same false branch for Staging/Test/custom names; the acceptance criterion requires the real Production host, which the theory covers.
+- [Rejected][false] `DevelopmentPipeline_WithDiscoveryUnset_OmitsDiscovery` overlays null rather than a missing key — `GetValue<bool>` treats a later null the same as an absent key (`false`); that is the fail-closed replacement for the old default-`true` fallback.
+- [Rejected][false] `ProductionAdminServerHostFactory` no longer tests shipped `appsettings.json` `Enabled: false` — the Production theory pins both `true` and `false`; the parameterless factory default `true` is the less-safe overlay on the `IsDevelopment()` gate.
+- [Rejected][false] `AdminOpenApiDisabledFactory` copies the host gate and cannot reach the true branch — Host.Tests exercise real `Program.cs`; the factory is a Server.Tests double that must keep discovery unmapped.
+- [Rejected][false] `appsettings.Development.json` `Enabled: true` still ships with the app — explicit Development enablement is the specified local switch; a container left on `ASPNETCORE_ENVIRONMENT=Development` is that environment, not Production.
+- [Rejected][low] Empty or non-boolean `EventStore:Admin:OpenApi:Enabled` throws during host build — `GetValue<bool>` fail-fast on malformed values predates this gate change; a `TryParse` swallow would add a branch for an operator typo that already surfaces a precise conversion diagnostic.
+
+### Review Findings — Host+MCP+CLI+docs chunk (2026-09-21)
+
+- [ ] [Review][Patch] MCP `SafeText` plus `JwtRegex` redacts fully-qualified type names that look like three 8+ dotted tokens [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:226]
+- [ ] [Review][Patch] Session context still accepts non-canonical tenant ids that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:23]
+- [ ] [Review][Patch] Composed backup description and consistency domain preview-match rejections are untested [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:38]
+- [ ] [Review][Patch] Ping empty-health payload after the details-to-message reshape is untested [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:34]
+- [x] [Review][Defer] Live CLI mutation commands still have no confirmation gate [src/Hexalith.EventStore.Admin.Cli/Commands/Projection/ProjectionPauseCommand.cs:10] — deferred: pre-existing; this story only required unavailable commands to return `ExitCodes.Error`; already tracked in the deferred-work ledger.
+- [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: pre-existing sentence left beside the rewritten backup inventory; already tracked.
+- [x] [Review][Defer] `configuration-reference.md` JWT, AppHost, and publish-mode copy sit beside Admin discovery [docs/guides/configuration-reference.md:139] — deferred: Story 5.3 / topology content in the mixed baseline window; already tracked.
+
+#### Rejected — Host+MCP+CLI+docs chunk (2026-09-21)
+
+- [Rejected][false] Stripping `continuationToken` / `cursor` from MCP paged results hides pagination — Story 5.4 Never forbids exposing cursors; timeline paging still uses `fromSequence` / item sequence numbers.
+- [Rejected][false] Treating `details` and `errorMessage` as raw-capable hides operator diagnostics — the 2026-09-12 patch required descriptorizing those fields; anomaly `Description` remains; `ping` already moved support-safe text onto `message`.
+- [Rejected][low] Independently legal fields can fail composed target/endpoint preview-match — everyday tenant and projection names stay under 240 characters; the 64/180 projection case is already asserted as `invalid-input`.
+- [Rejected][false] `consistency-trigger` requiring a tenant removed fleet-wide MCP checks — requiring a canonical tenant matches Epic 5 isolation and the earlier explicit-tenant patch; the Admin API/UI still allow platform-scoped runs.
+- [Rejected][low] `Enum.TryParse` accepts numeric aliases such as `"0"` — everyday callers pass advertised names; confirmed posts already send integers, which the intent-gate pins and the Admin API binds.
+- [Rejected][false] Confirmed `backup-trigger` still POSTs while CLI backup stubs fail — MCP confirm must attempt the deferred route; registered CLI `create|restore|list` must return `ExitCodes.Error`.
+- [Rejected][false] `AdminOpenApiWebApplicationFactory` maps OpenAPI unconditionally — that factory generates schema documents; `HostBootstrapTests` is the real-host gate.
+- [Rejected][false] Development discovery is anonymous — Story 5.4 Always limits the three-probe rule to outside Development; unauthenticated 200s are the specified local-aid proof.
+- [Rejected][false] Malformed Development `Enabled` throws while mapping discovery — Production short-circuits before `GetValue<bool>`; Development fail-fast on a non-boolean is pre-existing binder behavior, already rejected on 2026-09-11.
+- [Rejected][low] `SerializeResult_RestrictsMarkerRedactionToRawCapableKeys_PerD2` is stale — D2 still holds for marker substrings under ordinary keys; `SerializeResult_RedactsCredentialShapesUnderOrdinaryKeys` documents the JWT/credential contract.
+- [Rejected][false] `StubCommandsTests` races on `Console.Error` without `[Collection("ConsoleTests")]` — the class already has that collection attribute.
+- [Rejected][false] Dormant `BackupTriggerCommand` success tests imply backup still completes — `BackupCommand.Create` does not register that type; the spec preserves dormant engines without wiring them.
+
+### Review Findings — Chunk 1 Host+MCP+CLI+docs (2026-09-21, bmad-code-review)
+
+- [ ] [Review][Patch] JWT-shaped redaction treats dotted type names as credentials, so legal projection and catalog names never reach preview or result text [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:38]
+- [ ] [Review][Patch] `session-set-context` still stores non-canonical tenant ids that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/SessionTools.cs:23]
+- [ ] [Review][Patch] `consistency-trigger` accepts numeric `Enum.TryParse` tokens (`"0"` runs `SequenceContinuity`; `"99"` is guarded only by untested `IsDefined`) [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyWriteTools.cs:48]
+- [ ] [Review][Patch] Health-link query secrets other than `client_secret` are not marked unsafe [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:44]
+- [ ] [Review][Patch] `backup-trigger` never exercises non-canonical tenant rejection at the tool boundary [tests/Hexalith.EventStore.Admin.Mcp.Tests/WriteToolIntentGateTests.cs:183]
+- [ ] [Review][Patch] `ValidateTenantId` 64-character bound is unpinned [tests/Hexalith.EventStore.Admin.Mcp.Tests/ToolHelperTests.cs:210]
+- [ ] [Review][Patch] Composed backup-description and consistency-domain preview-match failures are unproven [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:38]
+- [ ] [Review][Patch] Ping empty-health path is untested after the sanitizer reshape [src/Hexalith.EventStore.Admin.Mcp/Tools/ServerTools.cs:35]
+- [x] [Review][Defer] `ValidateTenantId` allows reserved tenant `system` [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:122] — deferred: canonical grammar matches Epic 5; reserved-name rejection is Story 5.10.
+- [x] [Review][Defer] `consistency-detail` embeds unvalidated `checkId` in the GET path and error text [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyTools.cs:46] — deferred: pre-existing read tool; this chunk did not change `ConsistencyTools.cs`.
+- [x] [Review][Defer] Published-UI `TokenEndpoint` / audience-parameter keys are missing from the configuration quick-scan table [docs/guides/configuration-reference.md:793] — deferred: Story 5.3 authentication content in the mixed baseline window; already tracked.
+
+#### Rejected
+
+- [Rejected][false] Staging/Test discovery is undescribed and untested — `IsDevelopment()` already omits mapping for every non-Development name; the AC requires the real Production host, which `ProductionPipeline_AlwaysOmitsDiscovery` covers.
+- [Rejected][false] Development discovery is anonymous and the docs omit that the gate is the environment name — the I/O matrix maps Development discovery as a local aid; Always restricts the three-probe anonymous rule to outside Development.
+- [Rejected][false] `AdminOpenApiWebApplicationFactory` no longer proves the Development×flag conjunction — that factory generates schema documents; `HostBootstrapTests` exercises real `Program.cs`.
+- [Rejected][false] Consecutive hyphens such as `a--b` are illegal tenants — Epic 5 grammar `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` allows them.
+- [Rejected][false] Preview names versus numeric `checkTypes` on the wire is a confirm/execute mismatch — `AdminApiClientConsistencyCommandTests` pins `"checkTypes":[0,1]` and the Admin binder accepts those enum values; the named preview is the same parsed set.
+- [Rejected][false] Adding `configuration` and `details` to `IsRawCapableProperty` hides actor runtime config — that named-key descriptorizing is the 2026-09-12 accepted leak fix; structured actor `Configuration` is treated as opaque by the same rule.
+- [Rejected][false] `JsonSecretFieldRegex` treating `"token"` rewrites pagination/correlation tokens under safe keys — ordinary token values do not contain `"token":`; `safeGuidance` mentioning `connectionString` still survives.
+- [Rejected][low] `BearerTokenRegex` matches English `Bearer of …` and omits Basic/PEM/`Authorization:` — everyday Admin results do not carry those shapes; tightening the detector adds branches for a phrase that is not in the current models.
+- [Rejected][false] `api-contracts.md` still lists backup POST routes as live `AdminFull` operations — that table is the Story 5.2 policy/body-limit inventory of callable HTTP actions; deferred semantics are already on MCP/CLI and the controller XML.
+- [Rejected][false] Shell completions still offer `backup create|restore|list` without an unavailable hint — those are registered stub commands that already return `ExitCodes.Error`; the inventory documents that contract.
+- [Rejected][false] MCP preview JSON still emits `description`/`warning` without a published contract — `component-inventory.md` already names target, impact, and required permission; extra fields do not replace them.
+- [Rejected][false] JWT detection misses plus, slash, padding, or segments shorter than 8 — standard JWTs are base64url; the current pattern already matches `eyJ…` tokens.
+- [Rejected][false] CamelCase `accessToken`/`clientSecret` keys are unmatched — Admin result models have no such properties; values that are JWT-shaped are already scanned.
+- [Rejected][false] Parsed `password` or `access_token` properties skip field-name redaction — current Admin models serialized through `SerializeResult` do not expose those property names.
+- [Rejected][low] Userinfo URLs with an empty password are unmatched — `scheme://user:@host` is not an everyday Admin health link; the existing userinfo pattern already catches `operator:password@`.

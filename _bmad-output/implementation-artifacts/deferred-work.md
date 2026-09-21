@@ -4605,3 +4605,33 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Exercise oversized unknown-length OIDC discovery and token responses.
   evidence: Story 5.3 tests use `StringContent` and cover only the known-length precheck, so a chunked-response regression in bounded buffering would remain undetected; token acquisition is outside Story 5.4.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, Host/OpenAPI chunk)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: AppHost advertises an unavailable Admin Swagger URL outside Development.
+  evidence: Reconfirmed `src/Hexalith.EventStore.AppHost/Program.cs:374-376`. Unconditional `EventStore__AdminServer__SwaggerUrl` still points at `{adminServerHttps}/swagger/index.html` for every environment, including publish, while non-Development Admin hosts omit that route. Pre-existing topology wiring; already recorded 2026-09-10 and 2026-09-11. Story 5.4 forbids entering later DAPR/topology stories.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, Host+MCP+CLI+docs)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Live Admin CLI mutation commands still have no confirmation gate.
+  evidence: Reconfirmed callable `projection pause|resume|reset` and other live groups execute without preview/confirm. Story 5.4 only required unavailable stubs to return `ExitCodes.Error`. Already recorded 2026-09-10.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: CLI inventory still says profiles persist to `.eventstore-admin-profiles.json` while `ProfileManager` uses `~/.eventstore/profiles.json`.
+  evidence: Reconfirmed pre-existing sentence in `docs/brownfield/component-inventory.md:61`. Already recorded 2026-09-10 and 2026-09-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: `docs/guides/configuration-reference.md` JWT, AppHost, and publish-mode UI grant edits sit beside the Admin OpenAPI section.
+  evidence: Reconfirmed Story 5.3 / topology content in the mixed baseline window. Story 5.4 Never forbids reworking that authentication surface. Already recorded 2026-09-10 and 2026-09-12.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, Chunk 1 bmad-code-review)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: MCP `ValidateTenantId` allows reserved tenant `system` on backup, projection, and consistency writes.
+  evidence: Canonical grammar in `ToolHelper.ValidateTenantId` matches Epic 5 (`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`) and does not reject `system`. Reserved-name rejection is Story 5.10.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: MCP `consistency-detail` interpolates unvalidated `checkId` into the Admin GET path and into `not-found` error text.
+  evidence: `ConsistencyTools.GetCheckDetail` only runs `ValidateRequired`; write tools in this chunk gained `ValidatePathSegments`, but this read tool was not in the diff.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Published-UI `TokenEndpoint` / audience-parameter keys are documented in prose but missing from the configuration quick-scan table.
+  evidence: Reconfirmed Story 5.3 authentication content in the mixed baseline window (`docs/guides/configuration-reference.md:450-462` versus the scan table at `:793`). Already recorded 2026-09-10 and 2026-09-12.
