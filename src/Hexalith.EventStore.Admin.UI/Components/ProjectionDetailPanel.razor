@@ -507,18 +507,18 @@
         }
         catch (UnauthorizedAccessException)
         {
-            await ToastService.ShowErrorAsync("Unauthorized").ConfigureAwait(false);
-            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Unauthorized").ConfigureAwait(false);
+            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
         catch (ForbiddenAccessException)
         {
-            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions").ConfigureAwait(false);
-            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions").ConfigureAwait(false);
+            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
         catch (ServiceUnavailableException)
@@ -648,18 +648,18 @@
         }
         catch (UnauthorizedAccessException)
         {
-            await ToastService.ShowErrorAsync("Unauthorized").ConfigureAwait(false);
-            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Unauthorized").ConfigureAwait(false);
+            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
         catch (ForbiddenAccessException)
         {
-            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions").ConfigureAwait(false);
-            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Forbidden — insufficient permissions").ConfigureAwait(false);
+            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
         catch (ServiceUnavailableException)

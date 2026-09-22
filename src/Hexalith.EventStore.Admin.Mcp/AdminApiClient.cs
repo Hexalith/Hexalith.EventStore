@@ -18,6 +18,13 @@ internal sealed partial class AdminApiClient {
     public AdminApiClient(HttpClient httpClient) => _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
     /// <summary>
+    /// Creates the primary handler for the typed Admin API client.
+    /// </summary>
+    /// <returns>A handler that never follows redirects to a second route.</returns>
+    internal static HttpMessageHandler CreatePrimaryHttpMessageHandler()
+        => new HttpClientHandler { AllowAutoRedirect = false };
+
+    /// <summary>
     /// Retrieves the system health report from the Admin API.
     /// </summary>
     /// <param name="cancellationToken">A cancellation token.</param>

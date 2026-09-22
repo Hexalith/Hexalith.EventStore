@@ -63,6 +63,8 @@ public class ConfirmationFactsTests : AdminUITestContext
 
     [Theory]
     [InlineData("tenant\u0007")]
+    [InlineData("tenant\u2028hidden")]
+    [InlineData("tenant\u2029hidden")]
     [InlineData("tenant\u202Ehidden")]
     [InlineData("tenant\U000E0001hidden")]
     public void ConfirmationFacts_RedactsControlAndUnicodeFormatCharactersAndRejectsExactConfirmation(string unsafeText)

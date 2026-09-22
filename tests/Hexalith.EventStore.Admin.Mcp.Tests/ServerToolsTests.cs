@@ -82,6 +82,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unauthorized");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Token may be expired or invalid. Check EVENTSTORE_ADMIN_TOKEN.");
     }
 
     [Fact]
@@ -114,6 +115,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Request timed out or was cancelled.");
     }
 
     [Fact]
@@ -129,6 +131,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("error");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Invalid response from Admin API.");
     }
 
     [Fact]

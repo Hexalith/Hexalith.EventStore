@@ -4725,3 +4725,30 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Startup usage no longer pinned to the authentication-credential wording.
   evidence: `ConfigurationValidationTests` asserts the variable names and the invalid-URI sentence, not `Admin API authentication credential`. Restoring the old Bearer parenthetical would still pass. The parenthetical does not change exit behavior.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Validate command-status fields against the canonical lifecycle state in the gateway client.
+  evidence: `EventStoreGatewayClient.IsValidCommandStatus` checks identity and the status name/ordinal pair but accepts contradictory terminal evidence such as `Completed` with failure or retry fields; this client-contract work is unrelated to Story 5.4.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Preserve command-status polling metadata in the gateway-client contract.
+  evidence: The status endpoint emits `Retry-After` for every non-terminal result, but `GetCommandStatusAsync` returns only `CommandStatusQueryResponse`, so consumers cannot observe the server's polling cadence; this is unrelated gateway work.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Prevent payload-protection write-result cloning from bypassing constructor invariants.
+  evidence: `PayloadProtectionWriteResult` and `SnapshotProtectionWriteResult` expose init-only record members, so `with` expressions can produce invalid result/context pairs without rerunning validation; this belongs to the separate payload-protection workstream.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Require coherent v2 format, carrier, metadata, and completion-context evidence at payload-protection write seams.
+  evidence: Event and snapshot write results classify v2 when either of two independent markers says v2, allowing contradictory bytes or state and metadata to cross the seam; this belongs to the separate payload-protection workstream.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Enforce durable invariants on protected snapshot v2 carriers.
+  evidence: `ProtectedSnapshotPayloadV2` accepts arbitrary format, type-id, and envelope strings even though its contract requires the exact v2 format, a stable type id, and a canonical unpadded base64url envelope; this belongs to the separate payload-protection workstream.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Bind payload-protection completion contexts to the exact protected result returned by a provider.
+  evidence: Write-result validation checks only completion-context presence and does not prove the context's key, version, identity, and occurrence describe the returned result, risking completion of the wrong lifecycle record; this belongs to the separate payload-protection workstream.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Validate event and snapshot occurrence type identifiers before payload-protection provider or reservation work.
+  evidence: `ValidateOccurrenceContext` rejects only blank type ids and omits the documented canonical event and snapshot type-id constraints; this belongs to the separate payload-protection workstream.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Run the independent Node and Python payload-protection golden-vector verifiers in blocking CI.
+  evidence: The payload-protection workflow runs only the .NET suite, so both advertised cross-runtime verifiers and the Python dependency can rot without failing CI; this belongs to the separate payload-protection workstream.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Validate OAuth token type before caching and sending externally acquired access tokens.
+  evidence: Both Story 5.3 token providers accept an absent or non-Bearer `token_type` and then send the value as a Bearer token; nonpositive expiry handling is already tracked separately, and authentication changes are excluded from Story 5.4.

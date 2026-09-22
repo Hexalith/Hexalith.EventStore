@@ -427,6 +427,33 @@ public class TenantsPageTests : AdminUITestContext {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task TenantsPage_AcceptedCreate_PostAcceptanceUiFailureNeverClaimsMutationFailure() {
+        SetupTenants([CreateTenant("t-1", "Tenant One", TenantStatusType.Active)]);
+        _ = _mockTenantApi.CreateTenantAsync(Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "op-1", "Accepted", null));
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Tenant"), TimeSpan.FromSeconds(5));
+        SetPrivateField(cut.Instance, "_createTenantId", "acme-corp");
+        SetPrivateField(cut.Instance, "_createName", "Acme Corp");
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        int toastAttempt = 0;
+        toast.SetupShowToast(_ => Interlocked.Increment(ref toastAttempt) == 1
+            ? Task.FromException<Microsoft.FluentUI.AspNetCore.Components.ToastResult>(new InvalidOperationException("toast failed"))
+            : Task.FromResult<Microsoft.FluentUI.AspNetCore.Components.ToastResult>(null!));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateTenantConfirm"));
+
+        _ = await _mockTenantApi.Received(1).CreateTenantAsync(
+            Arg.Any<CreateTenantRequest>(), Arg.Any<CancellationToken>());
+        string[] messages = toast.CapturedOptions
+            .Select(option => option.Message?.ToString() ?? string.Empty)
+            .ToArray();
+        messages.ShouldContain(message => message.Contains("Create request accepted", StringComparison.Ordinal));
+        messages.ShouldContain(message => message.Contains("Create request was accepted, but the interface refresh failed", StringComparison.Ordinal));
+        messages.ShouldNotContain("Failed to create tenant.");
+    }
+
     // ===== Recommended tests (5.17-5.31) =====
 
     [Fact]

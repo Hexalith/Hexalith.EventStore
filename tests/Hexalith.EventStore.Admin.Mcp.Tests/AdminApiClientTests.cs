@@ -8,6 +8,14 @@ namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 public class AdminApiClientTests {
     [Fact]
+    public void CreatePrimaryHttpMessageHandler_DisablesAutomaticRedirects() {
+        using HttpMessageHandler handler = AdminApiClient.CreatePrimaryHttpMessageHandler();
+
+        HttpClientHandler primaryHandler = handler.ShouldBeOfType<HttpClientHandler>();
+        primaryHandler.AllowAutoRedirect.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task GetSystemHealthAsync_SendsGetToCorrectPath() {
         // Arrange
         Uri? capturedUri = null;

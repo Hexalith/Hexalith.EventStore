@@ -415,6 +415,9 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
 
         JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
             .Arguments[0].ShouldBe(expectedFocusId);
+        GetPrivateField<bool>(cut.Instance, "_isOperating").ShouldBeFalse();
+        GetPrivateField<string?>(cut.Instance, "_operatingAction").ShouldBeNull();
+        cut.Find(buttonSelector).HasAttribute("disabled").ShouldBeFalse();
         cut.FindAll(action == "reset"
             ? "fluent-dialog[aria-label='Reset projection']"
             : "fluent-dialog[aria-label='Replay projection']").ShouldBeEmpty();

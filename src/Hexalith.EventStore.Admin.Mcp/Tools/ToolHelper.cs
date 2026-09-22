@@ -235,6 +235,10 @@ internal static class ToolHelper {
                 return JsonValue.Create(SafeText(text, "Protected diagnostic text redacted."));
             }
 
+            if (string.IsNullOrEmpty(text)) {
+                return text is null ? null : JsonValue.Create(string.Empty);
+            }
+
             return text is null
                 ? null
                 : SafeText(
@@ -291,9 +295,13 @@ internal static class ToolHelper {
             return result;
         }
 
-        return node is JsonValue value && value.TryGetValue(out string? text)
-            ? JsonValue.Create(SafeText(text, "Preview parameter redacted."))
-            : node.DeepClone();
+        if (node is JsonValue value && value.TryGetValue(out string? text)) {
+            return string.IsNullOrEmpty(text)
+                ? text is null ? null : JsonValue.Create(string.Empty)
+                : JsonValue.Create(SafeText(text, "Preview parameter redacted."));
+        }
+
+        return node.DeepClone();
     }
 
     private static string SafeText(string? value, string replacement) {
@@ -395,7 +403,10 @@ internal static class ToolHelper {
 
         foreach (Rune rune in value.EnumerateRunes()) {
             UnicodeCategory category = Rune.GetUnicodeCategory(rune);
-            if (category is UnicodeCategory.Control or UnicodeCategory.Format) {
+            if (category is UnicodeCategory.Control
+                or UnicodeCategory.Format
+                or UnicodeCategory.LineSeparator
+                or UnicodeCategory.ParagraphSeparator) {
                 return true;
             }
         }

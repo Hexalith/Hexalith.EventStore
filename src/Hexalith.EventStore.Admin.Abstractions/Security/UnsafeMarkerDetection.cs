@@ -96,6 +96,10 @@ public static partial class UnsafeMarkerDetection {
                 return true;
             }
 
+            if (pass == MaxPercentDecodePasses - 1) {
+                return true;
+            }
+
             current = decoded;
         }
 
@@ -109,7 +113,7 @@ public static partial class UnsafeMarkerDetection {
         });
 
     private static bool IsCredentialEncodingByte(int code)
-        => code is '%' or '?' or '&' or '#' or ';' or '=' or ':' or '@' or '_' or '-' or '.' or ' '
+        => code is '%' or '/' or '?' or '&' or '#' or ';' or '=' or ':' or '@' or '_' or '-' or '.' or ' '
             or (>= '0' and <= '9')
             or (>= 'A' and <= 'Z')
             or (>= 'a' and <= 'z');

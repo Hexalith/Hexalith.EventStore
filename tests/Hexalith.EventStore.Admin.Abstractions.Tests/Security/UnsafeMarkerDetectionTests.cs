@@ -40,6 +40,26 @@ public class UnsafeMarkerDetectionTests
         UnsafeMarkerDetection.ContainsUnsafeMarker($"https://example.test/health?{doubleEncodedName}=secret-value").ShouldBeTrue();
     }
 
+    [Fact]
+    public void ContainsUnsafeMarker_FailsClosedWhenPercentDecodingStillChangesAtPassLimit()
+    {
+        string encodedCredential = "?password=secret-value";
+        for (int pass = 0; pass < 9; pass++)
+        {
+            encodedCredential = Uri.EscapeDataString(encodedCredential);
+        }
+
+        UnsafeMarkerDetection.ContainsUnsafeMarker(encodedCredential).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ContainsUnsafeMarker_DetectsFullyEncodedUserInfoUri()
+    {
+        const string encodedUri = "https%3A%2F%2Foperator%3Apassword%40example.test%2Fhealth";
+
+        UnsafeMarkerDetection.ContainsUnsafeMarker(encodedUri).ShouldBeTrue();
+    }
+
     [Theory]
     [MemberData(nameof(ValuelessQuerySecretAliases))]
     public void ContainsUnsafeMarker_IgnoresSecretKeysWithNoValue(string alias)

@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -327,6 +327,31 @@ deferred:
 | EC8-17 | `low` — Rejected: a denied bulk action restores focus after `LoadDataAsync` on the paths that complete; guarding a throwing reload would add another branch for an uncommon failure. | reject |
 | VG8-01 | `false` — carried from BH3-04: backup validate is outside the intent-contract destructive set, so the missing facts and focus restore are not this story's confirmation contract. The filed gap is real and its disposition was patch; the logged exclusion still holds. | reject |
 | VG8-02 | `false` — carried from BH3-04: compaction remains a visibly deferred control outside the intent-contract destructive set. The filed gap is real and its disposition was patch; the logged exclusion still holds. | reject |
+| BH9-01 | `medium` — Verified: `ConfirmationFacts` accepts Unicode line and paragraph separators, so a destructive target can render with a visually misleading line break while the unchanged value is submitted. | patch |
+| BH9-02 | `medium` — Verified: after eight changing percent-decoding passes, `ContainsUnsafeMarkerInPercentDecodedCopies` returns false, so a credential encoded nine times bypasses the support-safe detector. | patch |
+| BH9-03 | `false` — No current MCP result type contains both a raw-capable property and its generated descriptor-name twin; the overwrite requires a hypothetical future result shape and is not reachable through the reviewed tool inventory. | reject |
+| BH9-04 | `medium` — Verified outside Story 5.4: the gateway client accepts status-specific fields that contradict a canonical command status, so a malformed producer response can be treated as authoritative. | defer |
+| BH9-05 | `medium` — Verified outside Story 5.4: `GetCommandStatusAsync` discards the non-terminal `Retry-After` header, preventing gateway-client consumers from observing the server's polling cadence. | defer |
+| BH9-06 | `medium` — carried from EC7-07: producer query metadata can still place an unvalidated ETag into the public response; this unrelated public-gateway issue remains deferred. | defer |
+| BH9-07 | `medium` — Verified outside Story 5.4: the payload and snapshot protection write-result records expose init-only members, so `with` expressions can bypass their constructor pair invariant. | defer |
+| BH9-08 | `medium` — Verified outside Story 5.4: event protection classifies v2 when either format or metadata says v2, allowing contradictory bytes/metadata to cross the write seam. | defer |
+| BH9-09 | `medium` — Verified outside Story 5.4: snapshot protection similarly classifies v2 from either the CLR carrier or metadata alone, allowing contradictory state/metadata pairs. | defer |
+| BH9-10 | `medium` — Verified outside Story 5.4: `ProtectedSnapshotPayloadV2` enforces none of its documented format, type-id, or canonical-envelope invariants before persistence. | defer |
+| BH9-11 | `medium` — Verified outside Story 5.4: write-result validation checks completion-context presence but does not bind the returned result to the context's key, version, identity, and occurrence. | defer |
+| BH9-12 | `medium` — Verified outside Story 5.4: occurrence validation checks only nonblank type ids and omits the documented canonical event/snapshot type-id constraints before provider or reservation work. | defer |
+| BH9-13 | `medium` — Verified outside Story 5.4: the payload-protection CI lane never runs the independent Node and Python golden-vector verifiers, so those cross-runtime checks can rot while CI stays green. | defer |
+| BH9-14 | `medium` — Verified outside Story 5.4: both OIDC token providers accept an absent/non-Bearer `token_type` and nonpositive `expires_in`; the expiry part is carried from EC8-11, while scheme validation is an additional Story 5.3 gap. | defer |
+| EC9-01 | `medium` — Verified duplicate of BH9-02: the fixed eight-pass decoder fails open when a ninth decoding pass would expose a credential. | patch |
+| EC9-02 | `medium` — Verified: the credential-decoding allowlist omits `/`, so a percent-encoded `://` in an encoded user-info URI prevents the URI credential detector from matching. | patch |
+| EC9-03 | `low` — The detector performs bounded, non-backtracking scans and no everyday multi-megabyte caller was demonstrated; a global length guard would add behavior-changing policy for a negligible resource risk. | reject |
+| EC9-04 | `medium` — Verified duplicate of BH9-01: Unicode line and paragraph separators bypass the confirmation display guard. | patch |
+| EC9-05 | `medium` — Verified: when a pending search/filter callback clears the selection after a bulk dialog opens, zero selected and zero matched entries pass the equality guard and produce an accepted-for-zero success toast. | patch |
+| EC9-06 | `medium` — Verified: tenant creation keeps toast, dialog teardown, and reload inside the mutation try/catch, so a post-acceptance UI failure is reported as a failed create and can prompt a duplicate retry. | patch |
+| EC9-07 | `low` — carried from EC8-06: a throwing toast, dialog, polling, or focus continuation can strand projection operation flags, but fixing that uncommon UI-interoperability failure requires a new `finally` guard and remains rejected. | reject |
+| EC9-08 | `medium` — Verified: projection denial handlers render and attempt focus restoration while `_isOperating` still disables the initiating control, so the browser may refuse the exact focus restoration required by the story. | patch |
+| EC9-09 | `medium` — Verified: the MCP typed client retains automatic redirects, so a confirmed write can make a second redirected request instead of exactly one expected Admin API attempt. | patch |
+| EC9-10 | `medium` — carried from EC7-09: sprint-status changes in the baseline window belong to unrelated committed tracking work, while the current Story 5.4 working patch leaves the tracker unchanged. | defer |
+| VG9-01 | `medium` — carried from VG7-01: mocked interop still cannot prove final browser `activeElement`; the authenticated denial-capable fixture needed for that assertion remains unavailable. | defer |
 
 ## Design Notes
 
@@ -636,9 +661,9 @@ _Story 5.4 group 1: Admin host OpenAPI gating, CLI unavailable commands, publish
 
 _Story 5.4 MCP writes: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.EventStore.Admin.Mcp.Tests` versus `da5accfc`._
 
-- [ ] [Review][Patch] Unicode line and paragraph separators bypass the new display filter [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:391]
-- [ ] [Review][Patch] Empty strings other than `message` and `statusMessage` are reported as redacted [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:299]
-- [ ] [Review][Patch] `ping` 401, timeout, and malformed-JSON tests do not pin `message` [tests/Hexalith.EventStore.Admin.Mcp.Tests/ServerToolsTests.cs:72]
+- [x] [Review][Patch] Unicode line and paragraph separators bypass the new display filter [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:391]
+- [x] [Review][Patch] Empty strings other than `message` and `statusMessage` are reported as redacted [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:299]
+- [x] [Review][Patch] `ping` 401, timeout, and malformed-JSON tests do not pin `message` [tests/Hexalith.EventStore.Admin.Mcp.Tests/ServerToolsTests.cs:72]
 - [x] [Review][Defer] Read and list MCP tools still accept tenant and path values that write tools reject [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs:47] — deferred: pre-existing read surface, already tracked from the 2026-09-21 MCP review
 - [x] [Review][Defer] Startup usage no longer pinned to the authentication-credential wording [src/Hexalith.EventStore.Admin.Mcp/Program.cs:33] — deferred: tests already pin the variable names and the URI error; the parenthetical does not change exit behavior
 

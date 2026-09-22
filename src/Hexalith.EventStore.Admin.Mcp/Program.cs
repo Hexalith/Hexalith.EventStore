@@ -54,7 +54,7 @@ builder.Services.AddHttpClient<AdminApiClient>(client => {
     client.DefaultRequestHeaders.Accept.Add(
         new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
     client.Timeout = TimeSpan.FromSeconds(10);
-});
+}).ConfigurePrimaryHttpMessageHandler(AdminApiClient.CreatePrimaryHttpMessageHandler);
 
 // Register InvestigationSession as singleton for MCP session context
 builder.Services.AddSingleton<InvestigationSession>();

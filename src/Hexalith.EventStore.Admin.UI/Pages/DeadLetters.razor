@@ -924,7 +924,7 @@
             .Where(e => _selectedIds.Contains(e.MessageId))
             .ToList();
 
-        if (matchedEntries.Count != _selectedIds.Count)
+        if (_selectedIds.Count == 0 || matchedEntries.Count != _selectedIds.Count)
         {
             string message = matchedEntries.Count == 0
                 ? "No selected dead-letter commands are available to submit."

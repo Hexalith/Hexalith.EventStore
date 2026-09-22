@@ -823,48 +823,67 @@
 
         try
         {
-            string? description = string.IsNullOrWhiteSpace(_createDescription) ? null : _createDescription.Trim();
-            AdminOperationResult? createResult = await TenantApi.CreateTenantAsync(
-                new CreateTenantRequest(_createTenantId!.Trim(), _createName!.Trim(), description),
-                _operationCts.Token);
-
-            if (createResult?.Success != true)
+            AdminOperationResult? createResult;
+            try
             {
-                await ToastService.ShowErrorAsync(createResult?.Message ?? "Failed to create tenant.");
+                string? description = string.IsNullOrWhiteSpace(_createDescription) ? null : _createDescription.Trim();
+                createResult = await TenantApi.CreateTenantAsync(
+                    new CreateTenantRequest(_createTenantId!.Trim(), _createName!.Trim(), description),
+                    _operationCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (ServiceUnavailableException)
+            {
+                await ToastService.ShowErrorAsync("Tenants service unavailable. Try again later.").ConfigureAwait(false);
+                return;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                await ToastService.ShowErrorAsync("Authentication required. Please sign in again.").ConfigureAwait(false);
+                await CloseCreateDialogAsync().ConfigureAwait(false);
+                return;
+            }
+            catch (ForbiddenAccessException)
+            {
+                await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
+                await CloseCreateDialogAsync().ConfigureAwait(false);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _ = ex;
+                await ToastService.ShowErrorAsync("Failed to create tenant.").ConfigureAwait(false);
                 return;
             }
 
-            await ToastService.ShowSuccessAsync($"Create request accepted for tenant {_createTenantId}; refresh to confirm completion.").ConfigureAwait(false);
-            if (_createDialog is not null)
+            if (createResult?.Success != true)
             {
-                await _createDialog.HideAsync().ConfigureAwait(false);
+                await ToastService.ShowErrorAsync(createResult?.Message ?? "Failed to create tenant.").ConfigureAwait(false);
+                return;
             }
 
-            _showCreateDialog = false;
-            await LoadDataAsync();
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-        catch (ServiceUnavailableException)
-        {
-            await ToastService.ShowErrorAsync("Tenants service unavailable. Try again later.");
-        }
-        catch (UnauthorizedAccessException)
-        {
-            await ToastService.ShowErrorAsync("Authentication required. Please sign in again.");
-            await CloseCreateDialogAsync().ConfigureAwait(false);
-        }
-        catch (ForbiddenAccessException)
-        {
-            await ToastService.ShowErrorAsync("Access denied. Administrator permission is required.").ConfigureAwait(false);
-            await CloseCreateDialogAsync().ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _ = ex;
-            await ToastService.ShowErrorAsync("Failed to create tenant.").ConfigureAwait(false);
+            try
+            {
+                await ToastService.ShowSuccessAsync($"Create request accepted for tenant {_createTenantId}; refresh to confirm completion.").ConfigureAwait(false);
+                if (_createDialog is not null)
+                {
+                    await _createDialog.HideAsync().ConfigureAwait(false);
+                }
+
+                _showCreateDialog = false;
+                await LoadDataAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _ = ex;
+                _showCreateDialog = false;
+                await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+                await ToastService.ShowInfoAsync(
+                    "Create request was accepted, but the interface refresh failed. Refresh the tenant list before deciding whether to retry.").ConfigureAwait(false);
+            }
         }
         finally
         {

@@ -206,6 +206,8 @@ public class ToolHelperTests {
             new string('\uD800', 1),
             new string('\uDC00', 1),
             "projection\u0007hidden",
+            "projection\u2028hidden",
+            "projection\u2029hidden",
             "projection\u202Ehidden",
             $"projection-{char.ConvertFromUtf32(0xE0001)}hidden",
         ];
@@ -260,6 +262,8 @@ public class ToolHelperTests {
             new string('\uDC00', 1),
             $"projection-{new string('\uD800', 1)}",
             "projection\u0007hidden",
+            "projection\u2028hidden",
+            "projection\u2029hidden",
             "projection\u202Ehidden",
             $"projection-{char.ConvertFromUtf32(0xE0001)}hidden",
         ];
@@ -287,6 +291,37 @@ public class ToolHelperTests {
 
         using var document = JsonDocument.Parse(result);
         document.RootElement.GetProperty("message").GetString().ShouldBe(string.Empty);
+    }
+
+    [Fact]
+    public void SerializeResult_EmptyNonMessageStringsStayEmpty()
+    {
+        string result = ToolHelper.SerializeResult(new {
+            Empty = string.Empty,
+            Nested = new { Empty = string.Empty },
+            Values = new[] { string.Empty, "present" },
+        });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("empty").GetString().ShouldBe(string.Empty);
+        document.RootElement.GetProperty("nested").GetProperty("empty").GetString().ShouldBe(string.Empty);
+        document.RootElement.GetProperty("values")[0].GetString().ShouldBe(string.Empty);
+        document.RootElement.GetProperty("values")[1].GetString().ShouldBe("present");
+    }
+
+    [Fact]
+    public void SerializePreview_EmptyOptionalParameterStaysEmpty()
+    {
+        string result = ToolHelper.SerializePreview(
+            "backup-trigger",
+            "Start a deferred backup request",
+            "POST /api/v1/admin/backups/acme",
+            new { description = string.Empty },
+            "The request is deferred.",
+            "Admin");
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("parameters").GetProperty("description").GetString().ShouldBe(string.Empty);
     }
 
     [Fact]

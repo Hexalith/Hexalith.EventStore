@@ -73,7 +73,10 @@
         foreach (System.Text.Rune rune in value.EnumerateRunes())
         {
             UnicodeCategory category = System.Text.Rune.GetUnicodeCategory(rune);
-            if (category is UnicodeCategory.Control or UnicodeCategory.Format)
+            if (category is UnicodeCategory.Control
+                or UnicodeCategory.Format
+                or UnicodeCategory.LineSeparator
+                or UnicodeCategory.ParagraphSeparator)
             {
                 return true;
             }

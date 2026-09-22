@@ -342,6 +342,27 @@ public class DeadLettersPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task BulkDialog_WhenSelectionIsEmpty_PerformsNoWorkAndRestoresFocus()
+    {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        GetSelectedIds(cut.Instance).Clear();
+
+        await InvokeDialogButtonAsync(cut, "Retry");
+
+        _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()
+            .ShouldBe("No selected dead-letter commands are available to submit.");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("dead-letter-retry-selected");
+    }
+
+    [Fact]
     public async Task BulkDialog_WhenSelectionPartlyMatchesRows_PerformsNoWorkAndRestoresFocus()
     {
         List<DeadLetterEntry> entries = CreateSampleEntries();
