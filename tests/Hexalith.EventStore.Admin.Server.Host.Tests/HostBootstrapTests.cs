@@ -158,6 +158,39 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
             TestContext.Current.CancellationToken);
 
         document.StatusCode.ShouldBe(HttpStatusCode.OK);
+        document.Content.Headers.ContentType.ShouldNotBeNull();
+        document.Content.Headers.ContentType!.MediaType.ShouldBe("application/json");
+        string documentBody = await document.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using JsonDocument openApi = JsonDocument.Parse(documentBody);
+        openApi.RootElement.GetProperty("openapi").GetString().ShouldStartWith("3.");
+        openApi.RootElement.GetProperty("info").GetProperty("title").GetString()
+            .ShouldBe("Hexalith EventStore Admin API");
+        swaggerRoot.StatusCode.ShouldBe(HttpStatusCode.MovedPermanently);
+        swaggerRoot.Headers.Location.ShouldBe(new Uri("swagger/index.html", UriKind.Relative));
+        swagger.StatusCode.ShouldBe(HttpStatusCode.OK);
+        swagger.Content.Headers.ContentType.ShouldNotBeNull();
+        swagger.Content.Headers.ContentType!.MediaType.ShouldBe("text/html");
+    }
+
+    [Fact]
+    public async Task DevelopmentPipeline_WithShippedSettings_MapsDiscovery()
+    {
+        using HttpClient client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using HttpResponseMessage document = await client.GetAsync(
+            "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
+        using HttpResponseMessage swaggerRoot = await client.GetAsync(
+            "/swagger",
+            TestContext.Current.CancellationToken);
+        using HttpResponseMessage swagger = await client.GetAsync(
+            "/swagger/index.html",
+            TestContext.Current.CancellationToken);
+
+        document.StatusCode.ShouldBe(HttpStatusCode.OK);
         swaggerRoot.StatusCode.ShouldBe(HttpStatusCode.MovedPermanently);
         swaggerRoot.Headers.Location.ShouldBe(new Uri("swagger/index.html", UriKind.Relative));
         swagger.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -626,6 +659,27 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         }
     }
 
+    [Fact]
+    public async Task StagingPipeline_OmitsDiscoveryWhenEnabled()
+    {
+        await using var factory = new ProductionAdminServerHostFactory(
+            openApiEnabled: true,
+            environmentName: Environments.Staging);
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        foreach (string path in new[] { "/openapi/v1.json", "/swagger", "/swagger/index.html" })
+        {
+            using HttpResponseMessage response = await client.GetAsync(
+                path,
+                TestContext.Current.CancellationToken);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound, path);
+        }
+    }
+
     private static string CreateToken(params Claim[] claims) {
         return CreateTokenWithAlgorithm(SecurityAlgorithms.HmacSha256Signature, claims);
     }
@@ -791,12 +845,21 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         }
     }
 
-    private sealed class ProductionAdminServerHostFactory(bool openApiEnabled = true) : WebApplicationFactory<Program>
+    private sealed class ProductionAdminServerHostFactory : WebApplicationFactory<Program>
     {
+        private readonly bool _openApiEnabled;
+        private readonly string _environmentName;
+
+        public ProductionAdminServerHostFactory(bool openApiEnabled = true, string? environmentName = null)
+        {
+            _openApiEnabled = openApiEnabled;
+            _environmentName = environmentName ?? Environments.Production;
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             ArgumentNullException.ThrowIfNull(builder);
-            _ = builder.UseEnvironment(Environments.Production);
+            _ = builder.UseEnvironment(_environmentName);
             _ = builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
@@ -806,7 +869,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
                     ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
                     ["Authentication:JwtBearer:SigningKey"] = null,
                     ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
-                    ["EventStore:Admin:OpenApi:Enabled"] = openApiEnabled.ToString(),
+                    ["EventStore:Admin:OpenApi:Enabled"] = _openApiEnabled.ToString(),
                 }));
         }
     }

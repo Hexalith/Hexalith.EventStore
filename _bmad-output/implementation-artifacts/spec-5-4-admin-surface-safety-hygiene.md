@@ -723,3 +723,20 @@ _Story 5.4 Admin host discovery: `src/Hexalith.EventStore.Admin.Server.Host` and
 #### Rejected
 
 - [Rejected][low] `ProductionEndpointMetadata_ExposesOnlyTheThreeHealthProbesAnonymously` does not inventory discovery routes — `ProductionPipeline_AlwaysOmitsDiscovery` already asserts `404` for `/openapi/v1.json`, `/swagger`, and `/swagger/index.html` with redirects off, so extending the metadata test would duplicate that check.
+
+### Review Findings — Admin host discovery chunk (2026-09-22, bmad-code-review)
+
+_First chunk of Story 5.4. Diff `da5accfc..HEAD` narrowed to `Admin.Server.Host`, `HostBootstrapTests`, and `AdminOpenApiDisabledFactory` (5 files, +185/−5). Edge Case Hunter returned an empty result and is excluded._
+
+- [x] [Review][Patch] Disabled-factory gate still throws on a non-boolean `Enabled` value [tests/Hexalith.EventStore.Admin.Server.Tests/OpenApi/AdminOpenApiDisabledFactory.cs:62]
+- [x] [Review][Patch] No host test pins discovery off outside both Development and Production [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:42]
+- [x] [Review][Patch] Development enablement accepts any HTTP 200 for the OpenAPI document [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:160]
+- [x] [Review][Patch] Host tests override `OpenApi:Enabled`, so `appsettings.Development.json` is never the source that maps discovery [src/Hexalith.EventStore.Admin.Server.Host/appsettings.Development.json:12]
+
+#### Rejected
+
+- [Rejected][false] `AdminOpenApiWebApplicationFactory` still maps discovery on every start and has no `DaprClient` — that fixture is the document host, not `Program.cs`, and `CreateBuilder()` is not forced into Development, so the validation that required the disabled factory's substitute does not apply.
+- [Rejected][false] `ProductionEndpointMetadata_ExposesOnlyTheThreeHealthProbesAnonymously` misses an anonymous OpenAPI route — Production never calls `MapOpenApi()`, and `ProductionPipeline_AlwaysOmitsDiscovery(true)` already expects 404 for the three discovery URLs.
+- [Rejected][false] `bool.TryParse` leaves discovery unmapped for `1`, `yes`, `on`, and whitespace, with no startup log — those values are not `true`, and leaving the routes unmapped is the fail-closed gate. `not-a-boolean` already covers that class.
+- [Rejected][false] `AdminOpenApiDisabledFactory` resolves a null `IDaprInfrastructureQueryService` after 15 seconds — `AddAdminServer` registers the real scoped service, and `GetRequiredService` does not return null.
+- [Rejected][false] Production tests always write `OpenApi:Enabled` and never boot the shipped `appsettings.json` value `false` — `IsDevelopment()` is false in that factory, so the flag cannot map discovery. The `true` case already expects 404.

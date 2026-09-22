@@ -59,7 +59,8 @@ public sealed class AdminOpenApiDisabledFactory : IAsyncLifetime {
 
         // Gated: only map OpenAPI/Swagger if enabled (same logic as real host)
         if (_app.Environment.IsDevelopment()
-            && _app.Configuration.GetValue<bool>("EventStore:Admin:OpenApi:Enabled")) {
+            && bool.TryParse(_app.Configuration["EventStore:Admin:OpenApi:Enabled"], out bool openApiEnabled)
+            && openApiEnabled) {
             _ = _app.MapOpenApi();
             _ = _app.UseSwaggerUI(options => {
                 options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore Admin API v1");
