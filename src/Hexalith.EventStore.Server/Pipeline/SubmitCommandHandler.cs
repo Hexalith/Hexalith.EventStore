@@ -84,6 +84,21 @@ public partial class SubmitCommandHandler(
             {
                 throw;
             }
+            catch (ArgumentException exception)
+            {
+                logger.LogError(
+                    "Trusted idempotency admission rejected the command. ExceptionType={ExceptionType}, CorrelationId={CorrelationId}, Stage=IdempotencyAdmissionRejected",
+                    exception.GetType().Name,
+                    request.CorrelationId);
+                throw AdmissionFailure(
+                    request.CorrelationId,
+                    "idempotency_admission_rejected",
+                    "validation_failed",
+                    retryable: false,
+                    "correct_request",
+                    400,
+                    "Idempotency admission rejected the command. Correct the request and submit a new key.");
+            }
             catch (Exception exception)
             {
                 logger.LogError(

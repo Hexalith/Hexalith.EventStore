@@ -510,6 +510,28 @@ public class SubmitCommandHandlerIdempotencyAdmissionTests
     }
 
     [Fact]
+    public async Task Handle_PermanentAdmissionRejectionIsNotRetryable()
+    {
+        TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
+        _ = context.Coordinator.AdmitAsync(context.Command, Arg.Any<CancellationToken>())
+            .Returns<Task<IdempotencyAdmissionSession?>>(_ =>
+                throw new ArgumentException("The command payload is not the declared command."));
+
+        IdempotencyAdmissionFailureException exception =
+            await Should.ThrowAsync<IdempotencyAdmissionFailureException>(
+                () => context.Handler.Handle(context.Command, CancellationToken.None));
+
+        exception.StatusCode.ShouldBe(400);
+        exception.Retryable.ShouldBeFalse();
+        exception.ClientAction.ShouldBe("correct_request");
+        exception.Code.ShouldBe("idempotency_admission_rejected");
+        exception.ToString().ShouldNotContain("declared command");
+        await context.Router.DidNotReceive().RouteCommandAsync(
+            Arg.Any<SubmitCommand>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_AdmissionStoreUnavailableFailsClosedBeforeRoute()
     {
         TestContext context = CreateContext(IdempotencyAdmissionDecision.Execute);
