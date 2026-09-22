@@ -4704,3 +4704,15 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate public query producer ETags before assigning them to response headers.
   evidence: The public `QueriesController` accepts a projection-backed producer ETag without `SelfRoutingETag.TryDecode` validation and assigns it to `Response.Headers.ETag`; this unrelated public-gateway path is outside Story 5.4's Admin surface.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-22, chunk 1 host/CLI/docs/marker)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: CLI inventory still names `.eventstore-admin-profiles.json`.
+  evidence: Reconfirmed the unchanged sentence at `docs/brownfield/component-inventory.md:61` while `ProfileManager.GetDefaultProfilePath` uses `~/.eventstore/profiles.json`. Already recorded 2026-09-10, 2026-09-12, and 2026-09-21.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Bash health completion still offers `--interval` and omits `--timeout` and `--quiet`.
+  evidence: `CompletionScripts.GenerateBash` still completes `health` with `dapr --wait --interval --strict` at line 65, while `HealthCommand` registers `--timeout` and `--quiet`. This diff changed the backup and tenant stanzas only.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: A non-boolean Admin OpenAPI flag throws during Development startup.
+  evidence: `Program.cs` evaluates `GetValue<bool>("EventStore:Admin:OpenApi:Enabled")` only in Development. Blank, whitespace, `yes`, `1`, and `0` throw `InvalidOperationException` before routes are mapped. A missing key returns false and omits discovery. The previous `GetValue(..., true)` already threw on a present non-boolean. Production short-circuits before the read.

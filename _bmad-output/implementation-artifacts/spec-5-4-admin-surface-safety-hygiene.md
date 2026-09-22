@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -556,3 +556,27 @@ _Story 5.4 group 2: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.Even
 - [Rejected][false] `ProjectionWriteToolsTests` omit negative-position and path-segment cases — `CallerBoundary_InvalidUnsafeOverlongScopeEnumPathAndPositionInputs_PerformZeroRequests` already covers those write-tool paths.
 - [Rejected][false] HTTP 400 mapping discards ProblemDetails — `EnsureSuccessStatusCode` throws `HttpRequestException` without the body; the generic `invalid-input` text is the support-safe contract.
 - [Rejected][false] `ping` failures omit `error: true` after `details` moved to `message` — ping reports `adminApiStatus`; `details` became a raw-capable key, so support-safe text had to move.
+
+### Review Findings — Chunk 1 host, CLI, docs, marker guards (2026-09-22, bmad-code-review)
+
+_Story 5.4 group 1: Admin host OpenAPI gating, CLI unavailable commands, published docs, and `UnsafeMarkerDetection`, versus `da5accfc`. MCP and Admin UI are later passes._
+
+- [ ] [Review][Patch] Percent-encoded query separators and delimiters hide credentials [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:48]
+- [ ] [Review][Patch] One unescape pass misses double-encoded credential names [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:74]
+- [ ] [Review][Patch] JSON field regex misses unicode-escaped secret names [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:45]
+- [ ] [Review][Patch] Secret-key patterns match with no value and redact the whole string [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:48]
+- [ ] [Review][Patch] Compact JWTs whose header has `typ` but no string `alg` stay visible [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:108]
+- [ ] [Review][Patch] CLI inventory calls every exit code 1 degraded health [docs/brownfield/component-inventory.md:62]
+- [ ] [Review][Patch] Backup group copy still says the operations are available [src/Hexalith.EventStore.Admin.Cli/Commands/Backup/BackupCommand.cs:14]
+- [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: unchanged pre-existing sentence; `ProfileManager` uses `~/.eventstore/profiles.json`; already tracked.
+- [x] [Review][Defer] Bash health completion still offers `--interval` and omits `--timeout` and `--quiet` [src/Hexalith.EventStore.Admin.Cli/Commands/Config/CompletionScripts.cs:65] — deferred: pre-existing health stanza; this diff changed backup and tenant completions only.
+- [x] [Review][Defer] A non-boolean Admin OpenAPI flag throws during Development startup [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:42] — deferred: `GetValue<bool>` already threw on a present non-boolean before this rewrite; a missing key returns false and omits discovery; Production does not evaluate the flag.
+
+#### Rejected
+
+- [Rejected][false] Stub commands exit 1 when tokens fail parsing — `StubCommands` returns `ExitCodes.Error` when its action runs; a parse failure never enters that action.
+- [Rejected][false] The unavailable-command contract fails for bare `backup`, retired verbs, and `--help` — `create`, `restore`, and `list` return `ExitCodes.Error` and the unavailable line; a missing subcommand and an unrecognized verb are parser results, and `--help` is help.
+- [Rejected][false] `FindRepositoryRoot` throws from `DirectoryInfo` when the test assembly has no parent directory — a loaded test assembly has a directory; a missing path fails loudly instead of returning a wrong root.
+- [Rejected][low] The inventory test builds command factories itself and ignores the health row's non-backtick prose — the published subcommand names match those factories today; binding the test to the CLI composition root is a larger redesign.
+- [Rejected][low] A 1025-character dotted segment is marked and a 1024-character one is not — that blob is not an everyday credential; the cap fail-closes instead of decoding an unbounded header.
+- [Rejected][low] The empty-payload token `eyJhbGciOiJub25lIn0..` is unmarked — it carries no claim segment; payload-bearing `alg` tokens are already detected.
