@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -631,3 +631,27 @@ _Story 5.4 group 1: Admin host OpenAPI gating, CLI unavailable commands, publish
 - [Rejected][false] Raw-capable fields hide operator diagnostics — cursors are forbidden, and those keys were descriptorized on purpose.
 - [Rejected][false] Backup validate and compaction skip the confirmation contract — both sit outside the intent-contract destructive set, and compaction stays visibly deferred.
 - [Rejected][low] A focus restore that throws can leave projection controls disabled — everyday denial already clears the flag, and a `finally` would guard an interop failure that already escapes.
+
+### Review Findings — MCP slice (2026-09-22, bmad-code-review)
+
+_Story 5.4 MCP writes: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.EventStore.Admin.Mcp.Tests` versus `da5accfc`._
+
+- [ ] [Review][Patch] Unicode line and paragraph separators bypass the new display filter [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:391]
+- [ ] [Review][Patch] Empty strings other than `message` and `statusMessage` are reported as redacted [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:299]
+- [ ] [Review][Patch] `ping` 401, timeout, and malformed-JSON tests do not pin `message` [tests/Hexalith.EventStore.Admin.Mcp.Tests/ServerToolsTests.cs:72]
+- [x] [Review][Defer] Read and list MCP tools still accept tenant and path values that write tools reject [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs:47] — deferred: pre-existing read surface, already tracked from the 2026-09-21 MCP review
+- [x] [Review][Defer] Startup usage no longer pinned to the authentication-credential wording [src/Hexalith.EventStore.Admin.Mcp/Program.cs:33] — deferred: tests already pin the variable names and the URI error; the parenthetical does not change exit behavior
+
+#### Rejected
+
+- [Rejected][false] `backup-trigger` preview `endpoint` omits the query that `TriggerBackupAsync` sends — `parameters` already include `includeSnapshots` and `description`, and `WriteToolIntentGateTests` pins that split.
+- [Rejected][false] Named consistency checks are sent as numeric ordinals, so a reorder could run a different check — preview names and the body are the same parsed `ConsistencyCheckType` values, and the unconfigured Admin MVC binder reads those numbers.
+- [Rejected][low] A long but legal tenant and projection name fail the composed `target`/`endpoint` check, and position errors are reported as `target` — everyday names stay under 240 characters, and the over-long case is already `invalid-input`.
+- [Rejected][false] Marker detection and the 240-character cap now rewrite identifiers and guidance — credential-shaped ordinary text is redacted on purpose, and non-credential guidance such as the D2 `connectionString` sentence still survives.
+- [Rejected][false] A newline, tab, or format character replaces the whole string — `ContainsUnsafeDisplayCharacter` classifies Control and Format as unsafe, and `SafeText` replaces a match.
+- [Rejected][false] Admin API HTTP 400 is indistinguishable from local validation and drops the server reason — the message is `Admin API rejected the request as invalid.`, and `EnsureSuccessStatusCode` does not carry the body.
+- [Rejected][false] Startup usage no longer says the token is a Bearer credential — the wording change is deliberate, and `Program.cs` still sends `Authorization: Bearer`.
+- [Rejected][false] No MCP confirmation is named as an import — this slice has no import write tool, and the spec forbids activating import.
+- [Rejected][low] Support-safe text longer than 240 characters can split a UTF-16 surrogate pair — that requires a supplementary character on the cut, and closing it adds a branch for a case everyday text does not hit.
+- [Rejected][false] Operator-facing `errorMessage` is always replaced by a descriptor — that redaction is the leak fix this slice tests via `errorStatus`; cursors stay hidden because the spec forbids them.
+- [Rejected][low] `BoundText` can emit an unpaired surrogate when the 240-character cut lands inside a pair [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:309] — same boundary; a guard there is extra complexity for text operators do not send.

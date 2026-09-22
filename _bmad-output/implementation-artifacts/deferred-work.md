@@ -4716,3 +4716,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: A non-boolean Admin OpenAPI flag throws during Development startup.
   evidence: `Program.cs` evaluates `GetValue<bool>("EventStore:Admin:OpenApi:Enabled")` only in Development. Blank, whitespace, `yes`, `1`, and `0` throw `InvalidOperationException` before routes are mapped. A missing key returns false and omits discovery. The previous `GetValue(..., true)` already threw on a present non-boolean. Production short-circuits before the read.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-22, MCP slice)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Read and list MCP tools still accept tenant and path values that write tools reject.
+  evidence: `ProjectionTools.GetProjectionDetail` still uses only `ValidateRequired`. `projection-list`, `stream-list`, `stream-events`, and `stream-state` were not given `ValidateTenantId` or `ValidatePathSegments`. Pre-existing read surface; already tracked on 2026-09-21.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Startup usage no longer pinned to the authentication-credential wording.
+  evidence: `ConfigurationValidationTests` asserts the variable names and the invalid-URI sentence, not `Admin API authentication credential`. Restoring the old Bearer parenthetical would still pass. The parenthetical does not change exit behavior.
