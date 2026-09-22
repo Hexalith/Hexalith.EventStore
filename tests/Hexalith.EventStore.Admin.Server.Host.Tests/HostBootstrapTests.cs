@@ -136,16 +136,30 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
     [Fact]
     public async Task DevelopmentPipeline_WithExplicitEnablement_MapsDiscovery()
     {
-        using HttpClient client = _factory.CreateClient();
+        await using WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["EventStore:Admin:OpenApi:Enabled"] = "true",
+                })));
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
 
         using HttpResponseMessage document = await client.GetAsync(
             "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
+        using HttpResponseMessage swaggerRoot = await client.GetAsync(
+            "/swagger",
             TestContext.Current.CancellationToken);
         using HttpResponseMessage swagger = await client.GetAsync(
             "/swagger/index.html",
             TestContext.Current.CancellationToken);
 
         document.StatusCode.ShouldBe(HttpStatusCode.OK);
+        swaggerRoot.StatusCode.ShouldBe(HttpStatusCode.MovedPermanently);
+        swaggerRoot.Headers.Location.ShouldBe(new Uri("swagger/index.html", UriKind.Relative));
         swagger.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -158,17 +172,28 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
                 {
                     ["EventStore:Admin:OpenApi:Enabled"] = "false",
                 })));
-        using HttpClient client = factory.CreateClient();
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
 
         using HttpResponseMessage document = await client.GetAsync(
             "/openapi/v1.json",
             TestContext.Current.CancellationToken);
+        using HttpResponseMessage swaggerRoot = await client.GetAsync(
+            "/swagger",
+            TestContext.Current.CancellationToken);
         using HttpResponseMessage swagger = await client.GetAsync(
             "/swagger/index.html",
             TestContext.Current.CancellationToken);
+        using HttpResponseMessage protectedResponse = await client.GetAsync(
+            "/api/v1/admin/streams/GetRecentlyActiveStreams",
+            TestContext.Current.CancellationToken);
 
         document.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        swaggerRoot.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         swagger.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        protectedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -180,17 +205,48 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
                 {
                     ["EventStore:Admin:OpenApi:Enabled"] = null,
                 })));
-        using HttpClient client = factory.CreateClient();
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
 
         using HttpResponseMessage document = await client.GetAsync(
             "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
+        using HttpResponseMessage swaggerRoot = await client.GetAsync(
+            "/swagger",
             TestContext.Current.CancellationToken);
         using HttpResponseMessage swagger = await client.GetAsync(
             "/swagger/index.html",
             TestContext.Current.CancellationToken);
 
         document.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        swaggerRoot.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         swagger.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DevelopmentPipeline_WithMalformedDiscoverySetting_OmitsDiscovery()
+    {
+        await using WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["EventStore:Admin:OpenApi:Enabled"] = "not-a-boolean",
+                })));
+        using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        foreach (string path in new[] { "/openapi/v1.json", "/swagger", "/swagger/index.html" })
+        {
+            using HttpResponseMessage response = await client.GetAsync(
+                path,
+                TestContext.Current.CancellationToken);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound, path);
+        }
     }
 
     [Fact]

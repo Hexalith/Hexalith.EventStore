@@ -1,3 +1,5 @@
+using Dapr.Client;
+
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Controllers;
@@ -22,7 +24,9 @@ public sealed class AdminOpenApiDisabledFactory : IAsyncLifetime {
 
     /// <inheritdoc/>
     public async ValueTask InitializeAsync() {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+            EnvironmentName = Environments.Development,
+        });
 
         _ = builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> {
             ["EventStore:Admin:OpenApi:Enabled"] = "false",
@@ -35,6 +39,7 @@ public sealed class AdminOpenApiDisabledFactory : IAsyncLifetime {
             .AddApplicationPart(typeof(AdminStreamsController).Assembly);
 
         // Override DAPR-backed services with NSubstitute mocks
+        _ = builder.Services.AddSingleton(Substitute.For<DaprClient>());
         _ = builder.Services.AddScoped(_ => Substitute.For<IStreamQueryService>());
         _ = builder.Services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
         _ = builder.Services.AddScoped(_ => Substitute.For<IProjectionCommandService>());

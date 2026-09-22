@@ -4752,3 +4752,30 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Validate OAuth token type before caching and sending externally acquired access tokens.
   evidence: Both Story 5.3 token providers accept an absent or non-Bearer `token_type` and then send the value as a Bearer token; nonpositive expiry handling is already tracked separately, and authentication changes are excluded from Story 5.4.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Remove tracked Playwright trace artifacts and prevent regenerated traces from entering source control.
+  evidence: The repository still tracks 247 trace resources, and five contain cookie, antiforgery, token, or SignalR marker text; the Story 5.4 baseline window deletes only one generated resource.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Configure source-enabled Tenants hosts for the Keycloak-disabled local authentication mode.
+  evidence: The run-mode branch configures local symmetric validation for EventStore, Admin, and Sample API but leaves the Tenants domain and API hosts without the shared validation settings; this is excluded authentication/topology work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Report and recover ownership-safe cleanup failures after rendered Keycloak realm creation fails.
+  evidence: `KeycloakRealmTemplate.Render` ignores a false `DeleteOwnedDirectory` result, so a tampered or reparse-point run directory can retain rendered credentials while only the original construction exception is surfaced.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Reject null and case-insensitively duplicate public command extension values before policy evaluation.
+  evidence: Null JSON dictionary values are dereferenced by validation and sanitization, while differently cased keys are evaluated independently and then collapse by input order in the ordinal-ignore-case trusted dictionary; the public gateway is outside Story 5.4.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Translate command-status response-stream failures through the gateway exception abstraction.
+  evidence: `GetCommandStatusAsync` catches malformed JSON only, allowing `IOException` or `HttpRequestException` raised while reading a successful response body to escape as transport implementation details.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Extend the payload-protection key resolver contract to preserve terminal provider outcomes.
+  evidence: The current bytes-or-null resolver maps every non-cancellation fault to provider-unavailable and cannot express declared provider-denied or invalidated-key outcomes owned by later protection lifecycle work.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Register payload-protection activity and meter names with standard host telemetry.
+  evidence: The payload-protection engine emits `Hexalith.EventStore.PayloadProtection` traces and metrics, but ServiceDefaults registers neither source, so standard-host exporters omit them.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Add independent non-empty and snapshot payload-protection golden-vector coverage.
+  evidence: The external NIST AES-GCM fixture has empty plaintext and AAD, and the cross-runtime fixture set has no snapshot vector; the project-owned event vector covers non-empty event plaintext/AAD but not those independent gaps.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Prove Sample Blazor token-client redirect hardening through application composition.
+  evidence: Existing tests call the token-provider registration helper directly, so removing the Sample host's registration can restore credential-bearing redirects while helper tests stay green; this belongs to excluded Story 5.3 token acquisition.

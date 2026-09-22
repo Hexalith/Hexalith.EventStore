@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -352,6 +352,34 @@ deferred:
 | EC9-09 | `medium` — Verified: the MCP typed client retains automatic redirects, so a confirmed write can make a second redirected request instead of exactly one expected Admin API attempt. | patch |
 | EC9-10 | `medium` — carried from EC7-09: sprint-status changes in the baseline window belong to unrelated committed tracking work, while the current Story 5.4 working patch leaves the tracker unchanged. | defer |
 | VG9-01 | `medium` — carried from VG7-01: mocked interop still cannot prove final browser `activeElement`; the authenticated denial-capable fixture needed for that assertion remains unavailable. | defer |
+| BH10-01 | `medium` — Verified outside Story 5.4: 247 Playwright trace artifacts remain tracked and five contain cookie, antiforgery, token, or SignalR marker text; deleting one resource did not remediate the pre-existing trace set. | defer |
+| BH10-02 | `medium` — carried from EC3-17: publish-mode Tenants source inclusion remains later topology/authentication work that this story explicitly excludes. | defer |
+| BH10-03 | `medium` — Verified outside Story 5.4: the Keycloak-disabled run-mode branch configures local symmetric validation for EventStore, Admin, and Sample API but not the source-enabled Tenants hosts. | defer |
+| BH10-04 | `false` — The EventStore AppHost uses explicit credentials matching its rendered realm, while the current one-argument helper consumer is the Tenants AppHost whose realm contains the matching environment placeholders; the claimed missing identity is not reached by a current consumer. | reject |
+| BH10-05 | `medium` — Verified outside Story 5.4: render-failure cleanup ignores a false ownership-safe deletion result, so a tampered or reparse-point run directory can retain rendered credentials while only the original exception is reported. | defer |
+| BH10-06 | `medium` — carried from EC5-04 and BH6-14: trimming a full Sample token-endpoint URI can alter a trailing slash in an allowed query value; this remains Story 5.3 work. | defer |
+| BH10-07 | `medium` — carried from EC3-14, EC3-16, and BH6-15: Sample OIDC buffering maps every buffering `HttpRequestException` to an oversized-response diagnostic; this remains Story 5.3 token acquisition. | defer |
+| BH10-08 | `medium` — carried from EC3-15, EC8-11, and BH9-14: unbounded or malformed `expires_in` handling belongs to the excluded Story 5.3 token-provider surface. | defer |
+| BH10-09 | `medium` — Verified outside Story 5.4: JSON can supply null extension values and the validator/sanitizer dereference them, yielding an exception instead of bounded validation. The public gateway is explicitly outside this story. | defer |
+| BH10-10 | `medium` — Verified outside Story 5.4: differently cased extension keys are evaluated independently and then collapse in an ordinal-ignore-case dictionary, making the retained value depend on input order. | defer |
+| BH10-11 | `medium` — carried from EC4-10 and EC7-08: `CommandStatusPath` validation remains unrelated gateway-client configuration debt. | defer |
+| BH10-12 | `medium` — carried from BH9-04: canonical command status validation still accepts contradictory status-specific evidence outside this Admin-surface story. | defer |
+| BH10-13 | `medium` — Verified outside Story 5.4: command-status body reads translate `JsonException` only, so response-stream `IOException` or `HttpRequestException` can escape the gateway exception abstraction. | defer |
+| BH10-14 | `medium` — carried from BH7-05: MCP still maps 403 to the pre-existing 401/expired-token taxonomy already deferred outside this slice. | defer |
+| BH10-15 | `medium` — carried from BH3-15 and BH7-16: AppHost still advertises Admin Swagger outside Development, which is excluded topology work already deferred. | defer |
+| BH10-16 | `medium` — Verified outside Story 5.4: the payload-protection key resolver returns only bytes/null and maps all other faults to provider-unavailable, so it cannot express the declared denied or invalidated-key outcomes owned by later protection lifecycle work. | defer |
+| BH10-17 | `medium` — Verified outside Story 5.4: payload protection emits a dedicated activity source and meter that ServiceDefaults never registers, so standard-host telemetry omits those signals. | defer |
+| BH10-18 | `medium` — Verified outside Story 5.4: the only external NIST AES-GCM fixture has empty plaintext/AAD and the cross-runtime fixture set has no snapshot vector, although the project-owned `g-001` vector does cover non-empty event plaintext and AAD. | defer |
+| EC10-01 | `medium` — carried from EC5-04 and BH10-06: a trailing slash in an allowed Sample token-endpoint query can be trimmed, and the issue remains excluded Story 5.3 work. | defer |
+| EC10-02 | `low` — Very large percent-encoded text can incur up to eight bounded linear decode scans before output is capped, but the trigger requires atypical multi-megabyte operator text and a fix would add behavior-changing guard logic. | reject |
+| EC10-03 | `false` — `ConfirmationFacts` always renders clamped or redacted values; the cited early-return guard does not exist, and every current impact/permission value is fixed resource text rather than caller-controlled unsafe content. | reject |
+| EC10-04 | `low` — A hidden tab can defer the single `requestAnimationFrame` focus continuation until visibility returns, but no keyboard interaction is possible while hidden and focus is restored when rendering resumes; adding timer fallback behavior is disproportionate. | reject |
+| EC10-05 | `medium` — carried from BH2-01 through EC9-10: the baseline-window tracker transition is historical committed work, while the current Story 5.4 patch leaves `sprint-status.yaml` unchanged. | defer |
+| VG10-01 | `medium` — carried from VG9-01: bUnit still proves only the interop request, not final browser `activeElement`, pending the authenticated denial-capable E2E fixture. | defer |
+| VG10-02A | `medium` — Pre-verified gap: the MCP test invokes the non-redirecting handler factory directly, so deleting the typed-client registration in `Program.cs` leaves the test green even though confirmed writes can redirect and violate the exactly-one-attempt contract. | patch |
+| VG10-02B | `medium` — Pre-verified outside Story 5.4: the Sample Blazor host registration is not covered by an application-composition redirect test; this is Story 5.3 token-acquisition work. | defer |
+| VG10-03 | `medium` — carried from VG4-03 and VG6-01: oversized unknown-length OIDC response coverage remains a deferred Story 5.3 verification gap. | defer |
+| VG10-04 | `medium` — carried from EC3-14, EC3-16, and BH10-07: Sample response-stream failures can be mislabeled as oversized, outside this story. | defer |
 
 ## Design Notes
 
@@ -685,12 +713,12 @@ _Story 5.4 MCP writes: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.E
 
 _Story 5.4 Admin host discovery: `src/Hexalith.EventStore.Admin.Server.Host` and the OpenAPI host tests versus `da5accfc`._
 
-- [ ] [Review][Patch] Config-gating factory stays on Production, so `Enabled` is never evaluated [tests/Hexalith.EventStore.Admin.Server.Tests/OpenApi/AdminOpenApiDisabledFactory.cs:56]
-- [ ] [Review][Patch] Development enablement test never sets `EventStore:Admin:OpenApi:Enabled` [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:137]
-- [ ] [Review][Patch] Development discovery tests skip `/swagger` and follow redirects [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:141]
-- [ ] [Review][Patch] Discovery-disabled Development hosts never request an admin route [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:153]
-- [ ] [Review][Patch] Comment names Production while the gate closes every non-Development environment [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:41]
-- [ ] [Review][Patch] A non-boolean `Enabled` value throws during Development startup [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:43]
+- [x] [Review][Patch] Config-gating factory stays on Production, so `Enabled` is never evaluated [tests/Hexalith.EventStore.Admin.Server.Tests/OpenApi/AdminOpenApiDisabledFactory.cs:56]
+- [x] [Review][Patch] Development enablement test never sets `EventStore:Admin:OpenApi:Enabled` [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:137]
+- [x] [Review][Patch] Development discovery tests skip `/swagger` and follow redirects [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:141]
+- [x] [Review][Patch] Discovery-disabled Development hosts never request an admin route [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:153]
+- [x] [Review][Patch] Comment names Production while the gate closes every non-Development environment [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:41]
+- [x] [Review][Patch] A non-boolean `Enabled` value throws during Development startup [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:43]
 
 #### Rejected
 
