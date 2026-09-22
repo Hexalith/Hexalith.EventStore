@@ -165,11 +165,26 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         openApi.RootElement.GetProperty("openapi").GetString().ShouldStartWith("3.");
         openApi.RootElement.GetProperty("info").GetProperty("title").GetString()
             .ShouldBe("Hexalith EventStore Admin API");
+        JsonElement paths = openApi.RootElement.GetProperty("paths");
+        paths.TryGetProperty(
+            "/api/v1/admin/streams/GetRecentlyActiveStreams",
+            out JsonElement recentlyActiveStreams).ShouldBeTrue();
+        recentlyActiveStreams.TryGetProperty("get", out _).ShouldBeTrue();
+        JsonElement bearer = openApi.RootElement
+            .GetProperty("components")
+            .GetProperty("securitySchemes")
+            .GetProperty("Bearer");
+        bearer.GetProperty("type").GetString().ShouldBe("http");
+        bearer.GetProperty("scheme").GetString().ShouldBe("bearer");
+        bearer.GetProperty("bearerFormat").GetString().ShouldBe("JWT");
         swaggerRoot.StatusCode.ShouldBe(HttpStatusCode.MovedPermanently);
         swaggerRoot.Headers.Location.ShouldBe(new Uri("swagger/index.html", UriKind.Relative));
         swagger.StatusCode.ShouldBe(HttpStatusCode.OK);
         swagger.Content.Headers.ContentType.ShouldNotBeNull();
         swagger.Content.Headers.ContentType!.MediaType.ShouldBe("text/html");
+        string swaggerBody = await swagger.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        swaggerBody.ShouldContain("id=\"swagger-ui\"");
+        swaggerBody.ShouldContain("swagger-ui-bundle.js");
     }
 
     [Fact]

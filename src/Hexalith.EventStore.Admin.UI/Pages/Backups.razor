@@ -483,7 +483,7 @@
                 <h3 style="margin: 0;">Import Stream</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@(_importTenantId is null ? Text["BackupImportTarget"] : Text["BackupImportTenantTarget", _importTenantId])"
+                <ConfirmationFacts Target="@ImportConfirmationTarget"
                                    Impact="@Text["BackupImportImpact"]"
                                    RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentCard Style="padding: 16px; margin-bottom: 12px; text-align: center;">
@@ -588,6 +588,8 @@
     private bool _pendingShowImport;
     private string? _importContent;
     private string? _importTenantId;
+    private string? _importDomain;
+    private string? _importAggregateId;
     private string? _importPreview;
     private string? _importError;
     private string? _importInitiatorId;
@@ -655,7 +657,16 @@
         && !string.IsNullOrWhiteSpace(_exportAggregateId);
 
     private bool CanImport =>
-        _importContent is not null && _importTenantId is not null && _importError is null;
+        _importContent is not null
+        && _importTenantId is not null
+        && _importDomain is not null
+        && _importAggregateId is not null
+        && _importError is null;
+
+    private string ImportConfirmationTarget =>
+        _importTenantId is null || _importDomain is null || _importAggregateId is null
+            ? Text["BackupImportTarget"].Value
+            : GetImportConfirmationTarget(_importTenantId, _importDomain, _importAggregateId);
 
     protected override async Task OnInitializedAsync()
     {
@@ -1203,6 +1214,8 @@
         if (_isAnyDialogOpen) { return; }
         _importContent = null;
         _importTenantId = null;
+        _importDomain = null;
+        _importAggregateId = null;
         _importPreview = null;
         _importError = null;
         _importInitiatorId = "backup-import-button";
@@ -1223,6 +1236,8 @@
         _importPreview = null;
         _importContent = null;
         _importTenantId = null;
+        _importDomain = null;
+        _importAggregateId = null;
 
         try
         {
@@ -1247,7 +1262,7 @@
                     return;
                 }
 
-                string confirmationTarget = Text["BackupImportTenantTarget", tenantId];
+                string confirmationTarget = GetImportConfirmationTarget(tenantId, domain, aggregateId);
                 if (!IsExactSupportSafeImportText(tenantId)
                     || !IsExactSupportSafeImportText(domain)
                     || !IsExactSupportSafeImportText(aggregateId)
@@ -1258,6 +1273,8 @@
                 }
 
                 _importTenantId = tenantId;
+                _importDomain = domain;
+                _importAggregateId = aggregateId;
                 _importContent = content;
                 _importPreview = $"Tenant: {tenantId}\n"
                     + $"Domain: {domain}\n"
@@ -1286,15 +1303,21 @@
     private static bool IsExactSupportSafeImportText(string value)
         => ConfirmationFacts.IsExactAndSupportSafe(value);
 
+    private string GetImportConfirmationTarget(string tenantId, string domain, string aggregateId)
+        => Text["BackupImportStreamTarget", tenantId, domain, aggregateId].Value;
+
     private async Task OnImportConfirm()
     {
-        if (_importContent is null || _importTenantId is null)
+        if (_importContent is null
+            || _importTenantId is null
+            || _importDomain is null
+            || _importAggregateId is null)
         {
             await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
 
-        string confirmationTarget = Text["BackupImportTenantTarget", _importTenantId];
+        string confirmationTarget = ImportConfirmationTarget;
         if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
         {
             await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);

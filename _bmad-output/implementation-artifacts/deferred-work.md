@@ -4779,3 +4779,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Prove Sample Blazor token-client redirect hardening through application composition.
   evidence: Existing tests call the token-provider registration helper directly, so removing the Sample host's registration can restore credential-bearing redirects while helper tests stay green; this belongs to excluded Story 5.3 token acquisition.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Prevent rapid repeated Admin UI confirmations from issuing duplicate write requests.
+  evidence: Confirmation handlers already lacked an entry guard at the Story 5.4 baseline; they set `_isOperating` but a second queued callback can run before the disabled DOM update reaches the browser.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Verify and route native or Escape-key Fluent dialog dismissal through teardown and initiator-focus restoration.
+  evidence: The Admin pages expose explicit cancel handlers but no dismissal callback; a browser test pressing Escape is needed to establish whether Fluent closes the dialog without clearing component state and restoring exact focus.

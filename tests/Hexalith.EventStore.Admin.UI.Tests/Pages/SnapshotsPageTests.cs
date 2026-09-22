@@ -89,6 +89,21 @@ public class SnapshotsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void SnapshotsPage_PolicyGrid_RequiresExplicitEditButton()
+    {
+        SetupPolicies([
+            new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
+        ]);
+
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find("fluent-button[aria-label='Edit policy for OrderAggregate']"), TimeSpan.FromSeconds(5));
+
+        FluentDataGrid<SnapshotPolicy> grid = cut.FindComponent<FluentDataGrid<SnapshotPolicy>>().Instance;
+        grid.OnRowClick.HasDelegate.ShouldBeFalse();
+        cut.FindAll("fluent-button[aria-label='Edit policy for OrderAggregate']").Count.ShouldBe(1);
+    }
+
+    [Fact]
     public void SnapshotsPage_ShowsEmptyState_WhenNoPolicies() {
         // Arrange
         SetupPolicies([]);

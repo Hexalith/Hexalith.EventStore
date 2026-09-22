@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -380,6 +380,29 @@ deferred:
 | VG10-02B | `medium` — Pre-verified outside Story 5.4: the Sample Blazor host registration is not covered by an application-composition redirect test; this is Story 5.3 token-acquisition work. | defer |
 | VG10-03 | `medium` — carried from VG4-03 and VG6-01: oversized unknown-length OIDC response coverage remains a deferred Story 5.3 verification gap. | defer |
 | VG10-04 | `medium` — carried from EC3-14, EC3-16, and BH10-07: Sample response-stream failures can be mislabeled as oversized, outside this story. | defer |
+| BH11-01 | `medium` — carried from BH10-01/EC10-05: the baseline diff contains independently committed tracker history, while the current Story 5.4 working patch leaves `sprint-status.yaml` unchanged. | defer |
+| BH11-02 | `false` — carried from BH4-02: the broad baseline spans separately committed stories and user work; splitting historical commits is not a Story 5.4 product correction. | reject |
+| BH11-03 | `medium` — Verified: `DecodeJsonUnicodeLetters` leaves unicode-escaped quotation marks intact, so a fully escaped JSON secret key never reaches `JsonSecretFieldRegex`. | patch |
+| BH11-04 | `low` — Verified: several rejection paths notify before teardown, so a propagating notification failure can skip cleanup. Notification-pipeline failure is not an everyday interaction, and cross-surface `finally` restructuring is disproportionate. | reject |
+| BH11-05 | `low` — Verified: tenant lifecycle and membership success continuations remain inside broad catches, but common refresh failures are absorbed; only uncommon notification/dialog interop faults can produce the misleading failure branch. Isolating all continuations is disproportionate. | reject |
+| BH11-06 | `false` — carried from BH6-06: the approved dead-letter confirmation identifies the selected resource by command and tenant counts, while exact identifiers remain visible in the grid. | reject |
+| BH11-07 | `medium` — Verified: the import preview lists tenant, domain, and aggregate, but the reusable confirmation target fact names only the tenant even though execution submits one exact stream. | patch |
+| BH11-08 | `medium` — Verified: clicking a snapshot row opens the edit dialog but records the sibling Edit button as initiator, so cancellation or denial cannot restore the exact clicked control. | patch |
+| BH11-09 | `medium` — carried from VG10-01: the focus service and bUnit tests prove only interop invocation, not final browser `activeElement`, pending the authenticated denial-capable fixture. | defer |
+| BH11-10 | `false` — carried from EC10-03: current impact and permission values are fixed resource text, so only caller-controlled target facts require exactness guards before execution. | reject |
+| BH11-11 | `medium` — Verified as pre-existing at the Story 5.4 baseline: confirmation handlers set `_isOperating` but do not reject a second queued callback, so a rapid double submit can issue duplicate writes before the disabled DOM update arrives. | defer |
+| BH11-12 | `maybe-false` — Fluent dialogs have no explicit native/Escape dismissal callback in these pages, but the reviewed sources do not establish whether the component closes that way. A browser test pressing Escape must determine whether teardown and focus restoration are bypassed. | defer |
+| EC11-01 | `medium` — Verified: the shared marker detector does not normalize form-encoded `+` to a space, so `Bearer+credential` bypasses Bearer-token detection. | patch |
+| EC11-02 | `low` — carried from EC10-02: a very large percent-encoded MCP value can incur bounded repeated scans, but the trigger is atypical and a new global input policy is disproportionate. | reject |
+| EC11-03 | `low` — carried from EC10-02: `ConfirmationFacts` can scan a very large percent-encoded value before clamping, but the multi-megabyte trigger is atypical and a new global input policy is disproportionate. | reject |
+| EC11-04 | `false` — carried from EC6-06: successful projection operations are outside the intent's cancellation, validation-failure, and denial focus-restoration conditions. | reject |
+| EC11-05 | `false` — carried from EC6-07/EC6-08: successful restore and import are outside the specified focus-restoration conditions. | reject |
+| EC11-06 | `false` — carried from EC6-09/EC6-10: successful consistency trigger and cancellation are outside the specified focus-restoration conditions. | reject |
+| EC11-07 | `false` — carried from EC6-11: successful dead-letter submission is outside the specified focus-restoration conditions. | reject |
+| EC11-08 | `false` — carried from EC6-12/EC6-13: successful snapshot policy mutations are outside the specified focus-restoration conditions. | reject |
+| EC11-09 | `false` — carried from EC6-14 through EC6-17: successful tenant and membership mutations are outside the specified focus-restoration conditions. | reject |
+| EC11-10 | `medium` — carried from BH11-01: tracker changes belong to unrelated committed history, and the current Story 5.4 patch leaves the tracker untouched. | defer |
+| VG11-01 | `medium` — carried from VG10-01: mocked interop cannot establish final browser focus; an authenticated denial-capable E2E fixture remains necessary. | defer |
 
 ## Design Notes
 
@@ -745,8 +768,8 @@ _First chunk of Story 5.4. Diff `da5accfc..HEAD` narrowed to `Admin.Server.Host`
 
 _Admin host discovery chunk, 2026-09-22. Diff `da5accfc...HEAD` narrowed to the host, shipped settings, `HostBootstrapTests`, and `AdminOpenApiDisabledFactory` (5 files, +249/−5). Edge Case Hunter returned an empty result and is excluded._
 
-- [ ] [Review][Patch] Swagger UI success is only an HTML content type [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:172]
-- [ ] [Review][Patch] OpenAPI document check ignores paths and the Bearer scheme [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:165]
+- [x] [Review][Patch] Swagger UI success is only an HTML content type [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:172]
+- [x] [Review][Patch] OpenAPI document check ignores paths and the Bearer scheme [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:165]
 
 #### Rejected
 

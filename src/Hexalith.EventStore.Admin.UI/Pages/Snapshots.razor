@@ -106,8 +106,7 @@
     {
         <FluentDataGrid Items="@FilteredPolicies.AsQueryable()" TGridItem="SnapshotPolicy"
                         Style="width: 100%; margin-bottom: 24px;"
-                        aria-label="Snapshot policies"
-                        OnRowClick="@(row => OpenEditDialog(row.Item))">
+                        aria-label="Snapshot policies">
             <PropertyColumn Property="@(p => p.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true"
                             IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
             <PropertyColumn Property="@(p => p.Domain)" Title="Domain" Sortable="true" />

@@ -78,6 +78,19 @@ public class UnsafeMarkerDetectionTests
         UnsafeMarkerDetection.ContainsUnsafeMarker($"{{\"{escaped}\":\"secret-value\"}}").ShouldBeTrue();
     }
 
+    [Theory]
+    [MemberData(nameof(JsonSecretNames))]
+    public void ContainsUnsafeMarker_DetectsJsonSecretsWithUnicodeEscapedQuotationMarks(string name)
+    {
+        UnsafeMarkerDetection.ContainsUnsafeMarker($"{{\\u0022{name}\\u0022:\\u0022secret-value\\u0022}}").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ContainsUnsafeMarker_DetectsFormEncodedBearerCredential()
+    {
+        UnsafeMarkerDetection.ContainsUnsafeMarker("message=Bearer+secret-token").ShouldBeTrue();
+    }
+
     [Fact]
     public void ContainsUnsafeMarker_DetectsCompactJwtWithTypAndNoStringAlgorithm()
     {

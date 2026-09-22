@@ -854,7 +854,9 @@ public class BackupsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Select a previously exported JSON file"), TimeSpan.FromSeconds(5));
 
         SetPrivateField(cut.Instance, "_importTenantId", "tenant-a");
-        SetPrivateField(cut.Instance, "_importContent", """{"TenantId":"tenant-a","Domain":"Counter","AggregateId":"counter-1","Events":[]}""");
+        SetPrivateField(cut.Instance, "_importDomain", "Counter");
+        SetPrivateField(cut.Instance, "_importAggregateId", "counter-1");
+        SetPrivateField(cut.Instance, "_importContent", """{"tenantId":"tenant-a","domain":"Counter","aggregateId":"counter-1","events":[]}""");
         await cut.InvokeAsync(async () => {
             var importTask = (Task)typeof(Backups)
                 .GetMethod("OnImportConfirm", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
@@ -975,6 +977,8 @@ public class BackupsPageTests : AdminUITestContext {
         else
         {
             SetPrivateField(cut.Instance, "_importTenantId", identifier);
+            SetPrivateField(cut.Instance, "_importDomain", "Counter");
+            SetPrivateField(cut.Instance, "_importAggregateId", "counter-1");
             SetPrivateField(cut.Instance, "_importContent", "{\"safe\":true}");
             SetPrivateField(cut.Instance, "_importInitiatorId", focusId);
             SetPrivateField(cut.Instance, "_showImportDialog", true);
@@ -1006,8 +1010,8 @@ public class BackupsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
         await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
-        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = CreateBrowserFile(
-            """{"tenantId":"tenant-a","domain":"Counter","aggregateId":"counter-1","events":[]}""");
+        const string content = """{"tenantId":"tenant-a","domain":"Counter","aggregateId":"counter-1","events":[]}""";
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile file = CreateBrowserFile(content);
         await cut.InvokeAsync(() => InvokePrivateAsync(
             cut.Instance,
             "OnImportFileSelected",
@@ -1017,9 +1021,15 @@ public class BackupsPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("Tenant: tenant-a");
         cut.Markup.ShouldContain("Events: 0");
         GetPrivateField<string>(cut.Instance, "_importTenantId").ShouldBe("tenant-a");
-        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("Imported event-stream content for tenant 'tenant-a'");
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("Imported event stream 'tenant-a/Counter/counter-1'");
         cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain("currently deferred stream-import path");
         cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Admin");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnImportConfirm"));
+
+        _ = await _mockBackupApi.Received(1).ImportStreamAsync(
+            "tenant-a", content, Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -1164,6 +1174,8 @@ public class BackupsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Find("#backup-import-button"), TimeSpan.FromSeconds(5));
         await cut.Find("#backup-import-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
         SetPrivateField(cut.Instance, "_importTenantId", "tenant-a");
+        SetPrivateField(cut.Instance, "_importDomain", "Counter");
+        SetPrivateField(cut.Instance, "_importAggregateId", "counter-1");
         SetPrivateField(cut.Instance, "_importContent", "{\"safe\":true}");
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnImportConfirm"));
@@ -1270,6 +1282,8 @@ public class BackupsPageTests : AdminUITestContext {
         }
         else {
             SetPrivateField(cut.Instance, "_importTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_importDomain", "Counter");
+            SetPrivateField(cut.Instance, "_importAggregateId", "counter-1");
             SetPrivateField(cut.Instance, "_importContent", "{\"safe\":true}");
             await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnImportConfirm"));
         }

@@ -22,7 +22,9 @@ public static partial class UnsafeMarkerDetection {
             return false;
         }
 
-        return ContainsUnsafeMarkerCore(value) || ContainsUnsafeMarkerInPercentDecodedCopies(value);
+        return ContainsUnsafeMarkerCore(value)
+            || ContainsUnsafeMarkerInFormDecodedCopy(value)
+            || ContainsUnsafeMarkerInPercentDecodedCopies(value);
     }
 
     [GeneratedRegex("""(?:^|[^A-Za-z0-9])Bearer\s+[A-Za-z0-9._~+/=-]+""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
@@ -106,6 +108,15 @@ public static partial class UnsafeMarkerDetection {
         return false;
     }
 
+    private static bool ContainsUnsafeMarkerInFormDecodedCopy(string value) {
+        if (!value.Contains('+', StringComparison.Ordinal)) {
+            return false;
+        }
+
+        string decoded = value.Replace('+', ' ');
+        return ContainsUnsafeMarkerCore(decoded) || ContainsUnsafeMarkerInPercentDecodedCopies(decoded);
+    }
+
     private static string DecodePercentEncodedCredentialCharacters(string value)
         => PercentEncodedByteRegex().Replace(value, static match => {
             int code = Convert.ToInt32(match.Groups["hex"].Value, 16);
@@ -121,7 +132,7 @@ public static partial class UnsafeMarkerDetection {
     private static string DecodeJsonUnicodeLetters(string value)
         => JsonUnicodeEscapeRegex().Replace(value, static match => {
             int code = Convert.ToInt32(match.Groups["hex"].Value, 16);
-            return code is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or '_'
+            return code is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or '_' or '"'
                 ? ((char)code).ToString()
                 : match.Value;
         });
