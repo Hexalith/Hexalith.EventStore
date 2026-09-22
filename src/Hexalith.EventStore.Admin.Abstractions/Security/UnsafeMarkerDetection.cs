@@ -32,20 +32,24 @@ public static partial class UnsafeMarkerDetection {
             || ContainsJsonWebToken(value)
             || JsonSecretFieldRegex().IsMatch(value)
             || QuerySecretRegex().IsMatch(value)
+            || ContainsPercentEncodedQuerySecret(value)
             || UriUserInfoRegex().IsMatch(value);
     }
 
-    [GeneratedRegex("""(?:^|[\s"':=])Bearer\s+[A-Za-z0-9._~+/=-]+""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    [GeneratedRegex("""(?:^|[^A-Za-z0-9])Bearer\s+[A-Za-z0-9._~+/=-]+""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex BearerTokenRegex();
 
-    [GeneratedRegex(@"(?:^|[^A-Za-z0-9_-])(?<header>[A-Za-z0-9_-]{8,})\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]{8,}(?:$|[^A-Za-z0-9_-])", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    [GeneratedRegex(@"(?:^|[^A-Za-z0-9_-])(?<header>[A-Za-z0-9_-]{8,})\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]*(?:$|[^A-Za-z0-9_-])", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex JwtCandidateRegex();
 
     [GeneratedRegex("\"(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization)\"\\s*:", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex JsonSecretFieldRegex();
 
-    [GeneratedRegex(@"(?:^|[?&#;\s])(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization)\s*[=:]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    [GeneratedRegex(@"(?:^|[?&#;\s])(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization|sig)\s*[=:]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex QuerySecretRegex();
+
+    [GeneratedRegex(@"(?:^|[?&#;\s])(?<name>(?:[A-Za-z0-9_]|%[0-9A-Fa-f]{2}){1,96})\s*[=:]", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex PercentEncodedQueryNameRegex();
 
     [GeneratedRegex(@"\b[a-z][a-z0-9+.-]*://[^\s/?#@]+(?:(?::|%3a)[^\s/?#@]*)?(?:@|%40)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex UriUserInfoRegex();
@@ -53,6 +57,33 @@ public static partial class UnsafeMarkerDetection {
     private static bool ContainsJsonWebToken(string value) {
         foreach (Match match in JwtCandidateRegex().Matches(value)) {
             if (IsJsonWebTokenHeader(match.Groups["header"].Value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsPercentEncodedQuerySecret(string value) {
+        foreach (Match match in PercentEncodedQueryNameRegex().Matches(value)) {
+            string name = match.Groups["name"].Value;
+            if (!name.Contains('%')) {
+                continue;
+            }
+
+            string normalized = Uri.UnescapeDataString(name)
+                .Replace("_", string.Empty, StringComparison.Ordinal)
+                .ToLowerInvariant();
+            if (normalized is "accesstoken"
+                or "refreshtoken"
+                or "idtoken"
+                or "token"
+                or "password"
+                or "secret"
+                or "clientsecret"
+                or "apikey"
+                or "authorization"
+                or "sig") {
                 return true;
             }
         }

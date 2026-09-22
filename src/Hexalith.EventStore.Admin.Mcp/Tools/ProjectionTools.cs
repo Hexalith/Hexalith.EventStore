@@ -34,10 +34,10 @@ internal static class ProjectionTools {
     }
 
     /// <summary>
-    /// Get detailed projection information including recent errors and configuration.
+    /// Get detailed projection information including recent errors and protected configuration status.
     /// </summary>
     [McpServerTool(Name = "projection-detail")]
-    [Description("Get detailed projection information including recent errors and configuration")]
+    [Description("Get detailed projection information including recent errors and protected configuration status")]
     public static async Task<string> GetProjectionDetail(
         AdminApiClient adminApiClient,
         InvestigationSession session,

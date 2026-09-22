@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -267,6 +267,33 @@ deferred:
 | VG6-01 | `medium` — carried from VG4-03: unknown-length oversized OIDC discovery/token coverage remains a deferred Story 5.3 verification gap. | defer |
 | VG6-02 | `medium` — Pre-verified gap: newly duplicated unsafe-target guards outside projection have no caller-path zero-request, safe-error, close, and focus tests. | patch |
 | VG6-03 | `medium` — carried from VG5-02: the render-wait test proves mocked interop ordering but not final browser focus. | defer |
+| BH7-01 | `medium` — Verified: MCP preview/path validation still accepts Unicode format characters, allowing an operator-visible target to be reordered while the encoded value is executed. | patch |
+| BH7-02 | `medium` — Verified: raw query scanning misses percent-encoded credential names and signed-URL `sig` parameters, so support-safe observability output can expose credentials. | patch |
+| BH7-03 | `medium` — Verified: `ConfirmationFacts` rune enumeration substitutes U+FFFD for malformed UTF-16, so an unpaired surrogate can pass exactness validation while rendering differently. | patch |
+| BH7-04 | `medium` — carried: fixed backup routes collide with the same canonical tenant names already deferred outside the story's backup boundary. | defer |
+| BH7-05 | `medium` — carried: MCP 403 responses still use the pre-existing 401/expired-token taxonomy already deferred outside this slice. | defer |
+| BH7-06 | `medium` — carried from BH5-10: snapshot writes reuse the load cancellation token, a pre-existing issue already deferred outside this story. | defer |
+| BH7-07 | `medium` — carried from BH5-11: snapshot HTTP 422 handling remains a pre-existing issue already deferred outside this story. | defer |
+| BH7-08 | `medium` — Verified pre-existing issue: consistency cancel can surface 409/422 as an uncaught `InvalidOperationException`, leaving bounded feedback and focus restoration incomplete. | defer |
+| BH7-09 | `low` — carried from BH5-12: the UI excludes an inclusive single-position replay, a pre-existing narrow workflow limitation already deferred. | defer |
+| BH7-10 | `medium` — carried from BH5-15: capability refresh can clear consistency dialogs and initiator ids without restoring focus. | defer |
+| BH7-11 | `medium` — carried from BH6-07: dead-letter loading and selection still key by `MessageId` alone, a pre-existing cross-tenant collision risk. | defer |
+| BH7-12 | `medium` — carried from BH6-10: deferred backup result text remains a pre-existing unbounded, unscanned backend-message path. | defer |
+| BH7-13 | `medium` — carried from BH5-13/BH5-14: consistency display/export still exposes raw diagnostic content in pre-existing paths. | defer |
+| BH7-14 | `low` — carried from BH6-08: two dead-letter clamps append an ellipsis after taking 240 characters. | defer |
+| BH7-15 | `false` — carried from BH4-14: the review workflow intentionally places the spec in `in-review` while sprint tracking remains `in-progress`; Story 5.4 still leaves the tracker untouched. | reject |
+| BH7-16 | `medium` — carried: AppHost's non-Development Admin Swagger advertisement is pre-existing topology work already deferred by this story. | defer |
+| BH7-17 | `medium` — carried: the stale CLI profile path in component inventory is pre-existing documentation debt already deferred by earlier Story 5.4 reviews. | defer |
+| EC7-01 | `medium` — Verified: the shared Bearer detector's leading boundary omits common punctuation, allowing credentials such as `(Bearer …)` through support-safe output. | patch |
+| EC7-02 | `medium` — Verified: JWT detection requires a non-empty signature segment, so an unsecured compact token with an empty signature can expose claims. | patch |
+| EC7-03 | `medium` — Verified duplicate of BH7-03: malformed UTF-16 can pass UI confirmation exactness validation after rune replacement. | patch |
+| EC7-04 | `medium` — Verified duplicate of BH7-01: MCP optional preview text can retain malformed/control/format content that visually diverges from execution. | patch |
+| EC7-05 | `false` — carried: preview paths intentionally omit backup query parameters while the exact values remain visible in `parameters`; the active intent-gate pins that contract. | reject |
+| EC7-06 | `false` — Backup description is user-entered and remains visible in the same dialog; the confirmation contract binds target, impact, and permission, not an additional description fact. | reject |
+| EC7-07 | `medium` — Verified outside Story 5.4: public query metadata can supply an unvalidated ETag that is assigned to a response header; this is unrelated public-gateway work. | defer |
+| EC7-08 | `medium` — carried from EC4-10: blank `CommandStatusPath` remains unrelated gateway-client configuration debt. | defer |
+| EC7-09 | `medium` — carried from EC6-18: sprint-status changes in the preserved baseline are unrelated historical commits, while the Story 5.4 working patch does not touch the tracker. | defer |
+| VG7-01 | `medium` — carried from VG6-03: mocked interop still cannot establish final browser `activeElement`; the authenticated denial-capable fixture remains unavailable. | defer |
 
 ## Design Notes
 
@@ -510,8 +537,8 @@ _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 
 _Story 5.4 group 2: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.EventStore.Admin.Mcp.Tests` versus `da5accfc`._
 
-- [ ] [Review][Patch] Unpaired UTF-16 surrogates in path segments throw from `Uri.EscapeDataString` before the tool `try/catch` [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:141]
-- [ ] [Review][Patch] `projection-detail` discovery still promises configuration after results always replace it with `configurationStatus` [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs:40]
+- [x] [Review][Patch] Unpaired UTF-16 surrogates in path segments throw from `Uri.EscapeDataString` before the tool `try/catch` [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:141]
+- [x] [Review][Patch] `projection-detail` discovery still promises configuration after results always replace it with `configurationStatus` [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs:40]
 - [x] [Review][Defer] Read and list MCP tools still interpolate or trim the same tenant and path IDs that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyTools.cs:46] — deferred: pre-existing read/list tools were not in this mutation chunk; `consistency-detail` is already tracked.
 - [x] [Review][Defer] Valid tenants `admissions`, `export-stream`, and `import-stream` collide with fixed backup controller routes [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:35] — deferred: pre-existing controller-route ambiguity outside this story's deferred-backup boundary; already tracked.
 - [x] [Review][Defer] `ValidateTenantId` allows reserved tenant `system` [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:122] — deferred: canonical grammar matches Epic 5; reserved-name rejection is Story 5.10; already tracked.

@@ -75,4 +75,25 @@ public class ConfirmationFactsTests : AdminUITestContext
         component.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("[redacted]");
         ConfirmationFacts.IsExactAndSupportSafe(unsafeText).ShouldBeFalse();
     }
+
+    [Fact]
+    public void ConfirmationFacts_RedactsMalformedUtf16AndRejectsExactConfirmation()
+    {
+        string[] malformedValues = [
+            new string('\uD800', 1),
+            new string('\uDC00', 1),
+            $"tenant-{new string('\uD800', 1)}",
+        ];
+
+        foreach (string malformedValue in malformedValues)
+        {
+            IRenderedComponent<ConfirmationFacts> component = Render<ConfirmationFacts>(parameters => parameters
+                .Add(item => item.Target, malformedValue)
+                .Add(item => item.Impact, "Safe impact")
+                .Add(item => item.RequiredPermission, "Admin"));
+
+            component.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("[redacted]");
+            ConfirmationFacts.IsExactAndSupportSafe(malformedValue).ShouldBeFalse();
+        }
+    }
 }

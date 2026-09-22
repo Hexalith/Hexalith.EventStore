@@ -200,6 +200,25 @@ public class ToolHelperTests {
         doc.RootElement.GetProperty("message").GetString()!.ShouldContain("tenantId");
     }
 
+    [Fact]
+    public void ValidatePreviewMatchesExecution_RejectsMalformedUtf16AndUnsafeDisplayCharacters() {
+        string[] unsafeValues = [
+            new string('\uD800', 1),
+            new string('\uDC00', 1),
+            "projection\u0007hidden",
+            "projection\u202Ehidden",
+            $"projection-{char.ConvertFromUtf32(0xE0001)}hidden",
+        ];
+
+        foreach (string value in unsafeValues) {
+            string? result = ToolHelper.ValidatePreviewMatchesExecution((value, "projectionName"));
+
+            _ = result.ShouldNotBeNull();
+            using var document = JsonDocument.Parse(result);
+            document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        }
+    }
+
     [Theory]
     [InlineData("tenant-1", true)]
     [InlineData("a", true)]
@@ -232,6 +251,33 @@ public class ToolHelperTests {
         string? result = ToolHelper.ValidatePathSegments((value, "value"));
 
         (result is null).ShouldBe(valid);
+    }
+
+    [Fact]
+    public void ValidatePathSegments_RejectsMalformedUtf16AndUnsafeDisplayCharacters() {
+        string[] unsafeValues = [
+            new string('\uD800', 1),
+            new string('\uDC00', 1),
+            $"projection-{new string('\uD800', 1)}",
+            "projection\u0007hidden",
+            "projection\u202Ehidden",
+            $"projection-{char.ConvertFromUtf32(0xE0001)}hidden",
+        ];
+
+        foreach (string value in unsafeValues) {
+            string? result = ToolHelper.ValidatePathSegments((value, "value"));
+
+            _ = result.ShouldNotBeNull();
+            using var document = JsonDocument.Parse(result);
+            document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        }
+    }
+
+    [Fact]
+    public void ValidatePathSegments_AllowsValidNonFormatSurrogatePairs() {
+        string validSurrogatePair = $"projection-{char.ConvertFromUtf32(0x1F680)}";
+
+        ToolHelper.ValidatePathSegments((validSurrogatePair, "value")).ShouldBeNull();
     }
 
     [Fact]
@@ -425,6 +471,11 @@ public class ToolHelperTests {
     [InlineData("{\"apiKey\":\"secret-value\"}")]
     [InlineData("client_secret=secret-value")]
     [InlineData("https://example.test/callback#access_token=secret-value")]
+    [InlineData("https://example.test/callback?access%5Ftoken=secret-value")]
+    [InlineData("https://example.test/callback?%61ccess_token=secret-value")]
+    [InlineData("https://example.test/download?sig=secret-value")]
+    [InlineData("(Bearer secret-token)")]
+    [InlineData("eyJhbGciOiJub25lIn0.cGF5bG9hZA.")]
     [InlineData("https://operator:password@example.test/path")]
     [InlineData("https://operator%3Apassword@example.test/path")]
     [InlineData("https://secret-token@example.test/path")]
@@ -464,6 +515,7 @@ public class ToolHelperTests {
     [InlineData("api_key")]
     [InlineData("apiKey")]
     [InlineData("authorization")]
+    [InlineData("sig")]
     public void SerializeResult_RedactsEverySupportedQuerySecretAlias(string alias) {
         string result = ToolHelper.SerializeResult(new {
             healthLink = $"https://example.test/health?{alias}=secret-value",

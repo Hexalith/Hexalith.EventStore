@@ -1,5 +1,7 @@
 
+using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -141,10 +143,11 @@ internal static class ToolHelper {
     internal static string? ValidatePathSegments(params (string value, string name)[] parameters) {
         foreach ((string value, string name) in parameters) {
             if (value is "." or ".."
-                || value.Any(character => character is '/' or '\\' or '?' or '#' or '%' || char.IsControl(character))) {
+                || ContainsUnsafeDisplayCharacter(value)
+                || value.Any(character => character is '/' or '\\' or '?' or '#' or '%')) {
                 return SerializeError(
                     "invalid-input",
-                    $"Parameter '{name}' must be a single non-normalizing URI path segment.");
+                    $"Parameter '{name}' must be a well-formed single non-normalizing URI path segment.");
             }
         }
 
@@ -292,7 +295,9 @@ internal static class ToolHelper {
     private static string SafeText(string? value, string replacement) {
         string safe = string.IsNullOrEmpty(value)
             ? replacement
-            : UnsafeMarkerDetection.ContainsUnsafeMarker(value) ? replacement : value;
+            : UnsafeMarkerDetection.ContainsUnsafeMarker(value) || ContainsUnsafeDisplayCharacter(value)
+                ? replacement
+                : value;
 
         return BoundText(safe);
     }
@@ -378,4 +383,37 @@ internal static class ToolHelper {
 
     private static bool IsAsciiLowerOrDigit(char character)
         => character is >= 'a' and <= 'z' or >= '0' and <= '9';
+
+    private static bool ContainsUnsafeDisplayCharacter(string value) {
+        if (!IsWellFormedUtf16(value)) {
+            return true;
+        }
+
+        foreach (Rune rune in value.EnumerateRunes()) {
+            UnicodeCategory category = Rune.GetUnicodeCategory(rune);
+            if (category is UnicodeCategory.Control or UnicodeCategory.Format) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsWellFormedUtf16(string value) {
+        for (int index = 0; index < value.Length; index++) {
+            if (!char.IsSurrogate(value[index])) {
+                continue;
+            }
+
+            if (!char.IsHighSurrogate(value[index])
+                || index + 1 >= value.Length
+                || !char.IsLowSurrogate(value[index + 1])) {
+                return false;
+            }
+
+            index++;
+        }
+
+        return true;
+    }
 }

@@ -4695,3 +4695,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: `ValidateTenantId` allows reserved tenant `system`.
   evidence: Reconfirmed canonical 1-64 lowercase/digit/hyphen grammar in `ToolHelper.ValidateTenantId`. Reserved-name rejection is Story 5.10. Already recorded 2026-09-21.
+
+## Deferred from: bmad-build review of Story 5.4 (2026-09-22)
+
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Handle consistency-cancel conflict and validation responses with bounded feedback and focus restoration.
+  evidence: The pre-existing client maps HTTP 409/422 to `InvalidOperationException`, while `Consistency.OnCancelConfirm` does not catch it, so the dialog path can escape without bounded feedback or restored focus.
+- source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Validate public query producer ETags before assigning them to response headers.
+  evidence: The public `QueriesController` accepts a projection-backed producer ETag without `SelfRoutingETag.TryDecode` validation and assigns it to `Response.Headers.ETag`; this unrelated public-gateway path is outside Story 5.4's Admin surface.

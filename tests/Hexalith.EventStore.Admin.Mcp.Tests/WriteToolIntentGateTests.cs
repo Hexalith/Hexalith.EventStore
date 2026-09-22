@@ -178,17 +178,26 @@ public class WriteToolIntentGateTests
         var client = new AdminApiClient(httpClient);
         string unsafeValue = "Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature";
         string overlong = new('x', 241);
+        string unpairedHighSurrogate = new('\uD800', 1);
+        string unpairedLowSurrogate = new('\uDC00', 1);
+        string controlCharacter = "projection\u0007hidden";
+        string formatCharacter = "projection\u202Ehidden";
 
         Task<string>[] attempts =
         [
             BackupWriteTools.TriggerBackup(client, "Tenant-1", confirm: true, cancellationToken: cancellationToken),
             BackupWriteTools.TriggerBackup(client, "tenant-1", description: unsafeValue, confirm: true, cancellationToken: cancellationToken),
             BackupWriteTools.TriggerBackup(client, "tenant-1", description: overlong, confirm: true, cancellationToken: cancellationToken),
+            BackupWriteTools.TriggerBackup(client, "tenant-1", description: formatCharacter, confirm: true, cancellationToken: cancellationToken),
             ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "Tenant-1", confirm: true, cancellationToken: cancellationToken),
             ConsistencyWriteTools.TriggerCheck(client, "UnknownCheck", "tenant-1", confirm: true, cancellationToken: cancellationToken),
             ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "tenant-1", domain: unsafeValue, confirm: true, cancellationToken: cancellationToken),
             ConsistencyWriteTools.CancelCheck(client, "../check-1", confirm: true, cancellationToken: cancellationToken),
+            ConsistencyWriteTools.CancelCheck(client, unpairedHighSurrogate, confirm: false, cancellationToken: cancellationToken),
             ProjectionWriteTools.PauseProjection(client, "Tenant-1", "projection-1", confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, "tenant-1", unpairedLowSurrogate, confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, "tenant-1", controlCharacter, confirm: false, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, "tenant-1", formatCharacter, confirm: true, cancellationToken: cancellationToken),
             ProjectionWriteTools.ResumeProjection(client, "tenant-1", "../projection-1", confirm: true, cancellationToken: cancellationToken),
             ProjectionWriteTools.ResetProjection(client, "tenant-1", "projection-1", fromPosition: -1, confirm: true, cancellationToken: cancellationToken),
             ProjectionWriteTools.ReplayProjection(client, "tenant-1", "projection-1", -1, 20, confirm: true, cancellationToken: cancellationToken),
