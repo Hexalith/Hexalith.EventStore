@@ -933,7 +933,7 @@
             await CloseAllDialogsAsync().ConfigureAwait(false);
             await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
             _isOperating = false;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
             return;
         }
 
@@ -1012,10 +1012,6 @@
                 _selectedIds = [];
                 await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync().ConfigureAwait(false);
-                if (denied)
-                {
-                    await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
-                }
             }
             else if (successCount > 0)
             {
@@ -1061,7 +1057,8 @@
             if (!_disposed && attempt == _bulkActionAttempt)
             {
                 _isOperating = false;
-                StateHasChanged();
+                // Post-await completion path: continuation may resume off the renderer dispatcher.
+                await InvokeAsync(StateHasChanged);
             }
         }
     }

@@ -497,6 +497,72 @@ public class ConsistencyPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task TriggerCheck_OperatorWithoutTenantCannotConfirmAndPerformsNoWork()
+    {
+        _ = ConfigureRole(AdminRole.Operator);
+        SetupChecks([]);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+
+        string target = cut.Find("[data-confirmation-fact='target']").TextContent;
+        target.ShouldBe("Consistency checks for tenant 'Tenant ID required' and domain 'All domains'");
+        target.ShouldNotContain("Authorized tenant scope");
+        IRenderedComponent<FluentButton> start = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == "Start Check");
+        start.Instance.Disabled.ShouldBe(true);
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = _mockConsistencyApi.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()
+            .ShouldBe("Tenant ID is required to run a consistency check with your role.");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-trigger-button");
+    }
+
+    [Fact]
+    public async Task TriggerCheck_OperatorConfirmsAndSubmitsTheNamedTenant()
+    {
+        _ = ConfigureRole(AdminRole.Operator);
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "check-op", "Rejected", null));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_triggerTenantId", "tenant-a");
+        cut.Render();
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("Consistency checks for tenant 'tenant-a' and domain 'All domains'");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            "tenant-a", null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TriggerDialog_ScopeInputsUpdateConfirmationFactsImmediately()
+    {
+        SetupChecks([]);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        IRenderedComponent<FluentTextInput>[] inputs = cut.FindComponents<FluentTextInput>()
+            .Where(input => input.Instance.Label?.StartsWith("Tenant ID", StringComparison.Ordinal) == true
+                || input.Instance.Label?.StartsWith("Domain", StringComparison.Ordinal) == true)
+            .ToArray();
+        inputs.Length.ShouldBe(2);
+        inputs.ShouldAllBe(input => input.Instance.Immediate);
+    }
+
+    [Fact]
     public async Task TriggerCheck_NormalizesScopesForConfirmationAndSubmission()
     {
         SetupChecks([]);

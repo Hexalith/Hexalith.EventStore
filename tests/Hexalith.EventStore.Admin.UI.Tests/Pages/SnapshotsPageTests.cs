@@ -857,6 +857,74 @@ public class SnapshotsPageTests : AdminUITestContext {
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>
         Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
 
+    [Theory]
+    [InlineData("create-policy", "[id='snapshot-policy-create-button']")]
+    [InlineData("edit-policy", "[id='snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']")]
+    [InlineData("delete-policy", "[id='snapshot-policy-delete-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']")]
+    [InlineData("create-snapshot", "[id='snapshot-create-button']")]
+    public async Task DenialWithAsynchronousInterop_SettlesOnTheRendererDispatcher(string action, string selector)
+    {
+        SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([policy]);
+        Exception denial = new ForbiddenAccessException("denied");
+        _ = _mockSnapshotApi.SetSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockSnapshotApi.DeleteSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockSnapshotApi.CreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        if (action == "create-policy") {
+            SetPrivateField(cut.Instance, "_createTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_createDomain", "orders");
+            SetPrivateField(cut.Instance, "_createAggregateType", "OrderAggregate");
+        }
+        else if (action == "create-snapshot") {
+            SetPrivateField(cut.Instance, "_snapshotTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_snapshotDomain", "orders");
+            SetPrivateField(cut.Instance, "_snapshotAggregateId", "agg-1");
+        }
+
+        string methodName = action switch {
+            "create-policy" => "OnCreatePolicyConfirm",
+            "edit-policy" => "OnEditPolicyConfirm",
+            "delete-policy" => "OnDeletePolicyConfirm",
+            "create-snapshot" => "OnCreateSnapshotConfirm",
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
+
+        Exception? fault = await RunWithAsynchronousFocusInteropAsync(
+            () => cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, methodName)));
+
+        fault.ShouldBeNull(fault?.ToString());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(selector[5..^2]);
+    }
+
+    [Theory]
+    [InlineData("[id='snapshot-policy-create-button']", "Tenant ID|Domain|Aggregate Type")]
+    [InlineData("[id='snapshot-create-button']", "Tenant ID|Domain|Aggregate ID")]
+    public async Task CreateDialogs_TargetInputsUpdateConfirmationFactsImmediately(string selector, string labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string[] targetLabels = labels.Split('|');
+        SetupPolicies([]);
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        IRenderedComponent<FluentTextInput>[] inputs = cut.FindComponents<FluentTextInput>()
+            .Where(input => targetLabels.Contains(input.Instance.Label))
+            .ToArray();
+        inputs.Length.ShouldBe(targetLabels.Length);
+        inputs.ShouldAllBe(input => input.Instance.Immediate);
+    }
+
     private static void SetPrivateField(object instance, string fieldName, object? value)
         => instance.GetType()
             .GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!

@@ -589,6 +589,146 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
             .ShouldBe("The selected target cannot be confirmed because its identifier is not support-safe.");
     }
 
+    [Theory]
+    [InlineData("reset", "#projection-reset-button", "projection-reset-button", "Failed to reset projection", false)]
+    [InlineData("reset", "#projection-reset-button", "projection-reset-button", "Failed to reset projection", true)]
+    [InlineData("replay", "#projection-replay-button", "projection-replay-button", "Failed to replay projection", false)]
+    [InlineData("replay", "#projection-replay-button", "projection-replay-button", "Failed to replay projection", true)]
+    [InlineData("reset", "#projection-reset-button", "projection-reset-button", "Projection operation failed. Refresh status before deciding whether to retry.", null)]
+    [InlineData("replay", "#projection-replay-button", "projection-replay-button", "Projection operation failed. Refresh status before deciding whether to retry.", null)]
+    public async Task ProjectionDialog_RejectedOrFailedRequestRestoresFocusToEnabledInitiator(
+        string action,
+        string buttonSelector,
+        string expectedFocusId,
+        string expectedMessage,
+        bool? nullResult)
+    {
+        Task<AdminOperationResult?> outcome = nullResult switch
+        {
+            true => Task.FromResult<AdminOperationResult?>(null),
+            false => Task.FromResult<AdminOperationResult?>(new AdminOperationResult(false, "op-rejected", "Rejected", null)),
+            null => Task.FromException<AdminOperationResult?>(new Exception("unexpected")),
+        };
+        _ = _mockApiClient.GetProjectionDetailAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ProjectionDetail?>(CreateDetail()));
+        _ = _mockApiClient.ResetProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+            .Returns(outcome);
+        _ = _mockApiClient.ReplayProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(outcome);
+        IRenderedComponent<ProjectionDetailPanel>? cut = null;
+        bool? initiatorDisabledWhenFocused = null;
+        _ = JSInterop.SetupVoid(
+                "hexalithAdmin.focusElementById",
+                invocation =>
+                {
+                    initiatorDisabledWhenFocused = cut!.Find(buttonSelector).HasAttribute("disabled");
+                    return true;
+                })
+            .SetVoidResult();
+        cut = Render<ProjectionDetailPanel>(parameters => parameters
+            .Add(item => item.TenantId, "tenant-1")
+            .Add(item => item.ProjectionName, "counter-projection"));
+        cut.WaitForAssertion(() => cut.Find(buttonSelector), TimeSpan.FromSeconds(5));
+        await cut.Find(buttonSelector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "reset" ? "ConfirmResetAsync" : "ConfirmReplayAsync"));
+
+        string[] messages = Services.GetRequiredService<TestToastService>().CapturedOptions
+            .Select(option => option.Message?.ToString() ?? string.Empty)
+            .ToArray();
+        messages.ShouldContain(expectedMessage);
+        messages.ShouldNotContain(message => message.Contains("accepted", StringComparison.OrdinalIgnoreCase));
+        cut.FindAll(action == "reset"
+            ? "fluent-dialog[aria-label='Reset projection']"
+            : "fluent-dialog[aria-label='Replay projection']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+        initiatorDisabledWhenFocused.ShouldBe(false);
+        GetPrivateField<bool>(cut.Instance, "_isOperating").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("reset", "#projection-reset-button")]
+    [InlineData("replay", "#projection-replay-button")]
+    public async Task ProjectionDialog_ServiceUnavailableReEnablesControlsWithoutClaimingAcceptance(
+        string action,
+        string buttonSelector)
+    {
+        _ = _mockApiClient.GetProjectionDetailAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ProjectionDetail?>(CreateDetail()));
+        _ = _mockApiClient.ResetProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(new ServiceUnavailableException("down")));
+        _ = _mockApiClient.ReplayProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(new ServiceUnavailableException("down")));
+        IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
+            .Add(item => item.TenantId, "tenant-1")
+            .Add(item => item.ProjectionName, "counter-projection"));
+        cut.WaitForAssertion(() => cut.Find(buttonSelector), TimeSpan.FromSeconds(5));
+        await cut.Find(buttonSelector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "reset" ? "ConfirmResetAsync" : "ConfirmReplayAsync"));
+        cut.Render();
+
+        string[] messages = Services.GetRequiredService<TestToastService>().CapturedOptions
+            .Select(option => option.Message?.ToString() ?? string.Empty)
+            .ToArray();
+        messages.ShouldContain("Service unavailable — try again later");
+        messages.ShouldNotContain(message => message.Contains("accepted", StringComparison.OrdinalIgnoreCase));
+        GetPrivateField<bool>(cut.Instance, "_isOperating").ShouldBeFalse();
+        GetPrivateField<string?>(cut.Instance, "_operatingAction").ShouldBeNull();
+        cut.Find(buttonSelector).HasAttribute("disabled").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("reset", "#projection-reset-button")]
+    [InlineData("replay", "#projection-replay-button")]
+    public async Task ProjectionDialog_FactsNameTheSubmittedProjection(string action, string buttonSelector)
+    {
+        _ = _mockApiClient.GetProjectionDetailAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<ProjectionDetail?>(CreateDetail("server-renamed-projection")));
+        _ = _mockApiClient.ResetProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "reset-op", "Accepted", null));
+        _ = _mockApiClient.ReplayProjectionAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "replay-op", "Accepted", null));
+        IRenderedComponent<ProjectionDetailPanel> cut = Render<ProjectionDetailPanel>(parameters => parameters
+            .Add(item => item.TenantId, "tenant-1")
+            .Add(item => item.ProjectionName, "counter-projection"));
+        cut.WaitForAssertion(() => cut.Find(buttonSelector), TimeSpan.FromSeconds(5));
+        await cut.Find(buttonSelector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        string target = cut.Find("[data-confirmation-fact='target']").TextContent;
+        target.ShouldContain("counter-projection");
+        target.ShouldNotContain("server-renamed-projection");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "reset" ? "ConfirmResetAsync" : "ConfirmReplayAsync"));
+
+        if (action == "reset")
+        {
+            _ = await _mockApiClient.Received(1).ResetProjectionAsync(
+                "tenant-1", "counter-projection", Arg.Any<long?>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            _ = await _mockApiClient.Received(1).ReplayProjectionAsync(
+                "tenant-1", "counter-projection", Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+        }
+    }
+
     private static async Task InvokePrivateAsync(object instance, string methodName)
     {
         System.Reflection.MethodInfo method = instance.GetType().GetMethod(

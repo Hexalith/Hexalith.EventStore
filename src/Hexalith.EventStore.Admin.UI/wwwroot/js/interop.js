@@ -124,7 +124,11 @@ window.hexalithAdmin = {
     },
 
     waitForRender: function () {
-        return new Promise((resolve) => window.requestAnimationFrame(resolve));
+        // requestAnimationFrame is paused in hidden tabs; the timeout keeps callers from stalling.
+        return new Promise((resolve) => {
+            window.requestAnimationFrame(resolve);
+            window.setTimeout(resolve, 100);
+        });
     },
 
     focusElementById: function (elementId) {

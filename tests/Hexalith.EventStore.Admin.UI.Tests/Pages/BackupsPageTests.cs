@@ -1319,6 +1319,65 @@ public class BackupsPageTests : AdminUITestContext {
             created, completed, eventCount, sizeBytes, isValidated, errorMessage);
     }
 
+    [Theory]
+    [InlineData("create")]
+    [InlineData("restore")]
+    [InlineData("restore-validation")]
+    [InlineData("import")]
+    public async Task DenialOrValidationWithAsynchronousInterop_SettlesOnTheRendererDispatcher(string action) {
+        SetupJobs([CreateJob("bk-safe", "tenant-a", BackupJobStatus.Completed, isValidated: true)]);
+        Exception denial = new ForbiddenAccessException("denied");
+        _ = _mockBackupApi.TriggerBackupAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockBackupApi.TriggerRestoreAsync(
+                Arg.Any<string>(), Arg.Any<DateTimeOffset?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockBackupApi.ImportStreamAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        (string buttonId, string methodName) = action switch {
+            "create" => ("backup-create-button", "OnCreateBackupConfirm"),
+            "import" => ("backup-import-button", "OnImportConfirm"),
+            _ => ("backup-restore-Ymstc2FmZQ", "OnRestoreConfirm"),
+        };
+        cut.WaitForAssertion(() => cut.Find($"#{buttonId}"), TimeSpan.FromSeconds(5));
+        await cut.Find($"#{buttonId}").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        if (action == "create") {
+            SetPrivateField(cut.Instance, "_createTenantId", "tenant-a");
+        }
+        else if (action == "import") {
+            SetPrivateField(cut.Instance, "_importTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_importDomain", "Counter");
+            SetPrivateField(cut.Instance, "_importAggregateId", "counter-1");
+            SetPrivateField(cut.Instance, "_importContent", "{\"safe\":true}");
+        }
+        else if (action == "restore-validation") {
+            SetPrivateField(cut.Instance, "_restorePointInTime", "not-a-date");
+        }
+
+        Exception? fault = await RunWithAsynchronousFocusInteropAsync(
+            () => cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, methodName)));
+
+        fault.ShouldBeNull(fault?.ToString());
+        GetPrivateField<bool>(cut.Instance, "_isOperating").ShouldBeFalse();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(buttonId);
+    }
+
+    [Fact]
+    public async Task CreateBackupDialog_TargetInputUpdatesConfirmationFactsImmediately() {
+        SetupJobs([]);
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Find("#backup-create-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#backup-create-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        IRenderedComponent<FluentTextInput> tenant = cut.FindComponents<FluentTextInput>()
+            .Single(input => input.Instance.Label == "Tenant ID");
+        tenant.Instance.Immediate.ShouldBeTrue();
+    }
+
     private static void SetPrivateField<TValue>(Backups instance, string fieldName, TValue value)
         => typeof(Backups)
             .GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!

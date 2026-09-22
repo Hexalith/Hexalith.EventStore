@@ -583,6 +583,29 @@ public class TenantsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task AddUserDialog_TargetInputUpdatesConfirmationFactsImmediately() {
+        TenantSummary tenant = CreateTenant("t-1", "Tenant One", TenantStatusType.Active);
+        TenantDetail detail = new("t-1", "Tenant One", null, TenantStatusType.Active, DateTimeOffset.UtcNow.AddDays(-30));
+        _ = _mockTenantApi.GetTenantDetailAsync("t-1", Arg.Any<CancellationToken>())
+            .Returns(detail);
+        _ = _mockTenantApi.GetTenantUsersAsync("t-1", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<TenantUser>>([]));
+        SetupTenants([tenant]);
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("t-1"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRowClick", tenant));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Add User"), TimeSpan.FromSeconds(2));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OpenAddUserDialog"));
+        cut.Render();
+
+        IRenderedComponent<Microsoft.FluentUI.AspNetCore.Components.FluentTextInput> user = cut
+            .FindComponents<Microsoft.FluentUI.AspNetCore.Components.FluentTextInput>()
+            .Single(input => input.Instance.Label == "User ID");
+        user.Instance.Immediate.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task TenantsPage_AddUser_CallsAddUserToTenantAsync() {
         // Arrange (AC: 7)
         TenantSummary tenant = CreateTenant("t-1", "Tenant One", TenantStatusType.Active);

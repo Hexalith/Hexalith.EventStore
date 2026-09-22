@@ -154,14 +154,17 @@
                                    Impact="@Text["SnapshotPolicyCreateImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_createTenantId"
+                                 Immediate="true"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
                 <FluentTextInput @bind-Value="_createDomain"
+                                 Immediate="true"
                                  Label="Domain" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Domain" />
                 <FluentTextInput @bind-Value="_createAggregateType"
+                                 Immediate="true"
                                  Label="Aggregate Type" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Aggregate Type" />
@@ -296,14 +299,17 @@
                                    Impact="@Text["SnapshotCreateImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_snapshotTenantId"
+                                 Immediate="true"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
                 <FluentTextInput @bind-Value="_snapshotDomain"
+                                 Immediate="true"
                                  Label="Domain" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Domain" />
                 <FluentTextInput @bind-Value="_snapshotAggregateId"
+                                 Immediate="true"
                                  Label="Aggregate ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Aggregate ID" />
@@ -626,7 +632,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -711,7 +718,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -790,7 +798,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -882,7 +891,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 

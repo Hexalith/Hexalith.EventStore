@@ -958,6 +958,31 @@ public class DeadLettersPageTests : AdminUITestContext {
         btn.Find("fluent-button").Click();
     }
 
+    [Theory]
+    [InlineData("denial")]
+    [InlineData("stale-selection")]
+    public async Task BulkDialog_WithAsynchronousInterop_SettlesOnTheRendererDispatcher(string scenario)
+    {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        SetupBulkException("retry", new ForbiddenAccessException("denied"));
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Retry Dead Letters"), TimeSpan.FromSeconds(5));
+        if (scenario == "stale-selection")
+        {
+            _ = GetSelectedIds(cut.Instance).Add("missing-message");
+        }
+
+        Exception? fault = await RunWithAsynchronousFocusInteropAsync(() => InvokeDialogButtonAsync(cut, "Retry"));
+
+        fault.ShouldBeNull(fault?.ToString());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("dead-letter-retry-selected");
+    }
+
     private static Task InvokeDialogButtonAsync(IRenderedComponent<DeadLetters> cut, string text) {
         IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Find("fluent-button").TextContent.Trim() == text);

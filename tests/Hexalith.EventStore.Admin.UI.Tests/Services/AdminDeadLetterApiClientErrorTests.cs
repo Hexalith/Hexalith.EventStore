@@ -44,6 +44,7 @@ public class AdminDeadLetterApiClientErrorTests {
     }
 
     [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable, "temporarily unavailable")]
     [InlineData(HttpStatusCode.InternalServerError, "Admin API returned 500")]
     public async Task RetryDeadLettersAsync_GenericFailure_PreservesStatusCategory(HttpStatusCode statusCode, string expectedMessage) {
         using var response = new HttpResponseMessage(statusCode) {
@@ -56,6 +57,7 @@ public class AdminDeadLetterApiClientErrorTests {
 
         ex.StatusCode.ShouldBe(statusCode);
         ex.Message.ShouldContain(expectedMessage);
+        ex.StackTrace.ShouldNotBeNull().ShouldContain(nameof(AdminDeadLetterApiClient) + ".HandleErrorStatusAsync");
     }
 
     [Theory]

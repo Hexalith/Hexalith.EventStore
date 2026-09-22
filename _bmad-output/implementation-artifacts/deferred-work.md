@@ -4785,3 +4785,12 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Verify and route native or Escape-key Fluent dialog dismissal through teardown and initiator-focus restoration.
   evidence: The Admin pages expose explicit cancel handlers but no dismissal callback; a browser test pressing Escape is needed to establish whether Fluent closes the dialog without clearing component state and restoring exact focus.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-22, Admin UI slice)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Add a blocking browser test that proves `hexalithAdmin.waitForRender` exists and that Admin dialogs return `document.activeElement` to the initiating control.
+  evidence: bUnit runs JS interop in `JSRuntimeMode.Loose`, so any identifier succeeds; `Dw5DialogAccessibilityBrowserAtddTests` dialog cases are skipped and the E2E lane is advisory. Removing `waitForRender` from `interop.js` would break every close/denial path while all tests stay green. Same blocker as the spec frontmatter deferral.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Replace raw `result?.Message` / `ex.Message` toasts and Snapshots "created" completion wording with support-safe, accepted-versus-completed copy.
+  evidence: `Tenants.razor` lifecycle `catch (InvalidOperationException ex) => ShowErrorAsync(ex.Message)` and the add/remove/change-role, snapshot policy, and consistency failure toasts are identical at `da5accfc`; Snapshots success toasts still say "Snapshot policy created." / "Manual snapshot created.".

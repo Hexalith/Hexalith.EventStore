@@ -196,7 +196,7 @@
                 <h3 style="margin: 0;">Confirm Reset</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@Text["ProjectionTarget", _detail.Name, TenantId]"
+                <ConfirmationFacts Target="@Text["ProjectionTarget", ProjectionName, TenantId]"
                                    Impact="@Text["ProjectionResetImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <p style="margin: 0 0 12px 0;">@Text["ProjectionResetBody"]</p>
@@ -240,7 +240,7 @@
                 <h3 style="margin: 0;">Confirm Replay</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@Text["ProjectionTarget", _detail.Name, TenantId]"
+                <ConfirmationFacts Target="@Text["ProjectionTarget", ProjectionName, TenantId]"
                                    Impact="@Text["ProjectionReplayImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <p style="margin: 0 0 12px 0;">@Text["ProjectionReplayBody"]</p>
@@ -481,7 +481,7 @@
             return;
         }
 
-        string confirmationTarget = Text["ProjectionTarget", _detail.Name, TenantId];
+        string confirmationTarget = Text["ProjectionTarget", ProjectionName, TenantId];
         if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
         {
             await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
@@ -531,19 +531,20 @@
         catch (Exception ex)
         {
             _ = ex;
-            await ToastService.ShowErrorAsync("Projection operation failed. Refresh status before deciding whether to retry.").ConfigureAwait(false);
-            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            // Re-enable the initiating control before focus moves back to it.
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Projection operation failed. Refresh status before deciding whether to retry.").ConfigureAwait(false);
+            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
 
         if (opResult?.Success != true)
         {
-            await ToastService.ShowErrorAsync("Failed to reset projection").ConfigureAwait(false);
-            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Failed to reset projection").ConfigureAwait(false);
+            await CloseResetDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
 
@@ -602,7 +603,7 @@
             return;
         }
 
-        string confirmationTarget = Text["ProjectionTarget", _detail.Name, TenantId];
+        string confirmationTarget = Text["ProjectionTarget", ProjectionName, TenantId];
         if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
         {
             await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
@@ -672,19 +673,20 @@
         catch (Exception ex)
         {
             _ = ex;
-            await ToastService.ShowErrorAsync("Projection operation failed. Refresh status before deciding whether to retry.").ConfigureAwait(false);
-            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            // Re-enable the initiating control before focus moves back to it.
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Projection operation failed. Refresh status before deciding whether to retry.").ConfigureAwait(false);
+            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
 
         if (opResult?.Success != true)
         {
-            await ToastService.ShowErrorAsync("Failed to replay projection").ConfigureAwait(false);
-            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
             _isOperating = false;
             _operatingAction = null;
+            await ToastService.ShowErrorAsync("Failed to replay projection").ConfigureAwait(false);
+            await CloseReplayDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
 
