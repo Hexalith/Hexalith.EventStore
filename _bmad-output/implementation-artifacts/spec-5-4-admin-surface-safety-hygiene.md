@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -740,3 +740,17 @@ _First chunk of Story 5.4. Diff `da5accfc..HEAD` narrowed to `Admin.Server.Host`
 - [Rejected][false] `bool.TryParse` leaves discovery unmapped for `1`, `yes`, `on`, and whitespace, with no startup log — those values are not `true`, and leaving the routes unmapped is the fail-closed gate. `not-a-boolean` already covers that class.
 - [Rejected][false] `AdminOpenApiDisabledFactory` resolves a null `IDaprInfrastructureQueryService` after 15 seconds — `AddAdminServer` registers the real scoped service, and `GetRequiredService` does not return null.
 - [Rejected][false] Production tests always write `OpenApi:Enabled` and never boot the shipped `appsettings.json` value `false` — `IsDevelopment()` is false in that factory, so the flag cannot map discovery. The `true` case already expects 404.
+
+### Review Findings
+
+_Admin host discovery chunk, 2026-09-22. Diff `da5accfc...HEAD` narrowed to the host, shipped settings, `HostBootstrapTests`, and `AdminOpenApiDisabledFactory` (5 files, +249/−5). Edge Case Hunter returned an empty result and is excluded._
+
+- [ ] [Review][Patch] Swagger UI success is only an HTML content type [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:172]
+- [ ] [Review][Patch] OpenAPI document check ignores paths and the Bearer scheme [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:165]
+
+#### Rejected
+
+- [Rejected][false] Shipped Development settings can return a non-document 200 and still pass — `DevelopmentPipeline_WithExplicitEnablement_MapsDiscovery` loads the same `appsettings.Development.json` and already requires `application/json`, an OpenAPI 3.x field, and the Admin API title.
+- [Rejected][false] An enablement path that stopped challenging `/api/v1/admin/streams/GetRecentlyActiveStreams` would still pass — `MapOpenApi` does not change authorization, and `AdminRequest_WithHs384Token_ReturnsUnauthorized` already expects 401 on the discovery-enabled Development host.
+- [Rejected][false] Omission tests accept `MapOpenApi`'s missing-document 404 — those tests also require 404 from `/swagger` and `/swagger/index.html`, which that missing-document response does not produce.
+- [Rejected][false] `AdminOpenApiDisabledFactory` dereferences a null inventory from a substituted `IDaprInfrastructureQueryService` after 15 seconds — the factory does not substitute that service, and `GetCanonicalDaprInventoryAsync` returns `new DaprCanonicalInventory`.
