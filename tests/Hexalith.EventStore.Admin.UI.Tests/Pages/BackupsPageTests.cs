@@ -1017,7 +1017,7 @@ public class BackupsPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("Tenant: tenant-a");
         cut.Markup.ShouldContain("Events: 0");
         GetPrivateField<string>(cut.Instance, "_importTenantId").ShouldBe("tenant-a");
-        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("Backup data for tenant 'tenant-a'");
+        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("Imported event-stream content for tenant 'tenant-a'");
         cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain("currently deferred stream-import path");
         cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe("Admin");
     }

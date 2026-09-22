@@ -22,6 +22,8 @@ public class SentinelMarkerContractTests {
     [InlineData("Inspect connection string status.")]
     [InlineData("Validate the connectionString property of the diagnostic record.")]
     [InlineData("Operator guidance about passwords (none configured).")]
+    [InlineData("https://example.test/health?access_token=")]
+    [InlineData("https://example.test/health?sig=")]
     [InlineData("Hexalith.EventStore.Administration")]
     [InlineData("")]
     [InlineData(null)]
@@ -72,6 +74,9 @@ public class SentinelMarkerContractTests {
         "https://example.test/health?access_token=secret-value",
         "https://example.test/health?api_key=secret-value",
         "https://example.test/health?password=secret-value",
+        "https://example.test/health%3Faccess_token%3Dsecret-value",
+        "https://example.test/health?%2561ccess_token=secret-value",
+        @"{""\u0070assword"":""secret-value""}",
         "https://operator:password@example.test/path",
         "https://operator%3Apassword@example.test/path",
         "PROTECTED_marker",

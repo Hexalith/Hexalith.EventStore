@@ -281,6 +281,15 @@ public class ToolHelperTests {
     }
 
     [Fact]
+    public void SerializeResult_EmptyMessageStaysEmpty()
+    {
+        string result = ToolHelper.SerializeResult(new { Message = string.Empty });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("message").GetString().ShouldBe(string.Empty);
+    }
+
+    [Fact]
     public void SerializeResult_MessageIsBoundedAndRedactsUnsafeMarkers() {
         var data = new {
             Success = true,
@@ -523,6 +532,21 @@ public class ToolHelperTests {
 
         using var document = JsonDocument.Parse(result);
         document.RootElement.GetProperty("healthLink").GetString().ShouldBe("Protected output text redacted.");
+    }
+
+    [Fact]
+    public void SerializeResult_RedactsPercentEncodedQuerySecretsAndKeepsValuelessKeys()
+    {
+        string result = ToolHelper.SerializeResult(new {
+            encoded = "https://example.test/health%3Faccess_token%3Dsecret-value",
+            doubleEncoded = "https://example.test/health?%2561ccess_token=secret-value",
+            empty = "https://example.test/health?sig=",
+        });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("encoded").GetString().ShouldBe("Protected output text redacted.");
+        document.RootElement.GetProperty("doubleEncoded").GetString().ShouldBe("Protected output text redacted.");
+        document.RootElement.GetProperty("empty").GetString().ShouldBe("https://example.test/health?sig=");
     }
 
     [Fact]

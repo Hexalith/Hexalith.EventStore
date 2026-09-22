@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -294,6 +294,39 @@ deferred:
 | EC7-08 | `medium` — carried from EC4-10: blank `CommandStatusPath` remains unrelated gateway-client configuration debt. | defer |
 | EC7-09 | `medium` — carried from EC6-18: sprint-status changes in the preserved baseline are unrelated historical commits, while the Story 5.4 working patch does not touch the tracker. | defer |
 | VG7-01 | `medium` — carried from VG6-03: mocked interop still cannot establish final browser `activeElement`; the authenticated denial-capable fixture remains unavailable. | defer |
+| BH8-01 | `false` — carried from BH3-03: the intent-contract matrix names projection reset/replay, not pause/resume; those writes still use the pre-existing generic confirmation. | reject |
+| BH8-02 | `low` — carried from BH7-09 and BH2-06: the inclusive single-position replay limit stays deferred, and closing replay validation still presents the error in a toast, which is the acceptance behavior. | defer |
+| BH8-03 | `false` — carried from EC7-05: the backup preview path omits query parameters on purpose while `parameters` still carries `includeSnapshots` and `description`. | reject |
+| BH8-04 | `false` — Preview check-type names and numeric `checkTypes` are the same parsed set; the intent gate already pins `"checkTypes":[0]` and the Admin binder accepts those enum values. | reject |
+| BH8-05 | `false` — The 240-character `SafeText` bound is the story's support-safe limit; truncation is marked and no current result contract requires lossless arbitrary strings. | reject |
+| BH8-06 | `false` — Descriptorizing `details`, `errorMessage`, `configuration`, `cursor`, and `continuationToken` is the accepted leak fix; the story forbids exposing cursors. | reject |
+| BH8-07 | `medium` — Verified: percent-decoding stops after two passes, so a third encoding leaves a credential unmarked. Empty JSON secret keys, `token`/`sig` aliases, and the 1024-character header cap match earlier rejections. | patch |
+| BH8-08 | `medium` — Verified: an import confirmation that has a tenant id renders `BackupTenantTarget` ("Backup data for tenant"). The unbounded file read and validation-close behavior match earlier rejections. | patch |
+| BH8-09 | `false` — carried from BH2-06: an invalid restore point-in-time is toasted and the dialog closes, which is the local-validation acceptance behavior. | reject |
+| BH8-10 | `false` — carried from BH3-11 and BH3-07: service-unavailable text is a fixed client string, `result.Message` is the operator field, and the change-role dialog shows the selected role beside an impact that names the role replacement. | reject |
+| BH8-11 | `false` — carried from BH6-06 and EC5-05: dead-letter facts identify the selection by counts, denial stops later groups, and the `failCount == 0` denial branch cannot run because denial increments `failCount`. | reject |
+| BH8-12 | `medium` — carried from EC3-13, EC3-14, and EC5-04: token-endpoint query, buffering, and trailing-slash behavior remain Story 5.3 token acquisition, already deferred. | defer |
+| BH8-13 | `false` — carried from BH2-04 and EC6-12: snapshot storage success is an HTTP 200 completion, and successful policy changes are outside the focus-restoration conditions. | reject |
+| BH8-14 | `false` — `ClampSupportSafe` can still display `[redacted]`, but confirm handlers call `IsExactAndSupportSafe` before submit; dead-letter facts are selection counts, not free text. | reject |
+| EC8-01 | `false` — carried duplicate of BH8-03/EC7-05: backup preview omits query fields while `parameters` keeps the posted values. | reject |
+| EC8-02 | `medium` — Verified duplicate of BH8-07: the decoder returns after two passes, so a third percent-encoding is treated as support-safe. | patch |
+| EC8-03 | `medium` — Verified: the scan-copy allowlist omits space and `.`, so `Bearer%20` and `%2E`-separated JWTs are not decoded before marker matching. | patch |
+| EC8-04 | `medium` — Verified: `Uri.UnescapeDataString` can leave a trailing NUL on a query name, and the secret-name comparison does not trim it, so `password%00=secret` stays unmarked. | patch |
+| EC8-05 | `false` — `focusElementById` looks up the element and calls `focus`; it does not wait on `document.hidden`. | reject |
+| EC8-06 | `low` — Rejected: a throwing focus restore could leave `_isOperating` true, but everyday denial already clears it after restore, and a `finally` would add a guard for an interop failure that already escapes. | reject |
+| EC8-07 | `medium` — Verified: an empty `message` fails the non-empty branch and then `SafeText` replaces it with redaction text because empty input uses the replacement. | patch |
+| EC8-08 | `medium` — carried from BH7-11: duplicate dead-letter `MessageId` rows can fail the selection-count check; that collision is the pre-existing keying issue already deferred. | defer |
+| EC8-09 | `false` — carried from EC7-06: the backup description is user-entered in the same dialog and is not part of the target/impact/permission fact. | reject |
+| EC8-10 | `medium` — carried from EC3-13: a non-JSON token response is Story 5.3 token acquisition, already deferred. | defer |
+| EC8-11 | `medium` — carried from EC3-15: `expires_in` parsing is Story 5.3 token acquisition, already deferred. | defer |
+| EC8-12 | `low` — carried from EC3-12: a 240-character cut can split a surrogate pair; everyday Admin text is ASCII and the extra boundary branch was already rejected. | reject |
+| EC8-13 | `low` — carried duplicate of EC8-12: confirmation clamping has the same unlikely surrogate cut. | reject |
+| EC8-14 | `false` — `InvalidOperationException` is caught only around `TriggerCheckAsync`; `LoadDataAsync` stays outside that catch so a refresh failure is not labeled an invalid request. | reject |
+| EC8-15 | `false` — carried duplicate of EC8-01: the preview-versus-query claim is the same intentional backup contract. | reject |
+| EC8-16 | `medium` — Verified duplicate of BH8-07 and EC8-03: two decode passes and the omitted space/dot bytes leave encoded credentials unmarked. | patch |
+| EC8-17 | `low` — Rejected: a denied bulk action restores focus after `LoadDataAsync` on the paths that complete; guarding a throwing reload would add another branch for an uncommon failure. | reject |
+| VG8-01 | `false` — carried from BH3-04: backup validate is outside the intent-contract destructive set, so the missing facts and focus restore are not this story's confirmation contract. The filed gap is real and its disposition was patch; the logged exclusion still holds. | reject |
+| VG8-02 | `false` — carried from BH3-04: compaction remains a visibly deferred control outside the intent-contract destructive set. The filed gap is real and its disposition was patch; the logged exclusion still holds. | reject |
 
 ## Design Notes
 
@@ -561,13 +594,13 @@ _Story 5.4 group 2: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.Even
 
 _Story 5.4 group 1: Admin host OpenAPI gating, CLI unavailable commands, published docs, and `UnsafeMarkerDetection`, versus `da5accfc`. MCP and Admin UI are later passes._
 
-- [ ] [Review][Patch] Percent-encoded query separators and delimiters hide credentials [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:48]
-- [ ] [Review][Patch] One unescape pass misses double-encoded credential names [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:74]
-- [ ] [Review][Patch] JSON field regex misses unicode-escaped secret names [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:45]
-- [ ] [Review][Patch] Secret-key patterns match with no value and redact the whole string [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:48]
-- [ ] [Review][Patch] Compact JWTs whose header has `typ` but no string `alg` stay visible [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:108]
-- [ ] [Review][Patch] CLI inventory calls every exit code 1 degraded health [docs/brownfield/component-inventory.md:62]
-- [ ] [Review][Patch] Backup group copy still says the operations are available [src/Hexalith.EventStore.Admin.Cli/Commands/Backup/BackupCommand.cs:14]
+- [x] [Review][Patch] Percent-encoded query separators and delimiters hide credentials [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:48]
+- [x] [Review][Patch] One unescape pass misses double-encoded credential names [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:74]
+- [x] [Review][Patch] JSON field regex misses unicode-escaped secret names [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:45]
+- [x] [Review][Patch] Secret-key patterns match with no value and redact the whole string [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:48]
+- [x] [Review][Patch] Compact JWTs whose header has `typ` but no string `alg` stay visible [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:108]
+- [x] [Review][Patch] CLI inventory calls every exit code 1 degraded health [docs/brownfield/component-inventory.md:62]
+- [x] [Review][Patch] Backup group copy still says the operations are available [src/Hexalith.EventStore.Admin.Cli/Commands/Backup/BackupCommand.cs:14]
 - [x] [Review][Defer] CLI inventory still names `.eventstore-admin-profiles.json` [docs/brownfield/component-inventory.md:61] — deferred: unchanged pre-existing sentence; `ProfileManager` uses `~/.eventstore/profiles.json`; already tracked.
 - [x] [Review][Defer] Bash health completion still offers `--interval` and omits `--timeout` and `--quiet` [src/Hexalith.EventStore.Admin.Cli/Commands/Config/CompletionScripts.cs:65] — deferred: pre-existing health stanza; this diff changed backup and tenant completions only.
 - [x] [Review][Defer] A non-boolean Admin OpenAPI flag throws during Development startup [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:42] — deferred: `GetValue<bool>` already threw on a present non-boolean before this rewrite; a missing key returns false and omits discovery; Production does not evaluate the flag.
@@ -580,3 +613,21 @@ _Story 5.4 group 1: Admin host OpenAPI gating, CLI unavailable commands, publish
 - [Rejected][low] The inventory test builds command factories itself and ignores the health row's non-backtick prose — the published subcommand names match those factories today; binding the test to the CLI composition root is a larger redesign.
 - [Rejected][low] A 1025-character dotted segment is marked and a 1024-character one is not — that blob is not an everyday credential; the cap fail-closes instead of decoding an unbounded header.
 - [Rejected][low] The empty-payload token `eyJhbGciOiJub25lIn0..` is unmarked — it carries no claim segment; payload-bearing `alg` tokens are already detected.
+
+### Review Findings — story-file diff (2026-09-22)
+
+- [x] [Review][Patch] Percent-decoding stops after two passes, so a third encoding hides a credential [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:89]
+- [x] [Review][Patch] The scan-copy decoder omits space and `.`, so `Bearer%20` and `%2E`-separated JWTs stay unmarked [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:111]
+- [x] [Review][Patch] A decoded query name can keep a trailing NUL, so `password%00=secret` is not recognized [src/Hexalith.EventStore.Admin.Abstractions/Security/UnsafeMarkerDetection.cs:159]
+- [x] [Review][Patch] An empty MCP result message is replaced with redaction text [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:230]
+- [x] [Review][Patch] An import confirmation with a tenant id says "Backup data for tenant" [src/Hexalith.EventStore.Admin.UI/Pages/Backups.razor:486]
+
+#### Rejected
+
+- [Rejected][false] Pause and resume omit `ConfirmationFacts` — the intent matrix names reset and replay, not pause or resume.
+- [Rejected][false] Backup preview omits `includeSnapshots` and `description` on the endpoint — those values stay in `parameters`, and the intent gate pins that split.
+- [Rejected][false] Named check types versus numeric `checkTypes` disagree — they are the same parsed set.
+- [Rejected][false] `SafeText` truncates ordinary strings at 240 characters — that bound is the support-safe contract.
+- [Rejected][false] Raw-capable fields hide operator diagnostics — cursors are forbidden, and those keys were descriptorized on purpose.
+- [Rejected][false] Backup validate and compaction skip the confirmation contract — both sit outside the intent-contract destructive set, and compaction stays visibly deferred.
+- [Rejected][low] A focus restore that throws can leave projection controls disabled — everyday denial already clears the flag, and a `finally` would guard an interop failure that already escapes.

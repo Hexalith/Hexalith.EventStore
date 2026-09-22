@@ -9,6 +9,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Security;
 /// </summary>
 public static partial class UnsafeMarkerDetection {
     private const int MaxJwtHeaderSegmentLength = 1024;
+    private const int MaxPercentDecodePasses = 8;
 
     /// <summary>
     /// Returns <see langword="true"/> when <paramref name="value"/> contains a sentinel marker or
@@ -21,19 +22,7 @@ public static partial class UnsafeMarkerDetection {
             return false;
         }
 
-        return value.Contains("PROTECTED_", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("AccountKey=", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("SharedAccessKey=", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("Password=", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("ConnectionString=", StringComparison.OrdinalIgnoreCase)
-            || value.Contains(";ConnectionString=", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("Endpoint=sb://", StringComparison.OrdinalIgnoreCase)
-            || BearerTokenRegex().IsMatch(value)
-            || ContainsJsonWebToken(value)
-            || JsonSecretFieldRegex().IsMatch(value)
-            || QuerySecretRegex().IsMatch(value)
-            || ContainsPercentEncodedQuerySecret(value)
-            || UriUserInfoRegex().IsMatch(value);
+        return ContainsUnsafeMarkerCore(value) || ContainsUnsafeMarkerInPercentDecodedCopies(value);
     }
 
     [GeneratedRegex("""(?:^|[^A-Za-z0-9])Bearer\s+[A-Za-z0-9._~+/=-]+""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
@@ -45,14 +34,93 @@ public static partial class UnsafeMarkerDetection {
     [GeneratedRegex("\"(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization)\"\\s*:", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex JsonSecretFieldRegex();
 
-    [GeneratedRegex(@"(?:^|[?&#;\s])(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization|sig)\s*[=:]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    [GeneratedRegex(@"(?:^|[?&#;\s])(?:access_token|accesstoken|refresh_token|refreshtoken|id_token|idtoken|token|password|secret|client_secret|clientsecret|api_key|apikey|authorization|sig)\s*[=:]\s*[^\s&;#]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex QuerySecretRegex();
 
-    [GeneratedRegex(@"(?:^|[?&#;\s])(?<name>(?:[A-Za-z0-9_]|%[0-9A-Fa-f]{2}){1,96})\s*[=:]", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    [GeneratedRegex(@"(?:^|[?&#;\s])(?<name>(?:[A-Za-z0-9_]|%[0-9A-Fa-f]{2}){1,96})\s*[=:]\s*[^\s&;#]", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex PercentEncodedQueryNameRegex();
+
+    [GeneratedRegex("%(?<hex>[0-9A-Fa-f]{2})", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex PercentEncodedByteRegex();
+
+    [GeneratedRegex(@"\\u(?<hex>[0-9A-Fa-f]{4})", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex JsonUnicodeEscapeRegex();
 
     [GeneratedRegex(@"\b[a-z][a-z0-9+.-]*://[^\s/?#@]+(?:(?::|%3a)[^\s/?#@]*)?(?:@|%40)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex UriUserInfoRegex();
+
+    private static bool ContainsUnsafeMarkerCore(string value)
+        => value.Contains("PROTECTED_", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("AccountKey=", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("SharedAccessKey=", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("Password=", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("ConnectionString=", StringComparison.OrdinalIgnoreCase)
+            || value.Contains(";ConnectionString=", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("Endpoint=sb://", StringComparison.OrdinalIgnoreCase)
+            || BearerTokenRegex().IsMatch(value)
+            || ContainsJsonWebToken(value)
+            || ContainsJsonSecretField(value)
+            || ContainsQuerySecret(value)
+            || UriUserInfoRegex().IsMatch(value);
+
+    private static bool ContainsQuerySecret(string value)
+        => QuerySecretRegex().IsMatch(value) || ContainsPercentEncodedQuerySecret(value);
+
+    private static bool ContainsJsonSecretField(string value) {
+        if (JsonSecretFieldRegex().IsMatch(value)) {
+            return true;
+        }
+
+        if (!value.Contains("\\u", StringComparison.Ordinal)) {
+            return false;
+        }
+
+        string decoded = DecodeJsonUnicodeLetters(value);
+        return !string.Equals(decoded, value, StringComparison.Ordinal)
+            && JsonSecretFieldRegex().IsMatch(decoded);
+    }
+
+    private static bool ContainsUnsafeMarkerInPercentDecodedCopies(string value) {
+        if (!value.Contains('%', StringComparison.Ordinal)) {
+            return false;
+        }
+
+        string current = value;
+        for (int pass = 0; pass < MaxPercentDecodePasses; pass++) {
+            string decoded = DecodePercentEncodedCredentialCharacters(current);
+            if (string.Equals(decoded, current, StringComparison.Ordinal)) {
+                return false;
+            }
+
+            if (ContainsUnsafeMarkerCore(decoded)) {
+                return true;
+            }
+
+            current = decoded;
+        }
+
+        return false;
+    }
+
+    private static string DecodePercentEncodedCredentialCharacters(string value)
+        => PercentEncodedByteRegex().Replace(value, static match => {
+            int code = Convert.ToInt32(match.Groups["hex"].Value, 16);
+            return IsCredentialEncodingByte(code) ? ((char)code).ToString() : match.Value;
+        });
+
+    private static bool IsCredentialEncodingByte(int code)
+        => code is '%' or '?' or '&' or '#' or ';' or '=' or ':' or '@' or '_' or '-' or '.' or ' '
+            or (>= '0' and <= '9')
+            or (>= 'A' and <= 'Z')
+            or (>= 'a' and <= 'z');
+
+    private static string DecodeJsonUnicodeLetters(string value)
+        => JsonUnicodeEscapeRegex().Replace(value, static match => {
+            int code = Convert.ToInt32(match.Groups["hex"].Value, 16);
+            return code is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or '_'
+                ? ((char)code).ToString()
+                : match.Value;
+        });
 
     private static bool ContainsJsonWebToken(string value) {
         foreach (Match match in JwtCandidateRegex().Matches(value)) {
@@ -71,8 +139,26 @@ public static partial class UnsafeMarkerDetection {
                 continue;
             }
 
-            string normalized = Uri.UnescapeDataString(name)
+            string decodedName = name;
+            for (int pass = 0; pass < 2 && decodedName.Contains('%', StringComparison.Ordinal); pass++) {
+                string next;
+                try {
+                    next = Uri.UnescapeDataString(decodedName);
+                }
+                catch (UriFormatException) {
+                    break;
+                }
+
+                if (string.Equals(next, decodedName, StringComparison.Ordinal)) {
+                    break;
+                }
+
+                decodedName = next;
+            }
+
+            string normalized = decodedName
                 .Replace("_", string.Empty, StringComparison.Ordinal)
+                .Trim('\0', ' ', '\t', '\r', '\n')
                 .ToLowerInvariant();
             if (normalized is "accesstoken"
                 or "refreshtoken"
@@ -105,9 +191,18 @@ public static partial class UnsafeMarkerDetection {
 
             byte[] bytes = Convert.FromBase64String(normalized);
             using JsonDocument document = JsonDocument.Parse(bytes);
-            return document.RootElement.ValueKind == JsonValueKind.Object
-                && document.RootElement.TryGetProperty("alg", out JsonElement algorithm)
-                && algorithm.ValueKind == JsonValueKind.String;
+            if (document.RootElement.ValueKind != JsonValueKind.Object) {
+                return false;
+            }
+
+            if (document.RootElement.TryGetProperty("alg", out JsonElement algorithm)
+                && algorithm.ValueKind == JsonValueKind.String) {
+                return true;
+            }
+
+            return document.RootElement.TryGetProperty("typ", out JsonElement tokenType)
+                && tokenType.ValueKind == JsonValueKind.String
+                && !string.IsNullOrEmpty(tokenType.GetString());
         }
         catch (FormatException) {
             return false;

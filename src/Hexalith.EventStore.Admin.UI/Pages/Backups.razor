@@ -483,7 +483,7 @@
                 <h3 style="margin: 0;">Import Stream</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@(_importTenantId is null ? Text["BackupImportTarget"] : Text["BackupTenantTarget", _importTenantId])"
+                <ConfirmationFacts Target="@(_importTenantId is null ? Text["BackupImportTarget"] : Text["BackupImportTenantTarget", _importTenantId])"
                                    Impact="@Text["BackupImportImpact"]"
                                    RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentCard Style="padding: 16px; margin-bottom: 12px; text-align: center;">
@@ -1247,7 +1247,7 @@
                     return;
                 }
 
-                string confirmationTarget = Text["BackupTenantTarget", tenantId];
+                string confirmationTarget = Text["BackupImportTenantTarget", tenantId];
                 if (!IsExactSupportSafeImportText(tenantId)
                     || !IsExactSupportSafeImportText(domain)
                     || !IsExactSupportSafeImportText(aggregateId)
@@ -1294,7 +1294,7 @@
             return;
         }
 
-        string confirmationTarget = Text["BackupTenantTarget", _importTenantId];
+        string confirmationTarget = Text["BackupImportTenantTarget", _importTenantId];
         if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
         {
             await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);

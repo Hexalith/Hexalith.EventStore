@@ -35,6 +35,7 @@ public class BackupCommandTests {
         Command command = BackupCommand.Create(binding);
 
         command.Description.ShouldNotBeNullOrWhiteSpace();
+        command.Description.ShouldContain("unavailable", Case.Insensitive);
     }
 
     [Theory]

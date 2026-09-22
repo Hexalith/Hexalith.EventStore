@@ -59,7 +59,9 @@ Command groups (System.CommandLine):
 
 Output: `IOutputFormatter` (`JsonOutputFormatter`, `TableOutputFormatter`, `SafeOutputValueFormatter`
 with credential redaction). Profiles persisted to `.eventstore-admin-profiles.json`. Exit codes:
-0 success, 1 degraded health, 2 error. Distributed as a **NuGet tool**. Backup implementation
+`0` success, `1` only when a health command reports degraded status, and `2` (`ExitCodes.Error`) for
+command failures, including unavailable backup commands. Exit code `1` is not a general failure.
+Distributed as a **NuGet tool**. Backup implementation
 classes not registered by `BackupCommand.Create` are dormant source, not callable CLI commands.
 
 ## Admin MCP (`src/Hexalith.EventStore.Admin.Mcp`) — AI-callable tools

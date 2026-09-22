@@ -25,6 +25,7 @@
   <data name="BackupCreateImpact" xml:space="preserve"><value>Submit a backup request to the currently deferred backend. Confirmation does not prove execution or completion.</value></data>
   <data name="BackupRestoreImpact" xml:space="preserve"><value>Submit a currently deferred restore request. If implemented, restored events use a parallel restore stream and never overwrite original event streams; confirmation does not prove execution or completion.</value></data>
   <data name="BackupImportTarget" xml:space="preserve"><value>Imported event-stream content</value></data>
+  <data name="BackupImportTenantTarget" xml:space="preserve"><value>Imported event-stream content for tenant '{0}'</value></data>
   <data name="BackupImportImpact" xml:space="preserve"><value>Submit content to the currently deferred stream-import path. Confirmation does not prove validation, execution, or completion.</value></data>
   <data name="BackupImportUnsafeTarget" xml:space="preserve"><value>Import target identifiers must be support-safe and no more than 240 characters.</value></data>
   <data name="SnapshotTarget" xml:space="preserve"><value>Snapshot for '{0}/{1}/{2}'</value></data>

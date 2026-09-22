@@ -41,6 +41,8 @@ public class AdminSurfaceDocumentationTests
         inventory.ShouldContain("`consistency-cancel`");
         inventory.ShouldContain("confirm=true");
         inventory.ShouldContain("ExitCodes.Error");
+        inventory.ShouldContain("`1` only when a health command reports degraded status");
+        inventory.ShouldNotContain("1 degraded health");
         inventory.ShouldContain("ConfirmationFacts");
         inventory.ShouldContain("InitiatorFocusService");
         inventory.ShouldNotContain("`export-stream`");

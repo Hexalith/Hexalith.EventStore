@@ -227,7 +227,11 @@ internal static class ToolHelper {
         }
 
         if (node is JsonValue value && value.TryGetValue(out string? text)) {
-            if (IsResultMessageProperty(propertyName) && !string.IsNullOrEmpty(text)) {
+            if (IsResultMessageProperty(propertyName)) {
+                if (string.IsNullOrEmpty(text)) {
+                    return text is null ? null : JsonValue.Create(string.Empty);
+                }
+
                 return JsonValue.Create(SafeText(text, "Protected diagnostic text redacted."));
             }
 
