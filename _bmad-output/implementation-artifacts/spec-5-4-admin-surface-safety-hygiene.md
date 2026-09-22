@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -680,3 +680,18 @@ _Story 5.4 MCP writes: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.E
 - [Rejected][low] Support-safe text longer than 240 characters can split a UTF-16 surrogate pair — that requires a supplementary character on the cut, and closing it adds a branch for a case everyday text does not hit.
 - [Rejected][false] Operator-facing `errorMessage` is always replaced by a descriptor — that redaction is the leak fix this slice tests via `errorStatus`; cursors stay hidden because the spec forbids them.
 - [Rejected][low] `BoundText` can emit an unpaired surrogate when the 240-character cut lands inside a pair [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:309] — same boundary; a guard there is extra complexity for text operators do not send.
+
+### Review Findings — host/OpenAPI slice (2026-09-22)
+
+_Story 5.4 Admin host discovery: `src/Hexalith.EventStore.Admin.Server.Host` and the OpenAPI host tests versus `da5accfc`._
+
+- [ ] [Review][Patch] Config-gating factory stays on Production, so `Enabled` is never evaluated [tests/Hexalith.EventStore.Admin.Server.Tests/OpenApi/AdminOpenApiDisabledFactory.cs:56]
+- [ ] [Review][Patch] Development enablement test never sets `EventStore:Admin:OpenApi:Enabled` [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:137]
+- [ ] [Review][Patch] Development discovery tests skip `/swagger` and follow redirects [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:141]
+- [ ] [Review][Patch] Discovery-disabled Development hosts never request an admin route [tests/Hexalith.EventStore.Admin.Server.Host.Tests/HostBootstrapTests.cs:153]
+- [ ] [Review][Patch] Comment names Production while the gate closes every non-Development environment [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:41]
+- [ ] [Review][Patch] A non-boolean `Enabled` value throws during Development startup [src/Hexalith.EventStore.Admin.Server.Host/Program.cs:43]
+
+#### Rejected
+
+- [Rejected][low] `ProductionEndpointMetadata_ExposesOnlyTheThreeHealthProbesAnonymously` does not inventory discovery routes — `ProductionPipeline_AlwaysOmitsDiscovery` already asserts `404` for `/openapi/v1.json`, `/swagger`, and `/swagger/index.html` with redirects off, so extending the metadata test would duplicate that check.
