@@ -2,7 +2,7 @@
 title: 'Story 5.4: Admin Surface Safety Hygiene'
 type: 'feature'
 created: '2026-09-07'
-status: 'done'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 'da5accfca190fa8b3ba550a21e25ed177629b5bb'
@@ -505,3 +505,27 @@ _Group 1 adversarial review — Host, MCP, CLI, and documentation (2026-09-12)._
 - [Rejected][false] Accepted-request dialogs omit `RestoreAsync` — Always/AC restore focus after cancel, validation, or denial only; success hide+reload is outside that contract.
 - [Rejected][false] `OnImportFileSelected` `ReadToEndAsync` lacks `ConfigureAwait(false)` — that await was not changed; Always applies to changed production awaits.
 - [Rejected][low] Query secret aliases omit hyphenated names such as `access-token` — everyday Admin OAuth/query shapes use underscore names already in `QuerySecretRegex`; adding hyphen variants is extra detector surface for a rare identifier.
+
+### Review Findings — MCP chunk (2026-09-21, bmad-code-review)
+
+_Story 5.4 group 2: `src/Hexalith.EventStore.Admin.Mcp` and `tests/Hexalith.EventStore.Admin.Mcp.Tests` versus `da5accfc`._
+
+- [ ] [Review][Patch] Unpaired UTF-16 surrogates in path segments throw from `Uri.EscapeDataString` before the tool `try/catch` [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:141]
+- [ ] [Review][Patch] `projection-detail` discovery still promises configuration after results always replace it with `configurationStatus` [src/Hexalith.EventStore.Admin.Mcp/Tools/ProjectionTools.cs:40]
+- [x] [Review][Defer] Read and list MCP tools still interpolate or trim the same tenant and path IDs that write tools now reject [src/Hexalith.EventStore.Admin.Mcp/Tools/ConsistencyTools.cs:46] — deferred: pre-existing read/list tools were not in this mutation chunk; `consistency-detail` is already tracked.
+- [x] [Review][Defer] Valid tenants `admissions`, `export-stream`, and `import-stream` collide with fixed backup controller routes [src/Hexalith.EventStore.Admin.Mcp/Tools/BackupWriteTools.cs:35] — deferred: pre-existing controller-route ambiguity outside this story's deferred-backup boundary; already tracked.
+- [x] [Review][Defer] `ValidateTenantId` allows reserved tenant `system` [src/Hexalith.EventStore.Admin.Mcp/Tools/ToolHelper.cs:122] — deferred: canonical grammar matches Epic 5; reserved-name rejection is Story 5.10; already tracked.
+
+#### Rejected — MCP chunk (2026-09-21, bmad-code-review)
+
+- [Rejected][false] `backup-trigger` preview `endpoint` omits `includeSnapshots` and `description` query parameters — `WriteToolIntentGateTests` pins preview path versus confirm URI on purpose; `parameters` already carry both values.
+- [Rejected][false] Preview `checkTypes` names versus numeric JSON on the wire is a confirm/execute mismatch — the intent-gate pins `"checkTypes":[0]`; the Admin binder accepts those enum values; the named preview is the same parsed set.
+- [Rejected][low] Independently legal tenant plus projection names can fail composed `target`/`endpoint` preview-match — everyday names stay under 240 characters; the 64/180 case is already asserted as `invalid-input`.
+- [Rejected][false] Requiring `tenantId` on `consistency-trigger` removed fleet-wide MCP checks — that requirement is the earlier explicit-tenant patch and matches Epic 5 isolation.
+- [Rejected][false] Marking `configuration`, `details`, `errorMessage`, `continuationToken`, and `cursor` as raw-capable hides operator data — Story 5.4 Never forbids cursors; descriptorizing those keys is the 2026-09-12 leak fix.
+- [Rejected][false] Legacy preview `description`/`warning` keys let agents skip `requiredPermission` — `WriteToolIntentGateTests.AssertPreview` already pins `requiredPermission`; extra aliases do not replace `target`/`impact`.
+- [Rejected][false] Optional `domain` is trimmed while tenant IDs are not repaired — Epic 5 forbids repairing tenants; `OptionalWhitespaceInputs_AreOmittedConsistentlyFromPreviewAndExecution` pins blank domain as omit.
+- [Rejected][low] `TriggerBackup_IncludeSnapshotsFalse_FlowsThrough` does not capture the confirm query string — production always writes `includeSnapshots={true|false}`; the true default is already gated.
+- [Rejected][false] `ProjectionWriteToolsTests` omit negative-position and path-segment cases — `CallerBoundary_InvalidUnsafeOverlongScopeEnumPathAndPositionInputs_PerformZeroRequests` already covers those write-tool paths.
+- [Rejected][false] HTTP 400 mapping discards ProblemDetails — `EnsureSuccessStatusCode` throws `HttpRequestException` without the body; the generic `invalid-input` text is the support-safe contract.
+- [Rejected][false] `ping` failures omit `error: true` after `details` moved to `message` — ping reports `adminApiStatus`; `details` became a raw-capable key, so support-safe text had to move.

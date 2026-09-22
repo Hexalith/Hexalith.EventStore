@@ -4683,3 +4683,15 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Sanitize deferred backup backend messages before rendering them to operators.
   evidence: The pre-existing `SelectDeferredResultMessage` accepts any backend message containing `deferred`, `unsupported`, or `unavailable` and returns it verbatim without credential detection or a length bound.
+
+## Deferred from: code review of spec-5-4-admin-surface-safety-hygiene.md (2026-09-21, MCP chunk)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Read and list MCP tools still interpolate or trim tenant and path IDs that write tools now reject.
+  evidence: `ValidateTenantId` / `ValidatePathSegments` sit on write tools only. `ConsistencyTools.GetCheckDetail`, `ProjectionTools.GetProjectionDetail`, tenant/stream/diagnostic path reads still use `ValidateRequired` and can send `..` or non-canonical tenants. Pre-existing read surface; `consistency-detail` is already tracked.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: Valid tenants `admissions`, `export-stream`, and `import-stream` collide with fixed backup controller routes.
+  evidence: Reconfirmed `BackupWriteTools` POSTs `/api/v1/admin/backups/{tenantId}` while `AdminBackupsController` reserves those literals. Pre-existing route/versioning decision; already recorded 2026-09-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
+  summary: `ValidateTenantId` allows reserved tenant `system`.
+  evidence: Reconfirmed canonical 1-64 lowercase/digit/hyphen grammar in `ToolHelper.ValidateTenantId`. Reserved-name rejection is Story 5.10. Already recorded 2026-09-21.
