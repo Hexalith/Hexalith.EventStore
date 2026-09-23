@@ -142,19 +142,20 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
         ConcurrentWriteBeforeTrySave?.Invoke();
 
         string composite = Compose(storeName, key);
-        bool exists = _entries.TryGetValue(composite, out Entry? current);
+        lock (_gate) {
+            bool exists = _entries.TryGetValue(composite, out Entry? current);
 
-        // First-write-wins: a create requires an empty ETag and an absent key; an update requires the
-        // caller-held ETag to still match the stored one.
-        bool matches = exists
-            ? string.Equals(current!.ETag, etag, StringComparison.Ordinal)
-            : etag.Length == 0;
-        if (!matches) {
-            return Task.FromResult(false);
+            // A competing CAS must not pass the same ETag between compare and replacement.
+            bool matches = exists
+                ? string.Equals(current!.ETag, etag, StringComparison.Ordinal)
+                : etag.Length == 0;
+            if (!matches) {
+                return Task.FromResult(false);
+            }
+
+            _entries[composite] = new Entry(Serialize(value), NextETag());
+            return Task.FromResult(true);
         }
-
-        _entries[composite] = new Entry(Serialize(value), NextETag());
-        return Task.FromResult(true);
     }
 
     /// <inheritdoc/>
