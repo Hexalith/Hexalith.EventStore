@@ -146,7 +146,7 @@ development_status:
   # accepted, granted only at 3/3; the verifier now exits 0 and selects the pinned OCI index.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
-  3-15-corrected-deployed-runtime-parity-closure: review
+  3-15-corrected-deployed-runtime-parity-closure: in-progress
   # >>> END GUARDED COMMENTS <<<
   # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
   # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
