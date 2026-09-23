@@ -77,12 +77,12 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
             options,
             identityOptions,
             CancellationToken.None);
-        concurrent.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        concurrent.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Retryable);
         SharedProjectionScope scope = handler.CreateScope("tenant-a");
         SharedProjectionReadResult<Index> old = await coordinator.ReadAsync<Index>(scope, IndexKey);
         old.Generation.ShouldBe(0);
         old.Value!.Count.ShouldBe(1);
-        old.IsStale.ShouldBeTrue();
+        old.IsStale.ShouldBeFalse();
 
         current = await RebuildAsync(provider, new DomainSharedProjectionRebuildRequest(
             DomainSharedProjectionRebuildProtocol.Version,
@@ -108,7 +108,20 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
         SharedProjectionReadResult<Index> promoted = await coordinator.ReadAsync<Index>(scope, IndexKey);
         promoted.Generation.ShouldBe(1);
         promoted.IsStale.ShouldBeFalse();
-        promoted.Value!.Count.ShouldBe(2);
+        promoted.Value!.Count.ShouldBe(1);
+
+        ProjectionDispatchResponse deliveredAfterPromotion = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            new ProjectionDispatchRequest(
+                new ProjectionRequest("tenant-a", "widget", "aggregate-a", [first, second]),
+                ["widget-index"],
+                "delivery-2",
+                catalog),
+            options,
+            identityOptions,
+            CancellationToken.None);
+        deliveredAfterPromotion.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        (await coordinator.ReadAsync<Index>(scope, IndexKey)).Value!.Count.ShouldBe(2);
         (await coordinator.GetCheckpointAsync(scope, "aggregate-a"))!.Position.ShouldBe(2);
 
         DomainSharedProjectionRebuildResponse replay = await RebuildAsync(
@@ -116,6 +129,112 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
             Lifecycle(identity, DomainSharedProjectionRebuildAction.Commit));
         replay.Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
         (await coordinator.ReadAsync<Index>(scope, IndexKey)).Value!.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task MultiEnvelopeDelivery_JournalsEveryPositionAndRejectsConflictingRedelivery()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        var handler = new FencedIndexHandler();
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IReadModelStore>(store);
+        _ = services.AddSingleton<IReadModelBatchStore>(store);
+        _ = services.AddSingleton(coordinator);
+        _ = services.AddScoped<IAsyncDomainProjectionHandler>(_ => handler);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ProjectionEventDto[] events = [Event(1, 1), Event(2, 2), Event(3, 3)];
+        ProjectionDispatchRequest delivery = new(
+            new ProjectionRequest("tenant-a", "widget", "aggregate-a", events),
+            ["widget-index"],
+            "delivery-1",
+            CatalogFingerprint());
+
+        ProjectionDispatchResponse first = await DomainProjectionDispatcher.DispatchAsync(
+            provider, delivery, new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None);
+        first.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        SharedProjectionScope scope = handler.CreateScope("tenant-a");
+        (await coordinator.ReadAsync<Index>(scope, IndexKey)).Value!.Count.ShouldBe(3);
+        (await coordinator.GetCheckpointAsync(scope, "aggregate-a"))!.Position.ShouldBe(3);
+
+        ProjectionDispatchResponse duplicate = await DomainProjectionDispatcher.DispatchAsync(
+            provider, delivery, new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None);
+        duplicate.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        (await coordinator.ReadAsync<Index>(scope, IndexKey)).Value!.Count.ShouldBe(3);
+
+        ProjectionEventDto changed = Event(2, 2) with { Payload = JsonSerializer.SerializeToUtf8Bytes(new { sequence = 999 }) };
+        ProjectionDispatchResponse conflicting = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            delivery with { Request = delivery.Request with { Events = [events[0], changed, events[2]] } },
+            new ProjectionDispatchOptions(),
+            IdentityOptions(),
+            CancellationToken.None);
+        conflicting.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Failed);
+        (await coordinator.ReadAsync<Index>(scope, IndexKey)).Value!.Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task MultiEnvelopeDelivery_StopsAtFirstBackpressureWithoutJournalingLaterPositions()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        var handler = new FencedIndexHandler();
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IReadModelStore>(store);
+        _ = services.AddSingleton<IReadModelBatchStore>(store);
+        _ = services.AddSingleton(coordinator);
+        _ = services.AddScoped<IAsyncDomainProjectionHandler>(_ => handler);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        SharedProjectionScope scope = handler.CreateScope("tenant-a");
+        SharedProjectionLease lease = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
+        _ = await coordinator.BeginAsync(scope, "rebuild", "inventory", new Dictionary<string, long>());
+        lease = await coordinator.RefreshLeaseAsync(scope, handler.OrdinaryWriterId);
+        for (long position = 1; position <= 127; position++)
+        {
+            (await coordinator.JournalAsync(scope, lease, new SharedProjectionDelivery(
+                "aggregate-a", position, [(byte)position], BitConverter.GetBytes(position))))
+                .ShouldBe(SharedProjectionJournalResult.Journaled);
+        }
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            new ProjectionDispatchRequest(
+                new ProjectionRequest("tenant-a", "widget", "aggregate-a", [Event(128, 128), Event(129, 129), Event(130, 130)]),
+                ["widget-index"],
+                "delivery-130",
+                CatalogFingerprint()),
+            new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None);
+
+        response.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Retryable);
+        (await coordinator.GetStatusAsync(scope)).PendingDeliveryCount.ShouldBe(128);
+        (await coordinator.GetCheckpointAsync(scope, "aggregate-a"))!.Position.ShouldBe(128);
+    }
+
+    [Fact]
+    public async Task MultiEnvelopeDelivery_RejectsSequenceGapBeforeAnyJournalWrite()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        var handler = new FencedIndexHandler();
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IReadModelStore>(store);
+        _ = services.AddSingleton<IReadModelBatchStore>(store);
+        _ = services.AddSingleton(coordinator);
+        _ = services.AddScoped<IAsyncDomainProjectionHandler>(_ => handler);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        ProjectionDispatchResponse response = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            new ProjectionDispatchRequest(
+                new ProjectionRequest("tenant-a", "widget", "aggregate-a", [Event(1, 1), Event(3, 3)]),
+                ["widget-index"],
+                "delivery-3",
+                CatalogFingerprint()),
+            new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None);
+
+        response.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Failed);
+        (await store.GetAsync<object>(StoreName,
+            "shared-epoch:" + handler.CreateScope("tenant-a").ComputeHash())).Value.ShouldBeNull();
     }
 
     [Fact]
