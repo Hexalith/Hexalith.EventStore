@@ -33,11 +33,41 @@ public class ConsistencyWriteToolsTests {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity , SnapshotIntegrity , ProjectionPositions", cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity , SnapshotIntegrity , ProjectionPositions", "tenant-1", cancellationToken: ct);
 
         using var doc = JsonDocument.Parse(result);
         JsonElement types = doc.RootElement.GetProperty("parameters").GetProperty("checkTypes");
         types.GetArrayLength().ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task TriggerCheck_DeduplicatesCheckTypesInPreviewAndExecutionPreservingFirstSeenOrder() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string? capturedBody = null;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
+            request => capturedBody = request.Content?.ReadAsStringAsync(ct).GetAwaiter().GetResult(),
+            HttpStatusCode.OK,
+            _operationResultJson);
+        var client = new AdminApiClient(httpClient);
+
+        string preview = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "SnapshotIntegrity,sequencecontinuity,SNAPSHOTINTEGRITY,SequenceContinuity",
+            "tenant-1",
+            cancellationToken: ct);
+        _ = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "SnapshotIntegrity,sequencecontinuity,SNAPSHOTINTEGRITY,SequenceContinuity",
+            "tenant-1",
+            confirm: true,
+            cancellationToken: ct);
+
+        using var document = JsonDocument.Parse(preview);
+        JsonElement previewTypes = document.RootElement.GetProperty("parameters").GetProperty("checkTypes");
+        previewTypes.GetArrayLength().ShouldBe(2);
+        previewTypes[0].GetString().ShouldBe("SnapshotIntegrity");
+        previewTypes[1].GetString().ShouldBe("SequenceContinuity");
+        capturedBody.ShouldBe("{\"tenantId\":\"tenant-1\",\"domain\":null,\"checkTypes\":[1,0]}");
     }
 
     [Fact]
@@ -46,7 +76,7 @@ public class ConsistencyWriteToolsTests {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "tenant-1", cancellationToken: ct);
 
         using var doc = JsonDocument.Parse(result);
         JsonElement types = doc.RootElement.GetProperty("parameters").GetProperty("checkTypes");
@@ -60,7 +90,7 @@ public class ConsistencyWriteToolsTests {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", confirm: true, cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "tenant-1", confirm: true, cancellationToken: ct);
 
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("preview", out _).ShouldBeFalse();
@@ -76,7 +106,7 @@ public class ConsistencyWriteToolsTests {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, checkTypes, confirm: true, cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, checkTypes, "tenant-1", confirm: true, cancellationToken: ct);
 
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -89,7 +119,7 @@ public class ConsistencyWriteToolsTests {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, ",,,", confirm: true, cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, ",,,", "tenant-1", confirm: true, cancellationToken: ct);
 
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
@@ -104,7 +134,7 @@ public class ConsistencyWriteToolsTests {
             new HttpRequestException("Forbidden", null, HttpStatusCode.Forbidden));
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", confirm: true, cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "tenant-1", confirm: true, cancellationToken: ct);
 
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unauthorized");
@@ -196,7 +226,7 @@ public class ConsistencyWriteToolsTests {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, _operationResultJson);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", confirm: true, cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "tenant-1", confirm: true, cancellationToken: ct);
 
         _ = Should.NotThrow(() => JsonDocument.Parse(result));
     }
@@ -210,9 +240,63 @@ public class ConsistencyWriteToolsTests {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, sentinelResult);
         var client = new AdminApiClient(httpClient);
 
-        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", confirm: true, cancellationToken: ct);
+        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "tenant-1", confirm: true, cancellationToken: ct);
 
         Testing.Security.ProtectedDataLeakSentinel.AssertNoLeak([result]);
         result.ShouldNotContain("providerMetadata");
+    }
+
+    [Theory]
+    [InlineData("UnknownCheck")]
+    [InlineData("SequenceContinuity,UnknownCheck")]
+    [InlineData("0")]
+    [InlineData("99")]
+    public async Task TriggerCheck_RejectsUnknownCheckTypesWithoutSendingRequest(string checkTypes) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        int requestCount = 0;
+        using var handler = new MockHttpMessageHandler((_, _) => {
+                _ = Interlocked.Increment(ref requestCount);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            });
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
+        var client = new AdminApiClient(httpClient);
+
+        string result = await ConsistencyWriteTools.TriggerCheck(client, checkTypes, "tenant-1", confirm: true, cancellationToken: ct);
+
+        requestCount.ShouldBe(0);
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+    }
+
+    [Fact]
+    public async Task TriggerCheck_NormalizesOptionalDomainBeforePreviewAndExecution() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string? capturedBody = null;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
+            request => capturedBody = request.Content?.ReadAsStringAsync(ct).GetAwaiter().GetResult(),
+            HttpStatusCode.OK,
+            _operationResultJson);
+        var client = new AdminApiClient(httpClient);
+
+        string preview = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "sequencecontinuity",
+            "tenant-1",
+            domain: "  Orders  ",
+            cancellationToken: ct);
+        _ = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "sequencecontinuity",
+            "tenant-1",
+            domain: "  Orders  ",
+            confirm: true,
+            cancellationToken: ct);
+
+        using var document = JsonDocument.Parse(preview);
+        document.RootElement.GetProperty("parameters").GetProperty("domain").GetString().ShouldBe("Orders");
+        document.RootElement.GetProperty("parameters").GetProperty("checkTypes")[0].GetString().ShouldBe("SequenceContinuity");
+        _ = capturedBody.ShouldNotBeNull();
+        capturedBody.ShouldContain("\"domain\":\"Orders\"");
+        capturedBody.ShouldContain("\"checkTypes\":[0]");
     }
 }

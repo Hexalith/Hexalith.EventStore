@@ -21,7 +21,7 @@ context:
 
 ## Boundaries & Constraints
 
-**Always:** Preserve the checksummed Story 4.14 evidence directory unchanged. Bind every approval to one frozen subject containing the design reference, invariant/evidence crosswalk, exact source/artifact identities, limitations, and reviewer scope. Keep the approved test seams and sanitized structural-state limitation explicit. Advance tracking only when the final fail-closed validator passes.
+**Always:** Preserve the checksummed Story 4.14 evidence directory unchanged. Bind every approval to one frozen subject containing the design reference, invariant/evidence crosswalk, exact source/artifact identities, limitations, and reviewer scope. Keep the approved test seams and sanitized structural-state limitation explicit. Advance tracking only after the complete active evidence packet validates and the bounded lifecycle record selects the exact matching Story 4.15 sprint/spec status pair.
 
 **Ask First:** Changing OQ8 design 1.0.0, durable-admission behavior, the production profile, public contracts, or any release, package, registry, deployment, consumer pin, external repository, or submodule state.
 
@@ -1110,3 +1110,72 @@ All nine `decision` items were resolved by the owner on 2026-09-19 into **one co
 **Ordering constraint for the reseal (this is what Group R findings 1-4 are about):** land the ledger and code changes first, then run the focused and full lanes, then issue all three receipts, then assemble the handoff and reseal, then publish. Receipts must not be issued before the runs they attest, and must not cite ledger records that do not yet exist.
 
 **Lifecycle deliberately not synced.** Spec frontmatter stays `done` and the sprint row stays `review`. Setting the row to `in-progress` makes `--lifecycle-mode final` fail with `Lifecycle status drift`, which `CheckedInRepositoryLifecyclePassesWithoutMutation` asserts exits 0, turning the whole Contracts lane red. This is the accepted DW-497/DW-505 inversion.
+
+### Review Findings
+
+_Chunked code review, Group 1 of 6 (2026-09-20). Story-files diffs only. Baseline `699ca712` → HEAD `6754a0c9`. File: `tools/validate-oq8-platform-evidence.py`. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor._
+
+- [x] [Review][Patch] ~~Capture `postgresImageIdentity` is only shape-checked, so it need not equal the digest in `postgresImage` / `POSTGRES_IMAGE`~~ [tools/validate-oq8-platform-evidence.py:1347-1351] — resolved: rejected as false by the 2026-09-20 story-files-only review (line 1158 below) — `postgresImage` is the reviewed multi-platform index while `postgresImageIdentity` is the distinct local configuration digest (settled disposition at line 783); no code change made.
+- [x] [Review][Patch] `sha256_git_file` kills the Git child on `EvidenceError`/`OSError` but not on `BaseException`, unlike `run_subprocess_bounded` [tools/validate-oq8-platform-evidence.py:1061-1074] — resolved: fixed in commit `c4bde75d` (`fix(oq8): apply story 4.15 review patches`), which added the matching `BaseException` kill-and-wait handler; see `spec-4-15-story-file-diff-review-patches.md`.
+- [x] [Review][Patch] `validate_pyyaml_dependency` reads `requirements-oq8.txt` and the CI workflows with unbounded `read_text`, following symlinks and skipping the size/symlink snapshot used for v3 gate inputs [tools/validate-oq8-platform-evidence.py:3701-3713] — resolved: fixed in commit `c4bde75d`, which routes both inputs through `read_bounded_text_snapshot` at the existing `MAX_V2_BOUND_SOURCE_BYTES` bound; see `spec-4-15-story-file-diff-review-patches.md`.
+- [x] [Review][Patch] `sanitize_ctrf` now requires xUnit 4 `labels`/`tags` and stamps `FOCUSED_CURRENT_COMMAND`, but Contracts never runs a well-formed focused record — shape tests fail on `true` entries before those fields, and the capture-mode fixture fails on Dapr identity first [tools/validate-oq8-platform-evidence.py:1520-1540; tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs:1639-1686] — resolved: closed with a direct passing-record Contracts proof added in commit `c4bde75d`; see `spec-4-15-story-file-diff-review-patches.md`.
+- [x] [Review][Defer] Declared current-HEAD / 24-path proof never inspects HEAD or the worktree; `git_diff_is_clean` has no callers; v3 live-binds only `V3_GATE_INPUT_PATHS`; public docs are phrase-checked live and SHA-256-pinned only at `COMPLETED_V1_CLOSURE_COMMIT` [tools/validate-oq8-platform-evidence.py:980-986,2271-2304,3178,3899-3941] — deferred: accepted DW-496 v1-historical / reduced-v3 split
+- [x] [Review][Defer] Default/`--lifecycle-mode final` require sprint `review` and spec `done` before the packet can pass, inverting frozen Always / AC1 [tools/validate-oq8-platform-evidence.py:3908-3938,4128,4426] — deferred: accepted DW-497 spec-done / sprint-review split
+- [x] [Review][Defer] `relative_tree_entries` still walks sealed evidence trees with no depth or entry cap [tools/validate-oq8-platform-evidence.py:1217-1236] — deferred: DW-520 / v3 limitation 6
+- [x] [Review][Defer] Candidate JSON and support-safe scans still use `PRIVATE_PATH_RE`, so UNC and `/tmp` private paths that `PRIVATE_PATH_TOKEN_RE` would redact pass content gates [tools/validate-oq8-platform-evidence.py:643-656,836,1114] — deferred: reconfirms DW-528
+- [x] [Review][Defer] Unexpected-exception redaction runs `PRIVATE_PATH_TOKEN_RE` on the full message before the 256-character cap [tools/validate-oq8-platform-evidence.py:4471-4473] — deferred: frozen v3 limitation 7 already discloses this order
+- [x] [Review][Defer] v1 `EXPECTED_CONSUMER_INSTRUCTIONS.installCommand` is unhashed `pip install --requirement`, while `DOCUMENT_REQUIRED_TEXT` and `V3_CONSUMER_INSTALL_COMMAND` require `--require-hashes --no-deps --only-binary=:all:` [tools/validate-oq8-platform-evidence.py:544-549,393-414,330-332] — deferred: frozen v1 handoff bytes; current docs/v3 already pin hashes (DW-537)
+- [x] [Review][Defer] SDK `bindingRule` and v2 `bindingRule` claim current worktree/candidate-file proofs; `validate_successor_source_identity` / `validate_v2_source_identity` hash `LEGACY_SUCCESSOR_SNAPSHOT_COMMIT` / `COMPLETED_V2_CLOSURE_COMMIT` [tools/validate-oq8-platform-evidence.py:1793-1816,2624-2677] — deferred: sealed identity prose; correcting it remints historical packets (DW-538)
+
+### Rejected (2026-09-20 Group 1)
+
+- false: `--historical-v1-only` / `--historical-v2-only` cannot run against a v1/v2-era selector — historical modes are defined to consume the live selector's historical pointers; `HistoricalModesRejectCorruptedSelector` pins `selectedOn` / reason
+- false: `git_file`'s 128 KiB cap rejects valid landed blobs that `sha256_git_file` would accept — every `git_file` target at its pinned revision is under 128 KiB (landed validator 122553); `Oq8PlatformClosureTests.cs` uses `sha256_git_file`
+- false: capture mode accepts any `x.y.z` Dapr version, including 1.18.1 — it binds the caller-declared version to observations; baking 1.18.2 into the validator would grant runtime-pin authority the spec forbids
+- false: `--root` and `--git-root` are never proven to be the same repository — the CLI and `Oq8PlatformClosureTests` fixtures exist so artifact root and Git proof root can differ
+- false: `forbiddenTermClassesScanned` is a list in observations and an integer in environment with no crosswalk — both are pinned to `DIAGNOSTIC_FORBIDDEN_CLASSES` / its length
+- false: `V3_LIVE_SIDECAR_TEST_COMMAND` disagrees with `FOCUSED_CURRENT_COMMAND` — one is the v3 receipt's focused method run; the other is the capture sanitizer's CTRF command
+- false: pre-review sprint `in-progress` vs spec `in-review` is an unmapped disagreement — `validate_status_and_documents` maps them on `final`
+- false: live-hashing the Story 4.8 ledger as 4.9–4.14 evidence silently accepts later checkbox edits — `sha256_file` fail-closes on drift, which is AC1 evidence-drift behavior
+- false: new PostgreSQL snapshot invariants still gate the frozen Story 4.14 capture — subset relations are `historical`-exempt and `FreshAndCommittedRuntimeModesRemainExact` proves the exemption; the +4 deltas are the sealed matrix lock
+- low: `os.set_blocking` is POSIX-only — a Windows-native I/O rewrite is more than a direct correction; previously rejected on this file
+- low: v2/v3 receipts do not pin finding text the way the SDK successor does — `acceptedScope` is pinned; sealing narrative remints
+- low: TOCTOU between `require_no_symlink_components` and `stat()`/`open()` — single-writer CI; already DW-454; fd rewrite is disproportionate
+- low: PACKET / CTRF bytes can change after the bounded load or sanitizer write and before the later hash — same single-writer class as DW-454
+
+### Review Findings
+
+_Story-files-only code review (2026-09-20). Target: the uncommitted diff for `deferred-work.md`, this parent Story 4.15 spec, and `spec-4-15-v3-round-4-reseal.md`. Layers: Blind Hunter, Edge Case Hunter, Verification Gap Reviewer, Acceptance Auditor (all four reported; none failed)._
+
+- [x] [Review][Patch] Remove the duplicate deferred-work blocks that restate existing DW-527, DW-528, and DW-529 instead of using the ledger's deduplication path. [`_bmad-output/implementation-artifacts/deferred-work.md:4502`] — resolved: the two un-IDed duplicate blocks were removed in commit `c4bde75d`; canonical DW-527/528/529 and the later identifier-based reconfirmation remain intact; see `spec-4-15-story-file-diff-review-patches.md`.
+- [x] [Review][Defer] The declared current-HEAD / 24-path proof still validates historical commits while active v3 binds only its reduced gate-input set. [`tools/validate-oq8-platform-evidence.py:2271`] — deferred: pre-existing owner-accepted DW-496 boundary; this diff only records it.
+- [x] [Review][Defer] Final validation still requires sprint `review` and spec `done` as inputs rather than advancing lifecycle after validation. [`tools/validate-oq8-platform-evidence.py:3908`] — deferred: pre-existing owner-accepted DW-497 lifecycle contract; this diff only records it.
+- [x] [Review][Defer] Candidate JSON and support-safe scanners still miss private-path shapes handled by the unexpected-exception redactor. [`tools/validate-oq8-platform-evidence.py:643`] — deferred: pre-existing scanner/redactor split already tracked as DW-528.
+- [x] [Review][Defer] The round-4 limitation set still omits Group R's owner-required deferred-gap sentence and six high `run6-*` disclosures. [`_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3/limitations.json:3`] — deferred: pre-existing sealed-packet omission tracked as DW-534; correction requires a fresh reseal.
+
+#### Rejected (2026-09-20 story-files-only review)
+
+- rejected (fix edits the spec under review): the new `postgresImageIdentity == postgresImage` action is wrong; `postgresImage` is the reviewed multi-platform index while `postgresImageIdentity` is the distinct local configuration digest, as the settled disposition at line 783 records.
+- rejected (fix edits the spec under review): the new v1-install/DW-537 action calls the command unhashed, but `requirements-oq8.txt` contains artifact hashes and pip automatically enables hash-checking mode; line 884 already records the direct falsification.
+- rejected (fix edits the spec under review): the parent completion summary still names the superseded `92b189b6...` subject and 458/2061 counts; correcting the live handoff summary requires editing this spec.
+- false: unchecked `[Review][Patch]` rows are already actionable story items; they do not need DW identifiers unless they are deferred, and the sprint row remains `review`.
+- rejected (fix edits the spec under review): the new `sha256_git_file` action duplicates the still-open child-process finding at line 862.
+- false: `Group 1 of 6` is a scoped chunk marker, not a claim that all six chunks are present or that review is complete; Story 4.15 remains at sprint status `review`.
+- false: a historical layer header reporting zero AC violations is not a universal acceptance attestation; a later pass may discover a missed issue without making the recorded layer result false.
+- false: the review workflow permits remaining layers to proceed when one layer reports no findings; the fifth pass retained findings from the other layers, so no replacement reviewer or waiver was required.
+- false: `review_loop_iteration` counts build/spec loopbacks rather than every named review pass; the repository's existing Story 4.15 dispositions explicitly preserve that interpretation.
+- rejected (fix edits the spec under review): the stale parent completion record is real, but its direct correction is an update to this story spec rather than a code patch in the reviewed diff.
+- rejected (fix edits the spec under review): the Acceptance Auditor's PostgreSQL-equality finding repeats the same settled index-versus-local-configuration identity error described above.
+
+#### Resolution and Completion Verification (2026-09-20, Group 1 + story-files-only patches)
+
+All `patch` findings surviving the Group 1 and story-files-only review passes above were dispositioned and closed via `spec-4-15-story-file-diff-review-patches.md`, implemented and committed as `0092d0f9` (spec authoring) and `c4bde75d` (`fix(oq8): apply story 4.15 review patches`):
+
+- **Implemented:** `sha256_git_file` `BaseException` child cleanup; bounded-snapshot reads for the PyYAML requirement and CI bootstrap workflows in `validate_pyyaml_dependency`; a direct passing-record Contracts proof for `sanitize_ctrf`'s xUnit 4 CTRF shape; removal of the two un-IDed duplicate deferred-work blocks (canonical DW-527/528/529 and the later ID-based reconfirmation preserved).
+- **Not implemented (rejected as false):** the `postgresImageIdentity == postgresImage` equality check — `postgresImage` is the reviewed multi-platform index while `postgresImageIdentity` is the distinct local configuration digest; implementing it would have introduced a false constraint.
+- Verification observed: Contracts Release build 0 warnings/0 errors; focused closure class 467 passed/0 failed/0 skipped; full Contracts assembly 2070 passed/0 failed/0 skipped; default, `final`, `--historical-v1-only`, and `--historical-v2-only` validator modes all exit 0; `git diff --check` clean. Full detail in `spec-4-15-story-file-diff-review-patches.md`.
+- **Lifecycle unchanged by this closure.** Per the accepted DW-497/DW-505 inversion recorded above, spec frontmatter stays `done` and the sprint row stays `review` — this patch round did not alter that disposition.
+
+#### v4 lifecycle supersession (2026-09-21)
+
+The preceding completion record remains historical. Story 4.15 v4 subsequently separated evidence from lifecycle state and completed the bounded transition to lifecycle `closed`, sprint `done`, and spec `done`. At that transition the focused closure class measured **464/464** and the full Contracts assembly measured **2072/2072**; this corrective pass adds twelve focused cases and measures **476/476**. Per the corrective-review constraint, the wider post-correction full suite is intentionally left to the parent verification run rather than claimed here.

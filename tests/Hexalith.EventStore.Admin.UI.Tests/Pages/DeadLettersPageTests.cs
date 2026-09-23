@@ -5,6 +5,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -198,6 +199,9 @@ public class DeadLettersPageTests : AdminUITestContext {
             entries[0].TenantId,
             Arg.Any<IReadOnlyList<string>>(),
             Arg.Any<CancellationToken>());
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe("Retry request accepted for 1 dead-letter command(s).");
+        message.ShouldNotContain("Retried", Case.Insensitive);
     }
 
     [Fact]
@@ -244,7 +248,7 @@ public class DeadLettersPageTests : AdminUITestContext {
 
     [Theory]
     [InlineData("Retry Selected", "Retry Dead Letters", "Resubmit the selected commands", "dead-letter-retry-selected")]
-    [InlineData("Skip Selected", "Skip Dead Letters", "Mark the selected commands as skipped", "dead-letter-skip-selected")]
+    [InlineData("Skip Selected", "Skip Dead Letters", "Remove the selected commands from the dead-letter queue", "dead-letter-skip-selected")]
     [InlineData("Archive Selected", "Archive Dead Letters", "Move the selected commands to the archive", "dead-letter-archive-selected")]
     public async Task DestructiveDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
         string openButton,
@@ -278,18 +282,25 @@ public class DeadLettersPageTests : AdminUITestContext {
     }
 
     [Theory]
-    [InlineData("retry", "Retry Selected", "Retry Dead Letters", "Retry", "dead-letter-retry-selected")]
-    [InlineData("skip", "Skip Selected", "Skip Dead Letters", "Skip", "dead-letter-skip-selected")]
-    [InlineData("archive", "Archive Selected", "Archive Dead Letters", "Archive", "dead-letter-archive-selected")]
-    public async Task BulkDialog_ForbiddenDoesNotClaimWorkOrExposeDetailsAndRestoresInitiator(
+    [InlineData("retry", "Retry Selected", "Retry Dead Letters", "Retry", "dead-letter-retry-selected", true)]
+    [InlineData("retry", "Retry Selected", "Retry Dead Letters", "Retry", "dead-letter-retry-selected", false)]
+    [InlineData("skip", "Skip Selected", "Skip Dead Letters", "Skip", "dead-letter-skip-selected", true)]
+    [InlineData("skip", "Skip Selected", "Skip Dead Letters", "Skip", "dead-letter-skip-selected", false)]
+    [InlineData("archive", "Archive Selected", "Archive Dead Letters", "Archive", "dead-letter-archive-selected", true)]
+    [InlineData("archive", "Archive Selected", "Archive Dead Letters", "Archive", "dead-letter-archive-selected", false)]
+    public async Task BulkDialog_DenialDoesNotClaimWorkOrExposeDetailsAndRestoresInitiator(
         string action,
         string openButton,
         string dialogTitle,
         string confirmText,
-        string expectedFocusId) {
+        string expectedFocusId,
+        bool forbidden) {
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
-        SetupBulkException(action, new ForbiddenAccessException("hidden-resource exists at redis://private; bearer secret-value"));
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden-resource exists at redis://private; bearer secret-value")
+            : new UnauthorizedAccessException("hidden-resource exists at redis://private; bearer secret-value");
+        SetupBulkException(action, denial);
         IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
         SelectRowCheckbox(cut, entries[0].MessageId);
@@ -308,10 +319,77 @@ public class DeadLettersPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe(expectedFocusId);
     }
 
+    [Fact]
+    public async Task BulkDialog_WhenSelectionNoLongerMatchesRows_PerformsNoWorkAndDoesNotClaimSuccess()
+    {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        GetSelectedIds(cut.Instance).Clear();
+        GetSelectedIds(cut.Instance).Add("missing-message");
+
+        await InvokeDialogButtonAsync(cut, "Retry");
+
+        _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()
+            .ShouldBe("No selected dead-letter commands are available to submit.");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("dead-letter-retry-selected");
+    }
+
+    [Fact]
+    public async Task BulkDialog_WhenSelectionIsEmpty_PerformsNoWorkAndRestoresFocus()
+    {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        GetSelectedIds(cut.Instance).Clear();
+
+        await InvokeDialogButtonAsync(cut, "Retry");
+
+        _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()
+            .ShouldBe("No selected dead-letter commands are available to submit.");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("dead-letter-retry-selected");
+    }
+
+    [Fact]
+    public async Task BulkDialog_WhenSelectionPartlyMatchesRows_PerformsNoWorkAndRestoresFocus()
+    {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        GetSelectedIds(cut.Instance).Add("missing-message");
+        ClickButton(cut, "Retry Selected");
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldContain("2 selected dead-letter command(s)");
+
+        await InvokeDialogButtonAsync(cut, "Retry");
+
+        _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()
+            .ShouldBe("Some selected dead-letter commands are no longer available. Review the selection and try again.");
+        cut.FindAll("fluent-dialog[aria-label='Retry Dead Letters']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("dead-letter-retry-selected");
+    }
+
     [Theory]
     [InlineData("forbidden")]
     [InlineData("unauthorized")]
-    public async Task RetryDialog_MixedSuccessThenDenialStopsLaterTenantsClosesAndRestoresInitiator(string denialKind) {
+    public async Task RetryDialog_MixedSuccessThenDenialRetainsDeniedAndUnattemptedGroupsAndRestoresInitiator(string denialKind) {
         List<DeadLetterEntry> entries =
         [
             new("msg-a", "tenant-a", "counter", "agg-a", "corr-a", "Failure", DateTimeOffset.UtcNow, 1, "CommandA"),
@@ -339,6 +417,11 @@ public class DeadLettersPageTests : AdminUITestContext {
             "tenant-b", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
         _ = _mockDeadLetterApi.DidNotReceive().RetryDeadLettersAsync(
             "tenant-c", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        HashSet<string> selectedIds = GetSelectedIds(cut.Instance);
+        selectedIds.ShouldNotContain("msg-a");
+        selectedIds.ShouldContain("msg-b");
+        selectedIds.ShouldContain("msg-c");
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString().ShouldContain("2 were not accepted");
         cut.Markup.ShouldNotContain("Retry Dead Letters");
         cut.Markup.ShouldNotContain("secret-value");
         cut.Markup.ShouldNotContain("redis://private");
@@ -873,6 +956,31 @@ public class DeadLettersPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> btn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains(text));
         btn.Find("fluent-button").Click();
+    }
+
+    [Theory]
+    [InlineData("denial")]
+    [InlineData("stale-selection")]
+    public async Task BulkDialog_WithAsynchronousInterop_SettlesOnTheRendererDispatcher(string scenario)
+    {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        SetupBulkException("retry", new ForbiddenAccessException("denied"));
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Retry Dead Letters"), TimeSpan.FromSeconds(5));
+        if (scenario == "stale-selection")
+        {
+            _ = GetSelectedIds(cut.Instance).Add("missing-message");
+        }
+
+        Exception? fault = await RunWithAsynchronousFocusInteropAsync(() => InvokeDialogButtonAsync(cut, "Retry"));
+
+        fault.ShouldBeNull(fault?.ToString());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("dead-letter-retry-selected");
     }
 
     private static Task InvokeDialogButtonAsync(IRenderedComponent<DeadLetters> cut, string text) {

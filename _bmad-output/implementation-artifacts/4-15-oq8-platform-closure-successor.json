@@ -1,7 +1,7 @@
 {
-  "schema": "hexalith.eventstore.story-4-15-successor-selection/v2",
-  "selectedOn": "2026-09-09",
-  "reason": "Unify the SDK, PostgreSQL image-governance, and current-source successors under one content-bound v3 lineage while retaining every predecessor as historical evidence.",
+  "schema": "hexalith.eventstore.story-4-15-successor-selection/v3",
+  "selectedOn": "2026-09-20",
+  "reason": "Retain the completed v3 successor as immutable historical evidence and activate one freshly reviewed v4 successor whose lifecycle state remains outside the sealed review subject.",
   "historical": {
     "v1Closure": {
       "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
@@ -37,25 +37,33 @@
     "v2Successor": {
       "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2",
       "manifestSha256": "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
+    },
+    "v3Successor": {
+      "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3",
+      "completedClosureCommit": "d578e7626df1d8afeada440c7989eb04ba2bdfe6",
+      "manifestSha256": "f20a01ba874eaca8e3d99eef065534a8211eef16db601bf9dc1723ef0cc90493",
+      "sourceIdentitySha256": "43192e12f240e37ecb88573f59ee0bf836e35e71637918ef85842df061e23a37",
+      "reviewSubjectSha256": "583269ac56f7ca75371b6c70a507a820bf21a4ff1fada790ac91feea34ca8b7e",
+      "handoffSha256": "14e618e8c53d8f04983b6f7d0f33edfea6b7e243ca457c5370419e01e3bd849a"
     }
   },
   "successor": {
-    "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3",
-    "manifestSha256": "5f1c3579b23e78f236954f396f27d626ce68664f8935c8baf81efe20c4fb1907",
+    "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4",
+    "manifestSha256": "a3cd51c6e789715c95194ea4a3c31614ce2f70dec7c099fd5fb2f48e562065f4",
     "files": {
-      "limitations.json": "73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41",
-      "pre-review-execution.json": "8cabbd9c45d20c959de482f4e3147f6421bb0714146b3c7316674f7af4a5f302",
-      "review-subject.json": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
-      "reviews/architecture.json": "b231f54e48c4e0e942fe84a56b1b2d7bdd46b001fa3cc51978b858552da95079",
-      "reviews/security.json": "cf187659d310ae1c1cdc8eb52746d1921c60f6cf8adcf8b44727144ea1228b28",
-      "reviews/test.json": "ace5eccb026f4a43d45608706a3dfa1eba69391b55082d0fc36721c7026df502",
-      "source-artifact-identity.json": "c691ba7dac6b4d422bf76f5c79fff1e956b55d4a2c1b7a7c5d7804bcf0121bdd",
-      "source-only-handoff.json": "87dd3fb30cd5af0092e481987cc041f4a0719c492b0c71d654155d3732d22bda",
-      "validator-sha256.txt": "5079ad801d864a8ce774c775ba5b38586174f0b03f4bfb2a5889bfc18c4ae277"
+      "limitations.json": "b001594d9419993e9ae33a06b3c584ae36f8b329f3d4ef54c97bbbfa9ddbab58",
+      "pre-review-execution.json": "b9db935200bbb4dff6e9b44974d2e6678bf926d7509486102694ffedb97d7286",
+      "review-subject.json": "7e6a393ece18b322a01157a8b60ea37ede7d8d142d10a4fa65f08c7c35b276cf",
+      "reviews/architecture.json": "f2df4ab0a5231286e0388ccb1f6c70be2b6fbd7a1aad42dfa2cdeeb2150842c8",
+      "reviews/security.json": "c75026cb4e73062a83ce0e3d958c0b30e87a602bc22fd35d13a748f21518b687",
+      "reviews/test.json": "df99f8b6926ad7c0e000cf410b5ce7f08b264454d4fd5bf69ff1d529beba57d5",
+      "source-artifact-identity.json": "727ccb428d366f510bd65d75d03d610141ec6a5bc12bb2e8a10070c56a049fcb",
+      "source-only-handoff.json": "63616b042c9adf483c0f2289de968e298c53f499a7bd1f2368d4f7d343bd7b30",
+      "validator-sha256.txt": "5bfbc56fc5f046c659e5b670a1c467865341b8d133fa65de02393f4eb3ed9ab6"
     },
-    "sourceIdentitySha256": "c691ba7dac6b4d422bf76f5c79fff1e956b55d4a2c1b7a7c5d7804bcf0121bdd",
-    "reviewSubjectSha256": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
-    "handoffSha256": "87dd3fb30cd5af0092e481987cc041f4a0719c492b0c71d654155d3732d22bda"
+    "sourceIdentitySha256": "727ccb428d366f510bd65d75d03d610141ec6a5bc12bb2e8a10070c56a049fcb",
+    "reviewSubjectSha256": "7e6a393ece18b322a01157a8b60ea37ede7d8d142d10a4fa65f08c7c35b276cf",
+    "handoffSha256": "63616b042c9adf483c0f2289de968e298c53f499a7bd1f2368d4f7d343bd7b30"
   },
   "authority": {
     "eventStorePlatformComplete": true,

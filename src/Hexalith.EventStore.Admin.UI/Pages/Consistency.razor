@@ -336,14 +336,17 @@
                 <h3 style="margin: 0;">Run Consistency Check</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@Text["ConsistencyTarget", FormatTenantScope(_triggerTenantId), FormatDomainScope(_triggerDomain)]"
+                <ConfirmationFacts Target="@Text["ConsistencyTarget", FormatTriggerTenantScope(NormalizedTriggerTenantId), FormatDomainScope(NormalizedTriggerDomain)]"
                                    Impact="@Text["ConsistencyTriggerImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_triggerTenantId"
-                                 Label="@(_canUseOpaqueChecks ? "Tenant ID (optional, all tenants when empty)" : "Tenant ID (optional, your authorized tenant when empty)")"
+                                 Immediate="true"
+                                 Label="@(_canUseOpaqueChecks ? "Tenant ID (optional, all tenants when empty)" : "Tenant ID")"
+                                 Required="@(!_canUseOpaqueChecks)"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
                 <FluentTextInput @bind-Value="_triggerDomain"
+                                 Immediate="true"
                                  Label="Domain (optional, all domains when empty)"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Domain" />
@@ -365,7 +368,7 @@
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialogAsync">Cancel</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="OnTriggerConfirm"
-                              Disabled="@(!HasAnyCheckType || _isTriggering)">
+                              Disabled="@(!HasAnyCheckType || IsTriggerTenantMissing || _isTriggering)">
                     @if (_isTriggering)
                     {
                         <FluentSpinner Size="SpinnerSize.ExtraSmall" />
@@ -459,6 +462,13 @@
     private bool _isCancelling;
 
     private bool _isAnyDialogOpen => _selectedAnomaly is not null || _showTriggerDialog || _showCancelDialog;
+
+    private string? NormalizedTriggerTenantId => NormalizeScope(_triggerTenantId);
+
+    private string? NormalizedTriggerDomain => NormalizeScope(_triggerDomain);
+
+    // Non-Admin scope is narrowed server-side to a tenant the dialog cannot name, so require it explicitly.
+    private bool IsTriggerTenantMissing => !_canUseOpaqueChecks && NormalizedTriggerTenantId is null;
 
     private ConsistencySummary CurrentSummary => ConsistencySummary.From(_filteredChecks);
 
@@ -788,6 +798,26 @@
 
     private async Task OnTriggerConfirm()
     {
+        string? tenantId = NormalizedTriggerTenantId;
+        string? domain = NormalizedTriggerDomain;
+        if (IsTriggerTenantMissing)
+        {
+            await ToastService.ShowErrorAsync("Tenant ID is required to run a consistency check with your role.").ConfigureAwait(false);
+            await CloseTriggerDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            return;
+        }
+
+        string confirmationTarget = Text[
+            "ConsistencyTarget",
+            FormatTriggerTenantScope(tenantId),
+            FormatDomainScope(domain)];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseTriggerDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isTriggering = true;
         // Renderer-synchronous: this method is invoked by FluentButton's OnClick on the dispatcher.
         StateHasChanged();
@@ -798,9 +828,6 @@
             if (_checkSnapshotIntegrity) checkTypes.Add(ConsistencyCheckType.SnapshotIntegrity);
             if (_checkProjectionPositions) checkTypes.Add(ConsistencyCheckType.ProjectionPositions);
             if (_checkMetadataConsistency) checkTypes.Add(ConsistencyCheckType.MetadataConsistency);
-
-            string? tenantId = string.IsNullOrWhiteSpace(_triggerTenantId) ? null : _triggerTenantId.Trim();
-            string? domain = string.IsNullOrWhiteSpace(_triggerDomain) ? null : _triggerDomain.Trim();
 
             AdminOperationResult? result;
             try
@@ -880,6 +907,14 @@
     {
         if (_cancelCheckId is null)
         {
+            return;
+        }
+
+        string confirmationTarget = Text["ConsistencyCheckTarget", _cancelCheckId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCancelDialogAsync().ConfigureAwait(false);
             return;
         }
 
@@ -1028,6 +1063,11 @@
 
         return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
     }
+
+    private string FormatTriggerTenantScope(string? tenantId)
+        => string.IsNullOrWhiteSpace(tenantId)
+            ? _canUseOpaqueChecks ? "All tenants" : "Tenant ID required"
+            : tenantId;
 
     private string FormatTenantScope(string? tenantId)
         => string.IsNullOrWhiteSpace(tenantId)

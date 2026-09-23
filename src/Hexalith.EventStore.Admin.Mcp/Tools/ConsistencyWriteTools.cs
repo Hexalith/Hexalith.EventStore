@@ -2,6 +2,7 @@
 using System.ComponentModel;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 
 using ModelContextProtocol.Server;
 
@@ -19,11 +20,13 @@ internal static class ConsistencyWriteTools {
     public static async Task<string> TriggerCheck(
         AdminApiClient adminApiClient,
         [Description("Comma-separated check types: SequenceContinuity, SnapshotIntegrity, ProjectionPositions, MetadataConsistency")] string checkTypes,
-        [Description("Filter by tenant ID")] string? tenantId = null,
+        [Description("Tenant ID")] string tenantId,
         [Description("Filter by domain")] string? domain = null,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired((checkTypes, "checkTypes"))
+        domain = string.IsNullOrWhiteSpace(domain) ? null : domain.Trim();
+        string? validation = ToolHelper.ValidateRequired((checkTypes, "checkTypes"), (tenantId, "tenantId"))
+            ?? ToolHelper.ValidateTenantId(tenantId)
             ?? ToolHelper.ValidatePreviewMatchesExecution(
                 (checkTypes, "checkTypes"),
                 (tenantId, "tenantId"),
@@ -32,21 +35,44 @@ internal static class ConsistencyWriteTools {
             return validation;
         }
 
-        string[] parsedTypes = checkTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parsedTypes.Length == 0) {
+        string[] requestedTypes = checkTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (requestedTypes.Length == 0) {
             return ToolHelper.SerializeError(
                 "invalid-input",
                 "At least one check type is required. Valid types: SequenceContinuity, SnapshotIntegrity, ProjectionPositions, MetadataConsistency");
         }
 
+        var parsedTypes = new List<ConsistencyCheckType>(requestedTypes.Length);
+        HashSet<ConsistencyCheckType> seenTypes = [];
+        foreach (string requestedType in requestedTypes) {
+            if (!Enum.TryParse(requestedType, ignoreCase: true, out ConsistencyCheckType parsedType)
+                || !Enum.IsDefined(parsedType)
+                || !string.Equals(Enum.GetName(parsedType), requestedType, StringComparison.OrdinalIgnoreCase)) {
+                return ToolHelper.SerializeError(
+                    "invalid-input",
+                    $"Unknown check type '{requestedType}'. Valid types: SequenceContinuity, SnapshotIntegrity, ProjectionPositions, MetadataConsistency");
+            }
+
+            if (seenTypes.Add(parsedType)) {
+                parsedTypes.Add(parsedType);
+            }
+        }
+
+        string[] previewTypes = parsedTypes.Select(checkType => checkType.ToString()).ToArray();
+        string target = $"Trigger consistency check ({string.Join(", ", previewTypes)}) for tenant '{tenantId}'"
+            + (domain is not null ? $" in domain '{domain}'" : string.Empty);
+        const string endpoint = "POST /api/v1/admin/consistency/checks";
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
+        if (validation is not null) {
+            return validation;
+        }
+
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "consistency-trigger",
-                $"Trigger consistency check ({string.Join(", ", parsedTypes)})"
-                    + (tenantId is not null ? $" for tenant '{tenantId}'" : string.Empty)
-                    + (domain is not null ? $" in domain '{domain}'" : string.Empty),
-                "POST /api/v1/admin/consistency/checks",
-                new { tenantId, domain, checkTypes = parsedTypes },
+                target,
+                endpoint,
+                new { tenantId, domain, checkTypes = previewTypes },
                 "This will trigger a data integrity check. Checks run asynchronously and may take time depending on data volume.",
                 "Operator");
         }
@@ -75,7 +101,15 @@ internal static class ConsistencyWriteTools {
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((checkId, "checkId"))
+            ?? ToolHelper.ValidatePathSegments((checkId, "checkId"))
             ?? ToolHelper.ValidatePreviewMatchesExecution((checkId, "checkId"));
+        if (validation is not null) {
+            return validation;
+        }
+
+        string target = $"Cancel consistency check '{checkId}'";
+        string endpoint = $"POST /api/v1/admin/consistency/checks/{Uri.EscapeDataString(checkId)}/cancel";
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
         if (validation is not null) {
             return validation;
         }
@@ -83,8 +117,8 @@ internal static class ConsistencyWriteTools {
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "consistency-cancel",
-                $"Cancel consistency check '{checkId}'",
-                $"POST /api/v1/admin/consistency/checks/{Uri.EscapeDataString(checkId)}/cancel",
+                target,
+                endpoint,
                 new { checkId },
                 "This will cancel the running consistency check. Partial results will be preserved.",
                 "Admin");

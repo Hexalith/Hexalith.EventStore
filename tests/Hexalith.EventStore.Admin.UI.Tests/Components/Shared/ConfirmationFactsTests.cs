@@ -42,4 +42,60 @@ public class ConfirmationFactsTests : AdminUITestContext
             text.ShouldNotBe(oversized);
         }
     }
+
+    [Fact]
+    public void ConfirmationFacts_RedactsCredentialShapedValues()
+    {
+        IRenderedComponent<ConfirmationFacts> component = Render<ConfirmationFacts>(parameters => parameters
+            .Add(item => item.Target, "Bearer secret-token")
+            .Add(item => item.Impact, "https://user:password@example.test/resource")
+            .Add(item => item.RequiredPermission, "client_secret=private-value"));
+
+        foreach (string fact in new[] { "target", "impact", "permission" })
+        {
+            component.Find($"[data-confirmation-fact='{fact}']").TextContent.ShouldBe("[redacted]");
+        }
+
+        component.Markup.ShouldNotContain("secret-token");
+        component.Markup.ShouldNotContain("password");
+        component.Markup.ShouldNotContain("private-value");
+    }
+
+    [Theory]
+    [InlineData("tenant\u0007")]
+    [InlineData("tenant\u2028hidden")]
+    [InlineData("tenant\u2029hidden")]
+    [InlineData("tenant\u202Ehidden")]
+    [InlineData("tenant\U000E0001hidden")]
+    public void ConfirmationFacts_RedactsControlAndUnicodeFormatCharactersAndRejectsExactConfirmation(string unsafeText)
+    {
+        IRenderedComponent<ConfirmationFacts> component = Render<ConfirmationFacts>(parameters => parameters
+            .Add(item => item.Target, unsafeText)
+            .Add(item => item.Impact, "Safe impact")
+            .Add(item => item.RequiredPermission, "Admin"));
+
+        component.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("[redacted]");
+        ConfirmationFacts.IsExactAndSupportSafe(unsafeText).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ConfirmationFacts_RedactsMalformedUtf16AndRejectsExactConfirmation()
+    {
+        string[] malformedValues = [
+            new string('\uD800', 1),
+            new string('\uDC00', 1),
+            $"tenant-{new string('\uD800', 1)}",
+        ];
+
+        foreach (string malformedValue in malformedValues)
+        {
+            IRenderedComponent<ConfirmationFacts> component = Render<ConfirmationFacts>(parameters => parameters
+                .Add(item => item.Target, malformedValue)
+                .Add(item => item.Impact, "Safe impact")
+                .Add(item => item.RequiredPermission, "Admin"));
+
+            component.Find("[data-confirmation-fact='target']").TextContent.ShouldBe("[redacted]");
+            ConfirmationFacts.IsExactAndSupportSafe(malformedValue).ShouldBeFalse();
+        }
+    }
 }

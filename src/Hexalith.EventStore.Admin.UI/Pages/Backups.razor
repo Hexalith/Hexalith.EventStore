@@ -228,7 +228,7 @@
                 <h3 style="margin: 0;">Create Backup</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@Text["BackupTenantTarget", _createTenantId ?? string.Empty]"
+                <ConfirmationFacts Target="@Text["BackupTenantTarget", NormalizedCreateTenantId]"
                                    Impact="@Text["BackupCreateImpact"]"
                                    RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
@@ -238,6 +238,7 @@
                     </p>
                 </FluentCard>
                 <FluentTextInput @bind-Value="_createTenantId"
+                                 Immediate="true"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
@@ -483,7 +484,7 @@
                 <h3 style="margin: 0;">Import Stream</h3>
             </TitleTemplate>
             <ChildContent>
-                <ConfirmationFacts Target="@(_importTenantId is null ? Text["BackupImportTarget"] : Text["BackupTenantTarget", _importTenantId])"
+                <ConfirmationFacts Target="@ImportConfirmationTarget"
                                    Impact="@Text["BackupImportImpact"]"
                                    RequiredPermission="@Text["PermissionAdmin"]" />
                 <FluentCard Style="padding: 16px; margin-bottom: 12px; text-align: center;">
@@ -588,11 +589,15 @@
     private bool _pendingShowImport;
     private string? _importContent;
     private string? _importTenantId;
+    private string? _importDomain;
+    private string? _importAggregateId;
     private string? _importPreview;
     private string? _importError;
     private string? _importInitiatorId;
 
     private bool _isAnyDialogOpen => _showCreateDialog || _showValidateDialog || _showRestoreDialog || _showExportDialog || _showImportDialog;
+
+    private string NormalizedCreateTenantId => _createTenantId?.Trim() ?? string.Empty;
 
     private void UpdateFilteredJobs()
     {
@@ -619,7 +624,7 @@
         !string.IsNullOrWhiteSpace(_createTenantId)
         && _jobs is not null
         && _jobs.Any(j =>
-            string.Equals(j.TenantId, _createTenantId?.Trim(), StringComparison.OrdinalIgnoreCase)
+            string.Equals(j.TenantId, NormalizedCreateTenantId, StringComparison.OrdinalIgnoreCase)
             && j.JobType == BackupJobType.Backup
             && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
 
@@ -627,7 +632,7 @@
         !string.IsNullOrWhiteSpace(_createTenantId)
         && _jobs is not null
         && _jobs.Any(j =>
-            string.Equals(j.TenantId, _createTenantId?.Trim(), StringComparison.OrdinalIgnoreCase)
+            string.Equals(j.TenantId, NormalizedCreateTenantId, StringComparison.OrdinalIgnoreCase)
             && j.JobType == BackupJobType.Restore
             && j.Status is BackupJobStatus.Pending or BackupJobStatus.Running);
 
@@ -653,7 +658,16 @@
         && !string.IsNullOrWhiteSpace(_exportAggregateId);
 
     private bool CanImport =>
-        _importContent is not null && _importTenantId is not null && _importError is null;
+        _importContent is not null
+        && _importTenantId is not null
+        && _importDomain is not null
+        && _importAggregateId is not null
+        && _importError is null;
+
+    private string ImportConfirmationTarget =>
+        _importTenantId is null || _importDomain is null || _importAggregateId is null
+            ? Text["BackupImportTarget"].Value
+            : GetImportConfirmationTarget(_importTenantId, _importDomain, _importAggregateId);
 
     protected override async Task OnInitializedAsync()
     {
@@ -909,6 +923,15 @@
 
     private async Task OnCreateBackupConfirm()
     {
+        string tenantId = NormalizedCreateTenantId;
+        string confirmationTarget = Text["BackupTenantTarget", tenantId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCreateDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         _operationCts?.Cancel();
@@ -917,7 +940,7 @@
         try
         {
             AdminOperationResult? result = await BackupApi.TriggerBackupAsync(
-                _createTenantId!.Trim(),
+                tenantId,
                 string.IsNullOrWhiteSpace(_createDescription) ? null : _createDescription.Trim(),
                 _createIncludeSnapshots,
                 _operationCts.Token);
@@ -952,7 +975,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1001,7 +1025,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1032,6 +1057,14 @@
     private async Task OnRestoreConfirm()
     {
         if (_restoreTarget is null) return;
+
+        string confirmationTarget = Text["BackupTarget", _restoreTarget.BackupId];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseRestoreDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            return;
+        }
 
         _isOperating = true;
         StateHasChanged();
@@ -1110,7 +1143,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1174,7 +1208,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1184,6 +1219,8 @@
         if (_isAnyDialogOpen) { return; }
         _importContent = null;
         _importTenantId = null;
+        _importDomain = null;
+        _importAggregateId = null;
         _importPreview = null;
         _importError = null;
         _importInitiatorId = "backup-import-button";
@@ -1204,6 +1241,8 @@
         _importPreview = null;
         _importContent = null;
         _importTenantId = null;
+        _importDomain = null;
+        _importAggregateId = null;
 
         try
         {
@@ -1228,9 +1267,24 @@
                     return;
                 }
 
+                string confirmationTarget = GetImportConfirmationTarget(tenantId, domain, aggregateId);
+                if (!IsExactSupportSafeImportText(tenantId)
+                    || !IsExactSupportSafeImportText(domain)
+                    || !IsExactSupportSafeImportText(aggregateId)
+                    || !IsExactSupportSafeImportText(confirmationTarget))
+                {
+                    await FailImportFileAsync(Text["BackupImportUnsafeTarget"].Value).ConfigureAwait(false);
+                    return;
+                }
+
                 _importTenantId = tenantId;
+                _importDomain = domain;
+                _importAggregateId = aggregateId;
                 _importContent = content;
-                _importPreview = $"Tenant: {tenantId}\nDomain: {domain}\nAggregate: {aggregateId}\nEvents: {evts.GetArrayLength()}";
+                _importPreview = $"Tenant: {tenantId}\n"
+                    + $"Domain: {domain}\n"
+                    + $"Aggregate: {aggregateId}\n"
+                    + $"Events: {evts.GetArrayLength()}";
             }
             catch (System.Text.Json.JsonException)
             {
@@ -1251,10 +1305,27 @@
         await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
     }
 
+    private static bool IsExactSupportSafeImportText(string value)
+        => ConfirmationFacts.IsExactAndSupportSafe(value);
+
+    private string GetImportConfirmationTarget(string tenantId, string domain, string aggregateId)
+        => Text["BackupImportStreamTarget", tenantId, domain, aggregateId].Value;
+
     private async Task OnImportConfirm()
     {
-        if (_importContent is null || _importTenantId is null)
+        if (_importContent is null
+            || _importTenantId is null
+            || _importDomain is null
+            || _importAggregateId is null)
         {
+            await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
+            return;
+        }
+
+        string confirmationTarget = ImportConfirmationTarget;
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ShowErrorToastBestEffortAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
             await CloseImportDialogAndRestoreFocusAsync().ConfigureAwait(false);
             return;
         }
@@ -1304,7 +1375,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 

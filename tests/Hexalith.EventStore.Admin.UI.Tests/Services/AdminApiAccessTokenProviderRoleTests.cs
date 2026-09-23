@@ -6,6 +6,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
+using Hexalith.EventStore.Admin.UI;
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -164,6 +167,17 @@ public class AdminApiAccessTokenProviderRoleTests {
             allowHttp: false);
 
         endpoint.AbsoluteUri.ShouldBe("https://identity.example.com/oauth/token?tenant=stable");
+    }
+
+    [Fact]
+    public void BuildTokenEndpoint_QueryValueEndingInSlash_PreservesTheSlash()
+    {
+        Uri endpoint = AdminApiAccessTokenProvider.BuildTokenEndpoint(
+            "https://identity.example.com/oauth/token?resource=https://api.example.com/",
+            allowHttp: false);
+
+        endpoint.AbsoluteUri.ShouldBe(
+            "https://identity.example.com/oauth/token?resource=https://api.example.com/");
     }
 
     [Fact]
@@ -435,6 +449,37 @@ public class AdminApiAccessTokenProviderRoleTests {
         exception.Message.ShouldContain("non-blank access_token");
     }
 
+    [Fact]
+    public async Task GetAccessTokenAsync_WhenProviderReturnsEmptyBody_ReportsEmptyResponse()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        var provider = CreateAuthorityProvider(values, new RecordingTokenHandler(tokenResponseJson: string.Empty));
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldBe("OIDC token response was empty.");
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_WhenResponseReadFails_DoesNotMislabelItAsOversized()
+    {
+        Dictionary<string, string?> values = CreateAuthorityConfigValues();
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>()).Returns(
+            new HttpClient(new FixedContentHandler(new ThrowingContent())));
+        var provider = new AdminApiAccessTokenProvider(
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build(),
+            new TestHostEnvironment(Environments.Production),
+            factory);
+
+        HttpRequestException exception = await Should.ThrowAsync<HttpRequestException>(
+            () => provider.GetAccessTokenAsync());
+
+        exception.Message.ShouldContain("response read failed");
+        exception.Message.ShouldNotContain("exceeded the permitted size");
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -464,6 +509,23 @@ public class AdminApiAccessTokenProviderRoleTests {
     [Fact]
     public async Task AddHttpClient_ProductionClient_DoesNotFollowCredentialPostRedirect()
     {
+        var services = new ServiceCollection();
+        AdminApiAccessTokenProvider.AddHttpClient(services);
+
+        await AssertTokenClientDoesNotFollowRedirectAsync(services);
+    }
+
+    [Fact]
+    public async Task AddAdminUI_ComposesTokenClientWithoutCredentialPostRedirects()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddAdminUI();
+
+        await AssertTokenClientDoesNotFollowRedirectAsync(builder.Services);
+    }
+
+    private static async Task AssertTokenClientDoesNotFollowRedirectAsync(IServiceCollection services)
+    {
         int sourcePort = GetAvailablePort();
         int untrustedPort = GetAvailablePort();
         using var listener = new HttpListener();
@@ -476,8 +538,6 @@ public class AdminApiAccessTokenProviderRoleTests {
             context.Response.RedirectLocation = $"http://127.0.0.1:{untrustedPort}/relay";
             context.Response.Close();
         });
-        var services = new ServiceCollection();
-        AdminApiAccessTokenProvider.AddHttpClient(services);
         using ServiceProvider serviceProvider = services.BuildServiceProvider();
         using HttpClient client = serviceProvider.GetRequiredService<IHttpClientFactory>()
             .CreateClient(nameof(AdminApiAccessTokenProvider));
@@ -653,6 +713,37 @@ public class AdminApiAccessTokenProviderRoleTests {
             {
                 Content = new StringContent(_tokenResponseJson),
             };
+        }
+    }
+
+    private sealed class FixedContentHandler(HttpContent content) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            _ = request;
+            _ = cancellationToken;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = content,
+            });
+        }
+    }
+
+    private sealed class ThrowingContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            _ = stream;
+            _ = context;
+            return Task.FromException(new HttpRequestException("OIDC response read failed."));
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
         }
     }
 }

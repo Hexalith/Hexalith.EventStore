@@ -1,5 +1,7 @@
 
+using System.ComponentModel;
 using System.Net;
+using System.Reflection;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Mcp.Tools;
@@ -57,5 +59,15 @@ public class ProjectionToolsTests {
 
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("not-found");
+    }
+
+    [Fact]
+    public void GetProjectionDetail_DiscoveryPromisesProtectedConfigurationStatus() {
+        DescriptionAttribute description = typeof(ProjectionTools)
+            .GetMethod(nameof(ProjectionTools.GetProjectionDetail), BindingFlags.Public | BindingFlags.Static)!
+            .GetCustomAttribute<DescriptionAttribute>()!;
+
+        description.Description.ShouldBe(
+            "Get detailed projection information including recent errors and protected configuration status");
     }
 }

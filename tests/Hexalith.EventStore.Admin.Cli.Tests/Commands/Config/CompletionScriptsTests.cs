@@ -1,4 +1,14 @@
+using System.CommandLine;
+using System.Text.RegularExpressions;
+
+using Hexalith.EventStore.Admin.Cli;
+using Hexalith.EventStore.Admin.Cli.Commands;
+using Hexalith.EventStore.Admin.Cli.Commands.Backup;
 using Hexalith.EventStore.Admin.Cli.Commands.Config;
+using Hexalith.EventStore.Admin.Cli.Commands.Projection;
+using Hexalith.EventStore.Admin.Cli.Commands.Snapshot;
+using Hexalith.EventStore.Admin.Cli.Commands.Stream;
+using Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Config;
 
@@ -124,12 +134,57 @@ public class CompletionScriptsTests {
         string shell,
         string expectedBackupStanza,
         string expectedTenantStanza) {
-        string output = GenerateForShell(shell);
+        string output = GenerateForShell(shell).ReplaceLineEndings("\n");
 
         CountOccurrences(output, expectedBackupStanza).ShouldBe(1);
         CountOccurrences(output, expectedTenantStanza).ShouldBe(1);
         output.ShouldNotContain("export-stream");
         output.ShouldNotContain("import-stream");
+    }
+
+    [Fact]
+    public void PublishedCommandInventories_MatchRegisteredCommandAssemblies()
+    {
+        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        Command config = ConfigCommand.Create(binding);
+        Command[] groups =
+        [
+            HealthCommand.Create(binding),
+            StreamCommand.Create(binding),
+            ProjectionCommand.Create(binding),
+            TenantCommand.Create(binding),
+            SnapshotCommand.Create(binding),
+            BackupCommand.Create(binding),
+            config,
+        ];
+        string inventory = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "docs", "brownfield", "component-inventory.md"));
+
+        foreach (Command group in groups)
+        {
+            Match row = Regex.Match(
+                inventory,
+                $@"\| `{Regex.Escape(group.Name)}` \| (?<commands>[^\r\n]+) \|",
+                RegexOptions.CultureInvariant);
+            row.Success.ShouldBeTrue($"The published CLI inventory has no row for '{group.Name}'.");
+            string commandCell = row.Groups["commands"].Value.Split('—', 2)[0];
+            string[] documented = Regex.Matches(commandCell, "`([^`]+)`", RegexOptions.CultureInvariant)
+                .Select(match => match.Groups[1].Value)
+                .SelectMany(ExpandPublishedCommand)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            string[] registered = group.Subcommands
+                .Select(command => command.Name)
+                .Concat(group.Name.Equals("config", StringComparison.Ordinal)
+                    ? group.Subcommands
+                        .Single(command => command.Name.Equals("profile", StringComparison.Ordinal))
+                        .Subcommands
+                        .Select(command => command.Name)
+                    : [])
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+
+            documented.ShouldBe(registered, $"Published subcommands for '{group.Name}' drifted from the registered command assembly.");
+        }
     }
 
     // === Helper ===
@@ -144,4 +199,36 @@ public class CompletionScriptsTests {
 
     private static int CountOccurrences(string value, string expected)
         => value.Split(expected, StringSplitOptions.None).Length - 1;
+
+    private static IEnumerable<string> ExpandPublishedCommand(string command)
+    {
+        const string profilePrefix = "profile ";
+        if (!command.StartsWith(profilePrefix, StringComparison.Ordinal))
+        {
+            yield return command;
+            yield break;
+        }
+
+        yield return "profile";
+        foreach (string subcommand in command[profilePrefix.Length..].Split('/'))
+        {
+            yield return subcommand;
+        }
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(Path.GetDirectoryName(typeof(CompletionScriptsTests).Assembly.Location)!);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Unable to locate the Hexalith.EventStore repository root.");
+    }
 }

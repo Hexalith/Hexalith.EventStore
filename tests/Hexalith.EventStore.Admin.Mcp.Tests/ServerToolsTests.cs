@@ -25,6 +25,19 @@ public class ServerToolsTests {
     }
 
     [Fact]
+    public async Task Ping_ReturnsBoundedError_WhenApiReturnsEmptyHealth() {
+        using HttpClient httpClient = CreateMockHttpClient(HttpStatusCode.OK, "null");
+        var client = new AdminApiClient(httpClient);
+
+        string result = await ServerTools.Ping(client, CancellationToken.None);
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("error");
+        document.RootElement.GetProperty("health").ValueKind.ShouldBe(JsonValueKind.Null);
+        document.RootElement.GetProperty("message").GetString().ShouldBe("Admin API returned empty health response");
+    }
+
+    [Fact]
     public async Task Ping_ReturnsUnreachable_WhenConnectionFails() {
         // Arrange
         using HttpClient httpClient = CreateThrowingHttpClient(new HttpRequestException("Connection refused"));
@@ -52,7 +65,7 @@ public class ServerToolsTests {
         ProtectedDataLeakSentinel.AssertNoLeak([result]);
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
-        doc.RootElement.GetProperty("details").GetString().ShouldBe("Admin API is unreachable.");
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Admin API is unreachable.");
     }
 
     [Fact]
@@ -69,6 +82,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unauthorized");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Token may be expired or invalid. Check EVENTSTORE_ADMIN_TOKEN.");
     }
 
     [Fact]
@@ -85,7 +99,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("error");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
-        doc.RootElement.GetProperty("details").GetString()!.ShouldContain("500");
+        doc.RootElement.GetProperty("message").GetString()!.ShouldContain("500");
     }
 
     [Fact]
@@ -101,6 +115,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Request timed out or was cancelled.");
     }
 
     [Fact]
@@ -116,6 +131,7 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("error");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Invalid response from Admin API.");
     }
 
     [Fact]
@@ -132,6 +148,32 @@ public class ServerToolsTests {
         doc.RootElement.TryGetProperty("serverName", out _).ShouldBeTrue();
         doc.RootElement.TryGetProperty("adminApiStatus", out _).ShouldBeTrue();
         doc.RootElement.TryGetProperty("serverVersion", out _).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("https://example.test/traces?access_token=secret-value")]
+    [InlineData("https://example.test/traces?api_key=secret-value")]
+    [InlineData("https://example.test/traces?clientSecret=secret-value")]
+    [InlineData("https://example.test/traces?password=secret-value")]
+    [InlineData("https://operator:password@example.test/traces")]
+    [InlineData("https://operator%3Apassword@example.test/traces")]
+    public async Task Ping_SanitizesCredentialShapedHealthLinks(string traceUrl) {
+        string healthJson = GetHealthJson().Replace(
+            "\"traceUrl\": null",
+            $"\"traceUrl\": \"{traceUrl}\"",
+            StringComparison.Ordinal);
+        using HttpClient httpClient = CreateMockHttpClient(HttpStatusCode.OK, healthJson);
+        var client = new AdminApiClient(httpClient);
+
+        string result = await ServerTools.Ping(client, CancellationToken.None);
+
+        result.ShouldNotContain(traceUrl);
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("health")
+            .GetProperty("observabilityLinks")
+            .GetProperty("traceUrl")
+            .GetString()
+            .ShouldBe("Protected output text redacted.");
     }
 
     private static HttpClient CreateMockHttpClient(HttpStatusCode statusCode, string content)

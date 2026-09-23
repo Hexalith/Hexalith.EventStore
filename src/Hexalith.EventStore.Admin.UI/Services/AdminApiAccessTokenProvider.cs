@@ -310,15 +310,36 @@ public sealed class AdminApiAccessTokenProvider {
             throw new InvalidOperationException($"{responseName} exceeded the permitted size.");
         }
 
-        try {
-            await content.LoadIntoBufferAsync(MaxOidcResponseBytes, cancellationToken).ConfigureAwait(false);
-        }
-        catch (HttpRequestException exception) {
-            throw new InvalidOperationException($"{responseName} exceeded the permitted size.", exception);
+        using Stream stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var buffer = new MemoryStream();
+        byte[] chunk = new byte[8192];
+        int totalBytes = 0;
+        while (true) {
+            int bytesRead = await stream
+                .ReadAsync(chunk.AsMemory(), cancellationToken)
+                .ConfigureAwait(false);
+            if (bytesRead == 0) {
+                break;
+            }
+
+            totalBytes += bytesRead;
+            if (totalBytes > MaxOidcResponseBytes) {
+                throw new InvalidOperationException($"{responseName} exceeded the permitted size.");
+            }
+
+            await buffer
+                .WriteAsync(chunk.AsMemory(0, bytesRead), cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        using Stream stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (totalBytes == 0) {
+            throw new InvalidOperationException($"{responseName} was empty.");
+        }
+
+        buffer.Position = 0;
+        return await JsonDocument
+            .ParseAsync(buffer, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static string NormalizeEndpointForComparison(Uri endpoint)
@@ -345,7 +366,7 @@ public sealed class AdminApiAccessTokenProvider {
                     : $"EventStore:Authentication:{settingName} must be an absolute HTTPS URI without user information, a query, or a fragment. HTTP is permitted only in Development.");
         }
 
-        return new Uri(endpointUri.AbsoluteUri.TrimEnd('/'), UriKind.Absolute);
+        return endpointUri;
     }
 
     private string RequireTextConfiguration(string name) {

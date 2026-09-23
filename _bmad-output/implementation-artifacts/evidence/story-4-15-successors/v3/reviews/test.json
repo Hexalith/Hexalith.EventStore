@@ -2,18 +2,18 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v3",
   "role": "test",
   "reviewer": "Murat (Test Architect)",
-  "issuedAt": "2026-09-18T16:25:08Z",
+  "issuedAt": "2026-09-20T15:01:03Z",
   "decision": "approved",
-  "subjectSha256": "92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536",
-  "limitationsSha256": "73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41",
-  "acceptedScope": "historical v1/v2 validation, active v3 selector and bootstrap coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the full Contracts lane",
+  "subjectSha256": "583269ac56f7ca75371b6c70a507a820bf21a4ff1fada790ac91feea34ca8b7e",
+  "limitationsSha256": "033819b275bc1de55f673d23b387c86fda4fef1174d4dd68e11310475e253d84",
+  "acceptedScope": "historical v1/v2 validation, active v3 selector and bootstrap coverage, unsafe bootstrap rejection, focused xUnit 4 CTRF conversion, historical-child cleanup, UNC redaction mutation controls, limitation coverage, workflow static validation, the focused OQ8 LiveSidecar lane, rejected or incomplete receipt mutations, and the direct-assembly full Contracts lane",
   "findings": [
-    "The exact frozen subject SHA-256 92b189b6efb5d767da53a70197f94709642dcc5fc71015d23c9f4d75b4196536, limitations SHA-256 73d301103f430c4d8774d79df6ca334dfa2aaecf228f8632238ebc1639a20e41, four direct bindings, and all 13 gate inputs reconcile with current candidate bytes.",
-    "The bound pre-review record confirms the exact workflow-static-validation command passed and the exact focused LiveSidecar command passed 1 of 1 with zero failures or skips.",
-    "The exact authorized Oq8PlatformClosureTests command completed 458 of 458 cases passed with zero failures or skips and xUnit duration 221.602 seconds; completion was observed before 2026-09-18T16:18:38Z and before the full run began.",
-    "The exact authorized full Contracts command ran from wrapper start 2026-09-18T16:18:52Z through wrapper finish 2026-09-18T16:22:34Z and reported 2061 of 2061 cases passed with zero failures or skips in 3m40.574s.",
-    "The retained Contracts TRX records start 2026-09-18T16:18:57.6607435+00:00, finish 2026-09-18T16:22:33.5311512+00:00, 2061 distinct results all Passed, counters total/executed/passed 2061, every failure/skip/error counter zero, and SHA-256 76b9b343cb7324384110049a0f986d1d436385a1c825cff5c38da1f453973576.",
-    "All four required verification records are accepted; approval remains source-only and grants no release, Folders-final-closure, package, registry, deployment, runtime-pin, consumer-migration, external-repository, or final-consumer authority."
+    "Frozen subject, limitations, identity, execution, validator, and source hashes stayed unchanged throughout independent review.",
+    "The unsafe-bootstrap, valid focused-CTRF, and historical-child cleanup behavioral cases each passed independently with no skip or failure.",
+    "The exact focused closure lane passed 467 of 467 cases with zero failures or skips after receipt assembly.",
+    "The direct-assembly full Contracts lane passed 2070 of 2070 cases with zero failures or skips after receipt assembly.",
+    "Historical v1/v2, actionlint, the focused LiveSidecar production matrix, and all final validator modes passed against the successor bytes.",
+    "Approval is source-only and grants none of the excluded external authorities."
   ],
   "verification": [
     {
@@ -41,18 +41,18 @@
       "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 458,
-      "passed": 458,
+      "tests": 467,
+      "passed": 467,
       "failed": 0,
       "skipped": 0
     },
     {
       "name": "contracts-full",
-      "command": "dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build --configuration Release --results-directory TestResults/Hexalith.EventStore.Contracts.Tests --report-xunit-trx --report-xunit-trx-filename Hexalith.EventStore.Contracts.Tests.trx --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml -p:UseHexalithProjectReferences=false",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noColor",
       "exitCode": 0,
       "result": "passed",
-      "tests": 2061,
-      "passed": 2061,
+      "tests": 2070,
+      "passed": 2070,
       "failed": 0,
       "skipped": 0
     }

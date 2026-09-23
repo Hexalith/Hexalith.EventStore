@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-09-17
+# last_updated: 2026-09-22
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-09-18'
+last_updated: '2026-09-22'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -195,7 +195,7 @@ development_status:
   4-12-expiry-compaction-and-tombstone-retention: done
   4-13-legacy-admission-migration-and-fail-closed-reconciliation: done
   4-14-oq8-multi-host-production-evidence: done
-  4-15-oq8-platform-closure-and-handoff: review
+  4-15-oq8-platform-closure-and-handoff: done
   epic-4-retrospective: optional
 
   epic-5: in-progress
@@ -206,7 +206,7 @@ development_status:
   # a status change, and whose story spec forbids it from touching this file.
   # Owner set this row to done 2026-09-10 after spec-5-3 closed (review loop 8).
   5-3-production-authentication-guards-and-secret-stripping: done
-  5-4-admin-surface-safety-hygiene: in-progress
+  5-4-admin-surface-safety-hygiene: done
   5-5-internal-and-domain-service-trust-boundary: backlog
   5-6-apphost-component-loading-and-sidecar-argument-parity: backlog
   5-7-production-dapr-component-and-acl-parity: backlog

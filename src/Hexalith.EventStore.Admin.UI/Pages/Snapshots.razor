@@ -106,8 +106,7 @@
     {
         <FluentDataGrid Items="@FilteredPolicies.AsQueryable()" TGridItem="SnapshotPolicy"
                         Style="width: 100%; margin-bottom: 24px;"
-                        aria-label="Snapshot policies"
-                        OnRowClick="@(row => OpenEditDialog(row.Item))">
+                        aria-label="Snapshot policies">
             <PropertyColumn Property="@(p => p.TenantId)" Title="Tenant ID" Class="monospace" Sortable="true"
                             IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
             <PropertyColumn Property="@(p => p.Domain)" Title="Domain" Sortable="true" />
@@ -152,17 +151,20 @@
             </TitleTemplate>
             <ChildContent>
                 <ConfirmationFacts Target="@Text["SnapshotPolicyTarget", _createTenantId ?? string.Empty, _createDomain ?? string.Empty, _createAggregateType ?? string.Empty]"
-                                   Impact="@Text["SnapshotPolicySetImpact"]"
+                                   Impact="@Text["SnapshotPolicyCreateImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_createTenantId"
+                                 Immediate="true"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
                 <FluentTextInput @bind-Value="_createDomain"
+                                 Immediate="true"
                                  Label="Domain" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Domain" />
                 <FluentTextInput @bind-Value="_createAggregateType"
+                                 Immediate="true"
                                  Label="Aggregate Type" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Aggregate Type" />
@@ -297,14 +299,17 @@
                                    Impact="@Text["SnapshotCreateImpact"]"
                                    RequiredPermission="@Text["PermissionOperator"]" />
                 <FluentTextInput @bind-Value="_snapshotTenantId"
+                                 Immediate="true"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
                 <FluentTextInput @bind-Value="_snapshotDomain"
+                                 Immediate="true"
                                  Label="Domain" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Domain" />
                 <FluentTextInput @bind-Value="_snapshotAggregateId"
+                                 Immediate="true"
                                  Label="Aggregate ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Aggregate ID" />
@@ -578,6 +583,14 @@
 
     private async Task OnCreatePolicyConfirm()
     {
+        string confirmationTarget = Text["SnapshotPolicyTarget", _createTenantId ?? string.Empty, _createDomain ?? string.Empty, _createAggregateType ?? string.Empty];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCreateDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         try
@@ -619,7 +632,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -651,6 +665,14 @@
     {
         if (_editPolicy is null)
         {
+            return;
+        }
+
+        string confirmationTarget = Text["SnapshotPolicyTarget", _editPolicy.TenantId, _editPolicy.Domain, _editPolicy.AggregateType];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseEditDialogAsync().ConfigureAwait(false);
             return;
         }
 
@@ -696,7 +718,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -722,6 +745,14 @@
     {
         if (_deletePolicy is null)
         {
+            return;
+        }
+
+        string confirmationTarget = Text["SnapshotPolicyTarget", _deletePolicy.TenantId, _deletePolicy.Domain, _deletePolicy.AggregateType];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseDeleteDialogAsync().ConfigureAwait(false);
             return;
         }
 
@@ -767,7 +798,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -812,6 +844,14 @@
 
     private async Task OnCreateSnapshotConfirm()
     {
+        string confirmationTarget = Text["SnapshotTarget", _snapshotTenantId ?? string.Empty, _snapshotDomain ?? string.Empty, _snapshotAggregateId ?? string.Empty];
+        if (!ConfirmationFacts.IsExactAndSupportSafe(confirmationTarget))
+        {
+            await ToastService.ShowErrorAsync(Text["ConfirmationUnsafeTarget"]).ConfigureAwait(false);
+            await CloseCreateSnapshotDialogAsync().ConfigureAwait(false);
+            return;
+        }
+
         _isOperating = true;
         StateHasChanged();
         try
@@ -851,7 +891,8 @@
         finally
         {
             _isOperating = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 

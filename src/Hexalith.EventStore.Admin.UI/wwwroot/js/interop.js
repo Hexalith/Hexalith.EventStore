@@ -123,6 +123,14 @@ window.hexalithAdmin = {
         }
     },
 
+    waitForRender: function () {
+        // requestAnimationFrame is paused in hidden tabs; the timeout keeps callers from stalling.
+        return new Promise((resolve) => {
+            window.requestAnimationFrame(resolve);
+            window.setTimeout(resolve, 100);
+        });
+    },
+
     focusElementById: function (elementId) {
         const element = document.getElementById(elementId);
         if (element && typeof element.focus === "function") {

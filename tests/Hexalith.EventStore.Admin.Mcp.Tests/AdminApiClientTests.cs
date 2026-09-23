@@ -1,12 +1,54 @@
 
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 
 using Hexalith.EventStore.Testing.Http;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 public class AdminApiClientTests {
+    [Fact]
+    public void CreatePrimaryHttpMessageHandler_DisablesAutomaticRedirects() {
+        using HttpMessageHandler handler = AdminApiClient.CreatePrimaryHttpMessageHandler();
+
+        HttpClientHandler primaryHandler = handler.ShouldBeOfType<HttpClientHandler>();
+        primaryHandler.AllowAutoRedirect.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ProgramRegistration_DoesNotFollowConfirmedWriteRedirects()
+    {
+        int sourcePort = GetAvailablePort();
+        int untrustedPort = GetAvailablePort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{sourcePort}/");
+        listener.Start();
+        Task responder = Task.Run(async () =>
+        {
+            HttpListenerContext context = await listener.GetContextAsync();
+            context.Response.StatusCode = (int)HttpStatusCode.TemporaryRedirect;
+            context.Response.RedirectLocation = $"http://127.0.0.1:{untrustedPort}/relay";
+            context.Response.Close();
+        });
+        var services = new ServiceCollection();
+        global::Program.AddAdminApiClient(
+            services,
+            new Uri($"http://127.0.0.1:{sourcePort}"),
+            Guid.NewGuid().ToString("N"));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        AdminApiClient client = provider.GetRequiredService<AdminApiClient>();
+
+        HttpRequestException exception = await Should.ThrowAsync<HttpRequestException>(() => client.PostAsync(
+            "/api/v1/admin/projections/orders/reset",
+            TestContext.Current.CancellationToken));
+        await responder.WaitAsync(TestContext.Current.CancellationToken);
+
+        exception.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
+    }
+
     [Fact]
     public async Task GetSystemHealthAsync_SendsGetToCorrectPath() {
         // Arrange
@@ -92,6 +134,15 @@ public class AdminApiClientTests {
         };
         configureDefaults?.Invoke(client);
         return client;
+    }
+
+    private static int GetAvailablePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
     }
 
     private static string GetHealthJson()
