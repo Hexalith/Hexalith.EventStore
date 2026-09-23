@@ -52,6 +52,9 @@ public static class ReadModelStoreServiceCollectionExtensions {
         services.TryAddSingleton<IReadModelConditionalEraser>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelConditionalEraser
             ?? sp.GetRequiredService<DaprReadModelStore>());
+        services.TryAddSingleton(static sp => new SharedProjectionEpochCoordinator(
+            sp.GetRequiredService<IReadModelStore>(),
+            sp.GetRequiredService<IReadModelBatchStore>()));
         return services;
     }
 }

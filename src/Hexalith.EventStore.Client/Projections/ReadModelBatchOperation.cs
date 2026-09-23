@@ -123,4 +123,28 @@ public sealed class ReadModelBatchOperation {
             concurrency,
             null);
     }
+
+    internal static ReadModelBatchOperation WriteCanonical(
+        string key,
+        string valueTypeName,
+        ReadOnlyMemory<byte> canonicalValue,
+        TimeSpan? timeToLive = null) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(valueTypeName);
+        if (canonicalValue.IsEmpty) {
+            throw new ArgumentException("A canonical write requires a value.", nameof(canonicalValue));
+        }
+
+        if (timeToLive is { } retention && retention <= TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(nameof(timeToLive));
+        }
+
+        return new ReadModelBatchOperation(
+            key,
+            ReadModelBatchOperationKind.Write,
+            valueTypeName,
+            canonicalValue.ToArray(),
+            ReadModelBatchConcurrency.LastWrite,
+            timeToLive);
+    }
 }
