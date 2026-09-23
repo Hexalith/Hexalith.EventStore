@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 
 namespace Hexalith.EventStore.Admin.UI.E2E;
 
@@ -17,7 +18,12 @@ public class SmokeTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     private WebApplicationFactory<Program> CreateSidecarAwareFactory()
-        => _factory.WithWebHostBuilder(builder => builder.UseSetting("DAPR_HTTP_PORT", "3500"));
+        => _factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("DAPR_HTTP_PORT", "3500");
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(E2EAuthenticationSettings.Create()));
+        });
 
     [Fact]
     public async Task LandingPage_ReturnsSuccessAndContainsShell()

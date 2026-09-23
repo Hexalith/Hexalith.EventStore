@@ -171,10 +171,9 @@ python3 scripts/validate-consumer-package-references.py ./nupkgs
   manifest inventory must agree; renamed, foreign, duplicate, mixed-version,
   source-path-bearing, and incomplete internal dependency metadata fail closed.
 - `scripts/validate-consumer-package-references.py` creates one temporary
-  package-only consumer per library package. Each consumer directly references
-  its package; the Client consumer also references the released Testing package
-  for its executable store probe. Consumers restore only from the local package
-  directory plus NuGet.org, build independently, and reject project-backed
+  package-only consumer per library package. Each consumer has exactly one
+  direct manifest package reference, restores only from the local package
+  directory plus NuGet.org, builds independently, and rejects project-backed
   assets. Dotnet tool packages are installed separately in isolated tool
   manifests.
 
@@ -204,36 +203,6 @@ The Gateway project graph carries an additional explicit four-edge guard for
 archive is measured against cannot silently shrink. Project paths, build-output
 paths (`bin/`, `obj/`, `artifacts/`) and checkout-local source metadata are
 never accepted as package dependency evidence, anywhere in the nuspec.
-
-### R3–R4 projection package contract
-
-The release inventory includes the Contracts, Client, DomainService, and Server
-packages that own stream-page validation, epoch fencing, named envelope
-delivery, and rebuild. The isolated consumer validator runs executable
-package-only probes for the Contracts, Client, and DomainService public R3–R4
-APIs in addition to building every release library. The Client probe uses the
-released Testing package to run capture, journal, stage, Commit, catch-up,
-idempotent redelivery, and the 128-entry journal backpressure bound. It rejects
-any project reference in restored consumer assets. A local CI pack request for
-`0.0.0-ci-test` produces packages at the exact synthetic version
-`999.0.0-ci-test`; this version is validation evidence and is not a published
-release version.
-
-```bash
-python3 scripts/pack-release-packages.py /tmp/hexalith-eventstore-ci-packages 0.0.0-ci-test
-python3 scripts/validate-nuget-packages.py /tmp/hexalith-eventstore-ci-packages
-python3 scripts/validate-consumer-package-references.py /tmp/hexalith-eventstore-ci-packages
-EVENTSTORE_PACKAGE_CONTRACT_DIR=/tmp/hexalith-eventstore-ci-packages \
-  tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests \
-  -class '*ProjectionPackageContractTests'
-```
-
-The release operator records the semantic-release-derived published version
-and source SHA with the package-only result before a Works consumer adopts it.
-R3–R4 acceptance also requires the focused Dapr/Redis shared epoch test and
-10,000-item capture, stage, and delivery tests to pass. Retention, legal-hold,
-offboarding, and a restore drill remain the AD-28 gate for non-synthetic shared
-data or a new durable type.
 
 ## Release Flow
 
