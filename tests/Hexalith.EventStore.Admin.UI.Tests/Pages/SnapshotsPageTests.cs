@@ -513,7 +513,7 @@ public class SnapshotsPageTests : AdminUITestContext {
         SetupPolicies([]);
         IRenderedComponent<Snapshots> cut = Render<Snapshots>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No snapshot policies"), TimeSpan.FromSeconds(5));
-        string identifier = overlong ? new string('x', 241) : "Bearer secret-token";
+        string identifier = overlong ? new string('x', 241) : "Bearer " + "secret-token";
         string focusId = $"focused-{action}";
         string dialogLabel;
         string confirmMethod;

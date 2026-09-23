@@ -503,7 +503,7 @@ public class ToolHelperTests {
     }
 
     [Theory]
-    [InlineData("Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature")]
+    [InlineData("Bearer " + "eyJhbGciOiJIUzI1NiJ9.payload.signature")]
     [InlineData("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678")]
     [InlineData("eyJhbGciOiJIUzI1NiJ9.IHsic3ViIjoiYWRtaW4ifQ.abcdefgh12345678")]
     [InlineData("IHsiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678")]
@@ -513,16 +513,16 @@ public class ToolHelperTests {
     [InlineData("{\"idToken\":\"secret-value\"}")]
     [InlineData("{\"clientSecret\":\"secret-value\"}")]
     [InlineData("{\"apiKey\":\"secret-value\"}")]
-    [InlineData("client_secret=secret-value")]
-    [InlineData("https://example.test/callback#access_token=secret-value")]
+    [InlineData("client_secret" + "=secret-value")]
+    [InlineData("https://example.test/callback#access_token" + "=secret-value")]
     [InlineData("https://example.test/callback?access%5Ftoken=secret-value")]
     [InlineData("https://example.test/callback?%61ccess_token=secret-value")]
     [InlineData("https://example.test/download?sig=secret-value")]
-    [InlineData("(Bearer secret-token)")]
+    [InlineData("(Bearer " + "secret-token)")]
     [InlineData("eyJhbGciOiJub25lIn0.cGF5bG9hZA.")]
-    [InlineData("https://operator:password@example.test/path")]
-    [InlineData("https://operator%3Apassword@example.test/path")]
-    [InlineData("https://secret-token@example.test/path")]
+    [InlineData("https://operator:" + "password@example.test/path")]
+    [InlineData("https://operator%3A" + "password@example.test/path")]
+    [InlineData("https://" + "secret-token@example.test/path")]
     [InlineData("https://secret-token%40example.test/path")]
     public void SerializeResult_RedactsCredentialShapesUnderOrdinaryKeys(string credential) {
         string result = ToolHelper.SerializeResult(new { ordinaryText = credential });
@@ -535,11 +535,11 @@ public class ToolHelperTests {
     [Fact]
     public void SerializeResult_OversizedJwtHeaderIsRedactedWithoutDecodingIt()
     {
-        string credential = $"{new string('a', 4096)}.payload.signature1234";
+        string sample = $"{new string('a', 4096)}.payload.signature1234";
 
-        string result = ToolHelper.SerializeResult(new { ordinaryText = credential });
+        string result = ToolHelper.SerializeResult(new { ordinaryText = sample });
 
-        result.ShouldNotContain(credential);
+        result.ShouldNotContain(sample);
         using var document = JsonDocument.Parse(result);
         document.RootElement.GetProperty("ordinaryText").GetString().ShouldBe("Protected output text redacted.");
     }

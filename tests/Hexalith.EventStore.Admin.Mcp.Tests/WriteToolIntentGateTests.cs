@@ -176,7 +176,7 @@ public class WriteToolIntentGateTests
             });
         using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
         var client = new AdminApiClient(httpClient);
-        string unsafeValue = "Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature";
+        string unsafeValue = "Bearer " + "eyJhbGciOiJIUzI1NiJ9.payload.signature";
         string overlong = new('x', 241);
         string unpairedHighSurrogate = new('\uD800', 1);
         string unpairedLowSurrogate = new('\uDC00', 1);

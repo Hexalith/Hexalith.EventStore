@@ -87,10 +87,6 @@ public sealed class QueryResponseProvenancePersistenceTests(
             });
         var queryRouter = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
         IETagService eTagService = Substitute.For<IETagService>();
-        string currentETag = SelfRoutingETag.GenerateNew("freshness");
-        _ = eTagService
-            .GetCurrentETagAsync("freshness", "tenant-a", Arg.Any<CancellationToken>())
-            .Returns(currentETag);
 
         factory.ResetActors();
         factory.FakeTenantActor.ConfiguredResult = new ActorValidationResponse(true);
@@ -124,7 +120,9 @@ public sealed class QueryResponseProvenancePersistenceTests(
             request,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        result.ETag.ShouldBe(currentETag);
+        result.ETag.ShouldBe(persistedEntry.ETag);
+        _ = await eTagService.DidNotReceiveWithAnyArgs()
+            .GetCurrentETagAsync(default!, default!, default);
         _ = result.Metadata.ShouldNotBeNull();
         result.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         result.Metadata.ProjectionVersion.ShouldBe(ExpectedVersion);

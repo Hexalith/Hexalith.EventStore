@@ -37,7 +37,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
             provider,
             new ProjectionDispatchRequest(
                 new ProjectionRequest("tenant-a", "widget", "aggregate-a", [first]),
-                ["widget-index"],
+                ["fenced-widget-index"],
                 "delivery-1",
                 catalog),
             options,
@@ -50,7 +50,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
         var identity = new DomainSharedProjectionRebuildIdentity(
             "tenant-a",
             "widget",
-            "widget-index",
+            "fenced-widget-index",
             "rebuild-1",
             catalog);
         string capture = DomainSharedProjectionRebuildFingerprint.AppendInventory(
@@ -71,7 +71,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
             provider,
             new ProjectionDispatchRequest(
                 new ProjectionRequest("tenant-a", "widget", "aggregate-a", [first, second]),
-                ["widget-index"],
+                ["fenced-widget-index"],
                 "delivery-2",
                 catalog),
             options,
@@ -114,7 +114,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
             provider,
             new ProjectionDispatchRequest(
                 new ProjectionRequest("tenant-a", "widget", "aggregate-a", [first, second]),
-                ["widget-index"],
+                ["fenced-widget-index"],
                 "delivery-2",
                 catalog),
             options,
@@ -146,7 +146,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
         ProjectionEventDto[] events = [Event(1, 1), Event(2, 2), Event(3, 3)];
         ProjectionDispatchRequest delivery = new(
             new ProjectionRequest("tenant-a", "widget", "aggregate-a", events),
-            ["widget-index"],
+            ["fenced-widget-index"],
             "delivery-1",
             CatalogFingerprint());
 
@@ -200,7 +200,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
             provider,
             new ProjectionDispatchRequest(
                 new ProjectionRequest("tenant-a", "widget", "aggregate-a", [Event(128, 128), Event(129, 129), Event(130, 130)]),
-                ["widget-index"],
+                ["fenced-widget-index"],
                 "delivery-130",
                 CatalogFingerprint()),
             new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None);
@@ -227,7 +227,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
             provider,
             new ProjectionDispatchRequest(
                 new ProjectionRequest("tenant-a", "widget", "aggregate-a", [Event(1, 1), Event(3, 3)]),
-                ["widget-index"],
+                ["fenced-widget-index"],
                 "delivery-3",
                 CatalogFingerprint()),
             new ProjectionDispatchOptions(), IdentityOptions(), CancellationToken.None);
@@ -244,7 +244,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
         var handler = new FencedIndexHandler { FailFold = true };
         ProjectionDispatchRequest delivery = new(
             new ProjectionRequest("tenant-a", "widget", "aggregate-a", [Event(7, 10)]),
-            ["widget-index"],
+            ["fenced-widget-index"],
             "delivery-1",
             CatalogFingerprint());
         SharedProjectionScope scope = handler.CreateScope("tenant-a");
@@ -286,7 +286,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
         => ProjectionRouteCatalogFingerprint.Compute(
             "widget-service",
             "v1",
-            [new ProjectionDispatchRoute("widget", "widget-index")]);
+            [new ProjectionDispatchRoute("widget", "fenced-widget-index")]);
 
     private static ProjectionEventDto Event(long sequence, long globalPosition)
         => new(
@@ -332,7 +332,7 @@ public sealed class DomainFencedSharedProjectionIntegrationTests
 
         public string Domain => "widget";
 
-        public string ProjectionType => "widget-index";
+        public string ProjectionType => "fenced-widget-index";
 
         public string RebuildStoreName => StoreName;
 

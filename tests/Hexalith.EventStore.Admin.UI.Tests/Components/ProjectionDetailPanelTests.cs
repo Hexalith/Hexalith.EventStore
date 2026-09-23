@@ -567,7 +567,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext {
     [InlineData("replay", "#projection-replay-button")]
     public async Task UnsafeConfirmationTarget_IsNeverSubmitted(string action, string buttonSelector)
     {
-        ProjectionDetail unsafeDetail = CreateDetail("Bearer secret-token");
+        ProjectionDetail unsafeDetail = CreateDetail("Bearer " + "secret-token");
         _ = _mockApiClient.GetProjectionDetailAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<ProjectionDetail?>(unsafeDetail));

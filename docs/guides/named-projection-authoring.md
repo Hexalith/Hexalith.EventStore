@@ -79,6 +79,21 @@ Recovery and rebuild readers use `StreamReadPageValidator.ValidateAndGetNextSequ
 
 Shared epoch state, chunks, receipts, and control-index membership are tenant-scoped operational data. The caller must authorize and audit offboarding, satisfy retention and legal-hold policy, and drain the epoch before `OffboardTenantAsync`. New durable catalog types and non-synthetic shared data remain gated on accountable data-owner approval and a restore drill covering stream, projection, checkpoint, audit, and tenant-key order (AD-28).
 
+### Package contract evidence
+
+The [CI package validation flow](../ci.md) packs the 14-package release inventory and restores isolated consumers without project references. The Contracts, Client, and DomainService consumers also execute R3–R4 probes. The Client consumer exercises capture, journaling, staging, Commit, catch-up, idempotent replay, and the 128-entry backpressure limit through a single Client package reference and an in-process store. For local validation, a `0.0.0-ci-test` pack request creates synthetic `999.0.0-ci-test` artifacts; that version is not a published release.
+
+```bash
+python3 scripts/pack-release-packages.py ./nupkgs 0.0.0-ci-test
+python3 scripts/validate-nuget-packages.py ./nupkgs
+python3 scripts/validate-consumer-package-references.py ./nupkgs
+EVENTSTORE_PACKAGE_CONTRACT_DIR=./nupkgs \
+  tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests \
+  -class '*ProjectionPackageContractTests'
+```
+
+Record the semantic-release-derived published version, source SHA, and successful package-only result before Works adopts the SDK. R3–R4 acceptance also requires the focused Dapr/Redis epoch and 10,000-member capture, stage, and delivery results. The AD-28 data-owner approval and restore drill remain separate gates for new durable types or non-synthetic shared data.
+
 ## Related APIs
 
 - `IAsyncDomainProjectionHandler` and `DomainProjectionHandlerResult` — named asynchronous handler seam and closed outcome contract

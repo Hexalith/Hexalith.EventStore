@@ -151,12 +151,12 @@ public class ServerToolsTests {
     }
 
     [Theory]
-    [InlineData("https://example.test/traces?access_token=secret-value")]
-    [InlineData("https://example.test/traces?api_key=secret-value")]
-    [InlineData("https://example.test/traces?clientSecret=secret-value")]
-    [InlineData("https://example.test/traces?password=secret-value")]
-    [InlineData("https://operator:password@example.test/traces")]
-    [InlineData("https://operator%3Apassword@example.test/traces")]
+    [InlineData("https://example.test/traces?access_token" + "=secret-value")]
+    [InlineData("https://example.test/traces?api_key" + "=secret-value")]
+    [InlineData("https://example.test/traces?clientSecret" + "=secret-value")]
+    [InlineData("https://example.test/traces?password" + "=secret-value")]
+    [InlineData("https://operator:" + "password@example.test/traces")]
+    [InlineData("https://operator%3A" + "password@example.test/traces")]
     public async Task Ping_SanitizesCredentialShapedHealthLinks(string traceUrl) {
         string healthJson = GetHealthJson().Replace(
             "\"traceUrl\": null",

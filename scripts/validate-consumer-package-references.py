@@ -58,13 +58,7 @@ def write_consumer_project(
     package_id: str,
     version: str,
 ) -> pathlib.Path:
-    """Create a package-only consumer, adding the released test store for the Client probe."""
-
-    companion = "Hexalith.EventStore.Testing" if package_id == "Hexalith.EventStore.Client" else None
-    companion_version = (
-        f'    <PackageVersion Include="{companion}" Version="{version}" />\n' if companion else ""
-    )
-    companion_reference = f'    <PackageReference Include="{companion}" />\n' if companion else ""
+    """Create a consumer with exactly one direct manifest package reference."""
 
     (consumer_dir / "Directory.Packages.props").write_text(
         textwrap.dedent(f"""\
@@ -74,7 +68,6 @@ def write_consumer_project(
           </PropertyGroup>
           <ItemGroup>
             <PackageVersion Include="{package_id}" Version="{version}" />
-{companion_version.rstrip()}
           </ItemGroup>
         </Project>
         """),
@@ -92,7 +85,6 @@ def write_consumer_project(
           </PropertyGroup>
           <ItemGroup>
             <PackageReference Include="{package_id}" />
-{companion_reference.rstrip()}
           </ItemGroup>
         </Project>
         """),
@@ -110,9 +102,9 @@ def write_consumer_project(
             """),
         "Hexalith.EventStore.Client": textwrap.dedent("""\
             using Hexalith.EventStore.Client.Projections;
-            using Hexalith.EventStore.Testing.Fakes;
+            using System.Text.Json;
 
-            var store = new InMemoryReadModelStore();
+            var store = new ProbeStore();
             var coordinator = new SharedProjectionEpochCoordinator(store, store);
             var scope = new SharedProjectionScope("statestore", "tenant-a", "widget", "widget-index", ["ordinary"]);
             var lease = await coordinator.RegisterWriterAsync(scope, "ordinary");
@@ -162,6 +154,62 @@ def write_consumer_project(
                 throw new InvalidOperationException("The bounded journal accepted an over-limit position.");
 
             record Counter(int Value);
+
+            sealed class ProbeStore : IReadModelStore, IReadModelBatchStore {
+                private readonly Dictionary<string, (byte[] Value, string ETag)> _values = new(StringComparer.Ordinal);
+                private readonly object _gate = new();
+                private long _revision;
+                private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+                public Task<ReadModelEntry<T>> GetAsync<T>(string storeName, string key,
+                    CancellationToken cancellationToken = default) where T : class {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        return Task.FromResult(_values.TryGetValue(storeName + ":" + key, out var entry)
+                            ? new ReadModelEntry<T>(JsonSerializer.Deserialize<T>(entry.Value, Json), entry.ETag)
+                            : new ReadModelEntry<T>(null, null));
+                    }
+                }
+
+                public Task SaveAsync<T>(string storeName, string key, T value,
+                    CancellationToken cancellationToken = default) where T : class {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        _values[storeName + ":" + key] = (JsonSerializer.SerializeToUtf8Bytes(value, Json),
+                            (++_revision).ToString());
+                    }
+                    return Task.CompletedTask;
+                }
+
+                public Task<bool> TrySaveAsync<T>(string storeName, string key, T value, string etag,
+                    CancellationToken cancellationToken = default) where T : class {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        string stateKey = storeName + ":" + key;
+                        bool exists = _values.TryGetValue(stateKey, out var prior);
+                        if (exists ? prior.ETag != etag : etag.Length != 0)
+                            return Task.FromResult(false);
+                        _values[stateKey] = (JsonSerializer.SerializeToUtf8Bytes(value, Json),
+                            (++_revision).ToString());
+                        return Task.FromResult(true);
+                    }
+                }
+
+                public Task<ReadModelBatchResult> ExecuteAsync(ReadModelBatch batch,
+                    CancellationToken cancellationToken = default) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        foreach (var operation in batch.Operations) {
+                            string stateKey = batch.Scope.StoreName + ":" + operation.Key;
+                            if (operation.Kind == ReadModelBatchOperationKind.Write)
+                                _values[stateKey] = (operation.CanonicalValue.ToArray(), (++_revision).ToString());
+                            else
+                                _values.Remove(stateKey);
+                        }
+                    }
+                    return Task.FromResult(ReadModelBatchResult.Completed(batch.Scope.ComputeScopeHash()));
+                }
+            }
             """),
         "Hexalith.EventStore.DomainService": textwrap.dedent("""\
             using Hexalith.EventStore.Contracts.Projections;
@@ -222,13 +270,9 @@ def assert_assets_use_packages(project_path: pathlib.Path, package_id: str, vers
         )
 
     library_keys = {key.casefold() for key in libraries}
-    required_ids = [package_id]
-    if package_id == "Hexalith.EventStore.Client":
-        required_ids.append("Hexalith.EventStore.Testing")
-    for required_id in required_ids:
-        expected_key = f"{required_id}/{version}".casefold()
-        if expected_key not in library_keys:
-            raise ValueError(f"Consumer restore did not resolve {required_id} at {version}.")
+    expected_key = f"{package_id}/{version}".casefold()
+    if expected_key not in library_keys:
+        raise ValueError(f"Consumer restore did not resolve {package_id} at {version}.")
 
 
 def validate_library_package(
