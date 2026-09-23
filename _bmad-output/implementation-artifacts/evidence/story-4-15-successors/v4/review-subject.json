@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.story-4-15-successor-review-subject/v4",
-  "frozenAt": "2026-09-20T22:22:31Z",
+  "frozenAt": "2026-09-23T06:08:00Z",
   "proposedDecision": "active-current-source-evidence-approved",
   "predecessor": {
     "completedV3ClosureCommit": "d578e7626df1d8afeada440c7989eb04ba2bdfe6",
@@ -22,7 +22,7 @@
     },
     "tools/validate-oq8-platform-evidence.py": {
       "predecessorSha256": "593309125303b9aaaad91a5e2241bc8bae9df263c8ca8724e4523b418e89038a",
-      "successorSha256": "cb818403997285f60e746c6bfd64df2a8001d42c3e0b3bba43841c5c475ae617"
+      "successorSha256": "615c47bc98272c0791746fe3c610a7c9687dac9a0f31d0af3930e93dbb7c7bd6"
     }
   },
   "gateInputs": {
@@ -30,7 +30,7 @@
     ".github/workflows/ci.yml": "0abf0556c91d2af112457b358b2b31660217bf365564bfdfba2cac400b144e2b",
     ".github/workflows/integration.yml": "e50df54fb058ca5c52e0282836ebf6f04cb6fce915a1a1178bf19fad4411da21",
     "_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md": "00d4075681320aefce2b1a5ee2d54e1200156fcc5973a9deeca51466345b54b8",
-    "docs/ci.md": "048359377dfe880c34f0b89bbef5685a73d1335c657f28da73ba0646b4fc5abf",
+    "docs/ci.md": "0d39f39f928e20eabfeb7398ab68ef8e615d3c8d45d6849fd7491cd025f2bba4",
     "global.json": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
     "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "724602a298e9937f0d2bf16a4f42a125d3697534d6a090d3fb9f6ea952c0c013",
@@ -40,12 +40,12 @@
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "76f45fa2102df293c5d28390383b8001cfa47610412262c9c3626c160694020d",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs": "cbc1be14c3a8c9c58c9951059803a706ab3a54e0ccf130db89f3609c245ed577",
     "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "8bf77620e33501409bc890d5983e57914087bbc469a8be05208a37f5ddd59948",
-    "tools/validate-oq8-platform-evidence.py": "cb818403997285f60e746c6bfd64df2a8001d42c3e0b3bba43841c5c475ae617"
+    "tools/validate-oq8-platform-evidence.py": "615c47bc98272c0791746fe3c610a7c9687dac9a0f31d0af3930e93dbb7c7bd6"
   },
   "bindings": {
     "sourceIdentity": {
       "path": "source-artifact-identity.json",
-      "sha256": "727ccb428d366f510bd65d75d03d610141ec6a5bc12bb2e8a10070c56a049fcb"
+      "sha256": "fcca7db0f644bcebfff7ca9651176b2817cabba200313398498bd03188c330a0"
     },
     "limitations": {
       "path": "limitations.json",
@@ -53,13 +53,13 @@
     },
     "validatorRecord": {
       "path": "validator-sha256.txt",
-      "sha256": "5bfbc56fc5f046c659e5b670a1c467865341b8d133fa65de02393f4eb3ed9ab6",
+      "sha256": "084744440e2c9a9f65cd2e87df5a922407304d1bc26c82c9bcc46b923907ac8e",
       "validatorPath": "tools/validate-oq8-platform-evidence.py",
-      "validatorSha256": "cb818403997285f60e746c6bfd64df2a8001d42c3e0b3bba43841c5c475ae617"
+      "validatorSha256": "615c47bc98272c0791746fe3c610a7c9687dac9a0f31d0af3930e93dbb7c7bd6"
     },
     "preReviewExecution": {
       "path": "pre-review-execution.json",
-      "sha256": "b9db935200bbb4dff6e9b44974d2e6678bf926d7509486102694ffedb97d7286"
+      "sha256": "32cb284223442b6c8726537765b36dc4490b6f1facd8bf54a1088b029611ac82"
     }
   },
   "requiredReviews": [

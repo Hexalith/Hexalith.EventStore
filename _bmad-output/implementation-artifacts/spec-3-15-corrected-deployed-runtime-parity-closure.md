@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -61,7 +61,7 @@ context:
 - [x] `_bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` and `.gitattributes` -- retain LF-stable workflow/archive facts, all 14 independently downloaded NuGet packages, raw OCI graph, bounded Production smoke logs/results for both immutable children, owner-role registry, closed inventory, canonical subject, and subject-addressed receipts without hash cycles.
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- cover every matrix row and mutation-prove identity bytes, package domains, OCI chain, both smokes, inventory, registry, subject, each receipt field/role, and non-authority flags.
 - [x] `_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure*.md` and `docs/ci.md` -- record exact lineage, commands/results, blockers, rerun triggers, positive identity, receipt sources, and evidence-only operator boundary.
-- [ ] `tools/{release_evidence_handlers/v3.py,deployed_runtime_parity_handlers/v1.py,assemble-corrected-deployed-runtime-parity.py}`, `evidence/story-3-15/f343bb01…/{subject,closure}.json`, `tools/validate-corrective-release-evidence.py:35`, `tools/validate-corrected-deployed-runtime-parity.py:48` and `3-15-corrected-deployed-runtime-parity-closure-proof-packet.md:55` -- carry out the single authorized re-mint that batches every correction to the sha256+size-pinned trust path, rejecting the three existing receipts and obtaining fresh architecture/security/test sign-off. Scope is owned by **DW-508** and must include **DW-506** (both v3 canonical encoders emit non-JSON `NaN`/`Infinity`; v1 and the capture copy are already correct), **DW-507** (tautological assembler-identity guard; settle what an independent repository root is before re-landing A8), **DW-509** (the sealed v3 `global.json` gate input hashes the CRLF worktree file, not the committed blob) and **DW-511** (the missing layout-preserving-copy refusal and NaN characterization cases). Landing these one at a time is what turned the Contracts lane red at 1987/204/0 and forced revert `dfc0ac55`. Recorded 2026-09-13 by the Story 4.15 Group Q code review, Decision 3.
+- [x] `tools/{release_evidence_handlers/v3.py,deployed_runtime_parity_handlers/v1.py,assemble-corrected-deployed-runtime-parity.py}`, `evidence/story-3-15/f343bb01…/{subject,closure}.json`, `tools/validate-corrective-release-evidence.py:35`, `tools/validate-corrected-deployed-runtime-parity.py:48` and `3-15-corrected-deployed-runtime-parity-closure-proof-packet.md:55` -- carry out the single authorized re-mint that batches every correction to the sha256+size-pinned trust path, rejecting the three existing receipts and obtaining fresh architecture/security/test sign-off. Scope is owned by **DW-508** and must include **DW-506** (both v3 canonical encoders emit non-JSON `NaN`/`Infinity`; v1 and the capture copy are already correct), **DW-507** (tautological assembler-identity guard; settle what an independent repository root is before re-landing A8), **DW-509** (the sealed v3 `global.json` gate input hashes the CRLF worktree file, not the committed blob) and **DW-511** (the missing layout-preserving-copy refusal and NaN characterization cases). Landing these one at a time is what turned the Contracts lane red at 1987/204/0 and forced revert `dfc0ac55`. Recorded 2026-09-13 by the Story 4.15 Group Q code review, Decision 3. Technical re-mint and AI sign-offs are complete; this check does not represent the three separate owner acceptance receipts.
 
 **Acceptance Criteria:**
 - Given the frozen Story 3.14 handoff, when Story 3.15 validation runs, then it first reproduces the exact predecessor identity digest and independently maps the source/workflow/authority, 14 package identities in both byte domains, raw OCI index/children/configs, required provenance, and two Production smokes into one lineage.
@@ -522,6 +522,46 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-09-23 (current subject accepted and guide resealed):** The rostered `github:jpiquot`
+  owner accepted unchanged subject `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`
+  for both owner roles in issue `#352` comments `5789893766` and `5789897143`. The separately
+  reviewed, self-attested `bmad:murat` record supplied the third receipt. Real packet assembly and
+  retained verification now pass at 3/3, selecting only the pinned OCI index with four false
+  operational-authority flags. The positive `docs/ci.md` guide re-minted the active Story 4.15 v4
+  review subject to `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`;
+  fresh AI architecture, security, and Test Architect reviews and the updated manifest, selector,
+  and lifecycle record bind it. The default OQ8 validator passes. Six timestamp-mismatched owner
+  posting attempts were marked superseded and are not retained in the packet.
+
+- **2026-09-23 (owner-authorized Story 4.15 v4 reseal):** Corrected `docs/ci.md` to identify
+  the active v4 lineage and the current Story 3.15 subject, then removed the doc test's fallback
+  to a superseded subject. The new v4 review subject is
+  `171d8e3bd9f9a39fbb0a79e4f028f00c3653bd3269b3bba387088baf752f46ac`;
+  fresh AI architecture, security, and self-attested BMAD Test Architect reviews bind it.
+  The manifest, selector, and lifecycle record were resealed in that order. Default OQ8
+  validation passes, active-v4 mutations pass 19/19, the OQ8 focused class passes 476/476,
+  and the full Contracts suite passed 2096/2096 at that intermediate zero-receipt point. Story 3.15
+  architecture sign-off passed; the later 3/3 owner action supersedes this intermediate state.
+
+- **2026-09-23 (DW-508 review correction):** The assembler now requires the release commit to be
+  an ancestor of `HEAD`, preserving whitespace in Git's checkout path. All trusted JSON loaders
+  and both dispatchers reject nonfinite numeric tokens and exponent overflow. Focused regressions
+  cover an unrelated `HEAD` with the release object available, Git environment redirects, and
+  `1e999`. The technical subject re-minted to
+  `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`; it remains at
+  zero receipts and grants no parity or operational authority.
+
+- **2026-09-22 (DW-508 technical trust-path re-mint):** The v3 canonical encoders and both
+  retained-evidence JSON loaders now reject non-JSON numeric tokens. The v1 canonical encoder
+  delegates to the trusted v3 codec. The assembler resolves its repository root through Git
+  with environment redirections removed, requires the immutable release commit in that object
+  store, and rejects an executing copy outside the bound path. Updated both dispatch pins and
+  re-minted the zero-receipt subject as
+  `02f9dd40bd1a2d619a207d67709c5b3b1bb30bf51be1a2ae4ec27d905b15d87c`. The frozen
+  Story 3.14 predecessor remains unchanged. DW-509 had already been resolved by the CRLF
+  `.gitattributes` pin. Fresh role receipts and architecture/security/test sign-off remain an
+  Ask First owner action; parity remains unavailable and no operational authority is granted.
+
 - **2026-09-09 (Story 5.3 producer hardening):** Replaced the reusable symmetric Production-smoke
   input in the capture producer with an explicit HTTPS authority and RS256 allow-list. The governed
   assembler re-bound the changed producer and re-minted the zero-receipt subject as
@@ -765,17 +805,24 @@ Both owner receipts are independently constrained to the same positively allowli
 ## Verification
 
 **Commands:**
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests -noLogo` -- **2026-09-23 Test Architect actual:** 268 passed, 0 failed, 0 skipped before receipt collection. After collection, the updated Story 3.15 closure class alone passed 213/213 with zero failures or skips.
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: sha256:4d1a0c33...`, exit 0. The frozen predecessor packet is unchanged, and its whole 66-file tree is now digest-pinned by the focused suite, not just the identity file.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `fail: exactly three packet-bound receipts are required; rerun: Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change.`, exit 1. Current subject is `aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5` after the Story 5.3 producer hardening remint. Deployed-runtime parity is **unavailable**; `deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields and are not granted. Non-authority flags stay false. A synthesized 3-of-3 copy still closes positive parity in `ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject`; the zero-receipt assembler path remains in `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict`.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `subject=sha256:aafe9040... receipts=0 verifier_exit=1`, exit 1, reproduced identically on repeat runs. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both a zero-receipt and a fully accepted copy and pins both exit rules; focused executable negatives cover failed aggregate smokes, wrong child coverage, failed platform outcomes, malformed retained structures, and symlinked paths.
-- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 212 passed, 0 failed, 0 skipped.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `pass: subject=sha256:7d64f87e... selected=sha256:4b141085...`, exit 0. All three real subject-bound receipts validate; parity is **available** and the selected identity is the pinned OCI index. The four operational-authority flags remain false.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `subject=sha256:7d64f87e... receipts=3 verifier_exit=0`, exit 0. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both an isolated zero-receipt and fully accepted copy and pins both exit rules.
+- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **actual:** 221 passed, 0 failed, 0 skipped.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 55 passed, 0 failed, 0 skipped.
-- Complete Contracts suite -- **actual:** 1917 passed, 12 failed, 0 skipped, 1929 total. All 12
-  failures are Story 4.15 OQ8 cases stopped by the same intentional downstream drift gate:
-  `Story 4.15 v3 current source identity drift: docs/ci.md`. Rebinding that separately reviewed
-  successor packet would invalidate its approvals and is outside this story; Story 3.15's 212
-  focused cases and the 55 predecessor/provenance cases remain green.
+- Complete Contracts suite -- **2026-09-23 final post-collection actual:** 2096 passed, 0 failed,
+  0 skipped, 0 not run. `sprint-status.yaml` and
+  `docs/ci.md` name the current subject and positive receipt verdict and are drift-guarded by the
+  focused suite. The guide is bound through the final Story 4.15 v4 review subject
+  `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`, fresh
+  architecture/security/test review records, manifest, selector, and lifecycle record; the
+  default OQ8 validator passes.
+- Final Story 4.15 v4 mutation checks -- **actual:** active-v4 successor mutations 19/19,
+  bound-snapshot case 1/1, required lifecycle-record mutations 10/10 and validated-selector
+  snapshot 1/1, all with zero failures or skips; the nine-file v4 manifest passes `sha256sum
+  --check`.
 - `git check-attr text eol -- tools/deployed_runtime_parity_handlers/v1.py tools/validate-corrected-deployed-runtime-parity.py tools/release_evidence_handlers/v3.py tools/release_evidence_handlers/__init__.py tools/capture-corrected-deployed-runtime-parity-smokes.py tools/assemble-corrected-deployed-runtime-parity.py` -- **actual:** `text: set`, `eol: lf` for all six, so no SHA-256 pin can be broken by working-tree EOL drift. The two producers are included because their digests are now subject-bound.
 - `git diff --check` -- **actual:** no output, exit 0.
 
@@ -1021,6 +1068,23 @@ Both owner receipts are independently constrained to the same positively allowli
 | Issued subject has no roster-bound receipts | false | reject | Documented fail-closed 0/3; collecting `#352` receipts remains Ask First. |
 | No test removes `.signature.p7s` (only the duplicate-entry case) | medium | patch | Verification-gap pre-verified: `signature_count != 1` can be weakened to `> 1` with the suite still green. |
 | Assembler provenance refusals never execute off the bound path | medium | patch | Verification-gap pre-verified: every assembler test runs the repository script; deleting the `__file__` comparison keeps the suite green. |
+| 2026-09-23 BH1 release object need not be in current history | medium | patch | `repository_root` calls only `git cat-file -e`; an unrelated repository with the object via alternates passes that guard. Require ancestry from the recorded release commit to HEAD. |
+| 2026-09-23 BH2 Git resolved through inherited PATH | low | reject | PATH is the operator's toolchain boundary for this local producer, as it is for the `python3` entry point; pinning an OS Git binary would add platform-specific trust machinery without protecting against an operator-controlled runtime. |
+| 2026-09-23 BH3 assembler imports v1 before provenance checks | medium | defer | The ordinary import at line 22 predates this remint and can execute copied module bytes before the later path check. The isolated pinned verifier remains the verdict authority; source-only producer import is separately tracked. |
+| 2026-09-23 BH4 `strip()` corrupts a whitespace-suffixed Git root | low | patch | Git prints a root followed by one newline; `strip()` also deletes legal path whitespace. Remove only the output newline. |
+| 2026-09-23 BH5 JSON float overflow returns infinity | medium | patch | Python decodes valid `1e999` to nonfinite float in both trusted loaders; their new nonfinite-value invariant needs a bounded float parser. |
+| 2026-09-23 BH6 dispatch parsers admit non-JSON numeric constants | low | patch | Both `_load_dispatch_metadata` functions parse the whole input before the strict handler loader; add the same rejection at this first parsing boundary for deterministic failure. |
+| 2026-09-23 BH7 copied-repository test has no unrelated HEAD with release object | medium | patch | The new test has an empty object store and cannot falsify the `cat-file`-only gate; cover an alternate object store plus unrelated HEAD. Same root cause as BH1. |
+| 2026-09-23 BH8 no GIT_DIR/GIT_WORK_TREE test | medium | patch | The changed `env=environment` guard has no caller-path test and deletion leaves checked tests green. Exercise both redirected variables. |
+| 2026-09-23 BH9 docs/ci names superseded subject | medium | defer | The guide already named `86c59c79` before this remint; editing it trips Story 4.15's separately sealed OQ8 gate. Record the current subject in the Story 3.15 operator packet until that seal is reconciled. |
+| 2026-09-23 BH10 story record still says four of nine subjects | low | patch | The prose count predates the latest remint and is now wrong; remove the numeric denominator. |
+| 2026-09-23 EH1 release object without ancestry | medium | patch | Confirmed by the same `cat-file`-only check as BH1; an unrelated HEAD with the release object passes. |
+| 2026-09-23 EH2 checkout path with trailing whitespace | low | patch | `result.stdout.strip()` deletes valid path bytes; same root cause as BH4. |
+| 2026-09-23 EH3 v1 float overflow | medium | patch | `json.loads` accepts `1e999` as infinity; same root cause as BH5. |
+| 2026-09-23 EH4 v3 float overflow | medium | patch | Both v3 loaders share the unbounded `json.loads` float conversion; same root cause as BH5. |
+| 2026-09-23 EH5 docs/ci exact-lineage claim | medium | defer | The stale subject is verified, but its sealed Story 4.15 gate is a pre-existing cross-story constraint; same root cause as BH9. |
+| 2026-09-23 VG1 missing Git environment isolation test | medium | patch | Pre-verified: deleting the `env=environment` arguments leaves current tests green; add a redirected `GIT_DIR`/`GIT_WORK_TREE` case. |
+| 2026-09-23 VG2 unrelated repository can use alternate object store | medium | patch | Pre-verified with `git init` plus alternates: the assembler reaches the zero-receipt gate; same root cause as BH1. |
 
 ### Review Findings (2026-09-06, Group A — tools / verifier chunk)
 
@@ -1116,4 +1180,3 @@ Scope: `94591f35...HEAD` narrowed to Story 3.15 spec, story, and proof packet fi
 - low — Story record subject-change accounting heading and itemized list omit latest re-mint to `a5c07d17...`: cosmetic historical narrative section; current subject explained in § Decision.
 - low — Story record superseded acceptance history itemizes only three rounds, omitting `bb58d691...`: cosmetic narrative omission; bb58d691 is discussed at line 105 as rejected on lineage.
 - low — Failed timestamp-mismatch note misplaced after `86c59c79...` instead of `a8cc777e...`: cosmetic narrative placement in historical notes.
-

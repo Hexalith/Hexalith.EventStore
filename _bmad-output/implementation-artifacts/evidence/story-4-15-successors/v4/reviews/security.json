@@ -2,15 +2,15 @@
   "schema": "hexalith.eventstore.story-4-15-successor-review-receipt/v4",
   "role": "security",
   "reviewer": "Security Reviewer",
-  "issuedAt": "2026-09-20T22:25:20Z",
+  "issuedAt": "2026-09-23T06:10:25Z",
   "decision": "approved",
-  "subjectSha256": "7e6a393ece18b322a01157a8b60ea37ede7d8d142d10a4fa65f08c7c35b276cf",
+  "subjectSha256": "8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5",
   "limitationsSha256": "b001594d9419993e9ae33a06b3c584ae36f8b329f3d4ef54c97bbbfa9ddbab58",
   "acceptedScope": "immutable predecessor lineage, bounded lifecycle record, fail-closed evidence-before-lifecycle ordering, receipt binding, protected-content gates, and external-authority exclusions",
   "findings": [
-    "Exact lowercase SHA-256 identity and selector-structure guards reject malformed coupled lifecycle values.",
-    "Execution, freeze, receipt, and handoff chronology plus future-time, consumer-instruction, PostgreSQL semantic, and external-authority guards remain fail closed.",
-    "Complete evidence and selector validation precede lifecycle selection while isolated lifecycle modes remain non-authorizing."
+    "AI security review independently passed v4 source identity, limitations, validator identity, pre-review execution, and frozen review-subject checks for this exact subject.",
+    "The guide hash 0d39f39f... matches the bound input; the Story 3.15 verifier corroborates its positive three-receipt claim while both owner roles map to one authenticated account and the Test Architect role remains self-attested.",
+    "Historical predecessor checks pass, the prior v4 receipts are superseded by this new subject, and all external authority exclusions remain false."
   ],
   "authority": {
     "eventStorePlatformComplete": true,

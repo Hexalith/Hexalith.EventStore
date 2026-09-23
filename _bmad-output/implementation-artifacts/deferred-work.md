@@ -4794,3 +4794,14 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-4-admin-surface-safety-hygiene.md`
   summary: Replace raw `result?.Message` / `ex.Message` toasts and Snapshots "created" completion wording with support-safe, accepted-versus-completed copy.
   evidence: `Tenants.razor` lifecycle `catch (InvalidOperationException ex) => ShowErrorAsync(ex.Message)` and the add/remove/change-role, snapshot policy, and consistency failure toasts are identical at `da5accfc`; Snapshots success toasts still say "Snapshot policy created." / "Manual snapshot created.".
+
+## Deferred from: code review of Story 3.15 DW-508 trust-path re-mint (2026-09-23)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Load the assembler's trusted handler from verified source bytes before executing it.
+  evidence: `assemble-corrected-deployed-runtime-parity.py` imports `v1` before its repository and handler provenance checks. A copied handler can execute during that import even though the isolated pinned verifier remains the final verdict authority; this import path predates DW-508 and was already accepted as residual producer risk.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Reconcile the Story 3.15 subject in docs/ci.md with the separately sealed Story 4.15 gate.
+  evidence: `docs/ci.md` still calls `86c59c79...` current while the Story 3.15 operator packet now binds `7d64f87e...`. The guide was stale before this re-mint; editing it changes a Story 4.15 OQ8 gate input and requires that packet's own controlled reseal.
+  resolution: 2026-09-23 owner-authorized v4 reseal bound corrected `docs/ci.md` to Story 4.15 review subject `171d8e3bd9f9a39fbb0a79e4f028f00c3653bd3269b3bba387088baf752f46ac`. Fresh AI architecture, security, and self-attested BMAD Test Architect reviews passed; the active OQ8 validator now passes. Story 3.15 owner receipts remain separate.
+  follow-up: The rostered owner and self-attested Test Architect then accepted Story 3.15 subject `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274` at 3/3. The guide's positive verdict was resealed again under final Story 4.15 v4 subject `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`, with fresh architecture/security/test reviews, manifest, selector, and lifecycle binding. Both current validators pass; the intermediate `171d8e3b...` subject is historical.

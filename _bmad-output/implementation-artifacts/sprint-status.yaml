@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-09-22
+# last_updated: 2026-09-23
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -134,21 +134,19 @@ development_status:
   # closure.json, and to name it BEFORE any superseded subject digest. It is a drift guard:
   # it exists so this tracker cannot keep naming a stale subject while the suite stays green.
   # Change the digest only when the packet subject is legitimately re-minted.
-  # 2026-09-06 (Group A tools patch): the packet fails closed at 0 of 3 receipts and grants nothing.
-  # The Group A re-mint rejected the three 86c59c79... receipts collected on 2026-09-05; those
-  # bytes remain under evidence/story-3-15/superseded-acceptances/. Collecting three fresh receipts
-  # on issue #352 is an Ask First owner action and was not performed.
+  # 2026-09-23 (DW-508 trust-path re-mint): the packet fails closed at 0 of 3 receipts and grants
+  # nothing. Earlier acceptance rounds remain under evidence/story-3-15/superseded-acceptances/.
+  # Collecting three fresh receipts on issue #352 is an authorized owner action still in progress.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
-  # a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448; the packet
-  # subject has now been re-minted eight times across nine subjects; receipts existed for only four
-  # of them, and all four sets are retained byte-for-byte under
+  # 7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274; three current
+  # roster-bound receipts validate, and all four earlier sets remain byte-for-byte under
   # evidence/story-3-15/superseded-acceptances/.
   # closure.json's deployed_runtime_parity/selected_deployed_identity are the claim the three roles
-  # are asked to accept, granted only at 3/3; at 0/3 the verifier exits 1 and grants nothing.
+  # accepted, granted only at 3/3; the verifier now exits 0 and selects the pinned OCI index.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
-  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  3-15-corrected-deployed-runtime-parity-closure: review
   # >>> END GUARDED COMMENTS <<<
   # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
   # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:

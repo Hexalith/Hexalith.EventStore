@@ -127,11 +127,11 @@ The v1 closure, the SDK 10.0.400 successor
 remain immutable historical evidence. V2 is validated against completed closure
 commit `83b32fcfad7bb608098aebccdc15002636ffb431`, and the SDK successor against
 its own snapshot commit, not against later working-tree bytes. The additive
-`story-4-15-successors/v3` packet is the single active lineage selected by
-`4-15-oq8-platform-closure-successor.json` (selector schema `v2`, whose
-`historical` block pins all three predecessors and whose `successor` block pins
-v3); current-source closure requires valid historical v1/SDK/v2 evidence plus a
-complete v3 subject, reviews, handoff, and path-sorted manifest. V3 additionally
+`story-4-15-successors/v3` packet is immutable historical evidence, and
+`story-4-15-successors/v4` is the active lineage selected by
+`4-15-oq8-platform-closure-successor.json` (selector schema `v3`). Current-source
+closure requires valid historical v1/SDK/v2/v3 evidence plus a complete v4
+subject, reviews, handoff, and path-sorted manifest. V3 additionally
 binds the landed commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4` and its tree,
 requires current `HEAD` to descend from that commit, and hashes every SDK and v2
 gate input (workflows, `global.json`, `tests/Directory.Build.props`, the
@@ -555,23 +555,24 @@ the per-platform smoke window bound to the platform budget plus the cleanup allo
 tool can no longer emit records this verifier rejects, and bound the assembler to the bytes actually
 executing rather than the pristine repository file.
 
-The 2026-08-30 verifier and producer hardening re-minted the subject once more at zero receipts,
-where no acceptance was burned. The packet's current subject is
-`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`, and the packet **fails closed at
-zero of three receipts**: each re-mint rejected the receipts collected against the prior subject by
-the same rerun trigger, and collecting replacements on issue `#352` is an owner action outside this
-repository. Until that happens deployed-runtime parity is **unavailable** and **no identity is
-selected**. Reassembly reports `receipts=0 verifier_exit=1`. The `bb58d691...`, `dab64f5f...` and
+The 2026-08-30 verifier and producer hardening re-minted the subject at zero receipts,
+where no acceptance was burned. The 2026-09-23 DW-508 trust-path correction re-minted it again.
+The packet's current subject is
+`7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`. The packet now
+**validates at three of three roster-bound receipts**: EventStore-owner issue `#352` comment
+`5789893766`, Release-owner comment `5789897143`, and the self-attested `bmad:murat` Test Architect
+record. Deployed-runtime parity is **available**, and the selected identity is only the OCI index
+named below. Reassembly reports `receipts=3 verifier_exit=0`. Earlier re-mints rejected the receipts
+collected against their prior subjects by the same rerun trigger. The `bb58d691...`, `dab64f5f...` and
 `a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit area, whose
 README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with its source.
-Five of the eight subjects never had receipts collected at all, so three retained sets against seven
-re-mints is the expected shape, not a gap.
+Subjects with no collected receipts require no retained receipt set; each prior set remains historical.
 
 `closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
-`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles are asked
-to accept, not a granted verdict: the verifier grants them only at three of three, and at zero
-receipts it exits 1 and grants nothing. `acceptances.directory` likewise names the address receipts
-must occupy, not a directory that exists today.
+`selected_deployed_identity`. Those fields are the packet's **claim**; the retained verifier now
+grants the claim because all three subject-bound receipts validate. `acceptances.directory` names
+the retained receipt address. The packet supplies parity evidence only and grants no deployment,
+publication, registry mutation, consumer removal, or predecessor change authority.
 
 The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
 Architect record is explicitly self-attested without independent external authentication. Owner

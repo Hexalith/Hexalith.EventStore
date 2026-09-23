@@ -3,6 +3,7 @@
 
 import hashlib
 import json
+import math
 import re
 import xml.etree.ElementTree as element_tree
 import zipfile
@@ -62,7 +63,10 @@ def _pairs(pairs):
 def load_json_bytes(value):
     """Load JSON bytes while rejecting duplicate object fields."""
     try:
-        document = json.loads(value, object_pairs_hook=_pairs)
+        document = json.loads(
+            value, object_pairs_hook=_pairs, parse_constant=_reject_non_json_number,
+            parse_float=_finite_json_float,
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise EvidenceError("evidence is not valid UTF-8 JSON") from error
     if not isinstance(document, dict):
@@ -72,14 +76,28 @@ def load_json_bytes(value):
 
 def _load_json_value_bytes(value):
     try:
-        return json.loads(value, object_pairs_hook=_pairs)
+        return json.loads(
+            value, object_pairs_hook=_pairs, parse_constant=_reject_non_json_number,
+            parse_float=_finite_json_float,
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise EvidenceError("evidence is not valid UTF-8 JSON") from error
 
 
+def _reject_non_json_number(_value):
+    raise EvidenceError("evidence contains a non-JSON number")
+
+
+def _finite_json_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise EvidenceError("evidence contains a non-finite JSON number")
+    return number
+
+
 def canonical_bytes(value):
     """Encode the one canonical JSON representation used for identity hashing."""
-    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode(
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False) + "\n").encode(
         "utf-8"
     )
 
@@ -533,7 +551,7 @@ def nuspec_identity(package_path):
 
 
 def _publisher_canonical_bytes(value):
-    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    return (json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
 
 
 def _parse_timestamp(value, message):

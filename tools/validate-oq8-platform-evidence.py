@@ -406,7 +406,7 @@ V4_PRE_REVIEW_COMMANDS = [
     ("validator-syntax", "python3 -m py_compile tools/validate-oq8-platform-evidence.py", 0),
     ("contracts-build", V4_CONTRACTS_BUILD_COMMAND, 0),
 ]
-V4_REVIEW_DATE = "2026-09-20"
+V4_REVIEW_DATE = "2026-09-23"
 V4_FINAL_CLOSURE_TEST_COUNT = 476
 V4_CONSUMER_HISTORICAL_RULE = (
     "Validate Story 4.15 v1, the SDK 10.0.400 successor, v2, and v3 only against immutable "
