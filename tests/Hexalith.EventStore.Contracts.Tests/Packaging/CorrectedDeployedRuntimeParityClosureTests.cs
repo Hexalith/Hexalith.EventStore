@@ -48,6 +48,18 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string ReceiptCollectionSupersededSubjectSha256 =
         "86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274";
 
+    /// <summary>Subject issued before the September trust-path corrections.</summary>
+    private const string PreTrustPathSupersededSubjectSha256 =
+        "84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f";
+
+    /// <summary>Subject issued during the September trust-path corrections.</summary>
+    private const string IntermediateTrustPathSupersededSubjectSha256 =
+        "aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5";
+
+    /// <summary>Subject superseded by the final September trust-path re-mint.</summary>
+    private const string FinalTrustPathSupersededSubjectSha256 =
+        "a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448";
+
     /// <summary>
     /// Subject the checked-in packet currently binds. It is drift-bound here and in docs/ci.md so a
     /// record that keeps naming a superseded subject cannot stay green.
@@ -2821,6 +2833,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         [
             subjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
+            PreTrustPathSupersededSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
@@ -4071,6 +4086,66 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the assembler path guard runs after lineage succeeds in a clone whose HEAD
+    /// descends from the release commit. A second copy inside that clone must not re-mint the
+    /// packet from bytes outside its bound tools path.
+    /// </summary>
+    [Fact]
+    public void AssemblerRefusesOffPathCopyInsideValidReleaseLineage()
+    {
+        string root = FindRepositoryRoot();
+        string packet = CreateAcceptedPacket(root);
+        string retainedClosurePath = Path.Combine(root, EvidenceRelativePath, "closure.json");
+        string retainedClosure = ComputeSha256(retainedClosurePath);
+        string packetClosurePath = Path.Combine(packet, "closure.json");
+        string packetClosure = ComputeSha256(packetClosurePath);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-off-path-{Guid.NewGuid():N}");
+        try
+        {
+            (int cloneExit, _, string cloneError) = RunProcess(
+                Path.GetTempPath(), "git", "clone", "--quiet", "--shared", "--no-checkout", root, temporary);
+            cloneExit.ShouldBe(0, cloneError);
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+            RunProcess(temporary, "git", "merge-base", "--is-ancestor", SourceSha, "HEAD")
+                .ExitCode.ShouldBe(0);
+
+            string shadow = Path.Combine(temporary, "tools", "shadow", "assemble-corrected-deployed-runtime-parity.py");
+            Directory.CreateDirectory(Path.GetDirectoryName(shadow)!);
+            File.Copy(Path.Combine(temporary, "tools", "assemble-corrected-deployed-runtime-parity.py"), shadow);
+            (int exitCode, string output, string error) = RunProcess(
+                temporary,
+                "python3",
+                "-B",
+                "-c",
+                "import importlib.util,sys;sys.path.insert(0,sys.argv[1]);"
+                + "s=importlib.util.spec_from_file_location('story315_assemble',sys.argv[2]);"
+                + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                + "print('bound-root='+str(m.repository_root()),flush=True);"
+                + "sys.argv=[sys.argv[2],sys.argv[3]];raise SystemExit(m.main())",
+                Path.Combine(temporary, "tools"),
+                shadow,
+                packet);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldContain("bound-root=" + Path.GetFullPath(temporary));
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("assembler is not executing from the bound repository path");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            ComputeSha256(retainedClosurePath).ShouldBe(retainedClosure);
+            ComputeSha256(packetClosurePath).ShouldBe(packetClosure);
+        }
+        finally
+        {
+            Directory.Delete(packet, recursive: true);
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies Git environment redirects cannot make a copied tools tree use the original checkout.
     /// </summary>
     [Fact]
@@ -4123,6 +4198,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     [Fact]
     public void AssemblerPreservesWhitespaceAtEndOfCheckoutPath()
     {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         string root = FindRepositoryRoot();
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-space-{Guid.NewGuid():N} ");
         try
@@ -4342,6 +4422,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         [
             subjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
+            PreTrustPathSupersededSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,

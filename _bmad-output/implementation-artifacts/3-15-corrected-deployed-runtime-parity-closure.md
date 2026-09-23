@@ -60,6 +60,16 @@ Both owner comments have `created_at == updated_at == accepted_at`; all three ac
 subject-bound limitations. Six earlier timestamp-mismatched posting attempts were visibly marked
 superseded on issue `#352` and are not retained in the packet.
 
+The owner's separate authorization of the 2026-09-23 receipt-collection run is recorded in
+[issue #352 comment 5803577826](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5803577826),
+authored by authenticated `github:jpiquot` (account id `6775094`). It quotes the owner's exact
+written response, “I Jérôme Piquot, owner; authorize,” alongside the request's scope and the two
+owner acceptance comment IDs. This authorization records the collection run; the two acceptance
+comments remain the subject-bound receipt evidence. It grants no deployment, publication,
+registry, consumer-removal, or predecessor-change authority.
+This is an as-observed external audit citation: the comment is mutable, is not retained or
+hash-closed in the packet, and is not checked by the verifier that returns the 3/3 parity verdict.
+
 ### Why the subject changed
 
 Five 2026-08-25 review loops, two authorized completion/hardening passes, the 2026-08-30
@@ -162,9 +172,10 @@ sources.
 without independent external authentication; and every receipt is composed by repository tooling and
 posted with the rostered role holder's credential rather than typed by hand -- the exact-second
 agreement between `accepted_at` and GitHub's server-assigned `created_at` cannot be produced by
-hand. All three facts are subject-bound limitations every receipt must repeat verbatim. A 3-of-3
-result is therefore two roster-bound owner roles held by one authenticated human plus a self-authored
-BMAD record, not independent three-party review.
+hand. The Test Architect and tooling caveats are required limitations repeated in the receipts;
+the shared-owner-account mapping is subject-bound through the role registry, not repeated as a
+receipt limitation. A 3-of-3 result is therefore two roster-bound owner roles held by one
+authenticated human plus a self-authored BMAD record, not independent three-party review.
 
 **Known wording mismatch:** the retained roster comment `5407975180` names the ratified artifact
 `reviewer-roster.json`, wording copy-carried from Story 3.13, while the packet retains
@@ -174,6 +185,20 @@ re-mint; the mismatch is recorded here instead.
 
 This record supplies evidence only. It never authorizes deployment, publication, registry mutation,
 consumer removal, or predecessor changes.
+
+### DW-508 sign-off accounting
+
+Under review decision D2, the owner chose to count these records toward the DW-508 sign-off
+requirement. Their scopes are narrower than dedicated trust-path attestations:
+
+| Role | Record counted under D2 | Scope of that record |
+| --- | --- | --- |
+| Architecture | The Story 3.15 spec's 2026-09-23 Change Log statement that architecture sign-off passed. | A narrative result; no dedicated architecture review of the corrected trust path is retained. |
+| Test | The current subject-bound, self-attested `bmad:murat` Test Architect receipt under `acceptances/7d64f87e.../test-architect.json`. | Acceptance of the parity subject; no separate trust-path-test attestation is retained. |
+| Security | The four-layer 2026-09-23 code review of receipt-collection commit `a2f5cba2`, recorded in the spec's Review Findings. | Code review findings and triage; no dedicated Story 3.15 Security Reviewer or trust-path security attestation is retained. |
+
+The Story 4.15 v4 security and test review files bind Story 4.15's subject and do not serve as
+Story 3.15 attestations.
 
 ## Exact lineage
 
@@ -282,13 +307,14 @@ decision, registry and producer digests -> receipts addressed by that subject.
 - Story 3.14 predecessor validation: pass, exact digest `4d1a0c33…`.
 - Contracts Release/package-mode build: pass, zero warnings and errors.
 - 2026-09-23 focused closure and predecessor/provenance suites: 268 passed before receipt collection,
-  zero failed or skipped. The post-collection closure class passed 213/213; the spec verification
-  section records both runs.
+  zero failed or skipped. The post-collection closure class passed 213/213 before the additional
+  in-clone assembler path regression; the spec verification section records those historical runs.
   The positive closure case uses explicit
   synthetic test fixtures only to mutation-prove the receipt contract; those fixtures are never
   copied into the retained packet.
-- 2026-09-23 complete Contracts suite: 2096 passed after receipt collection and the final v4
-  reseal, zero failed, skipped, or unrun.
+- Complete Contracts suite after the `review` tracker transition and in-clone path regression:
+  **2106 passed, zero failed, skipped, or unrun**. The Contracts test project Release build passed
+  with zero warnings and errors.
 - `sprint-status.yaml` and `docs/ci.md` name the current subject and are drift-guarded by the
   focused suite. The guide's final positive verdict is bound by separately reviewed Story 4.15 v4
   subject `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`;

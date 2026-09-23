@@ -92,7 +92,9 @@ For every historical set the two owner roles map to one authenticated GitHub hum
 `github:jpiquot`, while the Test Architect role is the explicitly limited, self-attested
 `bmad:murat` record, and every receipt was composed by repository tooling rather than typed by hand.
 This is why the operator-facing claim is "three roster-bound role receipts," not three independently
-authenticated people. All three facts are subject-bound limitations every receipt must repeat.
+authenticated people. The Test Architect and tooling caveats are required limitations repeated in
+the receipts; the shared-owner-account mapping is subject-bound in the role registry, not repeated
+as a receipt limitation.
 
 ## Current acceptances
 
@@ -108,6 +110,25 @@ subject `86c59c79...` remains unmodified in the superseded audit area. Current s
 Both owner comments are authenticated to the rostered `github:jpiquot` account, and each GitHub
 `created_at` and `updated_at` equals the receipt's `accepted_at`. Six timestamp-mismatched attempts
 were visibly marked superseded on issue `#352` and are not retained in the packet.
+
+The separate owner authorization for the 2026-09-23 collection run is
+[issue #352 comment 5803577826](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5803577826),
+authored by authenticated `github:jpiquot` (account id `6775094`). It quotes the owner's exact
+written response, “I Jérôme Piquot, owner; authorize,” with the request's scope and the two owner
+acceptance comment IDs. The authorization comment is distinct from the packet-bound acceptance
+receipts and grants no operational authority.
+This is an as-observed external audit citation: the comment is mutable, is not retained or
+hash-closed in the packet, and is not checked by the verifier that returns the 3/3 parity verdict.
+
+## DW-508 sign-offs
+
+Under review decision D2, the owner chose to count the spec's 2026-09-23 Change Log architecture
+sign-off statement, the current subject-bound and self-attested `bmad:murat` Test Architect receipt,
+and the four-layer 2026-09-23 review of receipt-collection commit `a2f5cba2` as the architecture,
+test, and security records, respectively. The first is a narrative result, the second accepts the
+parity subject, and the third records code review findings and triage. No dedicated Story 3.15
+architecture review, Security Reviewer record, or trust-path-test attestation is retained. The
+Story 4.15 v4 security and test review files bind a different subject.
 
 ## Reproduce
 
@@ -130,3 +151,7 @@ $ echo $?
 
 Reassembly deterministically reproduces subject `7d64f87e...` and runs the pinned verifier over its
 own output. It does not copy or rewrite any superseded receipt.
+
+The complete Contracts suite after the `review` tracker transition and in-clone assembler path
+regression passed **2106/2106**, with zero failures, skips, or unrun tests. The retained Story 3.14
+predecessor verifier and the default OQ8 validator also pass; `git diff --check` reports no errors.

@@ -134,9 +134,8 @@ development_status:
   # closure.json, and to name it BEFORE any superseded subject digest. It is a drift guard:
   # it exists so this tracker cannot keep naming a stale subject while the suite stays green.
   # Change the digest only when the packet subject is legitimately re-minted.
-  # 2026-09-23 (DW-508 trust-path re-mint): the packet fails closed at 0 of 3 receipts and grants
-  # nothing. Earlier acceptance rounds remain under evidence/story-3-15/superseded-acceptances/.
-  # Collecting three fresh receipts on issue #352 is an authorized owner action still in progress.
+  # 2026-09-23 (DW-508 trust-path re-mint): three current receipts bind the corrected subject.
+  # Earlier acceptance rounds remain under evidence/story-3-15/superseded-acceptances/.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
   # 7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274; three current
@@ -146,7 +145,7 @@ development_status:
   # accepted, granted only at 3/3; the verifier now exits 0 and selects the pinned OCI index.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
-  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  3-15-corrected-deployed-runtime-parity-closure: review
   # >>> END GUARDED COMMENTS <<<
   # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
   # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
