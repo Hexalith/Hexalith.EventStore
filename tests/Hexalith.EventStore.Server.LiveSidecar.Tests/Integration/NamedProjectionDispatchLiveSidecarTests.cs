@@ -25,6 +25,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NSubstitute;
 using Shouldly;
 using StackExchange.Redis;
@@ -45,6 +46,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         fixture.ResetTestState();
         fixture.SetupCounterDomain();
         IServiceProvider services = fixture.Services;
+        await ClearRetryLedgersAsync(services.GetRequiredService<DaprClient>()).ConfigureAwait(true);
         LiveNamedProjectionFaultControl faultControl = services.GetRequiredService<LiveNamedProjectionFaultControl>();
         faultControl.FailIndex = true;
 
@@ -153,9 +155,14 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         persistedWork.HeadMessageId.ShouldBe(head.MessageId);
         persistedWork.DispatchId.ShouldBe(head.MessageId);
         persistedWork.PendingRoutes.ShouldBe(["counter-index"]);
+        var unresolvedHealthCheck = new ProjectionDeliveryUnresolvedHealthCheck(recreatedScheduler);
+        (await unresolvedHealthCheck.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Healthy);
         ProjectionDeliveryRetryWorkItem unrelatedTerminalWork = await recreatedScheduler.ScheduleAsync(
             CreateUnrelatedSameShardWorkItem(persistedWork),
             CancellationToken.None).ConfigureAwait(true);
+        (await unresolvedHealthCheck.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Unhealthy);
         retryJson = (await database.HashGetAsync(retryStateKey, "data").ConfigureAwait(true)).ToString();
         retryJson.ShouldContain(persistedWork.WorkId);
         retryJson.ShouldContain(unrelatedTerminalWork.WorkId);
@@ -195,6 +202,8 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             CancellationToken.None).ConfigureAwait(true)).ShouldNotBeNull();
         (await recreatedScheduler.TryDeleteAsync(claimedUnrelatedWork, CancellationToken.None).ConfigureAwait(true))
             .ShouldBeTrue();
+        (await unresolvedHealthCheck.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Healthy);
 
         var detailScope = new ReadModelBatchScope(
             StoreName,
@@ -264,6 +273,7 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         fixture.ResetTestState();
         fixture.SetupCounterDomain();
         IServiceProvider services = fixture.Services;
+        await ClearRetryLedgersAsync(services.GetRequiredService<DaprClient>()).ConfigureAwait(true);
         string aggregateId = $"named-concurrent-{Guid.NewGuid():N}";
         var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
         EventEnvelope[] events = await CreateAggregateHistoryAsync(identity, 2).ConfigureAwait(true);
@@ -328,12 +338,35 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         _ = await first.TryDispatchAsync(identity, registration, events, projectionEvents, CancellationToken.None).ConfigureAwait(true);
         evidence.DetailInvocationCount.ShouldBe(1);
         evidence.IndexInvocationCount.ShouldBe(1);
+        var scheduler = services.GetRequiredService<DaprProjectionDeliveryRetryScheduler>();
+        var conflictHealth = new ProjectionDeliveryUnresolvedHealthCheck(scheduler);
+        (await conflictHealth.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Healthy);
 
         ProjectionEventDto[] conflicting = [.. projectionEvents];
         conflicting[^1] = conflicting[^1] with { Payload = [99, 98, 97] };
         _ = await first.TryDispatchAsync(identity, registration, events, conflicting, CancellationToken.None).ConfigureAwait(true);
         evidence.DetailInvocationCount.ShouldBe(1);
         evidence.IndexInvocationCount.ShouldBe(1);
+        (string conflictKey, string conflictJson) = (await ReadStateByPatternContainingAsync(
+            database,
+            "*projection-delivery-retry:ledger:v2:*",
+            ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId, 2))
+            .ConfigureAwait(true)).ShouldNotBeNull();
+        ProjectionDeliveryRetryWorkItem quarantined = JsonSerializer.Deserialize<ProjectionDeliveryRetryLedger>(
+            conflictJson, new JsonSerializerOptions(JsonSerializerDefaults.Web))!.Items
+            .Single(item => item.AggregateId == identity.AggregateId);
+        quarantined.PendingRoutes.ShouldBeEmpty();
+        quarantined.TerminalRoutes.ShouldBe(["counter-detail", "counter-index"]);
+        quarantined.LastReasonCode.ShouldBe(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        (await conflictHealth.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Unhealthy);
+
+        _ = await first.TryDispatchAsync(identity, registration, events, projectionEvents, CancellationToken.None).ConfigureAwait(true);
+        (await conflictHealth.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Unhealthy);
+        (await database.HashGetAsync(conflictKey, "data").ConfigureAwait(true)).ToString()
+            .ShouldContain(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
 
         _ = await first.TryDispatchAsync(
             identity,
@@ -355,6 +388,23 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
             .ShouldBe(detailReceiptBaseline);
         (await ResolveMarkerJsonAsync(database, indexBatchScope.ComputeScopeHash()).ConfigureAwait(true))
             .ShouldBe(indexReceiptBaseline);
+        ProjectionDeliveryRetryWorkItem operatorReadyWork = await scheduler.ScheduleAsync(quarantined, CancellationToken.None)
+            .ConfigureAwait(true);
+        ProjectionDeliveryRetryWorkItem operatorClaim = (await scheduler.TryAcquireAsync(
+            operatorReadyWork,
+            "operator-disposition",
+            DateTimeOffset.UtcNow,
+            TimeSpan.FromMinutes(1),
+            CancellationToken.None).ConfigureAwait(true)).ShouldNotBeNull();
+        (await scheduler.TryDeleteAsync(operatorClaim, CancellationToken.None).ConfigureAwait(true)).ShouldBeTrue();
+        (await conflictHealth.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Healthy);
+        _ = await first.TryDispatchAsync(identity, registration, events, projectionEvents, CancellationToken.None)
+            .ConfigureAwait(true);
+        evidence.DetailInvocationCount.ShouldBe(1);
+        evidence.IndexInvocationCount.ShouldBe(1);
+        (await conflictHealth.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
+            .Status.ShouldBe(HealthStatus.Healthy);
         await catalogLoader.StopAsync(CancellationToken.None).ConfigureAwait(true);
     }
 
@@ -712,6 +762,13 @@ public sealed class NamedProjectionDispatchLiveSidecarTests(DaprTestContainerFix
         }
 
         return null;
+    }
+
+    private static async Task ClearRetryLedgersAsync(DaprClient client) {
+        for (int shard = 0; shard < RetryLedgerShardCount; shard++) {
+            await client.DeleteStateAsync(StoreName, $"projection-delivery-retry:ledger:v2:{shard:x2}")
+                .ConfigureAwait(true);
+        }
     }
 
     private static ProjectionDeliveryRetryWorkItem CreateUnrelatedSameShardWorkItem(

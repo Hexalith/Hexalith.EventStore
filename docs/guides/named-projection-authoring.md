@@ -67,6 +67,18 @@ Normal delivery invokes named handlers only after the server admits the exact me
 
 When a committed shared rebuild also needs to reconcile an external index or another non-transactional system, implement `IAsyncDomainSharedProjectionRebuildCompletionHandler`. Put the bounded, opaque reconciliation manifest in `DomainProjectionRebuildPlan.CompletionState`. EventStore retains that state with the rebuild session and calls `CompleteRebuildAsync` only after the canonical batch is committed and verified. The completion operation must be idempotent: a retryable or indeterminate result leaves the canonical read model committed and causes later commit or verification retries to invoke completion again.
 
+### Fenced shared projections
+
+For a tenant and projection family that has several writers, implement `IAsyncDomainSharedProjectionEpochHandler` and opt in with `EpochEnabled`. Declare every required writer in `CreateScope`; each writer must register before capture. EventStore splits a named delivery into individual persisted envelopes, journals each `(source stream, global position)` with its canonical digest and checkpoint, and only reports the request complete when every envelope has crossed the fence. A captured position encountered during Building remains retryable until Commit proves the new generation. Redelivery with the same digest is idempotent; conflicting bytes fail the route and require operator disposition.
+
+The shared journal admits at most 128 pending envelopes per tenant/family epoch. The next position returns `Backpressure` without acknowledgement; drain catch-up and retry that position before sending later envelopes.
+
+The handler's `FoldCatchUpAsync` receives one journaled envelope and the selected physical generation. It owns the domain fold and returns logical `ReadModelBatchOperation` values. Read existing values through `coordinator.ReadGenerationAsync` for that generation. Do not write a physical generation key, select a generation, or advance a checkpoint in the handler. EventStore stages the complete replacement behind bounded chunks, atomically changes the reader selector on Commit, then drains post-capture envelopes. Abort drains into the prior generation before removing staging. Readers must use `ReadAsync` or `ReadManyAsync` and honor `IsStale` and `IsAvailable`; a delivery acknowledgement is not a freshness guarantee.
+
+Recovery and rebuild readers use `StreamReadPageValidator.ValidateAndGetNextSequence` on every page. `FromSequence` is exclusive: reuse `LastSequenceReturned` as the next cursor without adding one. Validate the canonical tenant, domain, aggregate, event order, and every decoded event before folding or checkpointing. A missing, malformed, or conflicting envelope leaves durable work unresolved; it must not be skipped. An interrupted chunk reservation is retried from the authoritative source before acknowledgement.
+
+Shared epoch state, chunks, receipts, and control-index membership are tenant-scoped operational data. The caller must authorize and audit offboarding, satisfy retention and legal-hold policy, and drain the epoch before `OffboardTenantAsync`. New durable catalog types and non-synthetic shared data remain gated on accountable data-owner approval and a restore drill covering stream, projection, checkpoint, audit, and tenant-key order (AD-28).
+
 ## Related APIs
 
 - `IAsyncDomainProjectionHandler` and `DomainProjectionHandlerResult` — named asynchronous handler seam and closed outcome contract

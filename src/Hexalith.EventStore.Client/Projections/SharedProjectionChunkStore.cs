@@ -54,14 +54,41 @@ internal sealed class SharedProjectionChunkStore(IReadModelStore store)
                 segment,
                 false);
             string key = Key(scope, reference, ordinal);
-            if (await store.TrySaveAsync(scope.StoreName, key, value, string.Empty, cancellationToken)
-                .ConfigureAwait(false))
-            {
-                continue;
-            }
-
             ReadModelEntry<SharedProjectionChunk> existing = await store
                 .GetAsync<SharedProjectionChunk>(scope.StoreName, key, cancellationToken).ConfigureAwait(false);
+            if (existing.Value is null)
+            {
+                try
+                {
+                    if (await store.TrySaveAsync(scope.StoreName, key, value, string.Empty, cancellationToken)
+                        .ConfigureAwait(false))
+                    {
+                        continue;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    // Some providers report an optimistic first-write race as an exception.
+                    // Read back the immutable slot before deciding whether the write failed.
+                    existing = await store.GetAsync<SharedProjectionChunk>(scope.StoreName, key, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (existing.Value is null)
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            if (existing.Value is null)
+            {
+                existing = await store.GetAsync<SharedProjectionChunk>(scope.StoreName, key, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
             if (existing.Value is not { Tombstone: false } chunk
                 || chunk.RootDigest != value.RootDigest
                 || chunk.SegmentDigest != value.SegmentDigest

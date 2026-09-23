@@ -33,47 +33,45 @@ internal sealed class EventStoreProjectionDeliveryHistoryReader(
         IAggregateActor aggregate = actorProxyFactory.CreateActorProxy<IAggregateActor>(
             new ActorId(identity.ActorId),
             actorOptions.Value.AggregateActorTypeName);
-        var persisted = new List<EventEnvelope>();
+        var readable = new List<ProjectionEventDto>();
         long afterSequence = 0;
         while (afterSequence < throughSequence) {
             cancellationToken.ThrowIfCancellationRequested();
             EventEnvelope[] page = await aggregate
                 .ReadEventsRangeAsync(afterSequence, throughSequence, _readPageSize)
                 .ConfigureAwait(false);
-            if (page.Length == 0) {
-                break;
-            }
-
-            foreach (EventEnvelope value in page) {
-                long expected = persisted.Count + 1L;
-                if (value.SequenceNumber != expected) {
-                    throw new ProjectionDeliveryHistoryValidationException(
-                        "Authoritative projection history is not contiguous.");
+            long nextSequence = ProjectionStreamPageValidation.Validate(
+                identity,
+                afterSequence,
+                throughSequence,
+                _readPageSize,
+                page);
+            ProjectionEventReadabilityResult readability = await ProjectionEventWireBuilder
+                .BuildAsync(payloadProtectionService, identity, page, cancellationToken)
+                .ConfigureAwait(false);
+            if (readability.Events is null) {
+                if (readability.UnreadableReason == UnreadableProtectedDataReason.ProviderUnavailable) {
+                    throw new InvalidOperationException("Authoritative projection history is temporarily unavailable.");
                 }
 
-                persisted.Add(value);
+                throw new ProjectionDeliveryHistoryValidationException(
+                    "Authoritative projection history is not readable.");
             }
 
-            afterSequence = persisted[^1].SequenceNumber;
+            if (readability.Events.Length != page.Length) {
+                throw new ProjectionDeliveryHistoryValidationException(
+                    "Authoritative projection history did not decode every event.");
+            }
+
+            readable.AddRange(readability.Events);
+            afterSequence = nextSequence;
         }
 
-        if (persisted.Count != throughSequence) {
+        if (readable.Count != throughSequence) {
             throw new ProjectionDeliveryHistoryValidationException(
                 "Authoritative projection history does not reach the persisted checkpoint.");
         }
 
-        ProjectionEventReadabilityResult readability = await ProjectionEventWireBuilder
-            .BuildAsync(payloadProtectionService, identity, [.. persisted], cancellationToken)
-            .ConfigureAwait(false);
-        if (readability.Events is not null) {
-            return readability.Events;
-        }
-
-        if (readability.UnreadableReason == UnreadableProtectedDataReason.ProviderUnavailable) {
-            throw new InvalidOperationException("Authoritative projection history is temporarily unavailable.");
-        }
-
-        throw new ProjectionDeliveryHistoryValidationException(
-            "Authoritative projection history is not readable.");
+        return readable;
     }
 }

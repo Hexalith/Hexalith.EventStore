@@ -635,49 +635,83 @@ public static class DomainProjectionDispatcher {
             return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.UnsupportedCapability);
         }
 
-        long position = request.Events.Length == 0
-            ? 0
-            : request.Events.Max(static item => item.GlobalPosition);
-        if (position <= 0) {
+        if (request.Events.Length == 0
+            || request.Events.Any(static item => item.GlobalPosition <= 0
+                || item.SequenceNumber <= 0
+                || item.Payload is null
+                || string.IsNullOrWhiteSpace(item.EventTypeName)
+                || string.IsNullOrWhiteSpace(item.SerializationFormat))) {
             return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.DeliveryGap);
+        }
+
+        long previousSequence = 0;
+        long previousPosition = 0;
+        foreach (ProjectionEventDto item in request.Events) {
+            if ((previousSequence > 0 && item.SequenceNumber != previousSequence + 1)
+                || item.GlobalPosition <= previousPosition) {
+                return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.MalformedOutcome);
+            }
+
+            previousSequence = item.SequenceNumber;
+            previousPosition = item.GlobalPosition;
         }
 
         SharedProjectionLease lease = await coordinator.RegisterWriterAsync(
             scope,
             handler.OrdinaryWriterId,
             cancellationToken).ConfigureAwait(false);
-        var delivery = new SharedProjectionDelivery(
-            request.AggregateId,
-            position,
-            JsonSerializer.SerializeToUtf8Bytes(request, SerializerOptions),
-            JsonSerializer.SerializeToUtf8Bytes(position, SerializerOptions),
-            handler.ControlIndexName is { } indexName
-                ? new SharedProjectionControlIndexIntent(indexName)
-                : null);
-        SharedProjectionJournalResult journaled = await coordinator.JournalAsync(
-            scope,
-            lease,
-            delivery,
-            cancellationToken).ConfigureAwait(false);
-        if (journaled == SharedProjectionJournalResult.AlreadyCaptured) {
-            return DomainProjectionHandlerResult.AlreadyCompleted();
+        SharedProjectionControlIndexIntent? controlIndexIntent = handler.ControlIndexName is { } indexName
+            ? new SharedProjectionControlIndexIntent(indexName)
+            : null;
+        bool accepted = false;
+        bool retry = false;
+        bool catchUp = false;
+        foreach (ProjectionEventDto item in request.Events) {
+            cancellationToken.ThrowIfCancellationRequested();
+            var singleEventRequest = new ProjectionRequest(
+                request.TenantId,
+                request.Domain,
+                request.AggregateId,
+                [item]);
+            var delivery = new SharedProjectionDelivery(
+                request.AggregateId,
+                item.GlobalPosition,
+                JsonSerializer.SerializeToUtf8Bytes(singleEventRequest, SerializerOptions),
+                JsonSerializer.SerializeToUtf8Bytes(item.GlobalPosition, SerializerOptions),
+                controlIndexIntent);
+            SharedProjectionJournalResult journaled = await coordinator.JournalAsync(
+                scope,
+                lease,
+                delivery,
+                cancellationToken).ConfigureAwait(false);
+            if (journaled == SharedProjectionJournalResult.IdentityConflict) {
+                return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            }
+
+            if (journaled is SharedProjectionJournalResult.StaleLease or SharedProjectionJournalResult.Backpressure) {
+                retry = true;
+                break;
+            }
+            else if (journaled == SharedProjectionJournalResult.Journaled) {
+                accepted = true;
+                catchUp = true;
+            }
+            else if (journaled == SharedProjectionJournalResult.AlreadyJournaled) {
+                catchUp = true;
+            }
         }
 
-        if (journaled == SharedProjectionJournalResult.IdentityConflict) {
-            return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        if (catchUp) {
+            _ = await coordinator.CatchUpAsync(
+                scope,
+                (delivery, generation, token) => handler.FoldCatchUpAsync(delivery, generation, coordinator, token),
+                cancellationToken).ConfigureAwait(false);
         }
-
-        if (journaled is SharedProjectionJournalResult.StaleLease or SharedProjectionJournalResult.Backpressure) {
-            return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.PartialRetry);
-        }
-
-        _ = await coordinator.CatchUpAsync(
-            scope,
-            (accepted, generation, token) => handler.FoldCatchUpAsync(accepted, generation, coordinator, token),
-            cancellationToken).ConfigureAwait(false);
-        return journaled == SharedProjectionJournalResult.AlreadyJournaled
-            ? DomainProjectionHandlerResult.AlreadyCompleted()
-            : DomainProjectionHandlerResult.Completed();
+        return retry
+            ? DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.PartialRetry)
+            : accepted
+                ? DomainProjectionHandlerResult.Completed()
+                : DomainProjectionHandlerResult.AlreadyCompleted();
     }
 
     private static ProjectionDispatchResponse FailureForEveryRoute(
