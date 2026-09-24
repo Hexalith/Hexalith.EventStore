@@ -350,6 +350,29 @@ public class SubmitCommandHandlerTests {
         ex.AggregateId.ShouldBe(command.AggregateId);
     }
 
+    [Fact]
+    public async Task Handle_CoordinatedSourceConflict_WritesTerminalRejectedStatusWithoutReceivedFallback() {
+        var statusStore = new InMemoryCommandStatusStore();
+        var archiveStore = new InMemoryCommandArchiveStore();
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(false, "coordinated_source_conflict", "correlation",
+                FailureReason: "ConcurrencyConflict"));
+        var command = new SubmitCommand("coordinated-conflict", "tenant-a", "tenant-provider-enablement",
+            "tenant-a", "DecideProviderDataHandling", [1], "correlation", "operator");
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router,
+            NullLogger<SubmitCommandHandler>.Instance);
+
+        ConcurrencyConflictException exception = await Should.ThrowAsync<ConcurrencyConflictException>(
+            () => handler.Handle(command, CancellationToken.None));
+
+        exception.MessageId.ShouldBe(command.MessageId);
+        CommandStatusRecord[] history = statusStore.GetStatusHistory(command.Tenant, command.MessageId).ToArray();
+        history.ShouldHaveSingleItem().Status.ShouldBe(CommandStatus.Rejected);
+        history[0].FailureReason.ShouldBe("ConcurrencyConflict");
+        history[0].Retryable.ShouldBe(false);
+    }
+
     private static SubmitCommand CreateCommand(string? correlationId = null) => new(
         MessageId: "msg-1",
         Tenant: "test-tenant",

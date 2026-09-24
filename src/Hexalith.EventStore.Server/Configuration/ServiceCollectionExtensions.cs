@@ -209,6 +209,7 @@ public static class EventStoreServerServiceCollectionExtensions {
                 string.IsNullOrWhiteSpace(aggregateActorTypeName)
                     ? nameof(AggregateActor)
                     : aggregateActorTypeName);
+            options.Actors.RegisterActor<CoordinatedCommandActor>(CoordinatedCommandActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyAdmissionActor>(IdempotencyAdmissionActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyAdmissionDirectoryActor>(IdempotencyAdmissionDirectoryActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyTenantLifecycleActor>(IdempotencyTenantLifecycleActor.ActorTypeName);
