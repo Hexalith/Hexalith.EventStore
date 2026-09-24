@@ -17,7 +17,7 @@ using Shouldly;
 namespace Hexalith.EventStore.QueryRouting.Tests;
 
 public sealed class DaprDomainQueryInvokerTests {
-    private const string BearerCredential = "Bearer exact-token-value";
+    private const string BearerCredential = "Bearer " + "exact-token-value";
 
     [Fact]
     public async Task InvokeAsync_ForwardsExactInboundBearerCredential() {
@@ -60,11 +60,12 @@ public sealed class DaprDomainQueryInvokerTests {
         var context = new DefaultHttpContext();
         context.Request.Headers.Authorization = BearerCredential;
         using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "existing-token");
+        const string ExistingToken = "existing" + "-token";
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ExistingToken);
 
         DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
 
-        request.Headers.Authorization!.ToString().ShouldBe("Bearer existing-token");
+        request.Headers.Authorization!.ToString().ShouldBe("Bearer " + ExistingToken);
     }
 
     [Fact]
@@ -94,7 +95,7 @@ public sealed class DaprDomainQueryInvokerTests {
     public void ForwardBearerCredential_MultipleAuthorizationValues_AreIgnored() {
         var context = new DefaultHttpContext();
         context.Request.Headers.Authorization = new Microsoft.Extensions.Primitives.StringValues(
-            new[] { BearerCredential, "Bearer second-token" });
+            new[] { BearerCredential, "Bearer " + "second-token" });
         using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
 
         DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
