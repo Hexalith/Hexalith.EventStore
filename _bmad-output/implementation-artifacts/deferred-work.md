@@ -4833,3 +4833,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Distinguish a missing timed-out Docker container from a transient inspect failure before recording cleanup as passed.
   evidence: `_reap_timed_out_run_container` in `tools/capture-corrected-deployed-runtime-parity-smokes.py` returns `True` for every nonzero `docker inspect` exit, including a daemon error after `docker run` may have created the uuid-named container. The `finally` path then records `cleanup: pass`. The capture producer is sealed into the accepted subject, so the correction requires a controlled re-mint and replacement receipts.
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure.md (2026-09-24, review-patch commit a37ec86f)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `prd.md` still presents superseded Story 3.15 subject `aafe9040...` as current, with 0/3 receipts and G-RUNTIME-PARITY FAIL/BLOCKED.
+  evidence: `_bmad-output/planning-artifacts/prd.md:176,611,613,644,682` name `aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5` as the current subject, and OR15 tells readers to adopt it. The packet binds `7d64f87e...` and the verifier passes at 3/3. `prd.md` is not among the surfaces `SubjectRestatingSurfacesNameTheCurrentSubject` guards.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `ProofPacketDaprConflictProcessContractTests.ProcessContractDistinguishesOwnedExternalAndExitedProcesses` is timing-flaky under full-suite load.
+  evidence: One full Contracts run at `a37ec86f` failed it on a `WaitForExit(5000)` timeout; it passed twice alone (~2.5 s each) and in two other full runs. The test is not touched by this review's diff.

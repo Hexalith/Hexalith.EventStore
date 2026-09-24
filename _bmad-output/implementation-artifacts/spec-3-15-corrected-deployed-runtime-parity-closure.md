@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -1257,3 +1257,47 @@ Scope: `a2f5cba2^..a2f5cba2` (32 files, +638/-205, 1,566 diff lines) -- the comm
 - low — A shallow checkout gets an opaque "release lineage could not be verified", and Git stderr is discarded: CI checks out with `fetch-depth: 0`, it is an operator-only producer, and the fix adds diagnostics.
 - low — One `feat`-typed commit bundles the 3.15 closure, trust-path fixes and a 4.15 reseal: the history is already pushed, no release fired (CI red), and `eeeae00b` is already a `feat` in the same unreleased window.
 - reject (prior disposition) — The Test Architect receipt is self-attested rather than "authenticated": this was already rejected as a frozen-intent edit, and it is disclosed in the receipt limitations and operator records.
+
+### Review Findings (2026-09-24, review-patch commit `a37ec86f`)
+
+Disposition (2026-09-24): D1 resolved as option (1) and converted to a patch; the eight patches are left as action items. Status moved to `in-progress` in this frontmatter, the `3-15` sprint row, and the `CorrectedLifecycleRowsRetainTheirCorrectedStatus` row pin, all in the same change.
+
+Scope: `ea87414a..a37ec86f` (7 files, +207/-34, 457 diff lines) -- the commit that applied the eight `a2f5cba2` patch action items. Four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor); none failed. Independently reproduced at `a37ec86f`: focused closure class 214/214, both closure classes 504/504, full Contracts suite 2106/2106 (one layer saw an unrelated timing flake, see defer). All eight prior patches are present; two are only partly effective (the in-clone path regression and the superseded-subject guard, below). Note: `a37ec86f` and `ea87414a` are unpushed, and `origin/main` (`7a94ad5d`, #362) independently pinned the same `3-15` row to `review` with a different comment, so merging conflicts in `DeployedRuntimeParityClosureTests.cs:4275`.
+
+**decision-needed:**
+
+- [x] [Review][Decision] The cited D1 authorization comment is tooling-composed, not hand-written — D1 chose "the owner posts one hand-written authorization comment on `#352`". Live comment `5803577826` (`jpiquot`, 2026-09-23T21:53:37Z) is an agent-framed "Authorization request: … requires a hand-written owner authorization comment …" paragraph that quotes one owner line, "I Jérôme Piquot, owner; authorize". The scope text is the agent's; the owner's words name no scope. Options: (1) accept it as satisfying D1 and have the records say it is an agent-composed comment quoting the owner's words; (2) owner posts a genuinely hand-typed comment that states its own scope, and the records cite that id instead; (3) accept as-is with no record change. **Resolved 2026-09-24: option (1)** — became the patch below.
+
+**patch:**
+
+- [ ] [Review][Patch] (from D1, option 1) Describe comment `5803577826` accurately: an agent-composed request that quotes the owner's written line "I Jérôme Piquot, owner; authorize" verbatim, and treat that quoted line as the D1 authorization. Stop calling the comment "hand-written". Update it together with the after-the-fact ratification patch in both records. [_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:64]
+- [ ] [Review][Patch] The in-clone path regression cannot observe a re-mint: `--no-checkout` leaves the Story 3.14 producer inputs absent, so with `if path != expected` disabled the shadow still exits 1 ("producer input is unavailable") and both closure hashes stay equal — only the message assertion discriminates, and a guard demoted to a warning would pass. Reproduced in triage: in a checked-out `--shared` clone the unguarded off-path copy re-mints (`subject=sha256:7d20ed33…`) and rewrites `closure.json`. Drop `--no-checkout` for this test so the unchanged-closure assertions can fail, and have the DW-507 resolution say what the test proves. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4106]
+- [ ] [Review][Patch] `a37ec86f` set the spec frontmatter to `done` while the tracker row is `review`, the Change Log does not record the flip, and nothing pins the 3.15 spec frontmatter (only Story 3.13's is pinned). Pin `FrontmatterValue` of this spec next to the row pin in `CorrectedLifecycleRowsRetainTheirCorrectedStatus` so the two surfaces cannot diverge silently; this workflow's status sync sets both values. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4277]
+- [ ] [Review][Patch] The records call comment `5803577826` "the owner's separate authorization of the 2026-09-23 receipt-collection run", but it was created 2026-09-23T21:53:37Z, ~16 h after the receipts it covers (06:00:46Z, 06:01:05Z) and after `a2f5cba2`. State its `created_at` and that it is an after-the-fact ratification in the story record and proof packet. [_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:64]
+- [ ] [Review][Patch] The superseded-subject guard (BH8) matches only full 64-hex digests, so a surface that first names a superseded subject in the elided `aafe9040...` form — the exact form BH8 described, and the dominant form in these records — still passes. Also match the 8-hex elided prefixes of the subject constants when finding the first subject; confirm the four guarded surfaces stay green. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2843]
+- [ ] [Review][Patch] `AssemblerRefusesExecutionOffTheBoundRepositoryPath`'s summary still says it proves refusal "to run from a copied script path" and that "neither bound-path check ran off the repository file", while its `assembler` case now stops at `repository_root()` ("bound repository root could not be verified"); the bound-path check is proven by the new in-clone test. Correct the summary. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3956]
+- [ ] [Review][Patch] The DW-508 resolution is silent on the "subprocess hardening and path-redaction items recorded in the Group P findings" that DW-508's own reason includes; record that they landed in the re-mint and cross-reference the newly deferred capture `subprocess` shadowing gap (EH1). [_bmad-output/implementation-artifacts/deferred-work.md:4046]
+- [ ] [Review][Patch] `epic-3-retro-item-22` ("collect the three owner receipts on issue #352 and re-run the assembler, or move 3-15 off done") is still `status: open` although its condition is met; close it with a note citing the 3/3 verifier pass. [_bmad-output/implementation-artifacts/sprint-status.yaml:445]
+
+**defer:**
+
+- [x] [Review][Defer] `prd.md` still presents superseded subject `aafe9040…` as current with 0/3 receipts and a FAIL/BLOCKED G-RUNTIME-PARITY row, and OR15 tells readers to adopt `aafe9040…` [_bmad-output/planning-artifacts/prd.md:613] — deferred: pre-existing; the fix edits a planning artifact outside this story, and `prd.md` is not a guarded surface.
+- [x] [Review][Defer] `ProofPacketDaprConflictProcessContractTests.ProcessContractDistinguishesOwnedExternalAndExitedProcesses` timed out (`WaitForExit(5000)`) once in a loaded full-suite run and passed twice alone [tests/Hexalith.EventStore.Contracts.Tests] — deferred: pre-existing timing flake, not touched by this diff.
+
+**Rejected**
+
+- false — D2 names no architecture source: D2's resolution is "record per role what counted as each sign-off", and its finding text names the Change Log statement as the only 3.15 architecture record; the records count exactly that.
+- false — Carried EH3 (failed `docker run` leaves a created container) lacks a ledger entry: not open work — it is a recorded owner policy (do not `rm` on nonzero `docker run` exit), closed as the `[x]` patch at line 1126.
+- false — The new test skips the CLI entry: the guard reads `__file__`, which `exec_module` sets to the shadow path; the `__main__` block only calls `main()`.
+- false — DW-507 accepts any `--shared` clone as the bound root: a clone descending from the release commit that executes its own `tools/` binds its own honest bytes; the guard exists to stop a copy stamping another tree's digests.
+- false — No mutation evidence for the new test: the verification-gap layer disabled the check and the test's message assertion fails.
+- spec-edit — Task line "Technical re-mint and AI sign-offs are complete" is unqualified: fixing it edits the spec under review.
+- spec-edit — BH10/BH11 were rejected as spec edits while `a37ec86f` edits the spec; stale "agree at `in-progress`" and "Nine subjects, eight re-mints" lines remain: fixing them edits the spec.
+- spec-edit — The new Change Log entry is dated 2026-09-23 while its triage rows say 2026-09-24: fixing it edits the spec (the commit is 2026-09-23 in UTC).
+- spec-edit — The 2026-09-24 build-review rows lack their own section/checkboxes, EH4's severity cell reads `false`, and IDs repeat across rounds: fixing them edits the spec.
+- low — `AssemblerPreservesWhitespaceAtEndOfCheckoutPath` returns instead of `Assert.Skip` on Windows: matches the class's five existing guards, and `ci / contracts` runs only on ubuntu.
+- low — The new in-clone test has no Windows guard: Windows is not a supported lane for these python-driven tests.
+- low — `Path.GetFullPath` vs Python `resolve()` on a symlinked temp dir (macOS): CI is ubuntu and development is Linux/WSL.
+- low — Test preconditions inherit caller `GIT_DIR`/`GIT_WORK_TREE`: only under a git hook, never in CI or a normal run.
+- low — The `merge-base` precondition has no diagnostic message: CI uses `fetch-depth: 0`; cosmetic.
+- low — The proof packet's new "Reproduce" claims name no commands, SHA or green CI run: the counts were reproduced independently (2106/2106, 214/214); no CI run exists because `a37ec86f` is unpushed.

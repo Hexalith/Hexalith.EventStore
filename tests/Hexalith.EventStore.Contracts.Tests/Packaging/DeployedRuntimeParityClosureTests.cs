@@ -4272,9 +4272,10 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  4-6-global-position-sharding-spec-renegotiation:")
             .ShouldBe("awaiting-operator");
 
-        // Story 3.15: three subject-bound receipts validate, so the packet is in review.
+        // Story 3.15: three subject-bound receipts validate, but the 2026-09-24 review of a37ec86f
+        // left eight patch action items open, so the story is back in progress.
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
-            .ShouldBe("review");
+            .ShouldBe("in-progress");
 
         // Story 5.3: owner closed the story 2026-09-10 after spec-5-3 reached done (review loop 8).
         SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")
