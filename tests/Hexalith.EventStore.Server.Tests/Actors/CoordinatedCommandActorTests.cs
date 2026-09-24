@@ -79,6 +79,25 @@ public sealed class CoordinatedCommandActorTests
     }
 
     [Fact]
+    public async Task Fenced_stale_source_after_a_target_reconciliation_miss_cannot_mutate_tenant_state()
+    {
+        (CoordinatedCommandActor actor, IActorStateManager state, IAggregateActor source, IAggregateActor target, _) = CreateActor();
+        target.ReconcileFencedCommandAsync(Arg.Any<FencedCommandEnvelope>())
+            .Returns(new IdempotencyCheckResult(IdempotencyCheckOutcome.Miss, null));
+
+        CommandProcessingResult result = await actor.ProcessFencedCommandAsync(
+            new FencedCommandEnvelope(Command(), Fence()));
+
+        result.Accepted.ShouldBeFalse();
+        result.FailureReason.ShouldBe("ConcurrencyConflict");
+        await target.Received(1).ReconcileFencedCommandAsync(Arg.Any<FencedCommandEnvelope>());
+        await source.Received(1).GetEventsAsync(0);
+        await target.DidNotReceive().ProcessFencedCommandAsync(Arg.Any<FencedCommandEnvelope>());
+        await target.DidNotReceive().ProcessCommandAsync(Arg.Any<CommandEnvelope>());
+        await state.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Invalid_fence_fails_before_coordinator_state_or_target_mutation()
     {
         (CoordinatedCommandActor actor, IActorStateManager state, IAggregateActor source, IAggregateActor target, _) = CreateActor();
