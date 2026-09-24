@@ -113,6 +113,7 @@ public sealed class TrustedPublishingReleaseTests
         };
         start.ArgumentList.Add(script);
         start.Environment.Remove("NUGET_TRUSTED_PUBLISHING_KEY");
+        start.Environment.Remove("NUGET_API_KEY");
         start.Environment.Remove("HEXALITH_REQUIRE_CONTAINER_PUBLISHER");
         start.Environment.Remove("HEXALITH_CONTAINER_PROJECTS");
         start.Environment.Add("NUGET_API_KEY", "legacy-key-must-not-pass");
