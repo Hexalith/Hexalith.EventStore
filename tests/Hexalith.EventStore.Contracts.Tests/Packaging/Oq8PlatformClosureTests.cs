@@ -94,6 +94,14 @@ public sealed class Oq8PlatformClosureTests
         string fixture = CreateFixture(root);
         try
         {
+            string selectorPath = Path.Combine(
+                fixture,
+                "_bmad-output",
+                "implementation-artifacts",
+                "4-15-oq8-platform-closure-successor.json");
+            using JsonDocument selector = JsonDocument.Parse(File.ReadAllText(selectorPath));
+            selector.RootElement.GetProperty("schema").GetString()
+                .ShouldBe("hexalith.eventstore.story-4-15-successor-selection/v3");
             (int exitCode, string output) = RunValidator(root, fixture);
 
             exitCode.ShouldBe(0, output);
@@ -6381,6 +6389,7 @@ public sealed class Oq8PlatformClosureTests
                 SuccessorDirectory,
                 "source-artifact-identity.json"));
 
+        CopyHistoricalV4Selection(root, fixture);
         SetCandidateLifecycle(fixture);
         return fixture;
     }
@@ -6407,6 +6416,8 @@ public sealed class Oq8PlatformClosureTests
         {
             CopyHistoricalV4File(root, fixture, relative);
         }
+
+        CopyHistoricalV4Selection(root, fixture);
 
         CopyDirectory(
             Path.Combine(root, "_bmad-output", "implementation-artifacts", "evidence", "story-4-14"),
@@ -6464,6 +6475,18 @@ public sealed class Oq8PlatformClosureTests
         string error = process.StandardError.ReadToEnd();
         process.WaitForExit();
         process.ExitCode.ShouldBe(0, error);
+    }
+
+    private static void CopyHistoricalV4Selection(string repositoryRoot, string fixtureRoot)
+    {
+        CopyHistoricalV4File(
+            repositoryRoot,
+            fixtureRoot,
+            "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json");
+        CopyHistoricalV4File(
+            repositoryRoot,
+            fixtureRoot,
+            "_bmad-output/implementation-artifacts/4-15-oq8-platform-lifecycle-state.json");
     }
 
     private static void CopyDirectory(string source, string destination)
