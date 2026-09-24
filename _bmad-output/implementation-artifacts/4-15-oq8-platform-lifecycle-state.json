@@ -1,8 +1,8 @@
 {
+  "reviewSubjectSha256": "12bf4413b2e917fb6de5d4805f2922a5759c7bf8039f5fec63ab6473ccd7a7fc",
   "schema": "hexalith.eventstore.story-4-15-platform-lifecycle-state/v1",
-  "story": "4.15",
   "state": "closed",
-  "successorDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4",
-  "successorManifestSha256": "b92cd2ba7cda1fa8a3808fc9b4792be2a97c0f0345d9f5edb55ff49d9717e70e",
-  "reviewSubjectSha256": "8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5"
+  "story": "4.15",
+  "successorDirectory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5",
+  "successorManifestSha256": "64f96dc7de33f0e67544f0d546ce97bfa4a1c3b8c012378131f385ff6fd79a32"
 }
