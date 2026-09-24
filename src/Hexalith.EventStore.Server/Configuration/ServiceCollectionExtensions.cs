@@ -74,7 +74,9 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IProjectionRebuildOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<INamedProjectionDispatchCoordinator, NamedProjectionDispatchCoordinator>();
-        services.TryAddSingleton<IProjectionDeliveryRetryScheduler, DaprProjectionDeliveryRetryScheduler>();
+        services.TryAddSingleton<DaprProjectionDeliveryRetryScheduler>();
+        services.TryAddSingleton<IProjectionDeliveryRetryScheduler>(static sp =>
+            sp.GetRequiredService<DaprProjectionDeliveryRetryScheduler>());
         services.TryAddSingleton<IProjectionActivationOutbox, DaprProjectionActivationOutbox>();
         services.TryAddSingleton<NamedProjectionRouteCatalog>();
         services.TryAddSingleton<INamedProjectionRouteCatalog>(static sp => sp.GetRequiredService<NamedProjectionRouteCatalog>());
@@ -159,6 +161,10 @@ public static class EventStoreServerServiceCollectionExtensions {
             "projection-delivery-writer-protocol",
             failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
             tags: ["ready"]);
+        _ = services.AddHealthChecks().AddCheck<ProjectionDeliveryUnresolvedHealthCheck>(
+            "projection-delivery-unresolved-conflict",
+            failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+            tags: ["ready"]);
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
         _ = services.AddSingleton<IHostedService>(serviceProvider =>
             serviceProvider.GetService<DaprClient>() is null
@@ -209,6 +215,7 @@ public static class EventStoreServerServiceCollectionExtensions {
                 string.IsNullOrWhiteSpace(aggregateActorTypeName)
                     ? nameof(AggregateActor)
                     : aggregateActorTypeName);
+            options.Actors.RegisterActor<CoordinatedCommandActor>(CoordinatedCommandActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyAdmissionActor>(IdempotencyAdmissionActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyAdmissionDirectoryActor>(IdempotencyAdmissionDirectoryActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyTenantLifecycleActor>(IdempotencyTenantLifecycleActor.ActorTypeName);

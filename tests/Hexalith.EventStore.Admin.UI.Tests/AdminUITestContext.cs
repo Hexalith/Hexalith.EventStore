@@ -169,6 +169,37 @@ public class AdminUITestContext : BunitContext {
         SetRendererInfo(TestRendererInfo);
     }
 
+    /// <summary>
+    /// Runs a component handler while <c>hexalithAdmin.waitForRender</c> completes on a thread-pool
+    /// thread, as Blazor Server JS interop does. Loose-mode interop completes synchronously, so it
+    /// never moves a <c>ConfigureAwait(false)</c> continuation off the renderer dispatcher; this
+    /// helper does, and returns the handler's fault instead of throwing it.
+    /// </summary>
+    /// <param name="startHandler">Starts the handler, typically through <c>cut.InvokeAsync</c>.</param>
+    /// <returns>The exception the handler faulted with, or <see langword="null"/>.</returns>
+    protected async Task<Exception?> RunWithAsynchronousFocusInteropAsync(Func<Task> startHandler) {
+        ArgumentNullException.ThrowIfNull(startHandler);
+        JSRuntimeInvocationHandler pending = JSInterop.SetupVoid("hexalithAdmin.waitForRender");
+        int invocationsBefore = CountWaitForRenderInvocations();
+
+        Task handler = startHandler();
+        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+        while (CountWaitForRenderInvocations() == invocationsBefore && !handler.IsCompleted) {
+            if (DateTime.UtcNow > deadline) {
+                throw new TimeoutException("The handler never awaited hexalithAdmin.waitForRender.");
+            }
+
+            await Task.Delay(10).ConfigureAwait(false);
+        }
+
+        CountWaitForRenderInvocations().ShouldBeGreaterThan(invocationsBefore, "the handler must restore focus through JS interop");
+        await Task.Run(() => pending.SetVoidResult()).ConfigureAwait(false);
+        return await Record.ExceptionAsync(() => handler.WaitAsync(TimeSpan.FromSeconds(10))).ConfigureAwait(false);
+    }
+
+    private int CountWaitForRenderInvocations()
+        => JSInterop.Invocations.Count(invocation => invocation.Identifier == "hexalithAdmin.waitForRender");
+
     private sealed class TestHostEnvironment : IHostEnvironment {
         public string EnvironmentName { get; set; } = "Production";
         public string ApplicationName { get; set; } = "Hexalith.EventStore.Admin.UI.Tests";

@@ -18,6 +18,7 @@ import argparse
 import hashlib
 import importlib.machinery
 import json
+import math
 import os
 import types
 from pathlib import Path
@@ -29,7 +30,7 @@ RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
     "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "c19b47817f826b78fabd2c7365dcec7e40cd0d0ee2ab2ffca10a2fc06b0e5178"
+V1_HANDLER_SHA256 = "c877ccda4ae8a9038f530c97cecbf48d8851bff39ccc05444557991e4cacb8e6"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }
@@ -45,7 +46,7 @@ IMPORT_PATH_FILE_SHA256 = {
     "release_evidence_handlers/__init__.py":
         "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625",
     "release_evidence_handlers/v3.py":
-        "b1a1756252fb79777dd0dbb37861260f6b02c03c58c160823b2c4252d0c33dc0",
+        "20fcb7d024f4c1cb024f8d2c87bc1d5d47c2bb242a9126098ded025603f1204a",
 }
 EXPECTED_IMPORT_PATH_FILES = {
     "deployed_runtime_parity_handlers/__init__.py",
@@ -88,9 +89,23 @@ def _unique_object(pairs):
     return result
 
 
+def _reject_non_json_number(_value):
+    raise DispatchError("closure contains a non-JSON number")
+
+
+def _finite_json_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise DispatchError("closure contains a non-finite JSON number")
+    return number
+
+
 def _load_dispatch_metadata(evidence_bytes):
     try:
-        document = json.loads(evidence_bytes, object_pairs_hook=_unique_object)
+        document = json.loads(
+            evidence_bytes, object_pairs_hook=_unique_object,
+            parse_constant=_reject_non_json_number, parse_float=_finite_json_float,
+        )
         dispatch = document["dispatch"]
         version = dispatch["version"]
         if type(version) is not int:

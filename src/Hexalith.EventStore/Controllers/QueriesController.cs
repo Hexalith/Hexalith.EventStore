@@ -107,8 +107,10 @@ public partial class QueriesController(
 
         QueryResponseMetadata producerMetadata = NormalizeProducerMetadata(result.Metadata);
         bool projectionBacked = producerMetadata.Provenance == QueryResponseProvenance.ProjectionBacked;
-        string? currentETag = null;
-        if (projectionBacked && !string.IsNullOrWhiteSpace(result.ProjectionType)) {
+        string? currentETag = projectionBacked && !string.IsNullOrWhiteSpace(producerMetadata.ETag)
+            ? producerMetadata.ETag
+            : null;
+        if (currentETag is null && projectionBacked && !string.IsNullOrWhiteSpace(result.ProjectionType)) {
             try {
                 currentETag = await eTagService
                     .GetCurrentETagAsync(result.ProjectionType, request.Tenant, cancellationToken)

@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import importlib.machinery
 import json
+import math
 import os
 import types
 from pathlib import Path
@@ -32,7 +33,7 @@ HANDLERS = {
 # on-disk handler source before import, so an unreviewed edit never executes. Recompute with:
 # sha256sum tools/release_evidence_handlers/v3.py
 HANDLER_FILE_SHA256 = {
-    "release_evidence_handlers.v3": "b1a1756252fb79777dd0dbb37861260f6b02c03c58c160823b2c4252d0c33dc0",
+    "release_evidence_handlers.v3": "20fcb7d024f4c1cb024f8d2c87bc1d5d47c2bb242a9126098ded025603f1204a",
 }
 # Importing a submodule also executes its package initializer, so pinning the leaf alone leaves
 # that file free to run unreviewed code. Every file on the import path is pinned and verified
@@ -68,9 +69,23 @@ def _unique_object(pairs):
     return result
 
 
+def _reject_non_json_number(_value):
+    raise DispatchError("release identity contains a non-JSON number")
+
+
+def _finite_json_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise DispatchError("release identity contains a non-finite JSON number")
+    return number
+
+
 def _load_dispatch_metadata(evidence_bytes):
     try:
-        document = json.loads(evidence_bytes, object_pairs_hook=_unique_object)
+        document = json.loads(
+            evidence_bytes, object_pairs_hook=_unique_object,
+            parse_constant=_reject_non_json_number, parse_float=_finite_json_float,
+        )
         codec = document["codec"]
         binding = codec["codec"]
         version = codec["version"]

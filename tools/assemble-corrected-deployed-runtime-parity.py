@@ -3,6 +3,7 @@
 
 import argparse
 import hashlib
+import os
 import stat
 import subprocess
 import sys
@@ -111,7 +112,42 @@ def _restore_previous_closure(path, previous_bytes):
 
 
 def repository_root():
-    return Path(__file__).resolve().parents[1]
+    """Find the real Git working tree independently of this script's directory layout.
+
+    A copied ``tools/`` directory, even one placed under a newly initialized repository,
+    cannot establish the release lineage merely by preserving the same relative paths.
+    Environment-supplied Git redirections must not select a different working tree.
+    """
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=environment,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError("bound repository root could not be verified") from error
+    if result.returncode != 0 or not result.stdout.endswith("\n"):
+        raise ValueError("bound repository root could not be verified")
+    root = Path(result.stdout[:-1]).resolve()
+    try:
+        lineage = subprocess.run(
+            ["git", "-C", str(root), "merge-base", "--is-ancestor", v1.SOURCE_SHA, "HEAD"],
+            capture_output=True,
+            env=environment,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError("bound repository release lineage could not be verified") from error
+    if lineage.returncode != 0:
+        raise ValueError("bound repository release lineage could not be verified")
+    return root
 
 
 def executing_assembler_path(root):
@@ -124,8 +160,7 @@ def executing_assembler_path(root):
     path = Path(__file__).resolve()
     expected = (root / v1.ASSEMBLER_FILE).resolve()
     if path != expected:
-        raise ValueError(
-            f"assembler is executing from {path}, not the bound repository path {expected}")
+        raise ValueError("assembler is not executing from the bound repository path")
     return path
 
 

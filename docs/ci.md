@@ -14,7 +14,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
 | **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
-| **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` tip | Exact-source preflight followed by a protected `production` environment and an immutable `Hexalith.Builds` release workflow for semantic-release, NuGet, GitHub Release, and the approved EventStore container. |
+| **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` tip | Exact-source preflight followed by an EventStore-owned job in the protected `production` environment. The job exchanges GitHub OIDC through `NuGet/login`, runs semantic-release, and uses immutable `Hexalith.Builds` actions for the approved EventStore container. |
 
 ## Shared CI/CD Boundary
 
@@ -42,10 +42,9 @@ EventStore keeps only module-specific wiring here:
   `src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore`.
 
 Hexalith.Builds action and reusable workflow references generally use `@main`
-by Hexalith policy. The publication-capable release workflow is the explicit
-exception: it pins one exact Builds commit so the caller and nested publisher
-cannot resolve independently. Third-party action pinning is enforced by shared
-workflows.
+by Hexalith policy. The EventStore-owned publication job is the explicit
+exception: it checks out one exact Builds commit and invokes its local actions.
+Its third-party actions are SHA-pinned in `release.yml`.
 
 ## Test Lanes
 
@@ -127,16 +126,38 @@ The v1 closure, the SDK 10.0.400 successor
 remain immutable historical evidence. V2 is validated against completed closure
 commit `83b32fcfad7bb608098aebccdc15002636ffb431`, and the SDK successor against
 its own snapshot commit, not against later working-tree bytes. The additive
-`story-4-15-successors/v3` packet is the single active lineage selected by
-`4-15-oq8-platform-closure-successor.json` (selector schema `v2`, whose
-`historical` block pins all three predecessors and whose `successor` block pins
-v3); current-source closure requires valid historical v1/SDK/v2 evidence plus a
-complete v3 subject, reviews, handoff, and path-sorted manifest. V3 additionally
+`story-4-15-successors/v3` packet is immutable historical evidence, and
+`story-4-15-successors/v4` remains the active lineage selected by
+`4-15-oq8-platform-closure-successor.json` (selector schema `v3`). The trusted
+publishing change updates this document, the release manifest test, the OQ8
+historical fixture test, and the validator, so the active v4 current-source gate correctly fails closed until a
+fresh v5 successor is reviewed and selected. `tools/prepare-oq8-v5-candidate.py`
+and `tools/validate-oq8-platform-evidence.py --v5-candidate <outside-repo-json>`
+verify an explicitly unapproved draft against archived v1–v4 evidence and the
+current candidate hashes; they grant no current-source or release authority.
+The historical v4 packet and its archived source bytes remain unchanged. V3
+additionally
 binds the landed commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4` and its tree,
 requires current `HEAD` to descend from that commit, and hashes every SDK and v2
 gate input (workflows, `global.json`, `tests/Directory.Build.props`, the
 LiveSidecar fixtures, and the governance tests) as regular non-symlink current
 files.
+
+Prepare and check the receipt-independent v5 subject packet outside the
+repository after the implementation source is committed on the review branch.
+Regenerate it after any further source edit so its source hashes and
+`sourceHead` identify that exact candidate:
+
+```bash
+python3 tools/oq8-v5-packet.py --prepare-draft /tmp/eventstore-oq8-v5-subject.json
+python3 tools/validate-oq8-platform-evidence.py --v5-subject-draft /tmp/eventstore-oq8-v5-subject.json
+```
+
+The draft records architecture, security, and test reviews as pending. Only a
+new frozen subject, independent receipts, v5 packet, selector, and lifecycle
+binding can authorize the revised current source. The
+[v5 activation guide](oq8-v5-activation.md) describes the packet schema,
+receipt fields, and final validation commands.
 
 Story 4.5's append-durability race and generic ETag control remain in this
 dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence
@@ -214,33 +235,40 @@ push run described below. The explicitly selected bypass path instead requires
 the same source SHA to have a successful push run of `commitlint.yml` and can be
 requested only with
 `gh workflow run release.yml --ref main -f bypass-validation=true`.
-The approved immutable shared release workflow and execution pin is
+The approved immutable Builds actions execution pin is
 `22a578b576a515d2af214fe81859447fffc97981`, matching `.github/workflows/release.yml`
 and `docs/ci-secrets-checklist.md`. Before requesting environment approval, the
 manual workflow fails closed unless all of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
 - the dispatch SHA still equals the live `main` ref returned by GitHub;
-- the exact SHA has a completed, successful `CI` workflow run whose event was a
-  push to `main`.
+- the exact SHA has a completed, successful push run of the selected source
+  proof workflow: `ci.yml` on the ordinary path or `commitlint.yml` only for an
+  explicit bypass dispatch.
 
 The release concurrency group is `release-production` with cancellation
 disabled, so a later request cannot silently replace an approved publication.
-Only after source verification does the reusable release job enter the
+Only after source verification does the EventStore-owned publish job enter the
 `production` environment. That environment requires reviewer `jpiquot`, permits
-deployments from `main` only, disables administrator bypass, and gates use of
-the three explicitly mapped repository publication secrets. No duplicate
-environment-secret copy is needed.
+deployments from `main` only, and disables administrator bypass. The job has
+`id-token: write` so `NuGet/login` can exchange its protected EventStore
+`release.yml` identity for a temporary NuGet key. The nuget.org package owner
+must activate a policy for repository `Hexalith/Hexalith.EventStore`, workflow
+`release.yml`, environment `production`, and all 14 manifest package IDs, then
+set repository variable `NUGET_TRUSTED_PUBLISHING_USER` to the policy creator's
+nuget.org username. The job maps the two Zot organization secrets and no stored
+NuGet API key. Do not dispatch production before policy activation and review.
 
 Semantic-release decides from commit history whether a release is warranted.
 NuGet publishing remains scoped to the 14 packages listed in
 [`tools/release-packages.json`](../tools/release-packages.json). Container
 publishing is enabled only for the approved EventStore host mapping. Before any
-NuGet package is pushed, semantic-release validates `NUGET_API_KEY`, the
+NuGet package is pushed, semantic-release validates the temporary
+`NUGET_TRUSTED_PUBLISHING_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
 missing container secret cannot create a partial NuGet-only release. The
 semantic-release `verifyRelease` phase re-proves that the source is still the
-live `main` tip with exact successful push CI, then freezes exact repository,
+live `main` tip with the selected exact successful push proof, then freezes exact repository,
 version, source proof, environment, workflow run, approved Builds, helper
 hashes, normalized package IDs, canonical manifest hash, container, and
 platform identity. It also proves the new version is absent for all 14 NuGet
@@ -279,41 +307,26 @@ version. Shared deterministic CI, this governance lane, and the Tenants
 source-mode lane are all blocking. Required build, validation, package,
 container, smoke, and GitHub publication failures remain blocking.
 
-The reusable-workflow reference and `builds-execution-sha` input contain the
-same reviewed 40-character Builds commit, currently
-`22a578b576a515d2af214fe81859447fffc97981`. The reusable workflow verifies its
-resolved SHA, checks out the nested action at that exact commit, and invokes it
-locally; the action then verifies its own action and helper bytes against the
-same commit before semantic-release can run. This immutable release-tool pin is
+The EventStore job checks out Builds at the reviewed 40-character commit
+`22a578b576a515d2af214fe81859447fffc97981`, verifies that checkout's HEAD,
+and invokes its actions locally. The container action verifies its own action
+and helper bytes against the same commit before semantic-release can run. This
+immutable release-tool pin is
 independent of the development `references/Hexalith.Builds` gitlink, so routine
 submodule updates do not rotate publication authority and publication upgrades
-do not create pointer churn in development dependencies. Environment approval is what authorizes an ordinary publication, and the caller
-declares `require-publication-authority: false` to say so.
+do not create pointer churn in development dependencies. Environment approval
+authorizes an ordinary publication; `HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'`
+selects that path in the shared helper.
 
 Story 3.14 built a second, stronger gate for a corrective release that has to be
 individually authorized rather than merely approved: a dispatch-reserved stable
 version plus an unexpired, one-use GitHub issue-comment authority. When enabled for
-EventStore, the caller pins that authority to the `github:jpiquot` release-owner identity.
-That gate remains implemented and tested
-in `Hexalith.Builds`, and is off by default here, because it costs the operator a
-hand-computed version and an out-of-band authority comment per run. Re-enabling it
-means restoring the two operator-supplied `workflow_dispatch` inputs (`release-version` and
-`release-authority-issue-url`), setting `require-publication-authority: true`, mapping those values
-to `reserved-version` and `release-authority-issue-url`, supplying the caller-pinned
-`release-authority-owner`, and updating the governance
-assertions that deliberately require those inputs to be absent while the gate is off. The live preflight only
-shape-checks whatever owner value it is given; the caller is what pins the identity.
-Two separate governance tests hold that line, and it is worth knowing which does what:
-`ReleaseAuthorityOwnerIsPinnedWheneverTheAuthorityGateIsEnabled` checks the owner value
-alone -- if the gate is ever turned on, the owner must be `github:jpiquot` -- while
-`ReleaseCallerPinsSharedExecutionAndOneMappingWithoutPublicationAuthorityInputs` asserts the caller
-currently carries none of the three reservation inputs. So while the gate stays off, any
-attempt to re-enable it fails the suite until both tests are updated together; neither
-test validates the values of `reserved-version` or `release-authority-issue-url`.
-The posture is declared, never inferred: with the gate off any supplied
-reservation value fails closed rather than being silently ignored, a half-declared
-authority is rejected instead of read as absence, and a declaration that is
-neither `true` nor `false` fails closed.
+EventStore, the release owner would be pinned to `github:jpiquot`. The gate remains
+implemented and tested in `Hexalith.Builds`, but the EventStore-owned job does
+not expose its reservation inputs and explicitly selects the ordinary path.
+Enabling the corrective path requires a separately reviewed change to the
+EventStore workflow, governance tests, and shared-helper input mapping. It is
+not a substitute for the nuget.org trusted publishing policy.
 
 When the gate is on, the dispatch names a stable EventStore authority issue, not a
 comment that would have to predict the future run ID. After the run/attempt exists,
@@ -337,17 +350,10 @@ must be absent at all package and container destinations before publication, and
 source proof, frozen identity, and version-floor checks run either way. No
 projected version such as `3.96.0` is ever embedded as release policy.
 
-The `publishCmd` calls the helper installed by the shared `publish-containers`
-action only after the applicable preflight gates and NuGet publication:
-
-GitHub validates reusable-workflow permissions against every nested job before
-it starts the caller, including skipped jobs. The EventStore caller therefore
-allows `attestations: write` and `id-token: write` so the shared workflow can be
-resolved, while explicitly passing `governed-release: false`. The selected
-legacy release job declares no narrower job-level permission block, so it
-inherits both write scopes even though it does not use them. This is a real token
-widening, tracked for removal in the shared reusable-workflow split; it does not
-by itself enable signing, SBOM generation, or attestation for EventStore.
+The `publishCmd` calls the helper installed by the pinned shared
+`publish-containers` action only after the applicable preflight gates and NuGet
+publication. The EventStore job grants `id-token: write` for the OIDC exchange;
+it does not request `attestations: write`.
 
 ```text
 src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
@@ -406,7 +412,7 @@ and approved Builds identity, repository/version, index digest and raw hash,
 child manifest/config identities, exact platforms, frozen publication identity
 and destination checks, and both smoke logs/hashes. Registry, authentication,
 emulation, product, or evidence failure leaves the release non-authorizing.
-The reusable workflow uploads the complete hidden evidence directory with
+The EventStore release job uploads the complete hidden evidence directory with
 `always()` so partial publication remains visible.
 
 Any successful write followed by a later failure permanently quarantines that
@@ -555,23 +561,24 @@ the per-platform smoke window bound to the platform budget plus the cleanup allo
 tool can no longer emit records this verifier rejects, and bound the assembler to the bytes actually
 executing rather than the pristine repository file.
 
-The 2026-08-30 verifier and producer hardening re-minted the subject once more at zero receipts,
-where no acceptance was burned. The packet's current subject is
-`86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`, and the packet **fails closed at
-zero of three receipts**: each re-mint rejected the receipts collected against the prior subject by
-the same rerun trigger, and collecting replacements on issue `#352` is an owner action outside this
-repository. Until that happens deployed-runtime parity is **unavailable** and **no identity is
-selected**. Reassembly reports `receipts=0 verifier_exit=1`. The `bb58d691...`, `dab64f5f...` and
+The 2026-08-30 verifier and producer hardening re-minted the subject at zero receipts,
+where no acceptance was burned. The 2026-09-23 DW-508 trust-path correction re-minted it again.
+The packet's current subject is
+`7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`. The packet now
+**validates at three of three roster-bound receipts**: EventStore-owner issue `#352` comment
+`5789893766`, Release-owner comment `5789897143`, and the self-attested `bmad:murat` Test Architect
+record. Deployed-runtime parity is **available**, and the selected identity is only the OCI index
+named below. Reassembly reports `receipts=3 verifier_exit=0`. Earlier re-mints rejected the receipts
+collected against their prior subjects by the same rerun trigger. The `bb58d691...`, `dab64f5f...` and
 `a8cc777e...` receipts and sources all remain byte-for-byte in the superseded audit area, whose
 README carries the re-rooting rule an auditor needs to re-pair a superseded receipt with its source.
-Five of the eight subjects never had receipts collected at all, so three retained sets against seven
-re-mints is the expected shape, not a gap.
+Subjects with no collected receipts require no retained receipt set; each prior set remains historical.
 
 `closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
-`selected_deployed_identity`. Those two fields are the **claim** the three rostered roles are asked
-to accept, not a granted verdict: the verifier grants them only at three of three, and at zero
-receipts it exits 1 and grants nothing. `acceptances.directory` likewise names the address receipts
-must occupy, not a directory that exists today.
+`selected_deployed_identity`. Those fields are the packet's **claim**; the retained verifier now
+grants the claim because all three subject-bound receipts validate. `acceptances.directory` names
+the retained receipt address. The packet supplies parity evidence only and grants no deployment,
+publication, registry mutation, consumer removal, or predecessor change authority.
 
 The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
 Architect record is explicitly self-attested without independent external authentication. Owner
@@ -612,11 +619,13 @@ publication.
 Current shared workflow migration keeps the immediate policy surface consistent
 with other Hexalith modules. Remaining hardening work stays explicit:
 
-- NuGet publishing still uses `NUGET_API_KEY`; Trusted Publishing is a follow-up.
+- NuGet trusted publishing requires the package owner's activated 14-ID policy
+  and repository variable `NUGET_TRUSTED_PUBLISHING_USER` before the first
+  protected production dispatch.
 - SBOM, artifact attestations, package signing, and provenance evidence remain
   shared Hexalith.Builds backlog items unless a story assigns them to EventStore.
-- Shared workflows own third-party action pinning and npm signature checks; this
-  repository should not duplicate that policy in local workflow steps.
+- The EventStore release workflow pins its own third-party actions and checks
+  npm signatures; the shared workflows retain their own action policy.
 - Do not enable `run-coverage-gate` in EventStore CI until the expected
   `scripts/validate-coverage.py` contract exists here.
 

@@ -547,13 +547,27 @@ public static class DomainProjectionDispatcher {
             cancellationToken.ThrowIfCancellationRequested();
             ProjectionDispatchOutcome outcome;
             try {
-                DomainProjectionHandlerResult result = await handler
-                    .ProjectAsync(dispatchRequest.Request, dispatchRequest.DispatchId, cancellationToken)
-                    .ConfigureAwait(false);
+                DomainProjectionHandlerResult result = handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true } epochHandler
+                    ? await DispatchFencedSharedAsync(
+                        serviceProvider,
+                        epochHandler,
+                        dispatchRequest.Request,
+                        cancellationToken).ConfigureAwait(false)
+                    : await handler
+                        .ProjectAsync(dispatchRequest.Request, dispatchRequest.DispatchId, cancellationToken)
+                        .ConfigureAwait(false);
                 outcome = NormalizeOutcome(handler.ProjectionType, result, options);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
+            }
+            catch (SharedProjectionRetryableFoldException)
+            {
+                outcome = new ProjectionDispatchOutcome(
+                    handler.ProjectionType,
+                    ProjectionDispatchStatus.Retryable,
+                    null,
+                    ProjectionDispatchReasonCodes.PartialRetry);
             }
             catch (OperationCanceledException) {
                 outcome = new ProjectionDispatchOutcome(
@@ -600,6 +614,104 @@ public static class DomainProjectionDispatcher {
         }
 
         return new ProjectionDispatchResponse(ProjectionDispatchProtocol.Version, outcomes);
+    }
+
+    private static async Task<DomainProjectionHandlerResult> DispatchFencedSharedAsync(
+        IServiceProvider serviceProvider,
+        IAsyncDomainSharedProjectionEpochHandler handler,
+        ProjectionRequest request,
+        CancellationToken cancellationToken) {
+        SharedProjectionEpochCoordinator? coordinator = serviceProvider.GetService<SharedProjectionEpochCoordinator>();
+        if (coordinator is null) {
+            return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        SharedProjectionScope scope = handler.CreateScope(request.TenantId);
+        scope.Validate();
+        if (!string.Equals(scope.StoreName, handler.RebuildStoreName, StringComparison.Ordinal)
+            || !string.Equals(scope.TenantId, request.TenantId, StringComparison.Ordinal)
+            || !string.Equals(scope.Domain, request.Domain, StringComparison.Ordinal)
+            || !string.Equals(scope.Family, handler.ProjectionType, StringComparison.Ordinal)) {
+            return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.UnsupportedCapability);
+        }
+
+        if (request.Events.Length == 0
+            || request.Events.Any(static item => item.GlobalPosition <= 0
+                || item.SequenceNumber <= 0
+                || item.Payload is null
+                || string.IsNullOrWhiteSpace(item.EventTypeName)
+                || string.IsNullOrWhiteSpace(item.SerializationFormat))) {
+            return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.DeliveryGap);
+        }
+
+        long previousSequence = 0;
+        long previousPosition = 0;
+        foreach (ProjectionEventDto item in request.Events) {
+            if ((previousSequence > 0 && item.SequenceNumber != previousSequence + 1)
+                || item.GlobalPosition <= previousPosition) {
+                return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.MalformedOutcome);
+            }
+
+            previousSequence = item.SequenceNumber;
+            previousPosition = item.GlobalPosition;
+        }
+
+        SharedProjectionLease lease = await coordinator.RegisterWriterAsync(
+            scope,
+            handler.OrdinaryWriterId,
+            cancellationToken).ConfigureAwait(false);
+        SharedProjectionControlIndexIntent? controlIndexIntent = handler.ControlIndexName is { } indexName
+            ? new SharedProjectionControlIndexIntent(indexName)
+            : null;
+        bool accepted = false;
+        bool retry = false;
+        bool catchUp = false;
+        foreach (ProjectionEventDto item in request.Events) {
+            cancellationToken.ThrowIfCancellationRequested();
+            var singleEventRequest = new ProjectionRequest(
+                request.TenantId,
+                request.Domain,
+                request.AggregateId,
+                [item]);
+            var delivery = new SharedProjectionDelivery(
+                request.AggregateId,
+                item.GlobalPosition,
+                JsonSerializer.SerializeToUtf8Bytes(singleEventRequest, SerializerOptions),
+                JsonSerializer.SerializeToUtf8Bytes(item.GlobalPosition, SerializerOptions),
+                controlIndexIntent);
+            SharedProjectionJournalResult journaled = await coordinator.JournalAsync(
+                scope,
+                lease,
+                delivery,
+                cancellationToken).ConfigureAwait(false);
+            if (journaled == SharedProjectionJournalResult.IdentityConflict) {
+                return DomainProjectionHandlerResult.Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            }
+
+            if (journaled is SharedProjectionJournalResult.StaleLease or SharedProjectionJournalResult.Backpressure) {
+                retry = true;
+                break;
+            }
+            else if (journaled == SharedProjectionJournalResult.Journaled) {
+                accepted = true;
+                catchUp = true;
+            }
+            else if (journaled == SharedProjectionJournalResult.AlreadyJournaled) {
+                catchUp = true;
+            }
+        }
+
+        if (catchUp) {
+            _ = await coordinator.CatchUpAsync(
+                scope,
+                (delivery, generation, token) => handler.FoldCatchUpAsync(delivery, generation, coordinator, token),
+                cancellationToken).ConfigureAwait(false);
+        }
+        return retry
+            ? DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.PartialRetry)
+            : accepted
+                ? DomainProjectionHandlerResult.Completed()
+                : DomainProjectionHandlerResult.AlreadyCompleted();
     }
 
     private static ProjectionDispatchResponse FailureForEveryRoute(

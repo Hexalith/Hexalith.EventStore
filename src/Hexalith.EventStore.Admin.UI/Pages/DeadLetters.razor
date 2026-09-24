@@ -920,9 +920,24 @@
         _bulkActionFailure = null;
         StateHasChanged();
 
-        int totalCount = _selectedIds.Count;
-        IReadOnlyList<IGrouping<string, DeadLetterEntry>> tenantGroups = _allEntries
+        IReadOnlyList<DeadLetterEntry> matchedEntries = _allEntries
             .Where(e => _selectedIds.Contains(e.MessageId))
+            .ToList();
+
+        if (_selectedIds.Count == 0 || matchedEntries.Count != _selectedIds.Count)
+        {
+            string message = matchedEntries.Count == 0
+                ? "No selected dead-letter commands are available to submit."
+                : "Some selected dead-letter commands are no longer available. Review the selection and try again.";
+            await ToastService.ShowErrorAsync(message).ConfigureAwait(false);
+            await CloseAllDialogsAsync().ConfigureAwait(false);
+            await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
+            _isOperating = false;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        IReadOnlyList<IGrouping<string, DeadLetterEntry>> tenantGroups = matchedEntries
             .GroupBy(e => e.TenantId)
             .ToList();
 
@@ -936,8 +951,9 @@
 
         try
         {
-            foreach (IGrouping<string, DeadLetterEntry> group in tenantGroups)
+            for (int groupIndex = 0; groupIndex < tenantGroups.Count; groupIndex++)
             {
+                IGrouping<string, DeadLetterEntry> group = tenantGroups[groupIndex];
                 _bulkProgressCurrent++;
                 StateHasChanged();
 
@@ -958,18 +974,20 @@
                         failures.Add(BulkActionFailureItem.FromResult(actionName, group.Key, group.Select(e => e.MessageId), result));
                     }
                 }
-                catch (UnauthorizedAccessException ex)
+                catch (Exception ex) when (ex is UnauthorizedAccessException or ForbiddenAccessException)
                 {
                     denied = true;
                     failCount += group.Count();
                     failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
-                    break;
-                }
-                catch (ForbiddenAccessException ex)
-                {
-                    denied = true;
-                    failCount += group.Count();
-                    failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
+                    foreach (IGrouping<string, DeadLetterEntry> unattemptedGroup in tenantGroups.Skip(groupIndex + 1))
+                    {
+                        failCount += unattemptedGroup.Count();
+                        failures.Add(BulkActionFailureItem.FromUnattempted(
+                            actionName,
+                            unattemptedGroup.Key,
+                            unattemptedGroup.Select(e => e.MessageId)));
+                    }
+
                     break;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -986,25 +1004,14 @@
 
             // Report results
             string capitalizedAction = char.ToUpperInvariant(actionName[0]) + actionName[1..];
-            string pastTense = actionName switch
-            {
-                "retry" => "Retried",
-                "skip" => "Skipped",
-                "archive" => "Archived",
-                _ => capitalizedAction,
-            };
-
             if (failCount == 0)
             {
                 // Full success
-                await ToastService.ShowSuccessAsync($"{pastTense} {totalCount} dead-letter command(s).");
+                await ToastService.ShowSuccessAsync(
+                    $"{capitalizedAction} request accepted for {successCount} dead-letter command(s).").ConfigureAwait(false);
                 _selectedIds = [];
                 await CloseAllDialogsAsync().ConfigureAwait(false);
-                await LoadDataAsync();
-                if (denied)
-                {
-                    await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
-                }
+                await LoadDataAsync().ConfigureAwait(false);
             }
             else if (successCount > 0)
             {
@@ -1016,9 +1023,9 @@
                     .ToHashSet(StringComparer.Ordinal);
                 string failedIds = BuildFailedMessageSummary(_selectedIds);
                 await ToastService.ShowWarningAsync(
-                    $"{pastTense} {successCount} commands. {failCount} failed: {failureState.Message}. {failedIds}");
+                    $"{capitalizedAction} request accepted for {successCount} commands. {failCount} were not accepted: {failureState.Message}. {failedIds}").ConfigureAwait(false);
                 await CloseAllDialogsAsync().ConfigureAwait(false);
-                await LoadDataAsync();
+                await LoadDataAsync().ConfigureAwait(false);
                 if (denied)
                 {
                     await RestoreBulkInitiatorFocusAsync().ConfigureAwait(false);
@@ -1050,7 +1057,8 @@
             if (!_disposed && attempt == _bulkActionAttempt)
             {
                 _isOperating = false;
-                StateHasChanged();
+                // Post-await completion path: continuation may resume off the renderer dispatcher.
+                await InvokeAsync(StateHasChanged);
             }
         }
     }
@@ -1222,6 +1230,19 @@
                 null,
                 null);
         }
+
+        public static BulkActionFailureItem FromUnattempted(
+            string actionName,
+            string tenantId,
+            IEnumerable<string> messageIds) =>
+            new(
+                tenantId,
+                messageIds.ToList(),
+                $"Unable to {actionName} entries because authorization was denied for an earlier tenant group.",
+                null,
+                null,
+                null,
+                null);
     }
 
     public async ValueTask DisposeAsync()

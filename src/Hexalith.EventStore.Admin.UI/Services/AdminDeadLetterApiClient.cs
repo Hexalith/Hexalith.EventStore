@@ -113,7 +113,7 @@ public class AdminDeadLetterApiClient(
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
-        catch (AdminApiProblemException ex) {
+        catch (AdminApiProblemException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) {
             throw MapWriteException(ex);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
@@ -149,7 +149,7 @@ public class AdminDeadLetterApiClient(
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
-        catch (AdminApiProblemException ex) {
+        catch (AdminApiProblemException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) {
             throw MapWriteException(ex);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
@@ -185,7 +185,7 @@ public class AdminDeadLetterApiClient(
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
-        catch (AdminApiProblemException ex) {
+        catch (AdminApiProblemException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) {
             throw MapWriteException(ex);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
@@ -262,12 +262,11 @@ public class AdminDeadLetterApiClient(
             _ => new ServiceUnavailableException(fallbackMessage, exception),
         };
 
+    // Callers filter to 401/403 so every other problem propagates with its original stack trace.
     private static Exception MapWriteException(AdminApiProblemException exception)
-        => exception.StatusCode switch {
-            HttpStatusCode.Unauthorized => new UnauthorizedAccessException("Authentication required. Please sign in again.", exception),
-            HttpStatusCode.Forbidden => new ForbiddenAccessException("Access denied. Insufficient permissions to access this resource.", exception),
-            _ => exception,
-        };
+        => exception.StatusCode == HttpStatusCode.Unauthorized
+            ? new UnauthorizedAccessException("Authentication required. Please sign in again.", exception)
+            : new ForbiddenAccessException("Access denied. Insufficient permissions to access this resource.", exception);
 
     private static string? SanitizeProblemField(string? value) {
         if (string.IsNullOrWhiteSpace(value)) {

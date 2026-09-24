@@ -39,7 +39,9 @@ public class BackupWriteToolsTests {
         string result = await BackupWriteTools.TriggerBackup(client, "acme-corp", description: "Pre-release", cancellationToken: ct);
 
         using var doc = JsonDocument.Parse(result);
-        doc.RootElement.GetProperty("description").GetString()!.ShouldContain("Pre-release");
+        doc.RootElement.GetProperty("target").GetString()!.ShouldNotContain("Pre-release");
+        doc.RootElement.GetProperty("endpoint").GetString()!.ShouldNotContain("Pre-release");
+        doc.RootElement.GetProperty("parameters").GetProperty("description").GetString().ShouldBe("Pre-release");
     }
 
     [Fact]

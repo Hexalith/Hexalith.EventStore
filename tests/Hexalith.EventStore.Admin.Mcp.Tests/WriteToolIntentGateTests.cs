@@ -1,6 +1,7 @@
 using System.Net;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Mcp;
@@ -16,18 +17,19 @@ public class WriteToolIntentGateTests
     private const string OperationResultJson = """{"success":true,"operationId":"operation-1","message":"Accepted","errorCode":null}""";
 
     [Theory]
-    [InlineData("backup-trigger", "/api/v1/admin/backups/tenant-1?includeSnapshots=true", "Admin", null)]
-    [InlineData("consistency-trigger", "/api/v1/admin/consistency/checks", "Operator", "{\"tenantId\":null,\"domain\":null,\"checkTypes\":[\"SequenceContinuity\"]}")]
-    [InlineData("consistency-cancel", "/api/v1/admin/consistency/checks/check-1/cancel", "Admin", null)]
-    [InlineData("projection-pause", "/api/v1/admin/projections/tenant-1/projection-1/pause", "Operator", null)]
-    [InlineData("projection-resume", "/api/v1/admin/projections/tenant-1/projection-1/resume", "Operator", null)]
-    [InlineData("projection-reset", "/api/v1/admin/projections/tenant-1/projection-1/reset", "Operator", "{\"fromPosition\":null}")]
-    [InlineData("projection-replay", "/api/v1/admin/projections/tenant-1/projection-1/replay", "Operator", "{\"fromPosition\":10,\"toPosition\":20}")]
+    [InlineData("backup-trigger", "/api/v1/admin/backups/tenant-1?includeSnapshots=true", "Admin", null, "/api/v1/admin/backups/tenant-1")]
+    [InlineData("consistency-trigger", "/api/v1/admin/consistency/checks", "Operator", "{\"tenantId\":\"tenant-1\",\"domain\":null,\"checkTypes\":[0]}", null)]
+    [InlineData("consistency-cancel", "/api/v1/admin/consistency/checks/check-1/cancel", "Admin", null, null)]
+    [InlineData("projection-pause", "/api/v1/admin/projections/tenant-1/projection-1/pause", "Operator", null, null)]
+    [InlineData("projection-resume", "/api/v1/admin/projections/tenant-1/projection-1/resume", "Operator", null, null)]
+    [InlineData("projection-reset", "/api/v1/admin/projections/tenant-1/projection-1/reset", "Operator", "{\"fromPosition\":null}", null)]
+    [InlineData("projection-replay", "/api/v1/admin/projections/tenant-1/projection-1/replay", "Operator", "{\"fromPosition\":10,\"toPosition\":20}", null)]
     public async Task EveryCallableWriteTool_RequiresIntentAndAttemptsExactlyItsRouteOnce(
         string toolName,
         string expectedPath,
         string expectedPermission,
-        string? expectedRequestBody)
+        string? expectedRequestBody,
+        string? expectedPreviewPath)
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         int requestCount = 0;
@@ -52,8 +54,8 @@ public class WriteToolIntentGateTests
         string falsePreview = await InvokeAsync(toolName, client, false, cancellationToken);
 
         requestCount.ShouldBe(0);
-        AssertPreview(omittedPreview, toolName, expectedPermission, expectedPath);
-        AssertPreview(falsePreview, toolName, expectedPermission, expectedPath);
+        AssertPreview(omittedPreview, toolName, expectedPermission, expectedPreviewPath ?? expectedPath);
+        AssertPreview(falsePreview, toolName, expectedPermission, expectedPreviewPath ?? expectedPath);
 
         _ = await InvokeAsync(toolName, client, true, cancellationToken);
 
@@ -116,6 +118,24 @@ public class WriteToolIntentGateTests
         actualPostHelpers.ShouldBe(expectedPostHelpers);
     }
 
+    [Fact]
+    public void PublishedToolInventory_MatchesCallableAssemblyExactly()
+    {
+        string inventory = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "docs", "brownfield", "component-inventory.md"));
+        string readSection = GetInventorySection(inventory, "- **Read-only:**", "- **Write (exact callable set):**");
+        string writeSection = GetInventorySection(inventory, "- **Write (exact callable set):**", "- **Session context:**");
+        string sessionSection = GetInventorySection(inventory, "- **Session context:**", "## Domain-service host surface");
+        int deferredDetailsStart = writeSection.IndexOf(" (deferred;", StringComparison.Ordinal);
+        deferredDetailsStart.ShouldBeGreaterThan(0);
+        writeSection = writeSection[..deferredDetailsStart];
+
+        MethodInfo[] tools = GetMcpTools();
+        AssertDocumentedTools(readSection, tools.Where(method => !HasConfirmDefaultFalse(method)
+            && method.DeclaringType != typeof(SessionTools)));
+        AssertDocumentedTools(writeSection, tools.Where(HasConfirmDefaultFalse));
+        AssertDocumentedTools(sessionSection, tools.Where(method => method.DeclaringType == typeof(SessionTools)));
+    }
+
     [Theory]
     [InlineData("backup-trigger")]
     [InlineData("consistency-trigger")]
@@ -143,6 +163,144 @@ public class WriteToolIntentGateTests
         root.GetProperty("error").GetBoolean().ShouldBeTrue();
         root.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
         root.GetProperty("message").GetString()!.Length.ShouldBeLessThanOrEqualTo(240);
+    }
+
+    [Fact]
+    public async Task CallerBoundary_InvalidUnsafeOverlongScopeEnumPathAndPositionInputs_PerformZeroRequests()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        int requestCount = 0;
+        using var handler = new MockHttpMessageHandler((_, _) => {
+                _ = Interlocked.Increment(ref requestCount);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            });
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
+        var client = new AdminApiClient(httpClient);
+        string unsafeValue = "Bearer " + "eyJhbGciOiJIUzI1NiJ9.payload.signature";
+        string overlong = new('x', 241);
+        string unpairedHighSurrogate = new('\uD800', 1);
+        string unpairedLowSurrogate = new('\uDC00', 1);
+        string controlCharacter = "projection\u0007hidden";
+        string formatCharacter = "projection\u202Ehidden";
+
+        Task<string>[] attempts =
+        [
+            BackupWriteTools.TriggerBackup(client, "Tenant-1", confirm: true, cancellationToken: cancellationToken),
+            BackupWriteTools.TriggerBackup(client, "tenant-1", description: unsafeValue, confirm: true, cancellationToken: cancellationToken),
+            BackupWriteTools.TriggerBackup(client, "tenant-1", description: overlong, confirm: true, cancellationToken: cancellationToken),
+            BackupWriteTools.TriggerBackup(client, "tenant-1", description: formatCharacter, confirm: true, cancellationToken: cancellationToken),
+            ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "Tenant-1", confirm: true, cancellationToken: cancellationToken),
+            ConsistencyWriteTools.TriggerCheck(client, "UnknownCheck", "tenant-1", confirm: true, cancellationToken: cancellationToken),
+            ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", "tenant-1", domain: unsafeValue, confirm: true, cancellationToken: cancellationToken),
+            ConsistencyWriteTools.CancelCheck(client, "../check-1", confirm: true, cancellationToken: cancellationToken),
+            ConsistencyWriteTools.CancelCheck(client, unpairedHighSurrogate, confirm: false, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, "Tenant-1", "projection-1", confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, "tenant-1", unpairedLowSurrogate, confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, "tenant-1", controlCharacter, confirm: false, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, "tenant-1", formatCharacter, confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.ResumeProjection(client, "tenant-1", "../projection-1", confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.ResetProjection(client, "tenant-1", "projection-1", fromPosition: -1, confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.ReplayProjection(client, "tenant-1", "projection-1", -1, 20, confirm: true, cancellationToken: cancellationToken),
+            ProjectionWriteTools.PauseProjection(client, new string('t', 64), new string('p', 180), confirm: true, cancellationToken: cancellationToken),
+        ];
+
+        string[] results = await Task.WhenAll(attempts);
+
+        requestCount.ShouldBe(0);
+        foreach (string result in results)
+        {
+            using JsonDocument document = JsonDocument.Parse(result);
+            document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+            document.RootElement.GetProperty("message").GetString()!.Length.ShouldBeLessThanOrEqualTo(240);
+        }
+    }
+
+    [Fact]
+    public async Task BoundedBackupDescriptionDoesNotOverflowComposedPreviewFields()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        int requestCount = 0;
+        using var handler = new MockHttpMessageHandler((_, _) => {
+                _ = Interlocked.Increment(ref requestCount);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            });
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
+        var client = new AdminApiClient(httpClient);
+        string tenantId = new('t', 64);
+        string optionalText = new('x', 180);
+
+        string backupPreview = await BackupWriteTools.TriggerBackup(
+            client,
+            tenantId,
+            description: optionalText,
+            confirm: false,
+            cancellationToken: cancellationToken);
+        string consistencyResult = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "SequenceContinuity",
+            tenantId,
+            domain: optionalText,
+            confirm: true,
+            cancellationToken: cancellationToken);
+
+        requestCount.ShouldBe(0);
+        using (JsonDocument previewDocument = JsonDocument.Parse(backupPreview))
+        {
+            previewDocument.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
+            previewDocument.RootElement.GetProperty("target").GetString()!.Length.ShouldBeLessThanOrEqualTo(240);
+            previewDocument.RootElement.GetProperty("endpoint").GetString()!.Length.ShouldBeLessThanOrEqualTo(240);
+            previewDocument.RootElement.GetProperty("parameters").GetProperty("description").GetString().ShouldBe(optionalText);
+        }
+
+        using JsonDocument consistencyDocument = JsonDocument.Parse(consistencyResult);
+        consistencyDocument.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+    }
+
+    [Fact]
+    public async Task OptionalWhitespaceInputs_AreOmittedConsistentlyFromPreviewAndExecution()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        Uri? requestedUri = null;
+        string? requestedBody = null;
+        using var handler = new MockHttpMessageHandler(async (request, ct) => {
+                requestedUri = request.RequestUri;
+                requestedBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+                return new HttpResponseMessage(HttpStatusCode.OK) {
+                    Content = new StringContent(OperationResultJson, System.Text.Encoding.UTF8, "application/json"),
+                };
+            });
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://localhost:5443") };
+        var client = new AdminApiClient(httpClient);
+
+        string backupPreview = await BackupWriteTools.TriggerBackup(client, "tenant-1", description: "   ", cancellationToken: cancellationToken);
+        _ = await BackupWriteTools.TriggerBackup(client, "tenant-1", description: "   ", confirm: true, cancellationToken: cancellationToken);
+        using (JsonDocument document = JsonDocument.Parse(backupPreview))
+        {
+            document.RootElement.GetProperty("parameters").GetProperty("description").ValueKind.ShouldBe(JsonValueKind.Null);
+        }
+        _ = requestedUri.ShouldNotBeNull();
+        requestedUri.Query.ShouldNotContain("description", Case.Insensitive);
+
+        string consistencyPreview = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "SequenceContinuity",
+            "tenant-1",
+            domain: "   ",
+            cancellationToken: cancellationToken);
+        _ = await ConsistencyWriteTools.TriggerCheck(
+            client,
+            "SequenceContinuity",
+            "tenant-1",
+            domain: "   ",
+            confirm: true,
+            cancellationToken: cancellationToken);
+        using (JsonDocument document = JsonDocument.Parse(consistencyPreview))
+        {
+            document.RootElement.GetProperty("parameters").GetProperty("domain").ValueKind.ShouldBe(JsonValueKind.Null);
+        }
+        _ = requestedBody.ShouldNotBeNull();
+        using JsonDocument bodyDocument = JsonDocument.Parse(requestedBody);
+        bodyDocument.RootElement.GetProperty("domain").ValueKind.ShouldBe(JsonValueKind.Null);
     }
 
     private static void AssertRequestBody(string? actual, string? expected)
@@ -186,6 +344,32 @@ public class WriteToolIntentGateTests
             && parameter.HasDefaultValue
             && parameter.DefaultValue is false);
 
+    private static void AssertDocumentedTools(string section, IEnumerable<MethodInfo> methods)
+    {
+        string[] documented = Regex.Matches(section, "`([a-z]+(?:-[a-z]+)*)`", RegexOptions.CultureInvariant)
+            .Select(match => match.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string[] callable = methods
+            .Select(method => method.GetCustomAttribute<McpServerToolAttribute>()?.Name)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        documented.ShouldBe(callable);
+    }
+
+    private static string GetInventorySection(string inventory, string startMarker, string endMarker)
+    {
+        int start = inventory.IndexOf(startMarker, StringComparison.Ordinal);
+        start.ShouldBeGreaterThanOrEqualTo(0);
+        int end = inventory.IndexOf(endMarker, start, StringComparison.Ordinal);
+        end.ShouldBeGreaterThan(start);
+        return inventory[start..end];
+    }
+
     private static Task<string> InvokeAsync(
         string toolName,
         AdminApiClient client,
@@ -205,10 +389,12 @@ public class WriteToolIntentGateTests
             ("consistency-trigger", null) => ConsistencyWriteTools.TriggerCheck(
                 client,
                 "SequenceContinuity",
+                "tenant-1",
                 cancellationToken: cancellationToken),
             ("consistency-trigger", _) => ConsistencyWriteTools.TriggerCheck(
                 client,
                 "SequenceContinuity",
+                "tenant-1",
                 confirm: confirm!.Value,
                 cancellationToken: cancellationToken),
             ("consistency-cancel", null) => ConsistencyWriteTools.CancelCheck(
@@ -285,6 +471,7 @@ public class WriteToolIntentGateTests
             "consistency-trigger" => ConsistencyWriteTools.TriggerCheck(
                 client,
                 string.Empty,
+                "tenant-1",
                 confirm: true,
                 cancellationToken: cancellationToken),
             "consistency-cancel" => ConsistencyWriteTools.CancelCheck(
@@ -320,4 +507,20 @@ public class WriteToolIntentGateTests
                 cancellationToken: cancellationToken),
             _ => throw new InvalidOperationException($"Unknown write tool '{toolName}'."),
         };
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(Path.GetDirectoryName(typeof(WriteToolIntentGateTests).Assembly.Location)!);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.EventStore.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Unable to locate the Hexalith.EventStore repository root.");
+    }
 }

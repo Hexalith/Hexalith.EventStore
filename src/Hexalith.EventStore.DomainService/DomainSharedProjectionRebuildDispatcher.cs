@@ -51,9 +51,10 @@ public static class DomainSharedProjectionRebuildDispatcher {
         try {
             return request.Action switch {
                 DomainSharedProjectionRebuildAction.Begin => await BeginAsync(
+                    serviceProvider,
                     sessionStore,
                     handler,
-                    request.Identity,
+                    request,
                     options,
                     cancellationToken).ConfigureAwait(false),
                 DomainSharedProjectionRebuildAction.Accumulate => await AccumulateAsync(
@@ -119,6 +120,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
         DomainSharedProjectionRebuildIdentity identity,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken) {
+        if (handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true } epochHandler) {
+            return await FencedAbortAsync(serviceProvider, sessionStore, epochHandler, identity, options, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
         for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++) {
             ReadModelEntry<DomainSharedProjectionRebuildSessionState> entry = await sessionStore
@@ -254,11 +260,28 @@ public static class DomainSharedProjectionRebuildDispatcher {
     }
 
     private static async Task<DomainSharedProjectionRebuildResponse> BeginAsync(
+        IServiceProvider serviceProvider,
         IReadModelStore sessionStore,
         IAsyncDomainSharedProjectionRebuildHandler handler,
-        DomainSharedProjectionRebuildIdentity identity,
+        DomainSharedProjectionRebuildRequest request,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken) {
+        DomainSharedProjectionRebuildIdentity identity = request.Identity;
+        if (handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true } epochHandler) {
+            SharedProjectionEpochCoordinator? coordinator = serviceProvider.GetService<SharedProjectionEpochCoordinator>();
+            if (coordinator is null || request.SourceHighWatermarks is null
+                || string.IsNullOrWhiteSpace(request.CaptureInventoryFingerprint)) {
+                return Unsupported();
+            }
+
+            _ = await coordinator.BeginAsync(
+                epochHandler.CreateScope(identity.TenantId),
+                identity.OperationId,
+                request.CaptureInventoryFingerprint,
+                request.SourceHighWatermarks,
+                cancellationToken).ConfigureAwait(false);
+        }
+
         string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
         byte[]? emptyCandidate = null;
         for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++) {
@@ -266,6 +289,14 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 .GetAsync<DomainSharedProjectionRebuildSessionState>(handler.RebuildStoreName, sessionKey, cancellationToken)
                 .ConfigureAwait(false);
             if (entry.Value is not null) {
+                if (handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true }
+                    && !string.Equals(
+                        entry.Value.CaptureInventoryFingerprint,
+                        request.CaptureInventoryFingerprint,
+                        StringComparison.Ordinal)) {
+                    return FromState(entry.Value, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+                }
+
                 return TryValidateState(entry.Value, identity, options, out DomainSharedProjectionRebuildResponse? failure)
                     ? FromState(entry.Value, ProjectionDispatchStatus.AlreadyCompleted, null)
                     : failure!;
@@ -294,7 +325,8 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 null,
                 null,
                 null,
-                null);
+                null,
+                request.CaptureInventoryFingerprint);
             if (await sessionStore
                 .TrySaveAsync(handler.RebuildStoreName, sessionKey, state, string.Empty, cancellationToken)
                 .ConfigureAwait(false)) {
@@ -350,6 +382,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
         DomainSharedProjectionRebuildIdentity identity,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken) {
+        if (handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true } epochHandler) {
+            return await FencedCommitAsync(serviceProvider, sessionStore, epochHandler, identity, options, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         IReadModelBatchStagingStore? stagingStore = serviceProvider.GetService<IReadModelBatchStagingStore>();
         if (stagingStore is null) {
             return Unsupported();
@@ -512,6 +549,14 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 return FromState(state, ProjectionDispatchStatus.Retryable, ProjectionDispatchReasonCodes.DeliveryGap);
             }
 
+            if (handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true }
+                && !string.Equals(
+                    state.CaptureInventoryFingerprint,
+                    request.ExpectedInventoryFingerprint,
+                    StringComparison.Ordinal)) {
+                return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            }
+
             DomainProjectionRebuildPlan plan = await BuildPlanAsync(handler, state, cancellationToken).ConfigureAwait(false);
             if (plan.Operations.Any(operation => string.Equals(operation.Key, sessionKey, StringComparison.Ordinal))) {
                 throw new InvalidOperationException("The finalized shared rebuild manifest targets its private session key.");
@@ -620,6 +665,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
         DomainSharedProjectionRebuildIdentity identity,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken) {
+        if (handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true } epochHandler) {
+            return await FencedStageAsync(serviceProvider, sessionStore, epochHandler, identity, options, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         IReadModelBatchStagingStore? stagingStore = serviceProvider.GetService<IReadModelBatchStagingStore>();
         if (stagingStore is null) {
             return Unsupported();
@@ -804,6 +854,24 @@ public static class DomainSharedProjectionRebuildDispatcher {
             || request.IsErased;
         bool hasFinalizeFields = request.ExpectedAggregateCount is not null
             || request.ExpectedInventoryFingerprint is not null;
+        if (request.Action != DomainSharedProjectionRebuildAction.Begin
+            && (request.CaptureInventoryFingerprint is not null || request.SourceHighWatermarks is not null)) {
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
+        }
+
+        if (request.Action == DomainSharedProjectionRebuildAction.Begin
+            && (request.CaptureInventoryFingerprint is not null || request.SourceHighWatermarks is not null)) {
+            if (string.IsNullOrWhiteSpace(request.CaptureInventoryFingerprint)
+                || request.SourceHighWatermarks is null
+                || request.SourceHighWatermarks.Any(item => string.IsNullOrWhiteSpace(item.Key)
+                    || item.Value < 0
+                    || Encoding.UTF8.GetByteCount(item.Key) > ReadModelBatchScope.MaxComponentByteLength)) {
+                throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
+            }
+
+            ValidateComponent(request.CaptureInventoryFingerprint);
+        }
+
         switch (request.Action) {
             case DomainSharedProjectionRebuildAction.Accumulate:
                 if (request.AggregateOrdinal is null or < 0
@@ -844,6 +912,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
         DomainSharedProjectionRebuildIdentity identity,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken) {
+        if (handler is IAsyncDomainSharedProjectionEpochHandler { EpochEnabled: true } epochHandler) {
+            return await FencedVerifyAsync(serviceProvider, sessionStore, epochHandler, identity, options, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         IReadModelBatchStagingStore? stagingStore = serviceProvider.GetService<IReadModelBatchStagingStore>();
         if (stagingStore is null) {
             return Unsupported();
@@ -901,5 +974,244 @@ public static class DomainSharedProjectionRebuildDispatcher {
         }
 
         return RetryExhausted();
+    }
+
+    private static async Task<DomainSharedProjectionRebuildResponse> FencedStageAsync(
+        IServiceProvider serviceProvider,
+        IReadModelStore sessionStore,
+        IAsyncDomainSharedProjectionEpochHandler handler,
+        DomainSharedProjectionRebuildIdentity identity,
+        ProjectionDispatchOptions options,
+        CancellationToken cancellationToken) {
+        SharedProjectionEpochCoordinator? coordinator = serviceProvider.GetService<SharedProjectionEpochCoordinator>();
+        if (coordinator is null) {
+            return Unsupported();
+        }
+
+        SharedProjectionScope scope = FencedScope(handler, identity);
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++) {
+            ReadModelEntry<DomainSharedProjectionRebuildSessionState> entry = await sessionStore
+                .GetAsync<DomainSharedProjectionRebuildSessionState>(handler.RebuildStoreName, sessionKey, cancellationToken)
+                .ConfigureAwait(false);
+            DomainSharedProjectionRebuildSessionState? state = entry.Value;
+            if (!TryValidateState(state, identity, options, out DomainSharedProjectionRebuildResponse? failure)) {
+                return failure!;
+            }
+
+            if (state!.Phase == DomainSharedProjectionRebuildPhase.Committed) {
+                return FromState(state, ProjectionDispatchStatus.AlreadyCompleted, null);
+            }
+
+            if (state.Phase is not DomainSharedProjectionRebuildPhase.Finalized
+                and not DomainSharedProjectionRebuildPhase.Prepared) {
+                return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            }
+
+            ReadModelBatch batch = await BuildBatchAsync(handler, state, sessionKey, cancellationToken).ConfigureAwait(false);
+            string fingerprint = await coordinator.StageAsync(
+                scope,
+                identity.OperationId,
+                batch.Operations,
+                cancellationToken,
+                handler.ControlIndexName is { } indexName
+                    ? new SharedProjectionControlIndexIntent(indexName)
+                    : null).ConfigureAwait(false);
+            if (!FingerprintMatches(state, fingerprint)) {
+                return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            }
+
+            DomainSharedProjectionRebuildSessionState updated = state with {
+                Phase = DomainSharedProjectionRebuildPhase.Prepared,
+                BatchFingerprint = fingerprint,
+            };
+            if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
+                .ConfigureAwait(false)) {
+                return FromState(updated,
+                    state.Phase == DomainSharedProjectionRebuildPhase.Prepared
+                        ? ProjectionDispatchStatus.AlreadyCompleted
+                        : ProjectionDispatchStatus.Completed,
+                    null);
+            }
+        }
+
+        return RetryExhausted();
+    }
+
+    private static async Task<DomainSharedProjectionRebuildResponse> FencedCommitAsync(
+        IServiceProvider serviceProvider,
+        IReadModelStore sessionStore,
+        IAsyncDomainSharedProjectionEpochHandler handler,
+        DomainSharedProjectionRebuildIdentity identity,
+        ProjectionDispatchOptions options,
+        CancellationToken cancellationToken) {
+        SharedProjectionEpochCoordinator? coordinator = serviceProvider.GetService<SharedProjectionEpochCoordinator>();
+        if (coordinator is null) {
+            return Unsupported();
+        }
+
+        SharedProjectionScope scope = FencedScope(handler, identity);
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++) {
+            ReadModelEntry<DomainSharedProjectionRebuildSessionState> entry = await sessionStore
+                .GetAsync<DomainSharedProjectionRebuildSessionState>(handler.RebuildStoreName, sessionKey, cancellationToken)
+                .ConfigureAwait(false);
+            DomainSharedProjectionRebuildSessionState? state = entry.Value;
+            if (!TryValidateState(state, identity, options, out DomainSharedProjectionRebuildResponse? failure)) {
+                return failure!;
+            }
+
+            if (state!.Phase is not DomainSharedProjectionRebuildPhase.Prepared
+                and not DomainSharedProjectionRebuildPhase.Committed) {
+                return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            }
+
+            await coordinator.CommitAsync(scope, identity.OperationId, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _ = await coordinator.CatchUpAsync(
+                    scope,
+                    (delivery, generation, token) => handler.FoldCatchUpAsync(delivery, generation, coordinator, token),
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (SharedProjectionRetryableFoldException)
+            {
+                return FromState(state, ProjectionDispatchStatus.Retryable, ProjectionDispatchReasonCodes.PartialRetry);
+            }
+            SharedProjectionEpochStatus status = await coordinator.GetStatusAsync(scope, cancellationToken).ConfigureAwait(false);
+            if (status.ActiveGeneration != status.Epoch
+                || status.PendingDeliveryCount != 0
+                || !string.Equals(status.StageFingerprint, state.BatchFingerprint, StringComparison.Ordinal)) {
+                return FromState(state, ProjectionDispatchStatus.Retryable, ProjectionDispatchReasonCodes.PartialRetry);
+            }
+
+            DomainSharedProjectionRebuildSessionState updated = state with {
+                Phase = DomainSharedProjectionRebuildPhase.Committed,
+            };
+            if (state.Phase == DomainSharedProjectionRebuildPhase.Committed
+                || await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
+                    .ConfigureAwait(false)) {
+                DomainSharedProjectionRebuildResponse? incomplete = await CompleteCommittedRebuildAsync(
+                    handler,
+                    updated,
+                    cancellationToken).ConfigureAwait(false);
+                return incomplete ?? FromState(updated,
+                    state.Phase == DomainSharedProjectionRebuildPhase.Committed
+                        ? ProjectionDispatchStatus.AlreadyCompleted
+                        : ProjectionDispatchStatus.Completed,
+                    null);
+            }
+        }
+
+        return RetryExhausted();
+    }
+
+    private static async Task<DomainSharedProjectionRebuildResponse> FencedAbortAsync(
+        IServiceProvider serviceProvider,
+        IReadModelStore sessionStore,
+        IAsyncDomainSharedProjectionEpochHandler handler,
+        DomainSharedProjectionRebuildIdentity identity,
+        ProjectionDispatchOptions options,
+        CancellationToken cancellationToken) {
+        SharedProjectionEpochCoordinator? coordinator = serviceProvider.GetService<SharedProjectionEpochCoordinator>();
+        if (coordinator is null) {
+            return Unsupported();
+        }
+
+        SharedProjectionScope scope = FencedScope(handler, identity);
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++) {
+            ReadModelEntry<DomainSharedProjectionRebuildSessionState> entry = await sessionStore
+                .GetAsync<DomainSharedProjectionRebuildSessionState>(handler.RebuildStoreName, sessionKey, cancellationToken)
+                .ConfigureAwait(false);
+            DomainSharedProjectionRebuildSessionState? state = entry.Value;
+            if (!TryValidateState(state, identity, options, out DomainSharedProjectionRebuildResponse? failure)) {
+                return failure!;
+            }
+
+            if (state!.Phase == DomainSharedProjectionRebuildPhase.Aborted) {
+                return FromState(state, ProjectionDispatchStatus.AlreadyCompleted, null);
+            }
+
+            if (state.Phase == DomainSharedProjectionRebuildPhase.Committed) {
+                return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            }
+
+            try
+            {
+                await coordinator.AbortAsync(
+                    scope,
+                    identity.OperationId,
+                    (delivery, generation, token) => handler.FoldCatchUpAsync(delivery, generation, coordinator, token),
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (SharedProjectionRetryableFoldException)
+            {
+                return FromState(state, ProjectionDispatchStatus.Retryable, ProjectionDispatchReasonCodes.PartialRetry);
+            }
+            DomainSharedProjectionRebuildSessionState updated = state with {
+                Phase = DomainSharedProjectionRebuildPhase.Aborted,
+            };
+            if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
+                .ConfigureAwait(false)) {
+                return FromState(updated, ProjectionDispatchStatus.Completed, null);
+            }
+        }
+
+        return RetryExhausted();
+    }
+
+    private static async Task<DomainSharedProjectionRebuildResponse> FencedVerifyAsync(
+        IServiceProvider serviceProvider,
+        IReadModelStore sessionStore,
+        IAsyncDomainSharedProjectionEpochHandler handler,
+        DomainSharedProjectionRebuildIdentity identity,
+        ProjectionDispatchOptions options,
+        CancellationToken cancellationToken) {
+        SharedProjectionEpochCoordinator? coordinator = serviceProvider.GetService<SharedProjectionEpochCoordinator>();
+        if (coordinator is null) {
+            return Unsupported();
+        }
+
+        SharedProjectionScope scope = FencedScope(handler, identity);
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        ReadModelEntry<DomainSharedProjectionRebuildSessionState> entry = await sessionStore
+            .GetAsync<DomainSharedProjectionRebuildSessionState>(handler.RebuildStoreName, sessionKey, cancellationToken)
+            .ConfigureAwait(false);
+        DomainSharedProjectionRebuildSessionState? state = entry.Value;
+        if (!TryValidateState(state, identity, options, out DomainSharedProjectionRebuildResponse? failure)) {
+            return failure!;
+        }
+
+        SharedProjectionEpochStatus status = await coordinator.GetStatusAsync(scope, cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(status.OperationId, identity.OperationId, StringComparison.Ordinal)) {
+            return FromState(state!, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        }
+
+        if (status.ActiveGeneration == status.Epoch && status.PendingDeliveryCount == 0) {
+            return await FencedCommitAsync(serviceProvider, sessionStore, handler, identity, options, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (status.IsAborting) {
+            return FromState(state!, ProjectionDispatchStatus.Retryable, ProjectionDispatchReasonCodes.PartialRetry);
+        }
+
+        return FromState(state!, ProjectionDispatchStatus.Retryable, ProjectionDispatchReasonCodes.DeliveryInProgress);
+    }
+
+    private static SharedProjectionScope FencedScope(
+        IAsyncDomainSharedProjectionEpochHandler handler,
+        DomainSharedProjectionRebuildIdentity identity) {
+        SharedProjectionScope scope = handler.CreateScope(identity.TenantId);
+        scope.Validate();
+        if (!string.Equals(scope.StoreName, handler.RebuildStoreName, StringComparison.Ordinal)
+            || !string.Equals(scope.TenantId, identity.TenantId, StringComparison.Ordinal)
+            || !string.Equals(scope.Domain, identity.Domain, StringComparison.Ordinal)
+            || !string.Equals(scope.Family, identity.ProjectionType, StringComparison.Ordinal)) {
+            throw new InvalidOperationException("The shared projection epoch scope differs from its admitted route.");
+        }
+
+        return scope;
     }
 }

@@ -375,12 +375,11 @@ public sealed class ContainerPublishingGovernanceTests
         int manifestPackageCount = manifest.RootElement.GetProperty("packages").GetArrayLength();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         string wrapper = File.ReadAllText(Path.Combine(root, "scripts", "validate-publication-preflight.sh"));
-        string releaseInputs = ExtractYamlBlock(workflow, "    with:");
 
         manifestPackageCount.ShouldBe(ExpectedPackageCount);
         MatchCollection callerPackageCounts = Regex.Matches(
-            releaseInputs,
-            @"(?m)^\s*expected-package-count\s*:\s*(?<count>[0-9]+)\s*(?:#.*)?$");
+            workflow,
+            @"(?m)^\s*HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT:\s*'(?<count>[0-9]+)'\s*$");
         callerPackageCounts.Count.ShouldBe(1);
         int.Parse(callerPackageCounts[0].Groups["count"].Value, CultureInfo.InvariantCulture)
             .ShouldBe(manifestPackageCount);
@@ -555,24 +554,23 @@ public sealed class ContainerPublishingGovernanceTests
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
-        Match releaseWorkflow = Regex.Match(
-            workflow,
-            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
-        releaseWorkflow.Success.ShouldBeTrue();
-        string buildsSha = releaseWorkflow.Groups["sha"].Value;
-        buildsSha.ShouldBe(ApprovedBuildsReleaseSha);
-        workflow.ShouldContain($"builds-execution-sha: {buildsSha}");
+        string releaseJob = ExtractYamlBlock(workflow, "  release:");
+        releaseJob.ShouldContain("runs-on: ubuntu-latest");
+        releaseJob.ShouldContain("environment: production");
+        releaseJob.ShouldContain($"ref: {ApprovedBuildsReleaseSha}");
+        releaseJob.ShouldContain($"builds-execution-sha: {ApprovedBuildsReleaseSha}");
+        releaseJob.ShouldContain("uses: ./.hexalith/builds-execution/Github/publish-containers");
+        releaseJob.ShouldContain("uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841");
+        releaseJob.ShouldContain("id-token: write");
+        releaseJob.ShouldContain("NUGET_TRUSTED_PUBLISHING_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}");
+        releaseJob.ShouldNotContain("secrets.NUGET_API_KEY");
         workflow.ShouldNotContain("domain-release.yml@main");
         workflow.ShouldNotContain("vars.HEXALITH_BUILDS_RELEASE_SHA");
-        workflow.ShouldContain("environment-name: production");
         workflow.ShouldContain("actions: read");
-        workflow.ShouldContain("governed-release: false");
-        workflow.ShouldContain("source-branch: main");
-        workflow.ShouldContain("source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}");
-        workflow.ShouldContain("package-manifest: tools/release-packages.json");
-        // The reservation inputs were a Story 3.14 corrective-release gate; the caller now
-        // declares the opt-out explicitly so a dropped input can never be read as one.
-        workflow.ShouldContain("require-publication-authority: false");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH: main");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'");
         // Scope these to the job block for the same reason the reservation inputs are scoped below:
         // a release.yml comment naming any of them must not redden the suite.
         string commentFreeWorkflow = string.Join(
@@ -599,12 +597,7 @@ public sealed class ContainerPublishingGovernanceTests
         string verifySourceBlock = ExtractYamlBlock(workflow, "  verify-source:");
         verifySourceBlock.ShouldContain("name: Verify exact live-main source proof");
         verifySourceBlock.ShouldNotContain("green main", Case.Insensitive);
-        verifySourceBlock
-            .Split('\n')
-            .Count(line => line.Trim().Equals(
-                "source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}",
-                StringComparison.Ordinal))
-            .ShouldBe(1);
+        workflow.ShouldContain("source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}");
         string producerStepBlock = ExtractNamedWorkflowStepBlock(
             workflow,
             "Require current main with selected exact-source proof");
@@ -613,19 +606,14 @@ public sealed class ContainerPublishingGovernanceTests
             .Count(line => line.Trim().Equals("id: select-source-proof", StringComparison.Ordinal))
             .ShouldBe(1);
         commentFreeWorkflow.ShouldNotContain("release-owner-allowlist:");
-        commentFreeWorkflow.ShouldNotContain("references/Hexalith.Builds");
         commentFreeWorkflow.ShouldNotContain("secrets: inherit");
 
-        Match releaseJob = Regex.Match(workflow, @"(?ms)^  release:\r?\n(?<block>.*)\z");
-        releaseJob.Success.ShouldBeTrue();
-        string releaseJobBlock = releaseJob.Groups["block"].Value;
-        releaseJobBlock.ShouldContain("attestations: write");
+        string releaseJobBlock = releaseJob;
         releaseJobBlock.ShouldContain("id-token: write");
-        releaseJobBlock.ShouldContain("governed-release: false");
         releaseJobBlock
             .Split('\n')
             .Count(line => line.Trim().Equals(
-                "source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}",
+                "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}",
                 StringComparison.Ordinal))
             .ShouldBe(1);
 
@@ -640,6 +628,20 @@ public sealed class ContainerPublishingGovernanceTests
         // ancestor-or-equal instead -- local, network-free, and true after a rotation.
         string builds = Path.Combine(root, "references", "Hexalith.Builds");
         string gitlinkSha = gitlinkEntry.Groups["sha"].Value;
+        string? alternateBuilds = Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE");
+        if (!string.IsNullOrWhiteSpace(alternateBuilds))
+        {
+            RunGit(alternateBuilds, "rev-parse", "HEAD").ShouldBe(
+                gitlinkSha,
+                "The explicit Builds checkout must match the EventStore gitlink.");
+            builds = alternateBuilds;
+        }
+        else
+        {
+            File.Exists(Path.Combine(builds, "Props", "Directory.Packages.props")).ShouldBeTrue(
+                "The Builds gitlink must be initialized or HEXALITH_BUILDS_SOURCE must identify its checkout.");
+        }
+
         RunGitExitCode(builds, "cat-file", "-e", $"{ApprovedBuildsReleaseSha}^{{commit}}").ShouldBe(
             0,
             $"Pinned Builds release SHA {ApprovedBuildsReleaseSha} is unavailable in references/Hexalith.Builds.");
@@ -648,33 +650,24 @@ public sealed class ContainerPublishingGovernanceTests
             $"The release pin {ApprovedBuildsReleaseSha} must be an ancestor of, or equal to, the development "
             + $"gitlink {gitlinkSha}; the gitlink must never point at history that excludes the reviewed pin.");
 
-        workflow.Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Split('\n')
-            .Count(line => line.Equals("    with:", StringComparison.Ordinal))
-            .ShouldBe(1);
-        string inputsBlock = ExtractYamlBlock(workflow, "    with:");
-        inputsBlock.ShouldNotContain("release-version:");
-        inputsBlock.ShouldNotContain("reserved-version:");
-        inputsBlock.ShouldNotContain("release-authority-issue-url:");
-        inputsBlock.ShouldNotContain("release-authority-owner:");
+        releaseJob.ShouldNotContain("release-version:");
+        releaseJob.ShouldNotContain("reserved-version:");
+        releaseJob.ShouldNotContain("release-authority-issue-url:");
+        releaseJob.ShouldNotContain("release-authority-owner:");
         MatchCollection timeoutInputs = Regex.Matches(
-            inputsBlock,
-            @"(?m)^\s{6}timeout-minutes:\s*(?<minutes>\d+)\s*$");
+            releaseJob,
+            @"(?m)^\s{4}timeout-minutes:\s*(?<minutes>\d+)\s*$");
         timeoutInputs.Count.ShouldBe(1);
         timeoutInputs[0].Groups["minutes"].Value.ShouldBe("60");
 
-        string mappingBlock = ExtractYamlBlock(workflow, "      container-projects: |");
+        string mappingBlock = ExtractYamlBlock(workflow, "          container-projects: |");
         mappingBlock
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ShouldBe(["src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore"]);
 
-        string secretsBlock = ExtractYamlBlock(workflow, "    secrets:");
-        string[] secretNames = Regex.Matches(secretsBlock, @"(?m)^\s{6}([A-Z0-9_]+):")
-            .Select(match => match.Groups[1].Value)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        secretNames.ShouldBe(
-            ["HEXALITH_ZOT_API_KEY", "HEXALITH_ZOT_USERNAME", "NUGET_API_KEY"]);
+        releaseJob.ShouldContain("HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}");
+        releaseJob.ShouldContain("HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}");
+        releaseJob.ShouldNotContain("secrets: inherit");
     }
 
     /// <summary>
@@ -736,7 +729,7 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldContain(".head_sha == $sha");
         workflow.ShouldContain(".event == \"push\"");
         workflow.ShouldContain(".conclusion == \"success\"");
-        workflow.ShouldContain("release:\n    needs: verify-source");
+        ExtractYamlBlock(workflow, "  release:").ShouldContain("needs: verify-source");
         workflow.IndexOf("verify-source:", StringComparison.Ordinal).ShouldBeLessThan(
             workflow.IndexOf("  release:", StringComparison.Ordinal));
     }
@@ -992,7 +985,7 @@ public sealed class ContainerPublishingGovernanceTests
         ci.ShouldContain("protected `production` environment");
         secrets.ShouldContain("HEXALITH_ZOT_USERNAME");
         secrets.ShouldContain("HEXALITH_ZOT_API_KEY");
-        secrets.ShouldContain("Total user-managed secrets: 8");
+        secrets.ShouldContain("Total user-managed secrets: 7");
 
         // The checklist states the publication pin in prose, so nothing kept it honest
         // and it drifted two rotations behind. Bind it to the workflow it describes.
@@ -1156,7 +1149,9 @@ public sealed class ContainerPublishingGovernanceTests
 
     private static void AssertAuthorityOwnerPin(string workflow)
     {
-        string withBlock = ExtractYamlBlock(workflow, "    with:");
+        string withBlock = Regex.IsMatch(workflow, @"(?m)^    with:\s*$")
+            ? ExtractYamlBlock(workflow, "    with:")
+            : ExtractYamlBlock(workflow, "  release:");
         if (Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*true\s*$"))
         {
             Regex.IsMatch(withBlock, @"(?m)^\s*reserved-version:\s*\S[^\r\n]*$")
@@ -1168,7 +1163,9 @@ public sealed class ContainerPublishingGovernanceTests
         }
         else
         {
-            Regex.IsMatch(withBlock, @"(?m)^\s*require-publication-authority:\s*false\s*$")
+            Regex.IsMatch(
+                withBlock,
+                @"(?m)^\s*(?:require-publication-authority:\s*false|HEXALITH_RELEASE_REQUIRE_AUTHORITY:\s*'false')\s*$")
                 .ShouldBeTrue($"the authority posture must be declared, never inferred:\n{withBlock}");
             Regex.IsMatch(withBlock, @"(?m)^\s*release-authority-owner:")
                 .ShouldBeFalse($"an owner pin with the gate off is a half-declared posture:\n{withBlock}");

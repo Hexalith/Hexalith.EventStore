@@ -84,6 +84,21 @@ public partial class SubmitCommandHandler(
             {
                 throw;
             }
+            catch (ArgumentException exception)
+            {
+                logger.LogError(
+                    "Trusted idempotency admission rejected the command. ExceptionType={ExceptionType}, CorrelationId={CorrelationId}, Stage=IdempotencyAdmissionRejected",
+                    exception.GetType().Name,
+                    request.CorrelationId);
+                throw AdmissionFailure(
+                    request.CorrelationId,
+                    "idempotency_admission_rejected",
+                    "validation_failed",
+                    retryable: false,
+                    "correct_request",
+                    400,
+                    "Idempotency admission rejected the command. Correct the request and submit a new key.");
+            }
             catch (Exception exception)
             {
                 logger.LogError(
@@ -307,6 +322,29 @@ public partial class SubmitCommandHandler(
             ThrowDeterministicFailure(request, executionMessageId, processingResult);
         }
 
+        bool coordinatedConflict = !processingResult.Accepted
+            && string.Equals(processingResult.ErrorMessage, "coordinated_source_conflict", StringComparison.Ordinal);
+        if (coordinatedConflict)
+        {
+            try
+            {
+                await statusStore.WriteStatusAsync(request.Tenant, executionMessageId,
+                    new CommandStatusRecord(CommandStatus.Rejected, DateTimeOffset.UtcNow,
+                        request.AggregateId, EventCount: 0, RejectionEventType: null,
+                        FailureReason: "ConcurrencyConflict", TimeoutDuration: null,
+                        MessageId: executionMessageId, CorrelationId: executionCorrelationId,
+                        Retryable: false), cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                Log.StatusWriteFailed(logger, exception, request.CorrelationId, request.Tenant);
+            }
+        }
+
         CommandStatusRecord? observedStatus = null;
         bool statusReadSucceeded = false;
         CommandStatusRecord? finalStatus = null;
@@ -335,7 +373,7 @@ public partial class SubmitCommandHandler(
             Log.StatusReadForTrackingFailed(logger, ex, request.CorrelationId, request.Tenant);
         }
 
-        if (statusReadSucceeded
+        if (!coordinatedConflict && statusReadSucceeded
             && observedStatus is null
             && processingResult.ResultPayload is null) {
             try {

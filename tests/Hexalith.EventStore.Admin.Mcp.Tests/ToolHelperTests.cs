@@ -11,6 +11,7 @@ public class ToolHelperTests {
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized, "unauthorized")]
     [InlineData(HttpStatusCode.Forbidden, "unauthorized")]
+    [InlineData(HttpStatusCode.BadRequest, "invalid-input")]
     [InlineData(HttpStatusCode.NotFound, "not-found")]
     [InlineData(HttpStatusCode.Conflict, "conflict")]
     [InlineData(HttpStatusCode.UnprocessableEntity, "invalid-operation")]
@@ -200,6 +201,130 @@ public class ToolHelperTests {
     }
 
     [Fact]
+    public void ValidatePreviewMatchesExecution_RejectsMalformedUtf16AndUnsafeDisplayCharacters() {
+        string[] unsafeValues = [
+            new string('\uD800', 1),
+            new string('\uDC00', 1),
+            "projection\u0007hidden",
+            "projection\u2028hidden",
+            "projection\u2029hidden",
+            "projection\u202Ehidden",
+            $"projection-{char.ConvertFromUtf32(0xE0001)}hidden",
+        ];
+
+        foreach (string value in unsafeValues) {
+            string? result = ToolHelper.ValidatePreviewMatchesExecution((value, "projectionName"));
+
+            _ = result.ShouldNotBeNull();
+            using var document = JsonDocument.Parse(result);
+            document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        }
+    }
+
+    [Theory]
+    [InlineData("tenant-1", true)]
+    [InlineData("a", true)]
+    [InlineData("Tenant-1", false)]
+    [InlineData("tenant_1", false)]
+    [InlineData("-tenant", false)]
+    [InlineData("tenant-", false)]
+    public void ValidateTenantId_EnforcesCanonicalGrammar(string tenantId, bool valid) {
+        string? result = ToolHelper.ValidateTenantId(tenantId);
+
+        (result is null).ShouldBe(valid);
+    }
+
+    [Theory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public void ValidateTenantId_EnforcesLengthBoundary(int length, bool valid) {
+        string? result = ToolHelper.ValidateTenantId(new string('a', length));
+
+        (result is null).ShouldBe(valid);
+    }
+
+    [Theory]
+    [InlineData("projection-1", true)]
+    [InlineData(".", false)]
+    [InlineData("..", false)]
+    [InlineData("../projection", false)]
+    [InlineData("projection%2fchild", false)]
+    public void ValidatePathSegments_RejectsNormalizingValues(string value, bool valid) {
+        string? result = ToolHelper.ValidatePathSegments((value, "value"));
+
+        (result is null).ShouldBe(valid);
+    }
+
+    [Fact]
+    public void ValidatePathSegments_RejectsMalformedUtf16AndUnsafeDisplayCharacters() {
+        string[] unsafeValues = [
+            new string('\uD800', 1),
+            new string('\uDC00', 1),
+            $"projection-{new string('\uD800', 1)}",
+            "projection\u0007hidden",
+            "projection\u2028hidden",
+            "projection\u2029hidden",
+            "projection\u202Ehidden",
+            $"projection-{char.ConvertFromUtf32(0xE0001)}hidden",
+        ];
+
+        foreach (string value in unsafeValues) {
+            string? result = ToolHelper.ValidatePathSegments((value, "value"));
+
+            _ = result.ShouldNotBeNull();
+            using var document = JsonDocument.Parse(result);
+            document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        }
+    }
+
+    [Fact]
+    public void ValidatePathSegments_AllowsValidNonFormatSurrogatePairs() {
+        string validSurrogatePair = $"projection-{char.ConvertFromUtf32(0x1F680)}";
+
+        ToolHelper.ValidatePathSegments((validSurrogatePair, "value")).ShouldBeNull();
+    }
+
+    [Fact]
+    public void SerializeResult_EmptyMessageStaysEmpty()
+    {
+        string result = ToolHelper.SerializeResult(new { Message = string.Empty });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("message").GetString().ShouldBe(string.Empty);
+    }
+
+    [Fact]
+    public void SerializeResult_EmptyNonMessageStringsStayEmpty()
+    {
+        string result = ToolHelper.SerializeResult(new {
+            Empty = string.Empty,
+            Nested = new { Empty = string.Empty },
+            Values = new[] { string.Empty, "present" },
+        });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("empty").GetString().ShouldBe(string.Empty);
+        document.RootElement.GetProperty("nested").GetProperty("empty").GetString().ShouldBe(string.Empty);
+        document.RootElement.GetProperty("values")[0].GetString().ShouldBe(string.Empty);
+        document.RootElement.GetProperty("values")[1].GetString().ShouldBe("present");
+    }
+
+    [Fact]
+    public void SerializePreview_EmptyOptionalParameterStaysEmpty()
+    {
+        string result = ToolHelper.SerializePreview(
+            "backup-trigger",
+            "Start a deferred backup request",
+            "POST /api/v1/admin/backups/acme",
+            new { description = string.Empty },
+            "The request is deferred.",
+            "Admin");
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("parameters").GetProperty("description").GetString().ShouldBe(string.Empty);
+    }
+
+    [Fact]
     public void SerializeResult_MessageIsBoundedAndRedactsUnsafeMarkers() {
         var data = new {
             Success = true,
@@ -350,6 +475,12 @@ public class ToolHelperTests {
             rawResponseBody = "raw body containing PROTECTED_marker",
             stackTrace = "at Provider.Throws() — PROTECTED_marker",
             exceptionText = ProtectedDataLeakSentinel.ProtectedProviderExceptionText,
+            continuationToken = "opaque-cursor-value",
+            cursor = "opaque-cursor-value",
+            configuration = "{\"secret\":\"opaque\"}",
+            rawYamlContent = "secret: opaque",
+            details = "raw consistency details",
+            errorMessage = "raw consistency failure detail",
         };
 
         string result = ToolHelper.SerializeResult(data);
@@ -363,6 +494,105 @@ public class ToolHelperTests {
         doc.RootElement.GetProperty("keyStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
         doc.RootElement.GetProperty("responseStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
         doc.RootElement.GetProperty("diagnostic").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("continuationStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("cursorStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("configurationStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("rawConfigurationStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("detailsStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("errorStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    [Theory]
+    [InlineData("Bearer " + "eyJhbGciOiJIUzI1NiJ9.payload.signature")]
+    [InlineData("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678")]
+    [InlineData("eyJhbGciOiJIUzI1NiJ9.IHsic3ViIjoiYWRtaW4ifQ.abcdefgh12345678")]
+    [InlineData("IHsiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiJhZG1pbiJ9.abcdefgh12345678")]
+    [InlineData("{\"client_secret\":\"secret-value\"}")]
+    [InlineData("{\"accessToken\":\"secret-value\"}")]
+    [InlineData("{\"refreshToken\":\"secret-value\"}")]
+    [InlineData("{\"idToken\":\"secret-value\"}")]
+    [InlineData("{\"clientSecret\":\"secret-value\"}")]
+    [InlineData("{\"apiKey\":\"secret-value\"}")]
+    [InlineData("client_secret" + "=secret-value")]
+    [InlineData("https://example.test/callback#access_token" + "=secret-value")]
+    [InlineData("https://example.test/callback?access%5Ftoken=secret-value")]
+    [InlineData("https://example.test/callback?%61ccess_token=secret-value")]
+    [InlineData("https://example.test/download?sig=secret-value")]
+    [InlineData("(Bearer " + "secret-token)")]
+    [InlineData("eyJhbGciOiJub25lIn0.cGF5bG9hZA.")]
+    [InlineData("https://operator:" + "password@example.test/path")]
+    [InlineData("https://operator%3A" + "password@example.test/path")]
+    [InlineData("https://" + "secret-token@example.test/path")]
+    [InlineData("https://secret-token%40example.test/path")]
+    public void SerializeResult_RedactsCredentialShapesUnderOrdinaryKeys(string credential) {
+        string result = ToolHelper.SerializeResult(new { ordinaryText = credential });
+
+        result.ShouldNotContain(credential);
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("ordinaryText").GetString().ShouldBe("Protected output text redacted.");
+    }
+
+    [Fact]
+    public void SerializeResult_OversizedJwtHeaderIsRedactedWithoutDecodingIt()
+    {
+        string sample = $"{new string('a', 4096)}.payload.signature1234";
+
+        string result = ToolHelper.SerializeResult(new { ordinaryText = sample });
+
+        result.ShouldNotContain(sample);
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("ordinaryText").GetString().ShouldBe("Protected output text redacted.");
+    }
+
+    [Theory]
+    [InlineData("access_token")]
+    [InlineData("accessToken")]
+    [InlineData("refresh_token")]
+    [InlineData("refreshToken")]
+    [InlineData("id_token")]
+    [InlineData("idToken")]
+    [InlineData("token")]
+    [InlineData("password")]
+    [InlineData("secret")]
+    [InlineData("client_secret")]
+    [InlineData("clientSecret")]
+    [InlineData("api_key")]
+    [InlineData("apiKey")]
+    [InlineData("authorization")]
+    [InlineData("sig")]
+    public void SerializeResult_RedactsEverySupportedQuerySecretAlias(string alias) {
+        string result = ToolHelper.SerializeResult(new {
+            healthLink = $"https://example.test/health?{alias}=secret-value",
+        });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("healthLink").GetString().ShouldBe("Protected output text redacted.");
+    }
+
+    [Fact]
+    public void SerializeResult_RedactsPercentEncodedQuerySecretsAndKeepsValuelessKeys()
+    {
+        string result = ToolHelper.SerializeResult(new {
+            encoded = "https://example.test/health%3Faccess_token%3Dsecret-value",
+            doubleEncoded = "https://example.test/health?%2561ccess_token=secret-value",
+            empty = "https://example.test/health?sig=",
+        });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("encoded").GetString().ShouldBe("Protected output text redacted.");
+        document.RootElement.GetProperty("doubleEncoded").GetString().ShouldBe("Protected output text redacted.");
+        document.RootElement.GetProperty("empty").GetString().ShouldBe("https://example.test/health?sig=");
+    }
+
+    [Fact]
+    public void DottedTypeNamesRemainSupportSafeInPreviewAndResults() {
+        const string dottedTypeName = "Hexalith.EventStore.Administration";
+
+        ToolHelper.ValidatePreviewMatchesExecution((dottedTypeName, "projectionName")).ShouldBeNull();
+        string result = ToolHelper.SerializeResult(new { projectionName = dottedTypeName });
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("projectionName").GetString().ShouldBe(dottedTypeName);
     }
 
     // P13 — Defense-in-depth recursion bound (MaxSanitizeDepth = 64) is coded inside both

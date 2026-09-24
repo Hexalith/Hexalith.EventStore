@@ -17,6 +17,12 @@ public sealed record CommandStatusQueryResponse(
     string? RejectionEventType = null,
     string? MessageId = null)
 {
+    /// <summary>Gets the number of events produced by a completed command; zero identifies an authoritative no-op.</summary>
+    public int? EventCount { get; init; }
+
+    /// <summary>Gets the tenant scope that owns this command status.</summary>
+    public string? TenantId { get; init; }
+
     /// <summary>
     /// Gets the bounded failure reason when the rejection or terminal failure was infrastructural.
     /// </summary>

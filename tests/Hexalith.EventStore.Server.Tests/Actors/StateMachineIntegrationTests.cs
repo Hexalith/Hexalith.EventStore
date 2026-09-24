@@ -220,7 +220,7 @@ public class StateMachineIntegrationTests {
     [Fact]
     public async Task ProcessCommand_NoOp_TransitionsProcessingDirectlyToCompleted() {
         // Arrange
-        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, _) = CreateActor();
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
         CommandEnvelope envelope = CreateTestEnvelope();
 
@@ -230,6 +230,10 @@ public class StateMachineIntegrationTests {
         // Assert
         result.Accepted.ShouldBeTrue();
         result.EventCount.ShouldBe(0);
+        await statusStore.Received().WriteStatusAsync(
+            envelope.TenantId, envelope.MessageId,
+            Arg.Is<CommandStatusRecord>(record => record.Status == CommandStatus.Completed && record.EventCount == 0),
+            Arg.Any<CancellationToken>());
 
         // Processing checkpoint was staged
         await stateManager.Received().SetStateAsync(

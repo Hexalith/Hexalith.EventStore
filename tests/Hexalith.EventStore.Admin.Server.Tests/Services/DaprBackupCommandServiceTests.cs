@@ -137,6 +137,33 @@ public class DaprBackupCommandServiceTests {
         handler.LastRequestBody.ShouldContain("\"pageSize\":1000");
     }
 
+    [Theory]
+    [InlineData("JSON")]
+    [InlineData("CloudEvents")]
+    public async Task ExportStreamAsync_ProducesTheImportSchemaTheAdminUiRequires(string format) {
+        // Pins the producer side of Admin.UI Backups.OnImportFileSelected: camelCase stream
+        // identity strings plus an `events` array, or every exported file stops importing.
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupJsonResponse(new StreamReadPage(
+            "tenant-a",
+            "counter",
+            "counter-1",
+            [CreateStreamEvent(1, """{"value":1}""")],
+            new StreamReadMetadata(0, null, 1, 1, 1, false, null)));
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", format));
+
+        result.Success.ShouldBeTrue();
+        using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(result.Content.ShouldNotBeNull());
+        System.Text.Json.JsonElement root = document.RootElement;
+        root.GetProperty("tenantId").GetString().ShouldBe("tenant-a");
+        root.GetProperty("domain").GetString().ShouldBe("counter");
+        root.GetProperty("aggregateId").GetString().ShouldBe("counter-1");
+        System.Text.Json.JsonElement events = root.GetProperty("events");
+        events.ValueKind.ShouldBe(System.Text.Json.JsonValueKind.Array);
+        events.GetArrayLength().ShouldBe(1);
+    }
+
     [Fact]
     public async Task ExportStreamAsync_DW18AC3_UnsupportedFormatReturnsValidationFailureWithoutEventStoreCall() {
         (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();

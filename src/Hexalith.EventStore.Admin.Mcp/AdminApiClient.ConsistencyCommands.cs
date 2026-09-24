@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 
 namespace Hexalith.EventStore.Admin.Mcp;
 /// <summary>
@@ -10,7 +11,7 @@ internal sealed partial class AdminApiClient {
     /// Triggers a data integrity consistency check.
     /// </summary>
     public async Task<AdminOperationResult?> TriggerConsistencyCheckAsync(
-        string? tenantId, string? domain, IReadOnlyList<string> checkTypes, CancellationToken cancellationToken) => await PostAsync(
+        string tenantId, string? domain, IReadOnlyList<ConsistencyCheckType> checkTypes, CancellationToken cancellationToken) => await PostAsync(
             "/api/v1/admin/consistency/checks",
             new { tenantId, domain, checkTypes },
             cancellationToken).ConfigureAwait(false);

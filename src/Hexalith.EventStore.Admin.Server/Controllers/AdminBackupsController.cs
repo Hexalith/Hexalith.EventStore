@@ -53,7 +53,7 @@ public class AdminBackupsController(
     }
 
     /// <summary>
-    /// Triggers a full tenant backup.
+    /// Submits a request to the deferred tenant-backup backend.
     /// </summary>
     [HttpPost("{tenantId:regex(^(?!export-stream$|import-stream$).+$)}")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]

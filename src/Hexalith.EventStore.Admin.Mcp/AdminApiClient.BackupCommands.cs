@@ -7,7 +7,7 @@ namespace Hexalith.EventStore.Admin.Mcp;
 /// </summary>
 internal sealed partial class AdminApiClient {
     /// <summary>
-    /// Triggers a full backup for a tenant.
+    /// Submits a request to the deferred backup backend for a tenant.
     /// </summary>
     public async Task<AdminOperationResult?> TriggerBackupAsync(
         string tenantId, string? description, bool includeSnapshots, CancellationToken cancellationToken) {

@@ -48,12 +48,24 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string ReceiptCollectionSupersededSubjectSha256 =
         "86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274";
 
+    /// <summary>Subject issued before the September trust-path corrections.</summary>
+    private const string PreTrustPathSupersededSubjectSha256 =
+        "84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f";
+
+    /// <summary>Subject issued during the September trust-path corrections.</summary>
+    private const string IntermediateTrustPathSupersededSubjectSha256 =
+        "aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5";
+
+    /// <summary>Subject superseded by the final September trust-path re-mint.</summary>
+    private const string FinalTrustPathSupersededSubjectSha256 =
+        "a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448";
+
     /// <summary>
     /// Subject the checked-in packet currently binds. It is drift-bound here and in docs/ci.md so a
     /// record that keeps naming a superseded subject cannot stay green.
     /// </summary>
     private const string CurrentSubjectSha256 =
-        "aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5";
+        "7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274";
 
     /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
     private const int FrozenStory314PacketFileCount = 66;
@@ -163,37 +175,42 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const int AcceptanceIssue = 352;
 
     /// <summary>
-    /// Verifies the checked-in packet fails closed at zero of three receipts after the Group A
-    /// re-mint: verifier exit 1, claim fields still present, every non-authority flag false, and
-    /// the previously collected <c>86c59c79...</c> receipts live only in the superseded audit area.
-    /// Synthetic 3-of-3 remains in
+    /// Verifies the checked-in packet closes only with three subject-bound roster receipts while
+    /// every operational authority flag remains false. The previously collected
+    /// <c>86c59c79...</c> receipts remain only in the superseded audit area. Synthetic 3-of-3 remains in
     /// <see cref="ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject"/>.
     /// </summary>
     [Fact]
-    public void CheckedInPacketFailsClosedAtZeroOfThreeReceipts()
+    public void CheckedInPacketClosesAtThreeRosterBoundReceipts()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
-        ShouldFailClosed(
-            RunValidator(root, packet),
-            "exactly three packet-bound receipts are required");
+        (int exitCode, string output, string error) = RunValidator(root, packet);
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("pass:");
 
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
         closure["subject"]!["sha256"]!.GetValue<string>().ShouldBe(CurrentSubjectSha256);
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(RequiredRoles.Length);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
 
-        // The claim fields remain the packet's claim; the 3-of-3 gate has not granted them.
+        // The claim fields are granted by the verified 3-of-3 packet, without operational authority.
         closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
         closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
 
         closure["acceptances"]!["directory"]!.GetValue<string>()
             .ShouldBe("acceptances/" + CurrentSubjectSha256);
-        Directory.Exists(Path.Combine(packet, "acceptances")).ShouldBeFalse();
+        string acceptanceRoot = Path.Combine(packet, "acceptances", CurrentSubjectSha256);
+        Directory.Exists(acceptanceRoot).ShouldBeTrue();
+        foreach (string role in RequiredRoles)
+        {
+            File.Exists(Path.Combine(acceptanceRoot, role + ".json")).ShouldBeTrue(role);
+            File.Exists(Path.Combine(acceptanceRoot, "sources", role + ".json")).ShouldBeTrue(role);
+        }
         Directory.Exists(Path.Combine(root, SupersededRelativePath, ReceiptCollectionSupersededSubjectSha256))
             .ShouldBeTrue();
         foreach (string role in RequiredRoles)
@@ -1161,11 +1178,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string subjectSha256 = closure["subject"]!["sha256"]!.GetValue<string>();
         string ci = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
 
-        string expectedSubject = ci.Contains(subjectSha256, StringComparison.Ordinal)
-            ? subjectSha256
-            : ReceiptCollectionSupersededSubjectSha256;
-
-        ci.ShouldContain(expectedSubject);
+        ci.ShouldContain(subjectSha256);
         ci.ShouldContain(IndexDigest["sha256:".Length..]);
 
         // Presence alone cannot notice a superseded digest left behind beside the current one, so
@@ -1189,7 +1202,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         digests.ShouldBe(
             new[]
             {
-                expectedSubject,
+                subjectSha256,
                 IndexDigest["sha256:".Length..],
                 PredecessorSha256,
                 BinfmtEmulatorSha256,
@@ -2796,12 +2809,13 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
     /// <summary>
     /// Verifies every surface that restates the current subject digest is drift-bound. Only the two
-    /// markdown records were covered, so this story's own spec could keep naming a superseded
-    /// subject with the whole suite green. Story 5.3 explicitly forbids mutating sprint-status.yaml.
+    /// markdown records were covered, so the spec or sprint tracker could keep naming a superseded
+    /// subject with the whole suite green.
     /// </summary>
     /// <param name="relativePath">Surface that restates the subject digest.</param>
     [Theory]
     [InlineData("_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md")]
+    [InlineData("_bmad-output/implementation-artifacts/sprint-status.yaml")]
     public void SubjectRestatingSurfacesNameTheCurrentSubject(string relativePath)
     {
         ArgumentNullException.ThrowIfNull(relativePath);
@@ -2819,14 +2833,39 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         [
             subjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
+            PreTrustPathSupersededSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
         ];
-        Regex.Matches(text, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
-            .Select(match => match.Value)
-            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal))
+        FirstNamedSubjectDigest(text, subjects)
             .ShouldBe(subjectSha256, relativePath);
+    }
+
+    /// <summary>
+    /// Proves an elided superseded subject is found before a later complete current digest.
+    /// </summary>
+    /// <param name="prefix">The superseded subject's eight-character prefix.</param>
+    /// <param name="ellipsis">The punctuation used to elide the rest of the digest.</param>
+    [Theory]
+    [InlineData("aafe9040", "...")]
+    [InlineData("a5c07d17", "…")]
+    public void SupersededElidedSubjectBeforeCurrentSubjectIsDetected(string prefix, string ellipsis)
+    {
+        string text = $"Former subject {prefix}{ellipsis}; current subject {CurrentSubjectSha256}";
+        string[] subjects =
+        [
+            CurrentSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
+        ];
+
+        FirstNamedSubjectDigest(text, subjects).ShouldBe(
+            prefix == "aafe9040"
+                ? IntermediateTrustPathSupersededSubjectSha256
+                : FinalTrustPathSupersededSubjectSha256);
     }
 
     /// <summary>
@@ -3610,6 +3649,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             $"eventstore-story315-assembler-repository-{Guid.NewGuid():N}");
         try
         {
+            (int cloneExit, _, string cloneError) = RunProcess(
+                Path.GetTempPath(), "git", "clone", "--quiet", "--shared", "--no-checkout", root, repository);
+            cloneExit.ShouldBe(0, cloneError);
             CopyDirectory(Path.Combine(root, "tools"), Path.Combine(repository, "tools"));
             string predecessorRelative = Path.Combine(
                 "_bmad-output",
@@ -3934,9 +3976,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies the assembler refuses to run from a copied script path, and refuses a shadowed
-    /// handler <c>__file__</c>, without rewriting the retained packet. Neither bound-path check
-    /// ran off the repository file in this suite.
+    /// Verifies a flat assembler copy fails repository-root discovery and a shadowed handler
+    /// <c>__file__</c> fails provenance checking, without rewriting the retained packet. The
+    /// separate valid-lineage clone test exercises the assembler's bound-path check.
     /// </summary>
     /// <param name="mode">Which bound-path check to displace.</param>
     [Theory]
@@ -3983,8 +4025,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             error.ShouldNotContain("Traceback");
             if (mode == "assembler")
             {
-                error.ShouldContain("assembler is executing from");
-                error.ShouldContain("not the bound repository path");
+                error.ShouldContain("bound repository root could not be verified");
             }
             else
             {
@@ -4001,6 +4042,314 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             {
                 File.Delete(shadow);
             }
+        }
+    }
+
+    /// <summary>
+    /// Verifies a copied tools tree cannot claim the release lineage from either a new repository
+    /// or an unrelated HEAD whose object store still contains the release commit.
+    /// </summary>
+    /// <param name="unrelatedHead">Whether the copied repository can see the release object.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AssemblerRefusesLayoutPreservingCopyInNewRepository(bool unrelatedHead)
+    {
+        string root = FindRepositoryRoot();
+        string packet = CreateAcceptedPacket(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-copy-{Guid.NewGuid():N}");
+        try
+        {
+            if (unrelatedHead)
+            {
+                (int cloneExit, _, string cloneError) = RunProcess(
+                    Path.GetTempPath(), "git", "clone", "--quiet", "--shared", "--no-checkout", root, temporary);
+                cloneExit.ShouldBe(0, cloneError);
+                (int parentExit, string parent, string parentError) = RunProcess(
+                    temporary, "git", "rev-parse", SourceSha + "^");
+                parentExit.ShouldBe(0, parentError);
+                (int updateExit, _, string updateError) = RunProcess(
+                    temporary, "git", "update-ref", "HEAD", parent.Trim());
+                updateExit.ShouldBe(0, updateError);
+                RunProcess(temporary, "git", "cat-file", "-e", SourceSha + "^{commit}")
+                    .ExitCode.ShouldBe(0);
+                RunProcess(temporary, "git", "merge-base", "--is-ancestor", SourceSha, "HEAD")
+                    .ExitCode.ShouldBe(1);
+            }
+            else
+            {
+                Directory.CreateDirectory(temporary);
+                (int initExit, _, string initError) = RunProcess(temporary, "git", "init", "--quiet");
+                initExit.ShouldBe(0, initError);
+            }
+
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+            File.WriteAllText(Path.Combine(temporary, "Hexalith.EventStore.slnx"), string.Empty);
+
+            (int exitCode, string output, string error) = RunProcess(
+                temporary,
+                "python3",
+                Path.Combine(temporary, "tools", "assemble-corrected-deployed-runtime-parity.py"),
+                packet);
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("bound repository release lineage could not be verified");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(packet, recursive: true);
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies the assembler path guard runs after lineage succeeds in a clone whose HEAD
+    /// descends from the release commit. A second copy inside that clone must not re-mint the
+    /// packet from bytes outside its bound tools path.
+    /// </summary>
+    [Fact]
+    public void AssemblerRefusesOffPathCopyInsideValidReleaseLineage()
+    {
+        string root = FindRepositoryRoot();
+        string packet = CreateAcceptedPacket(root);
+        string retainedClosurePath = Path.Combine(root, EvidenceRelativePath, "closure.json");
+        string retainedClosure = ComputeSha256(retainedClosurePath);
+        string packetClosurePath = Path.Combine(packet, "closure.json");
+        string packetClosure = ComputeSha256(packetClosurePath);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-off-path-{Guid.NewGuid():N}");
+        try
+        {
+            (int cloneExit, _, string cloneError) = RunProcess(
+                Path.GetTempPath(), "git", "clone", "--quiet", "--shared", root, temporary);
+            cloneExit.ShouldBe(0, cloneError);
+            RunProcess(temporary, "git", "merge-base", "--is-ancestor", SourceSha, "HEAD")
+                .ExitCode.ShouldBe(0);
+
+            string shadow = Path.Combine(temporary, "tools", "shadow", "assemble-corrected-deployed-runtime-parity.py");
+            Directory.CreateDirectory(Path.GetDirectoryName(shadow)!);
+            File.Copy(Path.Combine(temporary, "tools", "assemble-corrected-deployed-runtime-parity.py"), shadow);
+            (int exitCode, string output, string error) = RunProcess(
+                temporary,
+                "python3",
+                "-B",
+                "-c",
+                "import importlib.util,sys;sys.path.insert(0,sys.argv[1]);"
+                + "s=importlib.util.spec_from_file_location('story315_assemble',sys.argv[2]);"
+                + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                + "print('bound-root='+str(m.repository_root()),flush=True);"
+                + "sys.argv=[sys.argv[2],sys.argv[3]];raise SystemExit(m.main())",
+                Path.Combine(temporary, "tools"),
+                shadow,
+                packet);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldContain("bound-root=" + Path.GetFullPath(temporary));
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("assembler is not executing from the bound repository path");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            ComputeSha256(retainedClosurePath).ShouldBe(retainedClosure);
+            ComputeSha256(packetClosurePath).ShouldBe(packetClosure);
+        }
+        finally
+        {
+            Directory.Delete(packet, recursive: true);
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies Git environment redirects cannot make a copied tools tree use the original checkout.
+    /// </summary>
+    [Fact]
+    public void AssemblerIgnoresGitDirectoryAndWorkTreeRedirects()
+    {
+        string root = FindRepositoryRoot();
+        string packet = CreateAcceptedPacket(root);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-git-env-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(temporary);
+            (int initExit, _, string initError) = RunProcess(temporary, "git", "init", "--quiet");
+            initExit.ShouldBe(0, initError);
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+            Dictionary<string, string> environment = new()
+            {
+                ["GIT_DIR"] = Path.Combine(root, ".git"),
+                ["GIT_WORK_TREE"] = root,
+            };
+            (int redirectedExit, string redirectedRoot, string redirectedError) = RunProcessWithEnvironment(
+                temporary, "git", environment, "rev-parse", "--show-toplevel");
+            redirectedExit.ShouldBe(0, redirectedError);
+            redirectedRoot.TrimEnd().ShouldBe(root);
+
+            (int exitCode, string output, string error) = RunProcessWithEnvironment(
+                temporary,
+                "python3",
+                environment,
+                Path.Combine(temporary, "tools", "assemble-corrected-deployed-runtime-parity.py"),
+                packet);
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("bound repository release lineage could not be verified");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(packet, recursive: true);
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies a checkout basename ending in whitespace survives Git's output-newline removal.
+    /// </summary>
+    [Fact]
+    public void AssemblerPreservesWhitespaceAtEndOfCheckoutPath()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string root = FindRepositoryRoot();
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-space-{Guid.NewGuid():N} ");
+        try
+        {
+            (int cloneExit, _, string cloneError) = RunProcess(
+                Path.GetTempPath(), "git", "clone", "--quiet", "--shared", "--no-checkout", root, temporary);
+            cloneExit.ShouldBe(0, cloneError);
+            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
+
+            (int exitCode, string output, string error) = RunProcess(
+                temporary,
+                "python3",
+                "-B",
+                "-c",
+                "import importlib.util,os,sys;sys.path.insert(0,os.path.dirname(sys.argv[1]));"
+                + "s=importlib.util.spec_from_file_location('story315_assemble',sys.argv[1]);"
+                + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                + "print(m.repository_root())",
+                Path.Combine(temporary, "tools", "assemble-corrected-deployed-runtime-parity.py"));
+            exitCode.ShouldBe(0, error);
+            output.TrimEnd('\r', '\n').ShouldBe(temporary);
+        }
+        finally
+        {
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Verifies every trusted canonical encoder and JSON loader rejects non-JSON numeric tokens.
+    /// </summary>
+    [Fact]
+    public void CanonicalCodecsRejectNonFiniteNumbers()
+    {
+        string root = FindRepositoryRoot();
+        (int exitCode, string output, string error) = RunProcess(
+            root,
+            "python3",
+            "-B",
+            "-c",
+            "import importlib.util,math,pathlib,sys;"
+            + "sys.path.insert(0,str(pathlib.Path('tools').resolve()));"
+            + "from release_evidence_handlers import v3;"
+            + "from deployed_runtime_parity_handlers import v1;"
+            + "s=importlib.util.spec_from_file_location('capture', 'tools/capture-corrected-deployed-runtime-parity-smokes.py');"
+            + "capture=importlib.util.module_from_spec(s);s.loader.exec_module(capture);"
+            + "checks=[lambda:v3.canonical_bytes({'n':math.nan}),"
+            + "lambda:v3._publisher_canonical_bytes({'n':math.inf}),"
+            + "lambda:v3.load_json_bytes(b'{\"n\":NaN}'),"
+            + "lambda:v3._load_json_value_bytes(b'{\"n\":Infinity}'),"
+            + "lambda:v3.load_json_bytes(b'{\"n\":1e999}'),"
+            + "lambda:v3._load_json_value_bytes(b'[1e999]'),"
+            + "lambda:v1.canonical_bytes({'n':-math.inf}),"
+            + "lambda:v1.load_json_bytes(b'{\"n\":-Infinity}'),"
+            + "lambda:v1.load_json_bytes(b'{\"n\":1e999}'),"
+            + "lambda:capture.canonical_bytes({'n':math.nan})];"
+            + "results=[];"
+            + "exec('for check in checks:\\n try: check()\\n except ValueError: results.append(\"rejected\")\\n else: results.append(\"accepted\")');"
+            + "print(','.join(results));sys.exit(0 if results==['rejected']*len(checks) else 1)");
+        exitCode.ShouldBe(0, error + output);
+        output.Trim().ShouldBe(string.Join(',', Enumerable.Repeat("rejected", 10)));
+    }
+
+    /// <summary>
+    /// Verifies both dispatchers reject non-JSON tokens and overflowing JSON floats before loading
+    /// the trusted handler. The error must identify the dispatch stage, not a later packet check.
+    /// </summary>
+    /// <param name="verifier">The dispatcher to invoke.</param>
+    /// <param name="number">The invalid numeric token.</param>
+    [Theory]
+    [InlineData("parity", "NaN")]
+    [InlineData("parity", "Infinity")]
+    [InlineData("parity", "1e999")]
+    [InlineData("predecessor", "NaN")]
+    [InlineData("predecessor", "Infinity")]
+    [InlineData("predecessor", "1e999")]
+    public void DispatchersRejectNonFiniteNumbersBeforeHandlerLoad(string verifier, string number)
+    {
+        string root = FindRepositoryRoot();
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-dispatch-number-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            bool parity = verifier == "parity";
+            string packet = Path.Combine(
+                root,
+                "_bmad-output",
+                "implementation-artifacts",
+                "evidence",
+                parity ? "story-3-15" : "story-3-14",
+                SourceSha);
+            string source = File.ReadAllText(Path.Combine(packet, parity ? "closure.json" : "release-identity.json"));
+            source[0].ShouldBe('{');
+            string candidate = Path.Combine(temporary, "candidate.json");
+            File.WriteAllText(candidate, source.Insert(1, $"\"unreviewed\":{number},"));
+
+            (int exitCode, string output, string error) = parity
+                ? RunProcess(
+                    root,
+                    "python3",
+                    "tools/validate-corrected-deployed-runtime-parity.py",
+                    candidate,
+                    "--packet-root",
+                    packet)
+                : RunProcess(
+                    root,
+                    "python3",
+                    "tools/validate-corrective-release-evidence.py",
+                    candidate,
+                    "--manifest",
+                    "tools/release-packages.json",
+                    "--packet-root",
+                    packet);
+            exitCode.ShouldBe(1, error);
+            output.ShouldNotContain("pass:");
+            error.ShouldContain(parity ? "closure contains a non-" : "release identity contains a non-");
+            error.ShouldContain(number == "1e999" ? "non-finite JSON number" : "non-JSON number");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(temporary, recursive: true);
         }
     }
 
@@ -4062,6 +4411,77 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the PRD distinguishes the current technical pass from its superseded receipt
+    /// snapshot and the still-missing independent high-risk control.
+    /// </summary>
+    [Fact]
+    public void PlanningRuntimeParityAccountMatchesCurrentPacketAndPendingControl()
+    {
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string subject = closure["subject"]!["sha256"]!.GetValue<string>();
+        int receiptCount = closure["acceptances"]!["receipts"]!.AsArray().Count;
+        receiptCount.ShouldBe(RequiredRoles.Length);
+        string selectedIndex = closure["selected_deployed_identity"]!.GetValue<string>();
+        selectedIndex.ShouldBe(IndexDigest);
+        closure["oci"]!["index"]!["digest"]!.GetValue<string>().ShouldBe(selectedIndex);
+        closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
+        closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        string prd = File.ReadAllText(Path.Combine(root, "_bmad-output/planning-artifacts/prd.md"));
+        string[] lines = prd.Split('\n');
+
+        string summary = lines.Single(line => line.StartsWith(
+            "- **Deployed-runtime parity - TECHNICALLY VALIDATED;",
+            StringComparison.Ordinal));
+        string currentSummary = summary[summary.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        currentSummary.ShouldContain(
+            $"{receiptCount} of {RequiredRoles.Length} packet-bound receipts on current subject `{subject}`");
+        currentSummary.ShouldContain($"selecting OCI index `{selectedIndex}`");
+        currentSummary.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+
+        string history = lines.Single(line => line.StartsWith(
+            "| Story 3.15 deployed-runtime parity |",
+            StringComparison.Ordinal));
+        history.ShouldContain("2026-09-10");
+        history.ShouldContain(IntermediateTrustPathSupersededSubjectSha256);
+        string currentHistory = history[history.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        currentHistory.ShouldContain(
+            $"current subject SHA-256 `{subject}` with {receiptCount} of {RequiredRoles.Length} " +
+            $"packet-bound receipts and selected OCI index `{selectedIndex}`");
+        currentHistory.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+
+        string parityGate = lines.Single(line => line.StartsWith(
+            "| G-RUNTIME-PARITY |",
+            StringComparison.Ordinal));
+        parityGate.ShouldContain("current subject `" + subject + "`");
+        parityGate.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+        parityGate.ShouldContain($"{receiptCount} of {RequiredRoles.Length} packet-bound receipts");
+        parityGate.ShouldContain($"selects OCI index `{selectedIndex}`");
+        parityGate.ShouldContain("TECHNICAL PASS; INDEPENDENT GATE BLOCKED");
+        parityGate.ShouldContain("tracker remains `review`");
+
+        string highRiskGate = lines.Single(line => line.StartsWith(
+            "| G-HIGH-RISK |",
+            StringComparison.Ordinal));
+        highRiskGate.ShouldContain("**FAIL/BLOCKED.**");
+        highRiskGate.ShouldContain("matrix, validator, classifications, second-identity controls, sealed validation, and guarded transitions are absent");
+
+        string publicationGate = lines.Single(line => line.StartsWith(
+            "| G-PUBLICATION-AUTH |",
+            StringComparison.Ordinal));
+        publicationGate.ShouldContain("**FAIL/BLOCKED.**");
+        publicationGate.ShouldContain("no release availability or production promotion is authorized");
+
+        string consumerGate = lines.Single(line => line.StartsWith(
+            "| G-CONSUMER |",
+            StringComparison.Ordinal));
+        consumerGate.ShouldContain("**FAIL/BLOCKED.**");
+        consumerGate.ShouldContain("No consumer may remove local infrastructure.");
+    }
+
+    /// <summary>
     /// Verifies the two operator-facing Story 3.15 records state the current subject and the current
     /// verdict. Only docs/ci.md was drift-bound, so both records could be -- and once were -- left
     /// asserting a superseded subject and a passing verdict against a packet that fails closed.
@@ -4094,13 +4514,14 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         [
             subjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
+            PreTrustPathSupersededSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
         ];
-        string? firstSubject = Regex.Matches(record, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
-            .Select(match => match.Value)
-            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal));
+        string? firstSubject = FirstNamedSubjectDigest(record, subjects);
         firstSubject.ShouldBe(subjectSha256, relativePath);
 
         // The verdict itself must agree with the packet, not with a previous acceptance round.
@@ -4113,6 +4534,23 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             record.ShouldContain("fails closed");
             record.ShouldContain(FormattableString.Invariant($"{receipts} of {RequiredRoles.Length}"));
         }
+    }
+
+    /// <summary>
+    /// Resolves the first known subject named as a full digest or an eight-character elided prefix.
+    /// </summary>
+    /// <param name="text">The surface to inspect.</param>
+    /// <param name="subjects">Known current and superseded subject digests.</param>
+    /// <returns>The matching full digest, or <see langword="null"/> when none is named.</returns>
+    private static string? FirstNamedSubjectDigest(string text, IEnumerable<string> subjects)
+    {
+        string[] knownSubjects = subjects.ToArray();
+        return Regex.Matches(text, @"(?<![0-9a-fA-F])(?:[0-9a-fA-F]{64}|[0-9a-fA-F]{8}(?=\.{3}|…))(?![0-9a-fA-F])")
+            .Select(match => match.Value)
+            .Select(value => knownSubjects.FirstOrDefault(subject =>
+                subject.Equals(value, StringComparison.OrdinalIgnoreCase)
+                || (value.Length == 8 && subject.StartsWith(value, StringComparison.OrdinalIgnoreCase))))
+            .FirstOrDefault(subject => subject is not null);
     }
 
     /// <summary>

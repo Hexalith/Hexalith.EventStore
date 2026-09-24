@@ -1,0 +1,46 @@
+namespace Hexalith.EventStore.Client.Projections;
+
+internal sealed record SharedProjectionEpochState(
+    int Version,
+    long Epoch,
+    long ActiveGeneration,
+    SharedProjectionEpochPhase Phase,
+    string? OperationId,
+    string? InventoryFingerprint,
+    Dictionary<string, long> CaptureHighWatermarks,
+    Dictionary<string, SharedProjectionCheckpoint> ConsumerCheckpoints,
+    string[] RequiredWriters,
+    string[] RegisteredWriters,
+    SharedProjectionJournalEntry[] Journal,
+    string? StageFingerprint,
+    string[] StageKeys,
+    SharedProjectionMutation[]? StageMutations,
+    string? StageManifestDigest,
+    SharedProjectionControlIndexIntent? StageControlIndexIntent = null,
+    string[]? RetainedControlIndexNames = null,
+    string? OffboardingAuditId = null,
+    SharedProjectionChunkReference? StageChunks = null,
+    bool StageExecutionStarted = false,
+    SharedProjectionChunkReference? CleanupChunks = null,
+    SharedProjectionChunkReference? CaptureChunks = null)
+{
+    internal static SharedProjectionEpochState Empty => new(
+        1,
+        0,
+        0,
+        SharedProjectionEpochPhase.Open,
+        null,
+        null,
+        new Dictionary<string, long>(StringComparer.Ordinal),
+        new Dictionary<string, SharedProjectionCheckpoint>(StringComparer.Ordinal),
+        [],
+        [],
+        [],
+        null,
+        [],
+        null,
+        null,
+        null,
+        [],
+        null);
+}

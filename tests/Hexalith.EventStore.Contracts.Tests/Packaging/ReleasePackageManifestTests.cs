@@ -17,7 +17,7 @@ public sealed class ReleasePackageManifestTests
     private const string GeneratorProjectPath = "src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj";
     private const string GatewayPackageId = "Hexalith.EventStore.Gateway";
     private const string PackageFixtureVersion = "999.3.6-fixture";
-    private const string ExpectedNuGetPublicationCommand = "dotnet nuget push \"./nupkgs/Hexalith.EventStore.*.nupkg\" --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_API_KEY\"";
+    private const string ExpectedNuGetPublicationCommand = "dotnet nuget push \"./nupkgs/Hexalith.EventStore.*.nupkg\" --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_TRUSTED_PUBLISHING_KEY\"";
     private const string SemanticReleaseFixture = "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs";
     private const string ServiceDefaultsPackageId = "Hexalith.EventStore.ServiceDefaults";
     private const string ServiceDefaultsProjectPath = "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj";
@@ -902,33 +902,35 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
-    public void Release_workflow_uses_domain_release_with_approved_eventstore_container_only()
+    public void Release_workflow_owns_trusted_publishing_with_approved_eventstore_container_only()
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         string releaseJob = ExtractTopLevelWorkflowJobBlock(workflow, "release");
 
-        Match releaseWorkflow = Regex.Match(
-            releaseJob,
-            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
-        releaseWorkflow.Success.ShouldBeTrue();
-        releaseJob.ShouldContain($"builds-execution-sha: {releaseWorkflow.Groups["sha"].Value}");
+        const string ApprovedBuildsSha = "22a578b576a515d2af214fe81859447fffc97981";
+        releaseJob.ShouldContain($"ref: {ApprovedBuildsSha}");
+        releaseJob.ShouldContain($"builds-execution-sha: {ApprovedBuildsSha}");
         releaseJob.ShouldContain("needs: verify-source");
+        releaseJob.ShouldContain("runs-on: ubuntu-latest");
         releaseJob.ShouldContain("actions: read");
-        releaseJob.ShouldContain("environment-name: production");
-        releaseJob.ShouldContain("source-branch: main");
+        releaseJob.ShouldContain("environment: production");
+        releaseJob.ShouldContain("id-token: write");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH: main");
         releaseJob.ShouldContain(
-            "source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}");
-        releaseJob.ShouldContain("package-manifest: tools/release-packages.json");
-        releaseJob.ShouldContain("publish-containers: true");
+            "HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json");
+        releaseJob.ShouldContain("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'");
+        releaseJob.ShouldContain("uses: ./.hexalith/builds-execution/Github/publish-containers");
+        releaseJob.ShouldContain("uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841");
+        releaseJob.ShouldContain("NUGET_TRUSTED_PUBLISHING_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}");
         releaseJob.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");
         releaseJob.ShouldNotContain("src/Hexalith.EventStore.Admin");
         releaseJob.ShouldNotContain("samples/");
-        releaseJob.ShouldNotContain("runs-on:");
-        releaseJob.ShouldNotContain("steps:");
+        releaseJob.ShouldNotContain("domain-release.yml");
+        releaseJob.ShouldNotContain("secrets.NUGET_API_KEY");
         workflow.ShouldContain("  workflow_dispatch:");
         workflow.ShouldNotContain("workflow_run:");
-        releaseJob.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
         releaseJob.ShouldContain("HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}");
         releaseJob.ShouldContain("HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}");
         releaseJob.ShouldNotContain("secrets: inherit");

@@ -89,6 +89,21 @@ public class SnapshotsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void SnapshotsPage_PolicyGrid_RequiresExplicitEditButton()
+    {
+        SetupPolicies([
+            new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
+        ]);
+
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find("fluent-button[aria-label='Edit policy for OrderAggregate']"), TimeSpan.FromSeconds(5));
+
+        FluentDataGrid<SnapshotPolicy> grid = cut.FindComponent<FluentDataGrid<SnapshotPolicy>>().Instance;
+        grid.OnRowClick.HasDelegate.ShouldBeFalse();
+        cut.FindAll("fluent-button[aria-label='Edit policy for OrderAggregate']").Count.ShouldBe(1);
+    }
+
+    [Fact]
     public void SnapshotsPage_ShowsEmptyState_WhenNoPolicies() {
         // Arrange
         SetupPolicies([]);
@@ -437,7 +452,7 @@ public class SnapshotsPageTests : AdminUITestContext {
     }
 
     [Theory]
-    [InlineData("create-policy", "[id='snapshot-policy-create-button']", "Snapshot policy for 'tenant-a/orders/OrderAggregate'", "Replace the snapshot policy", "snapshot-policy-create-button")]
+    [InlineData("create-policy", "[id='snapshot-policy-create-button']", "Snapshot policy for 'tenant-a/orders/OrderAggregate'", "Create a new snapshot policy", "snapshot-policy-create-button")]
     [InlineData("edit-policy", "[id='snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']", "Snapshot policy for 'tenant-a/orders/OrderAggregate'", "Replace the snapshot policy", "snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU")]
     [InlineData("create-snapshot", "[id='snapshot-create-button']", "Snapshot for 'tenant-a/orders/agg-1'", "Create a snapshot at the aggregate", "snapshot-create-button")]
     public async Task MutationDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
@@ -480,6 +495,82 @@ public class SnapshotsPageTests : AdminUITestContext {
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
             .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Theory]
+    [InlineData("create-policy", false)]
+    [InlineData("create-policy", true)]
+    [InlineData("edit-policy", false)]
+    [InlineData("edit-policy", true)]
+    [InlineData("delete-policy", false)]
+    [InlineData("delete-policy", true)]
+    [InlineData("create-snapshot", false)]
+    [InlineData("create-snapshot", true)]
+    public async Task MutationHandler_UnsafeOrOverlongTargetPerformsNoWorkClosesAndRestoresFocus(
+        string action,
+        bool overlong)
+    {
+        SetupPolicies([]);
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No snapshot policies"), TimeSpan.FromSeconds(5));
+        string identifier = overlong ? new string('x', 241) : "Bearer " + "secret-token";
+        string focusId = $"focused-{action}";
+        string dialogLabel;
+        string confirmMethod;
+
+        if (action == "create-policy")
+        {
+            SetPrivateField(cut.Instance, "_createTenantId", identifier);
+            SetPrivateField(cut.Instance, "_createDomain", "orders");
+            SetPrivateField(cut.Instance, "_createAggregateType", "OrderAggregate");
+            SetPrivateField(cut.Instance, "_createPolicyInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showCreateDialog", true);
+            dialogLabel = "Create snapshot policy";
+            confirmMethod = "OnCreatePolicyConfirm";
+        }
+        else if (action == "edit-policy")
+        {
+            SetPrivateField(cut.Instance, "_editPolicy", new SnapshotPolicy(
+                identifier, "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow));
+            SetPrivateField(cut.Instance, "_editPolicyInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showEditDialog", true);
+            dialogLabel = "Edit snapshot policy";
+            confirmMethod = "OnEditPolicyConfirm";
+        }
+        else if (action == "delete-policy")
+        {
+            SetPrivateField(cut.Instance, "_deletePolicy", new SnapshotPolicy(
+                identifier, "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow));
+            SetPrivateField(cut.Instance, "_deletePolicyInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showDeleteDialog", true);
+            dialogLabel = "Delete snapshot policy";
+            confirmMethod = "OnDeletePolicyConfirm";
+        }
+        else
+        {
+            SetPrivateField(cut.Instance, "_snapshotTenantId", identifier);
+            SetPrivateField(cut.Instance, "_snapshotDomain", "orders");
+            SetPrivateField(cut.Instance, "_snapshotAggregateId", "aggregate-1");
+            SetPrivateField(cut.Instance, "_createSnapshotInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showCreateSnapshotDialog", true);
+            dialogLabel = "Create snapshot";
+            confirmMethod = "OnCreateSnapshotConfirm";
+        }
+
+        cut.Render();
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, confirmMethod));
+
+        _ = _mockSnapshotApi.DidNotReceive().SetSnapshotPolicyAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        _ = _mockSnapshotApi.DidNotReceive().DeleteSnapshotPolicyAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = _mockSnapshotApi.DidNotReceive().CreateSnapshotAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString().ShouldBe(
+            "The selected target cannot be confirmed because its identifier is not support-safe.");
+        cut.FindAll($"fluent-dialog[aria-label='{dialogLabel}']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(focusId);
     }
 
     [Theory]
@@ -542,14 +633,18 @@ public class SnapshotsPageTests : AdminUITestContext {
             .Arguments[0].ShouldBe(expectedFocusId);
     }
 
-    [Fact]
-    public async Task DeletePolicyDialog_ForbiddenUsesSafeCopyRestoresFocusAndDoesNotClaimDeletion() {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DeletePolicyDialog_DenialUsesSafeCopyRestoresFocusAndDoesNotClaimDeletion(bool forbidden) {
         SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
         SetupPolicies([policy]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden policy exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden policy exists; bearer secret-value");
         _ = _mockSnapshotApi.DeleteSnapshotPolicyAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<AdminOperationResult?>(
-                new ForbiddenAccessException("hidden policy exists; bearer secret-value")));
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
         IRenderedComponent<Snapshots> cut = Render<Snapshots>();
         const string initiatorId = "snapshot-policy-delete-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU";
         cut.WaitForAssertion(() => cut.Find($"[id='{initiatorId}']"), TimeSpan.FromSeconds(5));
@@ -564,7 +659,9 @@ public class SnapshotsPageTests : AdminUITestContext {
             "tenant-a", "orders", "OrderAggregate", Arg.Any<CancellationToken>());
         TestToastService toast = Services.GetRequiredService<TestToastService>();
         string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
-        message.ShouldBe("Access denied. Insufficient permissions.");
+        message.ShouldBe(forbidden
+            ? "Access denied. Insufficient permissions."
+            : "Authentication required. Please sign in again.");
         message.ShouldNotContain("hidden policy");
         message.ShouldNotContain("secret-value");
         message.ShouldNotContain("deleted", Case.Insensitive);
@@ -759,6 +856,74 @@ public class SnapshotsPageTests : AdminUITestContext {
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>
         Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+    [Theory]
+    [InlineData("create-policy", "[id='snapshot-policy-create-button']")]
+    [InlineData("edit-policy", "[id='snapshot-policy-edit-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']")]
+    [InlineData("delete-policy", "[id='snapshot-policy-delete-dGVuYW50LWE.b3JkZXJz.T3JkZXJBZ2dyZWdhdGU']")]
+    [InlineData("create-snapshot", "[id='snapshot-create-button']")]
+    public async Task DenialWithAsynchronousInterop_SettlesOnTheRendererDispatcher(string action, string selector)
+    {
+        SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([policy]);
+        Exception denial = new ForbiddenAccessException("denied");
+        _ = _mockSnapshotApi.SetSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockSnapshotApi.DeleteSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        _ = _mockSnapshotApi.CreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        if (action == "create-policy") {
+            SetPrivateField(cut.Instance, "_createTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_createDomain", "orders");
+            SetPrivateField(cut.Instance, "_createAggregateType", "OrderAggregate");
+        }
+        else if (action == "create-snapshot") {
+            SetPrivateField(cut.Instance, "_snapshotTenantId", "tenant-a");
+            SetPrivateField(cut.Instance, "_snapshotDomain", "orders");
+            SetPrivateField(cut.Instance, "_snapshotAggregateId", "agg-1");
+        }
+
+        string methodName = action switch {
+            "create-policy" => "OnCreatePolicyConfirm",
+            "edit-policy" => "OnEditPolicyConfirm",
+            "delete-policy" => "OnDeletePolicyConfirm",
+            "create-snapshot" => "OnCreateSnapshotConfirm",
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
+
+        Exception? fault = await RunWithAsynchronousFocusInteropAsync(
+            () => cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, methodName)));
+
+        fault.ShouldBeNull(fault?.ToString());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(selector[5..^2]);
+    }
+
+    [Theory]
+    [InlineData("[id='snapshot-policy-create-button']", "Tenant ID|Domain|Aggregate Type")]
+    [InlineData("[id='snapshot-create-button']", "Tenant ID|Domain|Aggregate ID")]
+    public async Task CreateDialogs_TargetInputsUpdateConfirmationFactsImmediately(string selector, string labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        string[] targetLabels = labels.Split('|');
+        SetupPolicies([]);
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        IRenderedComponent<FluentTextInput>[] inputs = cut.FindComponents<FluentTextInput>()
+            .Where(input => targetLabels.Contains(input.Instance.Label))
+            .ToArray();
+        inputs.Length.ShouldBe(targetLabels.Length);
+        inputs.ShouldAllBe(input => input.Instance.Immediate);
+    }
 
     private static void SetPrivateField(object instance, string fieldName, object? value)
         => instance.GetType()

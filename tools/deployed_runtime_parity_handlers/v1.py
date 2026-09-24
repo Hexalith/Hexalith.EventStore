@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import stat
 import zipfile
@@ -211,7 +212,10 @@ def _pairs(pairs):
 def load_json_bytes(value):
     """Load UTF-8 JSON while rejecting duplicate fields and non-object roots."""
     try:
-        result = json.loads(value, object_pairs_hook=_pairs)
+        result = json.loads(
+            value, object_pairs_hook=_pairs, parse_constant=_reject_non_json_number,
+            parse_float=_finite_json_float,
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise EvidenceError("evidence is not valid UTF-8 JSON") from error
     if not isinstance(result, dict):
@@ -219,12 +223,20 @@ def load_json_bytes(value):
     return result
 
 
+def _reject_non_json_number(_value):
+    raise EvidenceError("evidence contains a non-JSON number")
+
+
+def _finite_json_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise EvidenceError("evidence contains a non-finite JSON number")
+    return number
+
+
 def canonical_bytes(value):
     """Return the selected canonical UTF-8 JSON representation."""
-    return (
-        json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"), sort_keys=True)
-        + "\n"
-    ).encode("utf-8")
+    return predecessor_handler.canonical_bytes(value)
 
 
 def canonical_sha256(value):

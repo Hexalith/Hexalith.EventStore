@@ -11,7 +11,7 @@ public static class BackupCommand {
     /// </summary>
     public static Command Create(GlobalOptionsBinding binding) {
         _ = binding;
-        Command command = new("backup", "Backup and restore operations");
+        Command command = new("backup", "Backup and restore commands are unavailable in this release");
         command.Subcommands.Add(StubCommands.Create("create", "Create a backup of event streams (unavailable in this release)"));
         command.Subcommands.Add(StubCommands.Create("restore", "Restore event streams from a backup (unavailable in this release)"));
         command.Subcommands.Add(StubCommands.Create("list", "List available backups (unavailable in this release)"));

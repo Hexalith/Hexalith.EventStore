@@ -133,14 +133,42 @@ public class SessionToolsTests {
     }
 
     [Fact]
-    public async Task SetContext_TrimsTenantAndDomainValues() {
+    public async Task SetContext_TrimsDomainValue() {
         var session = new InvestigationSession();
 
-        string result = await SessionTools.SetContext(session, tenantId: "  acme-corp  ", domain: "  Orders  ");
+        string result = await SessionTools.SetContext(session, domain: "  Orders  ");
 
         using var doc = JsonDocument.Parse(result);
-        doc.RootElement.GetProperty("tenantId").GetString().ShouldBe("acme-corp");
+        doc.RootElement.GetProperty("tenantId").ValueKind.ShouldBe(JsonValueKind.Null);
         doc.RootElement.GetProperty("domain").GetString().ShouldBe("Orders");
+    }
+
+    [Theory]
+    [InlineData("Tenant-1")]
+    [InlineData(" tenant-1")]
+    [InlineData("tenant-1 ")]
+    [InlineData("tenant_1")]
+    public async Task SetContext_RejectsNonCanonicalTenantAndDoesNotStoreIt(string tenantId) {
+        var session = new InvestigationSession();
+
+        string result = await SessionTools.SetContext(session, tenantId: tenantId);
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        session.GetSnapshot().HasContext.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(241)]
+    [InlineData(500)]
+    public async Task SetContext_RejectsScopeThatWouldBeTruncatedAndDoesNotStoreIt(int length) {
+        var session = new InvestigationSession();
+
+        string result = await SessionTools.SetContext(session, domain: new string('d', length));
+
+        using var document = JsonDocument.Parse(result);
+        document.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
+        session.GetSnapshot().HasContext.ShouldBeFalse();
     }
 
     [Fact]

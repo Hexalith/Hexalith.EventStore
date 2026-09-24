@@ -1,0 +1,98 @@
+{
+  "schema": "hexalith.eventstore.story-4-15-successor-review-subject/v4",
+  "frozenAt": "2026-09-23T06:08:00Z",
+  "proposedDecision": "active-current-source-evidence-approved",
+  "predecessor": {
+    "completedV3ClosureCommit": "d578e7626df1d8afeada440c7989eb04ba2bdfe6",
+    "reviewSubjectSha256": "583269ac56f7ca75371b6c70a507a820bf21a4ff1fada790ac91feea34ca8b7e",
+    "closureManifestSha256": "f20a01ba874eaca8e3d99eef065534a8211eef16db601bf9dc1723ef0cc90493"
+  },
+  "headAncestry": {
+    "baseCommit": "d578e7626df1d8afeada440c7989eb04ba2bdfe6",
+    "required": true
+  },
+  "sourceTransitions": {
+    "_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md": {
+      "predecessorSha256": "1d83bad110a5eb1f63c6e10cea9d4422b523a5f61633b96aed153b1b272f75f2",
+      "successorSha256": "00d4075681320aefce2b1a5ee2d54e1200156fcc5973a9deeca51466345b54b8"
+    },
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": {
+      "predecessorSha256": "4f886c27ad2f09b579af1c5aa29b33ac74823e492c80f2accac66c4717a0a68f",
+      "successorSha256": "724602a298e9937f0d2bf16a4f42a125d3697534d6a090d3fb9f6ea952c0c013"
+    },
+    "tools/validate-oq8-platform-evidence.py": {
+      "predecessorSha256": "593309125303b9aaaad91a5e2241bc8bae9df263c8ca8724e4523b418e89038a",
+      "successorSha256": "615c47bc98272c0791746fe3c610a7c9687dac9a0f31d0af3930e93dbb7c7bd6"
+    }
+  },
+  "gateInputs": {
+    ".gitattributes": "bc623ae4b5c59039e8aa1e01e89aef6fc42d100d6807213d7708cd1bc4679e0f",
+    ".github/workflows/ci.yml": "0abf0556c91d2af112457b358b2b31660217bf365564bfdfba2cac400b144e2b",
+    ".github/workflows/integration.yml": "e50df54fb058ca5c52e0282836ebf6f04cb6fce915a1a1178bf19fad4411da21",
+    "_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md": "00d4075681320aefce2b1a5ee2d54e1200156fcc5973a9deeca51466345b54b8",
+    "docs/ci.md": "0d39f39f928e20eabfeb7398ab68ef8e615d3c8d45d6849fd7491cd025f2bba4",
+    "global.json": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+    "tests/Directory.Build.props": "66778cfb669b1db4d60acfabe502e1e4be39c120d931add0f0cd04dbc01d16ed",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs": "724602a298e9937f0d2bf16a4f42a125d3697534d6a090d3fb9f6ea952c0c013",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/PostgreSqlImageGovernanceTests.cs": "d87abfcb82c7fc1b9dad1cbb26720f5c637a5dba6a1c4a2e8549d8c65e44a70b",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs": "0832b461f3cdaabd8871da236004746395e7b15e4fac82a74f07063b91bedb06",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/AssemblyInfo.cs": "36891fd8689ec316ab925d1fb1114eeb54b50499fdfe683cd5ebaf4b7228668c",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolver.cs": "76f45fa2102df293c5d28390383b8001cfa47610412262c9c3626c160694020d",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DockerPublishedPortResolverTests.cs": "cbc1be14c3a8c9c58c9951059803a706ab3a54e0ccf130db89f3609c245ed577",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs": "8bf77620e33501409bc890d5983e57914087bbc469a8be05208a37f5ddd59948",
+    "tools/validate-oq8-platform-evidence.py": "615c47bc98272c0791746fe3c610a7c9687dac9a0f31d0af3930e93dbb7c7bd6"
+  },
+  "bindings": {
+    "sourceIdentity": {
+      "path": "source-artifact-identity.json",
+      "sha256": "fcca7db0f644bcebfff7ca9651176b2817cabba200313398498bd03188c330a0"
+    },
+    "limitations": {
+      "path": "limitations.json",
+      "sha256": "b001594d9419993e9ae33a06b3c584ae36f8b329f3d4ef54c97bbbfa9ddbab58"
+    },
+    "validatorRecord": {
+      "path": "validator-sha256.txt",
+      "sha256": "084744440e2c9a9f65cd2e87df5a922407304d1bc26c82c9bcc46b923907ac8e",
+      "validatorPath": "tools/validate-oq8-platform-evidence.py",
+      "validatorSha256": "615c47bc98272c0791746fe3c610a7c9687dac9a0f31d0af3930e93dbb7c7bd6"
+    },
+    "preReviewExecution": {
+      "path": "pre-review-execution.json",
+      "sha256": "32cb284223442b6c8726537765b36dc4490b6f1facd8bf54a1088b029611ac82"
+    }
+  },
+  "requiredReviews": [
+    {
+      "role": "architecture",
+      "reviewer": "Winston (System Architect)",
+      "scope": "immutable v1 through v3 lineage, active v4 phase separation, lifecycle-record isolation, approved parent-contract evolution, and source-only authority boundaries",
+      "status": "required"
+    },
+    {
+      "role": "security",
+      "reviewer": "Security Reviewer",
+      "scope": "immutable predecessor lineage, bounded lifecycle record, fail-closed evidence-before-lifecycle ordering, receipt binding, protected-content gates, and external-authority exclusions",
+      "status": "required"
+    },
+    {
+      "role": "test",
+      "reviewer": "Murat (Test Architect)",
+      "scope": "historical v1/v2/v3 lineage, active v4 chronology, handoff, PostgreSQL semantic, selector, lifecycle-identity, and anti-gaming mutations, plus the focused corrective Contracts lane with wider full verification left to the parent run",
+      "status": "required"
+    }
+  ],
+  "authority": {
+    "eventStorePlatformComplete": true,
+    "handoffMode": "source-only",
+    "releaseApproved": false,
+    "foldersFinalClosure": false,
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "deploymentAuthority": false,
+    "runtimePinAuthority": false,
+    "consumerMigrationAuthority": false,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false
+  }
+}

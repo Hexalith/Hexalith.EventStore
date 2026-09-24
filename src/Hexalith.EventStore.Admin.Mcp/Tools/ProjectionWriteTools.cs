@@ -22,11 +22,14 @@ internal static class ProjectionWriteTools {
         [Description("Projection name")] string projectionName,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"))
-            ?? ToolHelper.ValidatePreviewMatchesExecution(
-                (tenantId, "tenantId"),
-                (projectionName, "projectionName"));
+        string? validation = ValidateProjectionScope(tenantId, projectionName);
+        if (validation is not null) {
+            return validation;
+        }
+
+        string target = $"Pause projection '{projectionName}' for tenant '{tenantId}'";
+        string endpoint = $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/pause";
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
         if (validation is not null) {
             return validation;
         }
@@ -34,8 +37,8 @@ internal static class ProjectionWriteTools {
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-pause",
-                $"Pause projection '{projectionName}' for tenant '{tenantId}'",
-                $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/pause",
+                target,
+                endpoint,
                 new { tenantId, projectionName },
                 "This will stop the projection from processing new events until resumed.",
                 "Operator");
@@ -65,11 +68,14 @@ internal static class ProjectionWriteTools {
         [Description("Projection name")] string projectionName,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"))
-            ?? ToolHelper.ValidatePreviewMatchesExecution(
-                (tenantId, "tenantId"),
-                (projectionName, "projectionName"));
+        string? validation = ValidateProjectionScope(tenantId, projectionName);
+        if (validation is not null) {
+            return validation;
+        }
+
+        string target = $"Resume projection '{projectionName}' for tenant '{tenantId}'";
+        string endpoint = $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/resume";
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
         if (validation is not null) {
             return validation;
         }
@@ -77,8 +83,8 @@ internal static class ProjectionWriteTools {
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-resume",
-                $"Resume projection '{projectionName}' for tenant '{tenantId}'",
-                $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/resume",
+                target,
+                endpoint,
                 new { tenantId, projectionName },
                 "This will resume event processing for the projection.",
                 "Operator");
@@ -109,20 +115,27 @@ internal static class ProjectionWriteTools {
         [Description("Event position to reset from (null = beginning)")] long? fromPosition = null,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"))
-            ?? ToolHelper.ValidatePreviewMatchesExecution(
-                (tenantId, "tenantId"),
-                (projectionName, "projectionName"));
+        string? validation = ValidateProjectionScope(tenantId, projectionName);
         if (validation is not null) {
             return validation;
+        }
+
+        string target = $"Reset projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition?.ToString() ?? "beginning"}";
+        string endpoint = $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/reset";
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
+        if (validation is not null) {
+            return validation;
+        }
+
+        if (fromPosition < 0) {
+            return ToolHelper.SerializeError("invalid-input", "fromPosition must be zero or greater when provided.");
         }
 
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-reset",
-                $"Reset projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition?.ToString() ?? "beginning"}",
-                $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/reset",
+                target,
+                endpoint,
                 new { tenantId, projectionName, fromPosition },
                 "This will clear projection state and rebuild from the specified position. This is a destructive operation.",
                 "Operator");
@@ -154,13 +167,20 @@ internal static class ProjectionWriteTools {
         [Description("End event position")] long toPosition,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
         CancellationToken cancellationToken = default) {
-        string? validation = ToolHelper.ValidateRequired(
-            (tenantId, "tenantId"), (projectionName, "projectionName"))
-            ?? ToolHelper.ValidatePreviewMatchesExecution(
-                (tenantId, "tenantId"),
-                (projectionName, "projectionName"));
+        string? validation = ValidateProjectionScope(tenantId, projectionName);
         if (validation is not null) {
             return validation;
+        }
+
+        string target = $"Replay projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition} to {toPosition}";
+        string endpoint = $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/replay";
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
+        if (validation is not null) {
+            return validation;
+        }
+
+        if (fromPosition < 0 || toPosition < 0) {
+            return ToolHelper.SerializeError("invalid-input", "fromPosition and toPosition must be zero or greater.");
         }
 
         if (fromPosition > toPosition) {
@@ -170,8 +190,8 @@ internal static class ProjectionWriteTools {
         if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-replay",
-                $"Replay projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition} to {toPosition}",
-                $"POST /api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}/replay",
+                target,
+                endpoint,
                 new { tenantId, projectionName, fromPosition, toPosition },
                 "This will replay events between the specified positions. The projection will reprocess these events.",
                 "Operator");
@@ -189,4 +209,14 @@ internal static class ProjectionWriteTools {
             return ToolHelper.HandleException(ex);
         }
     }
+
+    private static string? ValidateProjectionScope(
+        string tenantId,
+        string projectionName)
+        => ToolHelper.ValidateRequired((tenantId, "tenantId"), (projectionName, "projectionName"))
+            ?? ToolHelper.ValidateTenantId(tenantId)
+            ?? ToolHelper.ValidatePathSegments((projectionName, "projectionName"))
+            ?? ToolHelper.ValidatePreviewMatchesExecution(
+                (tenantId, "tenantId"),
+                (projectionName, "projectionName"));
 }

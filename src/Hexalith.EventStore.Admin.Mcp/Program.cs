@@ -47,14 +47,7 @@ builder.Logging.AddConsole(options =>
     options.LogToStandardErrorThreshold = LogLevel.Trace);
 
 // Register AdminApiClient as typed HttpClient
-builder.Services.AddHttpClient<AdminApiClient>(client => {
-    client.BaseAddress = new Uri(adminUrl!);
-    client.DefaultRequestHeaders.Authorization =
-        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
-    client.DefaultRequestHeaders.Accept.Add(
-        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
+Program.AddAdminApiClient(builder.Services, new Uri(adminUrl!), adminToken!);
 
 // Register InvestigationSession as singleton for MCP session context
 builder.Services.AddSingleton<InvestigationSession>();
@@ -71,3 +64,32 @@ builder.Services
 
 await builder.Build().RunAsync().ConfigureAwait(false);
 return 0;
+
+/// <summary>
+/// Provides the MCP host composition seams used by the executable and its tests.
+/// </summary>
+internal partial class Program
+{
+    /// <summary>
+    /// Registers the typed Admin API client with its fail-closed redirect policy.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="adminUri">The Admin API base URI.</param>
+    /// <param name="adminToken">The Admin API authentication credential.</param>
+    internal static void AddAdminApiClient(IServiceCollection services, Uri adminUri, string adminToken)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(adminUri);
+        ArgumentException.ThrowIfNullOrWhiteSpace(adminToken);
+
+        _ = services.AddHttpClient<AdminApiClient>(client =>
+        {
+            client.BaseAddress = adminUri;
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
+            client.DefaultRequestHeaders.Accept.Add(
+                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+            client.Timeout = TimeSpan.FromSeconds(10);
+        }).ConfigurePrimaryHttpMessageHandler(AdminApiClient.CreatePrimaryHttpMessageHandler);
+    }
+}

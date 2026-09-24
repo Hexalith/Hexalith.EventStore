@@ -7,11 +7,12 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: draft
 created: 2026-07-05
-updated: 2026-09-09
+updated: 2026-09-23
 binds:
   - FR1-FR37
   - NFR1-NFR19
 sources:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-23.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-08-nfr3-nfr4-authentication-ratification.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-09-architecture-condensation.md
   - _bmad-output/planning-artifacts/prd.md
@@ -38,7 +39,7 @@ sources:
   - https://docs.dapr.io/reference/components-reference/supported-state-stores/setup-postgresql-v2/
   - https://docs.dapr.io/operations/security/app-api-token/
   - https://docs.dapr.io/reference/components-reference/supported-secret-stores/openbao/
-  - https://github.com/dapr/dapr/releases/tag/v1.18.3
+  - https://github.com/dapr/dapr/releases/tag/v1.18.4
   - https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2
 companions:
   - _bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/.memlog.md
@@ -150,11 +151,11 @@ closure.
 - **Prevents:** trusting network location, DAPR ACLs, or caller-supplied roles as application authorization.
 - **Rule:** Public and internal endpoints authenticate and authorize tenant and operation before disclosure or admission-state access. Every later mutation disposition re-evaluates current authorization. Caller app ID, mTLS, and ACLs provide attribution and transport constraints, not human or tenant authorization. Sensitive payloads, plaintext, ciphertext, credentials, keys, tokens, unbounded claims, and PII never enter telemetry, support output, or evidence; tenant IDs are not metric labels.
 
-**JWT contract.** `Hexalith.EventStore.ServiceDefaults.Authentication.JwtBearerAuthenticationContract` owns the versioned JWT validation contract for EventStore, Admin Server Host, Sample API, and every future JWT-binding host. Issuer, audience, signature, lifetime, roles, and tenant validation are mandatory with 60-second clock skew. Authority mode requires HTTPS metadata outside Development and a non-empty explicit allowlist drawn only from RS256/384/512, PS256/384/512, and ES256/384/512. Symmetric mode accepts HS256 only, is rejected in Production even when break-glass is enabled, and is available only in Development or an explicitly enabled environment that is neither Development nor Production. Hosts consume this shared contract rather than reimplementing it; contract/config fingerprint mismatch fails readiness. AD-28 remains a distinct authentication scheme.
+**JWT contract.** `Hexalith.EventStore.ServiceDefaults.Authentication.JwtBearerAuthenticationContract` owns the versioned JWT validation contract for EventStore, Admin Server Host, Admin UI host, Sample API, Sample Blazor UI host, Tenants domain-service host, Tenants API, generated REST API host fixtures, and every future externally reachable or JWT-binding application host. Issuer, audience, signature, lifetime, roles, and tenant validation are mandatory with 60-second clock skew. Authority mode requires HTTPS metadata outside Development and a non-empty explicit allowlist drawn only from RS256/384/512, PS256/384/512, and ES256/384/512. Symmetric mode accepts HS256 only, is rejected in Production even when break-glass is enabled, and is available only in Development or an explicitly enabled environment that is neither Development nor Production. ServiceDefaults owns the versioned host/config fingerprint inventory. Every named or future externally reachable or JWT-binding application host consumes this contract and passes positive and negative conformance against its registered fingerprint; the generated-host proof must exercise a runnable host fixture, not generated source alone. A host exposing no protected REST controller still belongs to the inventory if externally reachable; absent inbound authentication is a failing conformance result, not an exclusion. A missing host, locally reimplemented validator, or contract/config fingerprint mismatch fails the host gate and non-Development readiness. AD-28 remains a distinct authentication scheme. This is a required host boundary, not evidence that the named hosts have adopted it.
 
 ### AD-11 - Release Is Manifest-Governed [ADOPTED]
 
-- **Binds:** FR10, FR21-FR22, FR25, NFR9-NFR11, NFR16-NFR17
+- **Binds:** FR10, FR21-FR22, FR25, FR36, NFR9-NFR11, NFR16-NFR17
 - **Prevents:** checkout state or mutable registry tags changing released artifacts.
 - **Rule:** `tools/release-packages.json` is the package inventory; `references/Hexalith.Builds/Props/Directory.Packages.props` is the source-owned version catalog. Package mode is default; source mode requires explicit `UseHexalithProjectReferences=true` and a root-declared available source. Coupled versions move coherently with restore/build/test and representative-consumer evidence.
 
@@ -164,7 +165,9 @@ package metadata, SBOM/provenance, and package-only consumer validation from 14 
 instruction entry points are never package inventory. Unset or explicit `UseHexalithProjectReferences=false`
 is package intent in every configuration, including Debug.
 
-**Release evidence.** Container releases are immutable OCI image indexes containing exactly `linux/amd64` and `linux/arm64` image manifests. The SHA-pinned shared Builds publisher/validator owns the shape, raw-byte digest chain, provenance labels, `ReleaseEvidenceCodec`, and bounded smoke contract. Deployment is authorized only by a validated index digest, never by a mutable tag, lifecycle label, or prior pass flag. The current release mapping contains only `eventstore`; any additional image first receives an explicit release identity and the same validation contract. Published artifacts are immutable: release tags, conforming and failed, are never re-pointed or deleted; nonconforming releases such as `v3.75.0` and `v3.94.1` remain resolvable as non-authorizing failed evidence and are corrected only by a conforming later semantic version.
+**Release evidence.** Container releases are immutable OCI image indexes containing exactly `linux/amd64` and `linux/arm64` image manifests. The SHA-pinned shared Builds publisher/validator owns the shape, raw-byte digest chain, provenance labels, `ReleaseEvidenceCodec`, and bounded smoke contract. A validated index digest is the required artifact identity for deployment; a mutable tag, lifecycle label, or prior pass flag never supplies authority. Production deployment additionally requires the independent lifecycle and AD-26 gates below. The current release mapping contains only `eventstore`; any additional image first receives an explicit release identity and the same validation contract. Published artifacts are immutable: release tags, conforming and failed, are never re-pointed or deleted; nonconforming releases such as `v3.75.0` and `v3.94.1` remain resolvable as non-authorizing failed evidence and are corrected only by a conforming later semantic version.
+
+**Publication lifecycle.** One immutable subject advances only through `built` → `evidence-candidate-published` → `evidence-validated` → `release-available` → `production-promoted`. `built` grants no external authority. The bounded Story 3.14 publication authority permits an immutable candidate solely to collect evidence; Story 3.15's exact-subject validator and three packet-bound receipts may establish only `evidence-validated`. `release-available` requires a separate authenticated release-owner record, and each `production-promoted` profile requires a separate authenticated deployment-owner record under AD-26. Versioned, content-bound authority records bind schema/version, exact subject digest and source SHA, Story 3.14 packet and package/OCI identities, Story 3.15 validator identity/result and receipt-set digest, predecessor-state record digest, issuer identity and authentication-evidence digest, role-registry identity, state-specific outcome, issuance, expiry, revocation, and invalidation rules; promotion also binds the complete canonical profile inventory, exact profile digest, environment, and immutable deployment identity. The validator rejects missing, duplicate, unknown, skipped, expired, revoked, wrong-role, or mismatched records. No state is inferred from tags, story status, or a passing packet; any subject change restarts at `built`. The current-subject authority record and validator remain absent, so neither later state is authorized.
 
 ### AD-12 - High-Risk Verification Requires Persisted Evidence [ADOPTED]
 
@@ -238,7 +241,7 @@ explicit final chained call for every sidecar-routed client.
 
 - **Binds:** FR36, NFR9-NFR11, NFR16-NFR17
 - **Prevents:** consumers removing local infrastructure from package or image existence alone.
-- **Rule:** A consumer may remove infrastructure only when supported by a content-bound parity packet. The packet records the authoritative capability catalog; the applicable source, package, and deployed-mode matrix; persisted production-path evidence; the exact EventStore source SHA and package or image digest chain; configuration; platforms; topology; smoke results; rollback; the consumer repository and commit; and the exact removal-subject digest. The authenticated Consumer owner issues an immutable receipt binding those digests, its owner-role registry identity, outcome `consumer-removal-authorized`, timestamp, and validity. Every applicable mode must pass against the same packet. Any bound change or expiry invalidates the receipt. Booleans, free-form or self-declared approval, EventStore-side acceptance alone, planning status, and mutable tags confer no removal authority. Shared release validators remain owned by Hexalith.Builds and are consumed at a pinned SHA.
+- **Rule:** A consumer may remove infrastructure only after the same immutable subject has passed source/package capability, exact deployed-runtime evidence, AD-11 `release-available`, and AD-26 `production-promoted` for the canonical profile digest, followed by per-consumer authorization. A deterministic consumer-removal manifest enumerates every root-declared or Phase-4-referenced consumer, including entries with no proposed removal; `tools/validate-consumer-removal-authority.py` must pass on that complete manifest, and an absent, unknown, under-declared, or self-only profile/consumer entry fails. The content-bound parity packet records the authoritative capability catalog; the applicable source, package, and deployed-mode matrix; persisted production-path evidence; the exact EventStore source SHA and package or image digest chain; canonical production-profile digest; configuration; platforms; topology; smoke results; rollback; the consumer repository and commit; and the exact removal-subject digest. The authenticated Consumer owner issues an immutable receipt binding those digests, its owner-role registry identity, outcome `consumer-removal-authorized`, timestamp, and validity. Every applicable mode must pass against the same packet; `N/A` requires a bound no-removal consumer diff plus owner and validator attestation. Any bound change or expiry invalidates the receipt. Booleans, free-form or self-declared approval, EventStore-side acceptance alone, planning status, and mutable tags confer no removal authority. Shared release validators remain owned by Hexalith.Builds and are consumed at a pinned SHA.
 
 ### AD-23 - EventStore Owns The Optional Shared Payload-Protection Engine [ADOPTED]
 
@@ -277,11 +280,11 @@ authority, or consumer-migration authority.
 
 ### AD-26 - Production Runs Only On A Proven Fail-Closed Profile [ASSUMPTION]
 
-- **Binds:** FR8, FR19-FR20, FR26-FR28, FR32, NFR2-NFR4, NFR7, NFR16-NFR17
+- **Binds:** FR8, FR19-FR20, FR26-FR28, FR32, FR36, NFR2-NFR4, NFR7, NFR16-NFR17
 - **Prevents:** local convenience topology being promoted as production evidence.
 - **Rule:** The self-managed Kubernetes production profile uses independent DAPR sidecars, component `statestore` with stable `state.postgresql` v1 and `actorStateStore: true`, the production resiliency policy, an approved durable broker, AD-24 OpenBao, and OQ8 profile `oq8-postgresql-v1`. Redis is Development/test only; Cosmos templates are alternatives, not authorizing evidence.
 
-**Production proof.** The Platform deployment owner publishes one versioned, canonical `deploy/dapr/production-profile.yaml`. Its canonical-byte digest binds the exact DAPR runtime image and CLI compatibility, Kubernetes/sidecar mode, PostgreSQL and broker components, app IDs, scopes and ACLs, resiliency, OpenBao contract digest, route/idempotency catalog digests, restore posture, and required evidence. A separately authorized immutable candidate may be published under AD-11 solely to produce deployment evidence; candidate publication never grants production authority. Production promotion, traffic, consumer migration, readiness claims, and an approved production identity are prohibited until a validator binds the candidate digest to this profile digest and all two-host/shared-backend and production-path gates pass.
+**Production proof.** The Platform deployment owner publishes one versioned, canonical `deploy/dapr/production-profile.yaml`. This path is the sole declared production-profile inventory slot; its canonical-byte SHA-256, computed by the publication-authority validator from retained file bytes, is the complete authorizing inventory. The file is absent, so no profile currently authorizes promotion. Its digest must bind the exact DAPR runtime image and CLI compatibility, Kubernetes/sidecar mode, PostgreSQL and broker components, app IDs, scopes and ACLs, resiliency, OpenBao contract digest, route/idempotency catalog digests, restore posture, and required evidence. Cosmos and Development/test profiles are excluded; adding, replacing, or retiring an authorizing profile requires approved architecture change and a new canonical digest. A separately authorized immutable candidate may be published under AD-11 solely to produce evidence; candidate publication and `evidence-validated` never grant `release-available` or `production-promoted`. A validator must bind the same immutable subject's authenticated release-owner and deployment-owner predecessor records to the exact canonical profile digest and all two-host/shared-backend and production-path gates. Production promotion, traffic, consumer migration, readiness claims, and an approved production identity remain prohibited while any record, profile, proof, or AD-26 owner ratification is missing.
 
 ### AD-27 - Tenant Identity Has One Canonical Boundary Contract [ADOPTED]
 
@@ -345,24 +348,24 @@ authority, or consumer-migration authority.
 
 ## Stack
 
-This is the repository state observed on 2026-09-09. The Builds catalog remains dependency authority; current upstream versions are inputs to a tested refresh, not permission to edit dependencies.
+This is the repository state observed on 2026-09-23. The Builds catalog at the root-declared gitlink remains dependency authority; upstream versions require a separately tested refresh.
 
 | Name | Repository value | Current evidence / posture |
 | --- | --- | --- |
-| .NET SDK | `10.0.400`, `rollForward: latestPatch` | .NET 10.0.12 / SDK 10.0.401 security release; update through the shared catalog workflow |
+| .NET SDK | `10.0.401`, `rollForward: latestPatch` | Repository pin |
 | Target framework | `net10.0` | Retain |
-| ASP.NET Core / SignalR | `10.0.11` | Move coherently with the .NET 10.0.12 security baseline after validation |
-| Aspire.Hosting | `13.5.3` | Repository authority |
-| CommunityToolkit Aspire DAPR | `13.5.0-preview.1.260825-0345` | Preview-channel exception remains explicit |
-| DAPR runtime | CI `1.18.2`; deployment examples `1.18.0` | DAPR `1.18.3` exists; AD-26 requires one tested production pin |
-| Dapr .NET SDK | `1.18.5` | Repository authority |
+| ASP.NET Core / SignalR | `10.0.12` | Repository catalog pin |
+| Aspire.Hosting | `13.5.4` | Repository catalog pin |
+| CommunityToolkit Aspire DAPR | `13.5.1-beta.757` | Preview-channel exception remains explicit |
+| DAPR runtime | CI `1.18.2`; deployment examples `1.18.0` | DAPR `1.18.4` is available; AD-26 requires one tested production pin |
+| Dapr .NET SDK | `1.18.8` | Repository catalog pin |
 | PostgreSQL state component | stable `state.postgresql` v1 | v2 is incompatible and has no v1 migration path; AD-26 retains v1 pending a separate migration |
 | OpenBao secret store | `secretstores.hashicorp.vault` v1 | Required only in the AD-26 production profile |
 | MediatR / FluentValidation | `14.2.0` / `12.1.1` | Repository authority |
-| FrontComposer / Fluent UI | `4.4.0` / `5.0.0-rc.5-26219.1` | Fluent UI remains an explicit RC exception |
-| OpenTelemetry | `1.18.0` | Exporter and cardinality budgets remain deployment-gated |
-| Code coverage | `18.10.0` | Current public NuGet version; retain until the next tested catalog refresh |
-| Test stack | xUnit `4.0.0`, Shouldly `4.3.0`, NSubstitute `6.2.0` | Repository authority |
+| FrontComposer / Fluent UI | `4.5.0` / `5.0.0-rc.5-26219.1` | Fluent UI remains an explicit RC exception |
+| OpenTelemetry | `1.19.0` | Exporter and cardinality budgets remain deployment-gated |
+| Code coverage | `18.11.2` | Repository catalog pin |
+| Test stack | xUnit `4.0.1`, Shouldly `4.3.0`, NSubstitute `6.2.0` | Repository catalog pin |
 
 ## Structural Seed
 
@@ -450,7 +453,9 @@ Deferral never authorizes production. AD-26 prohibits production workload promot
 | Item | Safe posture | Owner and trigger |
 | --- | --- | --- |
 | Durable production broker and delivery retention | No production deployment; Redis pub/sub is Development/test only | Platform Operations, before an AD-26 profile can pass |
-| Canonical production-profile identity and exact DAPR runtime pin | Candidate publication is non-authorizing; no production promotion, traffic, migration, or readiness claim | Platform deployment owner, create and validate `deploy/dapr/production-profile.yaml` before AD-26 proof |
+| Canonical production-profile identity, exact DAPR runtime pin, and AD-26 ratification | No profile currently authorizes promotion; candidate publication and evidence validation are non-authorizing; no production promotion, traffic, migration, or readiness claim | Architecture and Platform deployment owners, explicitly ratify or replace AD-26; deployment owner creates and validates `deploy/dapr/production-profile.yaml` before AD-26 proof |
+| Shared JWT host conformance | Both Tenants hosts, Admin UI, Sample Blazor UI, and runnable generated-host adoption are unproven; NFR3 all-host gate remains blocked | Security and host owners, prove AD-10 contract/fingerprint conformance for EventStore, Admin Server Host, Admin UI, Sample API, Sample Blazor UI, Tenants domain-service host, Tenants API, and a runnable generated-host fixture before readiness |
+| Publication authority transitions | No current-subject authority record or validator; `evidence-validated` does not authorize release or promotion | Release and deployment owners, produce separate authenticated `release-available` and `production-promoted` records and exact-subject validator under AD-11/AD-26 before either transition |
 | Canonical routing/idempotency catalog envelope | Runtime overrides remain Development-only; production readiness fails without one activated root digest | Contracts and Platform deployment owners, create `deploy/dapr/eventstore-routing-catalog.json` and prove prepare/ready/commit/rollback before AD-25/AD-33 proof |
 | RTO/RPO, retention, backup/restore, and environment promotion | No availability or recoverability claim; retain data and immutable release evidence | Platform Operations with data owner, before production readiness |
 | Multi-region, partition scale, and global-position sharding | Single approved region/topology only; preserve current ordering semantics | Platform architect, before multi-region or scale SLO commitment |

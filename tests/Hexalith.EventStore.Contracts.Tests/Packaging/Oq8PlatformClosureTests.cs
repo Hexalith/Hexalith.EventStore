@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class Oq8PlatformClosureTests
 {
+    private const string V4SourceCommit = "30b279bd841c671932b51fad6bcf78b147079d21";
     private const string LandedSource = "5e8f175b2ced4715f7c6f765386812cc1001dbb4";
     private const string ReviewedPostgresImage =
         "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636";
@@ -29,6 +30,16 @@ public sealed class Oq8PlatformClosureTests
         "evidence",
         "story-4-15-successors",
         "v3");
+    private static readonly string V4SuccessorRelativeDirectory = Path.Combine(
+        "_bmad-output",
+        "implementation-artifacts",
+        "evidence",
+        "story-4-15-successors",
+        "v4");
+    private static readonly string LifecycleStateRelativePath = Path.Combine(
+        "_bmad-output",
+        "implementation-artifacts",
+        "4-15-oq8-platform-lifecycle-state.json");
     private static readonly Regex EventStorePlatformCompleteTrue = new(
         "\"eventStorePlatformComplete\"\\s*:\\s*true",
         RegexOptions.CultureInvariant,
@@ -42,6 +53,7 @@ public sealed class Oq8PlatformClosureTests
     [
         "_bmad-output/implementation-artifacts/4-8-durable-tenant-scoped-idempotency-admission-and-expired-key-precedence.md",
         "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
+        "_bmad-output/implementation-artifacts/4-15-oq8-platform-lifecycle-state.json",
         "_bmad-output/implementation-artifacts/spec-4-11-admission-state-machine-and-current-fence-enforcement.md",
         "_bmad-output/implementation-artifacts/spec-4-12-expiry-compaction-and-tombstone-retention.md",
         "_bmad-output/implementation-artifacts/spec-4-13-legacy-admission-migration-and-fail-closed-reconciliation.md",
@@ -82,6 +94,14 @@ public sealed class Oq8PlatformClosureTests
         string fixture = CreateFixture(root);
         try
         {
+            string selectorPath = Path.Combine(
+                fixture,
+                "_bmad-output",
+                "implementation-artifacts",
+                "4-15-oq8-platform-closure-successor.json");
+            using JsonDocument selector = JsonDocument.Parse(File.ReadAllText(selectorPath));
+            selector.RootElement.GetProperty("schema").GetString()
+                .ShouldBe("hexalith.eventstore.story-4-15-successor-selection/v3");
             (int exitCode, string output) = RunValidator(root, fixture);
 
             exitCode.ShouldBe(0, output);
@@ -203,6 +223,33 @@ public sealed class Oq8PlatformClosureTests
 
             exitCode.ShouldBe(0, output);
             output.ShouldContain("OQ8 Story 4.15 v1/v2 historical evidence validation passed; v2 does not authorize current source.");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies immutable v3 evidence remains valid from the completed-v3 Git snapshot without authorizing v4 source.
+    /// </summary>
+    [Fact]
+    public void HistoricalV3EvidencePassesWithoutAuthorizingCurrentSource()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            Directory.Delete(Path.Combine(fixture, V4SuccessorRelativeDirectory), recursive: true);
+            File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\n# current v4 source drift\n");
+
+            (int exitCode, string output) = RunValidator(
+                root,
+                fixture,
+                additionalArguments: ["--historical-v3-only"]);
+
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("v3 historical evidence validation passed; v3 does not authorize current source");
         }
         finally
         {
@@ -335,10 +382,10 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies one immutable snapshot drives both v3 hashing and semantic validation.
+    /// Verifies one immutable snapshot drives both v4 hashing and semantic validation.
     /// </summary>
     [Fact]
-    public void V3ValidationUsesOneBoundSnapshotAndFreshRunsSeeLaterDrift()
+    public void V4ValidationUsesOneBoundSnapshotAndFreshRunsSeeLaterDrift()
     {
         string root = FindRepositoryRoot();
         string fixture = CreateFixture(root);
@@ -354,12 +401,12 @@ public sealed class Oq8PlatformClosureTests
                 validator = importlib.util.module_from_spec(specification)
                 specification.loader.exec_module(validator)
                 validator.configure_roots(pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3]))
-                snapshots = validator.capture_v3_snapshots()
+                snapshots = validator.capture_v4_snapshots()
                 workflow = pathlib.Path(sys.argv[2]) / ".github/workflows/integration.yml"
                 workflow.write_text(workflow.read_text(encoding="utf-8") + "\n# post-snapshot drift\n", encoding="utf-8")
-                validator.validate_v3_successor(snapshots=snapshots)
+                validator.validate_v4_successor(snapshots=snapshots)
                 try:
-                    validator.validate_v3_successor()
+                    validator.validate_v4_successor()
                 except validator.EvidenceError as error:
                     if "gate-input identity drift: .github/workflows/integration.yml" not in str(error):
                         raise
@@ -374,7 +421,7 @@ public sealed class Oq8PlatformClosureTests
 
             (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
 
-            timedOut.ShouldBeFalse("OQ8 v3 snapshot probe timed out.");
+            timedOut.ShouldBeFalse("OQ8 v4 snapshot probe timed out.");
             exitCode.ShouldBe(0, output);
             output.ShouldContain("snapshot-consistent; fresh-drift-rejected");
         }
@@ -385,44 +432,18 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies missing, drifted, or future-dated v3 evidence fails closed.
+    /// Verifies the completed v3 packet remains byte-identical to its historical Git snapshot.
     /// </summary>
     /// <param name="mutation">The isolated v3 mutation.</param>
     /// <param name="expected">The specific diagnostic expected from the validator.</param>
     [Theory]
-    [InlineData("missing-successor", "Story 4.15 v3 successor directory is missing or symlinked")]
-    [InlineData("additional-artifact", "Story 4.15 v3 successor file set drift")]
-    [InlineData("reordered-manifest", "Story 4.15 v3 closure manifest is not path-sorted")]
-    [InlineData("malformed-manifest", "Malformed Story 4.15 v3 closure manifest line")]
-    [InlineData("symlinked-artifact", "Story 4.15 v3 artifact limitations.json has a symlinked path component")]
-    [InlineData("symlinked-v3-ancestor", "Story 4.15 v3 successor directory has a symlinked path component")]
-    [InlineData("oversized-artifact", "Story 4.15 v3 artifact limitations.json exceeds the 65536-byte limit")]
-    [InlineData("source-drift", "Story 4.15 v3 current source identity drift: docs/ci.md")]
-    [InlineData("gitattributes-gate-input-drift", "Story 4.15 v3 gate-input identity drift: .gitattributes")]
-    [InlineData("oversized-source", "Story 4.15 v3 bound source docs/ci.md exceeds the 524288-byte limit")]
-    [InlineData("symlinked-source-ancestor", "Story 4.15 v3 bound source .github/workflows/ci.yml has a symlinked path component")]
-    [InlineData("symlinked-gate-ancestor", "Story 4.15 v3 bound source docs/ci.md has a symlinked path component")]
-    [InlineData("sdk-gate-input-drift", "Story 4.15 v3 gate-input identity drift: global.json")]
-    [InlineData("landed-source-drift", "Story 4.15 v3 landed source identity drift")]
-    [InlineData("head-ancestry-drift", "Story 4.15 v3 HEAD ancestry declaration drift")]
-    [InlineData("sdk-link-drift", "Story 4.15 v3 historical SDK successor link drift")]
-    [InlineData("semantic-workflow-image", "Story 4.15 v3 current source PostgreSQL image drift: .github/workflows/integration.yml")]
-    [InlineData("semantic-fixture-image", "Story 4.15 v3 current source PostgreSQL image drift: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs")]
-    [InlineData("pre-review-future", "Story 4.15 v3 pre-review execution timestamp is later than current UTC")]
-    [InlineData("subject-future", "Story 4.15 v3 review-subject freeze timestamp is later than current UTC")]
-    [InlineData("receipt-future", "Story 4.15 v3 security receipt timestamp is later than current UTC")]
-    [InlineData("handoff-future", "Story 4.15 v3 handoff assembly timestamp is later than current UTC")]
-    [InlineData("receipt-rejected", "Story 4.15 v3 security review is not approved")]
-    [InlineData("limitation-residual-text", "Story 4.15 v3 limitation text or order drift")]
-    [InlineData("limitation-authority-text", "Story 4.15 v3 limitation text or order drift")]
-    [InlineData("test-receipt-rejected", "Story 4.15 v3 test review is not approved")]
-    [InlineData("test-verification-missing", "Story 4.15 v3 test review field set drift")]
-    [InlineData("test-verification-failed", "Story 4.15 v3 test review verification oq8-platform-closure:failed count drift")]
-    [InlineData("test-verification-skipped", "Story 4.15 v3 test review verification oq8-platform-closure:skipped count drift")]
-    [InlineData("contracts-full-failed", "Story 4.15 v3 test review verification contracts-full:failed count drift")]
-    [InlineData("contracts-full-skipped", "Story 4.15 v3 test review verification contracts-full:skipped count drift")]
-    [InlineData("consumer-install-command-drift", "Story 4.15 v3 consumer instructions drift")]
-    [InlineData("successor-selection-drift", "Story 4.15 successor selection drift")]
+    [InlineData("missing-successor", "Story 4.15 v3 historical successor directory is missing or symlinked")]
+    [InlineData("additional-artifact", "Story 4.15 v3 historical successor file set drift")]
+    [InlineData("reordered-manifest", "Story 4.15 v3 historical artifact drift: closure-sha256.txt")]
+    [InlineData("malformed-manifest", "Story 4.15 v3 historical artifact drift: closure-sha256.txt")]
+    [InlineData("symlinked-artifact", "Story 4.15 v3 historical artifact limitations.json has a symlinked path component")]
+    [InlineData("symlinked-v3-ancestor", "Story 4.15 v3 historical successor directory has a symlinked path component")]
+    [InlineData("oversized-artifact", "Story 4.15 v3 historical artifact limitations.json exceeds the 65536-byte limit")]
     public void V3SuccessorMutationsFailClosed(string mutation, string expected)
     {
         string root = FindRepositoryRoot();
@@ -430,6 +451,54 @@ public sealed class Oq8PlatformClosureTests
         try
         {
             ApplyV3Mutation(fixture, mutation);
+
+            (int exitCode, string output) = RunValidator(
+                root,
+                fixture,
+                additionalArguments: ["--historical-v3-only"]);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(expected);
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies malformed, incomplete, drifted, or rejected active v4 evidence fails closed.
+    /// </summary>
+    /// <param name="mutation">The isolated v4 mutation.</param>
+    /// <param name="expected">The specific diagnostic expected from the validator.</param>
+    [Theory]
+    [InlineData("missing-successor", "Story 4.15 v4 successor directory is missing or symlinked")]
+    [InlineData("additional-artifact", "Story 4.15 v4 successor file set drift")]
+    [InlineData("reordered-manifest", "Story 4.15 v4 closure manifest is not path-sorted")]
+    [InlineData("malformed-manifest", "Malformed Story 4.15 v4 closure manifest line")]
+    [InlineData("symlinked-artifact", "Story 4.15 v4 artifact limitations.json has a symlinked path component")]
+    [InlineData("oversized-artifact", "Story 4.15 v4 artifact limitations.json exceeds the 65536-byte limit")]
+    [InlineData("source-drift", "Story 4.15 v4 gate-input identity drift: docs/ci.md")]
+    [InlineData("predecessor-mismatch", "Story 4.15 v4 predecessor link drift")]
+    [InlineData("receipt-rejected", "Story 4.15 v4 security review is not approved")]
+    [InlineData("test-verification-failed", "Story 4.15 v4 test review verification lifecycle-record-mutations:failed count drift")]
+    [InlineData("execution-after-freeze", "Story 4.15 v4 pre-review execution is not strictly before subject freeze")]
+    [InlineData("subject-future-time", "Story 4.15 v4 review-subject freeze timestamp is later than current UTC")]
+    [InlineData("receipt-before-freeze", "Story 4.15 v4 architecture review predates the frozen subject")]
+    [InlineData("handoff-before-receipts", "Story 4.15 v4 handoff predates a review receipt")]
+    [InlineData("consumer-instructions-drift", "Story 4.15 v4 consumer instructions drift")]
+    [InlineData("handoff-authority-drift", "External authority overstated: releaseApproved")]
+    [InlineData("semantic-workflow-image", "Story 4.15 v4 current source PostgreSQL image drift: .github/workflows/integration.yml")]
+    [InlineData("semantic-fixture-image", "Story 4.15 v4 current source PostgreSQL image drift: tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs")]
+    [InlineData("successor-selection-drift", "Story 4.15 successor selection drift")]
+    public void V4SuccessorMutationsFailClosed(string mutation, string expected)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            ApplyV4Mutation(fixture, mutation);
 
             (int exitCode, string output) = RunValidator(root, fixture);
 
@@ -590,7 +659,7 @@ public sealed class Oq8PlatformClosureTests
             {
                 case "current-source":
                     File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nSuccessor source drift.\n");
-                    expected = "Story 4.15 v3 current source identity drift: docs/ci.md";
+                    expected = "Story 4.15 v4 gate-input identity drift: docs/ci.md";
                     break;
                 case "prior-selection":
                 {
@@ -2657,7 +2726,7 @@ public sealed class Oq8PlatformClosureTests
             (int exitCode, string output) = RunValidator(root, fixture, lifecycleMode: "final");
 
             exitCode.ShouldBe(1, output);
-            output.ShouldContain("Lifecycle status drift: 4-15-oq8-platform-closure-and-handoff");
+            output.ShouldContain("Story 4.15 lifecycle drift");
             output.ShouldNotContain("Traceback");
         }
         finally
@@ -2690,18 +2759,169 @@ public sealed class Oq8PlatformClosureTests
     }
 
     /// <summary>
-    /// Verifies the checked-in repository itself satisfies the final lifecycle contract without fixture rewrites.
+    /// Verifies closed is a distinct terminal phase and final no longer passes after the transition.
+    /// </summary>
+    [Fact]
+    public void ClosedLifecyclePassesAndFinalRejectsClosedState()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            SetClosedLifecycle(fixture);
+
+            (int closedExitCode, string closedOutput) = RunValidator(root, fixture, lifecycleMode: "closed");
+            (int finalExitCode, string finalOutput) = RunValidator(root, fixture, lifecycleMode: "final");
+
+            closedExitCode.ShouldBe(0, closedOutput);
+            closedOutput.ShouldContain("OQ8 closed lifecycle validation passed.");
+            finalExitCode.ShouldBe(1, finalOutput);
+            finalOutput.ShouldContain("Story 4.15 lifecycle drift");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies a sprint-only terminal flip cannot disagree with the ready-to-close record.
+    /// </summary>
+    [Fact]
+    public void StatusOnlyClosureFlipFailsWithLifecycleDiagnostic()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            SetFinalLifecycle(fixture);
+            SetStory415Lifecycle(fixture, "done", "done");
+
+            (int exitCode, string output) = RunValidator(root, fixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Story 4.15 lifecycle drift");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies malformed, ambiguous, mismatched, oversized, and symlinked lifecycle records fail closed.
+    /// </summary>
+    /// <param name="mutation">The isolated lifecycle record mutation.</param>
+    /// <param name="expected">The bounded failure diagnostic.</param>
+    [Theory]
+    [InlineData("malformed", "Cannot load JSON evidence Story 4.15 lifecycle state record")]
+    [InlineData("ambiguous", "Duplicate JSON field")]
+    [InlineData("unsupported-state", "Story 4.15 lifecycle drift")]
+    [InlineData("manifest-mismatch", "Story 4.15 lifecycle drift")]
+    [InlineData("subject-mismatch", "Story 4.15 lifecycle drift")]
+    [InlineData("coupled-null-manifest", "Story 4.15 lifecycle successor manifest identity is not SHA-256")]
+    [InlineData("coupled-malformed-subject", "Story 4.15 lifecycle review subject identity is not SHA-256")]
+    [InlineData("selector-structure", "Story 4.15 lifecycle drift: active successor selection field set drift")]
+    [InlineData("oversized", "Story 4.15 lifecycle state record exceeds the 65536-byte limit")]
+    [InlineData("symlinked", "Story 4.15 lifecycle state record has a symlinked path component")]
+    public void LifecycleRecordMutationsFailClosed(string mutation, string expected)
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            ApplyLifecycleMutation(fixture, mutation);
+
+            (int exitCode, string output) = RunValidator(root, fixture, lifecycleMode: "final");
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain(expected);
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies lifecycle validation consumes the selector snapshot and identities already validated by the default path.
+    /// </summary>
+    [Fact]
+    public void LifecycleValidationUsesProvidedValidatedSelectorSnapshot()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            (int exitCode, string output) = RunLifecycleSelectorSnapshotProbe(root, fixture);
+
+            exitCode.ShouldBe(0, output);
+            output.ShouldContain("provided selector snapshot accepted");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies default validation reports invalid v4 evidence before accepting closed lifecycle state.
+    /// </summary>
+    [Fact]
+    public void ClosedLifecycleCannotGameInvalidV4Evidence()
+    {
+        string root = FindRepositoryRoot();
+        string fixture = CreateFixture(root);
+        try
+        {
+            SetClosedLifecycle(fixture);
+            File.AppendAllText(Path.Combine(fixture, V4SuccessorRelativeDirectory, "limitations.json"), " ");
+
+            (int exitCode, string output) = RunValidator(root, fixture);
+
+            exitCode.ShouldBe(1, output);
+            output.ShouldContain("Story 4.15 v4 checksum mismatch: limitations.json");
+            output.ShouldNotContain("lifecycle validation passed");
+            output.ShouldNotContain("Traceback");
+        }
+        finally
+        {
+            Directory.Delete(fixture, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the checked-in repository itself satisfies its selected lifecycle contract without fixture rewrites.
     /// </summary>
     [Fact]
     [Trait("OQ8Phase", "FinalOnly")]
-    public void CheckedInRepositoryLifecyclePassesWithoutMutation()
+    public void CheckedInRepositoryClosedLifecyclePassesWithoutMutation()
+    {
+        string root = FindRepositoryRoot();
+        string state = LoadObject(Path.Combine(root, LifecycleStateRelativePath))["state"]!.GetValue<string>();
+        string mode = state == "closed" ? "closed" : "final";
+
+        (int exitCode, string output) = RunValidator(root, root, lifecycleMode: mode);
+
+        exitCode.ShouldBe(0, output);
+        output.ShouldContain($"OQ8 {mode} lifecycle validation passed.");
+    }
+
+    /// <summary>
+    /// Verifies the checked-in repository passes complete v4 evidence before its closed lifecycle state.
+    /// </summary>
+    [Fact]
+    [Trait("OQ8Phase", "FinalOnly")]
+    public void CheckedInRepositoryFullValidationPassesWithoutMutation()
     {
         string root = FindRepositoryRoot();
 
-        (int exitCode, string output) = RunValidator(root, root, lifecycleMode: "final");
+        (int exitCode, string output) = RunValidator(root, root);
 
         exitCode.ShouldBe(0, output);
-        output.ShouldContain("OQ8 final lifecycle validation passed.");
+        output.ShouldContain("OQ8 platform evidence validation passed.");
     }
 
     /// <summary>
@@ -3713,8 +3933,8 @@ public sealed class Oq8PlatformClosureTests
         "candidate-oversized-subject" => "exceeds the 1048576-byte limit",
         "candidate-document-semantics" => "OQ8 source-only handoff semantics missing",
         "candidate-document-stale-state" => "Stale OQ8 handoff state remains",
-        "candidate-story-status-done" => "Lifecycle status drift: 4-15-oq8-platform-closure-and-handoff",
-        "candidate-frontmatter-done" => "Story 4.15 metadata status drift",
+        "candidate-story-status-done" => "Story 4.15 lifecycle drift",
+        "candidate-frontmatter-done" => "Story 4.15 lifecycle drift",
         "candidate-focused-test-shape" => "Focused result test must be an object",
         "candidate-focused-schema-boolean" => "Focused result schemaVersion must be an exact integer",
         "candidate-packet-schema-boolean" => "Packet schemaVersion must be an exact integer",
@@ -4377,9 +4597,9 @@ public sealed class Oq8PlatformClosureTests
         "handoff-final-consumer-authority" => "Source-only handoff reviewed authority drift",
         "handoff-field-extra" => "Source-only handoff field set drift",
         "validator-digest" => "Closure validator identity drift",
-        "story-status" => "Lifecycle status drift: 4-15-oq8-platform-closure-and-handoff",
+        "story-status" => "Story 4.15 lifecycle drift",
         "sprint-status-duplicate" => "Lifecycle status is missing or ambiguous: 4-15-oq8-platform-closure-and-handoff",
-        "frontmatter-status-duplicate" => "Story 4.15 frontmatter status is missing or ambiguous",
+        "frontmatter-status-duplicate" => "Story 4.15 v4 current source identity drift: _bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md",
         "document-marker" => "OQ8 source-only handoff marker is missing or ambiguous: docs/reference/command-api.md",
         "document-semantics" => "OQ8 source-only handoff semantics missing from docs/reference/command-api.md: no release approval",
         "platform-field-extra" => "Platform closure field set drift",
@@ -4868,6 +5088,356 @@ public sealed class Oq8PlatformClosureTests
             default:
                 throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown Story 4.15 v3 mutation.");
         }
+    }
+
+    private static void ApplyV4Mutation(string fixture, string mutation)
+    {
+        string successor = Path.Combine(fixture, V4SuccessorRelativeDirectory);
+        switch (mutation)
+        {
+            case "missing-successor":
+                Directory.Delete(successor, recursive: true);
+                break;
+            case "additional-artifact":
+                File.WriteAllText(Path.Combine(successor, "unreviewed.json"), "{}\n");
+                break;
+            case "reordered-manifest":
+            {
+                string path = Path.Combine(successor, "closure-sha256.txt");
+                string[] lines = File.ReadAllLines(path);
+                Array.Reverse(lines);
+                File.WriteAllText(path, string.Join('\n', lines) + "\n");
+                break;
+            }
+            case "malformed-manifest":
+            {
+                string path = Path.Combine(successor, "closure-sha256.txt");
+                string[] lines = File.ReadAllLines(path);
+                lines[0] = "not-a-sha256  limitations.json";
+                File.WriteAllText(path, string.Join('\n', lines) + "\n");
+                break;
+            }
+            case "symlinked-artifact":
+            {
+                string path = Path.Combine(successor, "limitations.json");
+                string target = Path.Combine(fixture, "v4-limitations-target.json");
+                File.Move(path, target);
+                CreateSymbolicLinkOrSkip(path, target, directory: false);
+                break;
+            }
+            case "oversized-artifact":
+                File.AppendAllText(Path.Combine(successor, "limitations.json"), new string('x', 65_537));
+                break;
+            case "source-drift":
+                File.AppendAllText(Path.Combine(fixture, "docs", "ci.md"), "\nV4 source drift.\n");
+                break;
+            case "predecessor-mismatch":
+            {
+                string path = Path.Combine(successor, "source-artifact-identity.json");
+                JsonObject identity = LoadObject(path);
+                identity["predecessor"]!["reviewSubjectSha256"] = new string('0', 64);
+                WriteObject(path, identity);
+                ResealV3Manifest(successor);
+                break;
+            }
+            case "receipt-rejected":
+            {
+                string path = Path.Combine(successor, "reviews", "security.json");
+                JsonObject receipt = LoadObject(path);
+                receipt["decision"] = "rejected";
+                WriteObject(path, receipt);
+                ResealV3Manifest(successor);
+                break;
+            }
+            case "test-verification-failed":
+            {
+                string path = Path.Combine(successor, "reviews", "test.json");
+                JsonObject receipt = LoadObject(path);
+                JsonObject command = receipt["verification"]!
+                    .AsArray()
+                    .Select(item => item!.AsObject())
+                    .Single(item => item["name"]!.GetValue<string>() == "lifecycle-record-mutations");
+                command["failed"] = 1;
+                WriteObject(path, receipt);
+                ResealV3Manifest(successor);
+                break;
+            }
+            case "execution-after-freeze":
+            {
+                string executionPath = Path.Combine(successor, "pre-review-execution.json");
+                JsonObject execution = LoadObject(executionPath);
+                execution["executedAt"] = LoadObject(Path.Combine(successor, "review-subject.json"))["frozenAt"]!.DeepClone();
+                WriteObject(executionPath, execution);
+                RebindV4AfterPreReviewChange(fixture, successor);
+                break;
+            }
+            case "subject-future-time":
+            {
+                string subjectPath = Path.Combine(successor, "review-subject.json");
+                JsonObject subject = LoadObject(subjectPath);
+                subject["frozenAt"] = FutureUtcSecond();
+                WriteObject(subjectPath, subject);
+                RebindV4AfterSubjectChange(fixture, successor);
+                break;
+            }
+            case "receipt-before-freeze":
+            {
+                string receiptPath = Path.Combine(successor, "reviews", "architecture.json");
+                JsonObject receipt = LoadObject(receiptPath);
+                receipt["issuedAt"] = LoadObject(Path.Combine(successor, "review-subject.json"))["frozenAt"]!.DeepClone();
+                WriteObject(receiptPath, receipt);
+                RebindV4AfterReceiptChange(fixture, successor, "architecture");
+                break;
+            }
+            case "handoff-before-receipts":
+            {
+                string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+                JsonObject handoff = LoadObject(handoffPath);
+                handoff["assembledAt"] = LoadObject(Path.Combine(successor, "reviews", "test.json"))["issuedAt"]!.DeepClone();
+                WriteObject(handoffPath, handoff);
+                ResealV4ManifestAndSelection(fixture, successor);
+                break;
+            }
+            case "consumer-instructions-drift":
+            {
+                string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+                JsonObject handoff = LoadObject(handoffPath);
+                handoff["consumerInstructions"]!["verifyCommand"] = "python3 tools/validate-oq8-platform-evidence.py";
+                WriteObject(handoffPath, handoff);
+                ResealV4ManifestAndSelection(fixture, successor);
+                break;
+            }
+            case "handoff-authority-drift":
+            {
+                string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+                JsonObject handoff = LoadObject(handoffPath);
+                handoff["authority"]!["releaseApproved"] = true;
+                WriteObject(handoffPath, handoff);
+                ResealV4ManifestAndSelection(fixture, successor);
+                break;
+            }
+            case "semantic-workflow-image":
+                MutateV4SemanticSource(fixture, successor, ".github/workflows/integration.yml");
+                break;
+            case "semantic-fixture-image":
+                MutateV4SemanticSource(
+                    fixture,
+                    successor,
+                    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs");
+                break;
+            case "successor-selection-drift":
+            {
+                string path = Path.Combine(
+                    fixture,
+                    "_bmad-output",
+                    "implementation-artifacts",
+                    "4-15-oq8-platform-closure-successor.json");
+                JsonObject selector = LoadObject(path);
+                selector["successor"]!["handoffSha256"] = new string('0', 64);
+                WriteObject(path, selector);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown Story 4.15 v4 mutation.");
+        }
+    }
+
+    private static void ApplyLifecycleMutation(string fixture, string mutation)
+    {
+        string path = Path.Combine(fixture, LifecycleStateRelativePath);
+        switch (mutation)
+        {
+            case "malformed":
+                File.WriteAllText(path, "{\n");
+                break;
+            case "ambiguous":
+                File.WriteAllText(path, "{\"schema\":\"a\",\"schema\":\"b\"}\n");
+                break;
+            case "unsupported-state":
+            {
+                JsonObject record = LoadObject(path);
+                record["state"] = "complete";
+                WriteObject(path, record);
+                break;
+            }
+            case "manifest-mismatch":
+            {
+                JsonObject record = LoadObject(path);
+                record["successorManifestSha256"] = new string('0', 64);
+                WriteObject(path, record);
+                break;
+            }
+            case "subject-mismatch":
+            {
+                JsonObject record = LoadObject(path);
+                record["reviewSubjectSha256"] = new string('0', 64);
+                WriteObject(path, record);
+                break;
+            }
+            case "coupled-null-manifest":
+            {
+                JsonObject record = LoadObject(path);
+                record["successorManifestSha256"] = null;
+                WriteObject(path, record);
+                string selectorPath = Path.Combine(
+                    fixture,
+                    "_bmad-output",
+                    "implementation-artifacts",
+                    "4-15-oq8-platform-closure-successor.json");
+                JsonObject selector = LoadObject(selectorPath);
+                selector["successor"]!["manifestSha256"] = null;
+                WriteObject(selectorPath, selector);
+                break;
+            }
+            case "coupled-malformed-subject":
+            {
+                JsonObject record = LoadObject(path);
+                record["reviewSubjectSha256"] = "not-a-sha256";
+                WriteObject(path, record);
+                string selectorPath = Path.Combine(
+                    fixture,
+                    "_bmad-output",
+                    "implementation-artifacts",
+                    "4-15-oq8-platform-closure-successor.json");
+                JsonObject selector = LoadObject(selectorPath);
+                selector["successor"]!["reviewSubjectSha256"] = "not-a-sha256";
+                WriteObject(selectorPath, selector);
+                break;
+            }
+            case "selector-structure":
+            {
+                string selectorPath = Path.Combine(
+                    fixture,
+                    "_bmad-output",
+                    "implementation-artifacts",
+                    "4-15-oq8-platform-closure-successor.json");
+                JsonObject selector = LoadObject(selectorPath);
+                selector["successor"]!.AsObject().Remove("files");
+                WriteObject(selectorPath, selector);
+                break;
+            }
+            case "oversized":
+                File.AppendAllText(path, new string('x', 65_537));
+                break;
+            case "symlinked":
+            {
+                string target = path + ".target";
+                File.Move(path, target);
+                CreateSymbolicLinkOrSkip(path, Path.GetFileName(target), directory: false);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation), mutation, "Unknown Story 4.15 lifecycle mutation.");
+        }
+    }
+
+    private static void MutateV4SemanticSource(string fixture, string successor, string relative)
+    {
+        string sourcePath = Path.Combine(fixture, relative);
+        string source = File.ReadAllText(sourcePath);
+        string mutated = source.Replace(ReviewedPostgresImage, HistoricalPostgresImage, StringComparison.Ordinal);
+        mutated.ShouldNotBe(source);
+        File.WriteAllText(sourcePath, mutated);
+
+        string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+        JsonObject identity = LoadObject(identityPath);
+        identity["gateInputs"]![relative] = ComputeSha256(sourcePath);
+        WriteObject(identityPath, identity);
+        RebindV4AfterIdentityChange(fixture, successor);
+    }
+
+    private static void RebindV4AfterIdentityChange(string fixture, string successor)
+    {
+        string identityPath = Path.Combine(successor, "source-artifact-identity.json");
+        JsonObject identity = LoadObject(identityPath);
+        string executionPath = Path.Combine(successor, "pre-review-execution.json");
+        JsonObject execution = LoadObject(executionPath);
+        string subjectPath = Path.Combine(successor, "review-subject.json");
+        JsonObject subject = LoadObject(subjectPath);
+        foreach (string field in new[] { "predecessor", "headAncestry", "sourceTransitions", "gateInputs" })
+        {
+            execution["candidateInputs"]![field] = identity[field]!.DeepClone();
+            subject[field] = identity[field]!.DeepClone();
+        }
+
+        WriteObject(executionPath, execution);
+        subject["bindings"]!["sourceIdentity"]!["sha256"] = ComputeSha256(identityPath);
+        subject["bindings"]!["preReviewExecution"]!["sha256"] = ComputeSha256(executionPath);
+        WriteObject(subjectPath, subject);
+        RebindV4AfterSubjectChange(fixture, successor);
+    }
+
+    private static void RebindV4AfterPreReviewChange(string fixture, string successor)
+    {
+        string subjectPath = Path.Combine(successor, "review-subject.json");
+        JsonObject subject = LoadObject(subjectPath);
+        subject["bindings"]!["preReviewExecution"]!["sha256"] =
+            ComputeSha256(Path.Combine(successor, "pre-review-execution.json"));
+        WriteObject(subjectPath, subject);
+        RebindV4AfterSubjectChange(fixture, successor);
+    }
+
+    private static void RebindV4AfterSubjectChange(string fixture, string successor)
+    {
+        string subjectSha256 = ComputeSha256(Path.Combine(successor, "review-subject.json"));
+        string limitationsSha256 = ComputeSha256(Path.Combine(successor, "limitations.json"));
+        string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+        JsonObject handoff = LoadObject(handoffPath);
+        handoff["reviewSubjectSha256"] = subjectSha256;
+        foreach (string role in new[] { "architecture", "security", "test" })
+        {
+            string receiptPath = Path.Combine(successor, "reviews", role + ".json");
+            JsonObject receipt = LoadObject(receiptPath);
+            receipt["subjectSha256"] = subjectSha256;
+            receipt["limitationsSha256"] = limitationsSha256;
+            WriteObject(receiptPath, receipt);
+            handoff["reviewReceipts"]![role] = ComputeSha256(receiptPath);
+        }
+
+        WriteObject(handoffPath, handoff);
+        ResealV4ManifestAndSelection(fixture, successor);
+    }
+
+    private static void RebindV4AfterReceiptChange(string fixture, string successor, string role)
+    {
+        string handoffPath = Path.Combine(successor, "source-only-handoff.json");
+        JsonObject handoff = LoadObject(handoffPath);
+        handoff["reviewReceipts"]![role] = ComputeSha256(Path.Combine(successor, "reviews", role + ".json"));
+        WriteObject(handoffPath, handoff);
+        ResealV4ManifestAndSelection(fixture, successor);
+    }
+
+    private static void ResealV4ManifestAndSelection(string fixture, string successor)
+    {
+        ResealV3Manifest(successor);
+        string manifestPath = Path.Combine(successor, "closure-sha256.txt");
+        JsonObject files = new();
+        foreach (string line in File.ReadAllLines(manifestPath))
+        {
+            string[] parts = line.Split("  ", 2, StringSplitOptions.None);
+            parts.Length.ShouldBe(2);
+            files[parts[1]] = parts[0];
+        }
+
+        string selectorPath = Path.Combine(
+            fixture,
+            "_bmad-output",
+            "implementation-artifacts",
+            "4-15-oq8-platform-closure-successor.json");
+        JsonObject selector = LoadObject(selectorPath);
+        JsonObject selected = selector["successor"]!.AsObject();
+        selected["manifestSha256"] = ComputeSha256(manifestPath);
+        selected["files"] = files;
+        selected["sourceIdentitySha256"] = ComputeSha256(Path.Combine(successor, "source-artifact-identity.json"));
+        selected["reviewSubjectSha256"] = ComputeSha256(Path.Combine(successor, "review-subject.json"));
+        selected["handoffSha256"] = ComputeSha256(Path.Combine(successor, "source-only-handoff.json"));
+        WriteObject(selectorPath, selector);
+
+        string lifecyclePath = Path.Combine(fixture, LifecycleStateRelativePath);
+        JsonObject lifecycle = LoadObject(lifecyclePath);
+        lifecycle["successorManifestSha256"] = selected["manifestSha256"]!.DeepClone();
+        lifecycle["reviewSubjectSha256"] = selected["reviewSubjectSha256"]!.DeepClone();
+        WriteObject(lifecyclePath, lifecycle);
     }
 
     private static void MutateSuccessorSelector(string fixture, string mutation)
@@ -5723,11 +6293,26 @@ public sealed class Oq8PlatformClosureTests
     private static void SetFinalLifecycle(string fixture)
     {
         SetStory415Lifecycle(fixture, "review", "done");
+        SetLifecycleRecordState(fixture, "ready-to-close");
+    }
+
+    private static void SetClosedLifecycle(string fixture)
+    {
+        SetStory415Lifecycle(fixture, "done", "done");
+        SetLifecycleRecordState(fixture, "closed");
     }
 
     private static void SetCandidateLifecycle(string fixture)
     {
         SetStory415Lifecycle(fixture, "in-progress", "in-review");
+    }
+
+    private static void SetLifecycleRecordState(string fixture, string state)
+    {
+        string path = Path.Combine(fixture, LifecycleStateRelativePath);
+        JsonObject record = LoadObject(path);
+        record["state"] = state;
+        WriteObject(path, record);
     }
 
     private static void SetStory415Lifecycle(string fixture, string sprintStatus, string specStatus)
@@ -5804,6 +6389,7 @@ public sealed class Oq8PlatformClosureTests
                 SuccessorDirectory,
                 "source-artifact-identity.json"));
 
+        CopyHistoricalV4Selection(root, fixture);
         SetCandidateLifecycle(fixture);
         return fixture;
     }
@@ -5818,6 +6404,21 @@ public sealed class Oq8PlatformClosureTests
             CopyFile(root, fixture, relative);
         }
 
+        // Historical v4 mutation fixtures must retain the source bytes v4
+        // actually reviewed, even after the additive v5 candidate evolves them.
+        foreach (string relative in new[]
+        {
+            "docs/ci.md",
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+            "tools/validate-oq8-platform-evidence.py",
+        })
+        {
+            CopyHistoricalV4File(root, fixture, relative);
+        }
+
+        CopyHistoricalV4Selection(root, fixture);
+
         CopyDirectory(
             Path.Combine(root, "_bmad-output", "implementation-artifacts", "evidence", "story-4-14"),
             Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "evidence", "story-4-14"));
@@ -5830,6 +6431,9 @@ public sealed class Oq8PlatformClosureTests
         CopyDirectory(
             Path.Combine(root, V3SuccessorRelativeDirectory),
             Path.Combine(fixture, V3SuccessorRelativeDirectory));
+        CopyDirectory(
+            Path.Combine(root, V4SuccessorRelativeDirectory),
+            Path.Combine(fixture, V4SuccessorRelativeDirectory));
         SetFinalLifecycle(fixture);
         return fixture;
     }
@@ -5846,6 +6450,43 @@ public sealed class Oq8PlatformClosureTests
         string destination = Path.Combine(destinationRoot, relative);
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         File.Copy(Path.Combine(sourceRoot, relative), destination);
+    }
+
+    private static void CopyHistoricalV4File(string repositoryRoot, string fixtureRoot, string relative)
+    {
+        string destination = Path.Combine(fixtureRoot, relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        ProcessStartInfo start = new("git")
+        {
+            WorkingDirectory = repositoryRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        start.ArgumentList.Add("--no-replace-objects");
+        start.ArgumentList.Add("show");
+        start.ArgumentList.Add($"{V4SourceCommit}:{relative}");
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        using (FileStream output = File.Create(destination))
+        {
+            process.StandardOutput.BaseStream.CopyTo(output);
+        }
+
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        process.ExitCode.ShouldBe(0, error);
+    }
+
+    private static void CopyHistoricalV4Selection(string repositoryRoot, string fixtureRoot)
+    {
+        CopyHistoricalV4File(
+            repositoryRoot,
+            fixtureRoot,
+            "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json");
+        CopyHistoricalV4File(
+            repositoryRoot,
+            fixtureRoot,
+            "_bmad-output/implementation-artifacts/4-15-oq8-platform-lifecycle-state.json");
     }
 
     private static void CopyDirectory(string source, string destination)
@@ -6004,6 +6645,50 @@ public sealed class Oq8PlatformClosureTests
 
         (int exitCode, string output, bool timedOut) = RunProcess(process, 5_000);
         timedOut.ShouldBeFalse("Historical Git interruption probe timed out.");
+        return (exitCode, output);
+    }
+
+    private static (int ExitCode, string Output) RunLifecycleSelectorSnapshotProbe(
+        string repositoryRoot,
+        string fixture)
+    {
+        using Process process = CreatePythonProcess(
+            """
+            import importlib.util
+            import pathlib
+            import sys
+
+            specification = importlib.util.spec_from_file_location("oq8_validator", sys.argv[1])
+            validator = importlib.util.module_from_spec(specification)
+            specification.loader.exec_module(validator)
+            validator.configure_roots(pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[1]).parent.parent)
+            selector = validator.load_successor_selector()
+            selected = selector["successor"]
+
+            def reject_reload():
+                raise RuntimeError("selector was reloaded")
+
+            validator.load_successor_selector = reject_reload
+            try:
+                state = validator.validate_lifecycle_state(
+                    "ready-to-close",
+                    selector=selector,
+                    expected_manifest_sha256=selected["manifestSha256"],
+                    expected_subject_sha256=selected["reviewSubjectSha256"],
+                )
+            except validator.EvidenceError as error:
+                print(str(error))
+                raise SystemExit(1)
+            if state != "ready-to-close":
+                raise SystemExit(f"unexpected lifecycle state: {state}")
+            print("provided selector snapshot accepted")
+            """);
+        process.StartInfo.WorkingDirectory = repositoryRoot;
+        process.StartInfo.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "validate-oq8-platform-evidence.py"));
+        process.StartInfo.ArgumentList.Add(fixture);
+
+        (int exitCode, string output, bool timedOut) = RunProcess(process, 5_000);
+        timedOut.ShouldBeFalse("Lifecycle selector snapshot probe timed out.");
         return (exitCode, output);
     }
 

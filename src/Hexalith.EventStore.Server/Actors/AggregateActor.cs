@@ -5636,7 +5636,7 @@ public partial class AggregateActor(
         LogStageTransition(terminalStatus, command, causationId, startTicks);
         await WriteAdvisoryStatusAsync(
             command, terminalStatus,
-            eventCount: eventCount > 0 ? eventCount : null,
+            eventCount: accepted || eventCount > 0 ? eventCount : null,
             rejectionEventType: rejectionEventType).ConfigureAwait(false);
         LogCommandCompletedSummary(command, causationId, terminalStatus, startTicks);
 

@@ -12,6 +12,8 @@ namespace Hexalith.EventStore.DomainService;
 /// <param name="Events">The complete aggregate event prefix, or empty when erased.</param>
 /// <param name="ExpectedAggregateCount">The authoritative count sealed by finalization.</param>
 /// <param name="ExpectedInventoryFingerprint">The last accepted inventory fingerprint sealed by finalization.</param>
+/// <param name="CaptureInventoryFingerprint">The authoritative inventory fingerprint sealed at Begin.</param>
+/// <param name="SourceHighWatermarks">The authoritative source positions sealed at Begin.</param>
 public sealed record DomainSharedProjectionRebuildRequest(
     int Version,
     DomainSharedProjectionRebuildAction Action,
@@ -21,4 +23,6 @@ public sealed record DomainSharedProjectionRebuildRequest(
     bool IsErased = false,
     ProjectionEventDto[]? Events = null,
     long? ExpectedAggregateCount = null,
-    string? ExpectedInventoryFingerprint = null);
+    string? ExpectedInventoryFingerprint = null,
+    string? CaptureInventoryFingerprint = null,
+    IReadOnlyDictionary<string, long>? SourceHighWatermarks = null);
