@@ -22,3 +22,4 @@ for test_class in \
   ReleasePackageManifestTests; do
   "$runner" -class "*$test_class"
 done
+"$runner" -method '*PublicationAuthorityFixturesPassWithoutSkippedCases'

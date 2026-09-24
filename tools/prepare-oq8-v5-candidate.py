@@ -33,6 +33,7 @@ RELEASE_SOURCE_PATHS = (
     "scripts/verify-oq8-v5-candidate.sh",
     "docs/ci-secrets-checklist.md",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/TrustedPublishingReleaseTests.cs",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8V5CandidateTests.cs",

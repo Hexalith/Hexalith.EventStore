@@ -115,7 +115,7 @@ public sealed class TrustedPublishingReleaseTests
         start.Environment.Remove("NUGET_TRUSTED_PUBLISHING_KEY");
         start.Environment.Remove("HEXALITH_REQUIRE_CONTAINER_PUBLISHER");
         start.Environment.Remove("HEXALITH_CONTAINER_PROJECTS");
-        start.Environment["NUGET_API_KEY"] = "legacy-key-must-not-pass";
+        start.Environment.Add("NUGET_API_KEY", "legacy-key-must-not-pass");
         if (temporaryKey is not null)
         {
             start.Environment["NUGET_TRUSTED_PUBLISHING_KEY"] = temporaryKey;
