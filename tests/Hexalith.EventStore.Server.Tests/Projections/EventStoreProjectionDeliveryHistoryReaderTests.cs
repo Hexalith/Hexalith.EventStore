@@ -124,6 +124,31 @@ public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
         exception.ShouldNotBeOfType<ProjectionDeliveryHistoryValidationException>();
     }
 
+    [Fact]
+    public async Task ReadAsync_ForeignEnvelopeFailsBeforePayloadDecoding() {
+        IAggregateActor aggregate = Substitute.For<IAggregateActor>();
+        _ = aggregate.ReadEventsRangeAsync(0, 1, 256)
+            .Returns([Envelope(1, null) with { TenantId = "other-tenant" }]);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        EventStoreProjectionDeliveryHistoryReader reader = CreateReader(aggregate, protection);
+
+        _ = await Should.ThrowAsync<ProjectionDeliveryHistoryValidationException>(() => reader.ReadAsync(Identity, 1));
+        _ = await protection.DidNotReceiveWithAnyArgs().TryUnprotectEventPayloadAsync(
+            default!, default!, default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task ReadAsync_IncompleteSecondPageFailsClosed() {
+        IAggregateActor aggregate = Substitute.For<IAggregateActor>();
+        _ = aggregate.ReadEventsRangeAsync(0, 257, 256)
+            .Returns([.. Enumerable.Range(1, 256).Select(sequence => Envelope(sequence, null))]);
+        _ = aggregate.ReadEventsRangeAsync(256, 257, 256).Returns([]);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        EventStoreProjectionDeliveryHistoryReader reader = CreateReader(aggregate, protection);
+
+        _ = await Should.ThrowAsync<ProjectionDeliveryHistoryValidationException>(() => reader.ReadAsync(Identity, 257));
+    }
+
     private static EventStoreProjectionDeliveryHistoryReader CreateReader(
         IAggregateActor aggregate,
         IEventPayloadProtectionService protection) {

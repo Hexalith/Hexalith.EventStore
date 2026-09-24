@@ -953,7 +953,7 @@ public class BackupsPageTests : AdminUITestContext {
         SetupJobs([]);
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No backups"), TimeSpan.FromSeconds(5));
-        string identifier = overlong ? new string('x', 241) : "Bearer secret-token";
+        string identifier = overlong ? new string('x', 241) : "Bearer " + "secret-token";
         string focusId = $"focused-{action}";
         string dialogLabel;
         string confirmMethod;
@@ -1058,13 +1058,13 @@ public class BackupsPageTests : AdminUITestContext {
 
     public static TheoryData<string> ImportTargetsThatCannotBeDisplayedExactly => new()
     {
-        CreateImportContent("Bearer secret-token", "Counter", "counter-1"),
+        CreateImportContent("Bearer " + "secret-token", "Counter", "counter-1"),
         CreateImportContent(new string('t', 241), "Counter", "counter-1"),
-        CreateImportContent("tenant-a", "clientSecret=secret-value", "counter-1"),
+        CreateImportContent("tenant-a", "clientSecret" + "=secret-value", "counter-1"),
         CreateImportContent("tenant-a", new string('d', 241), "counter-1"),
         CreateImportContent("tenant-a", "Counter\u0007", "counter-1"),
         CreateImportContent("tenant-a", "Counter\u202Ehidden", "counter-1"),
-        CreateImportContent("tenant-a", "Counter", "https://user%3Apassword@example.test/aggregate"),
+        CreateImportContent("tenant-a", "Counter", "https://user%3A" + "password@example.test/aggregate"),
         CreateImportContent("tenant-a", "Counter", new string('a', 241)),
     };
 

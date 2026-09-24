@@ -2,7 +2,7 @@ name: Release
 
 # Publication is an explicit operator action. The unprotected preflight proves
 # the dispatch selected the current main tip and that exact source already has
-# the selected successful push proof before the protected release environment is entered.
+# successful push proof before the protected production job starts.
 on:
   workflow_dispatch:
     inputs:
@@ -94,47 +94,150 @@ jobs:
           fi
 
   release:
+    name: Publish EventStore packages and container
     needs: verify-source
-    # GitHub validates the maximum permissions of every job in a called workflow,
-    # including the skipped governed-release job, so attestations/id-token must be
-    # granted here even though `governed-release: false` keeps EventStore on the
-    # legacy job. The legacy job declares no permissions of its own and therefore
-    # INHERITS this set: it runs holding both write scopes without using them.
-    # Nothing is signed or attested, but this is a real widening of the production
-    # job's token, not a paper one. Narrowing it belongs to Hexalith.Builds -- see
-    # deferred-work.md, "Split the governed release path into its own reusable workflow file".
-    # Do not add attestation
-    # or signing steps here: Epic 3 withholds that authority.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
     permissions:
       actions: read
-      attestations: write
       contents: write
       id-token: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@22a578b576a515d2af214fe81859447fffc97981
-    with:
-      solution: Hexalith.EventStore.slnx
-      timeout-minutes: 60
-      environment-name: production
-      governed-release: false
-      publish-containers: true
-      builds-execution-sha: 22a578b576a515d2af214fe81859447fffc97981
-      source-branch: main
-      source-ci-workflow: ${{ needs.verify-source.outputs.source-ci-workflow }}
-      package-manifest: tools/release-packages.json
-      # Caller-declared so an accidental change to the manifest fails closed
-      # instead of redefining the gate it is checked against.
-      expected-package-count: 14
-      # Publication is gated by the protected `production` environment approval on the
-      # release job. The dispatch-reserved version and one-use GitHub issue-comment
-      # authority were a Story 3.14 corrective-release gate, not a release precondition;
-      # declaring the opt-out here keeps that machinery available and unused. Turning it
-      # back on means setting this true and supplying all three reservation inputs.
-      require-publication-authority: false
-      container-projects: |
-        src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
-    secrets:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-      HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
-      HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - name: Checkout approved Builds actions
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: 22a578b576a515d2af214fe81859447fffc97981
+          path: .hexalith/builds-execution
+          persist-credentials: false
+      - name: Validate approved Builds execution identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C .hexalith/builds-execution rev-parse HEAD)" = "22a578b576a515d2af214fe81859447fffc97981"
+      - name: Initialize root-declared submodules
+        uses: ./.hexalith/builds-execution/Github/initialize-build
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props', 'global.json', 'references/Hexalith.Builds/Props/Directory.Packages.props') }}
+          restore-keys: nuget-
+      - name: Validate declared package count
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(jq -r '.packages | length' tools/release-packages.json)" = "14"
+      - name: Install npm dependencies
+        run: npm ci
+      - name: Verify npm dependency provenance and signatures
+        run: npm audit signatures
+      - name: Restore
+        run: dotnet restore Hexalith.EventStore.slnx
+      - name: Build
+        run: dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror
+      - name: Set up arm64 emulation
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        with:
+          platforms: arm64
+      - name: Prepare release container publisher
+        uses: ./.hexalith/builds-execution/Github/publish-containers
+        with:
+          container-projects: |
+            src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
+          builds-execution-sha: 22a578b576a515d2af214fe81859447fffc97981
+      - name: Resolve release publication freeze
+        id: publish-gate
+        shell: bash
+        env:
+          HEXALITH_RELEASE_PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}
+        run: |
+          set -euo pipefail
+          if [ "${HEXALITH_RELEASE_PUBLISH_ENABLED-}" = "true" ]; then
+            echo "publish-enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Release publication is enabled for this repository."
+            exit 0
+          fi
+          echo "publish-enabled=false" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Release publication frozen::The repository variable HEXALITH_RELEASE_PUBLISH_ENABLED is not exactly 'true', so Semantic Release is skipped."
+      - name: Revalidate current source before Semantic Release
+        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_SHA: ${{ github.sha }}
+          SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          test "$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')" = "$DISPATCH_SHA"
+          source_runs="$(gh api --method GET \
+            "repos/${REPOSITORY}/actions/workflows/${SOURCE_CI_WORKFLOW}/runs" \
+            -f branch=main -f event=push -f head_sha="$DISPATCH_SHA" \
+            -f status=success -f per_page=100)"
+          printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
+            [.workflow_runs[] | select(
+              .head_sha == $sha and .head_branch == "main" and
+              .event == "push" and .status == "completed" and
+              .conclusion == "success"
+            )] | length > 0
+          ' >/dev/null
+      - name: Validate trusted publishing account
+        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
+        shell: bash
+        env:
+          NUGET_TRUSTED_PUBLISHING_USER: ${{ vars.NUGET_TRUSTED_PUBLISHING_USER }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NUGET_TRUSTED_PUBLISHING_USER//[[:space:]]/}" ]; then
+            echo "NUGET_TRUSTED_PUBLISHING_USER must name the nuget.org policy creator." >&2
+            exit 1
+          fi
+      - name: Exchange GitHub OIDC for temporary NuGet key
+        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_TRUSTED_PUBLISHING_USER }}
+      - name: Semantic Release
+        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NUGET_TRUSTED_PUBLISHING_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          HEXALITH_CONTAINER_PROJECTS: src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
+          HEXALITH_ZOT_REGISTRY: ${{ vars.HEXALITH_ZOT_REGISTRY || 'registry.hexalith.com' }}
+          HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
+          HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
+          HEXALITH_BUILDS_EXECUTION_SHA: 22a578b576a515d2af214fe81859447fffc97981
+          HEXALITH_RELEASE_ENVIRONMENT: production
+          HEXALITH_RELEASE_SOURCE_BRANCH: main
+          HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}
+          HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json
+          HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'
+          HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'
+        run: npx semantic-release
+      - name: Upload complete release evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .hexalith/release-evidence/**
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30

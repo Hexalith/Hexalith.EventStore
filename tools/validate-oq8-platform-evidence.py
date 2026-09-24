@@ -102,6 +102,7 @@ MAX_SPRINT_STATUS_BYTES = 1_048_576
 MAX_CANDIDATE_JSON_BYTES = 1_048_576
 MAX_HISTORICAL_MANIFEST_BYTES = 65_536
 MAX_V2_ARTIFACT_BYTES = 65_536
+MAX_V5_CANDIDATE_BYTES = 65_536
 MAX_V2_BOUND_SOURCE_BYTES = 524_288
 MAX_RAW_CTRF_BYTES = 8 * 1024 * 1024
 EVIDENCE_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-14/e60a3777c581d70b62f67173ccc2372b5b64a425"
@@ -111,6 +112,8 @@ SUCCESSOR_SELECTOR_PATH = "_bmad-output/implementation-artifacts/4-15-oq8-platfo
 V2_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2"
 V3_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3"
 V4_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4"
+V5_SUCCESSOR_DIRECTORY = "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5"
+V5_SELECTION_REASON = "Retain immutable v1-v4 history and activate the reviewed v5 source-only successor for EventStore-owned trusted publishing."
 LIFECYCLE_STATE_PATH = "_bmad-output/implementation-artifacts/4-15-oq8-platform-lifecycle-state.json"
 SDK_SUCCESSOR_MANIFEST_SHA256 = "fd8cc0b86d2cf4f624495c64168e6a2dc727b5aa0f830dca39c382dd28ba094d"
 FOCUSED_METHOD = "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
@@ -2157,12 +2160,33 @@ def load_successor_selector() -> dict[str, Any]:
         set(selector) == {"schema", "selectedOn", "reason", "historical", "successor", "authority"},
         "Story 4.15 successor selector field set drift",
     )
+    schema = selector.get("schema")
     require(
-        selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v3",
+        schema in {
+            "hexalith.eventstore.story-4-15-successor-selection/v3",
+            "hexalith.eventstore.story-4-15-successor-selection/v4",
+        },
         "Story 4.15 successor selector schema drift",
     )
-    require(selector.get("selectedOn") == V4_SELECTION_DATE, "Story 4.15 successor selection date drift")
-    require(selector.get("reason") == V4_SELECTION_REASON, "Story 4.15 successor selection reason drift")
+    if schema.endswith("/v3"):
+        require(selector.get("selectedOn") == V4_SELECTION_DATE, "Story 4.15 successor selection date drift")
+        require(selector.get("reason") == V4_SELECTION_REASON, "Story 4.15 successor selection reason drift")
+    else:
+        require(
+            selector.get("reason") == V5_SELECTION_REASON
+            and selector.get("successor", {}).get("directory") == V5_SUCCESSOR_DIRECTORY,
+            "Story 4.15 v5 successor selection reason or directory drift",
+        )
+        selected_on = selector.get("selectedOn")
+        require(
+            isinstance(selected_on, str)
+            and re.fullmatch(r"\d{4}-\d{2}-\d{2}", selected_on) is not None,
+            "Story 4.15 v5 successor selection date drift",
+        )
+        require(
+            datetime.strptime(selected_on, "%Y-%m-%d").date() <= datetime.now(timezone.utc).date(),
+            "Story 4.15 v5 successor selection date is in the future",
+        )
     return selector
 
 
@@ -2171,9 +2195,7 @@ def validate_successor_selector_historical(
     prior_manifest: dict[str, str],
     historical_successor_manifest: dict[str, str],
 ) -> None:
-    require(
-        selector.get("historical")
-        == {
+    expected_historical = {
             "v1Closure": {
                 "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
                 "packetSha256": PRIOR_PACKET_SHA256,
@@ -2198,9 +2220,19 @@ def validate_successor_selector_historical(
                 "reviewSubjectSha256": V3_REVIEW_SUBJECT_SHA256,
                 "handoffSha256": V3_HANDOFF_SHA256,
             },
-        },
-        "Story 4.15 successor historical selection drift",
-    )
+        }
+    if selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v4":
+        archived_selector = load_json_bytes(
+            git_file("30b279bd841c671932b51fad6bcf78b147079d21", SUCCESSOR_SELECTOR_PATH),
+            "Story 4.15 archived v4 selector",
+        )
+        require(
+            sha256_bytes(git_file("30b279bd841c671932b51fad6bcf78b147079d21", SUCCESSOR_SELECTOR_PATH))
+            == "b61c8112a281b6dc74511b8392684c8e62c67b285580f82ce331b6bcb189fd8c",
+            "Story 4.15 archived v4 selector identity drift",
+        )
+        expected_historical["v4Successor"] = archived_selector["successor"]
+    require(selector.get("historical") == expected_historical, "Story 4.15 successor historical selection drift")
     require(sha256_file(PACKET) == PRIOR_PACKET_SHA256, "Story 4.15 prior packet byte identity drift")
     require(
         sha256_file(CLOSURE / "closure-sha256.txt") == PRIOR_CLOSURE_MANIFEST_SHA256,
@@ -4606,7 +4638,8 @@ def validate_lifecycle_state(
         "Story 4.15 selected successor review subject identity",
     )
     require(
-        record.get("successorDirectory") == V4_SUCCESSOR_DIRECTORY == selected.get("directory"),
+        record.get("successorDirectory") == selected.get("directory")
+        and selected.get("directory") in {V4_SUCCESSOR_DIRECTORY, V5_SUCCESSOR_DIRECTORY},
         "Story 4.15 lifecycle drift: successor directory mismatch",
     )
     require(
@@ -4807,6 +4840,16 @@ def validate_platform_closure(platform: dict[str, Any], *, current_source: bool 
     if current_source:
         validate_v2_successor()
         validate_historical_v3_successor()
+        if selector.get("schema") == "hexalith.eventstore.story-4-15-successor-selection/v4":
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "tools/oq8-v5-packet.py"), "--validate-active"],
+                cwd=ROOT,
+                capture_output=True,
+                timeout=240,
+            )
+            require(result.returncode == 0, "Story 4.15 v5 reviewed packet, selector, or lifecycle validation failed")
+            validate_status_and_documents(phase="closed")
+            return
         v4_manifest, v4_manifest_sha256, identity_sha256, subject_sha256, handoff_sha256 = validate_v4_successor()
         validate_successor_selector(
             selector,
@@ -5041,12 +5084,99 @@ def validate_committed_packet(*, current_source: bool = True) -> None:
     validate_platform_closure(outer_packet.get("platformClosure", {}), current_source=current_source)
 
 
+def validate_v5_draft_candidate(candidate_path: Path) -> None:
+    """Verify review inputs without treating an unapproved v5 draft as a successor."""
+    require(
+        ROOT == DEFAULT_ROOT and GIT_ROOT == DEFAULT_ROOT,
+        "Story 4.15 v5 draft validation requires the live EventStore checkout",
+    )
+    require(
+        candidate_path.resolve() != ROOT and ROOT not in candidate_path.resolve().parents,
+        "Story 4.15 v5 draft must be outside the repository",
+    )
+    candidate = load_bounded_json(
+        candidate_path,
+        MAX_V5_CANDIDATE_BYTES,
+        "Story 4.15 v5 draft candidate",
+        repository_bound=False,
+    )
+    require(isinstance(candidate, dict), "Story 4.15 v5 draft candidate must be an object")
+    require(
+        candidate.get("schema") == "hexalith.eventstore.oq8-v5-review-candidate/v1"
+        and candidate.get("status") == "draft-unapproved",
+        "Story 4.15 v5 draft schema or status drift",
+    )
+    require(
+        candidate.get("review")
+        == {
+            "subjectFrozen": False,
+            "subjectSha256": None,
+            "architecture": "pending",
+            "security": "pending",
+            "test": "pending",
+        },
+        "Story 4.15 v5 draft claims review authority",
+    )
+    require(
+        candidate.get("authority")
+        == {
+            "currentSourceApproved": False,
+            "releaseApproved": False,
+            "packageAuthority": False,
+            "registryAuthority": False,
+        },
+        "Story 4.15 v5 draft claims source or publication authority",
+    )
+    selector = load_successor_selector()
+    require(
+        selector.get("successor", {}).get("directory") == V4_SUCCESSOR_DIRECTORY,
+        "Story 4.15 v5 draft requires the approved v4 selector to remain active",
+    )
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools/prepare-oq8-v5-candidate.py")],
+        cwd=ROOT,
+        capture_output=True,
+        timeout=180,
+    )
+    require(result.returncode == 0, "Story 4.15 v5 draft preparation failed")
+    require(
+        len(result.stdout) <= MAX_V5_CANDIDATE_BYTES,
+        "Story 4.15 v5 freshly prepared draft exceeds the size limit",
+    )
+    expected = load_json_bytes(result.stdout, "Story 4.15 v5 freshly prepared draft")
+    require(candidate == expected, "Story 4.15 v5 draft source or historical identity drift")
+
+
+def validate_v5_subject_input_draft(path: Path) -> None:
+    require(
+        ROOT == DEFAULT_ROOT and GIT_ROOT == DEFAULT_ROOT,
+        "Story 4.15 v5 draft validation requires the live EventStore checkout",
+    )
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools/oq8-v5-packet.py"), "--validate-draft", str(path)],
+        cwd=ROOT,
+        capture_output=True,
+        timeout=240,
+    )
+    require(result.returncode == 0, "Story 4.15 v5 subject-input draft validation failed")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="Artifact/document root to validate")
     parser.add_argument("--git-root", type=Path, default=DEFAULT_ROOT, help="Git repository used for immutable source proof")
     parser.add_argument("--git-timeout-seconds", type=float, default=30.0, help="Bound each Git identity subprocess")
     parser.add_argument("--pre-review", action="store_true", help="Validate receipt-independent frozen candidate inputs")
+    parser.add_argument(
+        "--v5-candidate",
+        type=Path,
+        help="Validate an unapproved v5 draft outside the repository without changing the active v4 gate",
+    )
+    parser.add_argument(
+        "--v5-subject-draft",
+        type=Path,
+        help="Validate a versioned, receipt-independent v5 subject packet outside the repository",
+    )
     parser.add_argument(
         "--historical-v1-only",
         action="store_true",
@@ -5083,6 +5213,37 @@ def main() -> int:
     args = parse_args()
     try:
         configure_roots(args.root, args.git_root, args.git_timeout_seconds)
+        if args.v5_candidate is not None:
+            require(
+                args.v5_subject_draft is None
+                and
+                not args.pre_review
+                and not args.historical_v1_only
+                and not args.historical_v2_only
+                and not args.historical_v3_only
+                and args.lifecycle_mode is None
+                and args.capture_directory is None
+                and args.ctrf is None
+                and args.support_ctrf is None
+                and args.support_output is None
+                and args.expected_runtime_version is None,
+                "V5 draft mode cannot be combined with another validation mode",
+            )
+        if args.v5_subject_draft is not None:
+            require(
+                args.v5_candidate is None
+                and not args.pre_review
+                and not args.historical_v1_only
+                and not args.historical_v2_only
+                and not args.historical_v3_only
+                and args.lifecycle_mode is None
+                and args.capture_directory is None
+                and args.ctrf is None
+                and args.support_ctrf is None
+                and args.support_output is None
+                and args.expected_runtime_version is None,
+                "V5 subject-draft mode cannot be combined with another validation mode",
+            )
         if args.pre_review:
             require(
                 not args.historical_v1_only
@@ -5129,7 +5290,13 @@ def main() -> int:
                 and args.expected_runtime_version is None,
                 "Historical-v3 mode cannot be combined with capture, support, or lifecycle arguments",
             )
-        if args.lifecycle_mode is not None:
+        if args.v5_subject_draft is not None:
+            validate_v5_subject_input_draft(args.v5_subject_draft)
+            print("OQ8 v5 subject-input draft validated; inactive and unapproved.")
+        elif args.v5_candidate is not None:
+            validate_v5_draft_candidate(args.v5_candidate)
+            print("OQ8 v5 draft candidate inputs validated; inactive and unapproved.")
+        elif args.lifecycle_mode is not None:
             require(
                 not args.pre_review
                 and not args.historical_v1_only

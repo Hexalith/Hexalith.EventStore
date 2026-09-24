@@ -1502,31 +1502,14 @@ internal partial class ProjectionUpdateOrchestrator(
             EventEnvelope[] page = await aggregateProxy
                 .ReadEventsRangeAsync(cursor, targetPosition, pageSize)
                 .ConfigureAwait(false);
+            long nextCursor = ProjectionStreamPageValidation.Validate(
+                identity,
+                cursor,
+                targetPosition,
+                pageSize,
+                page);
             if (page.Length == 0) {
-                if (cursor != targetPosition) {
-                    throw new InvalidOperationException("Projection rebuild ended before the frozen stream boundary.");
-                }
-
                 return new RebuildPrefixReadResult([.. events], FailureReasonCode: null);
-            }
-
-            if (page.Length > pageSize) {
-                throw new InvalidOperationException("Projection rebuild actor returned more events than the requested page size.");
-            }
-
-            long expectedSequence = cursor + 1;
-            foreach (EventEnvelope item in page) {
-                if (item.SequenceNumber != expectedSequence
-                    || item.SequenceNumber > targetPosition) {
-                    throw new InvalidOperationException("Projection rebuild page is not a contiguous ordered aggregate sequence.");
-                }
-
-                expectedSequence++;
-            }
-
-            long nextCursor = page[^1].SequenceNumber;
-            if (nextCursor <= cursor) {
-                throw new InvalidOperationException("Projection rebuild page did not advance the aggregate sequence.");
             }
 
             if (events.Count > maxEventCount - page.Length) {

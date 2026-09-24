@@ -48,6 +48,18 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string ReceiptCollectionSupersededSubjectSha256 =
         "86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274";
 
+    /// <summary>Subject issued before the September trust-path corrections.</summary>
+    private const string PreTrustPathSupersededSubjectSha256 =
+        "84dee6e51844ddd0be403fefc56848f1b8f1dd916456f3b205f5bc52066db75f";
+
+    /// <summary>Subject issued during the September trust-path corrections.</summary>
+    private const string IntermediateTrustPathSupersededSubjectSha256 =
+        "aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5";
+
+    /// <summary>Subject superseded by the final September trust-path re-mint.</summary>
+    private const string FinalTrustPathSupersededSubjectSha256 =
+        "a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448";
+
     /// <summary>
     /// Subject the checked-in packet currently binds. It is drift-bound here and in docs/ci.md so a
     /// record that keeps naming a superseded subject cannot stay green.
@@ -2821,14 +2833,39 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         [
             subjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
+            PreTrustPathSupersededSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
         ];
-        Regex.Matches(text, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
-            .Select(match => match.Value)
-            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal))
+        FirstNamedSubjectDigest(text, subjects)
             .ShouldBe(subjectSha256, relativePath);
+    }
+
+    /// <summary>
+    /// Proves an elided superseded subject is found before a later complete current digest.
+    /// </summary>
+    /// <param name="prefix">The superseded subject's eight-character prefix.</param>
+    /// <param name="ellipsis">The punctuation used to elide the rest of the digest.</param>
+    [Theory]
+    [InlineData("aafe9040", "...")]
+    [InlineData("a5c07d17", "…")]
+    public void SupersededElidedSubjectBeforeCurrentSubjectIsDetected(string prefix, string ellipsis)
+    {
+        string text = $"Former subject {prefix}{ellipsis}; current subject {CurrentSubjectSha256}";
+        string[] subjects =
+        [
+            CurrentSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
+        ];
+
+        FirstNamedSubjectDigest(text, subjects).ShouldBe(
+            prefix == "aafe9040"
+                ? IntermediateTrustPathSupersededSubjectSha256
+                : FinalTrustPathSupersededSubjectSha256);
     }
 
     /// <summary>
@@ -3939,9 +3976,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies the assembler refuses to run from a copied script path, and refuses a shadowed
-    /// handler <c>__file__</c>, without rewriting the retained packet. Neither bound-path check
-    /// ran off the repository file in this suite.
+    /// Verifies a flat assembler copy fails repository-root discovery and a shadowed handler
+    /// <c>__file__</c> fails provenance checking, without rewriting the retained packet. The
+    /// separate valid-lineage clone test exercises the assembler's bound-path check.
     /// </summary>
     /// <param name="mode">Which bound-path check to displace.</param>
     [Theory]
@@ -4071,6 +4108,65 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the assembler path guard runs after lineage succeeds in a clone whose HEAD
+    /// descends from the release commit. A second copy inside that clone must not re-mint the
+    /// packet from bytes outside its bound tools path.
+    /// </summary>
+    [Fact]
+    public void AssemblerRefusesOffPathCopyInsideValidReleaseLineage()
+    {
+        string root = FindRepositoryRoot();
+        string packet = CreateAcceptedPacket(root);
+        string retainedClosurePath = Path.Combine(root, EvidenceRelativePath, "closure.json");
+        string retainedClosure = ComputeSha256(retainedClosurePath);
+        string packetClosurePath = Path.Combine(packet, "closure.json");
+        string packetClosure = ComputeSha256(packetClosurePath);
+        string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-off-path-{Guid.NewGuid():N}");
+        try
+        {
+            (int cloneExit, _, string cloneError) = RunProcess(
+                Path.GetTempPath(), "git", "clone", "--quiet", "--shared", root, temporary);
+            cloneExit.ShouldBe(0, cloneError);
+            RunProcess(temporary, "git", "merge-base", "--is-ancestor", SourceSha, "HEAD")
+                .ExitCode.ShouldBe(0);
+
+            string shadow = Path.Combine(temporary, "tools", "shadow", "assemble-corrected-deployed-runtime-parity.py");
+            Directory.CreateDirectory(Path.GetDirectoryName(shadow)!);
+            File.Copy(Path.Combine(temporary, "tools", "assemble-corrected-deployed-runtime-parity.py"), shadow);
+            (int exitCode, string output, string error) = RunProcess(
+                temporary,
+                "python3",
+                "-B",
+                "-c",
+                "import importlib.util,sys;sys.path.insert(0,sys.argv[1]);"
+                + "s=importlib.util.spec_from_file_location('story315_assemble',sys.argv[2]);"
+                + "m=importlib.util.module_from_spec(s);s.loader.exec_module(m);"
+                + "print('bound-root='+str(m.repository_root()),flush=True);"
+                + "sys.argv=[sys.argv[2],sys.argv[3]];raise SystemExit(m.main())",
+                Path.Combine(temporary, "tools"),
+                shadow,
+                packet);
+
+            exitCode.ShouldBe(1, error);
+            output.ShouldContain("bound-root=" + Path.GetFullPath(temporary));
+            output.ShouldNotContain("subject=sha256:");
+            error.ShouldContain("assembler is not executing from the bound repository path");
+            error.ShouldContain("rerun: ");
+            error.ShouldNotContain("Traceback");
+            ComputeSha256(retainedClosurePath).ShouldBe(retainedClosure);
+            ComputeSha256(packetClosurePath).ShouldBe(packetClosure);
+        }
+        finally
+        {
+            Directory.Delete(packet, recursive: true);
+            if (Directory.Exists(temporary))
+            {
+                Directory.Delete(temporary, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies Git environment redirects cannot make a copied tools tree use the original checkout.
     /// </summary>
     [Fact]
@@ -4123,6 +4219,11 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     [Fact]
     public void AssemblerPreservesWhitespaceAtEndOfCheckoutPath()
     {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         string root = FindRepositoryRoot();
         string temporary = Path.Combine(Path.GetTempPath(), $"eventstore-story315-space-{Guid.NewGuid():N} ");
         try
@@ -4310,6 +4411,77 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the PRD distinguishes the current technical pass from its superseded receipt
+    /// snapshot and the still-missing independent high-risk control.
+    /// </summary>
+    [Fact]
+    public void PlanningRuntimeParityAccountMatchesCurrentPacketAndPendingControl()
+    {
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string subject = closure["subject"]!["sha256"]!.GetValue<string>();
+        int receiptCount = closure["acceptances"]!["receipts"]!.AsArray().Count;
+        receiptCount.ShouldBe(RequiredRoles.Length);
+        string selectedIndex = closure["selected_deployed_identity"]!.GetValue<string>();
+        selectedIndex.ShouldBe(IndexDigest);
+        closure["oci"]!["index"]!["digest"]!.GetValue<string>().ShouldBe(selectedIndex);
+        closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
+        closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        string prd = File.ReadAllText(Path.Combine(root, "_bmad-output/planning-artifacts/prd.md"));
+        string[] lines = prd.Split('\n');
+
+        string summary = lines.Single(line => line.StartsWith(
+            "- **Deployed-runtime parity - TECHNICALLY VALIDATED;",
+            StringComparison.Ordinal));
+        string currentSummary = summary[summary.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        currentSummary.ShouldContain(
+            $"{receiptCount} of {RequiredRoles.Length} packet-bound receipts on current subject `{subject}`");
+        currentSummary.ShouldContain($"selecting OCI index `{selectedIndex}`");
+        currentSummary.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+
+        string history = lines.Single(line => line.StartsWith(
+            "| Story 3.15 deployed-runtime parity |",
+            StringComparison.Ordinal));
+        history.ShouldContain("2026-09-10");
+        history.ShouldContain(IntermediateTrustPathSupersededSubjectSha256);
+        string currentHistory = history[history.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        currentHistory.ShouldContain(
+            $"current subject SHA-256 `{subject}` with {receiptCount} of {RequiredRoles.Length} " +
+            $"packet-bound receipts and selected OCI index `{selectedIndex}`");
+        currentHistory.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+
+        string parityGate = lines.Single(line => line.StartsWith(
+            "| G-RUNTIME-PARITY |",
+            StringComparison.Ordinal));
+        parityGate.ShouldContain("current subject `" + subject + "`");
+        parityGate.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+        parityGate.ShouldContain($"{receiptCount} of {RequiredRoles.Length} packet-bound receipts");
+        parityGate.ShouldContain($"selects OCI index `{selectedIndex}`");
+        parityGate.ShouldContain("TECHNICAL PASS; INDEPENDENT GATE BLOCKED");
+        parityGate.ShouldContain("tracker remains `review`");
+
+        string highRiskGate = lines.Single(line => line.StartsWith(
+            "| G-HIGH-RISK |",
+            StringComparison.Ordinal));
+        highRiskGate.ShouldContain("**FAIL/BLOCKED.**");
+        highRiskGate.ShouldContain("matrix, validator, classifications, second-identity controls, sealed validation, and guarded transitions are absent");
+
+        string publicationGate = lines.Single(line => line.StartsWith(
+            "| G-PUBLICATION-AUTH |",
+            StringComparison.Ordinal));
+        publicationGate.ShouldContain("**FAIL/BLOCKED.**");
+        publicationGate.ShouldContain("no release availability or production promotion is authorized");
+
+        string consumerGate = lines.Single(line => line.StartsWith(
+            "| G-CONSUMER |",
+            StringComparison.Ordinal));
+        consumerGate.ShouldContain("**FAIL/BLOCKED.**");
+        consumerGate.ShouldContain("No consumer may remove local infrastructure.");
+    }
+
+    /// <summary>
     /// Verifies the two operator-facing Story 3.15 records state the current subject and the current
     /// verdict. Only docs/ci.md was drift-bound, so both records could be -- and once were -- left
     /// asserting a superseded subject and a passing verdict against a packet that fails closed.
@@ -4342,13 +4514,14 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         [
             subjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
+            PreTrustPathSupersededSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
             BatchSupersededSubjectSha256,
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
         ];
-        string? firstSubject = Regex.Matches(record, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
-            .Select(match => match.Value)
-            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal));
+        string? firstSubject = FirstNamedSubjectDigest(record, subjects);
         firstSubject.ShouldBe(subjectSha256, relativePath);
 
         // The verdict itself must agree with the packet, not with a previous acceptance round.
@@ -4361,6 +4534,23 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             record.ShouldContain("fails closed");
             record.ShouldContain(FormattableString.Invariant($"{receipts} of {RequiredRoles.Length}"));
         }
+    }
+
+    /// <summary>
+    /// Resolves the first known subject named as a full digest or an eight-character elided prefix.
+    /// </summary>
+    /// <param name="text">The surface to inspect.</param>
+    /// <param name="subjects">Known current and superseded subject digests.</param>
+    /// <returns>The matching full digest, or <see langword="null"/> when none is named.</returns>
+    private static string? FirstNamedSubjectDigest(string text, IEnumerable<string> subjects)
+    {
+        string[] knownSubjects = subjects.ToArray();
+        return Regex.Matches(text, @"(?<![0-9a-fA-F])(?:[0-9a-fA-F]{64}|[0-9a-fA-F]{8}(?=\.{3}|…))(?![0-9a-fA-F])")
+            .Select(match => match.Value)
+            .Select(value => knownSubjects.FirstOrDefault(subject =>
+                subject.Equals(value, StringComparison.OrdinalIgnoreCase)
+                || (value.Length == 8 && subject.StartsWith(value, StringComparison.OrdinalIgnoreCase))))
+            .FirstOrDefault(subject => subject is not null);
     }
 
     /// <summary>

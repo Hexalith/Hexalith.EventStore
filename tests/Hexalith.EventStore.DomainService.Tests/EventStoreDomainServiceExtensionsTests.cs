@@ -941,7 +941,11 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         string fingerprint = ProjectionRouteCatalogFingerprint.Compute(
             "sample",
             "v1",
-            [new ProjectionDispatchRoute("widget", "widget-detail"), new ProjectionDispatchRoute("widget", "widget-index")]);
+            [
+                new ProjectionDispatchRoute("widget", "fenced-widget-index"),
+                new ProjectionDispatchRoute("widget", "widget-detail"),
+                new ProjectionDispatchRoute("widget", "widget-index"),
+            ]);
         var metadataRequest = new AdminOperationalIndexMetadata.Request(["widget"]) {
             AppId = "sample",
             ServiceVersion = "v1",

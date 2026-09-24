@@ -1,13 +1,32 @@
 {
-  "schema": "hexalith.eventstore.story-4-15-successor-selection/v3",
-  "selectedOn": "2026-09-20",
-  "reason": "Retain the completed v3 successor as immutable historical evidence and activate one freshly reviewed v4 successor whose lifecycle state remains outside the sealed review subject.",
+  "authority": {
+    "consumerMigrationAuthority": false,
+    "deploymentAuthority": false,
+    "eventStorePlatformComplete": true,
+    "externalRepositoryAuthority": false,
+    "finalConsumerAuthority": false,
+    "foldersFinalClosure": false,
+    "handoffMode": "source-only",
+    "packageAuthority": false,
+    "registryAuthority": false,
+    "releaseApproved": false,
+    "runtimePinAuthority": false
+  },
   "historical": {
+    "sdkSuccessor": {
+      "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp",
+      "files": {
+        "review-subject.json": "8ea2a954387348134c34fd13d9a1bc574e8586d89bd6a66d982e128a8ecb0bae",
+        "reviews/architecture.json": "951ec2ea8e5cf01e2c0477f67ebf4ea3cb8ae11b38e76f310a77d4b6ea2e8036",
+        "reviews/security.json": "decfdfadbcb367ef4d4b53f9f7189122a851205ced780544a360bff3fc07e6b6",
+        "reviews/test.json": "3a5803eb3d2ddaed94e4af4013f2f80194c52085052226f5eaadc58666ecb92b",
+        "source-artifact-identity.json": "589a181fe7c705a433ab06fd8691df15a8c850fe27f90c2b0b1e8785cb865e60",
+        "source-only-handoff.json": "1e548c4fa81bb60c20cc6dffbf5eb669186f0a044901e2f3f120a70999097d33"
+      },
+      "manifestSha256": "fd8cc0b86d2cf4f624495c64168e6a2dc727b5aa0f830dca39c382dd28ba094d"
+    },
     "v1Closure": {
-      "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
-      "packetSha256": "ab6931160b1b9574f6f0e8c5698a0982e45978071cc311951d9604d27a5650a4",
       "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15/5e8f175b2ced4715f7c6f765386812cc1001dbb4",
-      "manifestSha256": "da3994dfd687b4ecf7a150b0b8b2d9fa41e54d1ea8d57641163dc6532bfb9e47",
       "files": {
         "capture-packet-v1.json": "63efacaa686c906c0cab63aef68a01163074914f9983a5874f2bf48d6944eeba",
         "closure-crosswalk.json": "b006c03612f63f6c003b55f3e1b1073f81b077bc9816bdfc7e488104af9da9c7",
@@ -20,62 +39,53 @@
         "source-artifact-identity.json": "deed514352a86deedeb4e94ccb596af3540c0beeb1487b2adc5e74a65fa8c338",
         "source-only-handoff.json": "6a88a6c005cebe23f2127ac86b6fc68ddbd12d706706aaa6989702fab70c845e",
         "validator-sha256.txt": "9f7ecc4e7fb9fdf91c6774c21c201ad27f7395ff79e771a4cd8a0bf4055b070d"
-      }
-    },
-    "sdkSuccessor": {
-      "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15/successors/sdk-10.0.400-xunit4-mtp",
-      "manifestSha256": "fd8cc0b86d2cf4f624495c64168e6a2dc727b5aa0f830dca39c382dd28ba094d",
-      "files": {
-        "review-subject.json": "8ea2a954387348134c34fd13d9a1bc574e8586d89bd6a66d982e128a8ecb0bae",
-        "reviews/architecture.json": "951ec2ea8e5cf01e2c0477f67ebf4ea3cb8ae11b38e76f310a77d4b6ea2e8036",
-        "reviews/security.json": "decfdfadbcb367ef4d4b53f9f7189122a851205ced780544a360bff3fc07e6b6",
-        "reviews/test.json": "3a5803eb3d2ddaed94e4af4013f2f80194c52085052226f5eaadc58666ecb92b",
-        "source-artifact-identity.json": "589a181fe7c705a433ab06fd8691df15a8c850fe27f90c2b0b1e8785cb865e60",
-        "source-only-handoff.json": "1e548c4fa81bb60c20cc6dffbf5eb669186f0a044901e2f3f120a70999097d33"
-      }
+      },
+      "manifestSha256": "da3994dfd687b4ecf7a150b0b8b2d9fa41e54d1ea8d57641163dc6532bfb9e47",
+      "packetPath": "_bmad-output/implementation-artifacts/4-8-eventstore-oq8-platform-evidence.yaml",
+      "packetSha256": "ab6931160b1b9574f6f0e8c5698a0982e45978071cc311951d9604d27a5650a4"
     },
     "v2Successor": {
       "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v2",
       "manifestSha256": "ca8e8fe4ed26508aa6f7c0e742924a475dfe383b46f0e52f216000b330cea5a1"
     },
     "v3Successor": {
-      "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3",
       "completedClosureCommit": "d578e7626df1d8afeada440c7989eb04ba2bdfe6",
+      "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v3",
+      "handoffSha256": "14e618e8c53d8f04983b6f7d0f33edfea6b7e243ca457c5370419e01e3bd849a",
       "manifestSha256": "f20a01ba874eaca8e3d99eef065534a8211eef16db601bf9dc1723ef0cc90493",
-      "sourceIdentitySha256": "43192e12f240e37ecb88573f59ee0bf836e35e71637918ef85842df061e23a37",
       "reviewSubjectSha256": "583269ac56f7ca75371b6c70a507a820bf21a4ff1fada790ac91feea34ca8b7e",
-      "handoffSha256": "14e618e8c53d8f04983b6f7d0f33edfea6b7e243ca457c5370419e01e3bd849a"
+      "sourceIdentitySha256": "43192e12f240e37ecb88573f59ee0bf836e35e71637918ef85842df061e23a37"
+    },
+    "v4Successor": {
+      "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4",
+      "files": {
+        "limitations.json": "b001594d9419993e9ae33a06b3c584ae36f8b329f3d4ef54c97bbbfa9ddbab58",
+        "pre-review-execution.json": "32cb284223442b6c8726537765b36dc4490b6f1facd8bf54a1088b029611ac82",
+        "review-subject.json": "8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5",
+        "reviews/architecture.json": "0ad4e441e467a79047a61699d588882ec184c647effa76c7cd733f896364f3ab",
+        "reviews/security.json": "96472b06faf06d97888cd21b2cc371dc5d5dc3d3cd412ac276deaa702b8f9c92",
+        "reviews/test.json": "1390319bf0bd084c0727b5985e490f6d31dae0bc20c4492c1d38b849bdcafbd5",
+        "source-artifact-identity.json": "fcca7db0f644bcebfff7ca9651176b2817cabba200313398498bd03188c330a0",
+        "source-only-handoff.json": "a46d1c6b468dfde437b7a29655b88d488974a23a572bed96a182b8f4cf3ab0a2",
+        "validator-sha256.txt": "084744440e2c9a9f65cd2e87df5a922407304d1bc26c82c9bcc46b923907ac8e"
+      },
+      "handoffSha256": "a46d1c6b468dfde437b7a29655b88d488974a23a572bed96a182b8f4cf3ab0a2",
+      "manifestSha256": "b92cd2ba7cda1fa8a3808fc9b4792be2a97c0f0345d9f5edb55ff49d9717e70e",
+      "reviewSubjectSha256": "8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5",
+      "sourceIdentitySha256": "fcca7db0f644bcebfff7ca9651176b2817cabba200313398498bd03188c330a0"
     }
   },
+  "reason": "Retain immutable v1-v4 history and activate the reviewed v5 source-only successor for EventStore-owned trusted publishing.",
+  "schema": "hexalith.eventstore.story-4-15-successor-selection/v4",
+  "selectedOn": "2026-09-24",
   "successor": {
-    "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4",
-    "manifestSha256": "b92cd2ba7cda1fa8a3808fc9b4792be2a97c0f0345d9f5edb55ff49d9717e70e",
+    "directory": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5",
     "files": {
-      "limitations.json": "b001594d9419993e9ae33a06b3c584ae36f8b329f3d4ef54c97bbbfa9ddbab58",
-      "pre-review-execution.json": "32cb284223442b6c8726537765b36dc4490b6f1facd8bf54a1088b029611ac82",
-      "review-subject.json": "8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5",
-      "reviews/architecture.json": "0ad4e441e467a79047a61699d588882ec184c647effa76c7cd733f896364f3ab",
-      "reviews/security.json": "96472b06faf06d97888cd21b2cc371dc5d5dc3d3cd412ac276deaa702b8f9c92",
-      "reviews/test.json": "1390319bf0bd084c0727b5985e490f6d31dae0bc20c4492c1d38b849bdcafbd5",
-      "source-artifact-identity.json": "fcca7db0f644bcebfff7ca9651176b2817cabba200313398498bd03188c330a0",
-      "source-only-handoff.json": "a46d1c6b468dfde437b7a29655b88d488974a23a572bed96a182b8f4cf3ab0a2",
-      "validator-sha256.txt": "084744440e2c9a9f65cd2e87df5a922407304d1bc26c82c9bcc46b923907ac8e"
+      "packet.json": "66fbe8fe76944fe2d70240d04340ecd202b5bbf1d762911162c8b89e32ed496a"
     },
-    "sourceIdentitySha256": "fcca7db0f644bcebfff7ca9651176b2817cabba200313398498bd03188c330a0",
-    "reviewSubjectSha256": "8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5",
-    "handoffSha256": "a46d1c6b468dfde437b7a29655b88d488974a23a572bed96a182b8f4cf3ab0a2"
-  },
-  "authority": {
-    "eventStorePlatformComplete": true,
-    "handoffMode": "source-only",
-    "releaseApproved": false,
-    "foldersFinalClosure": false,
-    "packageAuthority": false,
-    "registryAuthority": false,
-    "deploymentAuthority": false,
-    "runtimePinAuthority": false,
-    "consumerMigrationAuthority": false,
-    "externalRepositoryAuthority": false,
-    "finalConsumerAuthority": false
+    "handoffSha256": "f9a3542014895cc03c9c3c9430ab0904e5510360368b636bda38762e0e63d4be",
+    "manifestSha256": "64f96dc7de33f0e67544f0d546ce97bfa4a1c3b8c012378131f385ff6fd79a32",
+    "reviewSubjectSha256": "12bf4413b2e917fb6de5d4805f2922a5759c7bf8039f5fec63ab6473ccd7a7fc",
+    "sourceIdentitySha256": "1c8fc0ac536191f295d5b7881d78bb94b9848156546c43d1dd7ed45fa769f54e"
   }
 }

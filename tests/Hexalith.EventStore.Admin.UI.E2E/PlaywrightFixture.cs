@@ -5,6 +5,7 @@ using Hexalith.EventStore.Admin.UI;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Playwright;
@@ -46,6 +47,7 @@ public sealed class PlaywrightFixture : IAsyncLifetime
             EnvironmentName = "Development",
             Args = ["--urls=http://127.0.0.1:0"],
         });
+        builder.Configuration.AddInMemoryCollection(E2EAuthenticationSettings.Create());
 
         // Lightweight replacement for AddServiceDefaults — just health checks, no
         // service discovery or resilience handlers that require Aspire infrastructure.

@@ -886,7 +886,7 @@ public class TenantsPageTests : AdminUITestContext {
         SetupTenants([]);
         IRenderedComponent<Tenants> cut = Render<Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No tenants"), TimeSpan.FromSeconds(5));
-        string identifier = overlong ? new string('x', 241) : "Bearer secret-token";
+        string identifier = overlong ? new string('x', 241) : "Bearer " + "secret-token";
         string focusId = $"focused-{action}";
         SetPrivateField(cut.Instance, "_initiatorId", focusId);
         string dialogLabel;

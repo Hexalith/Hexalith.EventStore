@@ -151,6 +151,13 @@ public class EventStoreServerServiceCollectionExtensionsTests {
             .Value.Registrations
             .Single(value => value.Name == "projection-delivery-writer-protocol");
         registration.Tags.ShouldContain("ready");
+        HealthCheckRegistration unresolvedRegistration = provider
+            .GetRequiredService<IOptions<HealthCheckServiceOptions>>()
+            .Value.Registrations
+            .Single(value => value.Name == "projection-delivery-unresolved-conflict");
+        unresolvedRegistration.Tags.ShouldContain("ready");
+        provider.GetRequiredService<IProjectionDeliveryRetryScheduler>()
+            .ShouldBeSameAs(provider.GetRequiredService<DaprProjectionDeliveryRetryScheduler>());
     }
 
     [Theory]

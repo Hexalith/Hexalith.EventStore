@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-09-23
+# last_updated: 2026-09-24
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -55,7 +55,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-09-22'
+last_updated: '2026-09-24'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -128,15 +128,18 @@ development_status:
   3-12-multi-platform-eventstore-container-publishing-correction: done
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
+  # 2026-09-24 tracker handoff: the Story 3.15 spec is done for its bounded
+  # evidence-validated result, but this row remains review while G-HIGH-RISK's
+  # matrix, validator, independent second-identity check, and sealed CI control
+  # are absent. Three receipts grant no release, promotion, or consumer removal.
   # >>> GUARDED COMMENTS -- DO NOT DELETE (see GUARDED COMMENT BLOCKS in the header) <<<
   # CorrectedDeployedRuntimeParityClosureTests.SubjectRestatingSurfacesNameTheCurrentSubject
   # requires this file to restate Story 3.15's CURRENT canonical subject digest from
   # closure.json, and to name it BEFORE any superseded subject digest. It is a drift guard:
   # it exists so this tracker cannot keep naming a stale subject while the suite stays green.
   # Change the digest only when the packet subject is legitimately re-minted.
-  # 2026-09-23 (DW-508 trust-path re-mint): the packet fails closed at 0 of 3 receipts and grants
-  # nothing. Earlier acceptance rounds remain under evidence/story-3-15/superseded-acceptances/.
-  # Collecting three fresh receipts on issue #352 is an authorized owner action still in progress.
+  # 2026-09-23 (DW-508 trust-path re-mint): three current receipts bind the corrected subject.
+  # Earlier acceptance rounds remain under evidence/story-3-15/superseded-acceptances/.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
   # 7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274; three current
@@ -449,7 +452,12 @@ action_items:
       the three owner receipts on issue #352 and re-run the assembler, or move 3-15
       off done."
     owner: "Amelia (Developer)"
-    status: open
+    status: done
+    note: "Closed 2026-09-24: three subject-bound role receipts were collected on issue
+      #352; the assembler reports receipts=3 verifier_exit=0, and the retained
+      verifier passes at 3/3 for subject 7d64f87e... while selecting only the
+      pinned OCI index. At closure of this retrospective item, the Story 3.15
+      lifecycle row was in-progress pending review."
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
   - id: "epic-3-retro-item-23-fix-the-red-contracts-tests-build-at-hea"
     epic: 3

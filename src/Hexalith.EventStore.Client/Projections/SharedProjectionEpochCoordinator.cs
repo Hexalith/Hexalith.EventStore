@@ -1061,7 +1061,12 @@ public sealed class SharedProjectionEpochCoordinator
             && (legacy is null || current.Position >= legacy.Position)
             ? current
             : legacy;
-        return checkpoint is null ? null : checkpoint with { Token = checkpoint.Token.ToArray() };
+        if (checkpoint is null)
+        {
+            return null;
+        }
+
+        return new SharedProjectionCheckpoint(checkpoint.Position, checkpoint.Token.ToArray());
     }
 
     /// <summary>Reads durable stage, promotion, and pending-delivery evidence.</summary>

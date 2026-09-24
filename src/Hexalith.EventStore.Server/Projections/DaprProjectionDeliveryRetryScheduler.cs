@@ -219,6 +219,22 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
             .Take(maximumCount)];
     }
 
+    /// <summary>Finds terminal or malformed durable retry evidence across every ledger shard.</summary>
+    internal async Task<bool> HasUnresolvedConflictAsync(CancellationToken cancellationToken = default) {
+        await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<BulkStateItem<ProjectionDeliveryRetryLedger>> shards = await daprClient
+            .GetBulkStateAsync<ProjectionDeliveryRetryLedger>(
+                projectionOptions.Value.CheckpointStateStoreName,
+                LedgerKeys,
+                BulkReadParallelism,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return shards.Any(static shard => shard.Value is not null
+            && (shard.Value.Items is null
+                || shard.Value.Items.Any(static item => !IsValidPersistedWorkItem(item)
+                    || item.TerminalRoutes.Count > 0)));
+    }
+
     private async Task MutateAsync(
         string workId,
         Func<List<ProjectionDeliveryRetryWorkItem>, bool> mutation,

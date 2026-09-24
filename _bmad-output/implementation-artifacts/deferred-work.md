@@ -4030,7 +4030,8 @@ location: tools/release_evidence_handlers/v3.py:80,544; tools/deployed_runtime_p
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: `canonical_bytes` and `_publisher_canonical_bytes` both omit `allow_nan=False`, so they encode the JavaScript literals `NaN`/`Infinity` and hash bytes no conforming JSON reader can parse. Measured after the Group P revert: `canonical_bytes({"a": nan})` returns `b'{"a":NaN}\n'` and `_publisher_canonical_bytes` returns `b'{\n  "a": NaN\n}\n'`, the latter feeding `record_hash`. The branch is reachable — `load_json_bytes` and `_load_json_value_bytes` call plain `json.loads` with no `parse_constant`, so `{"a": NaN}` parses. Three hand-written copies of the canonical encoder remain (`grep -rn "def canonical_bytes" tools/`), and the capture copy is itself a pinned verifier input of the same Story 3.15 packet. No test under `tests/` exercises non-finite values through any of them. Commit `e9292354` fixed the first two and consolidated v1 onto v3, but was reverted as `ec5c3da8` because it moved three sealed pins with no re-mint; the fix is correct and blocked only on that re-mint. All four files are Zone B.
-status: open
+status: done 2026-09-23 (Story 3.15 DW-508 trust-path re-mint)
+resolution: Both v3 canonical encoders now set `allow_nan=False`, all trusted JSON loaders reject nonfinite numbers and exponent overflow, and `CanonicalCodecsRejectNonFiniteNumbers` exercises the encoders and loaders. The capture tool still contains a separate hand-written canonical encoder; it also sets `allow_nan=False` and is covered by that test. Consolidating that safe duplicate remains outside this correction because capture bytes are subject-bound.
 
 ### DW-507: The assembler-identity guard is tautological and accepts a layout-preserving copy executed from outside the repository.
 
@@ -4039,7 +4040,8 @@ location: tools/assemble-corrected-deployed-runtime-parity.py:116,142-154; tests
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: `repository_root()` returns `Path(__file__).resolve().parents[1]` and `executing_assembler_path()` compares `Path(__file__).resolve()` against `(root / ASSEMBLER_FILE).resolve()`, so both sides derive from the same path and the comparison cannot fail. The guard exists to stop a copied assembler from stamping the pristine repository file's digest into the closure it produces. `e9292354` attempted a fix but did not close it: reproduced during this review that a `tools/` copy plus `git init` plus an empty `Hexalith.EventStore.slnx` marker still passed `repository_root`, `executing_assembler_path` and `verify_handler_provenance`, and that `GIT_DIR`/`GIT_WORK_TREE` redirect the supposedly independent root. That attempt was reverted as `ec5c3da8`, restoring this defect knowingly. A correct fix must first settle what an independent root is and whether a hard git-and-work-tree precondition is acceptable, since the attempted version broke the guard's only test by aborting before it. Zone B.
-status: open
+status: done 2026-09-23 (Story 3.15 DW-508 trust-path re-mint)
+resolution: The assembler now derives its repository root through Git with `GIT_*` redirections removed, verifies the release commit is an ancestor of `HEAD`, and compares its executing path with the bound path. The Contracts suite covers unrelated and redirected repositories. `AssemblerRefusesOffPathCopyInsideValidReleaseLineage` uses a checked-out clone with the Story 3.14 producer inputs present, reaches the bound-path refusal, and asserts that both the retained and copied closure stay unchanged. With the path guard disabled, that same off-path copy can re-mint and rewrite the copied closure, so the unchanged-closure assertion is load-bearing.
 
 ### DW-508: The A7/A8 corrections and the Story 3.15 re-mint that must carry them.
 
@@ -4048,7 +4050,8 @@ location: _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: high
 reason: `tools/release_evidence_handlers/v3.py`, `tools/deployed_runtime_parity_handlers/v1.py` and `tools/assemble-corrected-deployed-runtime-parity.py` are sha256+size-pinned decision inputs of the Story 3.15 closure packet and of both retained-evidence validators. Any correction to them — DW-506, DW-507, or the subprocess hardening and path-redaction items recorded in the Group P findings — moves those pins and requires one re-mint of the subject, the closure, the proof-packet table and both validators' pins, which rejects the three existing 3.15 receipts and needs fresh architecture, security and test sign-off. Landing them one at a time is what turned the Contracts lane red at 1987/204/0 and failed both validators, requiring revert `ec5c3da8`. Batch every item into a single authorized re-mint. Note the asymmetry that hid this: none of the three files is an OQ8 v3 gate input, so `validate-oq8-platform-evidence.py` stayed green throughout, and `Contracts.Tests` is absent from `unit-test-projects` in `.github/workflows/ci.yml`, so the failures surfaced only in `ci / contracts`, which the live `main` ruleset does not require.
-status: open
+status: done 2026-09-23 (Story 3.15 corrected subject `7d64f87e...`)
+resolution: The batched trust-path correction re-minted the subject to `7d64f87e...`; the retained verifier passes with three subject-bound receipts. The Group P subprocess hardening landed as bounded Git subprocesses with `GIT_*` redirections removed, UTF-8 replacement decoding, and checked output; root and lineage failures use support-safe reasons without echoing the checkout path, closing the path-redaction item. The smoke-capture producer's top-level `subprocess` shadowing gap remains deferred under the 2026-09-24 owner-authorization closure EH1 entry below; fixing its sealed bytes requires a new subject and receipts. Under review decision D2, the owner chose to count the spec Change Log's 2026-09-23 architecture sign-off statement (a narrative result), the self-attested `bmad:murat` Test Architect receipt (parity-subject acceptance), and the four-layer 2026-09-23 receipt-collection code review (findings and triage) toward DW-508. No dedicated Story 3.15 architecture review, Security Reviewer record, or trust-path-test attestation is retained; Story 4.15 v4 reviews bind a different subject. Issue #352 comment `5803577826` is a separate as-observed, mutable external citation for after-the-fact owner ratification of receipt collection, not a hash-closed packet input or part of the verifier's 3/3 verdict; it grants no operational authority.
 
 ## Deferred from: code review of spec-4-15-oq8-platform-closure-and-handoff (2026-09-13, Group Q)
 
@@ -4079,7 +4082,8 @@ location: tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedR
 source_spec: `spec-4-15-oq8-platform-closure-and-handoff.md`
 severity: medium
 reason: `AssemblerRefusesExecutionOffTheBoundRepositoryPath(mode: "assembler")` copies the assembler to a flat `Path.GetTempPath()/*.py`, where `parents[1]` is `/` and the comparison fails for reasons unrelated to repository identity — so it passes against the tautological guard and reports it as covered. No case copies `tools/` intact; measured, such a copy passes `repository_root`, `executing_assembler_path` and `verify_handler_provenance`. Separately, no test anywhere exercises `NaN`/`Infinity` through the Python canonical encoders. Both assertions can only pass together with the DW-506/DW-507 code change, so they belong in the DW-508 batch, and that batch also owes a rewrite of the message-shape assertion the current test pins. Worth recording: this test file is **not** pinned by the Story 3.15 packet (0 hash hits, 0 mentions in `subject.json`), so it is Zone A and costs no reseal of its own.
-status: open
+status: done 2026-09-23 (Story 3.15 DW-508 trust-path regression coverage)
+resolution: `CanonicalCodecsRejectNonFiniteNumbers` covers the trusted and capture encoders, and `AssemblerRefusesOffPathCopyInsideValidReleaseLineage` now proves the bound-path refusal after the release-lineage check succeeds. The older flat `/tmp` copy test remains as coverage of repository-root refusal. The capture tool's hand-written encoder remains separate but rejects nonfinite values.
 
 ### DW-512: Only `references/Hexalith.Builds` is pinned by a test; the other four root gitlinks are governed by nothing.
 
@@ -4805,3 +4809,60 @@ status: open
   evidence: `docs/ci.md` still calls `86c59c79...` current while the Story 3.15 operator packet now binds `7d64f87e...`. The guide was stale before this re-mint; editing it changes a Story 4.15 OQ8 gate input and requires that packet's own controlled reseal.
   resolution: 2026-09-23 owner-authorized v4 reseal bound corrected `docs/ci.md` to Story 4.15 review subject `171d8e3bd9f9a39fbb0a79e4f028f00c3653bd3269b3bba387088baf752f46ac`. Fresh AI architecture, security, and self-attested BMAD Test Architect reviews passed; the active OQ8 validator now passes. Story 3.15 owner receipts remain separate.
   follow-up: The rostered owner and self-attested Test Architect then accepted Story 3.15 subject `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274` at 3/3. The guide's positive verdict was resealed again under final Story 4.15 v4 subject `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`, with fresh architecture/security/test reviews, manifest, selector, and lifecycle binding. Both current validators pass; the intermediate `171d8e3b...` subject is historical.
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure.md (2026-09-23, receipt-collection closure commit a2f5cba2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Reconcile the Story 3.14 records with the DW-508 edit to its frozen handler.
+  evidence: `spec-3-14-corrective-oci-provenance-release-2.md:61` still says `v3.py` and `validate-corrective-release-evidence.py` are "do not change; freeze-verify only", and `spec-3-14-corrective-oci-provenance-release.md:361` quotes the pre-DW-508 `v3.py` digest. `a2f5cba2` changed both files under DW-508 authority; predecessor `pass sha256:4d1a0c33...` still reproduces.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Make the receipt limitations state the one-account owner roster and stop describing the unposted Test Architect record as credential-posted.
+  evidence: The four `accepted_limitations` in the `7d64f87e...` receipts omit that both owner roles resolve to `github:jpiquot` (disclosed only in the sprint caveat and security review). Limitation 4 says every receipt is "posted with the rostered role holder's credential", but the `bmad:murat` source is a local `bmad-test-architect-record`. These are handler constants, so changing them re-mints the subject and burns all three receipts.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Replace the exact-second `created_at == updated_at == accepted_at` receipt rule with a design that does not require scripted retry posting.
+  evidence: The 2026-09-23 collection left six `SUPERSEDED — INVALID TIMESTAMP-MISMATCH ATTEMPT` comments on `#352` (ids 5789886766-5789888628, 06:00:03Z-06:00:14Z) before two posts matched. The equality proves the tool predicted GitHub's clock, not when a human decided.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Story 4.15 v4 reseal governance - the review-date constant lives in the sealed validator, the review receipts are batch-issued, and the final v4 validation is not retained.
+  evidence: `validate-oq8-platform-evidence.py:409` `V4_REVIEW_DATE` moved `2026-09-20` to `2026-09-23` in `a2f5cba2`, so each reseal edits the gate's own hashed validator. All three v4 `reviews/*.json` carry `issuedAt` `2026-09-23T06:10:25Z`. `reviews/test.json` says final active v4 validation is separately required, but no record of it is retained. The reseal rode inside a Story 3.15 commit. It was owner-authorized, and the default OQ8 validator passes.
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure.md (2026-09-24, owner-authorization closure)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Isolate the Story 3.15 smoke-capture producer before importing shadowable Python standard-library modules.
+  evidence: `tools/capture-corrected-deployed-runtime-parity-smokes.py` imports `subprocess` at top level without a hermetic re-execution boundary. A `tools/subprocess.py` shadow could execute before Docker and curl capture, and the capture script is a sealed producer input of the accepted `7d64f87e...` subject. Changing its bytes requires a new subject and replacement receipts; the current patch did not change this producer.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Distinguish a missing timed-out Docker container from a transient inspect failure before recording cleanup as passed.
+  evidence: `_reap_timed_out_run_container` in `tools/capture-corrected-deployed-runtime-parity-smokes.py` returns `True` for every nonzero `docker inspect` exit, including a daemon error after `docker run` may have created the uuid-named container. The `finally` path then records `cleanup: pass`. The capture producer is sealed into the accepted subject, so the correction requires a controlled re-mint and replacement receipts.
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure.md (2026-09-24, review-patch commit a37ec86f)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `prd.md` still presents superseded Story 3.15 subject `aafe9040...` as current, with 0/3 receipts and G-RUNTIME-PARITY FAIL/BLOCKED.
+  evidence: `_bmad-output/planning-artifacts/prd.md:176,611,613,644,682` name `aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5` as the current subject, and OR15 tells readers to adopt it. The packet binds `7d64f87e...` and the verifier passes at 3/3. `prd.md` is not among the surfaces `SubjectRestatingSurfacesNameTheCurrentSubject` guards.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: `ProofPacketDaprConflictProcessContractTests.ProcessContractDistinguishesOwnedExternalAndExitedProcesses` is timing-flaky under full-suite load.
+  evidence: One full Contracts run at `a37ec86f` failed it on a `WaitForExit(5000)` timeout; it passed twice alone (~2.5 s each) and in two other full runs. The test is not touched by this review's diff.
+
+## Deferred from: code review of Story 3.15 review-patch completion (2026-09-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Independently authenticate retained GitHub owner-comment envelopes before treating them as receipt sources.
+  evidence: `v1.py` checks packet-retained JSON against fixed account, issue, body, and timestamp facts but does not refetch the comment or verify a signature. A forged internally consistent envelope is outside those checks. The operator records disclose that the mutable external citation and the packet verdict are distinct; changing this accepted evidence contract requires a new subject and receipts.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Retain independent NuGet download provenance for the fourteen public package archives.
+  evidence: The packet stores package bytes and a URL derived from package ID and version, but no HTTP response or registry-signed metadata that ties those bytes to that URL. The current verifier checks archive identity and the signature entry, which do not establish transport origin.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Bound a second Docker inspect after a timed-out run before recording an absent container as cleaned up.
+  evidence: Dockerd can finish creating the uuid-named container after `_reap_timed_out_run_container` observes one absent result. The helper then returns success and the capture records cleanup pass although the container and port may remain. This pre-existing capture producer is sealed into the accepted subject, so changing it requires a controlled re-mint and replacement receipts.
+
+## Deferred from: review of Story 3.15 tracker reconciliation (2026-09-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-tracker-reconciliation.md`
+  summary: Reconcile epics.md's FR36 completion rule and Story 3.15 acceptance with the newer independent authority gates.
+  evidence: `epics.md:376` closes FR36 from source/package and deployed-runtime parity alone, while current `prd.md:322-324` also requires release availability, production promotion, and per-consumer removal authority. `epics.md:2803-2807` treats three receipts as Story 3.15 completion without the tracker review handoff required by the approved 2026-09-23 proposal. The epics text predates this tracker clarification and requires its separate owner-reviewed baseline reconciliation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-tracker-reconciliation.md`
+  summary: Date and reconcile Story 5.4's stale lifecycle account in PRD OR15.
+  evidence: The current Story 5.4 tracker and wrapper both say `done`, while `prd.md:682` still calls `review`/`in-progress` the current values. This unrelated story status conflict predates the Story 3.15 reconciliation and needs Story 5.4 owner disposition.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-tracker-reconciliation.md`
+  summary: Reconcile FrontComposer's main-push EventStore successor default with its updated EventStore gitlink.
+  evidence: FrontComposer commit `d7553fb2d54b5a5ad16f7328149b31dbb9295f65` pins `references/Hexalith.EventStore` to `b15ad59abca82d5980ef92a510c2379e05f4d46f`, while `.github/workflows/quality.yml:208` and `eng/eventstore_runtime_evidence.py:46` still default the successor source to `bf03d57cf459b329d709622af6c616c1635b83d9`. The validator compares that value to the checked-out gitlink, so Gate 2c rejects the main-push pair. The gitlink change arrived in an unrelated external update during this task; fix belongs in FrontComposer.

@@ -12,7 +12,7 @@ fail() {
   exit 1
 }
 
-has_value "${NUGET_API_KEY:-}" || fail "NUGET_API_KEY is required before publishing NuGet packages."
+has_value "${NUGET_TRUSTED_PUBLISHING_KEY:-}" || fail "A temporary NuGet trusted publishing key is required before publishing NuGet packages."
 
 if has_value "${HEXALITH_REQUIRE_CONTAINER_PUBLISHER:-}" ||
   has_value "${HEXALITH_CONTAINER_PROJECTS:-}" ||
