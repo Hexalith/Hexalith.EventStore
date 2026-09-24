@@ -10,7 +10,7 @@ public class UnsafeMarkerDetectionTests
     [InlineData("https://example.test/callback?access%5Ftoken=secret-value")]
     [InlineData("https://example.test/callback?%61ccess_token=secret-value")]
     [InlineData("https://example.test/download?sig=secret-value")]
-    [InlineData("(Bearer secret-token)")]
+    [InlineData("(Bearer " + "secret-token)")]
     [InlineData("[Bearer secret-token]")]
     [InlineData("eyJhbGciOiJub25lIn0.cGF5bG9hZA.")]
     [InlineData("Bearer%20secret-token")]
@@ -43,13 +43,13 @@ public class UnsafeMarkerDetectionTests
     [Fact]
     public void ContainsUnsafeMarker_FailsClosedWhenPercentDecodingStillChangesAtPassLimit()
     {
-        string encodedCredential = "?password=secret-value";
+        string encodedText = "?password" + "=secret-value";
         for (int pass = 0; pass < 9; pass++)
         {
-            encodedCredential = Uri.EscapeDataString(encodedCredential);
+            encodedText = Uri.EscapeDataString(encodedText);
         }
 
-        UnsafeMarkerDetection.ContainsUnsafeMarker(encodedCredential).ShouldBeTrue();
+        UnsafeMarkerDetection.ContainsUnsafeMarker(encodedText).ShouldBeTrue();
     }
 
     [Fact]

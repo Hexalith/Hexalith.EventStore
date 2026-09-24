@@ -83,6 +83,36 @@ public sealed class StreamReadPageValidatorTests
         _ = Should.Throw<InvalidOperationException>(() => StreamReadPageValidator.ValidateAndGetNextSequence(request, page));
     }
 
+    /// <summary>Malformed event evidence is rejected before a recovery cursor can advance.</summary>
+    [Fact]
+    public void UndecodableEventFailsClosed()
+    {
+        StreamReadRequest request = new("tenant-a", "work", "item-1");
+        StreamReadPage page = Page(request, [Event(1) with { Payload = null! }], false, 1);
+
+        _ = Should.Throw<InvalidOperationException>(() => StreamReadPageValidator.ValidateAndGetNextSequence(request, page));
+    }
+
+    /// <summary>A page cannot silently exceed the requested bounded batch.</summary>
+    [Fact]
+    public void OversizePageFailsClosed()
+    {
+        StreamReadRequest request = new("tenant-a", "work", "item-1", PageSize: 1);
+        StreamReadPage page = Page(request, [Event(1), Event(2)], false, 2);
+
+        _ = Should.Throw<InvalidOperationException>(() => StreamReadPageValidator.ValidateAndGetNextSequence(request, page));
+    }
+
+    /// <summary>Tenant text must already be canonical before it can name recovery state.</summary>
+    [Fact]
+    public void NonCanonicalTenantFailsClosed()
+    {
+        StreamReadRequest request = new("Tenant-A", "work", "item-1");
+        StreamReadPage page = Page(request, [Event(1)], false, 1);
+
+        _ = Should.Throw<ArgumentException>(() => StreamReadPageValidator.ValidateAndGetNextSequence(request, page));
+    }
+
     private static StreamReadPage Page(
         StreamReadRequest request,
         IReadOnlyList<StreamReadEvent> events,

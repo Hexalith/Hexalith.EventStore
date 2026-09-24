@@ -139,6 +139,32 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
     }
 
     [Fact]
+    public async Task RunOnceAsync_ReorderedHistoryRemainsDurablyPendingInsteadOfSkippingEvidence() {
+        DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
+        ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        _ = scheduler.GetDueAsync(now, ProjectionDispatchOptions.DefaultRetryScanBatchSize, Arg.Any<CancellationToken>())
+            .Returns([workItem]);
+        INamedProjectionDispatchCoordinator coordinator = Substitute.For<INamedProjectionDispatchCoordinator>();
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.ReadEventsRangeAsync(0, 2, 256).Returns([Envelope(2), Envelope(1)]);
+        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), nameof(AggregateActor))
+            .Returns(aggregateActor);
+        IProjectionRebuildCheckpointStore rebuilds = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuilds.HasActiveOperatorRebuildForDomainAsync("tenant-a", "widget", Arg.Any<CancellationToken>())
+            .Returns(false);
+        ProjectionDeliveryRetryWorker worker = CreateWorker(now, scheduler, coordinator, actorProxyFactory, rebuilds);
+
+        await worker.RunOnceAsync(CancellationToken.None);
+
+        _ = await coordinator.DidNotReceiveWithAnyArgs().TryDispatchAsync(default!, default!, default!, default!, default);
+        _ = await scheduler.Received(1).TryUpdateAsync(
+            Arg.Is<ProjectionDeliveryRetryWorkItem>(item => item.WorkId == workItem.WorkId && item.Attempt == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task RunOnceAsync_ActiveRebuild_DefersWithoutReadingOrDispatching() {
         DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);
         ProjectionDeliveryRetryWorkItem workItem = WorkItem(now);

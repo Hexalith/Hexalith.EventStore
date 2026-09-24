@@ -354,6 +354,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         var settledRoutes = new HashSet<string>(StringComparer.Ordinal);
         var completedRoutes = new HashSet<string>(StringComparer.Ordinal);
         var terminalRoutes = new HashSet<string>(scheduledWork.TerminalRoutes, StringComparer.Ordinal);
+        bool identityConflict = string.Equals(
+            scheduledWork.LastReasonCode,
+            ProjectionDispatchReasonCodes.DeliveryIdentityConflict,
+            StringComparison.Ordinal);
         var reservations = new Dictionary<string, ProjectionDeliveryReservation>(StringComparer.Ordinal);
         var lifecycleLeases = new HashSet<string>(StringComparer.Ordinal);
 
@@ -456,6 +460,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     }
                     else if (admission.Disposition == ProjectionDeliveryAdmissionDisposition.Failed) {
                         _ = terminalRoutes.Add(projectionType);
+                        identityConflict |= string.Equals(
+                            admission.ReasonCode,
+                            ProjectionDispatchReasonCodes.DeliveryIdentityConflict,
+                            StringComparison.Ordinal);
                     }
 
                     continue;
@@ -471,6 +479,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         projectionEvents,
                         scheduledWork,
                         terminalRoutes,
+                        identityConflict,
                         dispatchOptions,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -485,6 +494,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                         terminalRoutes,
                         settledRoutes,
                         reservations,
+                        identityConflict,
                         dispatchOptions,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -588,6 +598,10 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     }
 
                     _ = terminalRoutes.Add(projectionType);
+                    identityConflict |= string.Equals(
+                        outcome.ReasonCode,
+                        ProjectionDispatchReasonCodes.DeliveryIdentityConflict,
+                        StringComparison.Ordinal);
                 }
 
                 Log.RouteOutcome(
@@ -616,6 +630,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     projectionEvents,
                     scheduledWork,
                     terminalRoutes,
+                    identityConflict,
                     dispatchOptions,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -628,6 +643,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 terminalRoutes,
                 settledRoutes,
                 reservations,
+                identityConflict,
                 dispatchOptions,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -729,9 +745,12 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         ProjectionEventDto[] projectionEvents,
         ProjectionDeliveryRetryWorkItem scheduledWork,
         IReadOnlySet<string> terminalRoutes,
+        bool identityConflict,
         ProjectionDispatchOptions dispatchOptions,
         CancellationToken cancellationToken) {
-        if (terminalRoutes.Count == 0) {
+        // An identity conflict is durable quarantine evidence. A handler's reconciliation reply
+        // cannot authorize removal of bytes that disagree with the persisted delivery identity.
+        if (terminalRoutes.Count == 0 || identityConflict) {
             return new HashSet<string>(StringComparer.Ordinal);
         }
 
@@ -769,8 +788,8 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
     /// <summary>
     /// Reconciles the durable retry work item after one dispatch round: prunes completed and
     /// drift-settled routes, retains lifecycle-deferred and terminal routes, and deletes the item
-    /// only when every route has converged. A ledger fault is logged and swallowed so it never
-    /// surfaces as a dropped delivery; idempotent retry reconciles the stale item on the next tick.
+    /// only when every route has converged. Identity conflicts require a persisted terminal row;
+    /// other ledger faults leave the prior work item for the next retry tick.
     /// </summary>
     private async Task ReconcileRetryLedgerAsync(
         ProjectionDeliveryRetryWorkItem scheduledWork,
@@ -778,13 +797,22 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         IReadOnlySet<string> terminalRoutes,
         IReadOnlySet<string> settledRoutes,
         IReadOnlyDictionary<string, ProjectionDeliveryReservation> reservations,
+        bool identityConflict,
         ProjectionDispatchOptions dispatchOptions,
         CancellationToken cancellationToken) {
         if (retryScheduler is null) {
+            if (identityConflict) {
+                throw new InvalidOperationException("Projection delivery identity conflict has no durable quarantine scheduler.");
+            }
+
             return;
         }
 
         try {
+            if (identityConflict && terminalRoutes.Count == 0) {
+                throw new InvalidOperationException("Projection delivery identity conflict has no terminal route to quarantine.");
+            }
+
             string[] remainingRoutes = [.. scheduledWork.PendingRoutes
                 .Where(route => !completedRoutes.Contains(route)
                     && !terminalRoutes.Contains(route)
@@ -805,16 +833,25 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     .ToDictionary(static pair => pair.Key, static pair => pair.Value.FencingToken, StringComparer.Ordinal),
                 Attempt = attempt,
                 NextDueUtc = _timeProvider.GetUtcNow() + GetRetryDelay(attempt, dispatchOptions),
-                LastReasonCode = terminalRoutes.Count > 0
-                    ? ProjectionDispatchReasonCodes.HandlerFailure
-                    : ProjectionDispatchReasonCodes.PartialRetry,
+                LastReasonCode = identityConflict
+                    ? ProjectionDispatchReasonCodes.DeliveryIdentityConflict
+                    : terminalRoutes.Count > 0
+                        ? ProjectionDispatchReasonCodes.HandlerFailure
+                        : ProjectionDispatchReasonCodes.PartialRetry,
             };
-            _ = await retryScheduler.TryUpdateAsync(updated, cancellationToken).ConfigureAwait(false);
+            bool updatedSuccessfully = await retryScheduler.TryUpdateAsync(updated, cancellationToken).ConfigureAwait(false);
+            if (identityConflict && !updatedSuccessfully) {
+                throw new InvalidOperationException("Projection delivery identity conflict could not be quarantined.");
+            }
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception) {
+            if (identityConflict) {
+                throw;
+            }
+
             Log.DispatchDeferred(
                 logger,
                 scheduledWork.TenantId,

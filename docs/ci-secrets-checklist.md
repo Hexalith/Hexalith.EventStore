@@ -4,24 +4,26 @@ This is the canonical inventory of GitHub Actions secrets used by the Hexalith.E
 
 ## Where secrets live
 
-User-managed credentials live under GitHub repository **Settings → Secrets and
-variables → Actions → Repository secrets**. The `production` environment holds
-release approval and branch policy only; it does not duplicate credential
-values.
+Release credentials live under Hexalith organization **Settings → Secrets and
+variables → Actions → Organization secrets** and are available to this repository.
+Staging credentials live under repository **Settings → Secrets and variables →
+Actions → Repository secrets**. The `production` environment holds release
+approval and branch policy only; it does not duplicate credential values.
 
 URLs:
 
 - `https://github.com/Hexalith/Hexalith.EventStore/settings/environments`
 - `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
+- `https://github.com/organizations/Hexalith/settings/secrets/actions`
 
 ## Inventory
 
 | Secret | Scope | Required for | Owner | Rotation |
 |--------|-------|--------------|-------|----------|
 | `GITHUB_TOKEN` | Auto-provisioned | All workflows (Git operations, PR creation, release publishing) | GitHub | Per-job ephemeral (no action needed) |
-| `NUGET_API_KEY` | Repository | `release.yml` — `npx semantic-release` push to NuGet.org | Maintainer | When NuGet API key expires (annually) |
-| `HEXALITH_ZOT_USERNAME` | Repository | `release.yml` — authenticate the EventStore container publication and immutable read-back | Registry owner | When the release registry account changes |
-| `HEXALITH_ZOT_API_KEY` | Repository | `release.yml` — authenticate the EventStore container publication and immutable read-back | Registry owner | At least annually and on registry credential rotation |
+| `NUGET_API_KEY` | Hexalith organization (all repositories) | `release.yml` — `npx semantic-release` push to NuGet.org | Maintainer | When NuGet API key expires (annually) |
+| `HEXALITH_ZOT_USERNAME` | Hexalith organization (all repositories) | `release.yml` — authenticate the EventStore container publication and immutable read-back | Registry owner | When the release registry account changes |
+| `HEXALITH_ZOT_API_KEY` | Hexalith organization (all repositories) | `release.yml` — authenticate the EventStore container publication and immutable read-back | Registry owner | At least annually and on registry credential rotation |
 | `REGISTRY_USERNAME` | Repository | `deploy-staging.yml` — push to `registry.hexalith.com` | Infra owner | On registry credential rotation |
 | `REGISTRY_PASSWORD` | Repository | `deploy-staging.yml` — push to `registry.hexalith.com` | Infra owner | On registry credential rotation |
 | `STAGING_SSH_HOST` | Repository | `deploy-staging.yml` — `appleboy/ssh-action` target host | Infra owner | When staging host moves |
@@ -44,7 +46,7 @@ URLs:
 - `HEXALITH_ZOT_API_KEY` — Zot credential for publish and immutable registry inspection
 - No npm registry token is needed. `npm ci` installs the committed release
   tooling lockfile before semantic-release runs.
-- These three repository credentials are mapped explicitly to the reusable
+- These three organization credentials are mapped explicitly to the reusable
   release workflow; `secrets: inherit` is forbidden. The preflight job has no
   secret mapping, and GitHub does not start the protected reusable job until the
   required `production` reviewer approves a current-green-`main` request.
@@ -79,7 +81,8 @@ To get CI green on a fork that wants to publish:
 1. **Mandatory** — none. Public PR CI works with only the auto-provisioned `GITHUB_TOKEN`.
 2. **For releases** — create a `production` environment, require the designated
    release reviewer, and restrict deployments to `main`. Store `NUGET_API_KEY`,
-   `HEXALITH_ZOT_USERNAME`, and `HEXALITH_ZOT_API_KEY` as repository secrets; the
+   `HEXALITH_ZOT_USERNAME`, and `HEXALITH_ZOT_API_KEY` as repository secrets in a fork;
+   the Hexalith organization supplies them as organization secrets. The
    release caller maps only those names. The NuGet key needs push rights to every
    package in `tools/release-packages.json`; the Zot credentials target
    `registry.hexalith.com/eventstore`.
@@ -92,16 +95,31 @@ For any of `NUGET_API_KEY`, `HEXALITH_ZOT_API_KEY`, `REGISTRY_PASSWORD`,
 `STAGING_SSH_KEY`:
 
 1. Generate the new credential at the upstream system (NuGet.org, registry, server).
-2. Update the repository secret in **Settings → Secrets and variables →
-   Actions**.
-3. Read back the configured secret names and `production` protection; never
-   dispatch or publish merely to test a credential rotation.
+2. Update `NUGET_API_KEY` or `HEXALITH_ZOT_API_KEY` in **Organization Settings →
+   Secrets and variables → Actions**. Update `REGISTRY_PASSWORD` or
+   `STAGING_SSH_KEY` in **Repository Settings → Secrets and variables → Actions**.
+   A fork that owns its release secrets updates those at repository scope.
+3. Read back the configured secret names, repository access, and `production`
+   protection; never dispatch or publish merely to test a credential rotation.
 4. Revoke the old credential at the upstream system after the new credential is
    confirmed through the next intentional operation.
 
 If the Zot release account itself changes, update `HEXALITH_ZOT_USERNAME` in
-repository secrets during the same maintenance window. Never reuse the staging
+organization secrets during the same maintenance window. Never reuse the staging
 registry credentials as release publisher credentials.
+
+## Recovery after a rejected NuGet push
+
+If `dotnet nuget push` returns HTTP 403, check that the organization
+`NUGET_API_KEY` is current and has push rights to all 14 packages in
+`tools/release-packages.json`. A failed publish can leave a Semantic Release
+tag on the approved source even though no package or GitHub release exists.
+Preserve that tag as audit evidence. A rerun of the same source will see no
+commits after the tag and will not publish that version. After credential
+rotation, make a reviewed source fix, require successful exact-source push CI,
+and dispatch a new release from the updated `main` tip. Confirm the selected
+version is newer than the failed tag, then verify the 14 public packages and
+container before treating the release as complete.
 
 ## Hygiene rules
 
@@ -116,6 +134,7 @@ A periodic check (suggested quarterly):
 
 ```bash
 gh secret list --repo Hexalith/Hexalith.EventStore
+gh secret list --org Hexalith
 ```
 
 Compare the output against the **Inventory** table above. Any unexpected secret should be investigated and removed if not in use.

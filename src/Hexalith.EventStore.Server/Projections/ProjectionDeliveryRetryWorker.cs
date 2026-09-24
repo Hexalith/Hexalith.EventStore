@@ -142,23 +142,13 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
             EventEnvelope[] page = await aggregateProxy
                 .ReadEventsRangeAsync(afterSequence, workItem.HeadSequence, ReadPageSize)
                 .ConfigureAwait(false);
-            if (page.Length == 0) {
-                break;
-            }
-
-            EventEnvelope[] ordered = [.. page
-                .Where(item => item.SequenceNumber > afterSequence && item.SequenceNumber <= workItem.HeadSequence)
-                .OrderBy(static item => item.SequenceNumber)];
-            if (ordered.Length == 0) {
-                break;
-            }
-
-            events.AddRange(ordered);
-            long nextSequence = ordered[^1].SequenceNumber;
-            if (nextSequence <= afterSequence) {
-                break;
-            }
-
+            long nextSequence = ProjectionStreamPageValidation.Validate(
+                identity,
+                afterSequence,
+                workItem.HeadSequence,
+                ReadPageSize,
+                page);
+            events.AddRange(page);
             afterSequence = nextSequence;
         }
 

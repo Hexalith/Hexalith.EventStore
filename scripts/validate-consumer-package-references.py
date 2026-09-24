@@ -78,6 +78,7 @@ def write_consumer_project(
         textwrap.dedent(f"""\
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
+            <OutputType>Exe</OutputType>
             <TargetFramework>net10.0</TargetFramework>
             <ImplicitUsings>enable</ImplicitUsings>
             <Nullable>enable</Nullable>
@@ -89,8 +90,143 @@ def write_consumer_project(
         """),
         encoding="utf-8",
     )
+    probes = {
+        "Hexalith.EventStore.Contracts": textwrap.dedent("""\
+            using Hexalith.EventStore.Contracts.Streams;
+
+            var request = new StreamReadRequest("tenant-a", "widget", "item-1");
+            var page = new StreamReadPage("tenant-a", "widget", "item-1", [],
+                new StreamReadMetadata(0, null, null, 0, 0, false, null));
+            if (StreamReadPageValidator.ValidateAndGetNextSequence(request, page) != 0)
+                throw new InvalidOperationException("The exclusive cursor contract changed.");
+            """),
+        "Hexalith.EventStore.Client": textwrap.dedent("""\
+            using Hexalith.EventStore.Client.Projections;
+            using System.Text.Json;
+
+            var store = new ProbeStore();
+            var coordinator = new SharedProjectionEpochCoordinator(store, store);
+            var scope = new SharedProjectionScope("statestore", "tenant-a", "widget", "widget-index", ["ordinary"]);
+            var lease = await coordinator.RegisterWriterAsync(scope, "ordinary");
+            if (await coordinator.JournalAsync(scope, lease, new SharedProjectionDelivery("item-1", 1, [1], [1]))
+                != SharedProjectionJournalResult.Journaled)
+                throw new InvalidOperationException("Initial delivery was not journaled.");
+            if (await coordinator.CatchUpAsync(scope, (_, _, _) =>
+                Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
+                    ReadModelBatchOperation.Write("index", new Counter(1), ReadModelBatchConcurrency.LastWrite)])) != 1)
+                throw new InvalidOperationException("Initial catch-up did not drain the journal.");
+
+            if (await coordinator.BeginAsync(scope, "rebuild", "inventory", new Dictionary<string, long> {
+                ["item-1"] = 1,
+            }) != 1)
+                throw new InvalidOperationException("Capture did not advance the epoch.");
+            lease = await coordinator.RefreshLeaseAsync(scope, "ordinary");
+            if (await coordinator.JournalAsync(scope, lease, new SharedProjectionDelivery("item-1", 2, [2], [2]))
+                != SharedProjectionJournalResult.Journaled)
+                throw new InvalidOperationException("Post-capture delivery was not journaled.");
+            _ = await coordinator.StageAsync(scope, "rebuild", [ReadModelBatchOperation.Write(
+                "index", new Counter(1), ReadModelBatchConcurrency.LastWrite)]);
+            await coordinator.CommitAsync(scope, "rebuild");
+            if (await coordinator.CatchUpAsync(scope, (_, _, _) =>
+                Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
+                    ReadModelBatchOperation.Write("index", new Counter(2), ReadModelBatchConcurrency.LastWrite)])) != 1)
+                throw new InvalidOperationException("Committed catch-up did not drain the journal.");
+            var selected = await coordinator.ReadAsync<Counter>(scope, "index");
+            if (selected.Generation != 1 || selected.IsStale || selected.Value?.Value != 2
+                || (await coordinator.GetCheckpointAsync(scope, "item-1"))?.Position != 2)
+                throw new InvalidOperationException("The selected generation lost acknowledged delivery.");
+            if (await coordinator.JournalAsync(scope, lease, new SharedProjectionDelivery("item-1", 2, [2], [2]))
+                != SharedProjectionJournalResult.AlreadyJournaled)
+                throw new InvalidOperationException("Identical redelivery was not idempotent.");
+
+            var bounded = new SharedProjectionScope("statestore", "tenant-bound", "widget", "widget-index", ["ordinary"]);
+            var boundedLease = await coordinator.RegisterWriterAsync(bounded, "ordinary");
+            for (int position = 1; position <= 128; position++) {
+                if (await coordinator.JournalAsync(bounded, boundedLease,
+                    new SharedProjectionDelivery("stream", position, [(byte)position], [1]))
+                    != SharedProjectionJournalResult.Journaled)
+                    throw new InvalidOperationException("The bounded journal rejected an in-range position.");
+            }
+            if (await coordinator.JournalAsync(bounded, boundedLease,
+                new SharedProjectionDelivery("stream", 129, [129], [1]))
+                != SharedProjectionJournalResult.Backpressure
+                || (await coordinator.GetStatusAsync(bounded)).PendingDeliveryCount != 128)
+                throw new InvalidOperationException("The bounded journal accepted an over-limit position.");
+
+            record Counter(int Value);
+
+            sealed class ProbeStore : IReadModelStore, IReadModelBatchStore {
+                private readonly Dictionary<string, (byte[] Value, string ETag)> _values = new(StringComparer.Ordinal);
+                private readonly object _gate = new();
+                private long _revision;
+                private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+                public Task<ReadModelEntry<T>> GetAsync<T>(string storeName, string key,
+                    CancellationToken cancellationToken = default) where T : class {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        return Task.FromResult(_values.TryGetValue(storeName + ":" + key, out var entry)
+                            ? new ReadModelEntry<T>(JsonSerializer.Deserialize<T>(entry.Value, Json), entry.ETag)
+                            : new ReadModelEntry<T>(null, null));
+                    }
+                }
+
+                public Task SaveAsync<T>(string storeName, string key, T value,
+                    CancellationToken cancellationToken = default) where T : class {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        _values[storeName + ":" + key] = (JsonSerializer.SerializeToUtf8Bytes(value, Json),
+                            (++_revision).ToString());
+                    }
+                    return Task.CompletedTask;
+                }
+
+                public Task<bool> TrySaveAsync<T>(string storeName, string key, T value, string etag,
+                    CancellationToken cancellationToken = default) where T : class {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        string stateKey = storeName + ":" + key;
+                        bool exists = _values.TryGetValue(stateKey, out var prior);
+                        if (exists ? prior.ETag != etag : etag.Length != 0)
+                            return Task.FromResult(false);
+                        _values[stateKey] = (JsonSerializer.SerializeToUtf8Bytes(value, Json),
+                            (++_revision).ToString());
+                        return Task.FromResult(true);
+                    }
+                }
+
+                public Task<ReadModelBatchResult> ExecuteAsync(ReadModelBatch batch,
+                    CancellationToken cancellationToken = default) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock (_gate) {
+                        foreach (var operation in batch.Operations) {
+                            string stateKey = batch.Scope.StoreName + ":" + operation.Key;
+                            if (operation.Kind == ReadModelBatchOperationKind.Write)
+                                _values[stateKey] = (operation.CanonicalValue.ToArray(), (++_revision).ToString());
+                            else
+                                _values.Remove(stateKey);
+                        }
+                    }
+                    return Task.FromResult(ReadModelBatchResult.Completed(batch.Scope.ComputeScopeHash()));
+                }
+            }
+            """),
+        "Hexalith.EventStore.DomainService": textwrap.dedent("""\
+            using Hexalith.EventStore.Contracts.Projections;
+            using Hexalith.EventStore.DomainService;
+            using Microsoft.Extensions.DependencyInjection;
+
+            var request = new ProjectionRequest("tenant-a", "widget", "item-1", []);
+            using var provider = new ServiceCollection().BuildServiceProvider();
+            if (DomainProjectionDispatcher.Project(provider, request) is not null)
+                throw new InvalidOperationException("An unregistered projection route was admitted.");
+            """),
+    }
     (consumer_dir / "ConsumerProbe.cs").write_text(
-        "namespace Hexalith.EventStore.PackageConsumer;\n\npublic sealed class ConsumerProbe;\n",
+        probes.get(
+            package_id,
+            "namespace Hexalith.EventStore.PackageConsumer;\n\npublic static class ConsumerProbe { public static void Main() {} }\n",
+        ),
         encoding="utf-8",
     )
     return project_path
@@ -143,7 +279,7 @@ def validate_library_package(
     package: PackageMetadata,
     package_path: pathlib.Path,
 ) -> None:
-    """Restore and build one library without injecting sibling direct references."""
+    """Restore and run one isolated package consumer with no project references."""
 
     with tempfile.TemporaryDirectory(prefix="eventstore-package-consumer-") as temp_dir_name:
         consumer_dir = pathlib.Path(temp_dir_name)
@@ -172,6 +308,12 @@ def validate_library_package(
                 "-p:UseHexalithProjectReferences=false",
             ]
         )
+        if package.package_id in {
+            "Hexalith.EventStore.Contracts",
+            "Hexalith.EventStore.Client",
+            "Hexalith.EventStore.DomainService",
+        }:
+            run(["dotnet", "run", "--no-build", "--configuration", "Release", "--project", str(project_path)])
         assert_assets_use_packages(project_path, package.package_id, package.version)
 
 
