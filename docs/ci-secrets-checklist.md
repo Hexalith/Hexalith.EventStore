@@ -105,8 +105,21 @@ For any of `NUGET_API_KEY`, `HEXALITH_ZOT_API_KEY`, `REGISTRY_PASSWORD`,
    confirmed through the next intentional operation.
 
 If the Zot release account itself changes, update `HEXALITH_ZOT_USERNAME` in
-repository secrets during the same maintenance window. Never reuse the staging
+organization secrets during the same maintenance window. Never reuse the staging
 registry credentials as release publisher credentials.
+
+## Recovery after a rejected NuGet push
+
+If `dotnet nuget push` returns HTTP 403, check that the organization
+`NUGET_API_KEY` is current and has push rights to all 14 packages in
+`tools/release-packages.json`. A failed publish can leave a Semantic Release
+tag on the approved source even though no package or GitHub release exists.
+Preserve that tag as audit evidence. A rerun of the same source will see no
+commits after the tag and will not publish that version. After credential
+rotation, make a reviewed source fix, require successful exact-source push CI,
+and dispatch a new release from the updated `main` tip. Confirm the selected
+version is newer than the failed tag, then verify the 14 public packages and
+container before treating the release as complete.
 
 ## Hygiene rules
 
@@ -121,6 +134,7 @@ A periodic check (suggested quarterly):
 
 ```bash
 gh secret list --repo Hexalith/Hexalith.EventStore
+gh secret list --org Hexalith
 ```
 
 Compare the output against the **Inventory** table above. Any unexpected secret should be investigated and removed if not in use.
