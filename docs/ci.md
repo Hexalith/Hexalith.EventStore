@@ -260,6 +260,17 @@ publish preflight permits exactly one `v<candidate-version>` self-tag only when
 it targets the approved source SHA. The proof is retained in version-floor
 evidence; a missing, duplicate, unprefixed, or wrong-source tag fails closed.
 
+If NuGet rejects a package push after that self-tag exists, first correct the
+publishing credential and its rights to every package in the manifest. In the
+Hexalith organization, `NUGET_API_KEY` is an organization Actions secret; a
+403 from `dotnet nuget push` can mean that it expired or lacks package rights.
+Preserve the failed tag as audit evidence. A rerun of the same source will not
+publish the tagged version because Semantic Release sees no commits after the
+tag. Make a reviewed source fix, require successful exact-source push CI, and
+dispatch a new release from the updated `main` tip. Confirm its selected
+version is newer than the failed tag and verify all 14 public packages and the
+container before treating it as complete.
+
 The `main` branch accepts changes only through pull requests. Release automation
 therefore does not use `@semantic-release/changelog` or `@semantic-release/git`:
 it tags the already CI-approved source commit and publishes generated notes and
