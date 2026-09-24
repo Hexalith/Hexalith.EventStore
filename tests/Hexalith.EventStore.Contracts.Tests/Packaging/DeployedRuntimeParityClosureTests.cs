@@ -4240,8 +4240,8 @@ public sealed class DeployedRuntimeParityClosureTests
         // The operator-facing surface must carry a verifiable digest, not an elided one.
         ci.ShouldContain(SelectedReviewSubjectSha256);
 
-        // The spec frontmatter is a fourth lifecycle surface distinct from the story record; it must
-        // not silently drift to the closed lifecycle token while acceptance sits at 0/3 receipts.
+        // Story 3.13's 'done' frontmatter records completion of its rejected v3.94.1 disposition;
+        // it makes no positive Story 3.15 parity claim. Story 3.15 separately has 3/3 receipts.
         // Anchored to the parsed YAML frontmatter block on purpose: a whole-file substring scan reads
         // the review ledger's own prose, which quotes both lifecycle tokens verbatim when recording
         // findings about them. That made the negative half fail on correct content and the positive
@@ -4272,9 +4272,14 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  4-6-global-position-sharding-spec-renegotiation:")
             .ShouldBe("awaiting-operator");
 
-        // Story 3.15: the current packet has three accepted receipts and awaits review.
+        // Story 3.15: the eight review patches are complete. The spec is done after
+        // the build workflow's review, while the sprint row remains at review.
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("review");
+        string story315Spec = ReadNormalizedText(
+            root,
+            "_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md");
+        FrontmatterValue(story315Spec, "status").ShouldBe("'done'");
 
         // Story 5.3: owner closed the story 2026-09-10 after spec-5-3 reached done (review loop 8).
         SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")
