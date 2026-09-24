@@ -4272,10 +4272,14 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  4-6-global-position-sharding-spec-renegotiation:")
             .ShouldBe("awaiting-operator");
 
-        // Story 3.15: three subject-bound receipts validate, but the 2026-09-24 review of a37ec86f
-        // left eight patch action items open, so the story is back in progress.
+        // Story 3.15: the eight review patches are complete. The spec is done after
+        // the build workflow's review, while the sprint row remains at review.
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
-            .ShouldBe("in-progress");
+            .ShouldBe("review");
+        string story315Spec = ReadNormalizedText(
+            root,
+            "_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md");
+        FrontmatterValue(story315Spec, "status").ShouldBe("'done'");
 
         // Story 5.3: owner closed the story 2026-09-10 after spec-5-3 reached done (review loop 8).
         SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")

@@ -60,13 +60,15 @@ Both owner comments have `created_at == updated_at == accepted_at`; all three ac
 subject-bound limitations. Six earlier timestamp-mismatched posting attempts were visibly marked
 superseded on issue `#352` and are not retained in the packet.
 
-The owner's separate authorization of the 2026-09-23 receipt-collection run is recorded in
+The after-the-fact ratification of the 2026-09-23 receipt-collection run is recorded in
 [issue #352 comment 5803577826](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5803577826),
-authored by authenticated `github:jpiquot` (account id `6775094`). It quotes the owner's exact
-written response, “I Jérôme Piquot, owner; authorize,” alongside the request's scope and the two
-owner acceptance comment IDs. This authorization records the collection run; the two acceptance
-comments remain the subject-bound receipt evidence. It grants no deployment, publication,
-registry, consumer-removal, or predecessor-change authority.
+created at `2026-09-23T21:53:37Z` by authenticated `github:jpiquot` (account id `6775094`).
+That was about 16 hours after the kept receipts at `06:00:46Z` and `06:01:05Z`, and after
+commit `a2f5cba2`. The comment is an agent-composed request that quotes the owner's written line
+“I Jérôme Piquot, owner; authorize” verbatim. Under review decision D1, that quoted line counts
+as the owner's authorization; the scope and two acceptance comment IDs are in the agent-composed
+text. The two acceptance comments remain the subject-bound receipt evidence. The ratification
+grants no deployment, publication, registry, consumer-removal, or predecessor-change authority.
 This is an as-observed external audit citation: the comment is mutable, is not retained or
 hash-closed in the packet, and is not checked by the verifier that returns the 3/3 parity verdict.
 
@@ -312,8 +314,8 @@ decision, registry and producer digests -> receipts addressed by that subject.
   The positive closure case uses explicit
   synthetic test fixtures only to mutation-prove the receipt contract; those fixtures are never
   copied into the retained packet.
-- Complete Contracts suite after the `review` tracker transition and in-clone path regression:
-  **2106 passed, zero failed, skipped, or unrun**. The Contracts test project Release build passed
+- Complete Contracts suite after the 2026-09-24 in-clone and elided-subject regressions:
+  **2108 passed, zero failed, skipped, or unrun**. The Contracts test project Release build passed
   with zero warnings and errors.
 - `sprint-status.yaml` and `docs/ci.md` name the current subject and are drift-guarded by the
   focused suite. The guide's final positive verdict is bound by separately reviewed Story 4.15 v4

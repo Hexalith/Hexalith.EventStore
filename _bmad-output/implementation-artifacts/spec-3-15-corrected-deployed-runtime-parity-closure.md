@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -36,6 +36,8 @@ context:
 | Downstream citation | Deployment or consumer-removal request cites the completed packet | Packet supplies immutable evidence only | Require separate deployment or Consumer-owner authority |
 
 </frozen-after-approval>
+
+**Current canonical subject:** `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`.
 
 ## Code Map
 
@@ -522,6 +524,24 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-09-24 (completion):** Completed the three-layer review of the Story 3.15 closure
+  patches. The spec is `done`; the sprint row remains `review` for the tracker handoff, and the
+  lifecycle assertion pins both values. No new patch or intent gap survived triage. Three
+  pre-existing evidence/capture risks were recorded in deferred work. The post-review Release
+  build has zero warnings/errors, both focused closure classes pass 506/506, and the retained
+  Story 3.15 verifier selects only the pinned OCI index.
+
+- **2026-09-24 (review-patch completion):** Kept the Story 3.15 spec frontmatter and sprint row
+  together at `in-progress` while closing the eight review action items. The valid-lineage
+  off-path regression now uses a checked-out clone, so disabling the bound-path refusal can
+  rewrite the copied closure; the subject-order guard also recognizes elided eight-character
+  superseded digests. Both operator records identify comment `5803577826` as an agent-composed,
+  after-the-fact ratification. The DW-507/508 resolutions and Epic 3 retrospective item 22 now
+  reflect the verified closure. Release build: zero warnings and errors; focused Story 3.15
+  closure class: 216/216; both closure classes: 506/506; full Contracts suite: 2108/2108,
+  with zero failures, skips, or unrun tests. The Story 3.14 and Story 3.15 retained verifiers
+  both exit 0 with their previously bound digests.
+
 - **2026-09-23 (receipt-collection review patches):** Restored the sprint row to `review` and
   aligned its guarded prose and lifecycle test with the accepted 3/3 packet. Added a valid-lineage
   clone regression that reaches the assembler's bound-path refusal, expanded the superseded-subject
@@ -820,9 +840,9 @@ Both owner receipts are independently constrained to the same positively allowli
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
 - `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `pass: subject=sha256:7d64f87e... selected=sha256:4b141085...`, exit 0. All three real subject-bound receipts validate; parity is **available** and the selected identity is the pinned OCI index. The four operational-authority flags remain false.
 - `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `subject=sha256:7d64f87e... receipts=3 verifier_exit=0`, exit 0. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both an isolated zero-receipt and fully accepted copy and pins both exit rules.
-- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **historical actual:** 221 passed, 0 failed, 0 skipped before the in-clone path regression. The current focused closure class alone passes 214/214, zero failed, skipped, or unrun.
+- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **historical actual:** 221 passed, 0 failed, 0 skipped before the in-clone path regression. The current focused closure class alone passes 216/216, zero failed, skipped, or unrun; it includes two elided-subject cases.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 55 passed, 0 failed, 0 skipped.
-- Complete Contracts suite -- **current post-review-patch actual:** 2106 passed, 0 failed,
+- Complete Contracts suite -- **current post-review-patch actual:** 2108 passed, 0 failed,
   0 skipped, 0 not run. The earlier 2096/2096 run preceded the `review` tracker transition and
   in-clone assembler path regression. `sprint-status.yaml` and
   `docs/ci.md` name the current subject and positive receipt verdict and are drift-guarded by the
@@ -1112,6 +1132,20 @@ Both owner receipts are independently constrained to the same positively allowli
 | 2026-09-24 EH2 failed Docker inspect can be mistaken for absence | medium | defer | `_reap_timed_out_run_container` returns success for every nonzero inspect result, including a transient daemon failure. This pre-existing capture path is sealed into the current subject. |
 | 2026-09-24 EH3 failed Docker run can leave a created container | medium | defer | carried: `container_created` is false on nonzero exit, and the owner previously chose not to remove a container in that case to protect a same-named external container. Reopening that policy would change sealed producer bytes. |
 | 2026-09-24 EH4 Test Architect source is self-attested | false | reject | carried: the prior review accepted and bound that limitation, and the frozen AC wording would need amendment for a different authentication claim. The packet does not present the local source as externally authenticated. |
+| 2026-09-24 current BH1 retained GitHub envelope can be forged | medium | defer | The verifier compares retained JSON with fixed account, issue, body, and timestamp facts but performs no live fetch or signature check. The earlier durable-source review required disclosure, not independent authentication; fixing the accepted subject requires a new evidence contract and receipts. |
+| 2026-09-24 current BH2 Test Architect source is reconstructed | false | reject | carried: EH4 above and the 2026-08-25 owner decision accept and bind the self-attested limitation; the operator packet identifies this source as self-attested. |
+| 2026-09-24 current BH3 late authorization is outside the verdict | false | reject | The changed records date the after-the-fact ratification and explicitly say the mutable comment is not retained or checked by the 3/3 verifier. They do not claim that verdict proves authorization. |
+| 2026-09-24 current BH4 no dedicated DW-508 sign-offs | false | reject | The records name each artifact counted under the owner's D2 decision and explicitly disclose the missing dedicated architecture, security, and trust-path-test attestations. The review found no new undisclosed claim. |
+| 2026-09-24 current BH5 roster comment names a different file | low | reject | The exact retained body names `reviewer-roster.json`, while the packet file is `owner-role-registry.json`; the verifier and records disclose the copy-carried label. Correcting it requires a new owner comment and subject, and the operator can identify the only roster binding from the packet. |
+| 2026-09-24 current BH6 retained smokes predate the bound producer | medium | defer | carried: the existing triage row and loop-6 owner decision state that the August smoke bytes came from the pre-hardening producer and deliberately bind them without recapture. |
+| 2026-09-24 current BH7 smoke log restates summary | false | reject | carried: the earlier review identified log-equals-summary as the retained contract; neither the verifier nor records claim an independent raw Docker or curl transcript. |
+| 2026-09-24 current BH8 platform observation reads image metadata | false | reject | carried: the earlier review verified digest-addressed `docker run` and Docker image inspection as the capture contract, with QEMU registration disclosed as host state. The claim assumes a process-architecture attestation the contract does not assert. |
+| 2026-09-24 current BH9 NuGet origin lacks retained response metadata | medium | defer | Each packet entry stores archive bytes and a derived NuGet download URL, but no retained HTTP response or registry-signed provenance proves that URL served those bytes. The package identity and signature-entry checks cannot establish their transport origin. |
+| 2026-09-24 current BH10 package signature bytes are not verified | false | reject | carried: the 2026-08-22 owner decision explicitly chose a signature-entry check, renamed the claim `repository_signature_entry_present`, and left PKCS#7 chain validation outside this packet. |
+| 2026-09-24 current BH11 retained-file and nuspec size unbounded | medium | defer | carried: the earlier triage and DW-413 record whole-file reads and uncapped nuspec decompression; this code predates the current patch. |
+| 2026-09-24 current BH12 failed Docker inspect reports cleanup pass | medium | defer | carried: EH2 above already records that any nonzero inspect result is treated as absence, including a daemon failure. |
+| 2026-09-24 current EH1 Docker container appears after absent inspect | medium | defer | After a timed-out `docker run`, dockerd may finish creating the named container after the one-shot inspect returns absent; the helper returns success and records cleanup pass. This pre-existing sealed producer needs a bounded retry and a new subject. |
+| 2026-09-24 current EH2 package changes between hash and ZIP inspection | low | reject | `_validate_packages` reopens the path after `_verify_file`, so a concurrent writer could substitute bytes temporarily. `_validate_inventory` later rehashes the package, and exploitation requires a concurrent local writer to restore the original bytes before that check; fixing this single-writer boundary requires a shared byte-buffer parsing path. |
 
 ### Review Findings (2026-09-06, Group A — tools / verifier chunk)
 
@@ -1270,14 +1304,14 @@ Scope: `ea87414a..a37ec86f` (7 files, +207/-34, 457 diff lines) -- the commit th
 
 **patch:**
 
-- [ ] [Review][Patch] (from D1, option 1) Describe comment `5803577826` accurately: an agent-composed request that quotes the owner's written line "I Jérôme Piquot, owner; authorize" verbatim, and treat that quoted line as the D1 authorization. Stop calling the comment "hand-written". Update it together with the after-the-fact ratification patch in both records. [_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:64]
-- [ ] [Review][Patch] The in-clone path regression cannot observe a re-mint: `--no-checkout` leaves the Story 3.14 producer inputs absent, so with `if path != expected` disabled the shadow still exits 1 ("producer input is unavailable") and both closure hashes stay equal — only the message assertion discriminates, and a guard demoted to a warning would pass. Reproduced in triage: in a checked-out `--shared` clone the unguarded off-path copy re-mints (`subject=sha256:7d20ed33…`) and rewrites `closure.json`. Drop `--no-checkout` for this test so the unchanged-closure assertions can fail, and have the DW-507 resolution say what the test proves. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4106]
-- [ ] [Review][Patch] `a37ec86f` set the spec frontmatter to `done` while the tracker row is `review`, the Change Log does not record the flip, and nothing pins the 3.15 spec frontmatter (only Story 3.13's is pinned). Pin `FrontmatterValue` of this spec next to the row pin in `CorrectedLifecycleRowsRetainTheirCorrectedStatus` so the two surfaces cannot diverge silently; this workflow's status sync sets both values. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4277]
-- [ ] [Review][Patch] The records call comment `5803577826` "the owner's separate authorization of the 2026-09-23 receipt-collection run", but it was created 2026-09-23T21:53:37Z, ~16 h after the receipts it covers (06:00:46Z, 06:01:05Z) and after `a2f5cba2`. State its `created_at` and that it is an after-the-fact ratification in the story record and proof packet. [_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:64]
-- [ ] [Review][Patch] The superseded-subject guard (BH8) matches only full 64-hex digests, so a surface that first names a superseded subject in the elided `aafe9040...` form — the exact form BH8 described, and the dominant form in these records — still passes. Also match the 8-hex elided prefixes of the subject constants when finding the first subject; confirm the four guarded surfaces stay green. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2843]
-- [ ] [Review][Patch] `AssemblerRefusesExecutionOffTheBoundRepositoryPath`'s summary still says it proves refusal "to run from a copied script path" and that "neither bound-path check ran off the repository file", while its `assembler` case now stops at `repository_root()` ("bound repository root could not be verified"); the bound-path check is proven by the new in-clone test. Correct the summary. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3956]
-- [ ] [Review][Patch] The DW-508 resolution is silent on the "subprocess hardening and path-redaction items recorded in the Group P findings" that DW-508's own reason includes; record that they landed in the re-mint and cross-reference the newly deferred capture `subprocess` shadowing gap (EH1). [_bmad-output/implementation-artifacts/deferred-work.md:4046]
-- [ ] [Review][Patch] `epic-3-retro-item-22` ("collect the three owner receipts on issue #352 and re-run the assembler, or move 3-15 off done") is still `status: open` although its condition is met; close it with a note citing the 3/3 verifier pass. [_bmad-output/implementation-artifacts/sprint-status.yaml:445]
+- [x] [Review][Patch] (from D1, option 1) Describe comment `5803577826` accurately: an agent-composed request that quotes the owner's written line "I Jérôme Piquot, owner; authorize" verbatim, and treat that quoted line as the D1 authorization. Stop calling the comment "hand-written". Update it together with the after-the-fact ratification patch in both records. [_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:64]
+- [x] [Review][Patch] The in-clone path regression cannot observe a re-mint: `--no-checkout` leaves the Story 3.14 producer inputs absent, so with `if path != expected` disabled the shadow still exits 1 ("producer input is unavailable") and both closure hashes stay equal — only the message assertion discriminates, and a guard demoted to a warning would pass. Reproduced in triage: in a checked-out `--shared` clone the unguarded off-path copy re-mints (`subject=sha256:7d20ed33…`) and rewrites `closure.json`. Drop `--no-checkout` for this test so the unchanged-closure assertions can fail, and have the DW-507 resolution say what the test proves. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:4106]
+- [x] [Review][Patch] `a37ec86f` set the spec frontmatter to `done` while the tracker row is `review`, the Change Log does not record the flip, and nothing pins the 3.15 spec frontmatter (only Story 3.13's is pinned). Pin `FrontmatterValue` of this spec next to the row pin in `CorrectedLifecycleRowsRetainTheirCorrectedStatus` so the two surfaces cannot diverge silently; this workflow's status sync sets both values. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/DeployedRuntimeParityClosureTests.cs:4277]
+- [x] [Review][Patch] The records call comment `5803577826` "the owner's separate authorization of the 2026-09-23 receipt-collection run", but it was created 2026-09-23T21:53:37Z, ~16 h after the receipts it covers (06:00:46Z, 06:01:05Z) and after `a2f5cba2`. State its `created_at` and that it is an after-the-fact ratification in the story record and proof packet. [_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure.md:64]
+- [x] [Review][Patch] The superseded-subject guard (BH8) matches only full 64-hex digests, so a surface that first names a superseded subject in the elided `aafe9040...` form — the exact form BH8 described, and the dominant form in these records — still passes. Also match the 8-hex elided prefixes of the subject constants when finding the first subject; confirm the four guarded surfaces stay green. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:2843]
+- [x] [Review][Patch] `AssemblerRefusesExecutionOffTheBoundRepositoryPath`'s summary still says it proves refusal "to run from a copied script path" and that "neither bound-path check ran off the repository file", while its `assembler` case now stops at `repository_root()` ("bound repository root could not be verified"); the bound-path check is proven by the new in-clone test. Correct the summary. [tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs:3956]
+- [x] [Review][Patch] The DW-508 resolution is silent on the "subprocess hardening and path-redaction items recorded in the Group P findings" that DW-508's own reason includes; record that they landed in the re-mint and cross-reference the newly deferred capture `subprocess` shadowing gap (EH1). [_bmad-output/implementation-artifacts/deferred-work.md:4046]
+- [x] [Review][Patch] `epic-3-retro-item-22` ("collect the three owner receipts on issue #352 and re-run the assembler, or move 3-15 off done") is still `status: open` although its condition is met; close it with a note citing the 3/3 verifier pass. [_bmad-output/implementation-artifacts/sprint-status.yaml:445]
 
 **defer:**
 

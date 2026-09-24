@@ -2840,10 +2840,32 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
         ];
-        Regex.Matches(text, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
-            .Select(match => match.Value)
-            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal))
+        FirstNamedSubjectDigest(text, subjects)
             .ShouldBe(subjectSha256, relativePath);
+    }
+
+    /// <summary>
+    /// Proves an elided superseded subject is found before a later complete current digest.
+    /// </summary>
+    /// <param name="prefix">The superseded subject's eight-character prefix.</param>
+    /// <param name="ellipsis">The punctuation used to elide the rest of the digest.</param>
+    [Theory]
+    [InlineData("aafe9040", "...")]
+    [InlineData("a5c07d17", "…")]
+    public void SupersededElidedSubjectBeforeCurrentSubjectIsDetected(string prefix, string ellipsis)
+    {
+        string text = $"Former subject {prefix}{ellipsis}; current subject {CurrentSubjectSha256}";
+        string[] subjects =
+        [
+            CurrentSubjectSha256,
+            IntermediateTrustPathSupersededSubjectSha256,
+            FinalTrustPathSupersededSubjectSha256,
+        ];
+
+        FirstNamedSubjectDigest(text, subjects).ShouldBe(
+            prefix == "aafe9040"
+                ? IntermediateTrustPathSupersededSubjectSha256
+                : FinalTrustPathSupersededSubjectSha256);
     }
 
     /// <summary>
@@ -3954,9 +3976,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies the assembler refuses to run from a copied script path, and refuses a shadowed
-    /// handler <c>__file__</c>, without rewriting the retained packet. Neither bound-path check
-    /// ran off the repository file in this suite.
+    /// Verifies a flat assembler copy fails repository-root discovery and a shadowed handler
+    /// <c>__file__</c> fails provenance checking, without rewriting the retained packet. The
+    /// separate valid-lineage clone test exercises the assembler's bound-path check.
     /// </summary>
     /// <param name="mode">Which bound-path check to displace.</param>
     [Theory]
@@ -4103,9 +4125,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         try
         {
             (int cloneExit, _, string cloneError) = RunProcess(
-                Path.GetTempPath(), "git", "clone", "--quiet", "--shared", "--no-checkout", root, temporary);
+                Path.GetTempPath(), "git", "clone", "--quiet", "--shared", root, temporary);
             cloneExit.ShouldBe(0, cloneError);
-            CopyDirectory(Path.Combine(root, "tools"), Path.Combine(temporary, "tools"));
             RunProcess(temporary, "git", "merge-base", "--is-ancestor", SourceSha, "HEAD")
                 .ExitCode.ShouldBe(0);
 
@@ -4429,9 +4450,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             TrustedVerifierSupersededSubjectSha256,
             SupersededSubjectSha256,
         ];
-        string? firstSubject = Regex.Matches(record, "(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
-            .Select(match => match.Value)
-            .FirstOrDefault(value => subjects.Contains(value, StringComparer.Ordinal));
+        string? firstSubject = FirstNamedSubjectDigest(record, subjects);
         firstSubject.ShouldBe(subjectSha256, relativePath);
 
         // The verdict itself must agree with the packet, not with a previous acceptance round.
@@ -4444,6 +4463,23 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             record.ShouldContain("fails closed");
             record.ShouldContain(FormattableString.Invariant($"{receipts} of {RequiredRoles.Length}"));
         }
+    }
+
+    /// <summary>
+    /// Resolves the first known subject named as a full digest or an eight-character elided prefix.
+    /// </summary>
+    /// <param name="text">The surface to inspect.</param>
+    /// <param name="subjects">Known current and superseded subject digests.</param>
+    /// <returns>The matching full digest, or <see langword="null"/> when none is named.</returns>
+    private static string? FirstNamedSubjectDigest(string text, IEnumerable<string> subjects)
+    {
+        string[] knownSubjects = subjects.ToArray();
+        return Regex.Matches(text, @"(?<![0-9a-fA-F])(?:[0-9a-fA-F]{64}|[0-9a-fA-F]{8}(?=\.{3}|…))(?![0-9a-fA-F])")
+            .Select(match => match.Value)
+            .Select(value => knownSubjects.FirstOrDefault(subject =>
+                subject.Equals(value, StringComparison.OrdinalIgnoreCase)
+                || (value.Length == 8 && subject.StartsWith(value, StringComparison.OrdinalIgnoreCase))))
+            .FirstOrDefault(subject => subject is not null);
     }
 
     /// <summary>

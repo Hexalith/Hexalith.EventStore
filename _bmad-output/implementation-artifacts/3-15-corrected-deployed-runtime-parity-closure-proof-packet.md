@@ -111,12 +111,15 @@ Both owner comments are authenticated to the rostered `github:jpiquot` account, 
 `created_at` and `updated_at` equals the receipt's `accepted_at`. Six timestamp-mismatched attempts
 were visibly marked superseded on issue `#352` and are not retained in the packet.
 
-The separate owner authorization for the 2026-09-23 collection run is
+The after-the-fact ratification of the 2026-09-23 collection run is
 [issue #352 comment 5803577826](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5803577826),
-authored by authenticated `github:jpiquot` (account id `6775094`). It quotes the owner's exact
-written response, “I Jérôme Piquot, owner; authorize,” with the request's scope and the two owner
-acceptance comment IDs. The authorization comment is distinct from the packet-bound acceptance
-receipts and grants no operational authority.
+created at `2026-09-23T21:53:37Z` by authenticated `github:jpiquot` (account id `6775094`),
+about 16 hours after the kept receipts at `06:00:46Z` and `06:01:05Z`, and after commit
+`a2f5cba2`. It is an agent-composed request that quotes the owner's written line
+“I Jérôme Piquot, owner; authorize” verbatim. Under review decision D1, that quoted line counts
+as the owner's authorization; the request's scope and two acceptance comment IDs are agent-composed
+text. This ratification is distinct from the packet-bound acceptance receipts and grants no
+operational authority.
 This is an as-observed external audit citation: the comment is mutable, is not retained or
 hash-closed in the packet, and is not checked by the verifier that returns the 3/3 parity verdict.
 
@@ -152,6 +155,6 @@ $ echo $?
 Reassembly deterministically reproduces subject `7d64f87e...` and runs the pinned verifier over its
 own output. It does not copy or rewrite any superseded receipt.
 
-The complete Contracts suite after the `review` tracker transition and in-clone assembler path
-regression passed **2106/2106**, with zero failures, skips, or unrun tests. The retained Story 3.14
+The complete Contracts suite after the 2026-09-24 in-clone and elided-subject regressions passed
+**2108/2108**, with zero failures, skips, or unrun tests. The retained Story 3.14
 predecessor verifier and the default OQ8 validator also pass; `git diff --check` reports no errors.
