@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 /// </summary>
 public sealed class Oq8PlatformClosureTests
 {
+    private const string V4SourceCommit = "30b279bd841c671932b51fad6bcf78b147079d21";
     private const string LandedSource = "5e8f175b2ced4715f7c6f765386812cc1001dbb4";
     private const string ReviewedPostgresImage =
         "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636";
@@ -6394,6 +6395,19 @@ public sealed class Oq8PlatformClosureTests
             CopyFile(root, fixture, relative);
         }
 
+        // Historical v4 mutation fixtures must retain the source bytes v4
+        // actually reviewed, even after the additive v5 candidate evolves them.
+        foreach (string relative in new[]
+        {
+            "docs/ci.md",
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+            "tools/validate-oq8-platform-evidence.py",
+        })
+        {
+            CopyHistoricalV4File(root, fixture, relative);
+        }
+
         CopyDirectory(
             Path.Combine(root, "_bmad-output", "implementation-artifacts", "evidence", "story-4-14"),
             Path.Combine(fixture, "_bmad-output", "implementation-artifacts", "evidence", "story-4-14"));
@@ -6425,6 +6439,31 @@ public sealed class Oq8PlatformClosureTests
         string destination = Path.Combine(destinationRoot, relative);
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         File.Copy(Path.Combine(sourceRoot, relative), destination);
+    }
+
+    private static void CopyHistoricalV4File(string repositoryRoot, string fixtureRoot, string relative)
+    {
+        string destination = Path.Combine(fixtureRoot, relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        ProcessStartInfo start = new("git")
+        {
+            WorkingDirectory = repositoryRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        start.ArgumentList.Add("--no-replace-objects");
+        start.ArgumentList.Add("show");
+        start.ArgumentList.Add($"{V4SourceCommit}:{relative}");
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        using (FileStream output = File.Create(destination))
+        {
+            process.StandardOutput.BaseStream.CopyTo(output);
+        }
+
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        process.ExitCode.ShouldBe(0, error);
     }
 
     private static void CopyDirectory(string source, string destination)

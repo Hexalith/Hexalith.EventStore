@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Hexalith/Hexalith.EventStore/blob/main/tools/oq8-v5-packet.schema.json",
+  "title": "Story 4.15 v5 source-only successor packet",
+  "description": "Review contract for an unapproved draft or a future three-receipt active packet. The Python validator additionally checks current file hashes, historical v1-v4 evidence, chronology, selector, and lifecycle.",
+  "oneOf": [
+    { "$ref": "#/$defs/draft" },
+    { "$ref": "#/$defs/active" }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "timestamp": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "noAuthority": {
+      "const": {
+        "currentSourceApproved": false,
+        "releaseApproved": false,
+        "packageAuthority": false,
+        "registryAuthority": false
+      }
+    },
+    "sourceAuthority": {
+      "const": {
+        "currentSourceApproved": true,
+        "releaseApproved": false,
+        "packageAuthority": false,
+        "registryAuthority": false
+      }
+    },
+    "hashMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/sha256" }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "repository", "predecessor", "gateInputs", "releaseSourceSha256", "packageIds"],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-4-15-successor-source-identity/v5" },
+        "repository": { "const": "Hexalith/Hexalith.EventStore" },
+        "predecessor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["v4SourceCommit", "v4Directory", "v4ManifestSha256", "v4ReviewSubjectSha256"],
+          "properties": {
+            "v4SourceCommit": { "const": "30b279bd841c671932b51fad6bcf78b147079d21" },
+            "v4Directory": { "const": "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4" },
+            "v4ManifestSha256": { "$ref": "#/$defs/sha256" },
+            "v4ReviewSubjectSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "gateInputs": { "$ref": "#/$defs/hashMap" },
+        "releaseSourceSha256": { "$ref": "#/$defs/hashMap" },
+        "packageIds": { "type": "array", "minItems": 14, "maxItems": 14, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "subjectInputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "sourceIdentity", "sourceIdentitySha256", "historicalValidation", "limitations", "requiredReviews"],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-4-15-successor-review-subject-inputs/v5" },
+        "sourceIdentity": { "$ref": "#/$defs/sourceIdentity" },
+        "sourceIdentitySha256": { "$ref": "#/$defs/sha256" },
+        "historicalValidation": {
+          "const": { "v1": "passed", "v2": "passed", "v3": "passed", "v4": "passed" }
+        },
+        "limitations": { "type": "array", "minItems": 4, "items": { "type": "string", "minLength": 1 } },
+        "requiredReviews": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "object" } }
+      }
+    },
+    "draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "status", "sourceHead", "workingTreeDirty", "subjectInputs", "subjectSha256", "frozenAt", "reviews", "authority"],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-4-15-successor-packet-draft/v5" },
+        "status": { "const": "draft-unapproved" },
+        "sourceHead": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "workingTreeDirty": { "type": "boolean" },
+        "subjectInputs": { "$ref": "#/$defs/subjectInputs" },
+        "subjectSha256": { "$ref": "#/$defs/sha256" },
+        "frozenAt": { "type": "null" },
+        "reviews": { "const": { "architecture": "pending", "security": "pending", "test": "pending" } },
+        "authority": { "$ref": "#/$defs/noAuthority" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "role", "reviewer", "scope", "issuedAt", "decision", "subjectSha256", "findings", "authority"],
+      "allOf": [
+        {
+          "if": { "properties": { "role": { "const": "test" } }, "required": ["role"] },
+          "then": { "required": ["verification"] },
+          "else": { "not": { "required": ["verification"] } }
+        }
+      ],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-4-15-successor-review-receipt/v5" },
+        "role": { "enum": ["architecture", "security", "test"] },
+        "reviewer": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "issuedAt": { "$ref": "#/$defs/timestamp" },
+        "decision": { "const": "approved" },
+        "subjectSha256": { "$ref": "#/$defs/sha256" },
+        "findings": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "authority": { "$ref": "#/$defs/noAuthority" },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scope", "command", "passed", "failed", "skipped", "evidenceSha256", "sourceIdentitySha256"],
+          "properties": {
+            "scope": { "const": "pre-review-focused" },
+            "command": { "type": "string", "pattern": "^dotnet test tests/Hexalith\\.EventStore\\.Contracts\\.Tests/Hexalith\\.EventStore\\.Contracts\\.Tests\\.csproj --configuration Release --filter " },
+            "passed": { "type": "integer", "minimum": 1 },
+            "failed": { "const": 0 },
+            "skipped": { "type": "integer", "minimum": 0 },
+            "evidenceSha256": { "$ref": "#/$defs/sha256" },
+            "sourceIdentitySha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "assembledAt", "subjectSha256", "reviewReceiptsSha256", "authority"],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-4-15-successor-source-only-handoff/v5" },
+        "assembledAt": { "$ref": "#/$defs/timestamp" },
+        "subjectSha256": { "$ref": "#/$defs/sha256" },
+        "reviewReceiptsSha256": { "$ref": "#/$defs/hashMap" },
+        "authority": { "$ref": "#/$defs/sourceAuthority" }
+      }
+    },
+    "active": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "status", "subjectInputs", "subjectSha256", "frozenAt", "reviews", "handoff", "authority"],
+      "properties": {
+        "schema": { "const": "hexalith.eventstore.story-4-15-successor-packet/v5" },
+        "status": { "const": "reviewed-source-only" },
+        "subjectInputs": { "$ref": "#/$defs/subjectInputs" },
+        "subjectSha256": { "$ref": "#/$defs/sha256" },
+        "frozenAt": { "$ref": "#/$defs/timestamp" },
+        "reviews": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "$ref": "#/$defs/review" } },
+        "handoff": { "$ref": "#/$defs/handoff" },
+        "authority": { "$ref": "#/$defs/sourceAuthority" }
+      }
+    }
+  }
+}
