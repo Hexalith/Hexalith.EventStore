@@ -128,6 +128,10 @@ development_status:
   3-12-multi-platform-eventstore-container-publishing-correction: done
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
+  # 2026-09-24 tracker handoff: the Story 3.15 spec is done for its bounded
+  # evidence-validated result, but this row remains review while G-HIGH-RISK's
+  # matrix, validator, independent second-identity check, and sealed CI control
+  # are absent. Three receipts grant no release, promotion, or consumer removal.
   # >>> GUARDED COMMENTS -- DO NOT DELETE (see GUARDED COMMENT BLOCKS in the header) <<<
   # CorrectedDeployedRuntimeParityClosureTests.SubjectRestatingSurfacesNameTheCurrentSubject
   # requires this file to restate Story 3.15's CURRENT canonical subject digest from

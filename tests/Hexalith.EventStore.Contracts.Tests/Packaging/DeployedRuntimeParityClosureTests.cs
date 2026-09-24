@@ -4272,8 +4272,10 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  4-6-global-position-sharding-spec-renegotiation:")
             .ShouldBe("awaiting-operator");
 
-        // Story 3.15: the eight review patches are complete. The spec is done after
-        // the build workflow's review, while the sprint row remains at review.
+        // Story 3.15: the spec is done for its bounded, three-receipt technical
+        // evidence-validated result. The sprint row remains review until G-HIGH-RISK
+        // supplies an independent second-identity check and sealed CI validation;
+        // neither lifecycle value grants release or production authority.
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("review");
         string story315Spec = ReadNormalizedText(
