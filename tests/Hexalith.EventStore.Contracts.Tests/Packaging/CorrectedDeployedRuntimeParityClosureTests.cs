@@ -4411,6 +4411,77 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
+    /// Verifies the PRD distinguishes the current technical pass from its superseded receipt
+    /// snapshot and the still-missing independent high-risk control.
+    /// </summary>
+    [Fact]
+    public void PlanningRuntimeParityAccountMatchesCurrentPacketAndPendingControl()
+    {
+        string root = FindRepositoryRoot();
+        JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
+        string subject = closure["subject"]!["sha256"]!.GetValue<string>();
+        int receiptCount = closure["acceptances"]!["receipts"]!.AsArray().Count;
+        receiptCount.ShouldBe(RequiredRoles.Length);
+        string selectedIndex = closure["selected_deployed_identity"]!.GetValue<string>();
+        selectedIndex.ShouldBe(IndexDigest);
+        closure["oci"]!["index"]!["digest"]!.GetValue<string>().ShouldBe(selectedIndex);
+        closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
+        closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
+        string prd = File.ReadAllText(Path.Combine(root, "_bmad-output/planning-artifacts/prd.md"));
+        string[] lines = prd.Split('\n');
+
+        string summary = lines.Single(line => line.StartsWith(
+            "- **Deployed-runtime parity - TECHNICALLY VALIDATED;",
+            StringComparison.Ordinal));
+        string currentSummary = summary[summary.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        currentSummary.ShouldContain(
+            $"{receiptCount} of {RequiredRoles.Length} packet-bound receipts on current subject `{subject}`");
+        currentSummary.ShouldContain($"selecting OCI index `{selectedIndex}`");
+        currentSummary.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+
+        string history = lines.Single(line => line.StartsWith(
+            "| Story 3.15 deployed-runtime parity |",
+            StringComparison.Ordinal));
+        history.ShouldContain("2026-09-10");
+        history.ShouldContain(IntermediateTrustPathSupersededSubjectSha256);
+        string currentHistory = history[history.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        currentHistory.ShouldContain(
+            $"current subject SHA-256 `{subject}` with {receiptCount} of {RequiredRoles.Length} " +
+            $"packet-bound receipts and selected OCI index `{selectedIndex}`");
+        currentHistory.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+
+        string parityGate = lines.Single(line => line.StartsWith(
+            "| G-RUNTIME-PARITY |",
+            StringComparison.Ordinal));
+        parityGate.ShouldContain("current subject `" + subject + "`");
+        parityGate.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+        parityGate.ShouldContain($"{receiptCount} of {RequiredRoles.Length} packet-bound receipts");
+        parityGate.ShouldContain($"selects OCI index `{selectedIndex}`");
+        parityGate.ShouldContain("TECHNICAL PASS; INDEPENDENT GATE BLOCKED");
+        parityGate.ShouldContain("tracker remains `review`");
+
+        string highRiskGate = lines.Single(line => line.StartsWith(
+            "| G-HIGH-RISK |",
+            StringComparison.Ordinal));
+        highRiskGate.ShouldContain("**FAIL/BLOCKED.**");
+        highRiskGate.ShouldContain("matrix, validator, classifications, second-identity controls, sealed validation, and guarded transitions are absent");
+
+        string publicationGate = lines.Single(line => line.StartsWith(
+            "| G-PUBLICATION-AUTH |",
+            StringComparison.Ordinal));
+        publicationGate.ShouldContain("**FAIL/BLOCKED.**");
+        publicationGate.ShouldContain("no release availability or production promotion is authorized");
+
+        string consumerGate = lines.Single(line => line.StartsWith(
+            "| G-CONSUMER |",
+            StringComparison.Ordinal));
+        consumerGate.ShouldContain("**FAIL/BLOCKED.**");
+        consumerGate.ShouldContain("No consumer may remove local infrastructure.");
+    }
+
+    /// <summary>
     /// Verifies the two operator-facing Story 3.15 records state the current subject and the current
     /// verdict. Only docs/ci.md was drift-bound, so both records could be -- and once were -- left
     /// asserting a superseded subject and a passing verdict against a packet that fails closed.

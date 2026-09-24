@@ -4276,6 +4276,11 @@ public sealed class DeployedRuntimeParityClosureTests
         // evidence-validated result. The sprint row remains review until G-HIGH-RISK
         // supplies an independent second-identity check and sealed CI validation;
         // neither lifecycle value grants release or production authority.
+        sprint.ShouldContain(
+            "  # 2026-09-24 tracker handoff: the Story 3.15 spec is done for its bounded\n" +
+            "  # evidence-validated result, but this row remains review while G-HIGH-RISK's\n" +
+            "  # matrix, validator, independent second-identity check, and sealed CI control\n" +
+            "  # are absent. Three receipts grant no release, promotion, or consumer removal.");
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("review");
         string story315Spec = ReadNormalizedText(

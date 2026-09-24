@@ -4854,3 +4854,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Bound a second Docker inspect after a timed-out run before recording an absent container as cleaned up.
   evidence: Dockerd can finish creating the uuid-named container after `_reap_timed_out_run_container` observes one absent result. The helper then returns success and the capture records cleanup pass although the container and port may remain. This pre-existing capture producer is sealed into the accepted subject, so changing it requires a controlled re-mint and replacement receipts.
+
+## Deferred from: review of Story 3.15 tracker reconciliation (2026-09-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-tracker-reconciliation.md`
+  summary: Reconcile epics.md's FR36 completion rule and Story 3.15 acceptance with the newer independent authority gates.
+  evidence: `epics.md:376` closes FR36 from source/package and deployed-runtime parity alone, while current `prd.md:322-324` also requires release availability, production promotion, and per-consumer removal authority. `epics.md:2803-2807` treats three receipts as Story 3.15 completion without the tracker review handoff required by the approved 2026-09-23 proposal. The epics text predates this tracker clarification and requires its separate owner-reviewed baseline reconciliation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-tracker-reconciliation.md`
+  summary: Date and reconcile Story 5.4's stale lifecycle account in PRD OR15.
+  evidence: The current Story 5.4 tracker and wrapper both say `done`, while `prd.md:682` still calls `review`/`in-progress` the current values. This unrelated story status conflict predates the Story 3.15 reconciliation and needs Story 5.4 owner disposition.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-tracker-reconciliation.md`
+  summary: Reconcile FrontComposer's main-push EventStore successor default with its updated EventStore gitlink.
+  evidence: FrontComposer commit `d7553fb2d54b5a5ad16f7328149b31dbb9295f65` pins `references/Hexalith.EventStore` to `b15ad59abca82d5980ef92a510c2379e05f4d46f`, while `.github/workflows/quality.yml:208` and `eng/eventstore_runtime_evidence.py:46` still default the successor source to `bf03d57cf459b329d709622af6c616c1635b83d9`. The validator compares that value to the checked-out gitlink, so Gate 2c rejects the main-push pair. The gitlink change arrived in an unrelated external update during this task; fix belongs in FrontComposer.
