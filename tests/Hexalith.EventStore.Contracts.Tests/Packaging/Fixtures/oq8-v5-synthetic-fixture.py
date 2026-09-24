@@ -130,6 +130,9 @@ def main() -> None:
         "reviewSubjectSha256": subject_sha,
     }
     packet_tool.validate_active_snapshot(packet, candidate, selector, lifecycle, packet_sha, manifest)
+    squashed_candidate = copy.deepcopy(candidate)
+    squashed_candidate["head"] = "f" * 40  # Synthetic new commit identity with the same reviewed source tree.
+    packet_tool.validate_active_snapshot(packet, squashed_candidate, selector, lifecycle, packet_sha, manifest)
     must_reject(wrong_command, candidate, selector, lifecycle, packet_sha, manifest, "focused verification command drift")
 
     missing_receipt = copy.deepcopy(packet)
@@ -138,9 +141,9 @@ def main() -> None:
     wrong_selector = copy.deepcopy(selector)
     wrong_selector["successor"]["manifestSha256"] = "0" * 64
     must_reject(packet, candidate, wrong_selector, lifecycle, packet_sha, manifest, "selector packet binding drift")
-    changed_head = copy.deepcopy(candidate)
-    changed_head["head"] = packet_tool.V4_SOURCE_COMMIT
-    must_reject(packet, changed_head, selector, lifecycle, packet_sha, manifest, "reviewed commit is not an ancestor")
+    changed_source = copy.deepcopy(candidate)
+    changed_source["reviewedSourceTreeSha256"] = "0" * 64
+    must_reject(packet, changed_source, selector, lifecycle, packet_sha, manifest, "source tree changed outside reviewed evidence")
     print("Synthetic v5 active-path fixture passed; non-authorizing and in-memory only.")
 
 

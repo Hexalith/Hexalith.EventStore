@@ -26,6 +26,12 @@ V4_DIRECTORY = Path(
 SELECTOR = Path(
     "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json"
 )
+POST_REVIEW_PATHS = (
+    "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
+    "_bmad-output/implementation-artifacts/4-15-oq8-platform-lifecycle-state.json",
+    "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5/closure-sha256.txt",
+    "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5/packet.json",
+)
 RELEASE_SOURCE_PATHS = (
     ".github/workflows/release.yml",
     ".releaserc.json",
@@ -77,6 +83,26 @@ def git(*arguments: str) -> str:
         timeout=30,
     )
     return result.stdout.strip()
+
+
+def reviewed_source_tree_sha256(commit: str) -> str:
+    """Hash every committed Git tree entry except the four reviewed handoff paths."""
+    result = subprocess.run(
+        ["git", "--no-replace-objects", "ls-tree", "--full-tree", "--full-name", "-r", "-z", commit],
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+        timeout=30,
+    )
+    excluded = {path.encode("utf-8") for path in POST_REVIEW_PATHS}
+    content = hashlib.sha256()
+    for entry in result.stdout.split(b"\0"):
+        if not entry:
+            continue
+        metadata, path = entry.split(b"\t", 1)
+        if path not in excluded:
+            content.update(metadata + b"\t" + path + b"\0")
+    return content.hexdigest()
 
 
 def archive_v4_source(destination: Path) -> None:
@@ -215,11 +241,14 @@ def prepare(*, allow_v5: bool = False) -> dict:
     if len(package_ids) != 14 or len(set(package_ids)) != 14:
         raise ValueError("The 14-package release inventory has changed.")
 
+    head = git("rev-parse", "HEAD")
     return {
         "schema": "hexalith.eventstore.oq8-v5-review-candidate/v1",
         "status": "draft-unapproved",
         "repository": "Hexalith/Hexalith.EventStore",
-        "head": git("rev-parse", "HEAD"),
+        "head": head,
+        "postReviewPaths": list(POST_REVIEW_PATHS),
+        "reviewedSourceTreeSha256": reviewed_source_tree_sha256(head),
         "workingTreeDirty": bool(git("status", "--porcelain")),
         "historical": {
             "v4SourceCommit": V4_SOURCE_COMMIT,

@@ -34,11 +34,18 @@
     "sourceIdentity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema", "repository", "reviewedCommit", "predecessor", "gateInputs", "releaseSourceSha256", "packageIds"],
+      "required": ["schema", "repository", "reviewedCommit", "postReviewPaths", "reviewedSourceTreeSha256", "predecessor", "gateInputs", "releaseSourceSha256", "packageIds"],
       "properties": {
         "schema": { "const": "hexalith.eventstore.story-4-15-successor-source-identity/v5" },
         "repository": { "const": "Hexalith/Hexalith.EventStore" },
         "reviewedCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "postReviewPaths": { "const": [
+          "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json",
+          "_bmad-output/implementation-artifacts/4-15-oq8-platform-lifecycle-state.json",
+          "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5/closure-sha256.txt",
+          "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5/packet.json"
+        ] },
+        "reviewedSourceTreeSha256": { "$ref": "#/$defs/sha256" },
         "predecessor": {
           "type": "object",
           "additionalProperties": false,
