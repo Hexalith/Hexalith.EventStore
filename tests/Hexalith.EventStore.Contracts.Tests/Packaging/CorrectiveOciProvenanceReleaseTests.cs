@@ -1495,12 +1495,14 @@ public sealed class CorrectiveOciProvenanceReleaseTests
     public void PublicationAuthorityFixturesPassWithoutSkippedCases()
     {
         string root = FindRepositoryRoot();
-        string builds = Path.Combine(root, "references", "Hexalith.Builds");
+        string builds = Environment.GetEnvironmentVariable("HEXALITH_BUILDS_SOURCE")
+            ?? Path.Combine(root, "references", "Hexalith.Builds");
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         Match releasePin = Regex.Match(
             workflow,
-            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})");
+            @"repository: Hexalith/Hexalith\.Builds\s+ref: (?<sha>[0-9a-f]{40})");
         releasePin.Success.ShouldBeTrue();
+        workflow.ShouldContain("uses: ./.hexalith/builds-execution/Github/publish-containers");
         string releaseSha = releasePin.Groups["sha"].Value;
 
         ProcessResult pinAvailability = RunProcess(builds, "git", "cat-file", "-e", $"{releaseSha}^{{commit}}");
