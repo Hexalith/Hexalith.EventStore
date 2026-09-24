@@ -34,10 +34,11 @@
     "sourceIdentity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema", "repository", "predecessor", "gateInputs", "releaseSourceSha256", "packageIds"],
+      "required": ["schema", "repository", "reviewedCommit", "predecessor", "gateInputs", "releaseSourceSha256", "packageIds"],
       "properties": {
         "schema": { "const": "hexalith.eventstore.story-4-15-successor-source-identity/v5" },
         "repository": { "const": "Hexalith/Hexalith.EventStore" },
+        "reviewedCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
         "predecessor": {
           "type": "object",
           "additionalProperties": false,
@@ -112,7 +113,7 @@
           "required": ["scope", "command", "passed", "failed", "skipped", "evidenceSha256", "sourceIdentitySha256"],
           "properties": {
             "scope": { "const": "pre-review-focused" },
-            "command": { "type": "string", "pattern": "^dotnet test tests/Hexalith\\.EventStore\\.Contracts\\.Tests/Hexalith\\.EventStore\\.Contracts\\.Tests\\.csproj --configuration Release --filter " },
+            "command": { "const": "bash scripts/verify-oq8-v5-candidate.sh" },
             "passed": { "type": "integer", "minimum": 1 },
             "failed": { "const": 0 },
             "skipped": { "type": "integer", "minimum": 0 },

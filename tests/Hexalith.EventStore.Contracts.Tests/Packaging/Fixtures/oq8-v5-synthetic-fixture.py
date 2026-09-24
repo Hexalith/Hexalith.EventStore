@@ -38,7 +38,9 @@ def must_reject(packet: dict, candidate: dict, selector: dict, lifecycle: dict, 
 
 
 def main() -> None:
-    candidate = packet_tool.current_candidate(for_activation=False)
+    selector_path = packet_tool.SELECTOR
+    selected_v5 = json.loads(selector_path.read_text(encoding="utf-8"))["successor"]["directory"] == packet_tool.V5_RELATIVE_DIRECTORY
+    candidate = packet_tool.current_candidate(for_activation=selected_v5)
     candidate["workingTreeDirty"] = False  # Synthetic clean checkout; no live source claim.
     inputs = packet_tool.subject_inputs(candidate)
     subject_sha = packet_tool.digest(inputs)
@@ -86,6 +88,12 @@ def main() -> None:
         "handoff": handoff,
         "authority": packet_tool.SOURCE_AUTHORITY,
     }
+    schema = json.loads((ROOT / "tools/oq8-v5-packet.schema.json").read_text(encoding="utf-8"))
+    schema_command = schema["$defs"]["review"]["properties"]["verification"]["properties"]["command"]
+    if schema_command != {"const": packet_tool.FOCUSED_VERIFICATION_COMMAND}:
+        raise AssertionError("Schema and validator disagree on focused verification command")
+    wrong_command = copy.deepcopy(packet)
+    wrong_command["reviews"][2]["verification"]["command"] = "dotnet test"
     packet_sha = hashlib.sha256(json.dumps(packet, sort_keys=True).encode()).hexdigest()
     manifest = f"{packet_sha}  packet.json\n"
     manifest_sha = hashlib.sha256(manifest.encode()).hexdigest()
@@ -122,6 +130,7 @@ def main() -> None:
         "reviewSubjectSha256": subject_sha,
     }
     packet_tool.validate_active_snapshot(packet, candidate, selector, lifecycle, packet_sha, manifest)
+    must_reject(wrong_command, candidate, selector, lifecycle, packet_sha, manifest, "focused verification command drift")
 
     missing_receipt = copy.deepcopy(packet)
     missing_receipt["reviews"] = missing_receipt["reviews"][:2]
@@ -129,6 +138,9 @@ def main() -> None:
     wrong_selector = copy.deepcopy(selector)
     wrong_selector["successor"]["manifestSha256"] = "0" * 64
     must_reject(packet, candidate, wrong_selector, lifecycle, packet_sha, manifest, "selector packet binding drift")
+    changed_head = copy.deepcopy(candidate)
+    changed_head["head"] = packet_tool.V4_SOURCE_COMMIT
+    must_reject(packet, changed_head, selector, lifecycle, packet_sha, manifest, "reviewed commit is not an ancestor")
     print("Synthetic v5 active-path fixture passed; non-authorizing and in-memory only.")
 
 

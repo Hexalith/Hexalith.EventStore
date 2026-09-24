@@ -44,6 +44,14 @@ public sealed class Oq8V5CandidateTests
         string schemaPath = Path.Combine(root, "tools", "oq8-v5-packet.schema.json");
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(schemaPath));
         schema.RootElement.GetProperty("oneOf").GetArrayLength().ShouldBe(2);
+        if (IsV5Selected(root))
+        {
+            (int selectedCode, string selectedOutput, string selectedError) = RunPython(root, "tools/oq8-v5-packet.py", "--validate-active");
+            selectedCode.ShouldBe(0, selectedError);
+            selectedOutput.ShouldContain("reviewed source-only packet validated");
+            return;
+        }
+
         string packetPath = Path.Combine(Path.GetTempPath(), "oq8-v5-subject-draft-" + Guid.NewGuid() + ".json");
         try
         {
@@ -105,6 +113,14 @@ public sealed class Oq8V5CandidateTests
         }
 
         string root = FindRepositoryRoot();
+        if (IsV5Selected(root))
+        {
+            (int activeCode, string activeOutput, string activeError) = RunPython(root, "tools/oq8-v5-packet.py", "--validate-active");
+            activeCode.ShouldBe(0, activeError);
+            activeOutput.ShouldContain("reviewed source-only packet validated");
+            return;
+        }
+
         (int generationCode, string generated, string generationError) = RunPython(
             root,
             "tools/prepare-oq8-v5-candidate.py");
@@ -198,6 +214,10 @@ public sealed class Oq8V5CandidateTests
             UseShellExecute = false,
         };
         start.ArgumentList.Add("tools/prepare-oq8-v5-candidate.py");
+        if (IsV5Selected(root))
+        {
+            start.ArgumentList.Add("--for-v5-activation");
+        }
         using Process process = Process.Start(start).ShouldNotBeNull();
         string output = process.StandardOutput.ReadToEnd();
         string error = process.StandardError.ReadToEnd();
@@ -251,6 +271,14 @@ public sealed class Oq8V5CandidateTests
         }
 
         throw new InvalidOperationException("EventStore repository root not found.");
+    }
+
+    private static bool IsV5Selected(string root)
+    {
+        string selectorPath = Path.Combine(root, "_bmad-output", "implementation-artifacts", "4-15-oq8-platform-closure-successor.json");
+        using JsonDocument selector = JsonDocument.Parse(File.ReadAllText(selectorPath));
+        return selector.RootElement.GetProperty("successor").GetProperty("directory").GetString() ==
+            "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5";
     }
 
     private static (int ExitCode, string Output, string Error) RunPython(

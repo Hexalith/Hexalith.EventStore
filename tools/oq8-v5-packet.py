@@ -28,6 +28,7 @@ V4_SOURCE_COMMIT = "30b279bd841c671932b51fad6bcf78b147079d21"
 V5_SELECTION_REASON = "Retain immutable v1-v4 history and activate the reviewed v5 source-only successor for EventStore-owned trusted publishing."
 MAX_JSON_BYTES = 131_072
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
+COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 STAMP_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
 REVIEWERS = {
     "architecture": "Winston (System Architect)",
@@ -55,6 +56,12 @@ NO_AUTHORITY = {
 }
 SOURCE_AUTHORITY = {**NO_AUTHORITY, "currentSourceApproved": True}
 FOCUSED_VERIFICATION_COMMAND = "bash scripts/verify-oq8-v5-candidate.sh"
+POST_REVIEW_PATHS = {
+    SELECTOR.relative_to(ROOT).as_posix(),
+    LIFECYCLE.relative_to(ROOT).as_posix(),
+    f"{V5_RELATIVE_DIRECTORY}/packet.json",
+    f"{V5_RELATIVE_DIRECTORY}/closure-sha256.txt",
+}
 
 
 class PacketError(Exception):
@@ -139,6 +146,7 @@ def subject_inputs(candidate: dict) -> dict:
     source_identity = {
         "schema": "hexalith.eventstore.story-4-15-successor-source-identity/v5",
         "repository": "Hexalith/Hexalith.EventStore",
+        "reviewedCommit": candidate["head"],
         "predecessor": {
             "v4SourceCommit": V4_SOURCE_COMMIT,
             "v4Directory": historical["v4Directory"],
@@ -231,7 +239,23 @@ def validate_active_snapshot(
     exact_fields(packet, {"schema", "status", "subjectInputs", "subjectSha256", "frozenAt", "reviews", "handoff", "authority"}, "V5 active packet")
     require(packet["schema"] == "hexalith.eventstore.story-4-15-successor-packet/v5" and packet["status"] == "reviewed-source-only", "V5 active packet schema or status drift")
     require(candidate["workingTreeDirty"] is False, "V5 activation requires a clean committed checkout")
-    expected_inputs = subject_inputs(candidate)
+    source_identity = packet.get("subjectInputs", {}).get("sourceIdentity", {})
+    reviewed_commit = source_identity.get("reviewedCommit") if isinstance(source_identity, dict) else None
+    require(isinstance(reviewed_commit, str) and COMMIT_PATTERN.fullmatch(reviewed_commit) is not None, "V5 reviewed commit malformed")
+    ancestor = subprocess.run(
+        ["git", "--no-replace-objects", "merge-base", "--is-ancestor", reviewed_commit, candidate["head"]],
+        cwd=ROOT, capture_output=True, timeout=30,
+    )
+    require(ancestor.returncode == 0, "V5 reviewed commit is not an ancestor of current source")
+    changed = subprocess.run(
+        ["git", "--no-replace-objects", "diff", "--no-renames", "--name-only", "-z", reviewed_commit, candidate["head"]],
+        cwd=ROOT, capture_output=True, timeout=30,
+    )
+    require(changed.returncode == 0, "V5 reviewed commit diff unavailable")
+    changed_paths = {path.decode("utf-8") for path in changed.stdout.split(b"\0") if path}
+    require(changed_paths <= POST_REVIEW_PATHS, "V5 source changed outside reviewed evidence and selector")
+    reviewed_candidate = {**candidate, "head": reviewed_commit}
+    expected_inputs = subject_inputs(reviewed_candidate)
     require(packet["subjectInputs"] == expected_inputs, "V5 active packet source or historical identity drift")
     subject_sha = digest(expected_inputs)
     require(packet["subjectSha256"] == subject_sha, "V5 active review subject hash drift")

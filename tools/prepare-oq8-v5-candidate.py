@@ -30,7 +30,9 @@ RELEASE_SOURCE_PATHS = (
     ".github/workflows/release.yml",
     ".releaserc.json",
     "scripts/validate-release-secrets.sh",
+    "scripts/validate-publication-preflight.sh",
     "scripts/verify-oq8-v5-candidate.sh",
+    ".github/workflows/commitlint.yml",
     "docs/ci-secrets-checklist.md",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
     "tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectiveOciProvenanceReleaseTests.cs",
@@ -173,7 +175,7 @@ def verify_sealed_v4(root: Path, archive_root: Path, *, allow_v5: bool) -> tuple
         expected = identity["gateInputs"][relative]
         if sha256(archive_root / relative) != expected:
             raise ValueError(f"Archived v4 documentation drift: {relative}")
-    return selector, identity
+    return archived_selector, identity
 
 
 def prepare(*, allow_v5: bool = False) -> dict:

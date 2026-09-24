@@ -20,13 +20,16 @@ python3 tools/validate-oq8-platform-evidence.py --v5-subject-draft /tmp/eventsto
 ```
 
 The draft contains `subjectInputs`, its canonical SHA-256 `subjectSha256`, the
-final source and historical v4 identities, all current gate-input hashes, the
+final reviewed source commit and historical v4 identities, all current gate-input hashes, the
 release source hashes, the 14 package IDs, limitations, and the required review
 roster. It records `frozenAt: null`, three pending reviews, and no authority.
 Regenerate it after any source edit or commit and use only the final clean
 checkout's subject hash. `tools/oq8-v5-packet.schema.json` defines the draft
 and future active packet shapes; `tools/oq8-v5-packet.py` checks their semantic
-and repository bindings.
+and repository bindings. The active validator requires the frozen reviewed
+commit to be an ancestor of the current clean checkout. It permits only the
+v5 packet, manifest, selector, and lifecycle paths to change after that
+reviewed commit; any other source change requires a new subject and reviews.
 
 ## Obtain independent reviews
 
