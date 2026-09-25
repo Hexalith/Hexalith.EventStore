@@ -31,7 +31,7 @@ public class EventStoreGatewayClientTests {
             observedRequest = request;
             return Task.FromResult(Json(
                 HttpStatusCode.OK,
-                "{\"correlationId\":\"corr-1\",\"status\":\"Rejected\",\"statusCode\":5,\"rejectionEventType\":\"OrderRejected\",\"messageId\":\"message/1\"}"));
+                "{\"correlationId\":\"corr-1\",\"tenantId\":\"tenant-a\",\"status\":\"Rejected\",\"statusCode\":5,\"rejectionEventType\":\"OrderRejected\",\"messageId\":\"message/1\"}"));
         });
         var options = new EventStoreGatewayClientOptions { CommandStatusPath = "custom/status/" };
         var client = new EventStoreGatewayClient(httpClient, Options.Create(options));
@@ -39,6 +39,7 @@ public class EventStoreGatewayClientTests {
         CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message/1")).ShouldNotBeNull();
 
         observedRequest.ShouldNotBeNull().RequestUri!.AbsolutePath.ShouldBe("/custom/status/message%2F1");
+        response.TenantId.ShouldBe("tenant-a");
         response.MessageId.ShouldBe("message/1");
         response.IsRejected.ShouldBeTrue();
     }
@@ -52,6 +53,19 @@ public class EventStoreGatewayClientTests {
         CommandStatusQueryResponse? response = await client.GetCommandStatusAsync("message-1");
 
         response.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetCommandStatusAsync_PreservesCompletedZeroEventCount() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(
+            HttpStatusCode.OK,
+            "{\"correlationId\":\"corr-1\",\"tenantId\":\"tenant-a\",\"status\":\"Completed\",\"statusCode\":4,\"messageId\":\"message-1\",\"eventCount\":0}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        CommandStatusQueryResponse response = (await client.GetCommandStatusAsync("message-1")).ShouldNotBeNull();
+
+        response.TenantId.ShouldBe("tenant-a");
+        response.EventCount.ShouldBe(0);
     }
 
     [Theory]

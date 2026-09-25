@@ -3,6 +3,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -20,7 +21,8 @@ namespace Hexalith.EventStore.Server.Commands;
 public partial class CommandRouter(
     IActorProxyFactory actorProxyFactory,
     IOptions<EventStoreActorOptions> actorOptions,
-    ILogger<CommandRouter> logger) : ICommandRouter {
+    ILogger<CommandRouter> logger,
+    IEnumerable<ICoordinatedCommandPolicy>? coordinationPolicies = null) : ICommandRouter {
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandRouter"/> class with the default actor type name.
     /// </summary>
@@ -44,8 +46,15 @@ public partial class CommandRouter(
         Log.CommandRouting(logger, command.CorrelationId, causationId, command.Tenant, command.Domain, command.AggregateId, command.CommandType, actorId);
 
         var envelope = command.ToCommandEnvelope();
+        string? coordinationActorId = GetCoordinationActorId(envelope);
 
         try {
+            if (coordinationActorId is not null) {
+                ICoordinatedCommandActor coordinator = actorProxyFactory.CreateActorProxy<ICoordinatedCommandActor>(
+                    new ActorId(coordinationActorId), CoordinatedCommandActor.ActorTypeName);
+                return await coordinator.ProcessCommandAsync(envelope).ConfigureAwait(false);
+            }
+
             IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(actorId),
                 actorOptions.Value.AggregateActorTypeName);
@@ -90,8 +99,16 @@ public partial class CommandRouter(
             command.CommandType,
             actorId);
         var request = new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext);
+        string? coordinationActorId = GetCoordinationActorId(request.Command);
         try
         {
+            if (coordinationActorId is not null)
+            {
+                ICoordinatedCommandActor coordinator = actorProxyFactory.CreateActorProxy<ICoordinatedCommandActor>(
+                    new ActorId(coordinationActorId), CoordinatedCommandActor.ActorTypeName);
+                return await coordinator.ProcessFencedCommandAsync(request).ConfigureAwait(false);
+            }
+
             IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(actorId),
                 actorOptions.Value.AggregateActorTypeName);
@@ -139,6 +156,23 @@ public partial class CommandRouter(
             actorOptions.Value.AggregateActorTypeName);
         return await proxy.ReconcileFencedCommandAsync(
             new FencedCommandEnvelope(command.ToCommandEnvelope(), executionContext)).ConfigureAwait(false);
+    }
+
+    private string? GetCoordinationActorId(CommandEnvelope command)
+    {
+        ICoordinatedCommandPolicy[] claiming = [.. (coordinationPolicies ?? [])
+            .Where(policy => policy.Claims(command.Domain, command.CommandType)).Take(2)];
+        if (claiming.Length == 0)
+        {
+            return null;
+        }
+
+        if (claiming.Length != 1)
+        {
+            throw new InvalidOperationException("Multiple policies claim one coordinated command.");
+        }
+
+        return claiming[0].GetScope(command).Source.ActorId;
     }
 
     private static partial class Log {

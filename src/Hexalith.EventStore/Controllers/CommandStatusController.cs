@@ -203,7 +203,7 @@ public class CommandStatusController(
         }
 
         _ = (activity?.SetStatus(ActivityStatusCode.Ok));
-        return Ok(CommandStatusResponse.FromRecord(messageId, record));
+        return Ok(CommandStatusResponse.FromRecord(messageId, record, tenant));
     }
 
     private ObjectResult CreateAmbiguityProblemDetails(string requestCorrelationId) {

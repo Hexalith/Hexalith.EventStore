@@ -1,8 +1,10 @@
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Client.Queries;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Testing.Fakes;
 
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
@@ -96,6 +98,67 @@ public sealed class ProjectionWatermarkRebuildIntegrationTests {
         mixedState.ShouldBe(new WatermarkedWidgetState(AppliedEventCount: 3, Watermark: 104));
         unknown.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
         unknownState.ShouldBe(new WatermarkedWidgetState(AppliedEventCount: 2, Watermark: 0));
+    }
+
+    [Fact]
+    public async Task CursorIssuedFromPersistedReadModelWatermark_RejectsReplayAfterProjectionAdvances() {
+        var store = new InMemoryReadModelStore();
+        await using ServiceProvider provider = BuildProvider(store);
+        IQueryCursorCodec codec = new QueryCursorCodec(
+            new EphemeralDataProtectionProvider(),
+            "Hexalith.EventStore.Tests.ProjectionWatermark.v1");
+
+        ProjectionDispatchResponse first = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            Request("cursor-1", Event(1, 39), Event(2, 41)),
+            new ProjectionDispatchOptions(),
+            s_identity,
+            CancellationToken.None).ConfigureAwait(true);
+        first.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+
+        WatermarkedWidgetState persistedAtIssue = await ReadStateAsync(store).ConfigureAwait(true);
+        persistedAtIssue.Watermark.ShouldBe(41);
+        string issuedScope = QueryCursorScope.Create()
+            .Add("tenant", "tenant-a")
+            .Add("filter", "active")
+            .AddProjectionWatermark(persistedAtIssue.Watermark)
+            .Build();
+        string cursor = codec.Encode("list-widgets", issuedScope, "widget-1");
+
+        ProjectionDispatchResponse advanced = await DomainProjectionDispatcher.DispatchAsync(
+            provider,
+            Request("cursor-2", Event(1, 39), Event(2, 41), Event(3, 47)),
+            new ProjectionDispatchOptions(),
+            s_identity,
+            CancellationToken.None).ConfigureAwait(true);
+        advanced.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+
+        WatermarkedWidgetState persistedAfterAdvance = await ReadStateAsync(store).ConfigureAwait(true);
+        persistedAfterAdvance.Watermark.ShouldBe(47);
+        string currentScope = QueryCursorScope.Create()
+            .Add("tenant", "tenant-a")
+            .Add("filter", "active")
+            .AddProjectionWatermark(persistedAfterAdvance.Watermark)
+            .Build();
+
+        codec.TryDecode(cursor, "list-widgets", issuedScope, out string? originalPosition, out string? originalFailure)
+            .ShouldBeTrue();
+        originalPosition.ShouldBe("widget-1");
+        originalFailure.ShouldBeNull();
+        codec.TryDecode(cursor, "list-widgets", currentScope, out string? stalePosition, out string? staleFailure)
+            .ShouldBeFalse();
+        stalePosition.ShouldBeNull();
+        staleFailure.ShouldBe("wrong-scope");
+
+        string otherTenantScope = QueryCursorScope.Create()
+            .Add("tenant", "tenant-b")
+            .Add("filter", "active")
+            .AddProjectionWatermark(persistedAtIssue.Watermark)
+            .Build();
+        codec.TryDecode(cursor, "list-widgets", otherTenantScope, out string? otherTenantPosition, out string? otherTenantFailure)
+            .ShouldBeFalse();
+        otherTenantPosition.ShouldBeNull();
+        otherTenantFailure.ShouldBe("wrong-scope");
     }
 
     private static ServiceProvider BuildProvider(InMemoryReadModelStore store) {

@@ -61,6 +61,7 @@ public static class EventStoreServiceCollectionExtensions {
 
         _ = services.AddSingleton<IValidateOptions<EventStoreAuthenticationOptions>, ValidateEventStoreAuthenticationOptions>();
         _ = services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>();
+        _ = services.AddSingleton<ITrustedEffectDelegationVerifier, JwtTrustedEffectDelegationVerifier>();
 
         // Bind internal DAPR caller options (allow-list of trusted service app-ids).
         _ = services.AddOptions<DaprInternalAuthenticationOptions>(DaprInternalAuthenticationOptions.SchemeName)

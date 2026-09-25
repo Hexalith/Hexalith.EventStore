@@ -48,6 +48,12 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IdempotencyExecutionContextProtector>();
         services.TryAddSingleton<CanonicalIdempotencyIntentEncoder>();
         services.TryAddSingleton<IIdempotencyIntentAdapterRegistry, IdempotencyIntentAdapterRegistry>();
+        services.TryAddSingleton<ITrustedEffectAdmissionPolicy, TrustedEffectAdmissionPolicy>();
+        services.TryAddSingleton<ITrustedEffectRouter, TrustedEffectRouter>();
+        services.TryAddSingleton<ITrustedEffectGatewayProof, TrustedEffectGatewayProof>();
+        _ = services.AddOptions<TrustedEffectAuthorityOptions>()
+            .BindConfiguration("EventStore:TrustedEffects:Authority");
+        services.TryAddSingleton<ITrustedEffectCommandAuthority, ConfiguredTrustedEffectCommandAuthority>();
         _ = services.AddSingleton<IHostedService>(serviceProvider =>
         {
             _ = serviceProvider.GetRequiredService<IIdempotencyIntentAdapterRegistry>();
@@ -215,6 +221,7 @@ public static class EventStoreServerServiceCollectionExtensions {
                 string.IsNullOrWhiteSpace(aggregateActorTypeName)
                     ? nameof(AggregateActor)
                     : aggregateActorTypeName);
+            options.Actors.RegisterActor<CoordinatedCommandActor>(CoordinatedCommandActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyAdmissionActor>(IdempotencyAdmissionActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyAdmissionDirectoryActor>(IdempotencyAdmissionDirectoryActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyTenantLifecycleActor>(IdempotencyTenantLifecycleActor.ActorTypeName);

@@ -60,12 +60,12 @@ public sealed class DaprDomainQueryInvokerTests {
         var context = new DefaultHttpContext();
         context.Request.Headers.Authorization = InboundHeader;
         using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/query");
-        string value = "existing" + "-token";
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", value);
+        const string ExistingToken = "existing" + "-token";
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ExistingToken);
 
         DaprDomainQueryInvoker.ForwardBearerCredential(context, request);
 
-        request.Headers.Authorization!.ToString().ShouldBe("Bearer " + "existing-token");
+        request.Headers.Authorization!.ToString().ShouldBe("Bearer " + ExistingToken);
     }
 
     [Fact]

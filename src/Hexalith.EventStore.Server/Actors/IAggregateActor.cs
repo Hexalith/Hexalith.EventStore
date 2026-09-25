@@ -2,6 +2,7 @@
 using Dapr.Actors;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Server.Events;
 
 namespace Hexalith.EventStore.Server.Actors;
@@ -9,6 +10,12 @@ namespace Hexalith.EventStore.Server.Actors;
 /// DAPR actor interface for aggregate command processing.
 /// </summary>
 public interface IAggregateActor : IActor {
+    /// <summary>Processes one effect against the target actor receipt authority.</summary>
+    Task<TrustedEffectResult> ProcessTrustedEffectAsync(
+        TrustedEffectSubmission submission,
+        TrustedEffectContext context,
+        string gatewayProof);
+
     /// <summary>Processes a protected command through the internal signed-fence boundary.</summary>
     /// <param name="request">The command and current-fence capability.</param>
     /// <returns>The exact command processing result.</returns>

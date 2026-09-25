@@ -21,10 +21,13 @@ public record CommandStatusResponse(
     bool? Retryable = null,
     string? RecoveryReasonCode = null,
     int? DrainAttemptCount = null) {
+    /// <summary>Gets the tenant that owns this status record.</summary>
+    public string? TenantId { get; init; }
+
     /// <summary>
     /// Creates a <see cref="CommandStatusResponse"/> from a <see cref="CommandStatusRecord"/>.
     /// </summary>
-    public static CommandStatusResponse FromRecord(string statusKey, CommandStatusRecord record) {
+    public static CommandStatusResponse FromRecord(string statusKey, CommandStatusRecord record, string? tenantId = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(statusKey);
         ArgumentNullException.ThrowIfNull(record);
         return new CommandStatusResponse(
@@ -40,6 +43,6 @@ public record CommandStatusResponse(
             MessageId: record.MessageId,
             Retryable: record.Retryable,
             RecoveryReasonCode: record.RecoveryReasonCode,
-            DrainAttemptCount: record.DrainAttemptCount);
+            DrainAttemptCount: record.DrainAttemptCount) { TenantId = tenantId };
     }
 }

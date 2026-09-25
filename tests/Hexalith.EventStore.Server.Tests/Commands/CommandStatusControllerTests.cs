@@ -73,6 +73,7 @@ public class CommandStatusControllerTests {
 
         CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>()
             .Value.ShouldBeOfType<CommandStatusResponse>();
+        response.TenantId.ShouldBe("tenant-a");
         response.MessageId.ShouldBe(messageId);
         response.CorrelationId.ShouldBe(correlationId);
     }
@@ -230,6 +231,21 @@ public class CommandStatusControllerTests {
         CommandStatusResponse response = okResult.Value.ShouldBeOfType<CommandStatusResponse>();
         response.Status.ShouldBe("Completed");
         response.EventCount.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task GetStatus_CompletedNoOp_PreservesZeroEventCount() {
+        SetupHttpContext("tenant-a");
+        await _statusStore.WriteStatusAsync(
+            "tenant-a", CorrelationId,
+            new CommandStatusRecord(CommandStatus.Completed, DateTimeOffset.UtcNow, "agg-done", 0, null, null, null),
+            CancellationToken.None);
+
+        IActionResult result = await _controller.GetStatus(CorrelationId, CancellationToken.None);
+
+        CommandStatusResponse response = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<CommandStatusResponse>();
+        response.Status.ShouldBe("Completed");
+        response.EventCount.ShouldBe(0);
     }
 
     [Fact]
