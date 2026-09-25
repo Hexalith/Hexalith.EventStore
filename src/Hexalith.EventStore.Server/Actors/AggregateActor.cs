@@ -1,6 +1,8 @@
 
 using System.Diagnostics;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 using Dapr;
@@ -9,6 +11,7 @@ using Dapr.Actors.Runtime;
 using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
@@ -58,7 +61,9 @@ public partial class AggregateActor(
     IGlobalPositionAllocator? globalPositionAllocator = null,
     IOptions<IdempotencyRetentionOptions>? idempotencyRetentionOptions = null,
     TimeProvider? timeProvider = null,
-    IdempotencyExecutionContextProtector? executionContextProtector = null)
+    IdempotencyExecutionContextProtector? executionContextProtector = null,
+    ITrustedEffectAdmissionPolicy? trustedEffectAdmissionPolicy = null,
+    ITrustedEffectGatewayProof? trustedEffectGatewayProof = null)
     : Actor(host), IAggregateActor, IIdempotencyLegacySourceActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
@@ -148,6 +153,156 @@ public partial class AggregateActor(
         ArgumentNullException.ThrowIfNull(request.Command);
         ArgumentNullException.ThrowIfNull(request.ExecutionContext);
         return ProcessCommandCoreAsync(request.Command, request.ExecutionContext, CancellationToken.None);
+    }
+
+    /// <inheritdoc/>
+    public async Task<TrustedEffectResult> ProcessTrustedEffectAsync(
+        TrustedEffectSubmission submission,
+        TrustedEffectContext context,
+        string gatewayProof)
+    {
+        ArgumentNullException.ThrowIfNull(submission);
+        ArgumentNullException.ThrowIfNull(context);
+        ITrustedEffectAdmissionPolicy policy = trustedEffectAdmissionPolicy
+            ?? throw new InvalidOperationException("Trusted effect admission is unavailable.");
+        TrustedEffectAdmission admission = await policy.AdmitAsync(submission, context).ConfigureAwait(false);
+        ITrustedEffectGatewayProof proofValidator = trustedEffectGatewayProof
+            ?? throw new InvalidOperationException("Trusted effect gateway proof validation is unavailable.");
+        await proofValidator.ValidateAsync(admission, gatewayProof).ConfigureAwait(false);
+        string effectId = EffectIdentityCodec.ComputeEffectId(admission.Submission.Identity);
+        string expectedMessageId = "wrk-" + effectId;
+        if (!string.Equals(admission.Submission.MessageId, expectedMessageId, StringComparison.Ordinal)
+            || !string.Equals(admission.Submission.IdempotencyKey, expectedMessageId, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(admission.SemanticDigest))
+        {
+            throw new InvalidOperationException("Trusted effect identity or semantic intent is invalid.");
+        }
+
+        var target = new AggregateIdentity(
+            admission.Submission.Identity.Tenant,
+            admission.Submission.Identity.TargetDomain,
+            admission.Submission.Identity.TargetAggregate);
+        if (!string.Equals(target.ActorId, Host.Id.GetId(), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Trusted effect target does not match the actor partition.");
+        }
+
+        await EnsureStateCacheBarrierAsync(expectedMessageId, activity: null).ConfigureAwait(false);
+        EffectReceipt? prior = await ReadEffectReceiptAsync(effectId).ConfigureAwait(false);
+        if (prior is not null)
+        {
+            if (!ReceiptMatches(prior, admission))
+            {
+                await QuarantineEffectCollisionAsync(prior, admission).ConfigureAwait(false);
+                throw new InvalidOperationException("Trusted effect identity collision requires quarantine.");
+            }
+
+            return new TrustedEffectResult(effectId, prior.Disposition, Replayed: true, prior.ResultPayload);
+        }
+
+        var command = new CommandEnvelope(
+            expectedMessageId,
+            target.TenantId,
+            target.Domain,
+            target.AggregateId,
+            admission.Submission.CommandType,
+            admission.Submission.CommandPayload,
+            expectedMessageId,
+            admission.Context.CausationId,
+            admission.Context.Workload,
+            Extensions: null);
+        _ = await ProcessCommandCoreAsync(command, executionContext: null, CancellationToken.None, admission)
+            .ConfigureAwait(false);
+        // A failed pipeline may leave a staged receipt in the actor-state cache. Only a fresh
+        // committed-state read is allowed to authorize a reported effect outcome.
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        _stateCacheUnsafe = false;
+        EffectReceipt receipt = await ReadEffectReceiptAsync(effectId).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("Trusted effect target outcome has no durable receipt.");
+        if (!ReceiptMatches(receipt, admission))
+        {
+            throw new InvalidOperationException("Trusted effect receipt conflicts with admitted semantics.");
+        }
+
+        return new TrustedEffectResult(effectId, receipt.Disposition, Replayed: false, receipt.ResultPayload);
+    }
+
+    private async Task<EffectReceipt?> ReadEffectReceiptAsync(string effectId)
+    {
+        ConditionalValue<EffectReceipt> state = await StateManager
+            .TryGetStateAsync<EffectReceipt>("effect_receipt_" + effectId).ConfigureAwait(false);
+        return state.HasValue ? state.Value : null;
+    }
+
+    private static bool ReceiptMatches(EffectReceipt receipt, TrustedEffectAdmission admission)
+        => receipt.Identity == admission.Submission.Identity
+            && string.Equals(receipt.SemanticDigest, admission.SemanticDigest, StringComparison.Ordinal)
+            && string.Equals(receipt.Workload, admission.Context.Workload, StringComparison.Ordinal)
+            && string.Equals(receipt.Purpose, admission.Context.Purpose, StringComparison.Ordinal)
+            && string.Equals(receipt.CausationId, admission.Context.CausationId, StringComparison.Ordinal);
+
+    private async Task QuarantineEffectCollisionAsync(
+        EffectReceipt receipt,
+        TrustedEffectAdmission admission)
+    {
+        byte[] coordinates = EffectIdentityCodec.Encode(admission.Submission.Identity);
+        byte[] digest = SHA256.HashData([
+            .. coordinates,
+            .. Encoding.UTF8.GetBytes(admission.SemanticDigest),
+            .. Encoding.UTF8.GetBytes(admission.Context.Workload),
+            .. Encoding.UTF8.GetBytes(admission.Context.Purpose),
+            .. Encoding.UTF8.GetBytes(admission.Context.CausationId)]);
+        string key = "effect_collision_" + receipt.EffectId + "_" + EffectIdentityCodec.RenderDigest(digest);
+        ConditionalValue<EffectCollisionRecord> existing = await StateManager
+            .TryGetStateAsync<EffectCollisionRecord>(key).ConfigureAwait(false);
+        if (existing.HasValue)
+        {
+            return;
+        }
+
+        var record = new EffectCollisionRecord(
+            receipt.EffectId,
+            receipt.SemanticDigest,
+            admission.Submission.Identity,
+            admission.SemanticDigest,
+            admission.Context.Workload,
+            admission.Context.Purpose,
+            admission.Context.CausationId,
+            IdempotencyTimeProvider.GetUtcNow());
+        await StateManager.SetStateAsync(key, record).ConfigureAwait(false);
+        try
+        {
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            await StateManager.ClearCacheAsync().ConfigureAwait(false);
+            ConditionalValue<EffectCollisionRecord> observed = await StateManager
+                .TryGetStateAsync<EffectCollisionRecord>(key).ConfigureAwait(false);
+            if (!observed.HasValue || observed.Value != record)
+            {
+                throw;
+            }
+        }
+    }
+
+    private Task StageEffectReceiptAsync(
+        TrustedEffectAdmission admission,
+        TrustedEffectDisposition disposition,
+        string? resultPayload)
+    {
+        string effectId = EffectIdentityCodec.ComputeEffectId(admission.Submission.Identity);
+        return StateManager.SetStateAsync(
+            "effect_receipt_" + effectId,
+            new EffectReceipt(
+                effectId,
+                admission.Submission.Identity,
+                admission.SemanticDigest,
+                disposition,
+                admission.Context.Workload,
+                admission.Context.Purpose,
+                admission.Context.CausationId,
+                resultPayload));
     }
 
     /// <inheritdoc/>
@@ -365,9 +520,15 @@ public partial class AggregateActor(
     private async Task<CommandProcessingResult> ProcessCommandCoreAsync(
         CommandEnvelope command,
         IdempotencyExecutionContext? executionContext,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        TrustedEffectAdmission? effectAdmission = null) {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
+        if (effectAdmission is null && command.MessageId.StartsWith("wrk-", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The trusted effect message namespace is reserved.");
+        }
+
         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
 
         Activity? processActivity;
@@ -1088,7 +1249,8 @@ public partial class AggregateActor(
                         // A no-op carries the same completed-result evidence as an eventful success: the wire result
                         // and the domain-service invoker both preserve ResultPayload for IsNoOp, so dropping it here
                         // was the one link that withheld it from the caller.
-                        resultPayload: domainResult.ResultPayload).ConfigureAwait(false);
+                        resultPayload: domainResult.ResultPayload,
+                        effectAdmission: effectAdmission).ConfigureAwait(false);
                 }
 
                 // Step 5: Event persistence (Story 3.7)
@@ -1181,6 +1343,16 @@ public partial class AggregateActor(
                         await StateManager.SetStateAsync(
                             EventBatchCommitWitnessKey,
                             eventBatchAttemptToken).ConfigureAwait(false);
+
+                        if (effectAdmission is not null)
+                        {
+                            await StageEffectReceiptAsync(
+                                effectAdmission,
+                                domainResult.IsRejection
+                                    ? TrustedEffectDisposition.Rejection
+                                    : TrustedEffectDisposition.Success,
+                                domainResult.ResultPayload).ConfigureAwait(false);
+                        }
 
                         // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
                         bool eventBatchSaveAttempted = false;
@@ -5532,7 +5704,8 @@ public partial class AggregateActor(
         Activity? processActivity,
         long startTicks,
         string? rejectionEventType = null,
-        string? resultPayload = null) {
+        string? resultPayload = null,
+        TrustedEffectAdmission? effectAdmission = null) {
         var result = new CommandProcessingResult(
             Accepted: accepted,
             ErrorMessage: errorMessage,
@@ -5547,6 +5720,14 @@ public partial class AggregateActor(
         bool terminalSaveAttempted = false;
         try
         {
+            if (effectAdmission is not null)
+            {
+                await StageEffectReceiptAsync(
+                    effectAdmission,
+                    TrustedEffectDisposition.NoOp,
+                    resultPayload).ConfigureAwait(false);
+            }
+
             if (intermediatePipeline is not null)
             {
                 await stateMachine.CheckpointAsync(pipelineKeyPrefix, intermediatePipeline)

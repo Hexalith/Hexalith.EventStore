@@ -1010,6 +1010,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddSingleton<ITrustedEffectAdmissionPolicy, SyntheticTrustedEffectAdmissionPolicy>();
         _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
         _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>()
             .BindConfiguration("EventStore:DomainService");
@@ -1165,6 +1166,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
         _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
         _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddSingleton<ITrustedEffectAdmissionPolicy, SyntheticTrustedEffectAdmissionPolicy>();
         _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
         _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
         _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);

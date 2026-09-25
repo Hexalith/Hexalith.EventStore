@@ -69,6 +69,12 @@ public class CommandsController(
     public async Task<IActionResult> Submit([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 
+        string messageId = request.MessageId ?? string.Empty;
+        if (messageId.StartsWith("wrk-", StringComparison.Ordinal)
+            || (request.IdempotencyKey?.StartsWith("wrk-", StringComparison.Ordinal) ?? false)) {
+            return BadRequest("The trusted effect identifier namespace is reserved.");
+        }
+
         string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? UniqueIdHelper.GenerateSortableUniqueStringId();
 
@@ -134,13 +140,13 @@ public class CommandsController(
         }
 
         var command = new SubmitCommand(
-            MessageId: request.MessageId,
+            MessageId: messageId,
             Tenant: request.Tenant,
             Domain: request.Domain,
             AggregateId: request.AggregateId,
             CommandType: request.CommandType,
             Payload: JsonSerializer.SerializeToUtf8Bytes(request.Payload),
-            CorrelationId: string.IsNullOrWhiteSpace(request.CorrelationId) ? request.MessageId : request.CorrelationId,
+            CorrelationId: string.IsNullOrWhiteSpace(request.CorrelationId) ? messageId : request.CorrelationId,
             UserId: userId,
             Extensions: extensions,
             IsGlobalAdmin: IsGlobalAdministrator(User),

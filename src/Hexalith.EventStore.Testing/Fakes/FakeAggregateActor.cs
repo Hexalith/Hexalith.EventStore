@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Events;
@@ -12,6 +13,13 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// Optionally simulates idempotency by tracking processed causation IDs.
 /// </summary>
 public class FakeAggregateActor : IAggregateActor {
+    /// <inheritdoc/>
+    public Task<TrustedEffectResult> ProcessTrustedEffectAsync(
+        TrustedEffectSubmission submission,
+        TrustedEffectContext context,
+        string gatewayProof)
+        => throw new InvalidOperationException("Fake trusted effect processing requires an explicit receipt implementation.");
+
     private readonly ConcurrentQueue<CommandEnvelope> _receivedCommands = new();
     private readonly ConcurrentQueue<IdempotencyExecutionContext> _receivedExecutionContexts = new();
     private readonly ConcurrentDictionary<string, CommandProcessingResult> _processedCausationIds = new();

@@ -93,6 +93,19 @@ def write_consumer_project(
     probes = {
         "Hexalith.EventStore.Contracts": textwrap.dedent("""\
             using Hexalith.EventStore.Contracts.Streams;
+            using Hexalith.EventStore.Contracts.Effects;
+
+            var effectIdentity = new EffectIdentity("tenant-a", "widget", "source-1", 1,
+                EffectKindCatalog.DateResume, "widget", "item-1", 0);
+            var effectId = EffectIdentityCodec.ComputeEffectId(effectIdentity);
+            var effectMessage = EffectIdentityCodec.ComputeMessageId(effectIdentity);
+            var effect = new TrustedEffectSubmission(effectIdentity, "CreateWidget", [123, 125],
+                effectMessage, effectMessage);
+            var provenance = new TrustedEffectContext("synthetic-worker", "synthetic-date-resume",
+                "source-cause", "synthetic-delegation");
+            if (effectId.Length != 52 || effect.MessageId != "wrk-" + effectId
+                || provenance.Workload != "synthetic-worker")
+                throw new InvalidOperationException("Trusted effect public identity API changed.");
 
             var request = new StreamReadRequest("tenant-a", "widget", "item-1");
             var page = new StreamReadPage("tenant-a", "widget", "item-1", [],
@@ -102,7 +115,24 @@ def write_consumer_project(
             """),
         "Hexalith.EventStore.Client": textwrap.dedent("""\
             using Hexalith.EventStore.Client.Projections;
+            using Hexalith.EventStore.Client.Effects;
+            using Hexalith.EventStore.Contracts.Effects;
             using System.Text.Json;
+
+            var syntheticIdentity = new EffectIdentity("tenant-a", "widget", "source-1", 1,
+                EffectKindCatalog.DateResume, "widget", "item-1", 0);
+            string syntheticMessage = EffectIdentityCodec.ComputeMessageId(syntheticIdentity);
+            ITrustedEffectSubmitter effectSubmitter = new HttpTrustedEffectSubmitter(
+                new HttpClient(new SyntheticEffectHandler()) { BaseAddress = new Uri("https://example.invalid/") });
+            var syntheticResult = await effectSubmitter.SubmitAsync(
+                new TrustedEffectSubmission(syntheticIdentity, "CreateWidget", [123, 125],
+                    syntheticMessage, syntheticMessage),
+                new TrustedEffectContext("synthetic-worker", "synthetic-date-resume",
+                    "source-cause", "synthetic-delegation"));
+            if (syntheticResult.EffectId != EffectIdentityCodec.ComputeEffectId(syntheticIdentity)
+                || syntheticResult.Disposition != TrustedEffectDisposition.NoOp
+                || EffectIdentityCodec.Version != 1)
+                throw new InvalidOperationException("Trusted effect SDK API changed.");
 
             var store = new ProbeStore();
             var coordinator = new SharedProjectionEpochCoordinator(store, store);
@@ -154,6 +184,22 @@ def write_consumer_project(
                 throw new InvalidOperationException("The bounded journal accepted an over-limit position.");
 
             record Counter(int Value);
+
+            sealed class SyntheticEffectHandler : HttpMessageHandler {
+                protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+                    CancellationToken cancellationToken) {
+                    if (request.Method != HttpMethod.Post
+                        || request.RequestUri?.AbsolutePath != "/api/v1/trusted-effects")
+                        throw new InvalidOperationException("Trusted effect SDK route changed.");
+                    string effectId = EffectIdentityCodec.ComputeEffectId(new EffectIdentity(
+                        "tenant-a", "widget", "source-1", 1, EffectKindCatalog.DateResume,
+                        "widget", "item-1", 0));
+                    return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                        Content = System.Net.Http.Json.JsonContent.Create(
+                            new TrustedEffectResult(effectId, TrustedEffectDisposition.NoOp, false, null)),
+                    });
+                }
+            }
 
             sealed class ProbeStore : IReadModelStore, IReadModelBatchStore {
                 private readonly Dictionary<string, (byte[] Value, string ETag)> _values = new(StringComparer.Ordinal);
