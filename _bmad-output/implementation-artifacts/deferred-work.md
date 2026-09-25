@@ -4839,6 +4839,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: `prd.md` still presents superseded Story 3.15 subject `aafe9040...` as current, with 0/3 receipts and G-RUNTIME-PARITY FAIL/BLOCKED.
   evidence: `_bmad-output/planning-artifacts/prd.md:176,611,613,644,682` name `aafe9040786c4f3af496b7ecbe62282c89396a15362b668a7b81ee148fe3f9c5` as the current subject, and OR15 tells readers to adopt it. The packet binds `7d64f87e...` and the verifier passes at 3/3. `prd.md` is not among the surfaces `SubjectRestatingSurfacesNameTheCurrentSubject` guards.
+  resolution: 2026-09-24 commit `06aaf950` reconciled `prd.md` to current subject `7d64f87e...` with 3/3 receipts and G-RUNTIME-PARITY `TECHNICAL PASS; INDEPENDENT GATE BLOCKED`; `CorrectedDeployedRuntimeParityClosureTests.PlanningRuntimeParityAccountMatchesCurrentPacketAndPendingControl` now binds those PRD lines and rejects `aafe9040...` in their current clauses.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: `ProofPacketDaprConflictProcessContractTests.ProcessContractDistinguishesOwnedExternalAndExitedProcesses` is timing-flaky under full-suite load.
   evidence: One full Contracts run at `a37ec86f` failed it on a `WaitForExit(5000)` timeout; it passed twice alone (~2.5 s each) and in two other full runs. The test is not touched by this review's diff.

@@ -47,8 +47,9 @@
 # fenced inline with '>>> GUARDED ... <<<' markers.
 #
 # They are not decoration and not stale notes: one is the recorded output of a frozen
-# proof-packet transform, the other binds this tracker to a canonical subject digest so
-# it cannot silently narrate a superseded one. Deleting them does not 'clean up' the
+# proof-packet transform, another binds this tracker to a canonical subject digest so
+# it cannot silently narrate a superseded one, and a third pins the Story 3.15 lifecycle
+# handoff and row value. Deleting them does not 'clean up' the
 # file, it deletes evidence and turns the build red -- see commit d45206f7 (2026-09-07).
 #
 # After ANY comment edit in this file, run:
@@ -128,10 +129,6 @@ development_status:
   3-12-multi-platform-eventstore-container-publishing-correction: done
   3-13-v3-94-1-deployed-runtime-evidence-disposition: done
   3-14-corrective-oci-provenance-release: done
-  # 2026-09-24 tracker handoff: the Story 3.15 spec is done for its bounded
-  # evidence-validated result, but this row remains review while G-HIGH-RISK's
-  # matrix, validator, independent second-identity check, and sealed CI control
-  # are absent. Three receipts grant no release, promotion, or consumer removal.
   # >>> GUARDED COMMENTS -- DO NOT DELETE (see GUARDED COMMENT BLOCKS in the header) <<<
   # CorrectedDeployedRuntimeParityClosureTests.SubjectRestatingSurfacesNameTheCurrentSubject
   # requires this file to restate Story 3.15's CURRENT canonical subject digest from
@@ -149,6 +146,12 @@ development_status:
   # accepted, granted only at 3/3; the verifier now exits 0 and selects the pinned OCI index.
   # Caveat: both owner roles resolve to one authenticated account, the Test Architect record is
   # self-attested, and every receipt is tooling-composed -- so 3/3 is not three-party review.
+  # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
+  # the next four lines verbatim and pins this row's value; change them only together.
+  # 2026-09-24 tracker handoff: the Story 3.15 spec is done for its bounded
+  # evidence-validated result, but this row remains review while G-HIGH-RISK's
+  # matrix, validator, independent second-identity check, and sealed CI control
+  # are absent. Three receipts grant no release, promotion, or consumer removal.
   3-15-corrected-deployed-runtime-parity-closure: review
   # >>> END GUARDED COMMENTS <<<
   # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
@@ -456,8 +459,8 @@ action_items:
     note: "Closed 2026-09-24: three subject-bound role receipts were collected on issue
       #352; the assembler reports receipts=3 verifier_exit=0, and the retained
       verifier passes at 3/3 for subject 7d64f87e... while selecting only the
-      pinned OCI index. At closure of this retrospective item, the Story 3.15
-      lifecycle row was in-progress pending review."
+      pinned OCI index. At closure of this retrospective item (commit 6690475a),
+      the Story 3.15 spec was done and its lifecycle row was review."
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-09-07.md"
   - id: "epic-3-retro-item-23-fix-the-red-contracts-tests-build-at-hea"
     epic: 3

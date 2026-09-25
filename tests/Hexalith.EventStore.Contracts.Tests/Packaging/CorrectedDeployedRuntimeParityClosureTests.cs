@@ -4130,6 +4130,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             RunProcess(temporary, "git", "merge-base", "--is-ancestor", SourceSha, "HEAD")
                 .ExitCode.ShouldBe(0);
 
+            // The checkout keeps the Story 3.14 producer inputs present; replacing its committed
+            // tools with the worktree bytes keeps an uncommitted path-guard edit under test.
+            string clonedTools = Path.Combine(temporary, "tools");
+            Directory.Delete(clonedTools, recursive: true);
+            CopyDirectory(Path.Combine(root, "tools"), clonedTools);
+
             string shadow = Path.Combine(temporary, "tools", "shadow", "assemble-corrected-deployed-runtime-parity.py");
             Directory.CreateDirectory(Path.GetDirectoryName(shadow)!);
             File.Copy(Path.Combine(temporary, "tools", "assemble-corrected-deployed-runtime-parity.py"), shadow);
