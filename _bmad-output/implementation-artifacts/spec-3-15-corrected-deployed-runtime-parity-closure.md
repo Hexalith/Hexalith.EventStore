@@ -531,9 +531,10 @@ new hole. Both were reproduced here with live controls before being fixed.
   build has zero warnings/errors, both focused closure classes pass 506/506, and the retained
   Story 3.15 verifier selects only the pinned OCI index.
 
-- **2026-09-24 (review-patch completion):** Kept the Story 3.15 spec frontmatter and sprint row
-  together at `in-progress` while closing the eight review action items. The valid-lineage
-  off-path regression now uses a checked-out clone, so disabling the bound-path refusal can
+- **2026-09-24 (review-patch completion):** The Story 3.15 spec remained `done` and the sprint
+  row remained `review` while closing the eight review action items. The pending independent
+  G-HIGH-RISK handoff kept the row in `review`. The valid-lineage off-path regression now uses a
+  checked-out clone, so disabling the bound-path refusal can
   rewrite the copied closure; the subject-order guard also recognizes elided eight-character
   superseded digests. Both operator records identify comment `5803577826` as an agent-composed,
   after-the-fact ratification. The DW-507/508 resolutions and Epic 3 retrospective item 22 now
@@ -840,11 +841,14 @@ Both owner receipts are independently constrained to the same positively allowli
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
 - `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `pass: subject=sha256:7d64f87e... selected=sha256:4b141085...`, exit 0. All three real subject-bound receipts validate; parity is **available** and the selected identity is the pinned OCI index. The four operational-authority flags remain false.
 - `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `subject=sha256:7d64f87e... receipts=3 verifier_exit=0`, exit 0. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both an isolated zero-receipt and fully accepted copy and pins both exit rules.
-- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **historical actual:** 221 passed, 0 failed, 0 skipped before the in-clone path regression. The current focused closure class alone passes 216/216, zero failed, skipped, or unrun; it includes two elided-subject cases.
+- `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **historical actual:** 221 passed, 0 failed, 0 skipped before the in-clone path regression. The focused closure class passed 216/216 in the 2026-09-24 review-patch run, with zero failed, skipped, or unrun; it included two elided-subject cases.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 55 passed, 0 failed, 0 skipped.
-- Complete Contracts suite -- **current post-review-patch actual:** 2108 passed, 0 failed,
-  0 skipped, 0 not run. The earlier 2096/2096 run preceded the `review` tracker transition and
-  in-clone assembler path regression. `sprint-status.yaml` and
+- Complete Contracts suite -- **2026-09-25 post-patch recorded actual:** 2121 total, 2118
+  passed, 3 failed. All three failures were Story 4.15 OQ8 v5 tests (`Oq8V5CandidateTests`
+  twice and `Oq8PlatformClosureTests.CheckedInRepositoryFullValidationPassesWithoutMutation`);
+  every Story 3.15 test, including the PRD guard, passed. The 2108/2108 run was a 2026-09-24
+  snapshot with zero failures, skips, or unrun tests. The earlier 2096/2096 run preceded the
+  `review` tracker transition and in-clone assembler path regression. `sprint-status.yaml` and
   `docs/ci.md` name the current subject and positive receipt verdict and are drift-guarded by the
   focused suite. The guide is bound through the final Story 4.15 v4 review subject
   `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`, fresh
@@ -1372,8 +1376,8 @@ Disposition (2026-09-25): the four patches were first left as action items, then
 - low — PRD §11.3's renamed column "Identity/status at stated date" leaves undated rows ambiguous: cosmetic; the fix dates every row.
 - low — `epic-3-context.md`'s Goal dropped two scope sentences: their content survives in the same file's Technical Decisions.
 - low — `ab40348d` briefly added a false G-COMPAT pass claim to `epic-3-context.md`: already corrected by `06aaf950`.
-- spec-edit — The "2026-09-24 (review-patch completion)" Change Log entry says both surfaces were kept "together at `in-progress`" while `6690475a` set `done`/`review`; the `a37ec86f` disposition line is stale and `review_loop_iteration` was not bumped.
-- spec-edit — Verification's "current post-review-patch actual" 2108/216/506 counts are stale after `06aaf950` added a `[Fact]`.
+- spec-edit (partly resolved 2026-09-25) — The "2026-09-24 (review-patch completion)" Change Log entry now states the `done`/`review` pair; the `a37ec86f` disposition line is still stale and `review_loop_iteration` was not bumped.
+- spec-edit (resolved 2026-09-25) — Verification now dates the 2108/216 snapshots and records the later 2118-passed, 3-failed Contracts run; the Change Log's 506/506 count remains tied to its 2026-09-24 run.
 - spec-edit — D1's resolution does not name who chose option (1).
 - spec-edit — Triage IDs collide ("2026-09-24 current EH1/EH2" beside earlier EH2/EH3).
 - spec-edit — `spec-3-15-tracker-reconciliation.md` bookkeeping: `review_loop_iteration: 0`, applied patch rows not marked, its Implementation Note says the PRD edit "remains in the worktree", and `done` without a green full-suite run.
