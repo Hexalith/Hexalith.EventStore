@@ -196,38 +196,43 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const int AcceptanceIssue = 352;
 
     /// <summary>
-    /// Verifies the re-minted checked-in packet fails closed at zero receipts while every
+    /// Verifies the checked-in packet closes on three current roster-bound receipts while every
     /// operational authority flag remains false. Prior receipts remain only in the superseded
-    /// audit area. Synthetic 3-of-3 remains in
+    /// audit area. Synthetic receipt mutations remain in
     /// <see cref="ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject"/>.
     /// </summary>
     [Fact]
-    public void CheckedInPacketFailsClosedUntilNewRosterReceiptsArrive()
+    public void CheckedInPacketClosesAtThreeRosterBoundReceipts()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
         (int exitCode, string output, string error) = RunValidator(root, packet);
-        exitCode.ShouldBe(1, error);
-        error.ShouldContain("exactly three packet-bound receipts are required");
-        output.ShouldNotContain("pass:");
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("pass:");
+        output.ShouldContain("selected=" + IndexDigest);
 
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
         closure["subject"]!["sha256"]!.GetValue<string>().ShouldBe(CurrentSubjectSha256);
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(RequiredRoles.Length);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
 
-        // These claim fields are not granted while the verifier rejects the zero-receipt packet.
+        // The three receipts validate these claim fields as bounded parity evidence only.
         closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
         closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
 
         closure["acceptances"]!["directory"]!.GetValue<string>()
             .ShouldBe("acceptances/" + CurrentSubjectSha256);
         string acceptanceRoot = Path.Combine(packet, "acceptances", CurrentSubjectSha256);
-        Directory.Exists(acceptanceRoot).ShouldBeFalse();
+        Directory.Exists(acceptanceRoot).ShouldBeTrue();
+        foreach (string role in RequiredRoles)
+        {
+            File.Exists(Path.Combine(acceptanceRoot, role + ".json")).ShouldBeTrue(role);
+            File.Exists(Path.Combine(acceptanceRoot, "sources", role + ".json")).ShouldBeTrue(role);
+        }
         Directory.Exists(Path.Combine(root, SupersededRelativePath, CurlIsolationSupersededSubjectSha256))
             .ShouldBeTrue();
         foreach (string role in RequiredRoles)
@@ -4456,8 +4461,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies the PRD distinguishes the current zero-receipt fail-closed state from its prior
-    /// technical pass and the still-missing independent high-risk control.
+    /// Verifies the PRD distinguishes the current three-receipt technical pass from prior
+    /// failed or superseded subjects and the still-missing independent high-risk control.
     /// </summary>
     [Fact]
     public void PlanningRuntimeParityAccountMatchesCurrentPacketAndPendingControl()
@@ -4466,7 +4471,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
         string subject = closure["subject"]!["sha256"]!.GetValue<string>();
         int receiptCount = closure["acceptances"]!["receipts"]!.AsArray().Count;
-        receiptCount.ShouldBe(0);
+        receiptCount.ShouldBe(RequiredRoles.Length);
         string selectedIndex = closure["selected_deployed_identity"]!.GetValue<string>();
         selectedIndex.ShouldBe(IndexDigest);
         closure["oci"]!["index"]!["digest"]!.GetValue<string>().ShouldBe(selectedIndex);
@@ -4478,12 +4483,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] lines = prd.Split('\n');
 
         string summary = lines.Single(line => line.StartsWith(
-            "- **Deployed-runtime parity - PENDING ACCEPTANCE;",
+            "- **Deployed-runtime parity - TECHNICALLY VALIDATED;",
             StringComparison.Ordinal));
         string currentSummary = summary[summary.IndexOf("On 2026-09-26", StringComparison.Ordinal)..];
         currentSummary.ShouldContain(
             $"{receiptCount} of {RequiredRoles.Length} packet-bound receipts on current subject `{subject}`");
-        currentSummary.ShouldContain($"OCI index claim `{selectedIndex}` is not granted");
+        currentSummary.ShouldContain($"selecting OCI index `{selectedIndex}`");
         currentSummary.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
         currentSummary.ShouldNotContain(CurlIsolationSupersededSubjectSha256);
 
@@ -4495,8 +4500,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string currentHistory = history[history.IndexOf("On 2026-09-26", StringComparison.Ordinal)..];
         currentHistory.ShouldContain(
             $"current subject SHA-256 `{subject}` with {receiptCount} of {RequiredRoles.Length} " +
-            $"packet-bound receipts; the independent Test Architect report accepts the technical " +
-            $"evidence but is not a packet receipt. OCI index claim `{selectedIndex}` is not granted");
+            $"packet-bound receipts and selected OCI index `{selectedIndex}`");
         currentHistory.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
         currentHistory.ShouldNotContain(CurlIsolationSupersededSubjectSha256);
 
@@ -4506,9 +4510,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         parityGate.ShouldContain("current subject `" + subject + "`");
         parityGate.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
         parityGate.ShouldContain($"{receiptCount} of {RequiredRoles.Length} packet-bound receipts");
-        parityGate.ShouldContain($"OCI index claim `{selectedIndex}` is not granted");
-        parityGate.ShouldContain("FAIL/BLOCKED");
-        parityGate.ShouldContain("tracker remains `in-progress`");
+        parityGate.ShouldContain($"selects OCI index `{selectedIndex}`");
+        parityGate.ShouldContain("TECHNICAL PASS; INDEPENDENT GATE BLOCKED");
+        parityGate.ShouldContain("tracker remains `review`");
 
         string highRiskGate = lines.Single(line => line.StartsWith(
             "| G-HIGH-RISK |",

@@ -2,56 +2,56 @@
 
 ## Current verdict
 
-**Deployed-runtime parity fails closed at 0 of 3 receipts.** Current subject
+**Deployed-runtime parity is available at 3 of 3 receipts.** Current subject
 `sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6` was
 re-minted on 2026-09-26 after fresh two-platform Production smokes used the bound `curl -q`
 producer and limitation 4 was corrected. The previous `c98fdef2...` packet is preserved under
 `evidence/story-3-15/superseded-packets/`; it had no receipts. The three receipts for older
-subject `7d64f87e...` remain byte-for-byte in the superseded-acceptances area. No current role has
-accepted the new subject. `closure.json` still names
+subject `7d64f87e...` remain byte-for-byte in the superseded-acceptances area. The retained
+verifier now selects only
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`
-as a claim, but the verifier selects no deployed identity until three new receipts pass. The four
-operational-authority flags remain false.
+for bounded `evidence-validated` parity evidence. The four operational-authority flags remain false.
 
-The [current-subject acceptance review brief](3-15-corrected-deployed-runtime-parity-acceptance-review.md)
-sets out the new-subject decision input. It is preparation only; no credentialed owner comment or
-current receipt has been created for this subject.
+After user approval of the [new-subject review materials](3-15-corrected-deployed-runtime-parity-acceptance-review.md)
+and separate authorization to use the rostered credential, the
+[review request](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844480896)
+and [commit-pinned link correction](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844496516)
+were posted on issue `#352`. The owner then explicitly accepted in both roles. Distinct canonical
+[EventStore-owner](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844573563)
+and [Release-owner](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844574016)
+comments bind this exact subject and all four limitations. Each was posted by authenticated
+`github:jpiquot`, and GitHub reports `created_at == updated_at == accepted_at` to the second.
+The [independent Test Architect decision](3-15-test-architect-decision-66be1b4a.md) accepted the
+technical evidence at 07:39 UTC; its later canonical source is local and self-attested without
+independent external authentication. The two owner roles map to one authenticated account. These
+are three roster-bound role receipts, not three independently authenticated people.
 
-An independent 2026-09-26 Test Architect review **declined the former `c98fdef2...` subject**.
-Its 2026-08-21 smokes predated `curl -q`, and its fourth limitation incorrectly described every
-receipt as credential-posted. The fresh capture and corrected limitation address those two
-findings. A [fresh independent Test Architect decision](3-15-test-architect-decision-66be1b4a.md)
-**accepts the new subject's technical evidence**, with the self-attestation limit explicit. It is
-a decision report, not a packet receipt; the receipt count remains 0/3. The
-[historical owner validation request](3-15-owner-validation-comment-draft.md)
-was posted as [issue `#352` comment `5844166955`](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844166955)
-on 2026-09-26 for `c98fdef2...`. It is not an acceptance and cannot be treated as a request for
-this new subject. Owner decisions remain missing.
-
-Running the retained verifier reproduces exactly this state:
+The retained verifier reproduces the current bounded verdict:
 
 ```text
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required
+[corrected-deployed-runtime-parity] pass: subject=sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6 selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
 $ echo $?
-1
+0
 ```
 
-Re-running the assembler is idempotent and reports the same non-authorizing state:
+Re-running the assembler is idempotent and rechecks its own output:
 
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6 receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6 receipts=3 verifier_exit=0
 $ echo $?
-1
+0
 ```
 
-**`deployed_runtime_parity` and `selected_deployed_identity` remain claim fields whose grant is
-the 3-of-3 receipt gate.** The retained verifier rejects them at 0/3; an auditor must read the
-claim fields with the receipt bindings and four false non-authority flags.
+`deployed_runtime_parity` and `selected_deployed_identity` are the packet's claim fields. The
+three receipts validate those claims for bounded evidence only. No deployment, publication,
+registry mutation, consumer removal, or predecessor change is authorized. The spec is `done` for
+this bounded result, while the sprint row remains `review` pending G-HIGH-RISK independent control.
+Story 4.15 OQ8 seal reconciliation remains separate.
 
 ### Completed owner action (now superseded)
 
@@ -85,7 +85,7 @@ as the owner's authorization; the scope and two acceptance comment IDs are in th
 text. The two acceptance comments remain historical receipt evidence for `7d64f87e...`. The ratification
 grants no deployment, publication, registry, consumer-removal, or predecessor-change authority.
 This is an as-observed external audit citation: the comment is mutable, is not retained or
-hash-closed in the packet, and is not checked by the current 0/3 verifier verdict.
+hash-closed in the packet, and is not checked by the current 3/3 verifier verdict.
 
 ### Why the subject changed
 
@@ -278,7 +278,8 @@ The role registry retains the owner-ratified mappings:
 - `release-owner` -> `github:jpiquot`
 - `test-architect` -> `bmad:murat`
 
-No current acceptance binds subject `66be1b4a...`; the retained verifier fails closed at 0/3.
+Three current acceptances bind subject `66be1b4a...`; the retained verifier exits 0 and selects
+the pinned OCI index for bounded parity evidence.
 All five superseded rounds, including the prior 3/3 subject `7d64f87e...`, authorize nothing here.
 
 No planning approval, release authority, prior receipt, label, tag, self-declared role, or synthetic
@@ -300,8 +301,8 @@ are:
 | `publication_authorized` | `false` |
 | `consumer_removal_authorized` | `false` |
 | `grants_mutation_authority` | `false` |
-| `deployed_runtime_parity` | `available` -- **claim only**, not granted at 0 of 3 |
-| `selected_deployed_identity` | the index digest -- **claim only**, not selected at 0 of 3 |
+| `deployed_runtime_parity` | `available` -- claim validated at 3 of 3 |
+| `selected_deployed_identity` | the index digest -- selected for bounded parity evidence |
 
 A positive parity verdict is evidence that the deployed runtime matches the corrective release. It
 is not permission to deploy it, to publish or recover packages, to mutate the registry, to remove a
@@ -331,11 +332,17 @@ decision, registry and producer digests -> receipts addressed by that subject.
 - Complete Contracts suite after the 2026-09-24 in-clone and elided-subject regressions:
   **2108 passed, zero failed, skipped, or unrun**. The Contracts test project Release build passed
   with zero warnings and errors.
-- `sprint-status.yaml` and `docs/ci.md` name the current 0/3 subject and are drift-guarded by the
-  focused suite. Their earlier positive wording described the 2026-09-24 accepted subject and is
-  historical; the Story 4.15 doc-bound seal must be checked separately after the guide update.
-- Checked-in Story 3.15 assembler and verifier: **fail closed at zero of three receipts**, exit 1;
-  subject `66be1b4a...`; OCI index is a claim only; all non-authority flags false.
+- Post-collection Release Contracts test project build: zero warnings and errors; the two focused
+  Story 3.15 classes passed **235/235**, and the guarded lifecycle test passed **1/1**.
+- Post-collection full Contracts suite: **2131 total, 2128 passed, 3 failed**, with no skips or
+  unrun tests. The three failures are Story 4.15 OQ8 v5 clean-checkout/active-validation tests;
+  no Story 3.15 test failed. OQ8 reconciliation remains separate.
+- `sprint-status.yaml` names the current 3/3 subject and is drift-guarded by the focused suite.
+  `docs/ci.md` retains its pre-acceptance 0/3 snapshot until Story 4.15's separate OQ8
+  doc-bound seal reconciliation; it must not be cited as the current verdict.
+- Checked-in Story 3.15 assembler and verifier: **pass at three of three receipts**, exit 0;
+  subject `66be1b4a...`; pinned OCI index selected for bounded evidence only; all non-authority
+  flags false.
 - `git diff --check`: no whitespace errors reported.
 
 ## Rerun trigger

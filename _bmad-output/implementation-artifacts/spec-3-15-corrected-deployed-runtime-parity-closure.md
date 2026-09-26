@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -40,15 +40,19 @@ context:
 **Current canonical subject:** `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
 The fresh 2026-09-26 two-platform Production capture and corrected limitation 4 superseded the
 receipt-free `c98fdef2...` subject. The older three receipts remain superseded as well.
-The retained verifier now fails closed at **0 of 3**; the OCI index remains a claim and is not selected.
+The retained verifier now passes at **3 of 3** and selects the pinned OCI index as bounded
+`evidence-validated` parity evidence. All four operational-authority flags remain false.
 
 **Current continuation (2026-09-26):** The candidate packet captured both immutable children in
 Production with the bound `curl -q` producer, and limitation 4 now distinguishes the two
 credential-posted owner comments from the Test Architect's local self-attested source. The new
-subject has a fresh independent Test Architect ACCEPT decision report, while the packet remains at
-0/3 receipts and awaits owner review. Do not post or collect
-owner acceptance comments until the user approves the new-subject materials and explicitly
-authorizes those credentialed actions. Keep Story 4.15 OQ8 seal reconciliation separate.
+subject has a fresh independent Test Architect ACCEPT decision report. The user approved the
+new-subject materials, separately authorized credentialed owner actions, and explicitly accepted
+as both EventStore owner and Release owner. The new-subject review request was posted on issue
+`#352` as comment `5844480896`; distinct accepted owner comments `5844573563` and `5844574016`
+and the self-attested Test Architect source now bind this subject. The packet passes at 3/3.
+The spec is `done` for bounded evidence validation; the sprint row remains `review` while
+G-HIGH-RISK and later authority gates remain open. Keep Story 4.15 OQ8 seal reconciliation separate.
 
 ## Code Map
 
@@ -77,8 +81,9 @@ authorizes those credentialed actions. Keep Story 4.15 OQ8 seal reconciliation s
 - [x] [`3-15-corrected-deployed-runtime-parity-acceptance-review.md`](3-15-corrected-deployed-runtime-parity-acceptance-review.md) -- prepare exact-subject, role-specific EventStore-owner, Release-owner, and Test Architect
   acceptance review material without representing a draft as a receipt; refresh the existing
   Story 4.15 OQ8 seal-reconciliation record for the changed `docs/ci.md`.
-- [ ] Obtain three fresh authenticated, subject-bound role acceptances for the current subject and
-  re-run the assembler and retained verifier before claiming positive parity again.
+- [x] Obtain three fresh roster-bound role acceptances for the current subject and re-run the
+  assembler and retained verifier before claiming positive parity again. The Test Architect
+  source is self-attested without independent external authentication.
 - [x] `tools/{release_evidence_handlers/v3.py,deployed_runtime_parity_handlers/v1.py,assemble-corrected-deployed-runtime-parity.py}`, `evidence/story-3-15/f343bb01…/{subject,closure}.json`, `tools/validate-corrective-release-evidence.py:35`, `tools/validate-corrected-deployed-runtime-parity.py:48` and `3-15-corrected-deployed-runtime-parity-closure-proof-packet.md:55` -- carry out the single authorized re-mint that batches every correction to the sha256+size-pinned trust path, rejecting the three existing receipts and obtaining fresh architecture/security/test sign-off. Scope is owned by **DW-508** and must include **DW-506** (both v3 canonical encoders emit non-JSON `NaN`/`Infinity`; v1 and the capture copy are already correct), **DW-507** (tautological assembler-identity guard; settle what an independent repository root is before re-landing A8), **DW-509** (the sealed v3 `global.json` gate input hashes the CRLF worktree file, not the committed blob) and **DW-511** (the missing layout-preserving-copy refusal and NaN characterization cases). Landing these one at a time is what turned the Contracts lane red at 1987/204/0 and forced revert `dfc0ac55`. Recorded 2026-09-13 by the Story 4.15 Group Q code review, Decision 3. Technical re-mint and AI sign-offs are complete; this check does not represent the three separate owner acceptance receipts.
 
 **Acceptance Criteria:**
@@ -540,6 +545,22 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-09-26 (current-subject acceptance and bounded closure):** After approving the
+  new-subject review materials, the owner separately authorized credentialed actions and accepted
+  as both EventStore owner and Release owner. Dedicated issue `#352` now carries distinct canonical
+  [EventStore-owner](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844573563)
+  and [Release-owner](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844574016)
+  comments with `created_at == updated_at == accepted_at`. The independent Test Architect ACCEPT
+  decision was transcribed into a later local self-attested source, with that limitation explicit.
+  The six new source/receipt files were checked in a temporary packet copy before being added to
+  the current packet. Both assembler runs and the direct retained verifier pass at 3/3 on unchanged
+  subject `66be1b4a...`, selecting only the pinned OCI index for bounded evidence validation.
+  The Release Contracts test project builds with zero warnings/errors; the two focused Story 3.15
+  classes pass 235/235 and the guarded lifecycle test passes 1/1. The spec is `done` for this
+  bounded result and the sprint row is `review` pending G-HIGH-RISK. Story 4.15 OQ8 seal
+  reconciliation remains separate; no operational-authority flag changed. The broader Contracts
+  suite ran 2131 tests: 2128 passed and three Story 4.15 OQ8 v5 clean-checkout tests failed.
+
 - **2026-09-26 (fresh Production capture and controlled re-mint):** Copied the receipt-free
   `c98fdef2...` packet to a candidate root, registered QEMU from the pinned `tonistiigi/binfmt`
   digest, and ran the current `curl -q` capture producer once against the same immutable amd64 and
@@ -897,8 +918,14 @@ Both owner receipts are independently constrained to the same positively allowli
 ## Verification
 
 **Commands:**
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 new-subject actual:** `fail: exactly three packet-bound receipts are required`, exit 1. Subject `66be1b4a...` is at 0/3; the index is not selected and all four authority flags remain false.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 new-subject actual:** `subject=sha256:66be1b4a... receipts=0 verifier_exit=1`, exit 1. The subject is reproduced without moving historical receipts.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 post-collection actual:** `pass: subject=sha256:66be1b4a... selected=sha256:4b141085...`, exit 0, with 3/3 packet-bound receipts and all four authority flags false.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 post-collection actual:** `subject=sha256:66be1b4a... receipts=3 verifier_exit=0`, exit 0. A temporary candidate packet passed the same assembler before the six files were copied into the current packet.
+- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **2026-09-26 post-collection actual:** zero warnings and errors.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **2026-09-26 post-collection actual:** 235/235 passed, zero errors, failures, skips, or unrun tests.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus -noLogo` -- **2026-09-26 post-collection actual:** 1/1 passed.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -noLogo` -- **2026-09-26 post-collection broad gate:** 2131 total, 2128 passed, 3 failed, 0 skipped/unrun. The only failures were `Oq8V5CandidateTests.V5DraftValidatorRejectsAuthorityAndSourceMutations`, `Oq8V5CandidateTests.V5SubjectPacketRemainsInactiveAndRejectsChangedInputs`, and `Oq8PlatformClosureTests.CheckedInRepositoryFullValidationPassesWithoutMutation`; the first two report `V5 activation requires a clean committed checkout`, and the third reports the dependent OQ8 validation failure. Story 4.15 owns this separate reconciliation.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 pre-collection historical:** `fail: exactly three packet-bound receipts are required`, exit 1. Subject `66be1b4a...` was at 0/3 before the new receipts.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 pre-collection historical:** `subject=sha256:66be1b4a... receipts=0 verifier_exit=1`, exit 1.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release --no-restore -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **2026-09-26 new-subject actual:** build succeeded with zero warnings and errors.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **2026-09-26 new-subject actual:** 235/235 passed, zero errors, failures, skips, or unrun tests. The initial run exposed a fresh-timestamp test-fixture assumption; shifting only those synthetic timing fixtures into the past made the intended duration guards observable, and the rerun passed.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests -noLogo` -- **2026-09-23 Test Architect actual:** 268 passed, 0 failed, 0 skipped before receipt collection. After collection, the updated Story 3.15 closure class alone passed 213/213 with zero failures or skips.
@@ -916,8 +943,9 @@ Both owner receipts are independently constrained to the same positively allowli
   snapshot with zero failures, skips, or unrun tests. The earlier 2096/2096 run preceded the
   `review` tracker transition and in-clone assembler path regression. `sprint-status.yaml` and
   `docs/ci.md` named the 2026-09-25 positive subject and receipt verdict at that historical run;
-  both are updated to the current 0/3 state and remain drift-guarded by the
-  focused suite. The guide is bound through the final Story 4.15 v4 review subject
+  were updated to the 2026-09-26 pre-acceptance 0/3 snapshot. The sprint tracker now records
+  3/3; the guide remains a pre-acceptance snapshot pending separate Story 4.15 OQ8 seal
+  reconciliation. The guide is bound through the final Story 4.15 v4 review subject
   `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`, fresh
   architecture/security/test review records, manifest, selector, and lifecycle record; the
   default OQ8 validator passes.

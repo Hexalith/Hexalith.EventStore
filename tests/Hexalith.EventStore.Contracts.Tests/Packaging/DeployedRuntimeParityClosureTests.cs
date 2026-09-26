@@ -4272,20 +4272,20 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  4-6-global-position-sharding-spec-renegotiation:")
             .ShouldBe("awaiting-operator");
 
-        // Story 3.15: curl configuration isolation re-minted the subject. The prior
-        // three receipts are superseded; the spec and tracker remain in-progress
-        // until new subject-bound acceptances restore the technical verdict.
+        // Story 3.15: the new subject has three current receipts and a positive bounded
+        // technical verdict. The spec is done, while the tracker remains in review
+        // until G-HIGH-RISK supplies independent control.
         sprint.ShouldContain(
-            "  # 2026-09-26 curl isolation re-minted the Story 3.15 subject; the prior\n" +
-            "  # three receipts are superseded, so the verifier fails closed at 0/3.\n" +
-            "  # The spec and row remain in-progress until three new receipts bind\n" +
-            "  # the current subject. G-HIGH-RISK and later authority gates remain open.");
+            "  # 2026-09-26: three current roster-bound receipts validate the corrected\n" +
+            "  # subject; the verifier exits 0 and selects only the pinned OCI index.\n" +
+            "  # The spec is done for bounded evidence validation, while this row remains\n" +
+            "  # review pending G-HIGH-RISK and later authority gates.");
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
-            .ShouldBe("in-progress");
+            .ShouldBe("review");
         string story315Spec = ReadNormalizedText(
             root,
             "_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md");
-        FrontmatterValue(story315Spec, "status").ShouldBe("'in-progress'");
+        FrontmatterValue(story315Spec, "status").ShouldBe("'done'");
 
         // Story 5.3: owner closed the story 2026-09-10 after spec-5-3 reached done (review loop 8).
         SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")

@@ -46,12 +46,29 @@ present evidence.
 
 This posted request names the old subject and old limitation 4. It does not solicit or authorize
 acceptance of current subject `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
-No new-subject owner comment has been posted or collected. The fresh independent Test Architect
+The fresh independent Test Architect
 [decision report](3-15-test-architect-decision-66be1b4a.md) accepts the technical evidence for
-the new subject, but is not a packet receipt. The following new-subject request remains local
-pending the user's approval and explicit authorization for credentialed owner actions.
+the new subject, but is not a packet receipt. The user approved the new-subject materials and
+separately authorized credentialed owner actions. The request below was posted byte-for-byte as
+[issue `#352` comment `5844480896`](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844480896)
+at `2026-09-26T08:06:20Z` by authenticated `github:jpiquot` (`id: 6775094`). Its body has SHA-256
+`a4db1c268bd210d8db063a6bc778728ecb5ae4687d05bd89d8a003f7f29e193c`, matching the
+approved draft, and GitHub reports equal `created_at` and `updated_at` timestamps. It is a review
+request, not an acceptance. The owner subsequently gave separate accept decisions for both roles.
+Canonical [EventStore-owner comment `5844573563`](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844573563)
+and [Release-owner comment `5844574016`](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844574016)
+were posted with authenticated `github:jpiquot` at `08:22:25Z` and `08:22:30Z`, respectively;
+each has `created_at == updated_at == accepted_at`. Their closed-schema envelopes and receipts are
+retained under the current subject. The independent Test Architect ACCEPT report was transcribed
+into the local self-attested source at `08:23:47Z`. The assembler and retained verifier pass at
+3/3 receipts for the unchanged subject.
+GitHub rendered the request's relative document links as issue-relative links. A separate
+[link correction](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844496516)
+was posted at `2026-09-26T08:09:02Z` with commit-pinned review-file links; its body has SHA-256
+`461a92deeab4b3ed6e32dc014c2b94ab2b29106e34c23061daa5e3d8f0706731` and matches the
+posted draft. The original review request remains intact. The link correction is not an acceptance.
 
-## Unposted new-subject owner review request
+## Posted new-subject owner review request
 
 > Please review Story 3.15 corrected deployed-runtime parity for exact subject
 > `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
@@ -80,6 +97,5 @@ pending the user's approval and explicit authorization for credentialed owner ac
 > `Release owner: accept/decline`. A decision for `c98fdef2...` or an older subject cannot be used
 > for this subject.
 
-The JSON acceptance templates in the current review brief are deliberately unposted. A later accepted
-owner comment must be composed at posting time, then retained only if GitHub reports
-`created_at == updated_at == accepted_at` and the authenticated author matches the roster.
+The JSON acceptance templates in the current review brief remain historical review inputs; the
+actual canonical comments are the two links above. No earlier-subject acceptance was reused.

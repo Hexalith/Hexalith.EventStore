@@ -2,22 +2,21 @@
 
 ## Decision
 
-**Deployed-runtime parity fails closed at 0 of 3 receipts.** Current subject
+**Deployed-runtime parity is available at 3 of 3 receipts.** Current subject
 `sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`
 was re-minted on 2026-09-26 after fresh Production smokes used the bound `curl -q` producer and
 limitation 4 was corrected. Former subject `c98fdef2...` had no receipts; its packet is preserved
 under `evidence/story-3-15/superseded-packets/`. The three older `7d64f87e...` receipts remain
-superseded. The retained verifier exits 1
-and selects no deployed identity. `closure.json` still claims only
-`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,
-pending three fresh subject-bound acceptances.
+superseded. The retained verifier exits 0 and selects
+`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`
+for bounded `evidence-validated` parity evidence.
 
 This packet still grants no deployment, publication, registry mutation, consumer removal, or
-predecessor change authority. The rostered owner accepted both owner roles for the prior subject;
-the Test Architect acceptance for that subject was self-attested. None binds the current subject.
-The [fresh independent Test Architect decision](3-15-test-architect-decision-66be1b4a.md) accepts
-this subject's technical evidence as a local self-attested report. It is not a packet receipt and
-does not change the 0/3 verifier outcome.
+predecessor change authority. The rostered owner accepted both roles in distinct current-subject
+comments; the [fresh independent Test Architect decision](3-15-test-architect-decision-66be1b4a.md)
+was transcribed into the required local self-attested source and receipt. The two owner roles map
+to one authenticated account, and the Test Architect source has no independent external
+authentication. G-HIGH-RISK independent control and later authority gates remain open.
 
 ## Authority boundary
 
@@ -29,15 +28,15 @@ An auditor must confirm four flags in `closure.json`, and all four are `false`:
 | `publication_authorized` | `false` |
 | `consumer_removal_authorized` | `false` |
 | `grants_mutation_authority` | `false` |
-| `deployed_runtime_parity` | `available` -- claim not granted at 0 of 3 |
-| `selected_deployed_identity` | the index digest -- claim not selected at 0 of 3 |
+| `deployed_runtime_parity` | `available` -- claim validated at 3 of 3 |
+| `selected_deployed_identity` | the index digest -- selected for bounded parity evidence |
 
 **`deployed_runtime_parity` and `selected_deployed_identity` remain the claim fields.** The
-retained verifier rejects them because there are no packet-bound receipts for this subject. An
-auditor must read them together with the empty receipt list and four false non-authority flags.
+retained verifier validates them against three packet-bound receipts for this subject. An auditor
+must read them together with those receipt bindings and four false non-authority flags.
 The current receipt address is
 `acceptances/66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6/`;
-it contains no receipts yet.
+it contains exactly three receipts and their durable sources.
 
 ## Bound technical evidence
 
@@ -109,8 +108,21 @@ as a receipt limitation.
 
 ## Current acceptances and prior sources
 
-No receipt binds current subject `66be1b4a...`. The three prior receipts bind `7d64f87e...`
-and remain byte-for-byte under `superseded-acceptances/7d64f87e.../`. Their historical sources are:
+Three receipts bind current subject `66be1b4a...`. The owner comments are distinct and were
+posted from authenticated `github:jpiquot` with `created_at == updated_at == accepted_at`:
+
+| Role | Current source | Accepted at |
+| --- | --- | --- |
+| EventStore owner | issue `#352` comment [5844573563](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844573563) | `2026-09-26T08:22:25Z` |
+| Release owner | issue `#352` comment [5844574016](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844574016) | `2026-09-26T08:22:30Z` |
+| Test Architect | local self-attested `bmad:murat` source | `2026-09-26T08:23:47Z` |
+
+The independent Test Architect decision was recorded at 07:39 UTC with minute precision. The
+canonical packet source uses its later source-creation second as `accepted_at`; it transcribes
+the same subject-bound acceptance and is not a new externally authenticated decision.
+
+The three prior receipts bind `7d64f87e...` and remain byte-for-byte under
+`superseded-acceptances/7d64f87e.../`. Their historical sources are:
 
 | Role | Source |
 | --- | --- |
@@ -132,7 +144,7 @@ as the owner's authorization; the request's scope and two acceptance comment IDs
 text. This ratification is distinct from the packet-bound acceptance receipts and grants no
 operational authority.
 This is an as-observed external audit citation: the comment is mutable, is not retained or
-hash-closed in the packet, and is not checked by the current 0/3 verifier verdict.
+hash-closed in the packet, and is not checked by the current 3/3 verifier verdict.
 
 ## DW-508 sign-offs
 
@@ -150,17 +162,17 @@ Story 4.15 v4 security and test review files bind a different subject.
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required
+[corrected-deployed-runtime-parity] pass: subject=sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6 selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
 $ echo $?
-1
+0
 ```
 
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6 receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6 receipts=3 verifier_exit=0
 $ echo $?
-1
+0
 ```
 
 Reassembly deterministically reproduces subject `66be1b4a...` and runs the pinned verifier over its
@@ -169,4 +181,9 @@ own output. It does not copy or rewrite any superseded receipt.
 The historical complete Contracts suite after the 2026-09-24 in-clone and elided-subject
 regressions passed **2108/2108**, with zero failures, skips, or unrun tests. The current Release
 build had zero warnings and errors, and both focused Story 3.15 classes passed **235/235**, with
-zero failures, skips, or unrun tests. The Story 3.14 predecessor packet remains unchanged.
+zero failures, skips, or unrun tests before receipt collection. After collection, the Release
+Contracts test project again built with zero warnings/errors, the two focused classes passed
+**235/235**, and the guarded lifecycle test passed **1/1**. The full Contracts suite ran 2131
+tests, with 2128 passed and three Story 4.15 OQ8 v5 clean-checkout/active-validation failures;
+no Story 3.15 test failed. The Story 3.14 predecessor packet remains unchanged. Story 4.15 OQ8
+seal reconciliation remains a separate gate.

@@ -139,18 +139,18 @@ development_status:
   # All five prior acceptance rounds remain under story-3-15/superseded-acceptances/.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
-  # 66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6; it has 0/3
-  # receipts and the verifier exits 1. The prior accepted subject and its three receipts are
+  # 66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6; it has 3/3
+  # receipts and the verifier exits 0. The prior accepted subject and its three receipts are
   # retained byte-for-byte in the superseded audit area, with no authority for this subject.
-  # closure.json's deployed_runtime_parity/selected_deployed_identity are claims, not a verdict:
-  # neither is granted until three current subject-bound receipts pass the verifier.
+  # closure.json's deployed_runtime_parity/selected_deployed_identity are claims validated by
+  # the three receipts; the result is evidence only, with no operational authority.
   # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
   # the next four lines verbatim and pins this row's value; change them only together.
-  # 2026-09-26 curl isolation re-minted the Story 3.15 subject; the prior
-  # three receipts are superseded, so the verifier fails closed at 0/3.
-  # The spec and row remain in-progress until three new receipts bind
-  # the current subject. G-HIGH-RISK and later authority gates remain open.
-  3-15-corrected-deployed-runtime-parity-closure: in-progress
+  # 2026-09-26: three current roster-bound receipts validate the corrected
+  # subject; the verifier exits 0 and selects only the pinned OCI index.
+  # The spec is done for bounded evidence validation, while this row remains
+  # review pending G-HIGH-RISK and later authority gates.
+  3-15-corrected-deployed-runtime-parity-closure: review
   # >>> END GUARDED COMMENTS <<<
   # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
   # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
