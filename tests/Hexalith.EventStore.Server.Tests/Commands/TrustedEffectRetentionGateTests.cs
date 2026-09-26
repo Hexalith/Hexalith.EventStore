@@ -22,11 +22,12 @@ public sealed class TrustedEffectRetentionGateTests
     [Fact]
     public async Task RetainedSourceAndJointDecisionPermitAdmission()
     {
-        (TrustedEffectRetentionGate gate, EffectIdentity identity, _, _, IAggregateActor source, _) = CreateGate();
+        (TrustedEffectRetentionGate gate, EffectIdentity identity, _, IIdempotencyTenantLifecycleActor lifecycle, IAggregateActor source, _) = CreateGate();
 
         await gate.ValidateAsync(identity);
 
         _ = await source.Received(1).ReadEventsRangeAsync(6, 7, 1);
+        await lifecycle.Received(1).RegisterTrustedEffectAsync(identity);
     }
 
     /// <summary>A restored source below its retained floor cannot redispatch an effect.</summary>
@@ -101,6 +102,18 @@ public sealed class TrustedEffectRetentionGateTests
         await Should.ThrowAsync<InvalidOperationException>(() => gate.ValidateAsync(identity));
 
         _ = await source.DidNotReceiveWithAnyArgs().ReadEventsRangeAsync(default, default, default);
+    }
+
+    /// <summary>Offboarding racing source inspection is rejected by serialized registration.</summary>
+    [Fact]
+    public async Task DeletionStartedBeforeRegistrationDeniesAdmission()
+    {
+        (TrustedEffectRetentionGate gate, EffectIdentity identity, _, IIdempotencyTenantLifecycleActor lifecycle,
+            _, _) = CreateGate();
+        _ = lifecycle.RegisterTrustedEffectAsync(identity)
+            .Returns<Task>(_ => throw new InvalidOperationException("deletion started"));
+
+        await Should.ThrowAsync<InvalidOperationException>(() => gate.ValidateAsync(identity));
     }
 
     private static (TrustedEffectRetentionGate Gate, EffectIdentity Identity,

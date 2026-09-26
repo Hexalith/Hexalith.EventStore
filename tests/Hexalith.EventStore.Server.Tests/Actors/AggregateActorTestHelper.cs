@@ -65,7 +65,8 @@ internal static class AggregateActorTestHelper {
         IEventPublisher? eventPublisher = null,
         EventDrainOptions? eventDrainOptions = null,
         IDeadLetterPublisher? deadLetterPublisher = null,
-        ITrustedEffectAdmissionPolicy? trustedEffectAdmissionPolicy = null) {
+        ITrustedEffectAdmissionPolicy? trustedEffectAdmissionPolicy = null,
+        ITrustedEffectAuditSink? trustedEffectAuditSink = null) {
         bool configureSubstituteStateManager = stateManager is null;
         bool configureDefaultInvoker = invoker is null;
         bool configureDefaultPublisher = eventPublisher is null;
@@ -93,7 +94,7 @@ internal static class AggregateActorTestHelper {
                 Arg.Any<CancellationToken>())
                 .Returns(true);
         }
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(eventDrainOptions ?? new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider, executionContextProtector: executionContextProtector, trustedEffectAdmissionPolicy: trustedEffectAdmissionPolicy, trustedEffectGatewayProof: trustedEffectAdmissionPolicy is null ? null : Substitute.For<ITrustedEffectGatewayProof>());
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(eventDrainOptions ?? new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider, executionContextProtector: executionContextProtector, trustedEffectAdmissionPolicy: trustedEffectAdmissionPolicy, trustedEffectGatewayProof: trustedEffectAdmissionPolicy is null ? null : Substitute.For<ITrustedEffectGatewayProof>(), trustedEffectAuditSink: trustedEffectAuditSink ?? Substitute.For<ITrustedEffectAuditSink>());
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);

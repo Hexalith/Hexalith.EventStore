@@ -63,7 +63,8 @@ public partial class AggregateActor(
     TimeProvider? timeProvider = null,
     IdempotencyExecutionContextProtector? executionContextProtector = null,
     ITrustedEffectAdmissionPolicy? trustedEffectAdmissionPolicy = null,
-    ITrustedEffectGatewayProof? trustedEffectGatewayProof = null)
+    ITrustedEffectGatewayProof? trustedEffectGatewayProof = null,
+    ITrustedEffectAuditSink? trustedEffectAuditSink = null)
     : Actor(host), IAggregateActor, IIdempotencyLegacySourceActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
@@ -245,6 +246,11 @@ public partial class AggregateActor(
         EffectReceipt receipt,
         TrustedEffectAdmission admission)
     {
+        ITrustedEffectAuditSink audit = trustedEffectAuditSink
+            ?? throw new InvalidOperationException("Trusted effect collision audit is unavailable.");
+        await audit.AppendAsync(new TrustedEffectAuditRecord(
+            "collision", admission.Submission.Identity.Tenant, receipt.EffectId,
+            admission.Context.Workload, admission.Context.Purpose, "quarantined")).ConfigureAwait(false);
         byte[] coordinates = EffectIdentityCodec.Encode(admission.Submission.Identity);
         byte[] digest = SHA256.HashData([
             .. coordinates,

@@ -6,6 +6,8 @@ using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Contracts.Effects;
+using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -18,7 +20,9 @@ public sealed class IdempotencyTenantLifecycleActor(
     ILogger<IdempotencyTenantLifecycleActor> logger,
     TimeProvider? timeProvider = null,
     IActorProxyFactory? actorProxyFactory = null,
-    IOptions<EventStoreActorOptions>? actorOptions = null)
+    IOptions<EventStoreActorOptions>? actorOptions = null,
+    ITrustedEffectJointRetentionPolicy? trustedEffectRetention = null,
+    ITrustedEffectAuditSink? trustedEffectAuditSink = null)
     : Actor(host), IIdempotencyTenantLifecycleActor, IIdempotencyTenantLifecycleMigrationActor
 {
     /// <summary>Gets the maximum number of references removed in one serialized actor turn.</summary>
@@ -36,6 +40,29 @@ public sealed class IdempotencyTenantLifecycleActor(
 
     private string AggregateActorTypeName { get; }
         = actorOptions?.Value.AggregateActorTypeName ?? nameof(AggregateActor);
+
+    /// <inheritdoc/>
+    public async Task RegisterTrustedEffectAsync(EffectIdentity identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        _ = EffectIdentityCodec.Encode(identity);
+        IdempotencyTenantLifecycleRecord record = await LoadOrCreateAsync().ConfigureAwait(false);
+        if (!string.Equals(identity.Tenant, record.Tenant, StringComparison.Ordinal)
+            || record.State != IdempotencyTenantLifecycleState.Active)
+        {
+            throw new InvalidOperationException("Trusted effect evidence cannot be registered for this tenant.");
+        }
+
+        if (!record.HasTrustedEffectEvidence)
+        {
+            ITrustedEffectAuditSink audit = trustedEffectAuditSink
+                ?? throw new InvalidOperationException("Trusted effect registration audit is unavailable.");
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "evidence-registration", record.Tenant, EffectIdentityCodec.ComputeEffectId(identity),
+                null, null, "started")).ConfigureAwait(false);
+            await PersistAsync(record with { HasTrustedEffectEvidence = true }).ConfigureAwait(false);
+        }
+    }
 
     /// <inheritdoc/>
     public async Task RegisterAsync(IdempotencyTenantLifecycleReference[] references)
@@ -533,6 +560,22 @@ public sealed class IdempotencyTenantLifecycleActor(
             throw new InvalidOperationException("Tenant idempotency state is not purge eligible.");
         }
 
+        if (record.HasTrustedEffectEvidence && !record.TrustedEffectEvidenceErased)
+        {
+            ITrustedEffectJointRetentionPolicy policy = trustedEffectRetention
+                ?? throw new InvalidOperationException("Trusted effect joint erasure is unavailable.");
+            ITrustedEffectAuditSink audit = trustedEffectAuditSink
+                ?? throw new InvalidOperationException("Trusted effect erasure audit is unavailable.");
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "offboarding-erasure", record.Tenant, null, null, null, "started")).ConfigureAwait(false);
+            await policy.EraseTenantAsync(record.Tenant).ConfigureAwait(false);
+            record = await PersistAsync(record with
+            {
+                TrustedEffectEvidenceErased = true,
+                LastObservedAt = Max(record.LastObservedAt, Clock.GetUtcNow()),
+            }).ConfigureAwait(false);
+        }
+
         if (record.References.Length == 0)
         {
             return await PersistAsync(record with
@@ -692,6 +735,9 @@ public sealed class IdempotencyTenantLifecycleActor(
             || string.IsNullOrWhiteSpace(record.Tenant)
             || !string.Equals(record.Tenant, Host.Id.GetId(), StringComparison.Ordinal)
             || !Enum.IsDefined(record.State)
+            || (record.TrustedEffectEvidenceErased && !record.HasTrustedEffectEvidence)
+            || (record.TrustedEffectEvidenceErased && record.State is not (IdempotencyTenantLifecycleState.PurgeEligible or IdempotencyTenantLifecycleState.Purged))
+            || (record.State == IdempotencyTenantLifecycleState.Purged && record.HasTrustedEffectEvidence && !record.TrustedEffectEvidenceErased)
             || record.References is null
             || record.References.Any(reference => !IsValidReference(reference, record.Tenant))
             || record.References.Select(static reference => reference.ActorId)
