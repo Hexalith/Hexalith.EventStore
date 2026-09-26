@@ -369,6 +369,13 @@ Domain modules can opt into an EventStore-owned, provider-neutral payload-protec
 **Cross-cutting coverage:** NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17, NFR19
 **Implementation notes:** This post-MVP epic is strictly sequential: the approved security specification authorizes implementation, predecessor evidence gates every later slice, and Story 8.11 alone may close G5 after production-backend, golden, dual-provider, release, and rollback proof.
 
+### Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Independently Approved
+Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved by an authenticated identity independent of its author.
+**Primary users:** Product owner, Test Architect, gate evaluators, release and deployment owners
+**FRs covered:** none (governance). **Refinements owned:** OR10, OR13, OR28; gate G-HIGH-RISK; the corrective-work authorization input to G-BASELINE
+**Cross-cutting coverage:** supporting NFR7, NFR12, NFR16 as listed by G-HIGH-RISK; closes none of them
+**Implementation notes:** Added by `sprint-change-proposal-2026-09-26.md`. MVP epic, independent of Epic 8. Story 9.1 bootstraps the PRD §0 corrective-work authorization; Story 9.2 cannot reach `done` without a named human reviewer independent of the author. Neither story grants readiness, release, deployment, or migration authority.
+
 **Sequencing rule:** Epic numbers organize product outcomes; they do not grant blanket execution authority. Architecture decisions, safety prerequisites, exact evidence gates, and backward-only story dependencies govern implementation order. Relevant Epic 5 Phase 0 protections must precede exposed or administrative surfaces even when those surfaces have lower epic numbers.
 
 **Historical continuity rule:** Before creating stories, compare the Git `HEAD` version of the former `epics.md` and the dated story-ID migrations as historical identity and omission-detection references, never as bulk-restoration sources. Account for all 107 historical stories as retained, corrected, superseded, or intentionally replaced; no story silently disappears. Preserve valid story IDs, supersession records, named evidence gates, and the explicit 3.13-3.15, 4.9-4.15, 7.14/7.19/7.20, and 8.1-8.11 sequences, but never carry forward a completion, approval, or authorization claim contradicted by current authority. The five confirmed input documents remain requirements authority; every conflict is recorded and surfaced for review rather than silently resolved from historical text.
@@ -2809,6 +2816,8 @@ So that operators have a positive deployment-grade identity without relying on o
 **When** it cites Story 3.15
 **Then** this packet may be used as immutable EventStore evidence but does not itself authorize either action
 **And** deployment requires its own authority, while consumer removal requires the separate authenticated Consumer-owner receipt bound to that consumer repository/commit, packet subject, capability catalog, applicable-mode matrix, and exact removal subject; Parties 8.6 and G5 remain outside this story.
+
+**Current reconciliation (2026-09-26):** By dated owner decision (`sprint-change-proposal-2026-09-26.md`), Story 3.15 is `done` for FR36-C2 evidence validation only: subject `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`, 3/3 receipts, retained validator exit 0, selected index `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Both owner roles map to one account and the Test Architect record is self-attested, so this is not three-party review. G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; Story 9.2 owns G-HIGH-RISK. The story reopens to `in-progress` on validator failure, subject re-mint, or independent G-HIGH-RISK rejection. Epic 3 stays `in-progress` for Story 3.16.
 
 ### Story 3.16: Latest-Compatible Dependency And Root Submodule Refresh
 
@@ -6852,3 +6861,78 @@ So that Parties migration can proceed only against a proven shared capability.
 **And** no hidden exclusion, stale identity, skipped required proof, ambiguous approval, overclaim, legacy-path deletion, or unbound external action is accepted.
 
 <!-- Epic 8 story set confirmed complete for planning. -->
+
+## Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Independently Approved
+
+Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved by an authenticated identity independent of its author. Added by `sprint-change-proposal-2026-09-26.md`; both stories start in `backlog`.
+
+### Story 9.1: Corrective-Work Authorization Record And Validator
+
+As a Product owner,
+I want every gate-closing corrective change bound to a content-addressed authorization record,
+So that no failed gate is "fixed" by an unauthorized, overbroad, or out-of-path change.
+
+**Requirements coverage:** Primary OR28; supporting G-BASELINE.
+
+**Architecture constraints:** None new; PRD §0 defines the record and validator contract.
+
+**Dependencies:** None. **Bootstrap rule:** PRD §0 cannot validate this story's own handoff, so a dated owner authorization naming its allowed paths (`tools/validate-corrective-work-authorization.py`, its tests and fixtures, the record schema, and a new CI workflow file) is recorded in the story before development starts.
+
+**Acceptance Criteria:**
+
+**Given** a record at `_bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/<gate>/<authorization-id>.json`
+**When** `python3 tools/validate-corrective-work-authorization.py <record> --changed-paths-from <baseline-sha>` runs
+**Then** it validates every field PRD §0 enumerates, including `corrective-work-only: true` with every readiness, release, deployment, production, migration, and removal flag `false`
+**And** it rejects missing, expired, revoked, mismatched, overbroad, or out-of-path authority.
+
+**Given** a completed corrective diff
+**When** postflight validation runs
+**Then** it binds the derived output-subject digest
+**And** any later output-subject change invalidates the record.
+
+**Given** the validator's rejection paths
+**When** its tests run
+**Then** each rejection path is proven by a checked-in negative fixture observed failing, alongside a positive control
+**And** no guard is green by construction.
+
+**Given** the validator is complete
+**When** CI runs on `main`
+**Then** it runs as a blocking check from a new workflow file
+**And** `docs/ci.md` is not edited unless a Story 4.15 reseal is planned.
+
+### Story 9.2: Phase 4 High-Risk Gate Matrix And Non-Authorship Control
+
+As a Test Architect,
+I want each mandatory gate classified and every high-risk gate result bound to sealed CI validation plus an authenticated independent approver,
+So that no author can approve their own high-risk evidence.
+
+**Requirements coverage:** Primary OR10 and OR13; gate G-HIGH-RISK. Absorbs the 2026-09-23 proposal §4.E transition guard for high-risk gate rows only; the all-story tracker/wrapper/epics lifecycle comparison stays with OR15 and G-BASELINE.
+
+**Architecture constraints:** None new.
+
+**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-HIGH-RISK. **Named independent reviewer:** unassigned. Under the External-authority rule this is an explicit blocker: the story may build the matrix and validator, but it cannot reach `done` or mark its own row PASS until a human reviewer with an authenticated account distinct from `github:jpiquot` is named and approves.
+
+**Acceptance Criteria:**
+
+**Given** `_bmad-output/implementation-artifacts/evidence/phase-4-gate-risk-matrix.json`
+**When** `python3 tools/validate-phase-4-gate-risk-matrix.py _bmad-output/implementation-artifacts/evidence/phase-4-gate-risk-matrix.json` runs
+**Then** the matrix enumerates exactly the 17 gates PRD G-HIGH-RISK lists, each `high-risk` or a reason-coded `standard-control`
+**And** omissions, unknown gates, new unclassified gates, and reasonless classifications are rejected.
+
+**Given** a high-risk entry
+**When** it is validated
+**Then** it binds its exact command, trigger, subject and evidence identities, pass condition, author and evaluator roles, non-authorship result, and guarded transition
+**And** the non-authorship check rejects self-approval, identity aliasing (one account in two roles, as in the Story 3.15 registry), unauthenticated or tool-persona identities (such as `bmad:*`) offered as the independent identity, and missing seals, each proven by an observed failing fixture.
+
+**Given** the matrix and validator
+**When** CI runs
+**Then** the validator runs in a blocking, required check and the matrix inputs are content-hashed so that edits fail the check.
+
+**Given** a high-risk gate or a story recorded against a high-risk NFR
+**When** a transition to PASS or `done` is attempted
+**Then** the guarded transition requires the passing validator result and the independent approval (OR13).
+
+**Given** G-RUNTIME-PARITY is evaluated under this control
+**When** the independent evaluation completes
+**Then** that evaluation is follow-on work that reopens Story 3.15 only if it rejects the evidence
+**And** any new receipt set follows the G-RUNTIME-PARITY re-mint rule.

@@ -4276,10 +4276,11 @@ public sealed class DeployedRuntimeParityClosureTests
             .ShouldBe("awaiting-operator");
 
         // Story 3.15: the new subject has three current receipts and a positive bounded
-        // technical verdict. The spec is done, while the tracker remains in review
-        // until G-HIGH-RISK supplies independent control. A comment cleanup once dropped the
-        // identity caveat and the missing-control list with the suite green, and a 2026-09-26
-        // review patch restored them. Assert the caveat, the pointer comment that describes this
+        // technical verdict. The spec is done, and a dated 2026-09-26 owner decision closed the
+        // tracker at its bounded FR36-C2 scope; G-HIGH-RISK stays blocked in the PRD and is owned
+        // by Story 9.2, so this pin keeps the bounded wording glued to the row. A comment cleanup
+        // once dropped the identity caveat and the missing-control list with the suite green, and
+        // a 2026-09-26 review patch restored them. Assert the caveat, the pointer comment that describes this
         // guard, the four dated lines, the row, and the GUARDED fence's END marker as one
         // contiguous block starting at a line boundary, so none of them can vanish, drift away
         // from the row, or leave the fence with the row.
@@ -4290,11 +4291,11 @@ public sealed class DeployedRuntimeParityClosureTests
             "  # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts\n" +
             "  # the three caveat lines above, this note, the next four lines, the row, and the fence's END\n" +
             "  # marker as one verbatim block and pins this row's value; change them only together.\n" +
-            "  # 2026-09-26: three current roster-bound receipts validate the corrected\n" +
-            "  # subject; the verifier exits 0 and selects only the pinned OCI index.\n" +
-            "  # The spec is done for bounded evidence validation, while this row remains\n" +
-            "  # review pending G-HIGH-RISK and later authority gates.\n" +
-            "  3-15-corrected-deployed-runtime-parity-closure: review\n" +
+            "  # 2026-09-26 owner decision (sprint-change-proposal-2026-09-26) closes this row at FR36-C2\n" +
+            "  # evidence validation only and supersedes the 2026-09-24 review hold without rewriting it.\n" +
+            "  # G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; backlog Story 9.2 owns G-HIGH-RISK. The\n" +
+            "  # row grants no release, promotion, deployment, readiness, or consumer-removal authority.\n" +
+            "  3-15-corrected-deployed-runtime-parity-closure: done\n" +
             "  # >>> END GUARDED COMMENTS <<<\n");
 
         // The block ends at the END marker; pin the fence's other side too. Each marker occurs
@@ -4311,7 +4312,7 @@ public sealed class DeployedRuntimeParityClosureTests
         fenceBegin.ShouldBeLessThan(
             sprint.IndexOf("\n  # Caveat: both owner roles", StringComparison.Ordinal));
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
-            .ShouldBe("review");
+            .ShouldBe("done");
         string story315Spec = ReadNormalizedText(
             root,
             "_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md");

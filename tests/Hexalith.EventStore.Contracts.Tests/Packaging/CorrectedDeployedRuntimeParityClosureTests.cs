@@ -4591,7 +4591,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         parityGate.ShouldContain($"{receiptCount} of {RequiredRoles.Length} packet-bound receipts");
         parityGate.ShouldContain($"selects OCI index `{selectedIndex}`");
         parityGate.ShouldContain("TECHNICAL PASS; INDEPENDENT GATE BLOCKED");
-        parityGate.ShouldContain("tracker remains `review`");
+        parityGate.ShouldContain("the tracker is `done` for FR36-C2 only; this gate stays blocked");
+        parityGate.ShouldNotContain("tracker remains `review`");
 
         string highRiskGate = lines.Single(line => line.StartsWith(
             "| G-HIGH-RISK |",

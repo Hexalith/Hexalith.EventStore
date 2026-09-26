@@ -150,11 +150,11 @@ development_status:
   # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
   # the three caveat lines above, this note, the next four lines, the row, and the fence's END
   # marker as one verbatim block and pins this row's value; change them only together.
-  # 2026-09-26: three current roster-bound receipts validate the corrected
-  # subject; the verifier exits 0 and selects only the pinned OCI index.
-  # The spec is done for bounded evidence validation, while this row remains
-  # review pending G-HIGH-RISK and later authority gates.
-  3-15-corrected-deployed-runtime-parity-closure: review
+  # 2026-09-26 owner decision (sprint-change-proposal-2026-09-26) closes this row at FR36-C2
+  # evidence validation only and supersedes the 2026-09-24 review hold without rewriting it.
+  # G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; backlog Story 9.2 owns G-HIGH-RISK. The
+  # row grants no release, promotion, deployment, readiness, or consumer-removal authority.
+  3-15-corrected-deployed-runtime-parity-closure: done
   # >>> END GUARDED COMMENTS <<<
   # Declared at epics.md:2809-2880 and required by epic-3-context.md:54 for Epic 3 closure.
   # The 2026-09-06 chore spec-update-all-hexalith-packages-to-latest does NOT close this story:
@@ -275,6 +275,13 @@ development_status:
   8-10-post-v2-write-rollback-rehearsal: backlog
   8-11-g5-evidence-and-approval-closure: backlog
   epic-8-retrospective: optional
+
+  epic-9: backlog
+  # Story 9.1 (OR28) must pass before Story 9.2 can be handed off under PRD section 0.
+  # Story 9.2 cannot close until a named human reviewer independent of github:jpiquot approves.
+  9-1-corrective-work-authorization-record-and-validator: backlog
+  9-2-phase-4-high-risk-gate-matrix-and-non-authorship-control: backlog
+  epic-9-retrospective: optional
 action_items:
   - epic: D
     action: "Create a dedicated REST generator hardening story from deferred-work.md."

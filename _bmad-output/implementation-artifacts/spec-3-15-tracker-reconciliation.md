@@ -64,6 +64,7 @@ context:
 - 2026-09-24: The tracker comment, lifecycle-test comment, and refreshed Epic 3 context entered current `main` through an external update at `ab40348def51e03dc020e589dfc183ce2e621409` during implementation. Preserved that commit and its unrelated submodule updates. The PRD reconciliation and packet-bound PRD guard remain in the worktree.
 - The retained parity verifier passed on subject `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274` and selected only index `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Release Contracts build: zero warnings and errors. Focused lifecycle/PRD tests: 2/2 passed; checked-in packet positive test: 1/1 passed.
 - The unqualified method filter in the first verification attempt selected zero tests; the command below uses fully qualified method names. A broader Contracts run encountered OQ8 v5's clean-committed-checkout precondition while the intended PRD edit was uncommitted and was stopped after those unrelated failures. It does not substitute for the passing focused evidence.
+- 2026-09-26: The owner renegotiated the Decision (2026-09-24) through `_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-26.md`. The tracker is now `done` for FR36-C2 evidence validation only; G-RUNTIME-PARITY and G-HIGH-RISK stay blocked, and backlog Story 9.2 owns G-HIGH-RISK. The frozen Decision text above is preserved as history.
 
 ## Spec Change Log
 

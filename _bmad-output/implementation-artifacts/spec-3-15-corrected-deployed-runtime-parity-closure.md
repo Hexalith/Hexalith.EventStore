@@ -51,8 +51,9 @@ new-subject materials, separately authorized credentialed owner actions, and exp
 as both EventStore owner and Release owner. The new-subject review request was posted on issue
 `#352` as comment `5844480896`; distinct accepted owner comments `5844573563` and `5844574016`
 and the self-attested Test Architect source now bind this subject. The packet passes at 3/3.
-The spec is `done` for bounded evidence validation; the sprint row remains `review` while
-G-HIGH-RISK and later authority gates remain open. Keep Story 4.15 OQ8 seal reconciliation separate.
+The spec is `done` for bounded evidence validation, and a dated 2026-09-26 owner decision
+closed the sprint row `done` for FR36-C2 only; G-HIGH-RISK stays blocked and is owned by Story 9.2,
+and later authority gates remain open. Keep Story 4.15 OQ8 seal reconciliation separate.
 
 ## Code Map
 

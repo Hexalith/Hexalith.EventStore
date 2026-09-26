@@ -50,7 +50,8 @@ $ echo $?
 `deployed_runtime_parity` and `selected_deployed_identity` are the packet's claim fields. The
 three receipts validate those claims for bounded evidence only. No deployment, publication,
 registry mutation, consumer removal, or predecessor change is authorized. The spec is `done` for
-this bounded result, while the sprint row remains `review` pending G-HIGH-RISK independent control.
+this bounded result, and a dated 2026-09-26 owner decision closed the sprint row `done` for
+FR36-C2 only; G-HIGH-RISK stays blocked and is owned by Story 9.2.
 Story 4.15 OQ8 seal reconciliation remains separate.
 
 ### Completed owner action (now superseded)
