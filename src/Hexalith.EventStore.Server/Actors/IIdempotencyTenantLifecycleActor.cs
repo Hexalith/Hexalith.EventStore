@@ -1,10 +1,14 @@
 using Dapr.Actors;
+using Hexalith.EventStore.Contracts.Effects;
 
 namespace Hexalith.EventStore.Server.Actors;
 
 /// <summary>Serializes managed-tenant deletion, legal hold, and final purge governance.</summary>
 public interface IIdempotencyTenantLifecycleActor : IActor
 {
+    /// <summary>Registers trusted source, target, receipt, and collision evidence before a target outcome can commit.</summary>
+    Task RegisterTrustedEffectAsync(EffectIdentity identity);
+
     /// <summary>Registers protected admission and directory references before admission state creation.</summary>
     Task RegisterAsync(IdempotencyTenantLifecycleReference[] references);
 

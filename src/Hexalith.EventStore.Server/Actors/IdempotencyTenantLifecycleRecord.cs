@@ -20,4 +20,12 @@ public sealed record IdempotencyTenantLifecycleRecord(
 
     /// <summary>Gets the mandatory post-deletion retention interval.</summary>
     public static TimeSpan PostDeletionRetention { get; } = TimeSpan.FromDays(400);
+
+    /// <summary>Indicates that trusted source, target, receipt, and collision evidence needs joint erasure.</summary>
+    [DataMember]
+    public bool HasTrustedEffectEvidence { get; init; }
+
+    /// <summary>Indicates that the joint erasure authority completed its tenant operation.</summary>
+    [DataMember]
+    public bool TrustedEffectEvidenceErased { get; init; }
 }

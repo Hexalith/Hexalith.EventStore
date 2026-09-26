@@ -59,5 +59,9 @@ public sealed class TrustedEffectRetentionGate(
         {
             throw new InvalidOperationException("Trusted effect source evidence is unavailable.");
         }
+
+        // The lifecycle turn serializes evidence registration against deletion entry.
+        // A concurrent offboarding transition makes this call fail before target dispatch.
+        await lifecycle.RegisterTrustedEffectAsync(identity).ConfigureAwait(false);
     }
 }

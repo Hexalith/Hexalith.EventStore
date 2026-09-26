@@ -3,7 +3,9 @@ using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -18,6 +20,105 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 public class IdempotencyTenantLifecycleActorTests
 {
     private static readonly DateTimeOffset _now = new(2026, 7, 20, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>Registered trusted evidence prevents idempotency-only final purge.</summary>
+    [Fact]
+    public async Task TrustedEvidenceRequiresJointErasureBeforePurge()
+    {
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor();
+        await actor.RegisterTrustedEffectAsync(TrustedIdentity());
+        IdempotencyTenantLifecycleRecord eligible = await actor.EnterDeletionAsync(_now.AddDays(-401));
+
+        await Should.ThrowAsync<InvalidOperationException>(() => actor.PurgeAsync(1));
+
+        eligible.HasTrustedEffectEvidence.ShouldBeTrue();
+        (await actor.GetAsync()).State.ShouldBe(IdempotencyTenantLifecycleState.PurgeEligible);
+    }
+
+    /// <summary>A legal hold prevents the joint eraser from running.</summary>
+    [Fact]
+    public async Task TrustedEvidenceLegalHoldBlocksErasure()
+    {
+        ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(trustedEffectRetention: retention);
+        await actor.RegisterTrustedEffectAsync(TrustedIdentity());
+        _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
+        _ = await actor.PlaceLegalHoldAsync(_now);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => actor.PurgeAsync(1));
+
+        await retention.DidNotReceiveWithAnyArgs().EraseTenantAsync(default!, default);
+    }
+
+    /// <summary>A failed erasure leaves tenant evidence registered and retries idempotently.</summary>
+    [Fact]
+    public async Task TrustedEvidenceErasureFailureLeavesPurgeOpenForRetry()
+    {
+        ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
+        _ = retention.EraseTenantAsync("tenant-a", Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new IOException("audit or erasure failed"), _ => Task.CompletedTask);
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(trustedEffectRetention: retention);
+        await actor.RegisterTrustedEffectAsync(TrustedIdentity());
+        _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
+
+        await Should.ThrowAsync<IOException>(() => actor.PurgeAsync(1));
+        IdempotencyTenantLifecycleRecord afterFailure = await actor.GetAsync();
+        afterFailure.State.ShouldBe(IdempotencyTenantLifecycleState.PurgeEligible);
+        afterFailure.TrustedEffectEvidenceErased.ShouldBeFalse();
+
+        IdempotencyTenantLifecycleRecord afterRetry = await actor.PurgeAsync(1);
+        afterRetry.State.ShouldBe(IdempotencyTenantLifecycleState.Purged);
+        afterRetry.TrustedEffectEvidenceErased.ShouldBeTrue();
+        await retention.Received(2).EraseTenantAsync("tenant-a", Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A failed audit append prevents the joint eraser from touching evidence.</summary>
+    [Fact]
+    public async Task TrustedEvidenceAuditFailureBlocksErasure()
+    {
+        ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(
+            trustedEffectRetention: retention, trustedEffectAuditSink: audit);
+        await actor.RegisterTrustedEffectAsync(TrustedIdentity());
+        _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
+        _ = audit.AppendAsync(Arg.Any<TrustedEffectAuditRecord>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new IOException("audit unavailable"));
+
+        await Should.ThrowAsync<IOException>(() => actor.PurgeAsync(1));
+
+        await retention.DidNotReceiveWithAnyArgs().EraseTenantAsync(default!, default);
+        (await actor.GetAsync()).TrustedEffectEvidenceErased.ShouldBeFalse();
+    }
+
+    /// <summary>Cross-tenant evidence cannot enter this tenant's serialized lifecycle.</summary>
+    [Fact]
+    public async Task CrossTenantTrustedEvidenceIsRejected()
+    {
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor();
+
+        await Should.ThrowAsync<InvalidOperationException>(() => actor.RegisterTrustedEffectAsync(
+            TrustedIdentity() with { Tenant = "tenant-b" }));
+
+        (await actor.GetAsync()).HasTrustedEffectEvidence.ShouldBeFalse();
+    }
+
+    /// <summary>An unavailable audit sink prevents evidence registration in the lifecycle actor.</summary>
+    [Fact]
+    public async Task RegistrationAuditFailureDoesNotMarkTrustedEvidence()
+    {
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        _ = audit.AppendAsync(Arg.Any<TrustedEffectAuditRecord>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new IOException("audit unavailable"));
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(trustedEffectAuditSink: audit);
+
+        await Should.ThrowAsync<IOException>(() => actor.RegisterTrustedEffectAsync(TrustedIdentity()));
+
+        (await actor.GetAsync()).HasTrustedEffectEvidence.ShouldBeFalse();
+    }
+
+    private static EffectIdentity TrustedIdentity()
+        => new("tenant-a", "works", "source-1", 7, EffectKindCatalog.DateResume, "works", "target-1", 0);
 
     [Fact]
     public async Task EnterDeletionAsync_UsesExactFourHundredDayBoundary()
@@ -863,7 +964,9 @@ public class IdempotencyTenantLifecycleActorTests
     }
 
     private static (IdempotencyTenantLifecycleActor Actor, IActorStateManager StateManager, FakeTimeProvider Time) CreateActor(
-        IActorProxyFactory? actorProxyFactory = null)
+        IActorProxyFactory? actorProxyFactory = null,
+        ITrustedEffectJointRetentionPolicy? trustedEffectRetention = null,
+        ITrustedEffectAuditSink? trustedEffectAuditSink = null)
     {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var time = new FakeTimeProvider(_now);
@@ -885,7 +988,9 @@ public class IdempotencyTenantLifecycleActorTests
             host,
             NullLogger<IdempotencyTenantLifecycleActor>.Instance,
             time,
-            actorProxyFactory);
+            actorProxyFactory,
+            trustedEffectRetention: trustedEffectRetention,
+            trustedEffectAuditSink: trustedEffectAuditSink ?? Substitute.For<ITrustedEffectAuditSink>());
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return (actor, stateManager, time);
     }

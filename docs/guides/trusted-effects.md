@@ -49,13 +49,33 @@ source-evidence gate only after the host supplies
 `ITrustedEffectSourceFloorProvider` and `ITrustedEffectJointRetentionPolicy`.
 It rejects missing or invalid floors, reads the exact source envelope from its
 actor, checks tenant/domain/aggregate/sequence, and rejects a tenant whose
-idempotency lifecycle has entered legal hold or deletion. Neither dependency has
-a default implementation. A deployment must bind the floor to authoritative
-stream retention and make source stream, target stream, receipt, and collision
-evidence subject to one audited tenant offboarding decision before registering
-this gate. The present lifecycle actor only purges idempotency references; it
-does not erase trusted effect evidence. This registration alone does not close
-the AD-28 owner, privileged-audit, or restore gates.
+idempotency lifecycle has entered legal hold or deletion. Before target
+dispatch, it registers trusted evidence in the tenant lifecycle actor. The
+serialized registration fails if offboarding began during source inspection.
+Neither dependency has a default implementation. A deployment must bind the
+floor to authoritative stream retention. Its joint-retention policy must hold
+the source, target, receipt, collision evidence, and tenant key under one
+monotonic decision through target commit and replay.
+
+The lifecycle actor will not mark a tenant with registered trusted evidence
+`Purged` until `ITrustedEffectJointRetentionPolicy.EraseTenantAsync` completes.
+That callback must implement one authorized, idempotent source/target erasure
+operation and prove durable completion before returning. A failed callback
+leaves the lifecycle purge-eligible for retry; legal hold prevents the callback
+from running. The policy must inventory every target receipt and collision and
+erase them with their source and target streams before tenant-key destruction.
+EventStore supplies the serialized gate and callback; it has no default eraser
+or production registration.
+
+The host must also provide `ITrustedEffectAuditSink`, an append-only privileged
+audit implementation. Admission logs payload-free authorization or denial
+metadata before any receipt access or target mutation. Evidence registration,
+collision quarantine, and offboarding erasure require an audit append before
+their writes. A missing
+or failed sink closes those paths. The sink belongs outside ordinary application
+logs and must retain authorization denial, quarantine, and erasure evidence
+under the tenant retention decision. No default audit sink is registered.
+These seams do not close the AD-28 owner approval or restore-drill gates.
 
 The first registered producer must lock its effect family, ordinal, and golden
 vectors before using this endpoint. Receipts and collision records are private

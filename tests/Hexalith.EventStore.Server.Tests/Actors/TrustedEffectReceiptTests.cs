@@ -62,6 +62,35 @@ public class TrustedEffectReceiptTests
         state.CommittedState.Keys.ShouldContain(key => key.StartsWith("effect_collision_", StringComparison.Ordinal));
     }
 
+    /// <summary>An unavailable privileged audit sink prevents a collision quarantine write.</summary>
+    [Fact]
+    public async Task CollisionAuditFailureDoesNotMutateTarget()
+    {
+        var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
+        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(
+            stateManager: state,
+            trustedEffectAdmissionPolicy: policy,
+            trustedEffectAuditSink: audit);
+        _ = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
+        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>())
+            .Returns(admission with { SemanticDigest = "CHANGED" });
+        _ = audit.AppendAsync(Arg.Any<TrustedEffectAuditRecord>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new IOException("audit unavailable"));
+
+        await Should.ThrowAsync<IOException>(
+            () => actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof"));
+
+        state.CommittedState.Keys.ShouldNotContain(key => key.StartsWith("effect_collision_", StringComparison.Ordinal));
+        _ = await actor.Invoker.Received(1).InvokeAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     /// <summary>Admission must complete before target receipt state is read.</summary>
     [Fact]
     public async Task DeniedCallerCannotInspectReceipt()
