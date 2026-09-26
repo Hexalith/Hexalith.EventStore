@@ -146,7 +146,7 @@ development_status:
   # the three receipts; the result is evidence only, with no operational authority.
   # Caveat: both owner roles resolve to one authenticated account and the Test Architect
   # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its
-  # matrix, validator, independent second-identity check, and sealed CI control.
+  # matrix, validator, assurance-level check, and sealed CI control.
   # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
   # the three caveat lines above, this note, the next four lines, the row, and the fence's END
   # marker as one verbatim block and pins this row's value; change them only together.
@@ -278,9 +278,9 @@ development_status:
 
   epic-9: backlog
   # Story 9.1 (OR28) must pass before Story 9.2 can be handed off under PRD section 0.
-  # Story 9.2 cannot close until a named human reviewer independent of github:jpiquot approves.
+  # Story 9.2 closes on sealed CI plus a time-separated owner attestation (single-maintainer-attested).
   9-1-corrective-work-authorization-record-and-validator: backlog
-  9-2-phase-4-high-risk-gate-matrix-and-non-authorship-control: backlog
+  9-2-phase-4-high-risk-gate-matrix-and-assurance-control: backlog
   epic-9-retrospective: optional
 action_items:
   - epic: D

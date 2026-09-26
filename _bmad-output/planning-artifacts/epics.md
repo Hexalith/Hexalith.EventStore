@@ -369,12 +369,12 @@ Domain modules can opt into an EventStore-owned, provider-neutral payload-protec
 **Cross-cutting coverage:** NFR1-NFR4, NFR7, NFR9-NFR12, NFR16-NFR17, NFR19
 **Implementation notes:** This post-MVP epic is strictly sequential: the approved security specification authorizes implementation, predecessor evidence gates every later slice, and Story 8.11 alone may close G5 after production-backend, golden, dual-provider, release, and rollback proof.
 
-### Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Independently Approved
-Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved by an authenticated identity independent of its author.
+### Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Approved At A Declared Assurance Level
+Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved at the Assurance Control level the owner-role registry requires, with that level labelled on every result.
 **Primary users:** Product owner, Test Architect, gate evaluators, release and deployment owners
 **FRs covered:** none (governance). **Refinements owned:** OR10, OR13, OR28; gate G-HIGH-RISK; the corrective-work authorization input to G-BASELINE
 **Cross-cutting coverage:** supporting NFR7, NFR12, NFR16 as listed by G-HIGH-RISK; closes none of them
-**Implementation notes:** Added by `sprint-change-proposal-2026-09-26.md`. MVP epic, independent of Epic 8. Story 9.1 bootstraps the PRD §0 corrective-work authorization; Story 9.2 cannot reach `done` without a named human reviewer independent of the author. Neither story grants readiness, release, deployment, or migration authority.
+**Implementation notes:** Added by `sprint-change-proposal-2026-09-26.md`. MVP epic, independent of Epic 8. Story 9.1 bootstraps the PRD §0 corrective-work authorization; While the registry names one human, Story 9.2 closes on sealed CI plus a time-separated owner attestation and is labelled `single-maintainer-attested` (Assurance Control, `sprint-change-proposal-2026-09-26-solo-maintainer-assurance.md`). Neither story grants readiness, release, deployment, or migration authority.
 
 **Sequencing rule:** Epic numbers organize product outcomes; they do not grant blanket execution authority. Architecture decisions, safety prerequisites, exact evidence gates, and backward-only story dependencies govern implementation order. Relevant Epic 5 Phase 0 protections must precede exposed or administrative surfaces even when those surfaces have lower epic numbers.
 
@@ -2817,7 +2817,7 @@ So that operators have a positive deployment-grade identity without relying on o
 **Then** this packet may be used as immutable EventStore evidence but does not itself authorize either action
 **And** deployment requires its own authority, while consumer removal requires the separate authenticated Consumer-owner receipt bound to that consumer repository/commit, packet subject, capability catalog, applicable-mode matrix, and exact removal subject; Parties 8.6 and G5 remain outside this story.
 
-**Current reconciliation (2026-09-26):** By dated owner decision (`sprint-change-proposal-2026-09-26.md`), Story 3.15 is `done` for FR36-C2 evidence validation only: subject `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`, 3/3 receipts, retained validator exit 0, selected index `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Both owner roles map to one account and the Test Architect record is self-attested, so this is not three-party review. G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; Story 9.2 owns G-HIGH-RISK. The story reopens to `in-progress` on validator failure, subject re-mint, or independent G-HIGH-RISK rejection. Epic 3 stays `in-progress` for Story 3.16.
+**Current reconciliation (2026-09-26):** By dated owner decision (`sprint-change-proposal-2026-09-26.md`), Story 3.15 is `done` for FR36-C2 evidence validation only: subject `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`, 3/3 receipts, retained validator exit 0, selected index `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`. Both owner roles map to one account and the Test Architect record is self-attested, so this is not three-party review. G-RUNTIME-PARITY and G-HIGH-RISK stay blocked; Story 9.2 owns G-HIGH-RISK. The story reopens to `in-progress` on validator failure, subject re-mint, or a G-HIGH-RISK Assurance Control evaluation that rejects the evidence. Epic 3 stays `in-progress` for Story 3.16.
 
 ### Story 3.16: Latest-Compatible Dependency And Root Submodule Refresh
 
@@ -6862,9 +6862,9 @@ So that Parties migration can proceed only against a proven shared capability.
 
 <!-- Epic 8 story set confirmed complete for planning. -->
 
-## Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Independently Approved
+## Epic 9: Phase 4 Gate Decisions Are Machine-Enforced And Approved At A Declared Assurance Level
 
-Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved by an authenticated identity independent of its author. Added by `sprint-change-proposal-2026-09-26.md`; both stories start in `backlog`.
+Gate evaluators can prove which failed gate a corrective change is authorized to fix, and that every high-risk gate result was validated in sealed CI and approved at the Assurance Control level the owner-role registry requires, with that level labelled on every result. Added by `sprint-change-proposal-2026-09-26.md`; both stories start in `backlog`.
 
 ### Story 9.1: Corrective-Work Authorization Record And Validator
 
@@ -6900,17 +6900,17 @@ So that no failed gate is "fixed" by an unauthorized, overbroad, or out-of-path 
 **Then** it runs as a blocking check from a new workflow file
 **And** `docs/ci.md` is not edited unless a Story 4.15 reseal is planned.
 
-### Story 9.2: Phase 4 High-Risk Gate Matrix And Non-Authorship Control
+### Story 9.2: Phase 4 High-Risk Gate Matrix And Assurance Control
 
 As a Test Architect,
-I want each mandatory gate classified and every high-risk gate result bound to sealed CI validation plus an authenticated independent approver,
-So that no author can approve their own high-risk evidence.
+I want each mandatory gate classified and every high-risk gate result bound to sealed CI validation plus approval at the Assurance Control level the owner-role registry requires,
+So that no high-risk result overstates the assurance behind it.
 
 **Requirements coverage:** Primary OR10 and OR13; gate G-HIGH-RISK. Absorbs the 2026-09-23 proposal §4.E transition guard for high-risk gate rows only; the all-story tracker/wrapper/epics lifecycle comparison stays with OR15 and G-BASELINE.
 
 **Architecture constraints:** None new.
 
-**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-HIGH-RISK. **Named independent reviewer:** unassigned. Under the External-authority rule this is an explicit blocker: the story may build the matrix and validator, but it cannot reach `done` or mark its own row PASS until a human reviewer with an authenticated account distinct from `github:jpiquot` is named and approves.
+**Dependencies:** Story 9.1 passed, plus a Story 9.1 authorization record for gate G-HIGH-RISK. **Approval:** Assurance Control at the registry-computed level; while the registry names one human, the owner's time-separated attestation, labelled `single-maintainer-attested`. (The 2026-09-26 "named independent reviewer" blocker was superseded the same day because the owner is the project's only person.)
 
 **Acceptance Criteria:**
 
@@ -6921,16 +6921,22 @@ So that no author can approve their own high-risk evidence.
 
 **Given** a high-risk entry
 **When** it is validated
-**Then** it binds its exact command, trigger, subject and evidence identities, pass condition, author and evaluator roles, non-authorship result, and guarded transition
-**And** the non-authorship check rejects self-approval, identity aliasing (one account in two roles, as in the Story 3.15 registry), unauthenticated or tool-persona identities (such as `bmad:*`) offered as the independent identity, and missing seals, each proven by an observed failing fixture.
+**Then** it binds its exact command, trigger, subject and evidence identities, pass condition, author and evaluator roles, required and achieved assurance level, and guarded transition
+**And** the assurance check rejects `independent` labels backed by fewer than two distinct human identities, self-approval or identity aliasing (one account in two roles, as in the Story 3.15 registry) labelled `independent`, tool-persona (such as `bmad:*`) or CI identities counted as human approvers, attestations less than 24 hours after the last authored change to the subject, a level below the required one, and missing seals, each proven by an observed failing fixture.
+
+**Given** an owner-role registry fixture naming one human and another naming two
+**When** the required level is computed
+**Then** it is `single-maintainer-attested` for the first and `independent` for the second, with fixtures proving the switch
+**And** a downstream record (`READY`, `release-available`, `production-promoted`, consumer removal) carries the lowest assurance level of its inputs.
 
 **Given** the matrix and validator
 **When** CI runs
-**Then** the validator runs in a blocking, required check and the matrix inputs are content-hashed so that edits fail the check.
+**Then** the validator runs in a blocking, required check whose result is retrieved from the CI platform for the exact head SHA and workflow-file digest, never read from an author-supplied file
+**And** the matrix inputs are content-hashed so that edits fail the check.
 
 **Given** a high-risk gate or a story recorded against a high-risk NFR
 **When** a transition to PASS or `done` is attempted
-**Then** the guarded transition requires the passing validator result and the independent approval (OR13).
+**Then** the guarded transition requires the passing validator result and approval at the required assurance level (OR13).
 
 **Given** G-RUNTIME-PARITY is evaluated under this control
 **When** the independent evaluation completes

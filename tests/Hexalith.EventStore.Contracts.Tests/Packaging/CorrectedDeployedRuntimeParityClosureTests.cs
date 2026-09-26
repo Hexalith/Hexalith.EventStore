@@ -4598,7 +4598,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             "| G-HIGH-RISK |",
             StringComparison.Ordinal));
         highRiskGate.ShouldContain("**FAIL/BLOCKED.**");
-        highRiskGate.ShouldContain("matrix, validator, classifications, second-identity controls, sealed validation, and guarded transitions are absent");
+        highRiskGate.ShouldContain("matrix, validator, classifications, assurance-level controls, sealed validation, and guarded transitions are absent");
+        highRiskGate.ShouldContain("always including sealed CI validation");
 
         string publicationGate = lines.Single(line => line.StartsWith(
             "| G-PUBLICATION-AUTH |",

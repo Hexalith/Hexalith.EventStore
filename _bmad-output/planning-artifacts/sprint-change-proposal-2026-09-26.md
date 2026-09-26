@@ -303,3 +303,4 @@ G-HIGH-RISK is an evidence and approval governance gate, not a design decision. 
 - 2026-09-26: the owner selected "B + backlog owners" and batch review in the correct-course session.
 - 2026-09-26: owner approved this proposal ("continue and continue") after reviewing the batch; scope: apply §4.A–E and G as one docs/test commit. Route: Developer for §4; Product owner for §5 order 4.
 - Conversational approval does not supply G-HIGH-RISK approval, a second identity, or any release, deployment, readiness, or consumer-removal authority.
+- 2026-09-26 (later): §5 order 4 ('name the Story 9.2 independent reviewer') is superseded by `sprint-change-proposal-2026-09-26-solo-maintainer-assurance.md`; the owner is the project's only person. The rest of this proposal is unchanged.

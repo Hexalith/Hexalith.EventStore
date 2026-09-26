@@ -4287,7 +4287,7 @@ public sealed class DeployedRuntimeParityClosureTests
         sprint.ShouldContain(
             "\n  # Caveat: both owner roles resolve to one authenticated account and the Test Architect\n" +
             "  # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its\n" +
-            "  # matrix, validator, independent second-identity check, and sealed CI control.\n" +
+            "  # matrix, validator, assurance-level check, and sealed CI control.\n" +
             "  # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts\n" +
             "  # the three caveat lines above, this note, the next four lines, the row, and the fence's END\n" +
             "  # marker as one verbatim block and pins this row's value; change them only together.\n" +
