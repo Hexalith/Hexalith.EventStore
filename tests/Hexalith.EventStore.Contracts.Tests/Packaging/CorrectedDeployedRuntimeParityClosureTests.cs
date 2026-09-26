@@ -1316,11 +1316,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         // The digest set alone stayed green while the guide still reported the pre-acceptance 0/3
         // verdict beside a 3/3 packet, so the stated reassembly result must match the receipts too.
         // Every stated verdict must match: a stale 0/3 sentence kept beside the new one would
-        // otherwise leave the guide asserting both results.
+        // otherwise leave the guide asserting both results. The guide is hard-wrapped prose, so a
+        // verdict may break across a line; match any whitespace and compare the collapsed form.
         int receipts = closure["acceptances"]!["receipts"]!.AsArray().Count;
         int verifierExit = receipts == RequiredRoles.Length ? 0 : 1;
-        string[] verdicts = Regex.Matches(ci[section..sectionEnd], @"receipts=\d+ verifier_exit=\d+")
-            .Select(match => match.Value)
+        string[] verdicts = Regex.Matches(ci[section..sectionEnd], @"receipts=\d+\s+verifier_exit=\d+")
+            .Select(match => Regex.Replace(match.Value, @"\s+", " "))
             .ToArray();
         verdicts.ShouldNotBeEmpty();
         verdicts.ShouldAllBe(verdict =>

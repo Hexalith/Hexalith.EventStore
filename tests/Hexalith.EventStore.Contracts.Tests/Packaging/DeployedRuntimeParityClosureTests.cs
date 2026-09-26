@@ -4274,19 +4274,23 @@ public sealed class DeployedRuntimeParityClosureTests
 
         // Story 3.15: the new subject has three current receipts and a positive bounded
         // technical verdict. The spec is done, while the tracker remains in review
-        // until G-HIGH-RISK supplies independent control.
-        sprint.ShouldContain(
-            "  # 2026-09-26: three current roster-bound receipts validate the corrected\n" +
-            "  # subject; the verifier exits 0 and selects only the pinned OCI index.\n" +
-            "  # The spec is done for bounded evidence validation, while this row remains\n" +
-            "  # review pending G-HIGH-RISK and later authority gates.");
-
-        // A comment cleanup once dropped this identity caveat and the missing-control list with the
-        // suite green, and a 2026-09-26 review patch restored them; keep them from vanishing again.
+        // until G-HIGH-RISK supplies independent control. A comment cleanup once dropped the
+        // identity caveat and the missing-control list with the suite green, and a 2026-09-26
+        // review patch restored them. Assert the caveat, the pointer comment that describes this
+        // guard, the four dated lines, and the row as one contiguous block, so none of them can
+        // vanish or drift away from the row the pointer comment says they sit beside.
         sprint.ShouldContain(
             "  # Caveat: both owner roles resolve to one authenticated account and the Test Architect\n" +
             "  # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its\n" +
-            "  # matrix, validator, independent second-identity check, and sealed CI control.");
+            "  # matrix, validator, independent second-identity check, and sealed CI control.\n" +
+            "  # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts\n" +
+            "  # the three caveat lines above, this note, the next four lines, and the row as one verbatim\n" +
+            "  # block and pins this row's value; change them only together.\n" +
+            "  # 2026-09-26: three current roster-bound receipts validate the corrected\n" +
+            "  # subject; the verifier exits 0 and selects only the pinned OCI index.\n" +
+            "  # The spec is done for bounded evidence validation, while this row remains\n" +
+            "  # review pending G-HIGH-RISK and later authority gates.\n" +
+            "  3-15-corrected-deployed-runtime-parity-closure: review\n");
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("review");
         string story315Spec = ReadNormalizedText(
