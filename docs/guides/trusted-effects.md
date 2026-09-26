@@ -11,7 +11,12 @@ must be `wrk-<EffectId>`.
 The public SDK names are `TrustedEffectSubmission`, `TrustedEffectContext`,
 `TrustedEffectResult`, and `ITrustedEffectSubmitter`. The HTTP submitter sends to
 `POST /api/v1/trusted-effects`. The gateway derives the workload from its Dapr
-caller principal and validates the short-lived asymmetric delegation against
+internal authentication principal; a bearer principal carrying a
+`dapr_caller_app_id` claim does not satisfy this endpoint's authentication
+scheme. Production must also restrict direct gateway access and attest the
+caller app through Dapr mTLS and deny-by-default ACLs, because the current
+internal authentication handler reads the `dapr-caller-app-id` header. The
+gateway validates the short-lived asymmetric delegation against
 the configured OIDC authority. The delegation must bind the complete identity
 tuple, command type, server-derived canonical command digest, workload, purpose,
 and causation. `EventStore:TrustedEffects:Authority:Rules` is an exact allow-list

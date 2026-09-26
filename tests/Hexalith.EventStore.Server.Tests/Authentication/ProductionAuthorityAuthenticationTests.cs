@@ -82,6 +82,17 @@ public sealed class ProductionAuthorityAuthenticationTests
             validResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         }
 
+        using (var bearerEffectRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/trusted-effects"))
+        {
+            bearerEffectRequest.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                CreateRsaToken(signingKey, AuthorityIssuer, Audience));
+            using HttpResponseMessage bearerEffectResponse = await client.SendAsync(
+                bearerEffectRequest,
+                TestContext.Current.CancellationToken);
+            bearerEffectResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
         string symmetricKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
         (string Scenario, string Token)[] invalidTokens =
         [
