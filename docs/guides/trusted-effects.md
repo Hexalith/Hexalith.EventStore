@@ -11,7 +11,12 @@ must be `wrk-<EffectId>`.
 The public SDK names are `TrustedEffectSubmission`, `TrustedEffectContext`,
 `TrustedEffectResult`, and `ITrustedEffectSubmitter`. The HTTP submitter sends to
 `POST /api/v1/trusted-effects`. The gateway derives the workload from its Dapr
-caller principal and validates the short-lived asymmetric delegation against
+internal authentication principal; a bearer principal carrying a
+`dapr_caller_app_id` claim does not satisfy this endpoint's authentication
+scheme. Production must also restrict direct gateway access and attest the
+caller app through Dapr mTLS and deny-by-default ACLs, because the current
+internal authentication handler reads the `dapr-caller-app-id` header. The
+gateway validates the short-lived asymmetric delegation against
 the configured OIDC authority. The delegation must bind the complete identity
 tuple, command type, server-derived canonical command digest, workload, purpose,
 and causation. `EventStore:TrustedEffects:Authority:Rules` is an exact allow-list
@@ -38,6 +43,19 @@ must approve this durable receipt type and a restore drill must prove source
 stream, target stream, receipt, collision evidence, audit, and tenant-key order
 before non-synthetic shared data or real-data admission. The current actor and
 gateway tests use synthetic data. No Works translator is changed by this API.
+
+The optional `AddEventStoreTrustedEffectRetention()` registration installs a
+source-evidence gate only after the host supplies
+`ITrustedEffectSourceFloorProvider` and `ITrustedEffectJointRetentionPolicy`.
+It rejects missing or invalid floors, reads the exact source envelope from its
+actor, checks tenant/domain/aggregate/sequence, and rejects a tenant whose
+idempotency lifecycle has entered legal hold or deletion. Neither dependency has
+a default implementation. A deployment must bind the floor to authoritative
+stream retention and make source stream, target stream, receipt, and collision
+evidence subject to one audited tenant offboarding decision before registering
+this gate. The present lifecycle actor only purges idempotency references; it
+does not erase trusted effect evidence. This registration alone does not close
+the AD-28 owner, privileged-audit, or restore gates.
 
 The first registered producer must lock its effect family, ordinal, and golden
 vectors before using this endpoint. Receipts and collision records are private
