@@ -4264,8 +4264,11 @@ public sealed class DeployedRuntimeParityClosureTests
         // the OQ8 validator's status map covers only epic-4 and 4-9..4-15, and the Story 3.15
         // guard observes digest ordering rather than this row. A 2026-09-09 review demonstrated
         // the gap by re-flipping all four and watching the full Contracts lane and the OQ8
-        // validator both stay green. Anchored per line, never a whole-file substring, because this
-        // file narrates its own lifecycle corrections in prose that quotes these very tokens.
+        // validator both stay green. Row values are anchored per line with SingleLineValue, never a
+        // whole-file substring, because this file narrates its own lifecycle corrections in prose
+        // that quotes these very tokens. The Story 3.15 wording block below is a deliberate
+        // multi-line substring: it starts at a line boundary and runs through the row and the
+        // fence's END marker, which that prose cannot quote by accident.
 
         // Story 4.6: spec frontmatter records approval_state absent and
         // implementation_authorized false, with outstanding operator actions.
@@ -4277,20 +4280,22 @@ public sealed class DeployedRuntimeParityClosureTests
         // until G-HIGH-RISK supplies independent control. A comment cleanup once dropped the
         // identity caveat and the missing-control list with the suite green, and a 2026-09-26
         // review patch restored them. Assert the caveat, the pointer comment that describes this
-        // guard, the four dated lines, and the row as one contiguous block, so none of them can
-        // vanish or drift away from the row the pointer comment says they sit beside.
+        // guard, the four dated lines, the row, and the GUARDED fence's END marker as one
+        // contiguous block starting at a line boundary, so none of them can vanish, drift away
+        // from the row, or leave the fence with the row.
         sprint.ShouldContain(
-            "  # Caveat: both owner roles resolve to one authenticated account and the Test Architect\n" +
+            "\n  # Caveat: both owner roles resolve to one authenticated account and the Test Architect\n" +
             "  # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its\n" +
             "  # matrix, validator, independent second-identity check, and sealed CI control.\n" +
             "  # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts\n" +
-            "  # the three caveat lines above, this note, the next four lines, and the row as one verbatim\n" +
-            "  # block and pins this row's value; change them only together.\n" +
+            "  # the three caveat lines above, this note, the next four lines, the row, and the fence's END\n" +
+            "  # marker as one verbatim block and pins this row's value; change them only together.\n" +
             "  # 2026-09-26: three current roster-bound receipts validate the corrected\n" +
             "  # subject; the verifier exits 0 and selects only the pinned OCI index.\n" +
             "  # The spec is done for bounded evidence validation, while this row remains\n" +
             "  # review pending G-HIGH-RISK and later authority gates.\n" +
-            "  3-15-corrected-deployed-runtime-parity-closure: review\n");
+            "  3-15-corrected-deployed-runtime-parity-closure: review\n" +
+            "  # >>> END GUARDED COMMENTS <<<\n");
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("review");
         string story315Spec = ReadNormalizedText(
