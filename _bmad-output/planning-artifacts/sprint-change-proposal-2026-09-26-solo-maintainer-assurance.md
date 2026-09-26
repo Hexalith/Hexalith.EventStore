@@ -207,3 +207,17 @@ Append this line to the §7 log of `sprint-change-proposal-2026-09-26.md`: "2026
 - 2026-09-26: the Owner selected "Solo-maintainer amendment" in the correct-course session. Batch mode.
 - 2026-09-26: the Owner approved this proposal ("continue"), including the 24-hour separation window.
 - Applied with three same-class additions found by the implementation sweep, under §5's success criterion that no PRD text requires or implies a second human: UJ5 "its independent receipts" → "its receipts at the required assurance level"; the §11.3 Story 3.15 row "the independent gate" → "the G-HIGH-RISK assurance gate"; OR29 "Implement and independently approve" → "Implement and approve at the G-HIGH-RISK Assurance Control level". Also, the Story 3.15 reopen trigger in epics.md, "independent G-HIGH-RISK rejection", became "a G-HIGH-RISK Assurance Control evaluation that rejects the evidence".
+
+## 8. Addendum (2026-09-26): Story 8.11 Resolution
+
+The Owner resolved the §6 open decision ("fix story 8.11"). Story 8.11's G5 approval now uses the Assurance Control:
+- the six named roles may be held by one authenticated person while the registry names one human;
+- each role decision is recorded separately, at least 24 hours after the last authored change to the packet;
+- the G5 verdict is labelled `single-maintainer-attested`;
+- an approval from an implementing agent or tool persona, or a decision counted for another role, cannot close G5.
+
+**Why this was an `epics.md` change.** The normative Story 8.1 spec is **unchanged**. Its §16.4 "independent test/security … evidence" means independent evidence: separate toolchains and re-derivation from raw evidence. All three existing approval packets (`AR-20260801-01`, `AR-20260913-01`, `AR-20260914-01`) already record the Owner in all seven roles, including "Test Architect / independent vector reviewer". Editing inside the normative markers would re-mint digest `de9ba886…` and invalidate every Story 8.1 approval, so the fix is limited to `epics.md` Story 8.11.
+
+**Other edits.** PRD line 192 now says Story 8.11 applies the same control. A leftover "independent evaluation" wording in Story 9.2 was corrected.
+
+**What is not affected.** Stories 8.1 and 8.2 (both `done`) are historical and unchanged, and Story 8.3's authorization is unaffected.

@@ -6784,7 +6784,7 @@ So that Parties migration can proceed only against a proven shared capability.
 
 **UX coverage:** No EventStore UI implementation applies. Documentation and consumer/operator wording must truthfully distinguish disabled, configured, conformant, experimental, available/G5, unreadable, rollback, and erasure states while Parties retains legal-policy and user-facing UX/copy.
 
-**Dependencies:** Story 8.10 and every prior Story 8.1–8.9 evidence packet must be complete, mutually consistent, and explicitly authorize Story 8.11. Named EventStore, Security, Release, Operations, Parties, and independent Test authorities must approve the exact final packet; missing authority is a valid non-closure result.
+**Dependencies:** Story 8.10 and every prior Story 8.1–8.9 evidence packet must be complete, mutually consistent, and explicitly authorize Story 8.11. The named EventStore, Security, Release, Operations, Parties, and Test/Vector roles must approve the exact final packet under the PRD Assurance Control; missing authority is a valid non-closure result. **Assurance (2026-09-26 owner decision):** while the owner-role registry names one human, that authenticated person may hold every role, as in Story 8.1 approvals `AR-20260801-01`, `AR-20260913-01`, and `AR-20260914-01`. Each role decision is recorded separately, and the G5 verdict is labelled `single-maintainer-attested`, never `independent`. In this story's evidence criteria, "independent" means re-derived from retained raw evidence and, for cryptography, reproduced by separate toolchains (normative §16.4 and §18), not a second person. The normative Story 8.1 digest is unchanged.
 
 **Current reconciliation:** Story 8.11 is backlog and dependency-blocked. The current guide correctly describes only provider-neutral hooks/no-op behavior and states that the shared engine, `pdenc-v2`, production backend, and G5 are unavailable. No implementation/package/provider/Parties/rollback evidence exists today, and sprint status cannot change that. The required future output is `_bmad-output/implementation-artifacts/8-11-g5-evidence-and-approval-closure.md`.
 
@@ -6846,9 +6846,9 @@ So that Parties migration can proceed only against a proven shared capability.
 **And** raw payload/key/credential/provider-private/tenant data is absent, evidence cannot be spliced across identities, and changing any bound artifact invalidates the decision.
 
 **Given** final approval is requested
-**When** the EventStore owner, named Security Reviewer, Release owner, Operations owner, Parties maintainer, and independent Test/Vector reviewer each authenticate an `Approved` or `Rejected` decision for the same packet hash with UTC timestamp, evidence reference, scope, and bounded conditions
-**Then** unanimous required approval with no open blocker yields `G5 available` and permits Epic 8 closure/Parties G5 status transition under the exact recorded scope; any other state yields a deterministic non-authorized verdict naming blockers
-**And** group aliases, author self-approval, implied silence, issue/story status, approval of an earlier hash, majority vote, or an approval conditioned on missing future evidence cannot close G5.
+**When** the EventStore owner, named Security Reviewer, Release owner, Operations owner, Parties maintainer, and Test/Vector reviewer roles each record an authenticated `Approved` or `Rejected` decision for the same packet hash with UTC timestamp, evidence reference, scope, and bounded conditions, made at least 24 hours after the last authored change to the packet (PRD Assurance Control)
+**Then** unanimous required approval with no open blocker yields `G5 available`, labelled with its achieved assurance level (`single-maintainer-attested` while the registry names one human), and permits Epic 8 closure/Parties G5 status transition under the exact recorded scope; any other state yields a deterministic non-authorized verdict naming blockers
+**And** group aliases, an implementing agent's or other tool persona's approval, one role decision counted for another role, a decision inside the separation window, self-approval labelled `independent`, implied silence, issue/story status, approval of an earlier hash, majority vote, or an approval conditioned on missing future evidence cannot close G5.
 
 **Given** the G5 decision is recorded
 **When** downstream authority is evaluated
@@ -6939,6 +6939,6 @@ So that no high-risk result overstates the assurance behind it.
 **Then** the guarded transition requires the passing validator result and approval at the required assurance level (OR13).
 
 **Given** G-RUNTIME-PARITY is evaluated under this control
-**When** the independent evaluation completes
+**When** the Assurance Control evaluation completes
 **Then** that evaluation is follow-on work that reopens Story 3.15 only if it rejects the evidence
 **And** any new receipt set follows the G-RUNTIME-PARITY re-mint rule.
