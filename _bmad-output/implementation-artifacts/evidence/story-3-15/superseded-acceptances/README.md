@@ -85,9 +85,12 @@ The `86c59c79...` set was superseded by the 2026-09-06 Group A tools patch, land
 
 The `7d64f87e...` set was superseded on 2026-09-26 when the smoke capture placed curl's `-q`
 first, preventing the operator's default `.curlrc` from changing the requested `/alive` path while
-the result still recorded `/alive`. Fresh receipts were later collected for the re-minted subject
-`66be1b4a...`, which carries its own acceptance directory in the live packet. Historical GitHub
-comments and the Test Architect record above were not reused for it.
+the result still recorded `/alive`. That change re-minted the subject to `c98fdef2...`, which never
+received a receipt; its packet is preserved under `../superseded-packets/`. A fresh two-platform
+Production capture with the `-q` producer and a corrected fourth limitation then re-minted it to
+`66be1b4a...`. Fresh receipts were later collected for that subject, which carries its own
+acceptance directory in the live packet. Historical GitHub comments and the Test Architect record
+above were not reused for it.
 
 Per the rerun trigger, **every prior receipt is rejected**. The bytes are retained here, outside the
 packet root, so they survive for audit while the packet stays closed over exactly the current

@@ -4280,6 +4280,13 @@ public sealed class DeployedRuntimeParityClosureTests
             "  # subject; the verifier exits 0 and selects only the pinned OCI index.\n" +
             "  # The spec is done for bounded evidence validation, while this row remains\n" +
             "  # review pending G-HIGH-RISK and later authority gates.");
+
+        // A comment cleanup once dropped this identity caveat and the missing-control list with the
+        // suite green, and a 2026-09-26 review patch restored them; keep them from vanishing again.
+        sprint.ShouldContain(
+            "  # Caveat: both owner roles resolve to one authenticated account and the Test Architect\n" +
+            "  # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its\n" +
+            "  # matrix, validator, independent second-identity check, and sealed CI control.");
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("review");
         string story315Spec = ReadNormalizedText(

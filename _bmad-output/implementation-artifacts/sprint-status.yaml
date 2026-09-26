@@ -148,7 +148,8 @@ development_status:
   # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its
   # matrix, validator, independent second-identity check, and sealed CI control.
   # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
-  # the next four lines verbatim and pins this row's value; change them only together.
+  # the three caveat lines above and the next four lines verbatim and pins this row's value;
+  # change them only together.
   # 2026-09-26: three current roster-bound receipts validate the corrected
   # subject; the verifier exits 0 and selects only the pinned OCI index.
   # The spec is done for bounded evidence validation, while this row remains

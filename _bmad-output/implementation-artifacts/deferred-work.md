@@ -4917,3 +4917,10 @@ status: open
   summary: Retained Production smoke records cannot show which producer or curl arguments captured them.
   evidence: `smokes/smoke-linux-{amd64,arm64}.log` and `smoke-results.json` under the `f343bb01…` packet carry no producer SHA-256, curl argv, or curlrc indicator. The 2026-09-26 `curl -q` re-mint to `66be1b4a…` therefore rests on narration plus the producer's current file hash. That gap is why the Test Architect declined `c98fdef2…`, and the fresh decision accepts it as a disclosed limit. Recording the producer digest in the smoke schema would re-mint the subject and burn all three receipts, so batch it with the next controlled re-mint, which carries the deferred capture-producer items.
   status: open
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-09-26, review-patch commit ddf87f25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: PRD current-slice superseded-subject checks catch only `c98fdef2` in short form.
+  evidence: `CorrectedDeployedRuntimeParityClosureTests.PlanningRuntimeParityAccountMatchesCurrentPacketAndPendingControl` (~4562/4575) checks `PreRecaptureSupersededSubjectSha256[..8]`, but `IntermediateTrustPathSupersededSubjectSha256` (`aafe9040`) and `CurlIsolationSupersededSubjectSha256` (`7d64f87e`) use the full 64-hex value, so a current PRD slice that names `7d64f87e...` in short form stays green. The gap predates `ddf87f25`. Switching all four checks to `[..8]` passes today because neither current slice contains any of these prefixes.
+  status: open

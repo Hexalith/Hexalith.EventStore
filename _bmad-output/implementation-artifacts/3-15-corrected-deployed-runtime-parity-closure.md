@@ -332,11 +332,15 @@ decision, registry and producer digests -> receipts addressed by that subject.
 - Complete Contracts suite after the 2026-09-24 in-clone and elided-subject regressions:
   **2108 passed, zero failed, skipped, or unrun**. The Contracts test project Release build passed
   with zero warnings and errors.
-- Post-collection Release Contracts test project build: zero warnings and errors; the two focused
-  Story 3.15 classes passed **235/235**, and the guarded lifecycle test passed **1/1**.
-- Post-collection full Contracts suite: **2131 total, 2128 passed, 3 failed**, with no skips or
-  unrun tests. The three failures are Story 4.15 OQ8 v5 clean-checkout/active-validation tests;
-  no Story 3.15 test failed. OQ8 reconciliation remains separate.
+- Post-collection, before the 2026-09-26 review patches: Release Contracts test project build
+  zero warnings and errors; the two focused Story 3.15 classes passed **235/235**, and the guarded
+  lifecycle test passed **1/1**. Full Contracts suite: **2131 total, 2128 passed, 3 failed**.
+- After the 2026-09-26 review patches and their follow-up review: Release build zero warnings and
+  errors; the two focused Story 3.15 classes passed **237/237**, and the guarded lifecycle test
+  passed **1/1**. Full Contracts suite: **2133 total, 2130 passed, 3 failed**, with no skips or
+  unrun tests. In both runs the three failures are Story 4.15 OQ8 v5
+  clean-checkout/active-validation tests; no Story 3.15 test failed. OQ8 reconciliation remains
+  separate.
 - `sprint-status.yaml` names the current 3/3 subject and is drift-guarded by the focused suite.
   `docs/ci.md` states the same 3/3 verdict (`receipts=3 verifier_exit=0`), and the focused suite
   binds that stated result to the packet's receipt count. The guide's changed hash still awaits

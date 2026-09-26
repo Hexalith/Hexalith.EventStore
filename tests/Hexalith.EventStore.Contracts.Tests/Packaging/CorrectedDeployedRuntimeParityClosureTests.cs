@@ -139,7 +139,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     private static readonly (string RelativePath, string Sha256)[] SupersededArtefacts =
     [
-        ("README.md", "ccf5783dc1071258b4edf6a7a8576fb044d62c56746f0aeee0fb078ca50e326f"),
+        ("README.md", "d3baa2ef0e539576d14c2717e92d522e5e2aa0184f1279fee240e7cae4398add"),
         (SupersededSubjectSha256 + "/eventstore-owner.json",
             "ad8cc4fb62e5d1b843f42716235a8cce415ab612359b77fd0006c7dbea6ecfbf"),
         (SupersededSubjectSha256 + "/release-owner.json",
@@ -1315,10 +1315,16 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
 
         // The digest set alone stayed green while the guide still reported the pre-acceptance 0/3
         // verdict beside a 3/3 packet, so the stated reassembly result must match the receipts too.
+        // Every stated verdict must match: a stale 0/3 sentence kept beside the new one would
+        // otherwise leave the guide asserting both results.
         int receipts = closure["acceptances"]!["receipts"]!.AsArray().Count;
         int verifierExit = receipts == RequiredRoles.Length ? 0 : 1;
-        ci[section..sectionEnd].ShouldContain(
-            FormattableString.Invariant($"receipts={receipts} verifier_exit={verifierExit}"));
+        string[] verdicts = Regex.Matches(ci[section..sectionEnd], @"receipts=\d+ verifier_exit=\d+")
+            .Select(match => match.Value)
+            .ToArray();
+        verdicts.ShouldNotBeEmpty();
+        verdicts.ShouldAllBe(verdict =>
+            verdict == FormattableString.Invariant($"receipts={receipts} verifier_exit={verifierExit}"));
 
         // The emulator digest is an environmental prerequisite, not a packet input, so nothing else
         // binds it. Keep the operator record and the capture script's documented precondition from
