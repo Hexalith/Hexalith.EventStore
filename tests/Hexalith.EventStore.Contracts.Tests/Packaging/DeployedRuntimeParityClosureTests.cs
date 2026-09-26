@@ -4296,6 +4296,20 @@ public sealed class DeployedRuntimeParityClosureTests
             "  # review pending G-HIGH-RISK and later authority gates.\n" +
             "  3-15-corrected-deployed-runtime-parity-closure: review\n" +
             "  # >>> END GUARDED COMMENTS <<<\n");
+
+        // The block ends at the END marker; pin the fence's other side too. Each marker occurs
+        // exactly once and BEGIN precedes the caveat, so deleting BEGIN, moving the block above
+        // it, or closing the fence early with a second END cannot leave the suite green.
+        const string guardedFenceBegin =
+            "\n  # >>> GUARDED COMMENTS -- DO NOT DELETE (see GUARDED COMMENT BLOCKS in the header) <<<\n";
+        const string guardedFenceEnd = "\n  # >>> END GUARDED COMMENTS <<<\n";
+        int fenceBegin = sprint.IndexOf(guardedFenceBegin, StringComparison.Ordinal);
+        fenceBegin.ShouldBeGreaterThanOrEqualTo(0);
+        sprint.LastIndexOf(guardedFenceBegin, StringComparison.Ordinal).ShouldBe(fenceBegin);
+        sprint.IndexOf(guardedFenceEnd, StringComparison.Ordinal)
+            .ShouldBe(sprint.LastIndexOf(guardedFenceEnd, StringComparison.Ordinal));
+        fenceBegin.ShouldBeLessThan(
+            sprint.IndexOf("\n  # Caveat: both owner roles", StringComparison.Ordinal));
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
             .ShouldBe("review");
         string story315Spec = ReadNormalizedText(
