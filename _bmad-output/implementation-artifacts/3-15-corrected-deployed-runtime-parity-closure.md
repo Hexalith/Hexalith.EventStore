@@ -12,6 +12,19 @@ area; no current role has accepted the new subject. `closure.json` still names
 as a claim, but the verifier selects no deployed identity until three new receipts pass. The four
 operational-authority flags remain false.
 
+The [current-subject acceptance review brief](3-15-corrected-deployed-runtime-parity-acceptance-review.md)
+sets out the three role decisions against `c98fdef2...`. It is preparation only; no credentialed
+comment or current receipt has been created for this subject.
+
+An independent 2026-09-26 Test Architect review **declined** this exact subject. The retained
+Production smokes predate `curl -q` and do not preserve the historical curl arguments or
+`.curlrc`, so the reviewer could not attest that the requests actually reached `/alive`. The
+reviewer also declined the fourth required limitation's claim that every receipt is
+credential-posted, because the Test Architect source is a local self-attested record. No Test
+Architect receipt was created. The [owner validation comment draft](3-15-owner-validation-comment-draft.md)
+is local and unposted; owner decisions remain missing. Correcting these bound inputs would
+re-mint the subject and require fresh decisions from all three roles.
+
 Running the retained verifier reproduces exactly this state:
 
 ```text

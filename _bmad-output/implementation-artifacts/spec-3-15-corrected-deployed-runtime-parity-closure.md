@@ -41,6 +41,13 @@ context:
 The 2026-09-26 capture-producer re-mint superseded all three receipts for the previous subject.
 The retained verifier now fails closed at **0 of 3**; the OCI index remains a claim and is not selected.
 
+**Current continuation (2026-09-26):** Verify the re-minted packet, prepare reviewable
+acceptance material for each of the three roles bound to this exact subject, and refresh the
+existing separate Story 4.15 OQ8 seal-reconciliation record for `docs/ci.md`. Do not use
+credentials, post comments, create or collect receipts, or claim positive parity before explicit
+authorization and genuine current-subject acceptances. Once those exist, re-run the assembler and
+verifier, update this story's records and tracker, and run the focused checks.
+
 ## Code Map
 
 - `tools/validate-corrective-release-evidence.py:12-73` and `tools/release_evidence_handlers/v3.py:58-404,863-974` -- trusted Story 3.14 dispatcher/canonical-byte gate; preserve v3 behavior and require predecessor digest `4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`.
@@ -65,6 +72,9 @@ The retained verifier now fails closed at **0 of 3**; the OCI index remains a cl
 - [x] `_bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` and `.gitattributes` -- retain LF-stable workflow/archive facts, all 14 independently downloaded NuGet packages, raw OCI graph, bounded Production smoke logs/results for both immutable children, owner-role registry, closed inventory, canonical subject, and subject-addressed receipts without hash cycles.
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- cover every matrix row and mutation-prove identity bytes, package domains, OCI chain, both smokes, inventory, registry, subject, each receipt field/role, and non-authority flags.
 - [x] `_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure*.md` and `docs/ci.md` -- record exact lineage, commands/results, blockers, rerun triggers, positive identity, receipt sources, and evidence-only operator boundary.
+- [x] [`3-15-corrected-deployed-runtime-parity-acceptance-review.md`](3-15-corrected-deployed-runtime-parity-acceptance-review.md) -- prepare exact-subject, role-specific EventStore-owner, Release-owner, and Test Architect
+  acceptance review material without representing a draft as a receipt; refresh the existing
+  Story 4.15 OQ8 seal-reconciliation record for the changed `docs/ci.md`.
 - [ ] Obtain three fresh authenticated, subject-bound role acceptances for the current subject and
   re-run the assembler and retained verifier before claiming positive parity again.
 - [x] `tools/{release_evidence_handlers/v3.py,deployed_runtime_parity_handlers/v1.py,assemble-corrected-deployed-runtime-parity.py}`, `evidence/story-3-15/f343bb01…/{subject,closure}.json`, `tools/validate-corrective-release-evidence.py:35`, `tools/validate-corrected-deployed-runtime-parity.py:48` and `3-15-corrected-deployed-runtime-parity-closure-proof-packet.md:55` -- carry out the single authorized re-mint that batches every correction to the sha256+size-pinned trust path, rejecting the three existing receipts and obtaining fresh architecture/security/test sign-off. Scope is owned by **DW-508** and must include **DW-506** (both v3 canonical encoders emit non-JSON `NaN`/`Infinity`; v1 and the capture copy are already correct), **DW-507** (tautological assembler-identity guard; settle what an independent repository root is before re-landing A8), **DW-509** (the sealed v3 `global.json` gate input hashes the CRLF worktree file, not the committed blob) and **DW-511** (the missing layout-preserving-copy refusal and NaN characterization cases). Landing these one at a time is what turned the Contracts lane red at 1987/204/0 and forced revert `dfc0ac55`. Recorded 2026-09-13 by the Story 4.15 Group Q code review, Decision 3. Technical re-mint and AI sign-offs are complete; this check does not represent the three separate owner acceptance receipts.
@@ -527,6 +537,20 @@ new hole. Both were reproduced here with live controls before being fixed.
   trigger. Stale `__pycache__` trees were removed from `tools/`.
 
 ## Spec Change Log
+
+- **2026-09-26 (independent Test Architect decision):** The `bmad:murat` review declined the
+  unchanged `c98fdef2...` subject because the retained 2026-08-21 Production smokes do not
+  preserve the original curl arguments or `.curlrc`, and the fourth required limitation says
+  every receipt is credential-posted although the Test Architect source is local/self-attested.
+  No receipt was created. A local owner validation comment draft records the two missing owner
+  decisions and the needed controlled re-mint if these bound inputs are corrected.
+
+- **2026-09-26 (acceptance review preparation):** Prepared a separate, non-receipt review brief
+  for the EventStore owner, Release owner, and Test Architect against unchanged subject
+  `c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3`.
+  Rechecked the 24 technical inventory files and the 0/3 verifier refusal, and refreshed the
+  existing Story 4.15 OQ8 seal-reconciliation ledger entry with the live guide digest and
+  failing active-v5 diagnostics. No current receipt or positive parity verdict was created.
 
 - **2026-09-26 (curl configuration isolation re-mint):** The owner chose to isolate the smoke
   capture from default `.curlrc` settings. `curl -q` is now the first curl argument, and the
