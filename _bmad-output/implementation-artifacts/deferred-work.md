@@ -4867,3 +4867,42 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-tracker-reconciliation.md`
   summary: Reconcile FrontComposer's main-push EventStore successor default with its updated EventStore gitlink.
   evidence: FrontComposer commit `d7553fb2d54b5a5ad16f7328149b31dbb9295f65` pins `references/Hexalith.EventStore` to `b15ad59abca82d5980ef92a510c2379e05f4d46f`, while `.github/workflows/quality.yml:208` and `eng/eventstore_runtime_evidence.py:46` still default the successor source to `bf03d57cf459b329d709622af6c616c1635b83d9`. The validator compares that value to the checked-out gitlink, so Gate 2c rejects the main-push pair. The gitlink change arrived in an unrelated external update during this task; fix belongs in FrontComposer.
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure.md (2026-09-26, tooling chunk)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Assembler imports handler modules before checking their provenance.
+  evidence: `tools/assemble-corrected-deployed-runtime-parity.py:20,167` executes ordinary imports before `verify_handler_provenance`; DW-452 already tracks the producer import gap, while the isolated verifier remains verdict authority.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Smoke capture permits a local Python module shadow before evidence production.
+  evidence: `tools/capture-corrected-deployed-runtime-parity-smokes.py:19` imports `subprocess` without the dispatchers' isolation; the earlier EH1 finding records this sealed-producer risk.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Retained GitHub receipt sources prove internal consistency but not independent authenticity.
+  evidence: `tools/deployed_runtime_parity_handlers/v1.py:1049-1073` checks retained JSON fields without a live fetch or signature; the 2026-08-22 story decision accepted and disclosed this limitation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: NuGet.org package transport origin has no independent retained proof.
+  evidence: `tools/deployed_runtime_parity_handlers/v1.py:649-683` checks archive identity and a derived URL but no service response or registry attestation; an earlier deferred item records the gap.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Failed Docker inspect can be mistaken for absence after a timed-out container run.
+  evidence: `tools/capture-corrected-deployed-runtime-parity-smokes.py:114` returns cleanup success on any nonzero inspect result, including daemon failure; previously tracked as EH2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: A container created after the sole Docker inspect can escape timeout cleanup.
+  evidence: `tools/capture-corrected-deployed-runtime-parity-smokes.py:107-115` inspects once and immediately treats a missing name as clean; previously tracked as an accepted-subject race.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: A failed Docker run can leave a created container without cleanup.
+  evidence: `tools/capture-corrected-deployed-runtime-parity-smokes.py:213-218,288` sets `container_created` only after exit 0 and deliberately skips removal on nonzero exit under an existing owner policy.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Retained-file and nuspec reads have no memory or decompression bound.
+  evidence: `tools/deployed_runtime_parity_handlers/v1.py:398` reads whole files before size validation and `tools/release_evidence_handlers/v3.py:488` expands a nuspec with `archive.read`; DW-413/DW-433 already track the gap.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Subject-bound receipt limitation misdescribes the Test Architect record as credential-posted.
+  evidence: `tools/deployed_runtime_parity_handlers/v1.py:83` says every receipt was posted with a role holder's credential, but `v1.py:1073` accepts a local self-attested Test Architect source; prior BH7 deferred the wording change because it re-mints the accepted subject.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Incomplete assembler rollback restores only closure.json and can leave mismatched support files.
+  evidence: `tools/assemble-corrected-deployed-runtime-parity.py:98,489` restores only the prior closure after build_document writes the registry, inventory, and subject; the existing deferred-work ledger already records this packet consistency risk.
+
+## Deferred from: Story 3.15 curl-isolation re-mint (2026-09-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Reconcile the updated CI guide with Story 4.15's separate OQ8 evidence seal.
+  evidence: The Story 3.15 correction changed `docs/ci.md` from Story 4.15 v4's pinned SHA-256 `0d39f39f928e20eabfeb7398ab68ef8e615d3c8d45d6849fd7491cd025f2bba4` to `e48417d8fdd99b4b07634d08ead0a5118e77f610ab4ed2d47dff4892c821f584`. The default `python3 tools/validate-oq8-platform-evidence.py` exits 1 at the v5 check; the nested `python3 tools/oq8-v5-packet.py --validate-active` reports `V5 activation requires a clean committed checkout`. Story 4.15 needs its own controlled gate-input reconciliation and current validation; the historical v3 and closed-lifecycle modes pass but do not approve current evidence.

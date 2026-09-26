@@ -2,17 +2,15 @@
 
 ## Current verdict
 
-**Deployed-runtime parity is available at 3 of 3 receipts.** Current subject
-`sha256:7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`. The DW-508 trust-path
-correction re-minted the subject after the Story 5.3 producer hardening. The Group A remint had rejected the three
-`86c59c79...` receipts collected on 2026-09-05. Those receipts remain byte-for-byte outside the
-packet under `evidence/story-3-15/superseded-acceptances/86c59c79.../`, alongside the earlier
-`bb58d691...`, `dab64f5f...` and `a8cc777e...` trees. The rostered `github:jpiquot` owner
-accepted the exact current subject for both owner roles on issue `#352`, and `bmad:murat` accepted
-it as a self-attested Test Architect. The selected identity is only
-`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`.
-This remains evidence only; deployment, publication, registry mutation, consumer removal, and
-predecessor change require separate authority.
+**Deployed-runtime parity fails closed at 0 of 3 receipts.** Current subject
+`sha256:c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3` was
+re-minted on 2026-09-26 after the smoke capture began passing curl's `-q` first. This prevents an
+operator `.curlrc` from changing the requested path while the retained result still says `/alive`.
+The three receipts for prior subject `7d64f87e...` moved byte-for-byte to the superseded audit
+area; no current role has accepted the new subject. `closure.json` still names
+`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`
+as a claim, but the verifier selects no deployed identity until three new receipts pass. The four
+operational-authority flags remain false.
 
 Running the retained verifier reproduces exactly this state:
 
@@ -20,24 +18,24 @@ Running the retained verifier reproduces exactly this state:
 $ python3 tools/validate-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json \
     --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity] pass: subject=sha256:7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274 selected=sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3
+[corrected-deployed-runtime-parity] fail: exactly three packet-bound receipts are required
 $ echo $?
-0
+1
 ```
 
-Re-running the assembler is idempotent and reports the same accepted verdict:
+Re-running the assembler is idempotent and reports the same non-authorizing state:
 
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274 receipts=3 verifier_exit=0
+[corrected-deployed-runtime-parity-assembly] subject=sha256:c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3 receipts=0 verifier_exit=1
 $ echo $?
-0
+1
 ```
 
 **`deployed_runtime_parity` and `selected_deployed_identity` remain claim fields whose grant is
-the 3-of-3 receipt gate.** The retained verifier now grants them after validating all three receipts;
-an auditor must still read them with the receipt bindings and four false non-authority flags.
+the 3-of-3 receipt gate.** The retained verifier rejects them at 0/3; an auditor must read the
+claim fields with the receipt bindings and four false non-authority flags.
 
 ### Completed owner action (now superseded)
 
@@ -50,15 +48,16 @@ an auditor must still read them with the receipt bindings and four false non-aut
 
 Those earlier three receipts no longer bind the current subject. They are retained unbound for audit.
 
-### Current owner action
+### Prior owner action (superseded on 2026-09-26)
 
 - EventStore-owner: [issue #352 comment 5789893766](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5789893766), authored by authenticated `github:jpiquot`.
 - Release-owner: [issue #352 comment 5789897143](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5789897143), authored by the same rostered account.
-- Test Architect: subject-bound, self-attested `bmad:murat` record in the current packet.
+- Test Architect: subject-bound, self-attested `bmad:murat` record for prior subject `7d64f87e...`.
 
-Both owner comments have `created_at == updated_at == accepted_at`; all three accept the four
-subject-bound limitations. Six earlier timestamp-mismatched posting attempts were visibly marked
-superseded on issue `#352` and are not retained in the packet.
+Both owner comments have `created_at == updated_at == accepted_at`; all three accepted the four
+limitations for the prior subject. Their byte-for-byte retained sources and receipts are now under
+`superseded-acceptances/7d64f87e.../` and authorize nothing for `c98fdef2...`. Six earlier
+timestamp-mismatched posting attempts were visibly marked superseded on issue `#352`.
 
 The after-the-fact ratification of the 2026-09-23 receipt-collection run is recorded in
 [issue #352 comment 5803577826](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5803577826),
@@ -67,10 +66,10 @@ That was about 16 hours after the kept receipts at `06:00:46Z` and `06:01:05Z`, 
 commit `a2f5cba2`. The comment is an agent-composed request that quotes the owner's written line
 “I Jérôme Piquot, owner; authorize” verbatim. Under review decision D1, that quoted line counts
 as the owner's authorization; the scope and two acceptance comment IDs are in the agent-composed
-text. The two acceptance comments remain the subject-bound receipt evidence. The ratification
+text. The two acceptance comments remain historical receipt evidence for `7d64f87e...`. The ratification
 grants no deployment, publication, registry, consumer-removal, or predecessor-change authority.
 This is an as-observed external audit citation: the comment is mutable, is not retained or
-hash-closed in the packet, and is not checked by the verifier that returns the 3/3 parity verdict.
+hash-closed in the packet, and is not checked by the current 0/3 verifier verdict.
 
 ### Why the subject changed
 
@@ -131,8 +130,8 @@ verifier now accepts owner receipts only from dedicated issue `#352`, rejecting 
 
 ### Superseded acceptance history
 
-Four complete acceptance rounds were collected and are now superseded. All four are retained
-byte-for-byte in the superseded audit area and authorize nothing for `7d64f87e...`.
+Five complete acceptance rounds were collected and are now superseded. All five are retained
+byte-for-byte in the superseded audit area and authorize nothing for `c98fdef2...`.
 
 Against subject `dab64f5f...`:
 
@@ -196,7 +195,7 @@ requirement. Their scopes are narrower than dedicated trust-path attestations:
 | Role | Record counted under D2 | Scope of that record |
 | --- | --- | --- |
 | Architecture | The Story 3.15 spec's 2026-09-23 Change Log statement that architecture sign-off passed. | A narrative result; no dedicated architecture review of the corrected trust path is retained. |
-| Test | The current subject-bound, self-attested `bmad:murat` Test Architect receipt under `acceptances/7d64f87e.../test-architect.json`. | Acceptance of the parity subject; no separate trust-path-test attestation is retained. |
+| Test | The prior subject-bound, self-attested `bmad:murat` Test Architect receipt now under `superseded-acceptances/7d64f87e.../test-architect.json`. | Historical acceptance of the prior parity subject; no separate trust-path-test attestation is retained. |
 | Security | The four-layer 2026-09-23 code review of receipt-collection commit `a2f5cba2`, recorded in the spec's Review Findings. | Code review findings and triage; no dedicated Story 3.15 Security Reviewer or trust-path security attestation is retained. |
 
 The Story 4.15 v4 security and test review files bind Story 4.15's subject and do not serve as
@@ -264,8 +263,8 @@ The role registry retains the owner-ratified mappings:
 - `release-owner` -> `github:jpiquot`
 - `test-architect` -> `bmad:murat`
 
-Three current acceptances bind subject `7d64f87e...`; the retained verifier validates all three.
-The four superseded rounds are listed above and authorize nothing here.
+No current acceptance binds subject `c98fdef2...`; the retained verifier fails closed at 0/3.
+All five superseded rounds, including the prior 3/3 subject `7d64f87e...`, authorize nothing here.
 
 No planning approval, release authority, prior receipt, label, tag, self-declared role, or synthetic
 test fixture is treated as a Story 3.15 acceptance. The two owner receipts require retained GitHub
@@ -286,8 +285,8 @@ are:
 | `publication_authorized` | `false` |
 | `consumer_removal_authorized` | `false` |
 | `grants_mutation_authority` | `false` |
-| `deployed_runtime_parity` | `available` -- **claim only**, granted at 3 of 3 |
-| `selected_deployed_identity` | the index digest -- **claim only**, granted at 3 of 3 |
+| `deployed_runtime_parity` | `available` -- **claim only**, not granted at 0 of 3 |
+| `selected_deployed_identity` | the index digest -- **claim only**, not selected at 0 of 3 |
 
 A positive parity verdict is evidence that the deployed runtime matches the corrective release. It
 is not permission to deploy it, to publish or recover packages, to mutate the registry, to remove a
@@ -317,12 +316,11 @@ decision, registry and producer digests -> receipts addressed by that subject.
 - Complete Contracts suite after the 2026-09-24 in-clone and elided-subject regressions:
   **2108 passed, zero failed, skipped, or unrun**. The Contracts test project Release build passed
   with zero warnings and errors.
-- `sprint-status.yaml` and `docs/ci.md` name the current subject and are drift-guarded by the
-  focused suite. The guide's final positive verdict is bound by separately reviewed Story 4.15 v4
-  subject `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`;
-  its default validator passes.
-- Checked-in Story 3.15 assembler and verifier: **pass at three of three receipts**, exit 0;
-  subject `7d64f87e...`; selected OCI index only; all non-authority flags false.
+- `sprint-status.yaml` and `docs/ci.md` name the current 0/3 subject and are drift-guarded by the
+  focused suite. Their earlier positive wording described the 2026-09-24 accepted subject and is
+  historical; the Story 4.15 doc-bound seal must be checked separately after the guide update.
+- Checked-in Story 3.15 assembler and verifier: **fail closed at zero of three receipts**, exit 1;
+  subject `c98fdef2...`; OCI index is a claim only; all non-authority flags false.
 - `git diff --check`: no whitespace errors reported.
 
 ## Rerun trigger

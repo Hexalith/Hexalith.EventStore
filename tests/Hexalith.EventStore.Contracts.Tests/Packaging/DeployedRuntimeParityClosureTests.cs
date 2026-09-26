@@ -4272,21 +4272,20 @@ public sealed class DeployedRuntimeParityClosureTests
         SingleLineValue(sprint, "  4-6-global-position-sharding-spec-renegotiation:")
             .ShouldBe("awaiting-operator");
 
-        // Story 3.15: the spec is done for its bounded, three-receipt technical
-        // evidence-validated result. The sprint row remains review until G-HIGH-RISK
-        // supplies an independent second-identity check and sealed CI validation;
-        // neither lifecycle value grants release or production authority.
+        // Story 3.15: curl configuration isolation re-minted the subject. The prior
+        // three receipts are superseded; the spec and tracker remain in-progress
+        // until new subject-bound acceptances restore the technical verdict.
         sprint.ShouldContain(
-            "  # 2026-09-24 tracker handoff: the Story 3.15 spec is done for its bounded\n" +
-            "  # evidence-validated result, but this row remains review while G-HIGH-RISK's\n" +
-            "  # matrix, validator, independent second-identity check, and sealed CI control\n" +
-            "  # are absent. Three receipts grant no release, promotion, or consumer removal.");
+            "  # 2026-09-26 curl isolation re-minted the Story 3.15 subject; the prior\n" +
+            "  # three receipts are superseded, so the verifier fails closed at 0/3.\n" +
+            "  # The spec and row remain in-progress until three new receipts bind\n" +
+            "  # the current subject. G-HIGH-RISK and later authority gates remain open.");
         SingleLineValue(sprint, "  3-15-corrected-deployed-runtime-parity-closure:")
-            .ShouldBe("review");
+            .ShouldBe("in-progress");
         string story315Spec = ReadNormalizedText(
             root,
             "_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md");
-        FrontmatterValue(story315Spec, "status").ShouldBe("'done'");
+        FrontmatterValue(story315Spec, "status").ShouldBe("'in-progress'");
 
         // Story 5.3: owner closed the story 2026-09-10 after spec-5-3 reached done (review loop 8).
         SingleLineValue(sprint, "  5-3-production-authentication-guards-and-secret-stripping:")

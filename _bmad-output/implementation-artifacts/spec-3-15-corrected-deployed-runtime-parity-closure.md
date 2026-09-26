@@ -2,7 +2,7 @@
 title: 'Story 3.15 Corrected Deployed Runtime Parity Closure'
 type: 'feature'
 created: '2026-08-21'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '94591f3539ce30372db58e5fdd3ba017ea8c07b8'
 review_loop_iteration: 6
 context:
@@ -37,7 +37,9 @@ context:
 
 </frozen-after-approval>
 
-**Current canonical subject:** `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`.
+**Current canonical subject:** `c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3`.
+The 2026-09-26 capture-producer re-mint superseded all three receipts for the previous subject.
+The retained verifier now fails closed at **0 of 3**; the OCI index remains a claim and is not selected.
 
 ## Code Map
 
@@ -48,7 +50,7 @@ context:
 - `tools/capture-corrected-deployed-runtime-parity-smokes.py` -- bounded two-platform Production smoke capture.
 - `_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/` -- complete
   receipt/source trees bound to superseded subjects `bb58d691...`, `dab64f5f...`, `a8cc777e...`, and
-  `86c59c79...`, retained unbound for audit. They must never be moved back into the packet; the
+  `86c59c79...`, and `7d64f87e...`, retained unbound for audit. They must never be moved back into the packet; the
   `bb58d691...` owner sources are anchored on issue `#346` and are rejected on lineage as well as on
   subject.
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- new positive-closure and fail-closed mutation suite.
@@ -63,6 +65,8 @@ context:
 - [x] `_bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/` and `.gitattributes` -- retain LF-stable workflow/archive facts, all 14 independently downloaded NuGet packages, raw OCI graph, bounded Production smoke logs/results for both immutable children, owner-role registry, closed inventory, canonical subject, and subject-addressed receipts without hash cycles.
 - [x] `tests/Hexalith.EventStore.Contracts.Tests/Packaging/CorrectedDeployedRuntimeParityClosureTests.cs` -- cover every matrix row and mutation-prove identity bytes, package domains, OCI chain, both smokes, inventory, registry, subject, each receipt field/role, and non-authority flags.
 - [x] `_bmad-output/implementation-artifacts/3-15-corrected-deployed-runtime-parity-closure*.md` and `docs/ci.md` -- record exact lineage, commands/results, blockers, rerun triggers, positive identity, receipt sources, and evidence-only operator boundary.
+- [ ] Obtain three fresh authenticated, subject-bound role acceptances for the current subject and
+  re-run the assembler and retained verifier before claiming positive parity again.
 - [x] `tools/{release_evidence_handlers/v3.py,deployed_runtime_parity_handlers/v1.py,assemble-corrected-deployed-runtime-parity.py}`, `evidence/story-3-15/f343bb01…/{subject,closure}.json`, `tools/validate-corrective-release-evidence.py:35`, `tools/validate-corrected-deployed-runtime-parity.py:48` and `3-15-corrected-deployed-runtime-parity-closure-proof-packet.md:55` -- carry out the single authorized re-mint that batches every correction to the sha256+size-pinned trust path, rejecting the three existing receipts and obtaining fresh architecture/security/test sign-off. Scope is owned by **DW-508** and must include **DW-506** (both v3 canonical encoders emit non-JSON `NaN`/`Infinity`; v1 and the capture copy are already correct), **DW-507** (tautological assembler-identity guard; settle what an independent repository root is before re-landing A8), **DW-509** (the sealed v3 `global.json` gate input hashes the CRLF worktree file, not the committed blob) and **DW-511** (the missing layout-preserving-copy refusal and NaN characterization cases). Landing these one at a time is what turned the Contracts lane red at 1987/204/0 and forced revert `dfc0ac55`. Recorded 2026-09-13 by the Story 4.15 Group Q code review, Decision 3. Technical re-mint and AI sign-offs are complete; this check does not represent the three separate owner acceptance receipts.
 
 **Acceptance Criteria:**
@@ -524,6 +528,15 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-09-26 (curl configuration isolation re-mint):** The owner chose to isolate the smoke
+  capture from default `.curlrc` settings. `curl -q` is now the first curl argument, and the
+  recording fake pins that order. The bound capture digest changed to
+  `7d134165963877d7633295bdb00504b4ea6b7424f26142cc6e3495b18ef48236`; the assembler
+  derived subject `c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3`.
+  All six files from the prior three-receipt set moved byte-for-byte to the superseded audit area.
+  The verifier exits 1 at 0/3, so parity and index selection are unavailable pending new role
+  acceptances. The spec and sprint row are `in-progress`.
+
 - **2026-09-24 (completion):** Completed the three-layer review of the Story 3.15 closure
   patches. The spec is `done`; the sprint row remains `review` for the tracker handoff, and the
   lifecycle assertion pins both values. No new patch or intent gap survived triage. Three
@@ -839,8 +852,9 @@ Both owner receipts are independently constrained to the same positively allowli
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests -noLogo` -- **2026-09-23 Test Architect actual:** 268 passed, 0 failed, 0 skipped before receipt collection. After collection, the updated Story 3.15 closure class alone passed 213/213 with zero failures or skips.
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: sha256:4d1a0c33...`, exit 0. The frozen predecessor packet is unchanged, and its whole 66-file tree is now digest-pinned by the focused suite, not just the identity file.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `pass: subject=sha256:7d64f87e... selected=sha256:4b141085...`, exit 0. All three real subject-bound receipts validate; parity is **available** and the selected identity is the pinned OCI index. The four operational-authority flags remain false.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **current actual:** `subject=sha256:7d64f87e... receipts=3 verifier_exit=0`, exit 0. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` still runs over both an isolated zero-receipt and fully accepted copy and pins both exit rules.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 current actual:** `fail: exactly three packet-bound receipts are required`, exit 1. The current subject is `c98fdef2...` at 0/3, so parity and index selection are unavailable. The four operational-authority flags remain false.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 current actual:** `subject=sha256:c98fdef2... receipts=0 verifier_exit=1`, exit 1. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` runs over both an isolated zero-receipt and a synthetic fully accepted copy and pins both exit rules.
+- `python3 tools/validate-oq8-platform-evidence.py` -- **2026-09-26 current actual:** exit 1, `Story 4.15 v5 reviewed packet, selector, or lifecycle validation failed`. The nested `python3 tools/oq8-v5-packet.py --validate-active` reports `V5 activation requires a clean committed checkout`. The Story 3.15 `docs/ci.md` correction also changes a v4-bound gate input; Story 4.15 must reconcile its own seal before a current OQ8 pass can be claimed. `--lifecycle-mode closed` and `--historical-v3-only` pass, but neither evaluates current evidence.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **historical actual:** 221 passed, 0 failed, 0 skipped before the in-clone path regression. The focused closure class passed 216/216 in the 2026-09-24 review-patch run, with zero failed, skipped, or unrun; it included two elided-subject cases.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 55 passed, 0 failed, 0 skipped.
 - Complete Contracts suite -- **2026-09-25 post-patch recorded actual:** 2121 total, 2118
@@ -849,7 +863,8 @@ Both owner receipts are independently constrained to the same positively allowli
   every Story 3.15 test, including the PRD guard, passed. The 2108/2108 run was a 2026-09-24
   snapshot with zero failures, skips, or unrun tests. The earlier 2096/2096 run preceded the
   `review` tracker transition and in-clone assembler path regression. `sprint-status.yaml` and
-  `docs/ci.md` name the current subject and positive receipt verdict and are drift-guarded by the
+  `docs/ci.md` named the 2026-09-25 positive subject and receipt verdict at that historical run;
+  both are updated to the current 0/3 state and remain drift-guarded by the
   focused suite. The guide is bound through the final Story 4.15 v4 review subject
   `8a59c89c276e0958f2066dfe8173d15ace2df6df2efb0120f6589c0ce20809b5`, fresh
   architecture/security/test review records, manifest, selector, and lifecycle record; the
@@ -1381,3 +1396,31 @@ Disposition (2026-09-25): the four patches were first left as action items, then
 - spec-edit — D1's resolution does not name who chose option (1).
 - spec-edit — Triage IDs collide ("2026-09-24 current EH1/EH2" beside earlier EH2/EH3).
 - spec-edit — `spec-3-15-tracker-reconciliation.md` bookkeeping: `review_loop_iteration: 0`, applied patch rows not marked, its Implementation Note says the PRD edit "remains in the worktree", and `done` without a green full-suite run.
+
+### Review Findings (2026-09-26, Story 3.15 tooling chunk at `f9a4b5be`)
+
+Scope: seven verifier, handler, assembler, and smoke-capture files, diffed from the story's recorded baseline `94591f35`; +2742/-36, 2942 diff lines. Blind Hunter and Edge Case Hunter returned findings. Verification Gap Reviewer and Acceptance Auditor ran but returned no findings, which this workflow records as empty layers. At triage, the checked-in 3/3 closure passed the pinned verifier. The owner's subsequent decision changed the bound producer and re-minted the packet at 0/3.
+
+**decision-needed:**
+
+- [x] [Review][Decision→Patch] RESOLVED 2026-09-26 (owner: option 1, re-mint the subject). Isolate curl from the operator's default configuration before accepting a Production `/alive` smoke. The capture now passes `-q` as curl's first argument, its recording test checks that position, the producer is re-minted, and the three prior receipts are retained as superseded. Current parity fails closed at 0/3 pending fresh acceptances. [tools/capture-corrected-deployed-runtime-parity-smokes.py:228]
+
+**defer:**
+
+- [x] [Review][Defer] The assembler imports `v1` and its predecessor before `verify_handler_provenance`, so changed or shadowed local module bytes can execute before the isolated verifier later rejects the result [tools/assemble-corrected-deployed-runtime-parity.py:20] — deferred: existing DW-452 producer import gap; the pinned verifier remains the verdict authority, and a producer change re-mints the accepted subject. (BH1, medium)
+- [x] [Review][Defer] Smoke capture imports `subprocess` from the caller's Python path, so a repository-local shadow can execute during evidence production [tools/capture-corrected-deployed-runtime-parity-smokes.py:19] — deferred: previously recorded EH1 risk in the sealed capture producer; rework needs a controlled re-mint. (BH2, high)
+- [x] [Review][Defer] Retained GitHub comment envelopes are internally checked but have no independent live or signed authenticity proof; a forged envelope with matching fixed fields can pass as an owner source [tools/deployed_runtime_parity_handlers/v1.py:1049] — deferred: the 2026-08-22 accepted consistency-versus-independence trade-off and existing ledger item require a new evidence contract and receipts. (BH4, medium)
+- [x] [Review][Defer] The derived NuGet.org URL has no retained response or registry attestation binding that service to the archive bytes [tools/deployed_runtime_parity_handlers/v1.py:649] — deferred: the origin limitation is already recorded for this accepted packet; package and nuspec checks establish content identity, not transport origin. (BH5, medium)
+- [x] [Review][Defer] Any nonzero `docker inspect` result is treated as container absence, including daemon or permission failure; cleanup can be reported as passed while a timed-out run's container remains [tools/capture-corrected-deployed-runtime-parity-smokes.py:114] — deferred: previously recorded sealed-producer risk. (BH6 + EH3, medium)
+- [x] [Review][Defer] A single immediate inspect can precede late container creation after `docker run` times out, leaving the container behind after cleanup reports success [tools/capture-corrected-deployed-runtime-parity-smokes.py:107] — deferred: previously recorded race in the sealed capture producer. (BH7, medium)
+- [x] [Review][Defer] A nonzero `docker run --detach` can leave a created container, but the cleanup branch skips inspect when `container_created` is still false [tools/capture-corrected-deployed-runtime-parity-smokes.py:213] — deferred: existing owner policy avoids force-removing a possibly external same-named container; changing it requires a deliberate cleanup policy and re-mint. (BH8 + EH2, medium)
+- [x] [Review][Defer] Retained files are read before any size limit, and `archive.read()` can expand an oversized nuspec in memory [tools/deployed_runtime_parity_handlers/v1.py:398; tools/release_evidence_handlers/v3.py:488] — deferred: existing DW-413/DW-433 resource-exhaustion gap. (BH11 + EH5, medium)
+- [x] [Review][Defer] The subject-bound limitation says every receipt was posted with a role holder's credential, but the Test Architect record is local and self-attested [tools/deployed_runtime_parity_handlers/v1.py:83] — deferred: previously recorded BH7 wording mismatch; changing the limitation would re-mint the subject again. The prior 3/3 receipts are already superseded. (BH12, medium)
+- [x] [Review][Defer] On an incomplete verifier run, rollback restores only `closure.json`; `build_document` may already have rewritten the registry, inventory, and subject, leaving the old closure bound to new support files [tools/assemble-corrected-deployed-runtime-parity.py:98,489] — deferred: this incomplete rollback is already tracked in deferred work; correction changes sealed producer bytes. (EH1, medium)
+
+**Rejected**
+
+- low — BH9: `--force` can leave partial smoke files after a write failure, but overwriting populated evidence is the explicit purpose of that flag, the verifier rejects mixed evidence, and an atomic multi-file producer protocol is disproportionate to this rare interruption.
+- low — BH10: a failed capture's rerun hint omits `--force`, but the next refusal exits 2 and names both `--force` and a fresh root; correcting a bound producer string would invalidate current receipts for one extra diagnostic step.
+- false — EH4: the code deliberately calls the field `repository_signature_entry_present` and checks only one `.signature.p7s` archive entry; it does not claim to authenticate PKCS#7 bytes. The 2026-08-22 owner decision explicitly kept that shallow check.
+- false — EH6: alternate evidence correctly leaves packet `closure.json` outside the exempt set; `_evidence_relative_to_packet` adds only the selected evidence file, so the claimed rejection is the intended closed-inventory behavior.

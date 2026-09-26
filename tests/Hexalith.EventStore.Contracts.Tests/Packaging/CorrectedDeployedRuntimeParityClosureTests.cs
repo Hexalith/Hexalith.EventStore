@@ -60,12 +60,16 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string FinalTrustPathSupersededSubjectSha256 =
         "a5c07d178412d8fbac72ec660a3c0a94826a823f7376c61e0e7b98ea554c3448";
 
+    /// <summary>Subject whose three receipts were superseded by curl configuration isolation.</summary>
+    private const string CurlIsolationSupersededSubjectSha256 =
+        "7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274";
+
     /// <summary>
     /// Subject the checked-in packet currently binds. It is drift-bound here and in docs/ci.md so a
     /// record that keeps naming a superseded subject cannot stay green.
     /// </summary>
     private const string CurrentSubjectSha256 =
-        "7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274";
+        "c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3";
 
     /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
     private const int FrozenStory314PacketFileCount = 66;
@@ -116,7 +120,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     private static readonly (string RelativePath, string Sha256)[] SupersededArtefacts =
     [
-        ("README.md", "71c267f7c9ce5761117b2711d6b7259240c5dd73c74c850fb8e94a78c956331e"),
+        ("README.md", "f2e0affd55965b5aba1c6d8ce2221cf3c4d0c1bd346bc8393f54e3eb13fb4123"),
         (SupersededSubjectSha256 + "/eventstore-owner.json",
             "ad8cc4fb62e5d1b843f42716235a8cce415ab612359b77fd0006c7dbea6ecfbf"),
         (SupersededSubjectSha256 + "/release-owner.json",
@@ -165,6 +169,18 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             "3881cd93ef37906eece57f08b6994a6029d0accc822af0b9e006594d0623bb6c"),
         (ReceiptCollectionSupersededSubjectSha256 + "/sources/test-architect.json",
             "d7f447b03296c6deccdcfffd70910f6997b970d7d54ef14317ce9ba8d0f2803f"),
+        (CurlIsolationSupersededSubjectSha256 + "/eventstore-owner.json",
+            "b11cead106f23bad7e17eae4336b08e8a3a458005813c646f53171b249e52da1"),
+        (CurlIsolationSupersededSubjectSha256 + "/release-owner.json",
+            "89d00ad1b69f54a7c144d6735eeba08940369ee35aa9bd1f8a98125d2d15ee7e"),
+        (CurlIsolationSupersededSubjectSha256 + "/test-architect.json",
+            "596200038a7314143b7665b574eb05819f81b43e1f4e3e05109866aa7680bda9"),
+        (CurlIsolationSupersededSubjectSha256 + "/sources/eventstore-owner.json",
+            "82b41cd4f1a9e24e627b3a14236e66a62159ae50fb46f90cd1e2e4764cd0a306"),
+        (CurlIsolationSupersededSubjectSha256 + "/sources/release-owner.json",
+            "398d2eb80587be311785faf751b9f1873f2eca3e04a6ccb1a736b1ec79428309"),
+        (CurlIsolationSupersededSubjectSha256 + "/sources/test-architect.json",
+            "64a920f24e5d937056beb5bb3b9b16dd85dea6974ae1665a6b5f221412e0c2d8"),
     ];
 
     /// <summary>
@@ -175,41 +191,55 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const int AcceptanceIssue = 352;
 
     /// <summary>
-    /// Verifies the checked-in packet closes only with three subject-bound roster receipts while
-    /// every operational authority flag remains false. The previously collected
-    /// <c>86c59c79...</c> receipts remain only in the superseded audit area. Synthetic 3-of-3 remains in
+    /// Verifies the re-minted checked-in packet fails closed at zero receipts while every
+    /// operational authority flag remains false. Prior receipts remain only in the superseded
+    /// audit area. Synthetic 3-of-3 remains in
     /// <see cref="ThreeRosterBoundRolesClosePositiveParityOnOneUnchangedSubject"/>.
     /// </summary>
     [Fact]
-    public void CheckedInPacketClosesAtThreeRosterBoundReceipts()
+    public void CheckedInPacketFailsClosedUntilNewRosterReceiptsArrive()
     {
         string root = FindRepositoryRoot();
         string packet = Path.Combine(root, EvidenceRelativePath);
 
         (int exitCode, string output, string error) = RunValidator(root, packet);
-        exitCode.ShouldBe(0, error);
-        output.ShouldContain("pass:");
+        exitCode.ShouldBe(1, error);
+        error.ShouldContain("exactly three packet-bound receipts are required");
+        output.ShouldNotContain("pass:");
 
         JsonObject closure = LoadJson(Path.Combine(packet, "closure.json"));
         closure["subject"]!["sha256"]!.GetValue<string>().ShouldBe(CurrentSubjectSha256);
-        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(RequiredRoles.Length);
+        closure["acceptances"]!["receipts"]!.AsArray().Count.ShouldBe(0);
         closure["deployment_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["consumer_removal_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["publication_authorized"]!.GetValue<bool>().ShouldBeFalse();
         closure["grants_mutation_authority"]!.GetValue<bool>().ShouldBeFalse();
 
-        // The claim fields are granted by the verified 3-of-3 packet, without operational authority.
+        // These claim fields are not granted while the verifier rejects the zero-receipt packet.
         closure["deployed_runtime_parity"]!.GetValue<string>().ShouldBe("available");
         closure["selected_deployed_identity"]!.GetValue<string>().ShouldBe(IndexDigest);
 
         closure["acceptances"]!["directory"]!.GetValue<string>()
             .ShouldBe("acceptances/" + CurrentSubjectSha256);
         string acceptanceRoot = Path.Combine(packet, "acceptances", CurrentSubjectSha256);
-        Directory.Exists(acceptanceRoot).ShouldBeTrue();
+        Directory.Exists(acceptanceRoot).ShouldBeFalse();
+        Directory.Exists(Path.Combine(root, SupersededRelativePath, CurlIsolationSupersededSubjectSha256))
+            .ShouldBeTrue();
         foreach (string role in RequiredRoles)
         {
-            File.Exists(Path.Combine(acceptanceRoot, role + ".json")).ShouldBeTrue(role);
-            File.Exists(Path.Combine(acceptanceRoot, "sources", role + ".json")).ShouldBeTrue(role);
+            File.Exists(Path.Combine(
+                    root,
+                    SupersededRelativePath,
+                    CurlIsolationSupersededSubjectSha256,
+                    role + ".json"))
+                .ShouldBeTrue(role);
+            File.Exists(Path.Combine(
+                    root,
+                    SupersededRelativePath,
+                    CurlIsolationSupersededSubjectSha256,
+                    "sources",
+                    role + ".json"))
+                .ShouldBeTrue(role);
         }
         Directory.Exists(Path.Combine(root, SupersededRelativePath, ReceiptCollectionSupersededSubjectSha256))
             .ShouldBeTrue();
@@ -2832,6 +2862,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] subjects =
         [
             subjectSha256,
+            CurlIsolationSupersededSubjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
             PreTrustPathSupersededSubjectSha256,
             IntermediateTrustPathSupersededSubjectSha256,
@@ -4417,8 +4448,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     }
 
     /// <summary>
-    /// Verifies the PRD distinguishes the current technical pass from its superseded receipt
-    /// snapshot and the still-missing independent high-risk control.
+    /// Verifies the PRD distinguishes the current zero-receipt fail-closed state from its prior
+    /// technical pass and the still-missing independent high-risk control.
     /// </summary>
     [Fact]
     public void PlanningRuntimeParityAccountMatchesCurrentPacketAndPendingControl()
@@ -4427,7 +4458,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         JsonObject closure = LoadJson(Path.Combine(root, EvidenceRelativePath, "closure.json"));
         string subject = closure["subject"]!["sha256"]!.GetValue<string>();
         int receiptCount = closure["acceptances"]!["receipts"]!.AsArray().Count;
-        receiptCount.ShouldBe(RequiredRoles.Length);
+        receiptCount.ShouldBe(0);
         string selectedIndex = closure["selected_deployed_identity"]!.GetValue<string>();
         selectedIndex.ShouldBe(IndexDigest);
         closure["oci"]!["index"]!["digest"]!.GetValue<string>().ShouldBe(selectedIndex);
@@ -4439,24 +4470,26 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] lines = prd.Split('\n');
 
         string summary = lines.Single(line => line.StartsWith(
-            "- **Deployed-runtime parity - TECHNICALLY VALIDATED;",
+            "- **Deployed-runtime parity - PENDING ACCEPTANCE;",
             StringComparison.Ordinal));
-        string currentSummary = summary[summary.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        string currentSummary = summary[summary.IndexOf("On 2026-09-26", StringComparison.Ordinal)..];
         currentSummary.ShouldContain(
             $"{receiptCount} of {RequiredRoles.Length} packet-bound receipts on current subject `{subject}`");
-        currentSummary.ShouldContain($"selecting OCI index `{selectedIndex}`");
+        currentSummary.ShouldContain($"OCI index claim `{selectedIndex}` is not granted");
         currentSummary.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+        currentSummary.ShouldNotContain(CurlIsolationSupersededSubjectSha256);
 
         string history = lines.Single(line => line.StartsWith(
             "| Story 3.15 deployed-runtime parity |",
             StringComparison.Ordinal));
         history.ShouldContain("2026-09-10");
         history.ShouldContain(IntermediateTrustPathSupersededSubjectSha256);
-        string currentHistory = history[history.IndexOf("On 2026-09-24", StringComparison.Ordinal)..];
+        string currentHistory = history[history.IndexOf("On 2026-09-26", StringComparison.Ordinal)..];
         currentHistory.ShouldContain(
             $"current subject SHA-256 `{subject}` with {receiptCount} of {RequiredRoles.Length} " +
-            $"packet-bound receipts and selected OCI index `{selectedIndex}`");
+            $"packet-bound receipts; OCI index claim `{selectedIndex}` is not granted");
         currentHistory.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
+        currentHistory.ShouldNotContain(CurlIsolationSupersededSubjectSha256);
 
         string parityGate = lines.Single(line => line.StartsWith(
             "| G-RUNTIME-PARITY |",
@@ -4464,9 +4497,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         parityGate.ShouldContain("current subject `" + subject + "`");
         parityGate.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
         parityGate.ShouldContain($"{receiptCount} of {RequiredRoles.Length} packet-bound receipts");
-        parityGate.ShouldContain($"selects OCI index `{selectedIndex}`");
-        parityGate.ShouldContain("TECHNICAL PASS; INDEPENDENT GATE BLOCKED");
-        parityGate.ShouldContain("tracker remains `review`");
+        parityGate.ShouldContain($"OCI index claim `{selectedIndex}` is not granted");
+        parityGate.ShouldContain("FAIL/BLOCKED");
+        parityGate.ShouldContain("tracker remains `in-progress`");
 
         string highRiskGate = lines.Single(line => line.StartsWith(
             "| G-HIGH-RISK |",
@@ -4519,6 +4552,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] subjects =
         [
             subjectSha256,
+            CurlIsolationSupersededSubjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
             PreTrustPathSupersededSubjectSha256,
             IntermediateTrustPathSupersededSubjectSha256,

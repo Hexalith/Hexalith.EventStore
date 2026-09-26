@@ -228,6 +228,9 @@ def capture_platform(output_root, platform, child_digest):
             response = run(
                 deadline,
                 "curl",
+                # curl reads .curlrc unless -q is its first argument. An operator's default
+                # request-target could return 200 from another path while this record says /alive.
+                "-q",
                 "--silent",
                 "--show-error",
                 "--output",

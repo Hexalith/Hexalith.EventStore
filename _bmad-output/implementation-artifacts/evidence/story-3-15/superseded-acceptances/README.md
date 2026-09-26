@@ -1,10 +1,8 @@
 # Superseded Story 3.15 acceptances
 
-This audit area retains four superseded Story 3.15 acceptance sets. There are **four sets against
-nine subjects** -- the canonical subject has been re-minted eight times -- because receipts were only
-ever collected against four of them. The other re-mints happened before any receipt was collected
-for that subject, so there is nothing to retain for them and their absence here is expected, not a
-gap.
+This audit area retains five superseded Story 3.15 acceptance sets. There are **five sets against
+the successive subjects** because receipts were collected for only five subjects. Re-mints that
+happened before any receipt was collected have no receipt set to retain.
 
 These sets authorize nothing for the current subject. Do not move them back into the packet.
 
@@ -38,6 +36,10 @@ that make the retention auditable -- so the re-rooting is documented here instea
   `a8cc777ed04f1f0a7f7dffb7f24f7359f786e9114afe04fc69b1aa90cb8fdf7f`.
 - Three roster-bound role receipts collected on 2026-09-05 for subject
   `86c59c79cf783d2a11ea967fdd4cca8281d01c626b80f9e6a6dc862fbb596274`.
+- Three roster-bound role receipts collected on 2026-09-23 for subject
+  `7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274`. The
+  2026-09-26 curl configuration isolation changed the bound capture producer and re-minted the
+  subject. These receipts and their sources moved here byte-for-byte; none accepts the new subject.
 
 The packet's `closure.json` carries `deployed_runtime_parity: "available"` and a
 `selected_deployed_identity`. Those two fields are the **claim** the three roles are asked to
@@ -80,6 +82,12 @@ The `86c59c79...` set was superseded by the 2026-09-06 Group A tools patch, land
 - The assembler restores the previous `closure.json` when the pinned verifier does not complete.
 - Encrypted or unsupported-compression nuspec reads fail closed as `EvidenceError`.
 - The closed inventory exempts only the validated evidence path, not a hardcoded `closure.json`.
+
+The `7d64f87e...` set was superseded on 2026-09-26 when the smoke capture placed curl's `-q`
+first, preventing the operator's default `.curlrc` from changing the requested `/alive` path while
+the result still recorded `/alive`. The new subject has zero acceptances until its three rostered
+roles issue fresh receipts. Historical GitHub comments and the Test Architect record above are not
+reused for it.
 
 Per the rerun trigger, **every prior receipt is rejected**. The bytes are retained here, outside the
 packet root, so they survive for audit while the packet stays closed over exactly the current

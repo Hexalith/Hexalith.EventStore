@@ -80,6 +80,8 @@ public sealed class CorrectedDeployedRuntimeParitySmokeCaptureTests
             curlArguments.Length.ShouldBe(2);
             foreach (string line in curlArguments)
             {
+                // curl disables its default .curlrc only when -q is the first argument.
+                line.ShouldStartWith("-q ");
                 line.ShouldContain("--output /dev/null");
                 line.ShouldContain("--write-out %{http_code} %{num_redirects}");
                 // Assert the operand, not just the flag: an unbounded or oversized budget would
