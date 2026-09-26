@@ -4538,7 +4538,7 @@ So that domains can evolve persisted events safely without CLR-name coupling, am
 
 **Classification:** Architecture/readiness gate. Completion authorizes Story 6.6 to start but does not count as runtime implementation progress.
 
-**Current reconciliation:** Story 6.5 remains backlog and `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is absent. `IEventContract.EventType` already provides a validated kebab-case domain discriminator, but persisted `EventMetadata.EventTypeName`, replay, and subscriptions still use CLR-oriented names and expose no payload schema version; no `IEventUpcaster` chain exists. Query and asynchronous named-projection seams already accept cancellation tokens, while `IDomainProcessor.ProcessAsync` and the legacy synchronous projection seam do not provide the required uniform published contract.
+**Current reconciliation:** Story 6.5 is in progress and `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is an unapproved draft. `IEventContract.EventType` already provides a validated kebab-case domain discriminator, but persisted `EventMetadata.EventTypeName`, replay, and subscriptions still use CLR-oriented names and expose no payload schema version; no `IEventUpcaster` chain exists. Query and asynchronous named-projection seams already accept cancellation tokens, while `IDomainProcessor.ProcessAsync` and the legacy synchronous projection seam do not provide the required uniform published contract. The draft does not grant completion or implementation authority without content-bound named human approval.
 
 **Acceptance Criteria:**
 
@@ -4616,7 +4616,7 @@ So that old and new event history can be processed safely without CLR-name coupl
 
 **Dependencies:** Story 6.5 must be complete with a valid approval explicitly authorizing this implementation. Current event persistence, protection/readability, replay/apply, projection, subscription, domain processor, query, testing, and public package contracts are migration inputs; Epic 8's optional production payload-protection engine remains out of scope.
 
-**Current reconciliation:** Story 6.6 remains backlog and is unauthorized because `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is absent. Validated kebab-case event contracts and several cancellation-aware internal/public seams are reusable foundations, but persisted and wire events remain CLR-name-oriented without a payload schema version, no shared upcaster pipeline exists, identity validation is not frozen across every boundary, and `IDomainProcessor` plus the legacy projection seam remain cancellation-inconsistent.
+**Current reconciliation:** Story 6.6 remains backlog and is unauthorized because `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is an unapproved draft without named human content approval or explicit valid authorization. Validated kebab-case event contracts and several cancellation-aware internal/public seams are reusable foundations, but persisted and wire events remain CLR-name-oriented without a payload schema version, no shared upcaster pipeline exists, identity validation is not frozen across every boundary, and `IDomainProcessor` plus the legacy projection seam remain cancellation-inconsistent.
 
 **Acceptance Criteria:**
 

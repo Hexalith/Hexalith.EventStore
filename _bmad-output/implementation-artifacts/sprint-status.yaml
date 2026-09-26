@@ -229,7 +229,7 @@ development_status:
   6-3-projection-delivery-cost-and-sequence-guard-spec: backlog
   6-4-projection-cost-and-sequence-guard-implementation: backlog
   # Architecture/readiness gate; authorizes 6.6 but does not count as runtime implementation progress.
-  6-5-event-versioning-and-upcasting-spec: backlog
+  6-5-event-versioning-and-upcasting-spec: in-progress
   6-6-event-versioning-and-upcasting-implementation: backlog
   epic-6-retrospective: optional
 
