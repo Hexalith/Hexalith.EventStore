@@ -44,6 +44,19 @@ stream, target stream, receipt, collision evidence, audit, and tenant-key order
 before non-synthetic shared data or real-data admission. The current actor and
 gateway tests use synthetic data. No Works translator is changed by this API.
 
+The optional `AddEventStoreTrustedEffectRetention()` registration installs a
+source-evidence gate only after the host supplies
+`ITrustedEffectSourceFloorProvider` and `ITrustedEffectJointRetentionPolicy`.
+It rejects missing or invalid floors, reads the exact source envelope from its
+actor, checks tenant/domain/aggregate/sequence, and rejects a tenant whose
+idempotency lifecycle has entered legal hold or deletion. Neither dependency has
+a default implementation. A deployment must bind the floor to authoritative
+stream retention and make source stream, target stream, receipt, and collision
+evidence subject to one audited tenant offboarding decision before registering
+this gate. The present lifecycle actor only purges idempotency references; it
+does not erase trusted effect evidence. This registration alone does not close
+the AD-28 owner, privileged-audit, or restore gates.
+
 The first registered producer must lock its effect family, ordinal, and golden
 vectors before using this endpoint. Receipts and collision records are private
 actor state, never domain events. Do not log command payloads or delegation
