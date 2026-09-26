@@ -74,6 +74,7 @@ public class EventStoreServerServiceCollectionExtensionsTests {
             (typeof(IdempotencyAdmissionDirectoryActor), IdempotencyAdmissionDirectoryActor.ActorTypeName),
             (typeof(IdempotencyTenantLifecycleActor), IdempotencyTenantLifecycleActor.ActorTypeName),
             (typeof(IdempotencyLegacyInventoryActor), IdempotencyLegacyInventoryActor.ActorTypeName),
+            (typeof(CoordinatedCommandActor), CoordinatedCommandActor.ActorTypeName),
         ];
         foreach ((Type implementationType, string actorTypeName) in expectedActors) {
             actorRuntime.RegisteredActors.ShouldContain(registration =>

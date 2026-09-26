@@ -112,8 +112,9 @@ public sealed class CoordinatedCommandActor(
             {
                 // A non-fenced retry can reach this path after its target commit and a later source update.
                 // Let the target actor return its authoritative idempotency outcome when its event exists.
+                // Persisted events get fresh message IDs; the submitted command message ID is their causation.
                 if (executionContext is null && (await target.GetEventsAsync(0).ConfigureAwait(false))
-                    .Any(item => string.Equals(item.MessageId, command.MessageId, StringComparison.Ordinal)))
+                    .Any(item => string.Equals(item.CausationId, command.MessageId, StringComparison.Ordinal)))
                 {
                     return await target.ProcessCommandAsync(command).ConfigureAwait(false);
                 }

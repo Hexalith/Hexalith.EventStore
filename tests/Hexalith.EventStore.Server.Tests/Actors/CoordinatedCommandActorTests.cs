@@ -113,6 +113,41 @@ public sealed class CoordinatedCommandActorTests
         await target.DidNotReceive().ProcessFencedCommandAsync(Arg.Any<FencedCommandEnvelope>());
     }
 
+    [Fact]
+    public async Task Non_fenced_retry_of_a_committed_command_replays_the_target_outcome()
+    {
+        (CoordinatedCommandActor actor, IActorStateManager state, _, IAggregateActor target, _) = CreateActor();
+        CommandEnvelope command = Command();
+        CommandProcessingResult committed = new(true, CorrelationId: "corr", EventCount: 1);
+        target.GetEventsAsync(0).Returns([new EventEnvelope("event-msg", "tenant-a", "tenant-provider-enablement",
+            "tenant-a", "tenant-provider-enablement", 1, 1, DateTimeOffset.UnixEpoch, "corr", command.MessageId,
+            "user", "v1", "ProviderDataHandlingDecided", 1, "json", [1], null)]);
+        target.ProcessCommandAsync(command).Returns(committed);
+
+        CommandProcessingResult replay = await actor.ProcessCommandAsync(command);
+
+        replay.ShouldBe(committed);
+        await target.Received(1).ProcessCommandAsync(command);
+        await state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Same_message_id_with_divergent_intent_returns_an_identity_conflict()
+    {
+        (CoordinatedCommandActor actor, _, _, IAggregateActor target, ICoordinatedCommandPolicy policy) = CreateActor();
+        policy.GetCommandDigest(Arg.Any<CommandEnvelope>())
+            .Returns(call => Convert.ToHexString(call.Arg<CommandEnvelope>().Payload));
+        CommandEnvelope command = Command();
+
+        CommandProcessingResult first = await actor.ProcessCommandAsync(command);
+        CommandProcessingResult divergent = await actor.ProcessCommandAsync(command with { Payload = [2] });
+
+        first.FailureReason.ShouldBe("ConcurrencyConflict");
+        divergent.Accepted.ShouldBeFalse();
+        divergent.ErrorMessage.ShouldBe("command_identity_conflict");
+        await target.DidNotReceive().ProcessCommandAsync(Arg.Any<CommandEnvelope>());
+    }
+
     private static (CoordinatedCommandActor Actor, IActorStateManager State, IAggregateActor Source,
         IAggregateActor Target, ICoordinatedCommandPolicy Policy) CreateActor()
     {
