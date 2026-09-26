@@ -89,7 +89,7 @@ public class DaprInternalAuthenticationHandlerTests {
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["APP_API_TOKEN"] = configuredToken })
+            .AddInMemoryCollection(new Dictionary<string, string?> { [DaprAppChannelTokenValidator.ConfigurationKey] = configuredToken })
             .Build();
         var check = new DaprAppChannelTokenHealthCheck(
             new DaprAppChannelTokenValidator(environment, configuration));
@@ -113,7 +113,7 @@ public class DaprInternalAuthenticationHandlerTests {
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(environmentName);
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["APP_API_TOKEN"] = configuredToken })
+            .AddInMemoryCollection(new Dictionary<string, string?> { [DaprAppChannelTokenValidator.ConfigurationKey] = configuredToken })
             .Build();
         var validator = new DaprAppChannelTokenValidator(environment, configuration);
         var handler = new DaprInternalAuthenticationHandler(

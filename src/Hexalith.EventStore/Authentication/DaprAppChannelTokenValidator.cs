@@ -12,12 +12,15 @@ public sealed class DaprAppChannelTokenValidator(
     IHostEnvironment environment,
     IConfiguration configuration)
 {
+    /// <summary>Gets the configuration key for the application-channel token.</summary>
+    public const string ConfigurationKey = "APP_API_TOKEN";
+
     /// <summary>Gets the Dapr application-channel token header name.</summary>
     public const string HeaderName = "dapr-api-token";
 
     /// <summary>Gets whether a non-Development host has the required app-channel secret.</summary>
     public bool IsConfigured => environment.IsDevelopment()
-        || !string.IsNullOrWhiteSpace(configuration["APP_API_TOKEN"]);
+        || !string.IsNullOrWhiteSpace(configuration[ConfigurationKey]);
 
     /// <summary>Validates the app-channel token outside local Development.</summary>
     public bool IsValid(HttpRequest request)
@@ -28,7 +31,7 @@ public sealed class DaprAppChannelTokenValidator(
             return true;
         }
 
-        string? expectedToken = configuration["APP_API_TOKEN"];
+        string? expectedToken = configuration[ConfigurationKey];
         if (string.IsNullOrWhiteSpace(expectedToken))
         {
             return false;

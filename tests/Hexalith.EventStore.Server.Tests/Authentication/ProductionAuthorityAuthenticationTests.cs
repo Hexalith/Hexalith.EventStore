@@ -49,6 +49,7 @@ public sealed class ProductionAuthorityAuthenticationTests
         using RSA wrongRsa = RSA.Create(2048);
         var signingKey = new RsaSecurityKey(rsa) { KeyId = Guid.NewGuid().ToString("N") };
         var wrongSigningKey = new RsaSecurityKey(wrongRsa) { KeyId = Guid.NewGuid().ToString("N") };
+        string appChannelToken = Guid.NewGuid().ToString("N");
 
         await using WebApplicationFactory<EventStoreProgram> factory = new WebApplicationFactory<EventStoreProgram>()
             .WithWebHostBuilder(builder =>
@@ -65,7 +66,7 @@ public sealed class ProductionAuthorityAuthenticationTests
                         ["Authentication:JwtBearer:SigningKey"] = null,
                         ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
                         ["Authentication:DaprInternal:AllowedCallers:0"] = "reactor",
-                        ["APP_API_TOKEN"] = "synthetic-app-channel-token",
+                        [Hexalith.EventStore.Authentication.DaprAppChannelTokenValidator.ConfigurationKey] = appChannelToken,
                     }));
                 builder.ConfigureTestServices(WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService);
             });
@@ -107,7 +108,7 @@ public sealed class ProductionAuthorityAuthenticationTests
         using (var tokenedInternalRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/trusted-effects"))
         {
             tokenedInternalRequest.Headers.Add("dapr-caller-app-id", "reactor");
-            tokenedInternalRequest.Headers.Add("dapr-api-token", "synthetic-app-channel-token");
+            tokenedInternalRequest.Headers.Add(Hexalith.EventStore.Authentication.DaprAppChannelTokenValidator.HeaderName, appChannelToken);
             tokenedInternalRequest.Content = new StringContent("{}", Encoding.UTF8, "application/json");
             using HttpResponseMessage tokenedResponse = await client.SendAsync(
                 tokenedInternalRequest,
