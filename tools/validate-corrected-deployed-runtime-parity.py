@@ -30,7 +30,7 @@ RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "
     "Production-smoke, inventory, registry, verifier, decision, or receipt-source policy change."
 )
-V1_HANDLER_SHA256 = "c877ccda4ae8a9038f530c97cecbf48d8851bff39ccc05444557991e4cacb8e6"
+V1_HANDLER_SHA256 = "b2b550794dc27ad7c33a9c221c594d0f456f1b90879477d3432df81336a9e6c0"
 HANDLERS = {
     (SCHEMA, 1, V1_HANDLER_SHA256): "deployed_runtime_parity_handlers.v1",
 }

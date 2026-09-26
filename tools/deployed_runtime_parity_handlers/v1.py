@@ -75,13 +75,11 @@ REQUIRED_LIMITATIONS = (
     "This packet supplies immutable deployed-runtime parity evidence only.",
     "It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.",
     "The Test Architect acceptance is a self-attested BMAD record without independent external authentication.",
-    # created_at, updated_at and accepted_at must agree to the exact second, which a human composing
-    # a comment by hand cannot achieve: the receipt body has to be composed against the timestamp
-    # GitHub will assign. Every receipt therefore is a tooling-composed artifact posted with the
-    # rostered owner's write credential. Disclose it in the subject-bound limitation set rather than
-    # leaving the operator to infer it.
-    "Every acceptance receipt is composed by repository tooling and posted with the rostered "
-    "role holder's credential, not typed by hand.",
+    # The two GitHub owner comments need tooling composition to match the server-assigned timestamp.
+    # The Test Architect source is a local self-attested BMAD record, so it is not credential-posted.
+    "The two owner acceptance comments are composed by repository tooling and posted with the "
+    "rostered role holder's credential, rather than typed by hand; the Test Architect source is "
+    "a local self-attested BMAD record.",
 )
 RERUN_TRIGGER = (
     "Rebuild the complete subject and reject all prior receipts after any predecessor, package, OCI, "

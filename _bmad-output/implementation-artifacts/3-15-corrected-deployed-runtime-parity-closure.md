@@ -3,27 +3,30 @@
 ## Current verdict
 
 **Deployed-runtime parity fails closed at 0 of 3 receipts.** Current subject
-`sha256:c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3` was
-re-minted on 2026-09-26 after the smoke capture began passing curl's `-q` first. This prevents an
-operator `.curlrc` from changing the requested path while the retained result still says `/alive`.
-The three receipts for prior subject `7d64f87e...` moved byte-for-byte to the superseded audit
-area; no current role has accepted the new subject. `closure.json` still names
+`sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6` was
+re-minted on 2026-09-26 after fresh two-platform Production smokes used the bound `curl -q`
+producer and limitation 4 was corrected. The previous `c98fdef2...` packet is preserved under
+`evidence/story-3-15/superseded-packets/`; it had no receipts. The three receipts for older
+subject `7d64f87e...` remain byte-for-byte in the superseded-acceptances area. No current role has
+accepted the new subject. `closure.json` still names
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`
 as a claim, but the verifier selects no deployed identity until three new receipts pass. The four
 operational-authority flags remain false.
 
 The [current-subject acceptance review brief](3-15-corrected-deployed-runtime-parity-acceptance-review.md)
-sets out the three role decisions against `c98fdef2...`. It is preparation only; no credentialed
-comment or current receipt has been created for this subject.
+sets out the new-subject decision input. It is preparation only; no credentialed owner comment or
+current receipt has been created for this subject.
 
-An independent 2026-09-26 Test Architect review **declined** this exact subject. The retained
-Production smokes predate `curl -q` and do not preserve the historical curl arguments or
-`.curlrc`, so the reviewer could not attest that the requests actually reached `/alive`. The
-reviewer also declined the fourth required limitation's claim that every receipt is
-credential-posted, because the Test Architect source is a local self-attested record. No Test
-Architect receipt was created. The [owner validation comment draft](3-15-owner-validation-comment-draft.md)
-is local and unposted; owner decisions remain missing. Correcting these bound inputs would
-re-mint the subject and require fresh decisions from all three roles.
+An independent 2026-09-26 Test Architect review **declined the former `c98fdef2...` subject**.
+Its 2026-08-21 smokes predated `curl -q`, and its fourth limitation incorrectly described every
+receipt as credential-posted. The fresh capture and corrected limitation address those two
+findings. A [fresh independent Test Architect decision](3-15-test-architect-decision-66be1b4a.md)
+**accepts the new subject's technical evidence**, with the self-attestation limit explicit. It is
+a decision report, not a packet receipt; the receipt count remains 0/3. The
+[historical owner validation request](3-15-owner-validation-comment-draft.md)
+was posted as [issue `#352` comment `5844166955`](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844166955)
+on 2026-09-26 for `c98fdef2...`. It is not an acceptance and cannot be treated as a request for
+this new subject. Owner decisions remain missing.
 
 Running the retained verifier reproduces exactly this state:
 
@@ -41,7 +44,7 @@ Re-running the assembler is idempotent and reports the same non-authorizing stat
 ```text
 $ python3 tools/assemble-corrected-deployed-runtime-parity.py \
     _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d
-[corrected-deployed-runtime-parity-assembly] subject=sha256:c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3 receipts=0 verifier_exit=1
+[corrected-deployed-runtime-parity-assembly] subject=sha256:66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6 receipts=0 verifier_exit=1
 $ echo $?
 1
 ```
@@ -69,7 +72,7 @@ Those earlier three receipts no longer bind the current subject. They are retain
 
 Both owner comments have `created_at == updated_at == accepted_at`; all three accepted the four
 limitations for the prior subject. Their byte-for-byte retained sources and receipts are now under
-`superseded-acceptances/7d64f87e.../` and authorize nothing for `c98fdef2...`. Six earlier
+`superseded-acceptances/7d64f87e.../` and authorize nothing for `66be1b4a...`. Six earlier
 timestamp-mismatched posting attempts were visibly marked superseded on issue `#352`.
 
 The after-the-fact ratification of the 2026-09-23 receipt-collection run is recorded in
@@ -144,7 +147,7 @@ verifier now accepts owner receipts only from dedicated issue `#352`, rejecting 
 ### Superseded acceptance history
 
 Five complete acceptance rounds were collected and are now superseded. All five are retained
-byte-for-byte in the superseded audit area and authorize nothing for `c98fdef2...`.
+byte-for-byte in the superseded audit area and authorize nothing for `66be1b4a...`.
 
 Against subject `dab64f5f...`:
 
@@ -183,10 +186,10 @@ sources.
 
 **Identity caveats:** the owner-role registry maps both `eventstore-owner` and `release-owner` to
 `github:jpiquot`; the `test-architect` receipt is a self-attested `bmad-test-architect-record`
-without independent external authentication; and every receipt is composed by repository tooling and
-posted with the rostered role holder's credential rather than typed by hand -- the exact-second
-agreement between `accepted_at` and GitHub's server-assigned `created_at` cannot be produced by
-hand. The Test Architect and tooling caveats are required limitations repeated in the receipts;
+without independent external authentication; and the two owner acceptance comments are composed
+by repository tooling and posted with the rostered role holder's credential rather than typed by
+hand -- the exact-second agreement between `accepted_at` and GitHub's server-assigned `created_at`
+cannot be produced by hand. The Test Architect and tooling caveats are required limitations;
 the shared-owner-account mapping is subject-bound through the role registry, not repeated as a
 receipt limitation. A 3-of-3 result is therefore two roster-bound owner roles held by one
 authenticated human plus a self-authored BMAD record, not independent three-party review.
@@ -226,7 +229,7 @@ Story 3.15 attestations.
 | OCI index | `sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3` |
 | amd64 child | `sha256:4d42f969dc5f57e0f9baa927c588346d77c31fd2615793b5d8c12c239585af63` |
 | arm64 child | `sha256:ede853318267146a9888574f79e16ea1e51c1f363a35910fe883b5a9d7256f44` |
-| Technical inventory | `fec6deccc686e4abe83987da16c3935e3e688fa585aa7c5575dead54b4d97611` (24 files) |
+| Technical inventory | `32dc22facf833c665037738c3fe7d8b1ab0fb3f73f7e28fb175ef397f5e9fb84` (24 files) |
 | Owner-role registry | `aee4f46be8208ea13704a38d9329320b8a7641b0cdd33e61a138114c8c142f2f` |
 | Bound producers | capture and assembler digests in `closure.json` `dispatch` |
 
@@ -262,11 +265,10 @@ to register arm64 emulation before executing the immutable child. That registrat
 not an input byte the packet can hash, so it is recorded as a documented environmental prerequisite
 in `tools/capture-corrected-deployed-runtime-parity-smokes.py` rather than bound into the subject.
 
-The retained smoke bytes are timestamped `2026-08-21T19:24-19:26`, so they were produced by the
-capture tool as it stood before the loop-6 hardening. Both producers are now bound in the closure
-`dispatch` block, so any further producer edit re-mints the subject; the retained evidence was
-deliberately bound rather than re-captured, because re-capturing would replace evidence rather than
-bind it.
+The current smoke bytes were captured on 2026-09-26 from `07:29:14Z` through `07:30:34Z` using
+the current producer, which passes `curl -q` as the first option. The earlier 2026-08-21 smoke
+bytes remain in the `c98fdef2...` superseded packet. Both producers are bound in the current
+closure `dispatch` block, so any further producer edit re-mints the subject.
 
 ## Acceptance gate
 
@@ -276,7 +278,7 @@ The role registry retains the owner-ratified mappings:
 - `release-owner` -> `github:jpiquot`
 - `test-architect` -> `bmad:murat`
 
-No current acceptance binds subject `c98fdef2...`; the retained verifier fails closed at 0/3.
+No current acceptance binds subject `66be1b4a...`; the retained verifier fails closed at 0/3.
 All five superseded rounds, including the prior 3/3 subject `7d64f87e...`, authorize nothing here.
 
 No planning approval, release authority, prior receipt, label, tag, self-declared role, or synthetic
@@ -333,7 +335,7 @@ decision, registry and producer digests -> receipts addressed by that subject.
   focused suite. Their earlier positive wording described the 2026-09-24 accepted subject and is
   historical; the Story 4.15 doc-bound seal must be checked separately after the guide update.
 - Checked-in Story 3.15 assembler and verifier: **fail closed at zero of three receipts**, exit 1;
-  subject `c98fdef2...`; OCI index is a claim only; all non-authority flags false.
+  subject `66be1b4a...`; OCI index is a claim only; all non-authority flags false.
 - `git diff --check`: no whitespace errors reported.
 
 ## Rerun trigger

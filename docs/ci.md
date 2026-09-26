@@ -563,8 +563,10 @@ executing rather than the pristine repository file.
 
 The 2026-08-30 verifier and producer hardening re-minted the subject at zero receipts,
 where no acceptance was burned. The 2026-09-23 DW-508 trust-path correction re-minted it again.
-The 2026-09-26 curl configuration isolation changed the bound smoke-capture producer and re-minted
-the subject to `c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3`.
+The 2026-09-26 curl configuration isolation first re-minted the subject to `c98fdef2...`.
+A fresh two-platform Production capture with that `curl -q` producer, followed by correction of
+the subject-bound fourth limitation, re-minted it to
+`66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
 Reassembly reports `receipts=0 verifier_exit=1`; the retained verifier fails closed until three
 new roster-bound receipts accept this exact subject. The prior three receipts, including the
 EventStore-owner and Release-owner issue `#352` comments and the self-attested `bmad:murat` Test

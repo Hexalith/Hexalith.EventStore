@@ -64,12 +64,16 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string CurlIsolationSupersededSubjectSha256 =
         "7d64f87e3e6d85163651e7748c751222ca1f0fb4f0c47f21408a2bde4eba5274";
 
+    /// <summary>Subject superseded by fresh curl-isolated Production smokes and limitation correction.</summary>
+    private const string PreRecaptureSupersededSubjectSha256 =
+        "c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3";
+
     /// <summary>
     /// Subject the checked-in packet currently binds. It is drift-bound here and in docs/ci.md so a
     /// record that keeps naming a superseded subject cannot stay green.
     /// </summary>
     private const string CurrentSubjectSha256 =
-        "c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3";
+        "66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6";
 
     /// <summary>Number of files in the frozen Story 3.14 packet.</summary>
     private const int FrozenStory314PacketFileCount = 66;
@@ -104,8 +108,9 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         "This packet supplies immutable deployed-runtime parity evidence only.",
         "It authorizes no deployment, publication, registry mutation, consumer removal, or predecessor change.",
         "The Test Architect acceptance is a self-attested BMAD record without independent external authentication.",
-        "Every acceptance receipt is composed by repository tooling and posted with the rostered " +
-            "role holder's credential, not typed by hand.",
+        "The two owner acceptance comments are composed by repository tooling and posted with the " +
+            "rostered role holder's credential, rather than typed by hand; the Test Architect source is " +
+            "a local self-attested BMAD record.",
     ];
 
     private const string RerunTrigger =
@@ -2862,6 +2867,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] subjects =
         [
             subjectSha256,
+            PreRecaptureSupersededSubjectSha256,
             CurlIsolationSupersededSubjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
             PreTrustPathSupersededSubjectSha256,
@@ -2996,6 +3002,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         {
             MutateSmokeResults(temporary, results =>
             {
+                ShiftSmokeWindows(results, TimeSpan.FromDays(-1));
                 DateTimeOffset start = DateTimeOffset.Parse(
                     results["started_at"]!.GetValue<string>(),
                     CultureInfo.InvariantCulture);
@@ -3063,6 +3070,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         {
             MutateSmokeResults(temporary, results =>
             {
+                ShiftSmokeWindows(results, TimeSpan.FromDays(-1));
                 JsonObject platform = results["platforms"]!.AsArray()[0]!.AsObject();
                 DateTimeOffset platformStart = DateTimeOffset.Parse(
                     platform["started_at"]!.GetValue<string>(),
@@ -4487,7 +4495,8 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string currentHistory = history[history.IndexOf("On 2026-09-26", StringComparison.Ordinal)..];
         currentHistory.ShouldContain(
             $"current subject SHA-256 `{subject}` with {receiptCount} of {RequiredRoles.Length} " +
-            $"packet-bound receipts; OCI index claim `{selectedIndex}` is not granted");
+            $"packet-bound receipts; the independent Test Architect report accepts the technical " +
+            $"evidence but is not a packet receipt. OCI index claim `{selectedIndex}` is not granted");
         currentHistory.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
         currentHistory.ShouldNotContain(CurlIsolationSupersededSubjectSha256);
 
@@ -4889,6 +4898,26 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// <returns>The formatted timestamp.</returns>
     private static string Utc(DateTimeOffset value) =>
         value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Moves a fresh retained smoke window into the past before tests extend it to exercise the
+    /// duration guards. Otherwise the verifier's future-time guard masks those assertions.
+    /// </summary>
+    /// <param name="results">Smoke result and platform windows to move.</param>
+    /// <param name="offset">Negative shift applied to every endpoint.</param>
+    private static void ShiftSmokeWindows(JsonObject results, TimeSpan offset)
+    {
+        foreach (JsonObject record in new[] { results }
+            .Concat(results["platforms"]!.AsArray().Select(item => item!.AsObject())))
+        {
+            foreach (string field in new[] { "started_at", "ended_at" })
+            {
+                DateTimeOffset value = DateTimeOffset.Parse(
+                    record[field]!.GetValue<string>(), CultureInfo.InvariantCulture);
+                record[field] = Utc(value.Add(offset));
+            }
+        }
+    }
 
     /// <summary>
     /// Rewrites the retained Production smoke summary, regenerates each platform log from the

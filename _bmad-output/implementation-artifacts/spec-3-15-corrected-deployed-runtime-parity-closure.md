@@ -37,16 +37,18 @@ context:
 
 </frozen-after-approval>
 
-**Current canonical subject:** `c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3`.
-The 2026-09-26 capture-producer re-mint superseded all three receipts for the previous subject.
+**Current canonical subject:** `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
+The fresh 2026-09-26 two-platform Production capture and corrected limitation 4 superseded the
+receipt-free `c98fdef2...` subject. The older three receipts remain superseded as well.
 The retained verifier now fails closed at **0 of 3**; the OCI index remains a claim and is not selected.
 
-**Current continuation (2026-09-26):** Verify the re-minted packet, prepare reviewable
-acceptance material for each of the three roles bound to this exact subject, and refresh the
-existing separate Story 4.15 OQ8 seal-reconciliation record for `docs/ci.md`. Do not use
-credentials, post comments, create or collect receipts, or claim positive parity before explicit
-authorization and genuine current-subject acceptances. Once those exist, re-run the assembler and
-verifier, update this story's records and tracker, and run the focused checks.
+**Current continuation (2026-09-26):** The candidate packet captured both immutable children in
+Production with the bound `curl -q` producer, and limitation 4 now distinguishes the two
+credential-posted owner comments from the Test Architect's local self-attested source. The new
+subject has a fresh independent Test Architect ACCEPT decision report, while the packet remains at
+0/3 receipts and awaits owner review. Do not post or collect
+owner acceptance comments until the user approves the new-subject materials and explicitly
+authorizes those credentialed actions. Keep Story 4.15 OQ8 seal reconciliation separate.
 
 ## Code Map
 
@@ -538,6 +540,28 @@ new hole. Both were reproduced here with live controls before being fixed.
 
 ## Spec Change Log
 
+- **2026-09-26 (fresh Production capture and controlled re-mint):** Copied the receipt-free
+  `c98fdef2...` packet to a candidate root, registered QEMU from the pinned `tonistiigi/binfmt`
+  digest, and ran the current `curl -q` capture producer once against the same immutable amd64 and
+  arm64 child digests. Both Production `/alive` smokes passed from `07:29:14.107654Z` through
+  `07:30:34.182021Z` with HTTP 200, zero redirects, platform match, and cleanup pass. Corrected
+  subject-bound limitation 4 to describe the two tooling-composed, credential-posted owner comments
+  and the local self-attested Test Architect source. Archived the former packet byte-for-byte under
+  `superseded-packets/c98fdef2.../`; older receipt sets and submodule pointers remain untouched.
+  Reassembly minted `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
+  The 24-file inventory matched, the predecessor verifier passed, the Release build had zero
+  warnings/errors, and the focused Story 3.15 classes passed 235/235. The current verifier exits
+  1 solely because it requires three packet-bound receipts; the four authority flags remain false.
+  The [independent Test Architect decision](3-15-test-architect-decision-66be1b4a.md) ACCEPTS the
+  technical evidence in a self-attested local report; it is not a packet receipt. No owner comment
+  was posted or collected. Owner acceptance awaits the user's review and explicit authorization.
+
+- **2026-09-26 (owner validation request):** With explicit user authorization, posted the
+  validated request as [issue `#352` comment `5844166955`](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844166955)
+  from authenticated `github:jpiquot`. Its retained local draft matches the posted body. The
+  request names the then-current `c98fdef2...` subject and Test Architect decline but is not an acceptance receipt;
+  both owner decisions are still missing and parity remains at 0/3.
+
 - **2026-09-26 (independent Test Architect decision):** The `bmad:murat` review declined the
   unchanged `c98fdef2...` subject because the retained 2026-08-21 Production smokes do not
   preserve the original curl arguments or `.curlrc`, and the fourth required limitation says
@@ -873,11 +897,15 @@ Both owner receipts are independently constrained to the same positively allowli
 ## Verification
 
 **Commands:**
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 new-subject actual:** `fail: exactly three packet-bound receipts are required`, exit 1. Subject `66be1b4a...` is at 0/3; the index is not selected and all four authority flags remain false.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 new-subject actual:** `subject=sha256:66be1b4a... receipts=0 verifier_exit=1`, exit 1. The subject is reproduced without moving historical receipts.
+- `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release --no-restore -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **2026-09-26 new-subject actual:** build succeeded with zero warnings and errors.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **2026-09-26 new-subject actual:** 235/235 passed, zero errors, failures, skips, or unrun tests. The initial run exposed a fresh-timestamp test-fixture assumption; shifting only those synthetic timing fixtures into the past made the intended duration guards observable, and the rerun passed.
 - `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectedDeployedRuntimeParityClosureTests -class Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests -noLogo` -- **2026-09-23 Test Architect actual:** 268 passed, 0 failed, 0 skipped before receipt collection. After collection, the updated Story 3.15 closure class alone passed 213/213 with zero failures or skips.
 - `python3 tools/validate-corrective-release-evidence.py _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/release-identity.json --manifest tools/release-packages.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **actual:** `pass: sha256:4d1a0c33...`, exit 0. The frozen predecessor packet is unchanged, and its whole 66-file tree is now digest-pinned by the focused suite, not just the identity file.
 - `dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --configuration Release -m:1 -p:UseHexalithProjectReferences=false -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` -- **actual:** Build succeeded, 0 warnings, 0 errors.
-- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 current actual:** `fail: exactly three packet-bound receipts are required`, exit 1. The current subject is `c98fdef2...` at 0/3, so parity and index selection are unavailable. The four operational-authority flags remain false.
-- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 current actual:** `subject=sha256:c98fdef2... receipts=0 verifier_exit=1`, exit 1. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` runs over both an isolated zero-receipt and a synthetic fully accepted copy and pins both exit rules.
+- `python3 tools/validate-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d/closure.json --packet-root _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 historical `c98fdef2...` actual:** `fail: exactly three packet-bound receipts are required`, exit 1. That subject was at 0/3 before the fresh capture and limitation correction.
+- `python3 tools/assemble-corrected-deployed-runtime-parity.py _bmad-output/implementation-artifacts/evidence/story-3-15/f343bb0153e9cdcb8b12ec10153813072f5ad38d` -- **2026-09-26 historical `c98fdef2...` actual:** `subject=sha256:c98fdef2... receipts=0 verifier_exit=1`, exit 1. `AssemblerReproducesTheSubjectAndPropagatesTheVerifierVerdict` runs over both an isolated zero-receipt and a synthetic fully accepted copy and pins both exit rules.
 - `python3 tools/validate-oq8-platform-evidence.py` -- **2026-09-26 current actual:** exit 1, `Story 4.15 v5 reviewed packet, selector, or lifecycle validation failed`. The nested `python3 tools/oq8-v5-packet.py --validate-active` reports `V5 activation requires a clean committed checkout`. The Story 3.15 `docs/ci.md` correction also changes a v4-bound gate input; Story 4.15 must reconcile its own seal before a current OQ8 pass can be claimed. `--lifecycle-mode closed` and `--historical-v3-only` pass, but neither evaluates current evidence.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectedDeployedRuntimeParityClosureTests -class ...CorrectedDeployedRuntimeParitySmokeCaptureTests -noLogo` -- **historical actual:** 221 passed, 0 failed, 0 skipped before the in-clone path regression. The focused closure class passed 216/216 in the 2026-09-24 review-patch run, with zero failed, skipped, or unrun; it included two elided-subject cases.
 - `dotnet tests/.../Hexalith.EventStore.Contracts.Tests.dll -class ...CorrectiveOciProvenanceReleaseTests -noLogo` -- **actual:** 55 passed, 0 failed, 0 skipped.

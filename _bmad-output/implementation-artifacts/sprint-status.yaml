@@ -135,11 +135,11 @@ development_status:
   # closure.json, and to name it BEFORE any superseded subject digest. It is a drift guard:
   # it exists so this tracker cannot keep naming a stale subject while the suite stays green.
   # Change the digest only when the packet subject is legitimately re-minted.
-  # 2026-09-26 curl configuration isolation re-minted the bound capture producer.
+  # 2026-09-26 fresh curl-isolated smokes and limitation 4 re-minted the subject.
   # All five prior acceptance rounds remain under story-3-15/superseded-acceptances/.
   # Acceptance lives on dedicated issue #352 -- never #324/#346/#351, which are other
   # lineages. The current canonical subject is
-  # c98fdef266671a8b35e05c64b95eed275cb506e4368e28ab6957aa7750640df3; it has 0/3
+  # 66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6; it has 0/3
   # receipts and the verifier exits 1. The prior accepted subject and its three receipts are
   # retained byte-for-byte in the superseded audit area, with no authority for this subject.
   # closure.json's deployed_runtime_parity/selected_deployed_identity are claims, not a verdict:
