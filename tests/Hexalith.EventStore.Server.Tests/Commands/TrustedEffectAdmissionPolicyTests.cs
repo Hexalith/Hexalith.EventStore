@@ -78,6 +78,29 @@ public sealed class TrustedEffectAdmissionPolicyTests
             Arg.Any<CancellationToken>());
     }
 
+    /// <summary>Gateway proof can be checked after provenance without registering evidence.</summary>
+    [Fact]
+    public async Task PreparedAdmissionHasNoRetentionSideEffect()
+    {
+        var adapters = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var verifier = Substitute.For<ITrustedEffectDelegationVerifier>();
+        var authority = Substitute.For<ITrustedEffectCommandAuthority>();
+        var retention = Substitute.For<ITrustedEffectRetentionGate>();
+        var audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context) = CreateEffect();
+        _ = adapters.Resolve(Arg.Any<SubmitCommand>()).Returns(new TrustedIdempotencyDescriptor(
+            "adapter", "operation", 1, [1], IdempotencyReplayRetentionTier.Mutation));
+        _ = authority.IsAllowed(submission, context).Returns(true);
+        var policy = new TrustedEffectAdmissionPolicy(adapters, verifier, authority, retention, audit);
+
+        TrustedEffectAdmission admission = await policy.PrepareAsync(submission, context);
+
+        admission.SemanticDigest.Length.ShouldBe(52);
+        _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!);
+        await policy.CompleteAsync(admission);
+        _ = retention.Received(1).ValidateAsync(submission.Identity, Arg.Any<CancellationToken>());
+    }
+
     /// <summary>An unavailable append-only sink prevents an otherwise authorized submission.</summary>
     [Fact]
     public async Task AuditFailurePreventsAuthorizedSubmission()
@@ -97,6 +120,30 @@ public sealed class TrustedEffectAdmissionPolicyTests
 
         await Should.ThrowAsync<IOException>(() => policy.AdmitAsync(submission, context));
         _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!, default);
+    }
+
+    /// <summary>An audit failure after the attempt entry still prevents evidence registration.</summary>
+    [Fact]
+    public async Task AuthorizationAuditFailurePreventsRetentionMutation()
+    {
+        var adapters = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var verifier = Substitute.For<ITrustedEffectDelegationVerifier>();
+        var authority = Substitute.For<ITrustedEffectCommandAuthority>();
+        var retention = Substitute.For<ITrustedEffectRetentionGate>();
+        var audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context) = CreateEffect();
+        _ = adapters.Resolve(Arg.Any<SubmitCommand>()).Returns(new TrustedIdempotencyDescriptor(
+            "adapter", "operation", 1, [1], IdempotencyReplayRetentionTier.Mutation));
+        _ = authority.IsAllowed(submission, context).Returns(true);
+        _ = audit.AppendAsync(
+                Arg.Is<TrustedEffectAuditRecord>(record => record.Disposition == "authorized"),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new IOException("audit unavailable"));
+        var policy = new TrustedEffectAdmissionPolicy(adapters, verifier, authority, retention, audit);
+
+        await Should.ThrowAsync<IOException>(() => policy.AdmitAsync(submission, context));
+
+        _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!);
     }
 
     private static (TrustedEffectSubmission, TrustedEffectContext) CreateEffect()

@@ -19,6 +19,18 @@ public sealed class TrustedEffectAdmissionPolicy(
         TrustedEffectContext context,
         CancellationToken cancellationToken = default)
     {
+        TrustedEffectAdmission admission = await PrepareAsync(submission, context, cancellationToken)
+            .ConfigureAwait(false);
+        await CompleteAsync(admission, cancellationToken).ConfigureAwait(false);
+        return admission;
+    }
+
+    /// <inheritdoc/>
+    public async Task<TrustedEffectAdmission> PrepareAsync(
+        TrustedEffectSubmission submission,
+        TrustedEffectContext context,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(submission);
         ArgumentNullException.ThrowIfNull(context);
         cancellationToken.ThrowIfCancellationRequested();
@@ -29,7 +41,7 @@ public sealed class TrustedEffectAdmissionPolicy(
 
         try
         {
-            return await AdmitCoreAsync(submission, context, cancellationToken).ConfigureAwait(false);
+            return await PrepareCoreAsync(submission, context, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -40,7 +52,42 @@ public sealed class TrustedEffectAdmissionPolicy(
         }
     }
 
-    private async Task<TrustedEffectAdmission> AdmitCoreAsync(
+    /// <inheritdoc/>
+    public async Task CompleteAsync(
+        TrustedEffectAdmission admission,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(admission);
+        ITrustedEffectRetentionGate gate = retentionGate
+            ?? throw new InvalidOperationException("Trusted effect retention policy is not configured.");
+        ITrustedEffectAuditSink audit = auditSink
+            ?? throw new InvalidOperationException("Trusted effect audit policy is not configured.");
+
+        try
+        {
+            string effectId = EffectIdentityCodec.ComputeEffectId(admission.Submission.Identity);
+            // Registration is a privileged lifecycle mutation. The audit must be durable first.
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "submission", admission.Submission.Identity.Tenant, effectId,
+                admission.Context.Workload, admission.Context.Purpose, "attempted"), cancellationToken)
+                .ConfigureAwait(false);
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "submission", admission.Submission.Identity.Tenant, effectId,
+                admission.Context.Workload, admission.Context.Purpose, "authorized"), cancellationToken)
+                .ConfigureAwait(false);
+            await gate.ValidateAsync(admission.Submission.Identity, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "submission", admission.Submission.Identity?.Tenant, null,
+                admission.Context.Workload, admission.Context.Purpose, "denied"), CancellationToken.None)
+                .ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task<TrustedEffectAdmission> PrepareCoreAsync(
         TrustedEffectSubmission submission,
         TrustedEffectContext context,
         CancellationToken cancellationToken)
@@ -80,17 +127,6 @@ public sealed class TrustedEffectAdmissionPolicy(
         {
             throw new InvalidOperationException("Trusted effect command origin or purpose is denied.");
         }
-
-        // Retention validation registers evidence in the tenant lifecycle actor. Audit first so
-        // an unavailable sink cannot leave even that privileged lifecycle mutation behind.
-        await auditSink!.AppendAsync(new TrustedEffectAuditRecord(
-            "submission", submission.Identity.Tenant, EffectIdentityCodec.ComputeEffectId(submission.Identity),
-            context.Workload, context.Purpose, "attempted"), cancellationToken).ConfigureAwait(false);
-        await retentionGate!.ValidateAsync(submission.Identity, cancellationToken).ConfigureAwait(false);
-
-        await auditSink!.AppendAsync(new TrustedEffectAuditRecord(
-            "submission", submission.Identity.Tenant, EffectIdentityCodec.ComputeEffectId(submission.Identity),
-            context.Workload, context.Purpose, "authorized"), cancellationToken).ConfigureAwait(false);
 
         return new TrustedEffectAdmission(submission, context, semanticDigest);
     }

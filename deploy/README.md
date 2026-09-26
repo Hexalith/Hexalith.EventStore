@@ -122,6 +122,7 @@ Set these before applying production templates to avoid unresolved/literal place
 | Component Scoping | Explicit scopes (e.g., `eventstore`)              | Explicit `scopes: ["eventstore"]` on every component      |
 | Secrets           | `appsettings.json` / env vars                     | K8s Secrets / Azure Key Vault                             |
 | TLS               | None (local loopback)                             | mTLS via DAPR sidecar (NFR9)                              |
+| Internal app channel | Development-only header admission              | Per-gateway `APP_API_TOKEN` secret and `dapr-api-token` check |
 | Resiliency        | Constant retry (3 retries, 1s), shorter intervals | Exponential retry (10 retries, 15s max), longer intervals |
 
 ## Secret Management
@@ -159,6 +160,11 @@ Recommended approaches by platform:
     ```
 
 2. Create Kubernetes Secrets for connection strings referenced by environment variables
+   and a distinct random EventStore app-channel token. Mount its `token` key into the
+   EventStore application container as `APP_API_TOKEN`; configure the receiving
+   sidecar with `dapr.io/app-token-secret: "app-api-token"`. Keep the application
+   port private to the sidecar. A configured token is required for internal
+   authentication outside Development and does not replace sidecar mTLS or ACLs.
 3. Configure DAPR annotations on your application pods with the config that matches each receiving sidecar:
 
     ```yaml
@@ -166,6 +172,7 @@ Recommended approaches by platform:
         dapr.io/enabled: "true"
         dapr.io/app-id: "eventstore"
         dapr.io/config: "accesscontrol"
+        dapr.io/app-token-secret: "app-api-token"
     ```
 
     Use `dapr.io/config: "accesscontrol-eventstore-admin"` for the `eventstore-admin` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.

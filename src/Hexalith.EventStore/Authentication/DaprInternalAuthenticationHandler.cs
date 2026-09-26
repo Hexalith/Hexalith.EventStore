@@ -9,15 +9,22 @@ namespace Hexalith.EventStore.Authentication;
 /// <summary>
 /// Authenticates DAPR service-invocation requests from trusted internal apps. Reads the
 /// <c>dapr-caller-app-id</c> header set by the calling sidecar, validates it against
-/// <see cref="DaprInternalAuthenticationOptions.AllowedCallers"/>, and issues a system
-/// principal with <c>global_admin</c> so the request can submit commands and queries
-/// without user claims. Non-allow-listed callers return NoResult so the JWT scheme runs.
+/// <see cref="DaprInternalAuthenticationOptions.AllowedCallers"/>, requires the Dapr
+/// app-channel token outside Development, and issues a system principal with
+/// <c>global_admin</c> so the request can submit commands and queries without user claims.
+/// Non-allow-listed callers return NoResult so the JWT scheme runs.
 /// </summary>
 public sealed class DaprInternalAuthenticationHandler(
     IOptionsMonitor<DaprInternalAuthenticationOptions> options,
     ILoggerFactory loggerFactory,
-    UrlEncoder encoder) : AuthenticationHandler<DaprInternalAuthenticationOptions>(options, loggerFactory, encoder) {
+    UrlEncoder encoder,
+    DaprAppChannelTokenValidator appChannelTokenValidator)
+    : AuthenticationHandler<DaprInternalAuthenticationOptions>(options, loggerFactory, encoder) {
     protected override Task<AuthenticateResult> HandleAuthenticateAsync() {
+        if (!appChannelTokenValidator.IsValid(Request)) {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
         string? callerAppId = Request.Headers[DaprInternalAuthenticationOptions.CallerHeaderName].FirstOrDefault();
         if (string.IsNullOrWhiteSpace(callerAppId)) {
             return Task.FromResult(AuthenticateResult.NoResult());

@@ -7,7 +7,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 internal sealed class SyntheticTrustedEffectAdmissionPolicy : ITrustedEffectAdmissionPolicy
 {
     /// <inheritdoc/>
-    public Task<TrustedEffectAdmission> AdmitAsync(
+    public Task<TrustedEffectAdmission> PrepareAsync(
         TrustedEffectSubmission submission,
         TrustedEffectContext context,
         CancellationToken cancellationToken = default)
@@ -26,5 +26,24 @@ internal sealed class SyntheticTrustedEffectAdmissionPolicy : ITrustedEffectAdmi
         }
 
         return Task.FromResult(new TrustedEffectAdmission(submission, context, "SYNTHETIC-INTENT-V1"));
+    }
+
+    /// <inheritdoc/>
+    public Task CompleteAsync(TrustedEffectAdmission admission, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public async Task<TrustedEffectAdmission> AdmitAsync(
+        TrustedEffectSubmission submission,
+        TrustedEffectContext context,
+        CancellationToken cancellationToken = default)
+    {
+        TrustedEffectAdmission admission = await PrepareAsync(submission, context, cancellationToken)
+            .ConfigureAwait(false);
+        await CompleteAsync(admission, cancellationToken).ConfigureAwait(false);
+        return admission;
     }
 }

@@ -66,6 +66,7 @@ public static class EventStoreServiceCollectionExtensions {
         // Bind internal DAPR caller options (allow-list of trusted service app-ids).
         _ = services.AddOptions<DaprInternalAuthenticationOptions>(DaprInternalAuthenticationOptions.SchemeName)
             .BindConfiguration("Authentication:DaprInternal");
+        _ = services.AddSingleton<DaprAppChannelTokenValidator>();
 
         const string HexalithPolicyScheme = "Hexalith";
 
@@ -91,7 +92,11 @@ public static class EventStoreServiceCollectionExtensions {
                     bool isAllowListed = internalOptions.AllowedCallers.Any(c =>
                         string.Equals(c, caller, StringComparison.Ordinal));
 
-                    return isAllowListed
+                    bool hasValidAppChannelToken = context.RequestServices
+                        .GetRequiredService<DaprAppChannelTokenValidator>()
+                        .IsValid(context.Request);
+
+                    return isAllowListed && hasValidAppChannelToken
                         ? DaprInternalAuthenticationOptions.SchemeName
                         : JwtBearerDefaults.AuthenticationScheme;
                 })

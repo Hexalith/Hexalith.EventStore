@@ -64,6 +64,8 @@ public sealed class ProductionAuthorityAuthenticationTests
                         ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
                         ["Authentication:JwtBearer:SigningKey"] = null,
                         ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
+                        ["Authentication:DaprInternal:AllowedCallers:0"] = "reactor",
+                        ["APP_API_TOKEN"] = "synthetic-app-channel-token",
                     }));
                 builder.ConfigureTestServices(WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService);
             });
@@ -91,6 +93,26 @@ public sealed class ProductionAuthorityAuthenticationTests
                 bearerEffectRequest,
                 TestContext.Current.CancellationToken);
             bearerEffectResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        using (var spoofedInternalRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/trusted-effects"))
+        {
+            spoofedInternalRequest.Headers.Add("dapr-caller-app-id", "reactor");
+            using HttpResponseMessage spoofedResponse = await client.SendAsync(
+                spoofedInternalRequest,
+                TestContext.Current.CancellationToken);
+            spoofedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        using (var tokenedInternalRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/trusted-effects"))
+        {
+            tokenedInternalRequest.Headers.Add("dapr-caller-app-id", "reactor");
+            tokenedInternalRequest.Headers.Add("dapr-api-token", "synthetic-app-channel-token");
+            tokenedInternalRequest.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            using HttpResponseMessage tokenedResponse = await client.SendAsync(
+                tokenedInternalRequest,
+                TestContext.Current.CancellationToken);
+            tokenedResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         }
 
         string symmetricKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));

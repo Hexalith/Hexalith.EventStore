@@ -14,7 +14,11 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
 builder.Services.AddHealthChecks()
-    .AddEventStoreDaprHealthChecks();
+    .AddEventStoreDaprHealthChecks()
+    .AddCheck<DaprAppChannelTokenHealthCheck>(
+        "dapr-app-channel-token",
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+        tags: ["ready"]);
 builder.Services.AddEventStore();
 builder.Services.AddEventStoreServer(builder.Configuration);
 builder.Services.AddEventStoreDomainQueryRouting();

@@ -19,7 +19,7 @@ public class TrustedEffectReceiptTests
         var state = new FaultInjectingActorStateManager();
         ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
         (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             trustedEffectAdmissionPolicy: policy);
@@ -45,12 +45,12 @@ public class TrustedEffectReceiptTests
         var state = new FaultInjectingActorStateManager();
         ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
         (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             trustedEffectAdmissionPolicy: policy);
         _ = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>())
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>())
             .Returns(admission with { SemanticDigest = "CHANGED" });
 
         await Should.ThrowAsync<InvalidOperationException>(
@@ -70,13 +70,13 @@ public class TrustedEffectReceiptTests
         ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
         ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
         (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             trustedEffectAdmissionPolicy: policy,
             trustedEffectAuditSink: audit);
         _ = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>())
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>())
             .Returns(admission with { SemanticDigest = "CHANGED" });
         _ = audit.AppendAsync(Arg.Any<TrustedEffectAuditRecord>(), Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new IOException("audit unavailable"));
@@ -98,7 +98,7 @@ public class TrustedEffectReceiptTests
         var state = new FaultInjectingActorStateManager();
         ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
         (TrustedEffectSubmission submission, TrustedEffectContext context, _) = CreateEffect();
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>())
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>())
             .Returns<TrustedEffectAdmission>(_ => throw new InvalidOperationException("Denied"));
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
@@ -109,6 +109,69 @@ public class TrustedEffectReceiptTests
         state.Trace.ShouldBeEmpty();
     }
 
+    /// <summary>A forged direct actor call cannot register evidence or inspect receipt state.</summary>
+    [Fact]
+    public async Task InvalidGatewayProofDeniesBeforeRetentionMutation()
+    {
+        var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
+        ITrustedEffectGatewayProof proof = Substitute.For<ITrustedEffectGatewayProof>();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = proof.ValidateAsync(admission, "forged", Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("Invalid proof"));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(
+            stateManager: state,
+            trustedEffectAdmissionPolicy: policy,
+            trustedEffectAuditSink: audit,
+            trustedEffectGatewayProof: proof);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.Actor.ProcessTrustedEffectAsync(submission, context, "forged"));
+
+        _ = policy.DidNotReceiveWithAnyArgs().CompleteAsync(default!);
+        state.Trace.ShouldBeEmpty();
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "gateway-proof"
+                && record.Disposition == "denied"),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A proof for another actor partition cannot register tenant evidence here.</summary>
+    [Fact]
+    public async Task WrongTargetActorDeniesBeforeRetentionMutation()
+    {
+        var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context, _) = CreateEffect();
+        EffectIdentity wrongTarget = submission.Identity with { TargetAggregate = "another-target" };
+        string messageId = EffectIdentityCodec.ComputeMessageId(wrongTarget);
+        submission = submission with
+        {
+            Identity = wrongTarget,
+            MessageId = messageId,
+            IdempotencyKey = messageId,
+        };
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>())
+            .Returns(new TrustedEffectAdmission(submission, context, "DIGEST"));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(
+            stateManager: state,
+            trustedEffectAdmissionPolicy: policy,
+            trustedEffectAuditSink: audit);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof"));
+
+        _ = policy.DidNotReceiveWithAnyArgs().CompleteAsync(default!);
+        state.Trace.ShouldBeEmpty();
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "target-partition"
+                && record.Disposition == "denied"),
+            Arg.Any<CancellationToken>());
+    }
+
     /// <summary>A failed receipt write prevents a no-op from being reported as accepted.</summary>
     [Fact]
     public async Task ReceiptWriteFailureDoesNotReturnSuccess()
@@ -116,7 +179,7 @@ public class TrustedEffectReceiptTests
         var state = new FaultInjectingActorStateManager();
         ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
         (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             trustedEffectAdmissionPolicy: policy);
@@ -134,7 +197,7 @@ public class TrustedEffectReceiptTests
         var state = new FaultInjectingActorStateManager();
         ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
         (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
@@ -162,7 +225,7 @@ public class TrustedEffectReceiptTests
         var state = new FaultInjectingActorStateManager();
         ITrustedEffectAdmissionPolicy policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
         (TrustedEffectSubmission submission, TrustedEffectContext context, TrustedEffectAdmission admission) = CreateEffect();
-        _ = policy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
@@ -179,12 +242,21 @@ public class TrustedEffectReceiptTests
         first.Disposition.ShouldBe(TrustedEffectDisposition.Success);
         string receiptKey = "effect_receipt_" + EffectIdentityCodec.ComputeEffectId(submission.Identity);
         state.CommittedState.ContainsKey(receiptKey).ShouldBeTrue();
-        TrustedEffectResult replay = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
+        var restoredState = new FaultInjectingActorStateManager();
+        await restoredState.SeedCommittedStateAsync(state.CreateCommittedView());
+        IDomainServiceInvoker restoredInvoker = Substitute.For<IDomainServiceInvoker>();
+        ActorTestContext restored = AggregateActorTestHelper.CreateActor(
+            stateManager: restoredState,
+            invoker: restoredInvoker,
+            trustedEffectAdmissionPolicy: policy);
+        TrustedEffectResult replay = await restored.Actor.ProcessTrustedEffectAsync(
+            submission, context, "test-proof");
         replay.Replayed.ShouldBeTrue();
         _ = await invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
+        _ = await restoredInvoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
     }
 
     private static (TrustedEffectSubmission, TrustedEffectContext, TrustedEffectAdmission) CreateEffect()

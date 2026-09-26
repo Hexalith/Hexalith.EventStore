@@ -15,7 +15,12 @@ internal authentication principal; a bearer principal carrying a
 `dapr_caller_app_id` claim does not satisfy this endpoint's authentication
 scheme. Production must also restrict direct gateway access and attest the
 caller app through Dapr mTLS and deny-by-default ACLs, because the current
-internal authentication handler reads the `dapr-caller-app-id` header. The
+internal authentication handler reads the `dapr-caller-app-id` header. Outside
+Development, internal authentication also requires the `dapr-api-token` header
+to match the gateway's `APP_API_TOKEN` secret. The receiving Dapr sidecar must
+be configured with the same app token; a caller-ID header alone is rejected.
+Missing token configuration fails readiness outside Development. This is an
+application-channel check, not deployment proof of mTLS or ACLs. The
 gateway validates the short-lived asymmetric delegation against
 the configured OIDC authority. The delegation must bind the complete identity
 tuple, command type, server-derived canonical command digest, workload, purpose,
@@ -28,6 +33,9 @@ the actor verifies that proof before reading receipt state. The proof binds the
 tuple, command type, server semantic digest, workload, purpose, causation, and
 delegation-token hash. Retained reader keys permit proof verification during
 key rotation. A direct actor call without the gateway proof is denied. The
+actor prepares admission without registering retention evidence, validates the
+gateway proof and its own target partition, then completes retention admission.
+An invalid proof cannot register tenant lifecycle evidence or read a receipt. The
 private receipt is staged in the same actor state batch as the first target
 event range or no-op terminal outcome. Exact replay returns that receipt without
 calling the domain handler. A collision records target-scoped quarantine

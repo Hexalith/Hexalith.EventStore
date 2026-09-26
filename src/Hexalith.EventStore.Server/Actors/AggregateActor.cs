@@ -166,10 +166,24 @@ public partial class AggregateActor(
         ArgumentNullException.ThrowIfNull(context);
         ITrustedEffectAdmissionPolicy policy = trustedEffectAdmissionPolicy
             ?? throw new InvalidOperationException("Trusted effect admission is unavailable.");
-        TrustedEffectAdmission admission = await policy.AdmitAsync(submission, context).ConfigureAwait(false);
+        TrustedEffectAdmission admission = await policy.PrepareAsync(submission, context).ConfigureAwait(false);
         ITrustedEffectGatewayProof proofValidator = trustedEffectGatewayProof
             ?? throw new InvalidOperationException("Trusted effect gateway proof validation is unavailable.");
-        await proofValidator.ValidateAsync(admission, gatewayProof).ConfigureAwait(false);
+        try
+        {
+            await proofValidator.ValidateAsync(admission, gatewayProof).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ITrustedEffectAuditSink audit = trustedEffectAuditSink
+                ?? throw new InvalidOperationException("Trusted effect denial audit is unavailable.");
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "gateway-proof", admission.Submission.Identity.Tenant, null,
+                admission.Context.Workload, admission.Context.Purpose, "denied"))
+                .ConfigureAwait(false);
+            throw;
+        }
+
         string effectId = EffectIdentityCodec.ComputeEffectId(admission.Submission.Identity);
         string expectedMessageId = "wrk-" + effectId;
         if (!string.Equals(admission.Submission.MessageId, expectedMessageId, StringComparison.Ordinal)
@@ -185,9 +199,16 @@ public partial class AggregateActor(
             admission.Submission.Identity.TargetAggregate);
         if (!string.Equals(target.ActorId, Host.Id.GetId(), StringComparison.Ordinal))
         {
+            ITrustedEffectAuditSink audit = trustedEffectAuditSink
+                ?? throw new InvalidOperationException("Trusted effect denial audit is unavailable.");
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "target-partition", admission.Submission.Identity.Tenant, null,
+                admission.Context.Workload, admission.Context.Purpose, "denied"))
+                .ConfigureAwait(false);
             throw new InvalidOperationException("Trusted effect target does not match the actor partition.");
         }
 
+        await policy.CompleteAsync(admission).ConfigureAwait(false);
         await EnsureStateCacheBarrierAsync(expectedMessageId, activity: null).ConfigureAwait(false);
         EffectReceipt? prior = await ReadEffectReceiptAsync(effectId).ConfigureAwait(false);
         if (prior is not null)

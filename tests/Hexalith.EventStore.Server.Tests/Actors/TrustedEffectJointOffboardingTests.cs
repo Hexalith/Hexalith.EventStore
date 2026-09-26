@@ -48,7 +48,7 @@ public sealed class TrustedEffectJointOffboardingTests
         });
 
         ITrustedEffectAdmissionPolicy admissionPolicy = Substitute.For<ITrustedEffectAdmissionPolicy>();
-        _ = admissionPolicy.AdmitAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        _ = admissionPolicy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
@@ -66,7 +66,7 @@ public sealed class TrustedEffectJointOffboardingTests
         sourceStore.CommittedState.Keys.ShouldContain(sourceEventKey);
         targetStore.CommittedState.Keys.ShouldContain(receiptKey);
         targetStore.CommittedState.Keys.ShouldContain(key => key.Contains(":events:1", StringComparison.Ordinal));
-        _ = admissionPolicy.AdmitAsync(submission, context, Arg.Any<CancellationToken>())
+        _ = admissionPolicy.PrepareAsync(submission, context, Arg.Any<CancellationToken>())
             .Returns(admission with { SemanticDigest = "COLLIDING-SYNTHETIC-DIGEST" });
         await Should.ThrowAsync<InvalidOperationException>(
             () => target.Actor.ProcessTrustedEffectAsync(submission, context, "synthetic-proof"));

@@ -2,11 +2,17 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 
 using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.HealthChecks;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -59,13 +65,59 @@ public class DaprInternalAuthenticationHandlerTests {
         result.None.ShouldBeTrue();
     }
 
-    private static async Task<AuthenticateResult> AuthenticateAsync(string? header, IList<string> allowedCallers) {
+    [Theory]
+    [InlineData(null, null, false)]
+    [InlineData("configured-token", null, false)]
+    [InlineData("configured-token", "wrong-token", false)]
+    [InlineData("configured-token", "configured-token", true)]
+    public async Task HandleAuthenticate_ProductionRequiresDaprAppChannelToken(
+        string? configuredToken,
+        string? presentedToken,
+        bool expectedSuccess) {
+        AuthenticateResult result = await AuthenticateAsync(
+            "tenants", ["tenants"], Environments.Production, configuredToken, presentedToken);
+
+        result.Succeeded.ShouldBe(expectedSuccess);
+    }
+
+    [Theory]
+    [InlineData(null, HealthStatus.Unhealthy)]
+    [InlineData("configured-token", HealthStatus.Healthy)]
+    public async Task AppChannelReadiness_ProductionRequiresConfiguredSecret(
+        string? configuredToken,
+        HealthStatus expectedStatus) {
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["APP_API_TOKEN"] = configuredToken })
+            .Build();
+        var check = new DaprAppChannelTokenHealthCheck(
+            new DaprAppChannelTokenValidator(environment, configuration));
+
+        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext());
+
+        result.Status.ShouldBe(expectedStatus);
+    }
+
+    private static async Task<AuthenticateResult> AuthenticateAsync(
+        string? header,
+        IList<string> allowedCallers,
+        string environmentName = "Development",
+        string? configuredToken = null,
+        string? presentedToken = null) {
         var options = new DaprInternalAuthenticationOptions {
             AllowedCallers = allowedCallers,
         };
 
         var optionsMonitor = new TestOptionsMonitor<DaprInternalAuthenticationOptions>(options);
-        var handler = new DaprInternalAuthenticationHandler(optionsMonitor, NullLoggerFactory.Instance, UrlEncoder.Default);
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(environmentName);
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["APP_API_TOKEN"] = configuredToken })
+            .Build();
+        var validator = new DaprAppChannelTokenValidator(environment, configuration);
+        var handler = new DaprInternalAuthenticationHandler(
+            optionsMonitor, NullLoggerFactory.Instance, UrlEncoder.Default, validator);
 
         var scheme = new AuthenticationScheme(
             DaprInternalAuthenticationOptions.SchemeName,
@@ -75,6 +127,9 @@ public class DaprInternalAuthenticationHandlerTests {
         var httpContext = new DefaultHttpContext();
         if (header is not null) {
             httpContext.Request.Headers[DaprInternalAuthenticationOptions.CallerHeaderName] = header;
+        }
+        if (presentedToken is not null) {
+            httpContext.Request.Headers[DaprAppChannelTokenValidator.HeaderName] = presentedToken;
         }
 
         await handler.InitializeAsync(scheme, httpContext);

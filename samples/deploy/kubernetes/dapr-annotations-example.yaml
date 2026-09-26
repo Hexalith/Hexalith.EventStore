@@ -17,10 +17,19 @@ eventstore_annotations:
   dapr.io/app-id: "eventstore"
   dapr.io/app-port: "8080"
   dapr.io/config: "accesscontrol"
+  dapr.io/app-token-secret: "app-api-token"
   dapr.io/sidecar-cpu-request: "100m"
   dapr.io/sidecar-memory-request: "128Mi"
   dapr.io/sidecar-cpu-limit: "300m"
   dapr.io/sidecar-memory-limit: "256Mi"
+
+# Location: spec.template.spec.containers[0].env
+eventstore_app_channel_env:
+  - name: APP_API_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: app-api-token
+        key: token
 
 # Location: spec.template.spec.containers[0].resources
 eventstore_resources:
