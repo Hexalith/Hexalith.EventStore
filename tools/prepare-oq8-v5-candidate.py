@@ -23,6 +23,9 @@ V5_SELECTION_REASON = "Retain immutable v1-v4 history and activate the reviewed 
 V4_DIRECTORY = Path(
     "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v4"
 )
+V5_DIRECTORY = Path(
+    "_bmad-output/implementation-artifacts/evidence/story-4-15-successors/v5"
+)
 SELECTOR = Path(
     "_bmad-output/implementation-artifacts/4-15-oq8-platform-closure-successor.json"
 )
@@ -105,9 +108,9 @@ def reviewed_source_tree_sha256(commit: str) -> str:
     return content.hexdigest()
 
 
-def archive_v4_source(destination: Path) -> None:
+def archive_source(commit: str, destination: Path) -> None:
     producer = subprocess.Popen(
-        ["git", "archive", "--format=tar", V4_SOURCE_COMMIT],
+        ["git", "archive", "--format=tar", commit],
         cwd=ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -121,7 +124,11 @@ def archive_v4_source(destination: Path) -> None:
         producer.stdout.close()
     error = producer.stderr.read().decode("utf-8", errors="replace")
     if producer.wait(timeout=30) != 0:
-        raise RuntimeError(f"Unable to read approved v4 source commit: {error.strip()}")
+        raise RuntimeError(f"Unable to read approved source commit: {error.strip()}")
+
+
+def archive_v4_source(destination: Path) -> None:
+    archive_source(V4_SOURCE_COMMIT, destination)
 
 
 def verify_historical_evidence(archive_root: Path) -> dict[str, str]:
@@ -220,36 +227,65 @@ def prepare(*, allow_v5: bool = False) -> dict:
         historical = verify_historical_evidence(archive_root)
         selector, identity = verify_sealed_v4(ROOT, archive_root, allow_v5=allow_v5)
 
-    current_gate_inputs = {
-        relative: sha256(ROOT / relative)
-        for relative in identity["gateInputs"]
-    }
-    changed_gate_inputs = {
-        relative: {"v4Sha256": expected, "candidateSha256": current_gate_inputs[relative]}
-        for relative, expected in identity["gateInputs"].items()
-        if current_gate_inputs[relative] != expected
-    }
-    if set(changed_gate_inputs) != EXPECTED_CHANGED_V4_GATE_INPUTS:
-        raise ValueError("The v5 candidate changes an unexpected v4 gate input or omits an approved transition.")
-    release_source = {
-        relative: sha256(ROOT / relative) for relative in RELEASE_SOURCE_PATHS
-    }
-    manifest = json.loads(
-        (ROOT / "tools/release-packages.json").read_text(encoding="utf-8")
-    )
-    package_ids = [item["id"] for item in manifest["packages"]]
-    if len(package_ids) != 14 or len(set(package_ids)) != 14:
-        raise ValueError("The 14-package release inventory has changed.")
+    v5_packet_path = ROOT / V5_DIRECTORY / "packet.json"
+    reviewed_commit = None
+    if allow_v5 and v5_packet_path.is_file():
+        packet_data = json.loads(v5_packet_path.read_text(encoding="utf-8"))
+        reviewed_commit = (
+            packet_data.get("subjectInputs", {})
+            .get("sourceIdentity", {})
+            .get("reviewedCommit")
+        )
 
-    head = git("rev-parse", "HEAD")
-    return {
-        "schema": "hexalith.eventstore.oq8-v5-review-candidate/v1",
-        "status": "draft-unapproved",
-        "repository": "Hexalith/Hexalith.EventStore",
-        "head": head,
-        "postReviewPaths": list(POST_REVIEW_PATHS),
-        "reviewedSourceTreeSha256": reviewed_source_tree_sha256(head),
-        "workingTreeDirty": bool(git("status", "--porcelain")),
+    if reviewed_commit is not None:
+        git("cat-file", "-e", f"{reviewed_commit}^{{commit}}")
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", reviewed_commit, "HEAD"],
+            cwd=ROOT,
+            check=True,
+            timeout=30,
+        )
+
+    with tempfile.TemporaryDirectory(prefix="oq8-v5-source-") as v5_temp:
+        if reviewed_commit is not None:
+            source_root = Path(v5_temp)
+            archive_source(reviewed_commit, source_root)
+            head = reviewed_commit
+            working_tree_dirty = False
+        else:
+            source_root = ROOT
+            head = git("rev-parse", "HEAD")
+            working_tree_dirty = bool(git("status", "--porcelain"))
+
+        current_gate_inputs = {
+            relative: sha256(source_root / relative)
+            for relative in identity["gateInputs"]
+        }
+        changed_gate_inputs = {
+            relative: {"v4Sha256": expected, "candidateSha256": current_gate_inputs[relative]}
+            for relative, expected in identity["gateInputs"].items()
+            if current_gate_inputs[relative] != expected
+        }
+        if set(changed_gate_inputs) != EXPECTED_CHANGED_V4_GATE_INPUTS:
+            raise ValueError("The v5 candidate changes an unexpected v4 gate input or omits an approved transition.")
+        release_source = {
+            relative: sha256(source_root / relative) for relative in RELEASE_SOURCE_PATHS
+        }
+        manifest = json.loads(
+            (source_root / "tools/release-packages.json").read_text(encoding="utf-8")
+        )
+        package_ids = [item["id"] for item in manifest["packages"]]
+        if len(package_ids) != 14 or len(set(package_ids)) != 14:
+            raise ValueError("The 14-package release inventory has changed.")
+
+        return {
+            "schema": "hexalith.eventstore.oq8-v5-review-candidate/v1",
+            "status": "draft-unapproved",
+            "repository": "Hexalith/Hexalith.EventStore",
+            "head": head,
+            "postReviewPaths": list(POST_REVIEW_PATHS),
+            "reviewedSourceTreeSha256": reviewed_source_tree_sha256(head),
+            "workingTreeDirty": working_tree_dirty,
         "historical": {
             "v4SourceCommit": V4_SOURCE_COMMIT,
             "v4Directory": V4_DIRECTORY.as_posix(),

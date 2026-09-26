@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Hexalith.EventStore.Contracts" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Client" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Server" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.SignalR" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Testing" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Testing.Integration" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Aspire" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.ServiceDefaults" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.DomainService" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.RestApi.Generators" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Gateway" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Admin.Abstractions" Version="3.108.1" />
+    <PackageReference Include="Hexalith.EventStore.Admin.Server" Version="3.108.1" />
+  </ItemGroup>
+</Project>
