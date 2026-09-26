@@ -1,4 +1,5 @@
 using System.Runtime.Serialization;
+using Hexalith.EventStore.Contracts.Effects;
 
 namespace Hexalith.EventStore.Server.Actors;
 
@@ -28,4 +29,12 @@ public sealed record IdempotencyTenantLifecycleRecord(
     /// <summary>Indicates that the joint erasure authority completed its tenant operation.</summary>
     [DataMember]
     public bool TrustedEffectEvidenceErased { get; init; }
+
+    /// <summary>Durable source and target inventory for one tenant erasure decision.</summary>
+    [DataMember]
+    public EffectIdentity[] TrustedEffects { get; init; } = [];
+
+    /// <summary>Effect turns admitted before deletion and not yet durably settled.</summary>
+    [DataMember]
+    public string[] PendingTrustedEffectIds { get; init; } = [];
 }

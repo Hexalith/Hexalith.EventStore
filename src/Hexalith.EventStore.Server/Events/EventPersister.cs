@@ -134,7 +134,8 @@ public partial class EventPersister(
         // Update aggregate metadata with new sequence and timestamp
         long newSequence = currentSequence + domainResult.Events.Count;
         await stateManager
-            .SetStateAsync(identity.MetadataKey, new AggregateMetadata(newSequence, timestamp, null))
+            .SetStateAsync(identity.MetadataKey, new AggregateMetadata(
+                newSequence, timestamp, null, metadataResult.HasValue ? metadataResult.Value.RetainedFloor : 1))
             .ConfigureAwait(false);
 
         Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);

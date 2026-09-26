@@ -6,4 +6,5 @@ namespace Hexalith.EventStore.Server.Events;
 /// <param name="CurrentSequence">The last persisted event sequence number.</param>
 /// <param name="LastModified">When the aggregate was last modified.</param>
 /// <param name="ETag">Optional ETag for optimistic concurrency (Story 3.7+).</param>
-public record AggregateMetadata(long CurrentSequence, DateTimeOffset LastModified, string? ETag);
+/// <param name="RetainedFloor">Inclusive first retained envelope sequence. Legacy untrimmed streams start at one.</param>
+public record AggregateMetadata(long CurrentSequence, DateTimeOffset LastModified, string? ETag, long RetainedFloor = 1);

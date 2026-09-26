@@ -6,6 +6,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Tests.Actors;
 
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,36 @@ namespace Hexalith.EventStore.Server.Tests.Commands;
 /// <summary>Source evidence and joint-retention admission tests.</summary>
 public sealed class TrustedEffectRetentionGateTests
 {
+    /// <summary>The source floor comes from committed stream metadata in the source actor.</summary>
+    [Fact]
+    public async Task ActorSourceFloorReadsAuthoritativeCommittedMetadata()
+    {
+        var identity = new EffectIdentity(
+            "tenant-a", "works", "source-1", 7,
+            EffectKindCatalog.DateResume, "works", "target-1", 0);
+        var sourceIdentity = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity(
+            identity.Tenant, identity.SourceDomain, identity.SourceAggregate);
+        var state = new FaultInjectingActorStateManager();
+        await state.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [sourceIdentity.MetadataKey] = new AggregateMetadata(8, DateTimeOffset.UnixEpoch, null, 8),
+        });
+        ActorTestContext source = AggregateActorTestHelper.CreateActor(
+            stateManager: state, actorId: sourceIdentity.ActorId);
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IAggregateActor>(
+            Arg.Is<ActorId>(id => id.GetId() == sourceIdentity.ActorId), nameof(AggregateActor))
+            .Returns(source.Actor);
+        var floors = new ActorTrustedEffectSourceFloorProvider(
+            factory, Options.Create(new EventStoreActorOptions()));
+
+        (await floors.GetRetainedFloorAsync(identity)).ShouldBe(8);
+        _ = await state.TryRemoveStateAsync(sourceIdentity.MetadataKey);
+        await state.SaveStateAsync();
+        await state.ClearCacheAsync();
+        (await floors.GetRetainedFloorAsync(identity)).ShouldBeNull();
+    }
+
     /// <summary>A retained exact source envelope permits admission while the tenant is active.</summary>
     [Fact]
     public async Task RetainedSourceAndJointDecisionPermitAdmission()

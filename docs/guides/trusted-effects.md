@@ -33,9 +33,12 @@ the actor verifies that proof before reading receipt state. The proof binds the
 tuple, command type, server semantic digest, workload, purpose, causation, and
 delegation-token hash. Retained reader keys permit proof verification during
 key rotation. A direct actor call without the gateway proof is denied. The
-actor prepares admission without registering retention evidence, validates the
-gateway proof and its own target partition, then completes retention admission.
-An invalid proof cannot register tenant lifecycle evidence or read a receipt. The
+actor prepares admission without registering retention evidence, then validates
+the gateway proof and its own target partition. The gateway registers lifecycle
+evidence before signing that proof. After the target actor call returns, the
+router asks the lifecycle to complete the registered turn. This ordering avoids
+a cycle when tenant purge waits for the target actor to erase its evidence.
+An invalid proof cannot mutate lifecycle evidence from the target actor or read a receipt. The
 private receipt is staged in the same actor state batch as the first target
 event range or no-op terminal outcome. Exact replay returns that receipt without
 calling the domain handler. A collision records target-scoped quarantine
@@ -52,28 +55,61 @@ stream, target stream, receipt, collision evidence, audit, and tenant-key order
 before non-synthetic shared data or real-data admission. The current actor and
 gateway tests use synthetic data. No Works translator is changed by this API.
 
-The optional `AddEventStoreTrustedEffectRetention()` registration installs a
-source-evidence gate only after the host supplies
-`ITrustedEffectSourceFloorProvider` and `ITrustedEffectJointRetentionPolicy`.
-It rejects missing or invalid floors, reads the exact source envelope from its
-actor, checks tenant/domain/aggregate/sequence, and rejects a tenant whose
-idempotency lifecycle has entered legal hold or deletion. Before target
-dispatch, it registers trusted evidence in the tenant lifecycle actor. The
-serialized registration fails if offboarding began during source inspection.
-Neither dependency has a default implementation. A deployment must bind the
-floor to authoritative stream retention. Its joint-retention policy must hold
-the source, target, receipt, collision evidence, and tenant key under one
-monotonic decision through target commit and replay.
+`ActorTrustedEffectSourceFloorProvider` reads the source aggregate's committed
+`AggregateMetadata.RetainedFloor`. Event writes preserve that floor; legacy
+untrimmed streams start at sequence one. A missing stream or corrupt floor
+fails closed. `TrustedEffectRetentionGate` also reads the exact source envelope
+and checks tenant, domain, aggregate, and sequence. EventStore has no partial
+stream trim operation; any future trim must advance the floor atomically with
+the retained stream evidence.
 
-The lifecycle actor will not mark a tenant with registered trusted evidence
-`Purged` until `ITrustedEffectJointRetentionPolicy.EraseTenantAsync` completes.
-That callback must implement one authorized, idempotent source/target erasure
-operation and prove durable completion before returning. A failed callback
-leaves the lifecycle purge-eligible for retry; legal hold prevents the callback
-from running. The policy must inventory every target receipt and collision and
-erase them with their source and target streams before tenant-key destruction.
-EventStore supplies the serialized gate and callback; it has no default eraser
-or production registration.
+`ActorTrustedEffectJointRetentionPolicy` uses the tenant lifecycle's persisted
+effect inventory to erase each registered source and target aggregate partition.
+The target receipt and collision index is staged with those records. Each
+aggregate erasure writes a durable progress marker before removing bounded
+event batches, then removes stream metadata, snapshot, receipts, and collisions.
+A retry resumes from that marker; a completed marker fences a target turn that
+was queued before deletion. The lifecycle clears its effect inventory only
+after every aggregate erasure completes. Legal hold prevents erasure. A failed
+turn leaves the lifecycle purge-eligible for retry. The existing protected
+tenant/key admission tombstones, directory aliases, and legacy inventory
+entries are purged after the stream evidence and before lifecycle `Purged`.
+Those records contain digest-key versions and protected digests. Shared
+secret-store digest-key material is not a tenant-owned key and is not deleted
+by one tenant's offboarding.
+
+The gateway router reports a target result only after lifecycle completion. If
+deletion and purge finish during an in-flight target turn, the router's later
+completion fails closed. The actor-local erasure marker prevents a queued target
+turn from writing after erasure. A previously signed gateway proof has no
+lifecycle epoch or expiry, however. A caller with direct actor access could
+replay that proof during a legal hold before erasure begins, without passing
+through the gateway's new admission check. Production trusted-effect admission
+therefore remains closed until that direct-actor replay path is fenced and the
+Platform mTLS/ACL boundary is proved.
+
+These actor policies are available for an explicitly governed host but have no
+production registration. `AddEventStoreTrustedEffectRetention()` still installs
+only the gate; the host must bind the actor floor and joint policy explicitly.
+Aggregate erasure fails before reading state unless the host supplies
+`ITrustedEffectErasureAuthority`. EventStore's
+`TrustedEffectErasureCapability` signs each partition request inside the
+serialized lifecycle purge turn. Its five-minute HMAC binds the tenant,
+aggregate partition, complete inventory digest, expected target effect IDs,
+persisted deletion decision, and a random one-use nonce. The aggregate actor
+validates the signature before any state access. The first durable erasure
+progress write consumes the nonce; a failed purge followed by legal hold cannot
+reuse that capability to continue an interrupted erasure. An existing receipt
+without its actor-local index is rejected during erasure. Before admitting real
+data, the rollout must prove no older unindexed receipts or collisions exist,
+or migrate them under the same audited retention decision. A capability issued
+before the first progress write still needs the production mTLS/ACL boundary to
+prevent interception or replay within its short lifetime. The host must also
+supply the privileged audit sink, attest the mTLS/ACL caller path, obtain
+accountable data-owner approval, and complete the AD-28 restore drill.
+The actor inventory covers registered trusted-effect source and target streams;
+full tenant offboarding of unrelated streams and other durable catalogs remains
+part of the broader AD-28 workflow.
 
 The host must also provide `ITrustedEffectAuditSink`, an append-only privileged
 audit implementation. Admission logs payload-free authorization or denial

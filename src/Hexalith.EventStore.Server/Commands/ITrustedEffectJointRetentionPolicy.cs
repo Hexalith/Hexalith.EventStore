@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Contracts.Effects;
+using Hexalith.EventStore.Server.Actors;
 
 namespace Hexalith.EventStore.Server.Commands;
 
@@ -16,5 +17,8 @@ public interface ITrustedEffectJointRetentionPolicy
     /// related tenant key only after one authorized offboarding decision. The implementation
     /// must return only after durable erasure is proven; failure leaves the lifecycle open.
     /// </summary>
-    Task EraseTenantAsync(string tenant, CancellationToken cancellationToken = default);
+    Task EraseTenantAsync(
+        string tenant,
+        TrustedEffectAggregateErasure[] authorizedPartitions,
+        CancellationToken cancellationToken = default);
 }

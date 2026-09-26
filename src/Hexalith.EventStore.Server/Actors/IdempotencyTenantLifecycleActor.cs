@@ -22,7 +22,8 @@ public sealed class IdempotencyTenantLifecycleActor(
     IActorProxyFactory? actorProxyFactory = null,
     IOptions<EventStoreActorOptions>? actorOptions = null,
     ITrustedEffectJointRetentionPolicy? trustedEffectRetention = null,
-    ITrustedEffectAuditSink? trustedEffectAuditSink = null)
+    ITrustedEffectAuditSink? trustedEffectAuditSink = null,
+    ITrustedEffectErasureAuthority? trustedEffectErasureAuthority = null)
     : Actor(host), IIdempotencyTenantLifecycleActor, IIdempotencyTenantLifecycleMigrationActor
 {
     /// <summary>Gets the maximum number of references removed in one serialized actor turn.</summary>
@@ -53,15 +54,57 @@ public sealed class IdempotencyTenantLifecycleActor(
             throw new InvalidOperationException("Trusted effect evidence cannot be registered for this tenant.");
         }
 
-        if (!record.HasTrustedEffectEvidence)
+        string effectId = EffectIdentityCodec.ComputeEffectId(identity);
+        EffectIdentity? existing = record.TrustedEffects.FirstOrDefault(candidate =>
+            string.Equals(EffectIdentityCodec.ComputeEffectId(candidate), effectId, StringComparison.Ordinal));
+        if (existing is not null && existing != identity)
+        {
+            throw new InvalidOperationException("Trusted effect inventory contains a colliding identity.");
+        }
+
+        if (existing is null || !record.PendingTrustedEffectIds.Contains(effectId, StringComparer.Ordinal))
         {
             ITrustedEffectAuditSink audit = trustedEffectAuditSink
                 ?? throw new InvalidOperationException("Trusted effect registration audit is unavailable.");
             await audit.AppendAsync(new TrustedEffectAuditRecord(
-                "evidence-registration", record.Tenant, EffectIdentityCodec.ComputeEffectId(identity),
+                "evidence-registration", record.Tenant, effectId,
                 null, null, "started")).ConfigureAwait(false);
-            await PersistAsync(record with { HasTrustedEffectEvidence = true }).ConfigureAwait(false);
+            await PersistAsync(record with
+            {
+                HasTrustedEffectEvidence = true,
+                TrustedEffects = existing is null ? [.. record.TrustedEffects, identity] : record.TrustedEffects,
+                PendingTrustedEffectIds = record.PendingTrustedEffectIds.Contains(effectId, StringComparer.Ordinal)
+                    ? record.PendingTrustedEffectIds : [.. record.PendingTrustedEffectIds, effectId],
+            }).ConfigureAwait(false);
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task CompleteTrustedEffectAsync(EffectIdentity identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        string effectId = EffectIdentityCodec.ComputeEffectId(identity);
+        IdempotencyTenantLifecycleRecord record = await LoadRequiredAsync().ConfigureAwait(false);
+        if (!string.Equals(identity.Tenant, record.Tenant, StringComparison.Ordinal)
+            || !record.TrustedEffects.Contains(identity))
+        {
+            throw new InvalidOperationException("Trusted effect completion is not registered for this tenant.");
+        }
+
+        if (!record.PendingTrustedEffectIds.Contains(effectId, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        ITrustedEffectAuditSink audit = trustedEffectAuditSink
+            ?? throw new InvalidOperationException("Trusted effect completion audit is unavailable.");
+        await audit.AppendAsync(new TrustedEffectAuditRecord(
+            "evidence-completion", record.Tenant, effectId, null, null, "committed")).ConfigureAwait(false);
+        await PersistAsync(record with
+        {
+            PendingTrustedEffectIds = record.PendingTrustedEffectIds
+                .Where(candidate => !string.Equals(candidate, effectId, StringComparison.Ordinal)).ToArray(),
+        }).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -566,12 +609,27 @@ public sealed class IdempotencyTenantLifecycleActor(
                 ?? throw new InvalidOperationException("Trusted effect joint erasure is unavailable.");
             ITrustedEffectAuditSink audit = trustedEffectAuditSink
                 ?? throw new InvalidOperationException("Trusted effect erasure audit is unavailable.");
+            ITrustedEffectErasureAuthority authority = trustedEffectErasureAuthority
+                ?? throw new InvalidOperationException("Trusted effect erasure capability is unavailable.");
             await audit.AppendAsync(new TrustedEffectAuditRecord(
                 "offboarding-erasure", record.Tenant, null, null, null, "started")).ConfigureAwait(false);
-            await policy.EraseTenantAsync(record.Tenant).ConfigureAwait(false);
+            TrustedEffectAggregateErasure[] requests = TrustedEffectErasureInventory.Build(
+                record.Tenant,
+                record.TrustedEffects,
+                record.DeletionApprovedAt!.Value,
+                Clock.GetUtcNow());
+            for (int i = 0; i < requests.Length; i++)
+            {
+                string capability = await authority.IssueAsync(requests[i]).ConfigureAwait(false);
+                requests[i] = requests[i] with { Capability = capability };
+            }
+
+            await policy.EraseTenantAsync(record.Tenant, requests).ConfigureAwait(false);
             record = await PersistAsync(record with
             {
                 TrustedEffectEvidenceErased = true,
+                TrustedEffects = [],
+                PendingTrustedEffectIds = [],
                 LastObservedAt = Max(record.LastObservedAt, Clock.GetUtcNow()),
             }).ConfigureAwait(false);
         }
@@ -738,6 +796,15 @@ public sealed class IdempotencyTenantLifecycleActor(
             || (record.TrustedEffectEvidenceErased && !record.HasTrustedEffectEvidence)
             || (record.TrustedEffectEvidenceErased && record.State is not (IdempotencyTenantLifecycleState.PurgeEligible or IdempotencyTenantLifecycleState.Purged))
             || (record.State == IdempotencyTenantLifecycleState.Purged && record.HasTrustedEffectEvidence && !record.TrustedEffectEvidenceErased)
+            || record.TrustedEffects is null
+            || record.PendingTrustedEffectIds is null
+            || record.TrustedEffects.Any(identity => identity is null || !string.Equals(identity.Tenant, record.Tenant, StringComparison.Ordinal))
+            || record.TrustedEffects.Select(EffectIdentityCodec.ComputeEffectId).Distinct(StringComparer.Ordinal).Count() != record.TrustedEffects.Length
+            || record.PendingTrustedEffectIds.Distinct(StringComparer.Ordinal).Count() != record.PendingTrustedEffectIds.Length
+            || record.PendingTrustedEffectIds.Any(effectId => !record.TrustedEffects.Any(identity =>
+                string.Equals(EffectIdentityCodec.ComputeEffectId(identity), effectId, StringComparison.Ordinal)))
+            || (record.HasTrustedEffectEvidence != (record.TrustedEffects.Length > 0) && !record.HasTrustedEffectEvidence)
+            || (record.State == IdempotencyTenantLifecycleState.Purged && record.PendingTrustedEffectIds.Length != 0)
             || record.References is null
             || record.References.Any(reference => !IsValidReference(reference, record.Tenant))
             || record.References.Select(static reference => reference.ActorId)

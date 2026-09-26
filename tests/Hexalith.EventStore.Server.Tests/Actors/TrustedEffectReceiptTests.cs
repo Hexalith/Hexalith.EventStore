@@ -35,6 +35,7 @@ public class TrustedEffectReceiptTests
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
+        _ = policy.DidNotReceiveWithAnyArgs().CompleteAsync(default!);
         state.CommittedState.Keys.ShouldContain("effect_receipt_" + first.EffectId);
     }
 

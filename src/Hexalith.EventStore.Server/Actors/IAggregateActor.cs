@@ -63,6 +63,12 @@ public interface IAggregateActor : IActor {
     /// <returns>Stream existence and current sequence metadata.</returns>
     Task<AggregateStreamMetadata> GetStreamMetadataAsync();
 
+    /// <summary>Returns the source stream's authoritative inclusive retained floor, or null if absent.</summary>
+    Task<long?> GetRetainedFloorAsync();
+
+    /// <summary>Idempotently removes this actor's registered stream and effect evidence during tenant purge.</summary>
+    Task EraseTrustedEffectEvidenceAsync(TrustedEffectAggregateErasure request);
+
     /// <summary>
     /// Creates a manual snapshot for the actor's current stream sequence from inside the
     /// aggregate actor boundary.

@@ -9,6 +9,9 @@ public interface IIdempotencyTenantLifecycleActor : IActor
     /// <summary>Registers trusted source, target, receipt, and collision evidence before a target outcome can commit.</summary>
     Task RegisterTrustedEffectAsync(EffectIdentity identity);
 
+    /// <summary>Releases one admitted effect only after its durable target outcome is observed.</summary>
+    Task CompleteTrustedEffectAsync(EffectIdentity identity);
+
     /// <summary>Registers protected admission and directory references before admission state creation.</summary>
     Task RegisterAsync(IdempotencyTenantLifecycleReference[] references);
 

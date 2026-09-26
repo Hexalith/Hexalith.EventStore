@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Contracts.Effects;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
@@ -22,10 +23,15 @@ internal sealed class SyntheticTrustedEffectJointRetentionPolicy(
     }
 
     /// <inheritdoc/>
-    public async Task EraseTenantAsync(string requestedTenant, CancellationToken cancellationToken = default)
+    public async Task EraseTenantAsync(
+        string requestedTenant,
+        TrustedEffectAggregateErasure[] inventory,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!string.Equals(requestedTenant, tenant, StringComparison.Ordinal))
+        if (!string.Equals(requestedTenant, tenant, StringComparison.Ordinal)
+            || inventory.Length == 0
+            || inventory.Any(identity => !string.Equals(identity.Tenant, tenant, StringComparison.Ordinal)))
         {
             throw new InvalidOperationException("Synthetic tenant erasure is unauthorized.");
         }

@@ -19,6 +19,17 @@ public sealed class TrustedEffectRetentionGate(
     IOptions<EventStoreActorOptions> actorOptions) : ITrustedEffectRetentionGate
 {
     /// <inheritdoc/>
+    public Task CompleteAsync(EffectIdentity identity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        cancellationToken.ThrowIfCancellationRequested();
+        IIdempotencyTenantLifecycleActor lifecycle = actorProxyFactory
+            .CreateActorProxy<IIdempotencyTenantLifecycleActor>(
+                new ActorId(identity.Tenant), IdempotencyTenantLifecycleActor.ActorTypeName);
+        return lifecycle.CompleteTrustedEffectAsync(identity);
+    }
+
+    /// <inheritdoc/>
     public async Task ValidateAsync(EffectIdentity identity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(identity);

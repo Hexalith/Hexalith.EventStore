@@ -117,6 +117,24 @@ public class EventPersisterTests {
     // === 6.2: Existing aggregate with CurrentSequence=5 -- next event gets sequence 6 ===
 
     [Fact]
+    public async Task PersistEventsAsync_PreservesAuthoritativeRetainedFloor()
+    {
+        (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(5, DateTimeOffset.UnixEpoch, null, RetainedFloor: 4)));
+
+        _ = await persister.PersistEventsAsync(
+            TestIdentity, "test-domain", CreateTestCommand(),
+            DomainResult.Success(new IEventPayload[] { new TestEvent() }), "v1");
+
+        await stateManager.Received(1).SetStateAsync(
+            TestIdentity.MetadataKey,
+            Arg.Is<AggregateMetadata>(metadata => metadata.CurrentSequence == 6 && metadata.RetainedFloor == 4),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task PersistEventsAsync_ExistingAggregate_NextEventGetsCorrectSequence() {
         // Arrange
         (EventPersister persister, IActorStateManager stateManager) = CreatePersister();

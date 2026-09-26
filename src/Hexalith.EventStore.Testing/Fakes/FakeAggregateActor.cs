@@ -73,6 +73,14 @@ public class FakeAggregateActor : IAggregateActor {
         => Task.FromResult(new AggregateStreamMetadata(Exists: ConfiguredEvents.Length > 0, CurrentSequence: ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber)));
 
     /// <inheritdoc/>
+    public Task<long?> GetRetainedFloorAsync()
+        => Task.FromResult<long?>(ConfiguredEvents.Length == 0 ? null : ConfiguredEvents.Min(e => e.SequenceNumber));
+
+    /// <inheritdoc/>
+    public Task EraseTrustedEffectEvidenceAsync(TrustedEffectAggregateErasure request)
+        => throw new InvalidOperationException("Fake aggregate actor does not model durable trusted effect erasure.");
+
+    /// <inheritdoc/>
     public Task<ManualSnapshotResult> CreateManualSnapshotAsync(string? correlationId) {
         long sequence = ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber);
         return Task.FromResult(sequence == 0

@@ -64,7 +64,8 @@ public partial class AggregateActor(
     IdempotencyExecutionContextProtector? executionContextProtector = null,
     ITrustedEffectAdmissionPolicy? trustedEffectAdmissionPolicy = null,
     ITrustedEffectGatewayProof? trustedEffectGatewayProof = null,
-    ITrustedEffectAuditSink? trustedEffectAuditSink = null)
+    ITrustedEffectAuditSink? trustedEffectAuditSink = null,
+    ITrustedEffectErasureAuthority? trustedEffectErasureAuthority = null)
     : Actor(host), IAggregateActor, IIdempotencyLegacySourceActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
@@ -208,7 +209,17 @@ public partial class AggregateActor(
             throw new InvalidOperationException("Trusted effect target does not match the actor partition.");
         }
 
-        await policy.CompleteAsync(admission).ConfigureAwait(false);
+        ConditionalValue<TrustedEffectErasureProgress> erasure = await StateManager
+            .TryGetStateAsync<TrustedEffectErasureProgress>(TrustedEffectErasureProgress.StateName)
+            .ConfigureAwait(false);
+        if (erasure.HasValue)
+        {
+            throw new InvalidOperationException("Trusted effect target partition is being erased.");
+        }
+
+        // The gateway registered this identity before signing its proof. Calling the
+        // tenant lifecycle from this actor turn can deadlock against a lifecycle purge
+        // that is waiting for this actor's erasure turn.
         await EnsureStateCacheBarrierAsync(expectedMessageId, activity: null).ConfigureAwait(false);
         EffectReceipt? prior = await ReadEffectReceiptAsync(effectId).ConfigureAwait(false);
         if (prior is not null)
@@ -297,6 +308,7 @@ public partial class AggregateActor(
             admission.Context.CausationId,
             IdempotencyTimeProvider.GetUtcNow());
         await StateManager.SetStateAsync(key, record).ConfigureAwait(false);
+        await StageEffectEvidenceIndexAsync(collisionKey: key).ConfigureAwait(false);
         try
         {
             await StateManager.SaveStateAsync().ConfigureAwait(false);
@@ -313,14 +325,15 @@ public partial class AggregateActor(
         }
     }
 
-    private Task StageEffectReceiptAsync(
+    private async Task StageEffectReceiptAsync(
         TrustedEffectAdmission admission,
         TrustedEffectDisposition disposition,
         string? resultPayload)
     {
         string effectId = EffectIdentityCodec.ComputeEffectId(admission.Submission.Identity);
-        return StateManager.SetStateAsync(
-            "effect_receipt_" + effectId,
+        string receiptKey = "effect_receipt_" + effectId;
+        await StateManager.SetStateAsync(
+            receiptKey,
             new EffectReceipt(
                 effectId,
                 admission.Submission.Identity,
@@ -329,7 +342,23 @@ public partial class AggregateActor(
                 admission.Context.Workload,
                 admission.Context.Purpose,
                 admission.Context.CausationId,
-                resultPayload));
+                resultPayload)).ConfigureAwait(false);
+        await StageEffectEvidenceIndexAsync(receiptKey: receiptKey).ConfigureAwait(false);
+    }
+
+    private async Task StageEffectEvidenceIndexAsync(string? receiptKey = null, string? collisionKey = null)
+    {
+        ConditionalValue<TrustedEffectEvidenceIndex> stored = await StateManager
+            .TryGetStateAsync<TrustedEffectEvidenceIndex>(TrustedEffectEvidenceIndex.StateName)
+            .ConfigureAwait(false);
+        TrustedEffectEvidenceIndex index = stored.HasValue
+            ? stored.Value : new TrustedEffectEvidenceIndex([], []);
+        string[] receipts = receiptKey is not null && !index.ReceiptKeys.Contains(receiptKey, StringComparer.Ordinal)
+            ? [.. index.ReceiptKeys, receiptKey] : index.ReceiptKeys;
+        string[] collisions = collisionKey is not null && !index.CollisionKeys.Contains(collisionKey, StringComparer.Ordinal)
+            ? [.. index.CollisionKeys, collisionKey] : index.CollisionKeys;
+        await StateManager.SetStateAsync(TrustedEffectEvidenceIndex.StateName,
+            new TrustedEffectEvidenceIndex(receipts, collisions)).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -1857,6 +1886,165 @@ public partial class AggregateActor(
     public async Task<long> GetCurrentSequenceAsync() {
         AggregateStreamMetadata metadata = await GetStreamMetadataAsync().ConfigureAwait(false);
         return metadata.Exists ? metadata.CurrentSequence : 0;
+    }
+
+    /// <inheritdoc/>
+    public async Task<long?> GetRetainedFloorAsync()
+    {
+        await EnsureStateCacheBarrierAsync(correlationId: null, activity: null).ConfigureAwait(false);
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+        ConditionalValue<AggregateMetadata> stored = await StateManager
+            .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey).ConfigureAwait(false);
+        if (!stored.HasValue || stored.Value.CurrentSequence < 1)
+        {
+            return null;
+        }
+
+        long floor = stored.Value.RetainedFloor;
+        if (floor < 1 || floor > stored.Value.CurrentSequence)
+        {
+            throw new InvalidOperationException("Aggregate retained source floor is corrupt.");
+        }
+
+        return floor;
+    }
+
+    /// <inheritdoc/>
+    public async Task EraseTrustedEffectEvidenceAsync(TrustedEffectAggregateErasure request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.EffectIds);
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+        if (!string.Equals(request.Tenant, identity.TenantId, StringComparison.Ordinal)
+            || !string.Equals(request.Domain, identity.Domain, StringComparison.Ordinal)
+            || !string.Equals(request.Aggregate, identity.AggregateId, StringComparison.Ordinal)
+            || request.EffectIds.Any(string.IsNullOrWhiteSpace)
+            || request.EffectIds.Distinct(StringComparer.Ordinal).Count() != request.EffectIds.Length)
+        {
+            throw new InvalidOperationException("Trusted effect erasure partition or inventory is invalid.");
+        }
+
+        ITrustedEffectErasureAuthority authority = trustedEffectErasureAuthority
+            ?? throw new InvalidOperationException("Trusted effect erasure authority is unavailable.");
+        await authority.ValidateAsync(request).ConfigureAwait(false);
+
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        ConditionalValue<TrustedEffectErasureProgress> savedProgress = await StateManager
+            .TryGetStateAsync<TrustedEffectErasureProgress>(TrustedEffectErasureProgress.StateName)
+            .ConfigureAwait(false);
+        if (savedProgress.HasValue
+            && string.Equals(savedProgress.Value.CapabilityNonce, request.Nonce, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Trusted effect erasure capability has already been consumed.");
+        }
+
+        if (savedProgress.HasValue && savedProgress.Value.Completed)
+        {
+            return;
+        }
+
+        ConditionalValue<TrustedEffectEvidenceIndex> savedIndex = await StateManager
+            .TryGetStateAsync<TrustedEffectEvidenceIndex>(TrustedEffectEvidenceIndex.StateName)
+            .ConfigureAwait(false);
+        TrustedEffectEvidenceIndex index = savedIndex.HasValue
+            ? savedIndex.Value : new TrustedEffectEvidenceIndex([], []);
+        string[] expectedReceiptKeys = request.EffectIds.Select(static effectId => "effect_receipt_" + effectId).ToArray();
+        if (index.ReceiptKeys.Except(expectedReceiptKeys, StringComparer.Ordinal).Any()
+            || index.CollisionKeys.Any(key => !request.EffectIds.Any(effectId =>
+                key.StartsWith("effect_collision_" + effectId + "_", StringComparison.Ordinal))))
+        {
+            throw new InvalidOperationException("Trusted effect erasure inventory is incomplete.");
+        }
+
+        foreach (string receiptKey in expectedReceiptKeys.Except(index.ReceiptKeys, StringComparer.Ordinal))
+        {
+            if (await StateManager.ContainsStateAsync(receiptKey).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException("Trusted effect receipt is missing from its durable index.");
+            }
+        }
+
+        ConditionalValue<UnpublishedPublicationIndex> publication = await StateManager
+            .TryGetStateAsync<UnpublishedPublicationIndex>(UnpublishedPublicationIndex.StateKey)
+            .ConfigureAwait(false);
+        ConditionalValue<int> pending = await StateManager.TryGetStateAsync<int>(PendingCommandCountKey)
+            .ConfigureAwait(false);
+        if ((publication.HasValue && publication.Value.Entries.Count != 0)
+            || (pending.HasValue && pending.Value != 0))
+        {
+            throw new InvalidOperationException("Aggregate publication or command work remains pending.");
+        }
+
+        TrustedEffectErasureProgress progress;
+        if (savedProgress.HasValue)
+        {
+            progress = savedProgress.Value with { CapabilityNonce = request.Nonce };
+            await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName, progress)
+                .ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+            await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        }
+        else
+        {
+            ConditionalValue<AggregateMetadata> metadata = await StateManager
+                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey).ConfigureAwait(false);
+            long lastSequence = metadata.HasValue ? metadata.Value.CurrentSequence : 0;
+            if (lastSequence < 0)
+            {
+                throw new InvalidOperationException("Aggregate stream metadata is corrupt.");
+            }
+
+            progress = new TrustedEffectErasureProgress(lastSequence, 1, Completed: false, request.Nonce);
+            await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName, progress)
+                .ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+            await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        }
+
+        while (progress.NextSequence <= progress.LastSequence)
+        {
+            long upper = Math.Min(progress.LastSequence, progress.NextSequence + 63);
+            for (long sequence = progress.NextSequence; sequence <= upper; sequence++)
+            {
+                _ = await StateManager.TryRemoveStateAsync(identity.EventStreamKeyPrefix + sequence)
+                    .ConfigureAwait(false);
+            }
+
+            progress = progress with { NextSequence = upper + 1 };
+            await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName, progress)
+                .ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+            await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        }
+
+        foreach (string key in index.ReceiptKeys.Concat(index.CollisionKeys))
+        {
+            _ = await StateManager.TryRemoveStateAsync(key).ConfigureAwait(false);
+        }
+
+        _ = await StateManager.TryRemoveStateAsync(TrustedEffectEvidenceIndex.StateName).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(identity.MetadataKey).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(identity.SnapshotKey).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(UnpublishedPublicationIndex.StateKey).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(PendingCommandCountKey).ConfigureAwait(false);
+        _ = await StateManager.TryRemoveStateAsync(EventBatchCommitWitnessKey).ConfigureAwait(false);
+        await StateManager.SetStateAsync(TrustedEffectErasureProgress.StateName,
+            progress with { Completed = true }).ConfigureAwait(false);
+        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+        if (await StateManager.ContainsStateAsync(identity.MetadataKey).ConfigureAwait(false)
+            || await StateManager.ContainsStateAsync(TrustedEffectEvidenceIndex.StateName).ConfigureAwait(false))
+        {
+            throw new InvalidOperationException("Trusted effect erasure did not persist.");
+        }
+
+        foreach (string key in expectedReceiptKeys.Concat(index.CollisionKeys))
+        {
+            if (await StateManager.ContainsStateAsync(key).ConfigureAwait(false))
+            {
+                throw new InvalidOperationException("Trusted effect erasure left receipt or collision evidence.");
+            }
+        }
     }
 
     /// <inheritdoc/>

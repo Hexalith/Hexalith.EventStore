@@ -47,7 +47,7 @@ public class IdempotencyTenantLifecycleActorTests
 
         await Should.ThrowAsync<InvalidOperationException>(() => actor.PurgeAsync(1));
 
-        await retention.DidNotReceiveWithAnyArgs().EraseTenantAsync(default!, default);
+        await retention.DidNotReceiveWithAnyArgs().EraseTenantAsync(default!, default!, default);
     }
 
     /// <summary>A failed erasure leaves tenant evidence registered and retries idempotently.</summary>
@@ -55,7 +55,7 @@ public class IdempotencyTenantLifecycleActorTests
     public async Task TrustedEvidenceErasureFailureLeavesPurgeOpenForRetry()
     {
         ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
-        _ = retention.EraseTenantAsync("tenant-a", Arg.Any<CancellationToken>())
+        _ = retention.EraseTenantAsync("tenant-a", Arg.Any<TrustedEffectAggregateErasure[]>(), Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new IOException("audit or erasure failed"), _ => Task.CompletedTask);
         (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(trustedEffectRetention: retention);
         await actor.RegisterTrustedEffectAsync(TrustedIdentity());
@@ -69,7 +69,7 @@ public class IdempotencyTenantLifecycleActorTests
         IdempotencyTenantLifecycleRecord afterRetry = await actor.PurgeAsync(1);
         afterRetry.State.ShouldBe(IdempotencyTenantLifecycleState.Purged);
         afterRetry.TrustedEffectEvidenceErased.ShouldBeTrue();
-        await retention.Received(2).EraseTenantAsync("tenant-a", Arg.Any<CancellationToken>());
+        await retention.Received(2).EraseTenantAsync("tenant-a", Arg.Any<TrustedEffectAggregateErasure[]>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>A failed audit append prevents the joint eraser from touching evidence.</summary>
@@ -87,7 +87,7 @@ public class IdempotencyTenantLifecycleActorTests
 
         await Should.ThrowAsync<IOException>(() => actor.PurgeAsync(1));
 
-        await retention.DidNotReceiveWithAnyArgs().EraseTenantAsync(default!, default);
+        await retention.DidNotReceiveWithAnyArgs().EraseTenantAsync(default!, default!, default);
         (await actor.GetAsync()).TrustedEffectEvidenceErased.ShouldBeFalse();
     }
 
@@ -984,13 +984,17 @@ public class IdempotencyTenantLifecycleActorTests
             .Returns(Task.CompletedTask);
         ActorHost host = ActorHost.CreateForTest<IdempotencyTenantLifecycleActor>(
             new ActorTestOptions { ActorId = new ActorId("tenant-a") });
+        ITrustedEffectErasureAuthority erasureAuthority = Substitute.For<ITrustedEffectErasureAuthority>();
+        _ = erasureAuthority.IssueAsync(Arg.Any<TrustedEffectAggregateErasure>(), Arg.Any<CancellationToken>())
+            .Returns("synthetic-capability");
         var actor = new IdempotencyTenantLifecycleActor(
             host,
             NullLogger<IdempotencyTenantLifecycleActor>.Instance,
             time,
             actorProxyFactory,
             trustedEffectRetention: trustedEffectRetention,
-            trustedEffectAuditSink: trustedEffectAuditSink ?? Substitute.For<ITrustedEffectAuditSink>());
+            trustedEffectAuditSink: trustedEffectAuditSink ?? Substitute.For<ITrustedEffectAuditSink>(),
+            trustedEffectErasureAuthority: erasureAuthority);
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return (actor, stateManager, time);
     }
