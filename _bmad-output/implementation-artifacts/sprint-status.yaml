@@ -144,6 +144,9 @@ development_status:
   # retained byte-for-byte in the superseded audit area, with no authority for this subject.
   # closure.json's deployed_runtime_parity/selected_deployed_identity are claims validated by
   # the three receipts; the result is evidence only, with no operational authority.
+  # Caveat: both owner roles resolve to one authenticated account and the Test Architect
+  # record is self-attested, so 3/3 is not three-party review. G-HIGH-RISK still lacks its
+  # matrix, validator, independent second-identity check, and sealed CI control.
   # DeployedRuntimeParityClosureTests.CorrectedLifecycleRowsRetainTheirCorrectedStatus asserts
   # the next four lines verbatim and pins this row's value; change them only together.
   # 2026-09-26: three current roster-bound receipts validate the corrected

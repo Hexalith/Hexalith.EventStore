@@ -338,8 +338,9 @@ decision, registry and producer digests -> receipts addressed by that subject.
   unrun tests. The three failures are Story 4.15 OQ8 v5 clean-checkout/active-validation tests;
   no Story 3.15 test failed. OQ8 reconciliation remains separate.
 - `sprint-status.yaml` names the current 3/3 subject and is drift-guarded by the focused suite.
-  `docs/ci.md` retains its pre-acceptance 0/3 snapshot until Story 4.15's separate OQ8
-  doc-bound seal reconciliation; it must not be cited as the current verdict.
+  `docs/ci.md` states the same 3/3 verdict (`receipts=3 verifier_exit=0`), and the focused suite
+  binds that stated result to the packet's receipt count. The guide's changed hash still awaits
+  Story 4.15's separate OQ8 seal reconciliation.
 - Checked-in Story 3.15 assembler and verifier: **pass at three of three receipts**, exit 0;
   subject `66be1b4a...`; pinned OCI index selected for bounded evidence only; all non-authority
   flags false.

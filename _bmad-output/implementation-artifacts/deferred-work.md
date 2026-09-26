@@ -4898,7 +4898,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Subject-bound receipt limitation misdescribes the Test Architect record as credential-posted.
   evidence: `tools/deployed_runtime_parity_handlers/v1.py:83` says every receipt was posted with a role holder's credential, but `v1.py:1073` accepts a local self-attested Test Architect source; prior BH7 deferred the wording change because it re-mints the accepted subject.
-  status: resolved 2026-09-26 by corrected limitation 4 in subject `66be1b4a...`; the fresh independent Test Architect report accepts the technical evidence but the packet remains at 0/3 receipts.
+  status: resolved 2026-09-26 by corrected limitation 4 in subject `66be1b4a...`; the fresh Test Architect report accepts the technical evidence, and on 2026-09-26 the packet later validated at 3/3 receipts for that subject.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Incomplete assembler rollback restores only closure.json and can leave mismatched support files.
   evidence: `tools/assemble-corrected-deployed-runtime-parity.py:98,489` restores only the prior closure after build_document writes the registry, inventory, and subject; the existing deferred-work ledger already records this packet consistency risk.
@@ -4907,6 +4907,13 @@ status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
   summary: Reconcile the updated CI guide with Story 4.15's separate OQ8 evidence seal.
-  evidence: The active Story 4.15 v5 packet pins `docs/ci.md` SHA-256 `8e12004e30ef06295afc7630de8fe0d07ce612d08572fa415d5eb78370058721`, while the current guide hashes to `28e02f35915f6bca84ecb4b683f90e3ec3a6e16adea746937800e4315c7b188a` after the Story 3.15 fresh-smoke and limitation correction. The guide's OQ8 section still calls v4 active and v5 pending although the selector and lifecycle select v5. The v5 source seal also binds the tracked tree, file modes, and root submodule pins, so changing one guide hash cannot restore the gate. A separate, reviewed Story 4.15 successor/source reseal is required after the source settles; preserve the existing v5 packet history and submodule pointers.
+  evidence: The active Story 4.15 v5 packet pins `docs/ci.md` SHA-256 `8e12004e30ef06295afc7630de8fe0d07ce612d08572fa415d5eb78370058721`, while the current guide hashes to `3800b3d457c4876939f623155d8df0cfee175dc14ee904a6e1bfb3051e5d4d04`. It was `28e02f35915f6bca84ecb4b683f90e3ec3a6e16adea746937800e4315c7b188a` after the Story 3.15 fresh-smoke and limitation correction, and changed again when the 2026-09-26 code review corrected the Story 3.15 section to the 3/3 verdict; reseal against the final text. The guide's OQ8 section still calls v4 active and v5 pending although the selector and lifecycle select v5. The v5 source seal also binds the tracked tree, file modes, and root submodule pins, so changing one guide hash cannot restore the gate. A separate, reviewed Story 4.15 successor/source reseal is required after the source settles; preserve the existing v5 packet history and submodule pointers.
   verification: 2026-09-26 clean-HEAD check — `python3 tools/oq8-v5-packet.py --validate-active` exited 1 with `V5 source tree changed outside reviewed evidence and selector`; `python3 tools/validate-oq8-platform-evidence.py` exited 1 with `Story 4.15 v5 reviewed packet, selector, or lifecycle validation failed`. With this preparation's uncommitted files present, the active-v5 command instead exits 1 at its clean-committed-checkout precondition. Neither result approves current OQ8 evidence.
+  status: open
+
+## Deferred from: code review of spec-3-15-corrected-deployed-runtime-parity-closure (2026-09-26)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-15-corrected-deployed-runtime-parity-closure.md`
+  summary: Retained Production smoke records cannot show which producer or curl arguments captured them.
+  evidence: `smokes/smoke-linux-{amd64,arm64}.log` and `smoke-results.json` under the `f343bb01…` packet carry no producer SHA-256, curl argv, or curlrc indicator. The 2026-09-26 `curl -q` re-mint to `66be1b4a…` therefore rests on narration plus the producer's current file hash. That gap is why the Test Architect declined `c98fdef2…`, and the fresh decision accepts it as a disclosed limit. Recording the producer digest in the smoke schema would re-mint the subject and burn all three receipts, so batch it with the next controlled re-mint, which carries the deferred capture-producer items.
   status: open

@@ -96,6 +96,20 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     private const string SupersededRelativePath =
         "_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances";
 
+    private const string SupersededPacketsRelativePath =
+        "_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-packets";
+
+    /// <summary>SHA-256 of the superseded-packets README that states the snapshot's provenance.</summary>
+    private const string SupersededPacketsReadmeSha256 =
+        "18bb22214d2631fa6f2cabf7197d2cbcb4a5d98d9a6f0b905da26ef250416a4a";
+
+    /// <summary>
+    /// SHA-256 of the receipt-free <c>c98fdef2...</c> snapshot's <c>closure.json</c>, the one retained
+    /// file its own subject-to-inventory hash chain does not reach.
+    /// </summary>
+    private const string PreRecapturePacketClosureSha256 =
+        "5e8aa7b9a8e473e606b326a0610c9cedfdd4285c8924de9dc0f52dce267f9b84";
+
     private static readonly string[] RequiredRoles =
     [
         "eventstore-owner",
@@ -125,7 +139,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     /// </summary>
     private static readonly (string RelativePath, string Sha256)[] SupersededArtefacts =
     [
-        ("README.md", "f2e0affd55965b5aba1c6d8ce2221cf3c4d0c1bd346bc8393f54e3eb13fb4123"),
+        ("README.md", "ccf5783dc1071258b4edf6a7a8576fb044d62c56746f0aeee0fb078ca50e326f"),
         (SupersededSubjectSha256 + "/eventstore-owner.json",
             "ad8cc4fb62e5d1b843f42716235a8cce415ab612359b77fd0006c7dbea6ecfbf"),
         (SupersededSubjectSha256 + "/release-owner.json",
@@ -290,6 +304,48 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             .Order(StringComparer.Ordinal)
             .ShouldBe(SupersededArtefacts.Select(artefact => artefact.RelativePath)
                 .Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Verifies the receipt-free <c>c98fdef2...</c> packet snapshot is retained byte-for-byte, as its
+    /// README claims. The snapshot anchors itself: its directory name is the pinned subject digest,
+    /// the subject binds the technical inventory digest, and the inventory binds each evidence file.
+    /// Only the README and <c>closure.json</c>, which that chain does not reach, need their own pins.
+    /// </summary>
+    [Fact]
+    public void SupersededPacketSnapshotIsRetainedByteForByte()
+    {
+        string root = FindRepositoryRoot();
+        string snapshots = Path.Combine(root, SupersededPacketsRelativePath);
+        string packet = Path.Combine(snapshots, PreRecaptureSupersededSubjectSha256);
+
+        ComputeSha256(Path.Combine(snapshots, "README.md")).ShouldBe(SupersededPacketsReadmeSha256);
+        ComputeSha256(Path.Combine(packet, "closure.json")).ShouldBe(PreRecapturePacketClosureSha256);
+        ComputeSha256(Path.Combine(packet, "subject.json")).ShouldBe(PreRecaptureSupersededSubjectSha256);
+
+        JsonObject subject = LoadJson(Path.Combine(packet, "subject.json"));
+        ComputeSha256(Path.Combine(packet, "technical-sha256.txt"))
+            .ShouldBe(subject["evidence"]!["technical_inventory_sha256"]!.GetValue<string>());
+
+        string[] inventory = File.ReadAllText(Path.Combine(packet, "technical-sha256.txt"))
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        inventory.Length.ShouldBe(24);
+        List<string> expected = ["README.md", PreRecaptureSupersededSubjectSha256 + "/closure.json",
+            PreRecaptureSupersededSubjectSha256 + "/subject.json",
+            PreRecaptureSupersededSubjectSha256 + "/technical-sha256.txt"];
+        foreach (string line in inventory)
+        {
+            string[] fields = line.Split("  ", 2, StringSplitOptions.None);
+            fields.Length.ShouldBe(2, line);
+            ComputeSha256(Path.Combine(packet, fields[1])).ShouldBe(fields[0], fields[1]);
+            expected.Add(PreRecaptureSupersededSubjectSha256 + "/" + fields[1]);
+        }
+
+        // Exactly these files: anything added beside the snapshot would otherwise pass unhashed.
+        Directory.EnumerateFiles(snapshots, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(snapshots, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ShouldBe(expected.Order(StringComparer.Ordinal));
     }
 
     /// <summary>
@@ -831,6 +887,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
     [InlineData("wrong-role", "acceptance receipt does not bind", "release-owner")]
     [InlineData("wrong-role", "acceptance receipt does not bind", "test-architect")]
     [InlineData("subject-mismatch", "acceptance receipt does not bind", "release-owner")]
+    [InlineData("limitations-mismatch", "acceptance receipt does not bind", "eventstore-owner")]
     [InlineData("stale", "acceptance predates the subject", "release-owner")]
     [InlineData("unverifiable", "retained file binding mismatch", "test-architect")]
     [InlineData("duplicate", "acceptance roles are missing, duplicated, or out of order", "eventstore-owner")]
@@ -869,6 +926,12 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
                             break;
                         case "subject-mismatch":
                             receipt["subject_sha256"] = new string('0', 64);
+                            break;
+                        case "limitations-mismatch":
+                            // The limitation-4 wording the 2026-09-26 re-mint corrected away.
+                            receipt["accepted_limitations"]![3] =
+                                "Every acceptance receipt is composed by repository tooling and posted with the " +
+                                "rostered role holder's credential, not typed by hand.";
                             break;
                         case "stale":
                             receipt["accepted_at"] = "2020-01-01T00:00:00Z";
@@ -1249,6 +1312,13 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             }
                 .Order(StringComparer.Ordinal)
                 .ToArray());
+
+        // The digest set alone stayed green while the guide still reported the pre-acceptance 0/3
+        // verdict beside a 3/3 packet, so the stated reassembly result must match the receipts too.
+        int receipts = closure["acceptances"]!["receipts"]!.AsArray().Count;
+        int verifierExit = receipts == RequiredRoles.Length ? 0 : 1;
+        ci[section..sectionEnd].ShouldContain(
+            FormattableString.Invariant($"receipts={receipts} verifier_exit={verifierExit}"));
 
         // The emulator digest is an environmental prerequisite, not a packet input, so nothing else
         // binds it. Keep the operator record and the capture script's documented precondition from
@@ -4491,6 +4561,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         currentSummary.ShouldContain($"selecting OCI index `{selectedIndex}`");
         currentSummary.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
         currentSummary.ShouldNotContain(CurlIsolationSupersededSubjectSha256);
+        currentSummary.ShouldNotContain(PreRecaptureSupersededSubjectSha256[..8]);
 
         string history = lines.Single(line => line.StartsWith(
             "| Story 3.15 deployed-runtime parity |",
@@ -4503,6 +4574,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
             $"packet-bound receipts and selected OCI index `{selectedIndex}`");
         currentHistory.ShouldNotContain(IntermediateTrustPathSupersededSubjectSha256);
         currentHistory.ShouldNotContain(CurlIsolationSupersededSubjectSha256);
+        currentHistory.ShouldNotContain(PreRecaptureSupersededSubjectSha256[..8]);
 
         string parityGate = lines.Single(line => line.StartsWith(
             "| G-RUNTIME-PARITY |",
@@ -4565,6 +4637,7 @@ public sealed class CorrectedDeployedRuntimeParityClosureTests
         string[] subjects =
         [
             subjectSha256,
+            PreRecaptureSupersededSubjectSha256,
             CurlIsolationSupersededSubjectSha256,
             ReceiptCollectionSupersededSubjectSha256,
             PreTrustPathSupersededSubjectSha256,

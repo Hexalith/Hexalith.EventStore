@@ -567,17 +567,19 @@ The 2026-09-26 curl configuration isolation first re-minted the subject to `c98f
 A fresh two-platform Production capture with that `curl -q` producer, followed by correction of
 the subject-bound fourth limitation, re-minted it to
 `66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
-Reassembly reports `receipts=0 verifier_exit=1`; the retained verifier fails closed until three
-new roster-bound receipts accept this exact subject. The prior three receipts, including the
-EventStore-owner and Release-owner issue `#352` comments and the self-attested `bmad:murat` Test
-Architect record, are retained byte-for-byte in the superseded audit area. The README there
-explains how an auditor can re-pair each historical receipt with its source. Subjects with no
-collected receipts require no retained receipt set.
+The packet now **validates at three of three roster-bound receipts** for that subject:
+EventStore-owner issue `#352` comment `5844573563`, Release-owner comment `5844574016`, and the
+self-attested `bmad:murat` Test Architect record. Reassembly reports `receipts=3 verifier_exit=0`.
+The receipt-free `c98fdef2...` packet is preserved under `superseded-packets/`. The three earlier
+`7d64f87e...` receipts, including their issue `#352` owner comments and Test Architect record, are
+retained byte-for-byte in the superseded audit area and authorize nothing for the current subject.
+The README there explains how an auditor can re-pair each historical receipt with its source.
+Subjects with no collected receipts require no retained receipt set.
 
 `closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
-`selected_deployed_identity`. Those fields are the packet's **claim**; the retained verifier now
-rejects the claim because no receipt binds the current subject. `acceptances.directory` names
-the current, empty receipt address. The packet supplies parity evidence only and grants no deployment,
+`selected_deployed_identity`. Those fields are the packet's **claim**; the retained verifier
+validates the claim because all three subject-bound receipts validate. `acceptances.directory`
+names the current receipt address. The packet supplies parity evidence only and grants no deployment,
 publication, registry mutation, consumer removal, or predecessor change authority.
 
 The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
@@ -598,10 +600,10 @@ The subject cannot bind each post-subject receipt-source instance without a hash
 the source policy instead: replacing one retained source invalidates that source's receipt and any
 complete 3/3 verdict, while a source-policy change re-mints the subject and rejects all receipts.
 
-The only identity the closure may select after three valid receipts is
+The only identity the closure may ever select is
 `registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,
-but the present index claim is not granted. A future positive verdict would be evidence, not operational
-authority: deployment, package publication, registry mutation, consumer removal, and predecessor
+and it is selected for bounded parity evidence now that all three receipts validate. That verdict
+is evidence, not operational authority: deployment, package publication, registry mutation, consumer removal, and predecessor
 mutation remain separately prohibited.
 
 ## Submodules

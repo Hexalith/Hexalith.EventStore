@@ -5,9 +5,9 @@ was posted byte-for-byte as
 [issue `#352` comment `5844166955`](https://github.com/Hexalith/Hexalith.EventStore/issues/352#issuecomment-5844166955)
 at `2026-09-26T07:11:49Z` by authenticated `github:jpiquot` (`id: 6775094`). The posted body has
 SHA-256 `2be14c91009792f502ea5528720fb1d0173d976bc4fbf356167efbe3ea393167`, matching the
-validated draft. The EventStore-owner and Release-owner decisions are still missing. The Test
-Architect independently declined this subject, so the three-receipt gate cannot pass on the
-present evidence.
+validated draft. No EventStore-owner or Release-owner decision was issued for this subject. The
+Test Architect independently declined it, and it was superseded by `66be1b4a...`, which later
+validated at 3/3.
 
 ## Proposed validation request text
 
