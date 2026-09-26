@@ -16,6 +16,9 @@ public interface IAggregateActor : IActor {
         TrustedEffectContext context,
         string gatewayProof);
 
+    /// <summary>Durably fences a registered partition before the tenant deletion transition commits.</summary>
+    Task FenceTrustedEffectsAsync(TrustedEffectAggregateErasure request);
+
     /// <summary>Processes a protected command through the internal signed-fence boundary.</summary>
     /// <param name="request">The command and current-fence capability.</param>
     /// <returns>The exact command processing result.</returns>

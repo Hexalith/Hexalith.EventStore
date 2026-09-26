@@ -81,6 +81,10 @@ public class FakeAggregateActor : IAggregateActor {
         => throw new InvalidOperationException("Fake aggregate actor does not model durable trusted effect erasure.");
 
     /// <inheritdoc/>
+    public Task FenceTrustedEffectsAsync(TrustedEffectAggregateErasure request)
+        => throw new InvalidOperationException("Fake aggregate actor does not model durable trusted effect deletion fencing.");
+
+    /// <inheritdoc/>
     public Task<ManualSnapshotResult> CreateManualSnapshotAsync(string? correlationId) {
         long sequence = ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber);
         return Task.FromResult(sequence == 0

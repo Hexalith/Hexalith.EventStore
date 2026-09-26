@@ -155,8 +155,40 @@ public sealed class TrustedEffectJointOffboardingTests
 
         await lifecycle.RegisterTrustedEffectAsync(identity);
         await lifecycle.RegisterAsync([new IdempotencyTenantLifecycleReference(keyActorId, "v1", "key-a")]);
+        sourceStore.FaultOnCall("SetState:" + TrustedEffectDeletionFence.StateName, 1,
+            new IOException("source fence write interrupted"));
+        await Should.ThrowAsync<IOException>(() => lifecycle.EnterDeletionAsync(_now.AddDays(-401)));
+        (await lifecycle.GetAsync()).State.ShouldBe(IdempotencyTenantLifecycleState.Active);
+        targetStore.CommittedState.Keys.ShouldContain(TrustedEffectDeletionFence.StateName);
+        sourceStore.CommittedState.Keys.ShouldNotContain(TrustedEffectDeletionFence.StateName);
+        targetStore.CommittedState.Keys.ShouldContain(receiptKey);
+        TrustedEffectAggregateErasure unsignedChangedDecision = TrustedEffectErasureInventory.Build(
+                identity.Tenant, [identity], _now.AddDays(-400), _now)
+            .Single(request => request.Aggregate == identity.TargetAggregate)
+            with { Purpose = TrustedEffectAggregateErasure.DeletionFencePurpose };
+        TrustedEffectAggregateErasure changedDecision = unsignedChangedDecision with
+        {
+            Capability = await erasureAuthority.IssueAsync(unsignedChangedDecision),
+        };
+        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.FenceTrustedEffectsAsync(changedDecision));
+        TrustedEffectAggregateErasure unsignedChangedInventory = unsignedChangedDecision with
+        {
+            DeletionApprovedAt = _now.AddDays(-401),
+            InventoryDigest = "DIFFERENT-INVENTORY",
+        };
+        TrustedEffectAggregateErasure changedInventory = unsignedChangedInventory with
+        {
+            Capability = await erasureAuthority.IssueAsync(unsignedChangedInventory),
+        };
+        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.FenceTrustedEffectsAsync(changedInventory));
         _ = await lifecycle.EnterDeletionAsync(_now.AddDays(-401));
         _ = await lifecycle.PlaceLegalHoldAsync(_now);
+        targetStore.Trace.Clear();
+        _ = admissionPolicy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.ProcessTrustedEffectAsync(
+            submission, context, "synthetic-proof"));
+        targetStore.Trace.ShouldNotContain($"TryGetState:effect_receipt_{outcome.EffectId}");
+        targetStore.CommittedState.Keys.ShouldContain(TrustedEffectDeletionFence.StateName);
         await Should.ThrowAsync<InvalidOperationException>(() => lifecycle.PurgeAsync(1));
         sourceStore.CommittedState.Keys.ShouldContain(sourceEventKey);
         targetStore.CommittedState.Keys.ShouldContain(receiptKey);
@@ -182,6 +214,7 @@ public sealed class TrustedEffectJointOffboardingTests
         await Should.ThrowAsync<InvalidOperationException>(() => lifecycle.PurgeAsync(1));
         targetStore.CreateCommittedView().Keys.ShouldContain(receiptKey);
         targetStore.CreateCommittedView().Keys.ShouldContain(collisionKey);
+        targetStore.CreateCommittedView().Keys.ShouldContain(TrustedEffectDeletionFence.StateName);
         _ = await lifecycle.ReleaseLegalHoldAsync(_now);
 
         IdempotencyTenantLifecycleRecord purged = await lifecycle.PurgeAsync(1);
@@ -189,8 +222,10 @@ public sealed class TrustedEffectJointOffboardingTests
         purged.TrustedEffectEvidenceErased.ShouldBeTrue();
         sourceStore.CommittedState.Keys.ShouldNotContain(sourceEventKey);
         sourceStore.CommittedState.Keys.ShouldNotContain(sourceIdentity.MetadataKey);
+        sourceStore.CommittedState.Keys.ShouldNotContain(TrustedEffectDeletionFence.StateName);
         targetStore.CommittedState.Keys.ShouldNotContain(receiptKey);
         targetStore.CommittedState.Keys.ShouldNotContain(collisionKey);
+        targetStore.CommittedState.Keys.ShouldNotContain(TrustedEffectDeletionFence.StateName);
         targetStore.CommittedState.Keys.ShouldNotContain(key => key.Contains(":events:1", StringComparison.Ordinal));
         targetStore.CommittedState.Keys.ShouldContain(TrustedEffectErasureProgress.StateName);
         keyStore.CreateCommittedView().ShouldBeEmpty();
@@ -256,7 +291,7 @@ public sealed class TrustedEffectJointOffboardingTests
             new ActorTestOptions { ActorId = new ActorId(identity.Tenant) });
         var lifecycle = new IdempotencyTenantLifecycleActor(
             host, NullLogger<IdempotencyTenantLifecycleActor>.Instance,
-            new FakeTimeProvider(_now), trustedEffectRetention: retention,
+            new FakeTimeProvider(_now), actorProxyFactory: proxies, trustedEffectRetention: retention,
             trustedEffectAuditSink: Substitute.For<ITrustedEffectAuditSink>(),
             trustedEffectErasureAuthority: erasureAuthority);
         ActorStateManagerTestHelper.SetStateManager(lifecycle, lifecycleStore);
@@ -329,6 +364,19 @@ public sealed class TrustedEffectJointOffboardingTests
             signed with { DeletionApprovedAt = signed.DeletionApprovedAt.AddTicks(-1) }));
         await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.EraseTrustedEffectEvidenceAsync(
             signed with { Aggregate = "other-target" }));
+        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.FenceTrustedEffectsAsync(signed));
+        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.EraseTrustedEffectEvidenceAsync(
+            signed with { Purpose = "DeletionFence" }));
+
+        TrustedEffectAggregateErasure unsignedFence = unsigned with { Purpose = "DeletionFence" };
+        TrustedEffectAggregateErasure signedFence = unsignedFence with
+        {
+            Capability = await authority.IssueAsync(unsignedFence),
+        };
+        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.FenceTrustedEffectsAsync(
+            signedFence with { Capability = signed.Capability }));
+        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.FenceTrustedEffectsAsync(
+            signedFence with { Aggregate = "other-target" }));
 
         state.Trace.ShouldBeEmpty();
         state.CreateCommittedView().ShouldBeEmpty();
@@ -375,6 +423,7 @@ public sealed class TrustedEffectJointOffboardingTests
                 new ActorTestOptions { ActorId = new ActorId(identity.Tenant) }),
             NullLogger<IdempotencyTenantLifecycleActor>.Instance,
             new FakeTimeProvider(_now),
+            actorProxyFactory: proxies,
             trustedEffectRetention: retention,
             trustedEffectAuditSink: Substitute.For<ITrustedEffectAuditSink>(),
             trustedEffectErasureAuthority: new TrustedEffectErasureCapability(

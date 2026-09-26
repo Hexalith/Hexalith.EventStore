@@ -518,6 +518,33 @@ public sealed class IdempotencyTenantLifecycleActor(
         TimeSpan remaining = deleteAfter > effective
             ? deleteAfter - effective
             : TimeSpan.Zero;
+        if (record.HasTrustedEffectEvidence)
+        {
+            IActorProxyFactory factory = actorProxyFactory
+                ?? throw new InvalidOperationException("Trusted effect deletion fencing is unavailable.");
+            ITrustedEffectErasureAuthority authority = trustedEffectErasureAuthority
+                ?? throw new InvalidOperationException("Trusted effect deletion fence authority is unavailable.");
+            ITrustedEffectAuditSink audit = trustedEffectAuditSink
+                ?? throw new InvalidOperationException("Trusted effect deletion fence audit is unavailable.");
+            await audit.AppendAsync(new TrustedEffectAuditRecord(
+                "deletion-fence", record.Tenant, null, null, null, "started")).ConfigureAwait(false);
+            TrustedEffectAggregateErasure[] requests = TrustedEffectErasureInventory.Build(
+                record.Tenant, record.TrustedEffects, approvedAt, Clock.GetUtcNow());
+            foreach (TrustedEffectAggregateErasure unsigned in requests)
+            {
+                TrustedEffectAggregateErasure request = unsigned with
+                {
+                    Purpose = TrustedEffectAggregateErasure.DeletionFencePurpose,
+                };
+                request = request with { Capability = await authority.IssueAsync(request).ConfigureAwait(false) };
+                var partition = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity(
+                    request.Tenant, request.Domain, request.Aggregate);
+                IAggregateActor actor = factory.CreateActorProxy<IAggregateActor>(
+                    new ActorId(partition.ActorId), AggregateActorTypeName);
+                await actor.FenceTrustedEffectsAsync(request).ConfigureAwait(false);
+            }
+        }
+
         return await PersistAsync(record with
         {
             State = remaining == TimeSpan.Zero

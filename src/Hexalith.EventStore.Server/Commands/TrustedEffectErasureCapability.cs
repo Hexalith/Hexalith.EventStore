@@ -97,6 +97,8 @@ public sealed class TrustedEffectErasureCapability(
             || request.EffectIds is null
             || request.EffectIds.Any(string.IsNullOrWhiteSpace)
             || request.EffectIds.Distinct(StringComparer.Ordinal).Count() != request.EffectIds.Length
+            || request.Purpose is not (TrustedEffectAggregateErasure.ErasurePurpose
+                or TrustedEffectAggregateErasure.DeletionFencePurpose)
             || request.DeletionApprovedAt > request.IssuedAt
             || request.IssuedAt > now.AddSeconds(30)
             || request.ExpiresAt <= now
@@ -110,7 +112,7 @@ public sealed class TrustedEffectErasureCapability(
     {
         var output = new ArrayBufferWriter<byte>();
         Write(output, _domain);
-        Write(output, Encoding.UTF8.GetBytes("PurgeEligible"));
+        Write(output, Encoding.UTF8.GetBytes(request.Purpose));
         Write(output, Encoding.UTF8.GetBytes(request.Tenant));
         Write(output, Encoding.UTF8.GetBytes(request.Domain));
         Write(output, Encoding.UTF8.GetBytes(request.Aggregate));

@@ -80,13 +80,19 @@ by one tenant's offboarding.
 
 The gateway router reports a target result only after lifecycle completion. If
 deletion and purge finish during an in-flight target turn, the router's later
-completion fails closed. The actor-local erasure marker prevents a queued target
-turn from writing after erasure. A previously signed gateway proof has no
-lifecycle epoch or expiry, however. A caller with direct actor access could
-replay that proof during a legal hold before erasure begins, without passing
-through the gateway's new admission check. Production trusted-effect admission
-therefore remains closed until that direct-actor replay path is fenced and the
-Platform mTLS/ACL boundary is proved.
+completion fails closed. On deletion entry, the lifecycle first sends a signed,
+purpose-separated deletion-fence capability to every registered source and target
+partition, then commits its non-active state. The actor persists a deletion fence
+before it can read a receipt or execute another trusted effect. A failed fence
+leaves deletion entry uncommitted and any already-fenced partitions closed; retry
+can finish the transition. Legal hold preserves the fence, so a previously signed
+gateway proof cannot disclose a receipt during hold. A deletion-fence capability
+cannot authorize erasure, and a purge capability cannot install a deletion fence.
+The terminal erasure batch removes the deletion fence together with stream and
+receipt evidence; its actor-local erasure marker prevents a queued target turn
+from writing afterward. Production trusted-effect admission remains closed until the
+Platform mTLS/ACL boundary, audit backend, owner approval, and restore drill
+are proved.
 
 These actor policies are available for an explicitly governed host but have no
 production registration. `AddEventStoreTrustedEffectRetention()` still installs

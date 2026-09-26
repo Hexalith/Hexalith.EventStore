@@ -1,6 +1,6 @@
 namespace Hexalith.EventStore.Server.Actors;
 
-/// <summary>Identifies one tenant-owned aggregate and its expected target receipts for erasure.</summary>
+/// <summary>Identifies one tenant-owned aggregate for a signed deletion fence or final erasure.</summary>
 /// <param name="Tenant">Canonical tenant identifier.</param>
 /// <param name="Domain">Canonical domain identifier.</param>
 /// <param name="Aggregate">Aggregate identifier.</param>
@@ -21,4 +21,14 @@ public sealed record TrustedEffectAggregateErasure(
     DateTimeOffset IssuedAt,
     DateTimeOffset ExpiresAt,
     string Nonce,
-    string Capability);
+    string Capability)
+{
+    /// <summary>Capability purpose for a durable deletion-entry fence.</summary>
+    public const string DeletionFencePurpose = "DeletionFence";
+
+    /// <summary>Capability purpose for final evidence erasure.</summary>
+    public const string ErasurePurpose = "PurgeEligible";
+
+    /// <summary>Domain-separated lifecycle operation authorized by this capability.</summary>
+    public string Purpose { get; init; } = ErasurePurpose;
+}

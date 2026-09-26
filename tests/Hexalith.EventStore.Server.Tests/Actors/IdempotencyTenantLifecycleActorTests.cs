@@ -25,7 +25,7 @@ public class IdempotencyTenantLifecycleActorTests
     [Fact]
     public async Task TrustedEvidenceRequiresJointErasureBeforePurge()
     {
-        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor();
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(actorProxyFactory: CreateFenceProxyFactory());
         await actor.RegisterTrustedEffectAsync(TrustedIdentity());
         IdempotencyTenantLifecycleRecord eligible = await actor.EnterDeletionAsync(_now.AddDays(-401));
 
@@ -40,7 +40,8 @@ public class IdempotencyTenantLifecycleActorTests
     public async Task TrustedEvidenceLegalHoldBlocksErasure()
     {
         ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
-        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(trustedEffectRetention: retention);
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(
+            actorProxyFactory: CreateFenceProxyFactory(), trustedEffectRetention: retention);
         await actor.RegisterTrustedEffectAsync(TrustedIdentity());
         _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
         _ = await actor.PlaceLegalHoldAsync(_now);
@@ -57,7 +58,8 @@ public class IdempotencyTenantLifecycleActorTests
         ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
         _ = retention.EraseTenantAsync("tenant-a", Arg.Any<TrustedEffectAggregateErasure[]>(), Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new IOException("audit or erasure failed"), _ => Task.CompletedTask);
-        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(trustedEffectRetention: retention);
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(
+            actorProxyFactory: CreateFenceProxyFactory(), trustedEffectRetention: retention);
         await actor.RegisterTrustedEffectAsync(TrustedIdentity());
         _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
 
@@ -79,6 +81,7 @@ public class IdempotencyTenantLifecycleActorTests
         ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
         ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
         (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(
+            actorProxyFactory: CreateFenceProxyFactory(),
             trustedEffectRetention: retention, trustedEffectAuditSink: audit);
         await actor.RegisterTrustedEffectAsync(TrustedIdentity());
         _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
@@ -119,6 +122,15 @@ public class IdempotencyTenantLifecycleActorTests
 
     private static EffectIdentity TrustedIdentity()
         => new("tenant-a", "works", "source-1", 7, EffectKindCatalog.DateResume, "works", "target-1", 0);
+
+    private static IActorProxyFactory CreateFenceProxyFactory()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IAggregateActor partition = Substitute.For<IAggregateActor>();
+        _ = factory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), nameof(AggregateActor))
+            .Returns(partition);
+        return factory;
+    }
 
     [Fact]
     public async Task EnterDeletionAsync_UsesExactFourHundredDayBoundary()
