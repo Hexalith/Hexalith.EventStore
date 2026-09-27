@@ -231,7 +231,7 @@ development_status:
   # Architecture/readiness gate; authorizes 6.6 but does not count as runtime implementation progress.
   6-5-event-versioning-and-upcasting-spec: in-progress
   6-5a-event-contract-writer-and-migration-evidence-spec: done
-  6-5b-verified-read-replay-and-projection-spec: review
+  6-5b-verified-read-replay-and-projection-spec: done
   6-5c-publication-subscription-and-rollout-spec: backlog
   6-6-event-versioning-and-upcasting-implementation: backlog
   epic-6-retrospective: optional

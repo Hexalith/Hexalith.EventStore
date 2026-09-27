@@ -5012,3 +5012,11 @@ status: open
   summary: The tenant/execution-MessageId scope lookup key hashes non-canonical tenant and MessageId strings.
   evidence: Candidate [A8, Existing retry and status integration](spec-6-5a-event-contract-writer-and-migration-evidence.md#existing-retry-and-status-integration) keys `command-execution-scope:` on SHA-256(`U tenant || U executionMessageId`) with no canonicalization or rejection of non-canonical forms. Case or Unicode variants of one logical tenant or ULID MessageId could therefore bind two lookup keys, and so two scopes, despite create-if-absent. Pre-existing: the same inputs feed ScopeOpHash and the current `CommandStatusConstants.BuildKey(tenantId, messageId)`, and tenant canonical form is an open architecture-level gap. Reconcile during Story 6.5 integration.
   status: open
+
+
+## Deferred from: code review of spec-6-5b-verified-read-replay-and-projection-2.md (2026-09-27)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5b-verified-read-replay-and-projection-2.md`
+  summary: After v2 activation, existing full-replay projections on long streams hold readiness where today they work.
+  evidence: Candidate [B7](spec-6-5b-verified-read-replay-and-projection.md#b7-projection-capability-durable-checkpoint-and-named-query-visibility) treats routes without a `5a` row as legacy full-replay, whose complete input is bounded by the draft §8 legacy complete array (`spec-event-versioning-upcasting.md:381`: 256 MiB accounting at 8,192 B/event, so at most about 32,768 events, or 64 MiB readable, whichever first). Otherwise it holds readiness. `ProjectionUpdateOrchestrator.UpdateProjectionAsync` currently reads `GetEventsAsync(0)` with no such bound. The limit is pre-existing in the draft; neither the draft nor the candidate inventories affected streams or offers a remediation path (incremental capability is opt-in per route). Reconcile during Story 6.5 integration.
+  status: open
