@@ -5004,3 +5004,11 @@ status: open
   summary: Define the exact publication destination-ID derivation during Story 6.5/6.5c integration.
   evidence: BH6-1 identifies [A8 ExpectedEntries](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations), whose U destinationId denotes pinned component/topic/configuration without a canonical string codec or immutable source field. The exact outbox/pin hashes still bind the destination, but independent producers/verifiers can derive different ExpectedSetHash values for equivalent evidence. Specify one bounded derivation and delimiter/configuration-change known answers before interoperable runtime readiness; retain the existing one-destination-per-event contract.
   status: open
+
+
+## Deferred from: code review of spec-6-5a-event-contract-writer-and-migration-evidence-2.md (2026-09-27, pass 7)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: The tenant/execution-MessageId scope lookup key hashes non-canonical tenant and MessageId strings.
+  evidence: Candidate [A8, Existing retry and status integration](spec-6-5a-event-contract-writer-and-migration-evidence.md#existing-retry-and-status-integration) keys `command-execution-scope:` on SHA-256(`U tenant || U executionMessageId`) with no canonicalization or rejection of non-canonical forms. Case or Unicode variants of one logical tenant or ULID MessageId could therefore bind two lookup keys, and so two scopes, despite create-if-absent. Pre-existing: the same inputs feed ScopeOpHash and the current `CommandStatusConstants.BuildKey(tenantId, messageId)`, and tenant canonical form is an open architecture-level gap. Reconcile during Story 6.5 integration.
+  status: open
