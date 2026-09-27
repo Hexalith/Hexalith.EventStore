@@ -13,6 +13,9 @@ Keep long-lived streams operable as they grow: snapshots stay bounded, projectio
 - Story 6.3: Projection Delivery Cost And Sequence Guard Spec
 - Story 6.4: Projection Cost And Sequence Guard Implementation
 - Story 6.5: Event Versioning And Upcasting Spec
+- Story 6.5a: Event Contract, Writer, and Migration Evidence Spec
+- Story 6.5b: Verified Read, Replay, and Projection Spec
+- Story 6.5c: Publication, Subscription, and Rollout Spec
 - Story 6.6: Event Versioning And Upcasting Implementation
 
 ## Requirements & Constraints
@@ -31,7 +34,7 @@ Keep long-lived streams operable as they grow: snapshots stay bounded, projectio
 
 ## Technical Decisions
 
-- Cost and evolution changes are spec-first. Each runtime slice starts only after its named approved specification closes the design and compatibility decisions, records quantitative bounds where required, and explicitly authorizes implementation. The folded-snapshot specification is approved and authorizes Story 6.2 for its bound design; the projection cost/sequence specification is absent, and the event-versioning/upcasting specification is drafted but lacks human approval, so Stories 6.4 and 6.6 remain unauthorized. Spec approval alone does not deliver runtime capability.
+- Cost and evolution changes are spec-first. Each runtime slice starts only after its named approved specification closes the design and compatibility decisions, records quantitative bounds where required, and explicitly authorizes implementation. The folded-snapshot specification is approved and authorizes Story 6.2 for its bound design; the projection cost/sequence specification is absent. Stories 6.5a–6.5c prepare focused inputs for the single Story 6.5 event-versioning/upcasting approval gate. Its artifact is drafted but lacks human approval, so Stories 6.4 and 6.6 remain unauthorized. Spec approval alone does not deliver runtime capability.
 - After admission, `AggregateActor` remains the sole snapshot-mutation and durable event-mutation coordinator. Domain code returns a domain result and never writes EventStore state. The stable event stream is replay authority; a snapshot must not claim uncommitted events or become authority for an uncommitted append.
 - Projection handlers are identified by `(Domain, ProjectionType)`. Dispatch is asynchronous and cancellation-aware. Checkpoint advancement requires a completed or already-completed route plus proven durable persistence; cancellation fabricates no result.
 - Every handler declares full-replay or incremental semantics. Incremental-capable routes may consume prior durable state plus a contiguous tail; unsupported, ambiguous, or failed incremental routes use the approved full-replay/rebuild path.
@@ -48,6 +51,6 @@ Keep long-lived streams operable as they grow: snapshots stay bounded, projectio
 
 ## Cross-Story Dependencies
 
-- Each runtime slice is gated by its spec: the approved 6.1 artifact authorizes 6.2; 6.3 must authorize 6.4; 6.5 must authorize 6.6. The three pairs stay isolated—snapshot work must not pull in projection optimization or upcasting, projection work must not pull in upcasting or cancellation-interface changes, and versioning work must not redesign snapshots or projection cost.
+- Each runtime slice is gated by its spec: the approved 6.1 artifact authorizes 6.2; 6.3 must authorize 6.4; 6.5a–6.5c feed the integrated 6.5 artifact, whose valid named human approval alone authorizes 6.6. The three runtime pairs stay isolated—snapshot work must not pull in projection optimization or upcasting, projection work must not pull in upcasting or cancellation-interface changes, and versioning work must not redesign snapshots or projection cost.
 - Stories 6.3 and 6.4 require the production-path projection correctness already owned by Stories 1.18 and 1.19; they may optimize within those invariants only.
 - Epic 8 is not a prerequisite. Exposed or administrative evidence surfaces still inherit Epic 5 fail-closed boundaries. Epic 7 may later present snapshot, projection, and type-catalog evidence but does not own these runtime contracts.

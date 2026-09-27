@@ -4525,82 +4525,62 @@ So that projection work remains bounded while duplicate, stale, and out-of-order
 ### Story 6.5: Event Versioning And Upcasting Spec
 
 As a platform architect,
-I want event contracts, upcasting, identity validation, and cancellation seams frozen in an approved specification,
-So that domains can evolve persisted events safely without CLR-name coupling, ambiguous replay, or incompatible processing APIs.
+I want the focused event-evolution design work reconciled in one approved AD-13 artifact,
+So that Story 6.6 can implement one consistent, content-bound contract.
 
-**Requirements coverage:** Primary ownership of FR33's event-versioning/upcasting, event-identity validation, and published cancellation-seam specification gate; supporting NFR7 no-silent-loss, NFR12 compatibility, NFR18 reflection posture, and NFR19 protected-data safety planning. This enabler does not deliver runtime capability.
+**Requirements coverage:** Primary ownership of FR33-C5's final event-versioning/upcasting, event-identity, and published cancellation-seam specification gate; supporting NFR7, NFR12, NFR18, and NFR19 planning. This enabler does not deliver runtime capability.
 
-**Architecture constraints:** AD-5, AD-6, AD-7, AD-12, and AD-13. Persisted streams remain immutable replay authority, event identity and version are explicit stable contracts, deserialization is allow-listed, and Story 6.6 cannot start without the named approved artifact.
+**Architecture constraints:** AD-5, AD-6, AD-7, AD-12, and AD-13. Persisted history remains immutable replay authority. The single normative artifact must close metadata, registry, writer, reader, publication, migration, failure, cancellation, and compatibility decisions with quantitative bounds and vectors before Story 6.6 starts.
 
-**UX coverage:** No direct UI implementation. The specification defines support-safe Type Catalog, stream, replay, and failure evidence for stable event contract type, stored/current version, legacy resolution, upcast outcome, and cancellation without rendering raw payloads, protected data, assembly-qualified CLR names as public identity, secrets, provider detail, or stack traces.
+**UX coverage:** No direct UI implementation. The approved artifact defines support-safe Type Catalog, stream, replay, and failure evidence without exposing payloads, secrets, provider detail, stack traces, or assembly-qualified CLR names as public identity.
 
-**Dependencies:** Current `IEventContract`, event metadata/envelopes, serialization and allow-list conventions, aggregate replay/apply resolution, payload-protection hooks, domain processors, query/projection dispatchers, subscription contracts, and package compatibility baseline. Epic 8's optional production protection engine is not a prerequisite; current no-op/legacy protection behavior remains supported.
+**Dependencies:** Stories 6.5a, 6.5b, and 6.5c provide reviewed section candidates and dispositions. Current contracts, storage/replay/projection/subscription paths, and package compatibility remain inputs. Epic 8's optional protection engine is not a prerequisite.
 
-**Classification:** Architecture/readiness gate. Completion authorizes Story 6.6 to start but does not count as runtime implementation progress.
+**Classification:** Architecture/readiness gate. Completion authorizes Story 6.6 only after the named content-bound human approval; it does not count as runtime implementation progress.
 
-**Current reconciliation:** Story 6.5 is in progress and `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is an unapproved draft. `IEventContract.EventType` already provides a validated kebab-case domain discriminator, but persisted `EventMetadata.EventTypeName`, replay, and subscriptions still use CLR-oriented names and expose no payload schema version; no `IEventUpcaster` chain exists. Query and asynchronous named-projection seams already accept cancellation tokens, while `IDomainProcessor.ProcessAsync` and the legacy synchronous projection seam do not provide the required uniform published contract. The draft does not grant completion or implementation authority without content-bound named human approval.
+**Current reconciliation:** Story 6.5 remains in progress and `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` remains an unapproved draft. `IEventContract.EventType` supplies a stable kebab-case discriminator, but persisted/wire events remain CLR-name-oriented without a payload schema version or shared upcaster, and published cancellation seams remain inconsistent. The v37 review has ten open findings (`BH37-1` through `BH37-10`), routed to the focused child stories. The draft does not grant completion or implementation authority; Story 6.5 may remain in progress while it is reviewed.
 
 **Acceptance Criteria:**
 
-**Given** persisted events traverse command results, server storage, stream reads, replay, snapshots, projections, subscriptions, Admin metadata, testing builders, and public packages
-**When** the evolution specification inventories the current contract
-**Then** it traces every event-type/version producer, persisted and wire field, serializer/deserializer, protection boundary, registry/allow-list, CLR apply resolver, fallback, dispatcher, handler, diagnostic surface, and compatibility adapter
-**And** it identifies where stable `IEventContract.EventType`, fully qualified `EventTypeName`, domain/aggregate identity, metadata version, and absent payload version currently diverge.
-
-**Given** a new event is created after the versioned contract is adopted
-**When** its metadata is produced and persisted
-**Then** the artifact defines one canonical kebab-case event contract type, a positive payload schema version, their exact field names/types/default rules, validation grammar, uniqueness scope, and relationship to metadata-envelope and domain-service versions
-**And** CLR type or assembly names are implementation mappings rather than new-event public/persisted identity, while `MessageId`, aggregate sequence, and immutable stored payload remain unchanged by read-time evolution.
-
-**Given** legacy history lacks the new event contract type or payload version
-**When** it is read alongside new history
-**Then** the specification defines deterministic legacy CLR-name resolution, the assumed legacy version, collision/ambiguity handling, optional metadata migration posture, mixed-history behavior, and the exact point at which legacy fallback can be retired
-**And** unknown, malformed, ambiguous, or non-allow-listed type evidence fails with a typed outcome rather than arbitrary runtime type loading, best-effort guessing, silent skip, or mutation of original stored bytes.
-
-**Given** a stored event version is older than the registered current version
-**When** the upcasting pipeline is designed
-**Then** a published `IEventUpcaster` contract defines its canonical event-type scope, from/to versions, payload representation, deterministic single-step transform, cancellation behavior, and registration/discovery model
-**And** chain construction is contiguous, uniquely ordered, bounded by a numeric maximum hop/version limit, cached only by safe immutable identity, and rejects gaps, branches, cycles, duplicates, downgrade edges, or non-advancing results before domain code executes.
-
-**Given** an event is read for aggregate replay, projection, subscription, manual reconstruction, or inspection
-**When** version adaptation executes
-**Then** the artifact fixes one shared pipeline order for metadata/identity validation, payload readability/unprotection, format validation, chained upcasting, current-type allow-listed deserialization, and domain dispatch
-**And** it specifies equivalent results across every consumer, prevents double upcasting, preserves original message/sequence/correlation evidence, and never rewrites persisted payload or protection metadata as a side effect of an ordinary read.
-
-**Given** an upcaster is missing, throws, is cancelled, returns malformed/oversized content, changes identity, emits the wrong version, or cannot process protected/provider-opaque data
-**When** the pipeline handles failure
-**Then** the exact typed replay/projection/subscription/command-recovery outcome, retryability, checkpoint behavior, last-known-good state behavior, telemetry, and operator evidence are specified for each case
-**And** partial state is not committed or presented as authoritative, checkpoints do not pass the failed event, protected evidence is not deleted, and logs or responses do not disclose raw payloads, secrets, or stack traces.
-
-**Given** event metadata claims tenant, domain, aggregate id, aggregate type, event contract type, and sequence identity
-**When** validation boundaries are frozen
-**Then** the specification defines canonical normalization and equality rules against the addressed `AggregateIdentity`, command/result context, stream key, and registered event contract before append and again before trusted replay/dispatch
-**And** missing, malformed, reserved-delimiter, cross-tenant, cross-domain, aggregate-mismatched, type-mismatched, or sequence-inconsistent evidence fails closed before persistence or domain handler execution without trusting payload-supplied identity.
-
-**Given** event types and upcasters are discovered from application assemblies
-**When** registry construction and trimming/reflection posture are specified
-**Then** duplicate contract keys, duplicate version edges, incompatible payload types, invalid static metadata, and nondeterministic discovery fail startup/readiness with support-safe diagnostics
-**And** only explicitly registered or validated allow-listed types can be materialized; arbitrary `Type.GetType`, unbounded reflection fallback, polymorphic gadget activation, and a new AOT/trimming commitment are excluded.
-
-**Given** processing, query, and projection work can be abandoned by the caller or host
-**When** published cancellation contracts are designed
-**Then** `IDomainProcessor`, query, legacy and asynchronous projection, replay/upcaster, adapters, dispatchers, transport endpoints, and owned persistence/notification seams have one explicit token-propagation matrix from request abort through domain and I/O boundaries
-**And** already cancellation-aware signatures remain coherent, synchronous compatibility is handled by named additive adapters or an explicitly approved breaking-version policy, and commit/terminalization points that deliberately use non-cancellable cleanup are narrowly documented.
-
-**Given** cancellation occurs before dispatch, between upcast steps, during domain execution, before durable commit, after commit, or during notification/cleanup
-**When** semantics are specified
-**Then** each boundary defines whether work stops, rolls back, safely resumes, or completes durable bookkeeping; `OperationCanceledException` remains distinguishable from domain/infrastructure failure
-**And** no event is partially appended, no handler observes a partially upcast sequence, no committed result is reported as uncommitted, and retry cannot duplicate domain side effects.
-
-**Given** the new metadata and published interfaces affect packages and deployed domain services
-**When** compatibility is analyzed
-**Then** additive versus breaking changes, default/constructor/serializer behavior, wire negotiation, legacy adapters, rolling upgrade, mixed reader/writer versions, downgrade/rollback limits, package baselines, and provider portability are recorded with rejected alternatives and open decisions
-**And** no unresolved stable identity, version default, upcaster order/failure, protection order, cancellation signature, or migration decision may be deferred into Story 6.6.
+**Given** Stories 6.5a–6.5c have reviewed outputs
+**When** their contracts are integrated into the single normative artifact
+**Then** every writer, reader, publication, migration, identity, cancellation, and compatibility seam has one consistent schema, algorithm, numeric bound, failure outcome, and validation vector
+**And** every `BH37-1` through `BH37-10` finding has an explicit accepted or rejected disposition with no unresolved decision deferred into Story 6.6.
 
 **Given** Story 6.5 completion is requested
-**When** `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is reviewed
-**Then** it records the exact accepted scope, design/version or content digest, metadata schemas, registry and chain algorithms, numeric bounds, identity-validation matrix, cancellation matrix, compatibility/migration posture, validation matrix, rejected alternatives, open decisions, named approver, approval date, and explicit authorization for Story 6.6
-**And** missing, stale, self-declared, conditional, or scope-mismatched approval keeps Story 6.5 backlog and Story 6.6 unauthorized.
+**When** `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` and its exact-content six-field receipt are checked
+**Then** the scope, digest, metadata and registry rules, matrices, compatibility/migration plan, vectors, named human approver, date, and explicit Story 6.6 authorization all validate
+**And** missing, stale, self-declared, conditional, or scope-mismatched approval keeps Story 6.5 from completion and Story 6.6 unauthorized.
+
+### Story 6.5a: Event Contract, Writer, and Migration Evidence Spec
+
+As a platform maintainer, I want the event contract, bounded writer, actor evidence, and retained-history migration rules specified so that new and legacy events have deterministic admissible provenance.
+
+**Requirements coverage:** Supporting FR33-C5 event identity/version and compatibility design; Story 6.5 retains final approval ownership. **Classification:** Specification work; no runtime capability or independent 6.6 authorization.
+
+**Dependencies:** Current event/wire/actor/result contracts and `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` as an unapproved candidate. **Deliverable:** Reviewed section candidate and `BH37-1`, `BH37-2`, `BH37-6`, `BH37-7`, `BH37-8` dispositions in `spec-6-5a-event-contract-writer-and-migration-evidence.md`.
+
+**Acceptance Criteria:** The proposed exact metadata/registry, bounded writer admission, V1/V2 and retained-history branches, actor readback, no-op, command outcome, migration, compatibility, and cancellation rules have concrete schemas, limits, typed outcomes, and verification vectors; no runtime edits or self-approval occur.
+
+### Story 6.5b: Verified Read, Replay, and Projection Spec
+
+As a platform maintainer, I want one authenticated bounded read and upcast design so that replay, projection, query, backup, and inspection cannot diverge or publish partial state.
+
+**Requirements coverage:** Supporting FR33-C5 shared evolution/read and cancellation design; Story 6.5 retains final approval ownership. **Classification:** Specification work; no runtime capability or independent 6.6 authorization.
+
+**Dependencies:** Story 6.5a's identity/source contracts and the current reader/replay/projection/query inventory. **Deliverable:** Reviewed section candidate and `BH37-3`, `BH37-4`, `BH37-5`, `BH37-10` dispositions in `spec-6-5b-verified-read-replay-and-projection.md`.
+
+**Acceptance Criteria:** The proposed source proof, chain/payload validation, complete-prefix paging, timeline, scratch/byte budgets, successor ownership, checkpoint, last-good-state, cancellation, and cross-consumer vectors are deterministic and compatible; no runtime edits or self-approval occur.
+
+### Story 6.5c: Publication, Subscription, and Rollout Spec
+
+As a platform maintainer, I want publication, route effects, poison handling, and mixed-fleet rollout fixed so that redelivery and migration preserve one verifiable event identity.
+
+**Requirements coverage:** Supporting FR33-C5 delivery/rollout design and NFR7 no-silent-loss planning; Story 6.5 retains final approval ownership. **Classification:** Specification work; no runtime capability or independent 6.6 authorization.
+
+**Dependencies:** Stories 6.5a/6.5b's source and effective-view rules, current outbox/subscription/transport paths, and the unapproved normative candidate. **Deliverable:** Reviewed section candidate and `BH37-9` disposition in `spec-6-5c-publication-subscription-and-rollout.md`.
+
+**Acceptance Criteria:** The proposed pinned publication and delivery bytes, membership/route/effect receipts, complete-route acknowledgement, legacy handoff, poison capture, provider probes, key retention, time-offset digest, compatibility, and rollout vectors are deterministic; no runtime edits or self-approval occur.
 
 ### Story 6.6: Event Versioning And Upcasting Implementation
 
@@ -4614,15 +4594,15 @@ So that old and new event history can be processed safely without CLR-name coupl
 
 **UX coverage:** Type Catalog, stream, replay, and failure surfaces may show support-safe canonical event contract type, stored/current payload version, legacy/upcast state, hop count, and cancellation/failure reason. They do not render raw or protected payloads, promote assembly-qualified CLR names as public identity, expose secrets/provider internals/stack traces, or describe failed partial replay as current state.
 
-**Dependencies:** Story 6.5 must be complete with a valid approval explicitly authorizing this implementation. Current event persistence, protection/readability, replay/apply, projection, subscription, domain processor, query, testing, and public package contracts are migration inputs; Epic 8's optional production payload-protection engine remains out of scope.
+**Dependencies:** Stories 6.5a, 6.5b, and 6.5c must have completed their reviewed specification work, and Story 6.5 must be complete with a valid approval explicitly authorizing this implementation. Current event persistence, protection/readability, replay/apply, projection, subscription, domain processor, query, testing, and public package contracts are migration inputs; Epic 8's optional production payload-protection engine remains out of scope.
 
 **Current reconciliation:** Story 6.6 remains backlog and is unauthorized because `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` is an unapproved draft without named human content approval or explicit valid authorization. Validated kebab-case event contracts and several cancellation-aware internal/public seams are reusable foundations, but persisted and wire events remain CLR-name-oriented without a payload schema version, no shared upcaster pipeline exists, identity validation is not frozen across every boundary, and `IDomainProcessor` plus the legacy projection seam remain cancellation-inconsistent.
 
 **Acceptance Criteria:**
 
 **Given** Story 6.6 implementation preflight runs
-**When** the Story 6.5 artifact and approval are inspected
-**Then** `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` exists, its accepted version/content identity and named approval are valid, all required decisions are closed, and it explicitly authorizes Story 6.6
+**When** Stories 6.5a–6.5c and the Story 6.5 artifact and approval are inspected
+**Then** the three focused specification stories have reviewed outputs, `_bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md` exists, its accepted version/content identity and named approval are valid, all required decisions are closed, and it explicitly authorizes Story 6.6
 **And** implementation and tests trace to exact approved sections; absent, stale, conditional, or scope-mismatched approval stops work rather than choosing metadata, upcasting, identity, or cancellation semantics locally.
 
 **Given** a new `IEventContract` event is returned by domain processing
