@@ -20,6 +20,9 @@ inputDocumentDigests:
 
 # eventstore - Epic Breakdown
 
+**Approved McpCli course correction (2026-09-27).** Stories 5.4 and 7.5 retain their Admin CLI security and typed-client evidence as compatibility requirements. `Hexalith.EventStore.Admin.Cli` and `.Admin.Mcp` are obsolete migration sources. McpCli Epic 5 inventories stream, subscription, cluster, and destructive operations and requires an approved generic admin contract, authorization, and parity proof before removal.
+
+
 ## Overview
 
 This document provides the complete epic and story breakdown for eventstore, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.

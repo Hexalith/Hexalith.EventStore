@@ -93,6 +93,9 @@ source_artifacts:
 
 # PRD: eventstore Phase 4 Implementation Readiness Recovery
 
+**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` is the target Hexalith-owned CLI/MCP surface. `Hexalith.EventStore.Admin.Cli` and `.Admin.Mcp` are obsolete migration sources, including for infrastructure administration. Their destructive, stream, subscription, and cluster operations require an approved generic McpCli administration contract, authorization, and parity evidence before removal. Existing admin descriptions below are compatibility and historical implementation requirements, not a permanent separate transport target.
+
+
 ## 0. Document Purpose
 
 This PRD is the authoritative Phase 4 functional and non-functional requirements baseline for Hexalith.EventStore. It exists to close the implementation-readiness blocker reported on 2026-07-05: the original epic plan contained FR1-FR35 and NFR1-NFR18, but no standalone PRD existed for PRD-to-epic traceability. The approved 2026-07-11 Parties projection/query parity correction adds FR36. The approved 2026-07-16 payload-protection ownership correction adds FR37 and NFR19 as a committed post-MVP capability. This capability does not enlarge the Phase 4 MVP.
@@ -397,7 +400,7 @@ The top-level FR/NFR IDs remain stable. The clause IDs below expose existing ind
 | FR26-C1 | 5.1 | Infrastructure failure clears staged state and cannot leak it into later work. |
 | FR26-C2 | 5.2 | Admin authorization, tenant filtering, safe queries, and the `1_048_576`/`10 * 1024 * 1024` byte limits fail before upstream invocation. |
 | FR26-C3 | 5.3 | Production authentication fails closed and committed forgeable administrator secrets are absent. |
-| FR26-C4 | 5.4 | Swagger gating, destructive CLI confirmation, ULID-safe correlation, and test-baseline guidance are verified. |
+| FR26-C4 | 5.4 | Swagger gating, destructive confirmation for the legacy EventStore Admin CLI, ULID-safe correlation, and test-baseline guidance are verified. `Hexalith.McpCli` is the target administrator CLI/MCP surface after a generic admin contract and equivalent safety evidence are approved. |
 | FR33-C1 | 6.1 | The folded-snapshot specification is approved and content-bound before runtime work. |
 | FR33-C2 | 6.2 | Folded snapshot runtime behavior conforms to the approved specification. |
 | FR33-C3 | 6.3 | The projection-cost and sequence-guard specification binds quantitative budgets and authorization. |

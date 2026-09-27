@@ -47,6 +47,9 @@ companions:
 
 # Architecture Spine - eventstore Phase 4 Implementation Readiness Recovery
 
+**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` is the target Hexalith-owned CLI/MCP surface. `Hexalith.EventStore.Admin.Cli` and `.Admin.Mcp` are obsolete migration sources, including for infrastructure administration. Their destructive, stream, subscription, and cluster operations require an approved generic McpCli administration contract, authorization, and parity evidence before removal. Existing admin descriptions below are compatibility and historical implementation requirements, not a permanent separate transport target.
+
+
 ## Design Paradigm
 
 Hexalith.EventStore is a DAPR-backed hexagonal event-sourcing platform. The EventStore host is the command and query policy edge; DAPR actors serialize aggregate writes; domain services remain pure domain adapters; generated REST hosts, interactive clients, Admin surfaces, CLI, and MCP use platform seams rather than owning domain persistence.
@@ -385,7 +388,7 @@ src/
   Hexalith.EventStore.ServiceDefaults/    # telemetry, health, discovery, resilience
   Hexalith.EventStore.SignalR/            # notification infrastructure
   Hexalith.EventStore.Operations/         # dead-letter/recovery service; AD-31 gated
-  Hexalith.EventStore.Admin.*/            # abstractions, server/host, CLI, MCP, consolidated UI
+  Hexalith.EventStore.Admin.*/            # abstractions, server/host, consolidated UI; CLI/MCP are obsolete compatibility pending Hexalith.McpCli admin migration
   Hexalith.EventStore.Testing/             # reusable test support
   Hexalith.EventStore.Testing.Integration/ # live integration support
 samples/                                  # sample domain, contracts, API, and Blazor UI
