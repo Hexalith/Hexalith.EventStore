@@ -4946,35 +4946,35 @@ status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The 6.5a integration handoff omits the codec-02 ActorBundleReadbackHash preimage change.
-  evidence: Candidate A5 step 8 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:153`) replaces the draft's codec-01 preimage (`spec-event-versioning-upcasting.md:331`, referenced at 118/360/370) that the batch root stores, but the handoff (line 896) lists only the codec-02 certificate/receipt for 6.5b. Reconcile during Story 6.5 integration.
+  evidence: Candidate [A5, step 8](spec-6-5a-event-contract-writer-and-migration-evidence.md#a5-complete-acyclic-intent-and-post-save-commit-proof) replaces the draft's codec-01 preimage (`spec-event-versioning-upcasting.md:331`, referenced at 118/360/370) that the batch root stores, but the [Integration handoff](spec-6-5a-event-contract-writer-and-migration-evidence.md#integration-handoff) lists only the codec-02 certificate/receipt for 6.5b. Reconcile during Story 6.5 integration.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Six new typed outcomes proposed by the 6.5a candidate are not enumerated as additions to the draft outcome set.
-  evidence: `CommandIdentityConflict`, `AppendPreparationStale`, `CommandOutcomeHold`, `MetadataLimit`, `EventIdentityMismatch` and `UnknownEventContract` occur in the candidate but not in `spec-event-versioning-upcasting.md`. Neither the A9 table nor the handoff lists them for draft §8. Reconcile during Story 6.5 integration.
+  evidence: `CommandIdentityConflict`, `AppendPreparationStale`, `CommandOutcomeHold`, `MetadataLimit`, `EventIdentityMismatch` and `UnknownEventContract` occur in the candidate but not in `spec-event-versioning-upcasting.md`. Neither the [A9 table](spec-6-5a-event-contract-writer-and-migration-evidence.md#a9-failure-cancellation-and-ordered-migration) nor the [Integration handoff](spec-6-5a-event-contract-writer-and-migration-evidence.md#integration-handoff) lists them for draft §8. Reconcile during Story 6.5 integration.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The outcome-head predecessor/CAS-preparation evidence record has no codec, key or cap.
-  evidence: Candidate A8 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:218`) makes recovery of revision `r+1` before the head CAS depend on "durable CAS-preparation evidence binding predecessor key/revision/hash", but defines no record name, key, fields or size bound. Specify it during Story 6.5 integration.
+  evidence: Candidate [A8, Complete publication observations](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations), in the latest-pointer paragraph, makes recovery of revision `r+1` before the head CAS depend on "durable CAS-preparation evidence binding predecessor key/revision/hash", but defines no record name, key, fields or size bound. Specify it during Story 6.5 integration.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The K02/K07 known-answer fixtures use marker state keys that do not follow the stated key derivations.
-  evidence: K02 stages `batch-member-root:op` instead of `batch-member-root:` plus ScopeOpHash (candidate A5 line 129), and K07 stages `aggregate-operation-result:op` instead of the draft's hashed key (`spec-event-versioning-upcasting.md:336`). The fixed hashes freeze those keys, and candidate line 354 disclaims only the marker after-images. Regenerate or disclaim during Story 6.5 integration.
+  evidence: [K02/K07, Local codec known-answer vectors](spec-6-5a-event-contract-writer-and-migration-evidence.md#local-codec-known-answer-vectors) stage `batch-member-root:op` instead of `batch-member-root:` plus ScopeOpHash ([A5 key derivation](spec-6-5a-event-contract-writer-and-migration-evidence.md#a5-complete-acyclic-intent-and-post-save-commit-proof)), and `aggregate-operation-result:op` instead of the draft's hashed key (`spec-event-versioning-upcasting.md:336`), respectively. The fixed hashes freeze those keys, and the local-vector preamble disclaims only the marker after-images. Regenerate or disclaim during Story 6.5 integration.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Candidate A3 restates the V1 64 MiB/event and 128 MiB scratch limits that open BH37-4 contests, without marking them provisional.
-  evidence: `story-6-5-review-triage.md:549` (BH37-4) shows one 64 MiB legacy event plus 64 MiB prior state exhausts 128 MiB scratch. The 6.5a handoff routes BH37-4 to integration, but A3 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:91`) presents the numbers as settled inputs for 6.5b.
+  evidence: `story-6-5-review-triage.md:549` (BH37-4) shows one 64 MiB legacy event plus 64 MiB prior state exhausts 128 MiB scratch. The [Integration handoff](spec-6-5a-event-contract-writer-and-migration-evidence.md#integration-handoff) routes BH37-4 to integration, but [A3, boundary ceiling table](spec-6-5a-event-contract-writer-and-migration-evidence.md#a3-bounded-producer-and-whole-response-ingress) presents the numbers as settled inputs for 6.5b.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Case variants of the writerMode/registryFingerprint negotiation property names are unspecified.
-  evidence: Candidate A2 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:69`) does not explicitly reject a wrong-case `WriterMode`/`RegistryFingerprint` in V1 mode, and K06 `negotiated` treats it as implicit V1. The authenticated capability comparison still prevents a V2 downgrade. Clarify during Story 6.5 integration.
+  evidence: Candidate [A2, negotiation rules](spec-6-5a-event-contract-writer-and-migration-evidence.md#a2-canonical-metadata-registry-and-compatibility) does not explicitly reject a wrong-case `WriterMode`/`RegistryFingerprint` in V1 mode, and [K06 `negotiated`](spec-6-5a-event-contract-writer-and-migration-evidence.md#local-codec-known-answer-vectors) treats it as implicit V1. The authenticated capability comparison still prevents a V2 downgrade. Clarify during Story 6.5 integration.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: A failed publication observation row at an unchanged attempt can swap its failure receipt.
-  evidence: K09 `reduce_set` (`spec-6-5a-event-contract-writer-and-migration-evidence.md:701`) requires only that a same-attempt failed row stays failed, and A8 (line 214) does not state that a failed row is immutable for its attempt. Clarify during Story 6.5 integration.
+  evidence: [K09 `reduce_set`](spec-6-5a-event-contract-writer-and-migration-evidence.md#local-codec-known-answer-vectors) requires only that a same-attempt failed row stays failed, and [A8, complete-vector reduction](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations) does not state that a failed row is immutable for its attempt. Clarify during Story 6.5 integration.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The 6.5a recovery-token and retry-lifetime numbers are grounded but uncited.
-  evidence: The "one 30-second attempt" (candidate line 275) matches `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2142`, and "at least 24 hours" (line 260) matches the draft command-continuation budget (`spec-event-versioning-upcasting.md:383`), but neither source is cited. Add citations during Story 6.5 integration.
+  evidence: The "one 30-second attempt" in [A9, caller cancellation](spec-6-5a-event-contract-writer-and-migration-evidence.md#a9-failure-cancellation-and-ordered-migration) matches `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2142`, and "at least 24 hours" in [A8, retry retention](spec-6-5a-event-contract-writer-and-migration-evidence.md#existing-retry-and-status-integration) matches the draft command-continuation budget (`spec-event-versioning-upcasting.md:383`), but neither source is cited. Add citations during Story 6.5 integration.
   status: open
 
 
@@ -4982,11 +4982,11 @@ status: open
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Specify the authenticated preparation-write evidence contract required to recover response preparation from Rendering with both output blobs.
-  evidence: BH4-3 identifies candidate A8's requirement to authenticate which fenced owner wrote both response/outcome records, without a complete record schema, deterministic key, concrete cap or cross-reference contract. Missing authority already yields CommandOutcomeHold; Story 6.5 integration with 6.5c must define interoperable evidence before runtime readiness. The separate outcome-head predecessor/CAS evidence omission is already recorded and remains open.
+  evidence: BH4-3 identifies [A8, Fenced first-response preparation, step 3](spec-6-5a-event-contract-writer-and-migration-evidence.md#fenced-first-response-preparation): authenticate which fenced owner wrote both response/outcome records, without a complete record schema, deterministic key, concrete cap or cross-reference contract. Missing authority already yields CommandOutcomeHold; Story 6.5 integration with 6.5c must define interoperable evidence before runtime readiness. The separate outcome-head predecessor/CAS evidence omission is already recorded and remains open.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Reconcile per-attempt private publication failure with the permanent public PublishFailed contract during Story 6.5/6.5c integration.
-  evidence: BH4-2 identified that A8 permits later attempts after private failed, while CommandStatus and CommandStatusController make PublishFailed terminal and tell clients to stop polling. The candidate now deterministically holds unmapped public outcomes and preserves append truth/existing pins. Integration must define the exact terminality evidence, existing public fields/polling semantics and permitted transitions before that mapping can become ready.
+  evidence: BH4-2 identified that [A8, Complete publication observations](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations) permits later attempts after private failed, while CommandStatus and CommandStatusController make PublishFailed terminal and tell clients to stop polling. Under the pass-5 decision, the candidate deterministically holds status inspection of an unmapped private failed head; first POST replies remain publication-independent, and failed observations create ordinary private revisions/head transitions, including revision zero and its first pin (A10 V13/V20/V22/V23). Append truth and original pins remain intact. Integration must define the exact terminality evidence, existing public fields/polling semantics and permitted transitions before that mapping can become ready.
   status: open
 
 
@@ -4995,4 +4995,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The tenant-wide one-scope-per-execution-MessageId rule (A8 "Explicit Review-32 replacement") has no retention horizon and no legacy coverage.
   evidence: The only enforcing record is the `required`-class `command-execution-scope:` lookup, retained only "through all retry/status obligations". Legacy executions have only the 24 h advisory `CommandStatusConstants.BuildKey` row and the `SubmitCommandHandler` archive check, which compares MessageId/CommandType but not scope. Same-tenant cross-scope reuse after reclamation, or after a legacy admission, is admitted or rejected depending on reclamation timing. Story 6.5 integration must state the uniqueness horizon (or retain a compact tenant/MessageId tombstone) and the legacy coverage.
+  status: open
+
+
+## Deferred from: Story 6.5a pass-5 patch completion review (2026-09-27)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: Define the exact publication destination-ID derivation during Story 6.5/6.5c integration.
+  evidence: BH6-1 identifies [A8 ExpectedEntries](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations), whose U destinationId denotes pinned component/topic/configuration without a canonical string codec or immutable source field. The exact outbox/pin hashes still bind the destination, but independent producers/verifiers can derive different ExpectedSetHash values for equivalent evidence. Specify one bounded derivation and delimiter/configuration-change known answers before interoperable runtime readiness; retain the existing one-destination-per-event contract.
   status: open
