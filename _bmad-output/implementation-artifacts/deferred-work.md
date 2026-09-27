@@ -4988,3 +4988,11 @@ status: open
   summary: Reconcile per-attempt private publication failure with the permanent public PublishFailed contract during Story 6.5/6.5c integration.
   evidence: BH4-2 identified that A8 permits later attempts after private failed, while CommandStatus and CommandStatusController make PublishFailed terminal and tell clients to stop polling. The candidate now deterministically holds unmapped public outcomes and preserves append truth/existing pins. Integration must define the exact terminality evidence, existing public fields/polling semantics and permitted transitions before that mapping can become ready.
   status: open
+
+
+## Deferred from: code review of spec-6-5a-event-contract-writer-and-migration-evidence-2.md (2026-09-27, pass 5)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: The tenant-wide one-scope-per-execution-MessageId rule (A8 "Explicit Review-32 replacement") has no retention horizon and no legacy coverage.
+  evidence: The only enforcing record is the `required`-class `command-execution-scope:` lookup, retained only "through all retry/status obligations". Legacy executions have only the 24 h advisory `CommandStatusConstants.BuildKey` row and the `SubmitCommandHandler` archive check, which compares MessageId/CommandType but not scope. Same-tenant cross-scope reuse after reclamation, or after a legacy admission, is admitted or rejected depending on reclamation timing. Story 6.5 integration must state the uniqueness horizon (or retain a compact tenant/MessageId tombstone) and the legacy coverage.
+  status: open
