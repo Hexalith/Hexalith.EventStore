@@ -4931,9 +4931,60 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Restore the explicit zero-state-write and zero-checkpoint-advancement rule for already-current projections in the compiled epic context.
   evidence: BH1-9, BH2-8 and EC2-2 identify the same pre-existing edit in `epic-6-context.md` Requirements & Constraints: the current summary retains zero reads/handler calls but omits zero state writes/checkpoint advancement present at baseline `02cf007c9860326aa03b32a78541a00b5717bd4a`. Future projection work could perform metadata writes on this short circuit. Preserve the user's context edits and reconcile the rule in a separate context update.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Restore authoritative Current-only mutation, implemented/current snapshot-action prerequisites and denied-view non-disclosure in the compiled epic context.
   evidence: BH1-10, BH2-10 and EC2-3/4 identify pre-existing omissions in `epic-6-context.md` UX & Interaction Patterns compared with baseline `02cf007c9860326aa03b32a78541a00b5717bd4a`. The remaining lifecycle and payload-hiding prose does not forbid mutations on stale/unknown views, unimplemented snapshot actions, or disclosure of hidden-resource existence through denial. Reconcile against the authoritative UX rules in a separate context update; this story preserves the user's bytes.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Restore explicit full-replay/incremental handler declarations and the approved fallback path in the compiled epic context.
   evidence: BH2-9 identifies a pre-existing deletion from `epic-6-context.md` Technical Decisions: baseline `02cf007c9860326aa03b32a78541a00b5717bd4a` requires each handler to declare semantics and unsupported, ambiguous or failed incremental routes to use approved full replay/rebuild. The current tail-processing summary omits that capability distinction and could direct future projection work to send tails to full-replay-only handlers. Preserve the user's edit while reconciling this requirement separately.
+  status: open
+
+
+## Deferred from: code review of spec-6-5a-event-contract-writer-and-migration-evidence-2.md (2026-09-27)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: The 6.5a integration handoff omits the codec-02 ActorBundleReadbackHash preimage change.
+  evidence: Candidate A5 step 8 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:153`) replaces the draft's codec-01 preimage (`spec-event-versioning-upcasting.md:331`, referenced at 118/360/370) that the batch root stores, but the handoff (line 896) lists only the codec-02 certificate/receipt for 6.5b. Reconcile during Story 6.5 integration.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: Six new typed outcomes proposed by the 6.5a candidate are not enumerated as additions to the draft outcome set.
+  evidence: `CommandIdentityConflict`, `AppendPreparationStale`, `CommandOutcomeHold`, `MetadataLimit`, `EventIdentityMismatch` and `UnknownEventContract` occur in the candidate but not in `spec-event-versioning-upcasting.md`. Neither the A9 table nor the handoff lists them for draft §8. Reconcile during Story 6.5 integration.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: The outcome-head predecessor/CAS-preparation evidence record has no codec, key or cap.
+  evidence: Candidate A8 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:218`) makes recovery of revision `r+1` before the head CAS depend on "durable CAS-preparation evidence binding predecessor key/revision/hash", but defines no record name, key, fields or size bound. Specify it during Story 6.5 integration.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: The K02/K07 known-answer fixtures use marker state keys that do not follow the stated key derivations.
+  evidence: K02 stages `batch-member-root:op` instead of `batch-member-root:` plus ScopeOpHash (candidate A5 line 129), and K07 stages `aggregate-operation-result:op` instead of the draft's hashed key (`spec-event-versioning-upcasting.md:336`). The fixed hashes freeze those keys, and candidate line 354 disclaims only the marker after-images. Regenerate or disclaim during Story 6.5 integration.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: Candidate A3 restates the V1 64 MiB/event and 128 MiB scratch limits that open BH37-4 contests, without marking them provisional.
+  evidence: `story-6-5-review-triage.md:549` (BH37-4) shows one 64 MiB legacy event plus 64 MiB prior state exhausts 128 MiB scratch. The 6.5a handoff routes BH37-4 to integration, but A3 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:91`) presents the numbers as settled inputs for 6.5b.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: Case variants of the writerMode/registryFingerprint negotiation property names are unspecified.
+  evidence: Candidate A2 (`spec-6-5a-event-contract-writer-and-migration-evidence.md:69`) does not explicitly reject a wrong-case `WriterMode`/`RegistryFingerprint` in V1 mode, and K06 `negotiated` treats it as implicit V1. The authenticated capability comparison still prevents a V2 downgrade. Clarify during Story 6.5 integration.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: A failed publication observation row at an unchanged attempt can swap its failure receipt.
+  evidence: K09 `reduce_set` (`spec-6-5a-event-contract-writer-and-migration-evidence.md:701`) requires only that a same-attempt failed row stays failed, and A8 (line 214) does not state that a failed row is immutable for its attempt. Clarify during Story 6.5 integration.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: The 6.5a recovery-token and retry-lifetime numbers are grounded but uncited.
+  evidence: The "one 30-second attempt" (candidate line 275) matches `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2142`, and "at least 24 hours" (line 260) matches the draft command-continuation budget (`spec-event-versioning-upcasting.md:383`), but neither source is cited. Add citations during Story 6.5 integration.
+  status: open
+
+
+## Deferred from: Story 6.5a resumed build review (2026-09-27)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: Specify the authenticated preparation-write evidence contract required to recover response preparation from Rendering with both output blobs.
+  evidence: BH4-3 identifies candidate A8's requirement to authenticate which fenced owner wrote both response/outcome records, without a complete record schema, deterministic key, concrete cap or cross-reference contract. Missing authority already yields CommandOutcomeHold; Story 6.5 integration with 6.5c must define interoperable evidence before runtime readiness. The separate outcome-head predecessor/CAS evidence omission is already recorded and remains open.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
+  summary: Reconcile per-attempt private publication failure with the permanent public PublishFailed contract during Story 6.5/6.5c integration.
+  evidence: BH4-2 identified that A8 permits later attempts after private failed, while CommandStatus and CommandStatusController make PublishFailed terminal and tell clients to stop polling. The candidate now deterministically holds unmapped public outcomes and preserves append truth/existing pins. Integration must define the exact terminality evidence, existing public fields/polling semantics and permitted transitions before that mapping can become ready.
+  status: open
