@@ -324,6 +324,8 @@ spec:
                 dapr.io/app-id: "eventstore"
                 dapr.io/app-port: "8080"
                 dapr.io/config: "accesscontrol"
+                # Sidecar sends this secret's token to the app as dapr-api-token.
+                dapr.io/app-token-secret: "app-api-token"
                 dapr.io/sidecar-cpu-request: "100m"
                 dapr.io/sidecar-memory-request: "128Mi"
                 dapr.io/sidecar-cpu-limit: "300m"
@@ -332,6 +334,13 @@ spec:
             containers:
                 - name: eventstore
                   # ... (existing image, env, ports from generated template)
+                  env:
+                      # The app compares dapr-api-token with this same secret.
+                      - name: APP_API_TOKEN
+                        valueFrom:
+                            secretKeyRef:
+                                name: app-api-token
+                                key: token
                   resources:
                       requests:
                           cpu: "250m"
@@ -355,6 +364,8 @@ spec:
                           path: /ready
                           port: 8080
 ```
+
+> **Breaking upgrade step: internal app-channel token.** Outside `Development`, EventStore no longer admits an internal Dapr caller from the `dapr-caller-app-id` header alone. A caller listed in `Authentication:DaprInternal:AllowedCallers` must also present a `dapr-api-token` header that matches the gateway's `APP_API_TOKEN` secret. While callers are allow-listed and `APP_API_TOKEN` is missing, the `dapr-app-channel-token` readiness check (tag `ready`) reports Unhealthy. Before you upgrade Staging or Production, create the `app-api-token` Kubernetes Secret with a random `token` value. Add the `dapr.io/app-token-secret` annotation and the `APP_API_TOKEN` environment variable shown above. Until both are deployed, existing internal callers receive `401 Unauthorized`. The token authenticates only the sidecar-to-app channel; mTLS and deny-by-default access control remain required. See `samples/deploy/kubernetes/dapr-annotations-example.yaml` and `samples/deploy/kubernetes/secrets-template.yaml`.
 
 ### sample Deployment
 

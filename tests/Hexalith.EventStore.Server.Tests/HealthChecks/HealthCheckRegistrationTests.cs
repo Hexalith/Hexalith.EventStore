@@ -32,6 +32,20 @@ public class HealthCheckRegistrationTests {
     }
 
     [Fact]
+    public void AddEventStoreAppChannelTokenHealthCheck_RegistersReadyUnhealthyCheck() {
+        var services = new ServiceCollection();
+        _ = services.AddHealthChecks().AddEventStoreAppChannelTokenHealthCheck();
+        using ServiceProvider sp = services.BuildServiceProvider();
+
+        HealthCheckRegistration registration = sp.GetRequiredService<IOptions<HealthCheckServiceOptions>>()
+            .Value.Registrations.Single(r => r.Name == HealthCheckBuilderExtensions.AppChannelTokenHealthCheckName);
+
+        registration.Name.ShouldBe("dapr-app-channel-token");
+        registration.Tags.ShouldContain("ready");
+        registration.FailureStatus.ShouldBe(HealthStatus.Unhealthy);
+    }
+
+    [Fact]
     public void AddEventStoreDaprHealthChecks_RegistersAllDaprChecks() {
         HealthCheckServiceOptions options = GetHealthCheckOptions();
 

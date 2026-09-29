@@ -71,7 +71,78 @@ public class IdempotencyTenantLifecycleActorTests
         IdempotencyTenantLifecycleRecord afterRetry = await actor.PurgeAsync(1);
         afterRetry.State.ShouldBe(IdempotencyTenantLifecycleState.Purged);
         afterRetry.TrustedEffectEvidenceErased.ShouldBeTrue();
-        await retention.Received(2).EraseTenantAsync("tenant-a", Arg.Any<TrustedEffectAggregateErasure[]>(), Arg.Any<CancellationToken>());
+        // One failed first-partition call, then one call per source and target partition on retry.
+        await retention.Received(3).EraseTenantAsync(
+            "tenant-a",
+            Arg.Is<TrustedEffectAggregateErasure[]>(requests => requests.Length == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Each partition's purge capability is issued immediately before its own erasure call.</summary>
+    [Fact]
+    public async Task PurgeIssuesEachPartitionCapabilityImmediatelyBeforeItsErasure()
+    {
+        var issued = new List<TrustedEffectAggregateErasure>();
+        var erased = new List<TrustedEffectAggregateErasure>();
+        ITrustedEffectErasureAuthority authority = Substitute.For<ITrustedEffectErasureAuthority>();
+        _ = authority.IssueAsync(Arg.Any<TrustedEffectAggregateErasure>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                issued.Add(call.Arg<TrustedEffectAggregateErasure>());
+                return "capability-" + issued.Count;
+            });
+        ITrustedEffectJointRetentionPolicy retention = Substitute.For<ITrustedEffectJointRetentionPolicy>();
+        FakeTimeProvider? clock = null;
+        _ = retention.EraseTenantAsync("tenant-a", Arg.Any<TrustedEffectAggregateErasure[]>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                erased.AddRange(call.Arg<TrustedEffectAggregateErasure[]>());
+                clock!.Advance(TimeSpan.FromMinutes(4));
+                return Task.CompletedTask;
+            });
+        (IdempotencyTenantLifecycleActor actor, _, FakeTimeProvider time) = CreateActor(
+            actorProxyFactory: CreateFenceProxyFactory(),
+            trustedEffectRetention: retention,
+            trustedEffectErasureAuthority: authority);
+        clock = time;
+        await actor.RegisterTrustedEffectAsync(TrustedIdentity());
+        _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
+        issued.Clear();
+        DateTimeOffset purgeStart = time.GetUtcNow();
+
+        IdempotencyTenantLifecycleRecord purged = await actor.PurgeAsync(1);
+
+        purged.TrustedEffectEvidenceErased.ShouldBeTrue();
+        erased.Count.ShouldBe(2);
+        erased[0].IssuedAt.ShouldBe(purgeStart);
+        erased[1].IssuedAt.ShouldBe(purgeStart.AddMinutes(4));
+        erased.ShouldAllBe(request => request.ExpiresAt == request.IssuedAt.AddMinutes(5));
+        erased.Select(static request => request.Capability).ShouldBe(["capability-1", "capability-2"]);
+        issued.Select(static request => request.IssuedAt).ShouldBe(erased.Select(static request => request.IssuedAt));
+    }
+
+    /// <summary>A deletion approval beyond the allowed clock skew is refused before any partition is fenced.</summary>
+    [Fact]
+    public async Task FutureDeletionApprovalIsRejectedBeforeFencing()
+    {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IAggregateActor partition = Substitute.For<IAggregateActor>();
+        _ = factory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), nameof(AggregateActor)).Returns(partition);
+        (IdempotencyTenantLifecycleActor actor, _, _) = CreateActor(actorProxyFactory: factory);
+        await actor.RegisterTrustedEffectAsync(TrustedIdentity());
+
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(
+            () => actor.EnterDeletionAsync(_now.Add(IdempotencyTenantLifecycleActor.ApprovalClockSkew).AddTicks(1)));
+
+        await partition.DidNotReceiveWithAnyArgs().FenceTrustedEffectsAsync(default!);
+        (await actor.GetAsync()).State.ShouldBe(IdempotencyTenantLifecycleState.Active);
+
+        DateTimeOffset withinSkew = _now.AddSeconds(20);
+        IdempotencyTenantLifecycleRecord entered = await actor.EnterDeletionAsync(withinSkew);
+
+        entered.State.ShouldBe(IdempotencyTenantLifecycleState.Retaining);
+        await partition.Received(2).FenceTrustedEffectsAsync(Arg.Is<TrustedEffectAggregateErasure>(request =>
+            request.DeletionApprovedAt == withinSkew && request.IssuedAt == withinSkew));
     }
 
     /// <summary>A failed audit append prevents the joint eraser from touching evidence.</summary>
@@ -978,7 +1049,8 @@ public class IdempotencyTenantLifecycleActorTests
     private static (IdempotencyTenantLifecycleActor Actor, IActorStateManager StateManager, FakeTimeProvider Time) CreateActor(
         IActorProxyFactory? actorProxyFactory = null,
         ITrustedEffectJointRetentionPolicy? trustedEffectRetention = null,
-        ITrustedEffectAuditSink? trustedEffectAuditSink = null)
+        ITrustedEffectAuditSink? trustedEffectAuditSink = null,
+        ITrustedEffectErasureAuthority? trustedEffectErasureAuthority = null)
     {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var time = new FakeTimeProvider(_now);
@@ -996,9 +1068,13 @@ public class IdempotencyTenantLifecycleActorTests
             .Returns(Task.CompletedTask);
         ActorHost host = ActorHost.CreateForTest<IdempotencyTenantLifecycleActor>(
             new ActorTestOptions { ActorId = new ActorId("tenant-a") });
-        ITrustedEffectErasureAuthority erasureAuthority = Substitute.For<ITrustedEffectErasureAuthority>();
-        _ = erasureAuthority.IssueAsync(Arg.Any<TrustedEffectAggregateErasure>(), Arg.Any<CancellationToken>())
-            .Returns("synthetic-capability");
+        ITrustedEffectErasureAuthority? erasureAuthority = trustedEffectErasureAuthority;
+        if (erasureAuthority is null)
+        {
+            erasureAuthority = Substitute.For<ITrustedEffectErasureAuthority>();
+            _ = erasureAuthority.IssueAsync(Arg.Any<TrustedEffectAggregateErasure>(), Arg.Any<CancellationToken>())
+                .Returns("synthetic-capability");
+        }
         var actor = new IdempotencyTenantLifecycleActor(
             host,
             NullLogger<IdempotencyTenantLifecycleActor>.Instance,

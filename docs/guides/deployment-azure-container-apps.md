@@ -495,6 +495,8 @@ az containerapp dapr enable \
   --dapr-app-protocol http
 ```
 
+> **Breaking upgrade step: internal app-channel token.** Outside `Development`, EventStore no longer admits an internal Dapr caller from the `dapr-caller-app-id` header alone. A caller listed in `Authentication:DaprInternal:AllowedCallers` must also present a `dapr-api-token` header that matches the gateway's `APP_API_TOKEN` secret. While callers are allow-listed and the secret is missing, the `dapr-app-channel-token` readiness check reports Unhealthy. Before you upgrade, store a random token as a Container Apps secret and expose it to the `eventstore` container as `APP_API_TOKEN`. Then confirm that the managed sidecar sends the same token to the app, using Dapr's app API token protocol. If the environment cannot configure the managed sidecar that way, keep `AllowedCallers` empty there, so no internal caller is admitted and readiness does not wait for the token. Until the app and sidecar share the token, allow-listed internal callers receive `401 Unauthorized`.
+
 ### Enable DAPR on sample
 
 ```bash
