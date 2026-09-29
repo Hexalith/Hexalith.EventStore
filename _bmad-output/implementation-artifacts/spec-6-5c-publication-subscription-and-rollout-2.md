@@ -2,7 +2,7 @@
 title: 'Story 6.5c: Publication, Subscription, and Rollout Candidate'
 type: 'feature'
 created: '2026-09-27'
-status: 'ready-for-dev'
+status: 'in-review'
 baseline_commit: 'e29b44a2d185b01ddafe534672153308285b4444'
 route: 'dispatch'
 review_loop_iteration: 3
@@ -73,15 +73,15 @@ All content tasks edit `_bmad-output/implementation-artifacts/spec-6-5c-publicat
 
 **Pass-15 focused loop (owner routing bar; all edits in the candidate):**
 
-- [ ] C2/C3/C5: define one canonical `destinationId` derivation from the pinned component, topic and destination configuration: exact codec, bounds and known-answer vectors. Use it in every `destinationId` field and in the accepted-delivery log/index keys, and record that it resolves the 6.5a BH6-1 ledger item (BH15-9a).
-- [ ] C1/C6: give `PublicationPinCapacityHold` exact per-tenant and deployment ceilings covering global pins, legacy side records and retained objects. Charge them before send or attach, and hold with a typed outcome when full. Add them to C6 item 8 (BH15-12).
-- [ ] C1/C2 and handoff:
+- [x] C2/C3/C5: define one canonical `destinationId` derivation from the pinned component, topic and destination configuration: exact codec, bounds and known-answer vectors. Use it in every `destinationId` field and in the accepted-delivery log/index keys, and record that it resolves the 6.5a BH6-1 ledger item (BH15-9a).
+- [x] C1/C6: give `PublicationPinCapacityHold` exact per-tenant and deployment ceilings covering global pins, legacy side records and retained objects. Charge them before send or attach, and hold with a typed outcome when full. Add them to C6 item 8 (BH15-12).
+- [x] C1/C2 and handoff:
   - one consistent Binary attestation bound (EC15-1);
   - Structured carriers reject, or exactly match, any `ce-*` header (EC15-4);
   - header values reject CR, LF and NUL (EC15-5);
   - replace the unenforceable `Retryable=false` client-fence sentence (BH15-10).
-- [ ] Embedded model: correct each contradiction in pass-15 rows EC15-2/3/6–15/18–24/26/27, with a positive and a negative vector for each.
-- [ ] Candidate §Verification (VG15-1/BH15-7/BH15-8):
+- [x] Embedded model: correct each contradiction in pass-15 rows EC15-2/3/6–15/18–24/26/27, with a positive and a negative vector for each.
+- [x] Candidate §Verification (VG15-1/BH15-7/BH15-8):
   - Integrity script: compare against `baseline_commit`, pin the SHA-256 of the approved frozen block, name the owner/automation paths in the range explicitly, and stop on the first failure.
   - Mutation harness: require exactly one occurrence of each target and the expected exception inside the owning family.
   - Family labels: make them unique and list every expected line.
@@ -98,6 +98,15 @@ All content tasks edit `_bmad-output/implementation-artifacts/spec-6-5c-publicat
   - the destination-ID and capacity rules each have a known-answer vector.
 
 ## Implementation Notes
+
+2026-09-29, pass-15 focused loop under the owner routing bar: amended the candidate in place; the pre-loop candidate is the committed `801f3e52` content.
+- Destination ID (BH15-9a): C1 derives one canonical `destinationId`, `hxdst1-` plus lowercase-hex SHA-256 over framed component, topic and the read-back configuration hash (71 bytes; component/topic 1..1,024 strict UTF-8). Four fixed known answers cover the inline/reference forms, both delimiter shifts and a configuration change. Every destination field and both accepted-delivery keys use it, and C1 and the handoff record that it resolves the open 6.5a BH6-1 ledger item.
+- Capacity (BH15-12): `PublicationPinCapacityHold` has exact per-tenant and deployment publication-retention ceilings (`1 GiB ≤ tenant ≤ deployment`, per-object overhead `o`) over global pins, legacy side records and retained objects, reusing B6's pattern. Charges precede send, side-record write or attach; a known answer and a C6 item 8 entry were added.
+- Prose fixes: one 1..6,123-byte decoded attestation bound for both modes (EC15-1); Structured carriers reject every `ce-*` header (EC15-4); header values reject CR, LF and NUL (EC15-5); the handoff replaces the unenforceable `Retryable=false` client fence (BH15-10).
+- Models: EC15-2/3/6–15/18–24/26/27 are corrected in C01b/C02/C02b/C02c/C02e/C02f/C03b/C03c/C03e/C04/C05c/C06/C08d/C08f/C08h/C11b/C11c/C11d/C11f/C11g, each with a positive and a negative vector; the prose now states every rule those models enforce. New families C01c and C01d model the destination ID and capacity. The duplicate `C02` labels and `C04/C05c` became `C02e`, `C02f` and `C05c`.
+- Verification: the candidate lists all 42 family lines and 79 mutations (37 retained, 42 new). Each target must occur exactly once and die in its owning family with its named exception. The integrity script is `baseline_commit`-relative, pins frozen-block SHA-256 `31b357f59c13c76b77ed946584c9510093e459bd4db13b0a8c5b7e64c95a6b96` and names the owner/automation paths in the range.
+- Results: both candidate §Verification blocks, extracted and run verbatim, exit 0 (42 families; 79 mutations rejected in their owning families; the integrity success line). Deliberately broken copies (wrong family, duplicated target, wrong exception, changed frozen digest, unlisted changed path) each fail. The destination-ID known answers were recomputed independently with `sha256sum`. All 24 relative links resolve; protected artifacts, `src`, `tests`, `deploy` and `docs` match the baseline; AD-13 remains `UNAPPROVED`.
+- Not done here: EC15-17/25, BH15-11 and BH15-13 stay deferred in `deferred-work.md`. Provider, broker and injected-crash vectors remain unexecuted, so no activation readiness or Story 6.6 authority is claimed.
 
 2026-09-28, human-authorized third review cycle: Review pass 12 exceeded the second cycle's loop limit with eight unresolved `bad_spec` contract roots. Resetting the iteration counter opens a new review cycle; it does not resolve those findings or establish activation readiness. The pre-correction candidate is preserved byte-for-byte at `/tmp/bmad-6-5c-before-authorized-cycle-3.md`.
 
@@ -740,6 +749,61 @@ Review pass 15, authorized cycle 3 loop 3, 2026-09-29. All three layers reviewed
 | EC15-31 multiple-routes evidence claim | **medium / patch after loopback (same root as EC15-23)** — see EC15-23. |
 
 Review pass 15 routing: BH15-4 is an `intent_gap`; it takes precedence and loops back to the human. BH15-9a/11/12/13 form four `bad_spec` contract roots: canonical destination identity, held-delivery redelivery exhaustion, aggregate publication-retention ceilings and held-command discoverability. The integrity-script, harness, label and model/prose guard patches remain required after any rederivation. BH15-14/15/16 are routed to defer as not this story's changes, and VG15-2 carries VG14-4. BH15-2/3/5/6/9b/9c/17 and EC15-16/29 are rejected. The review counter advances from 2 to 3. The candidate is not reverted pending the owner's resolution, because the choices below differ in whether its content survives.
+
+Review pass 16, focused loop under the owner routing bar, 2026-09-29. All three layers reviewed the complete 686,055-byte `e29b44a2..` working-tree diff (Blind Hunter floor 10). The parent independently re-ran both candidate §Verification blocks on the working tree and on a scratch clone with the edits committed (42 families; 79 mutations each rejected in its owning family; integrity success line; exit 0), and recomputed the `hxdst1-4b06bdae…` known answer with `sha256sum`. Each finding below was classified before grouping under the frozen bar: fix only an ungrounded rule, a boundary with a non-deterministic outcome or overstated verification; defer other refinements to Story 6.5 integration. Verification-gap findings are accepted as preverified.
+
+| Finding | Verdict, evidence, route |
+| --- | --- |
+| VG16-1 `bind_retry` after unresolved Unknown | **medium / patch** — preverified: the EC15-6 rewrite at candidate `:681` has no vector or mutation; removing it still passes and binds `send-2` after an Unknown. The loop's own task requires a mutation for each new guard. |
+| VG16-2 C03 quarantine after commit | **low / patch** — preverified: `:1130` is never reached; with it removed, a committed route becomes `Quarantined` and is acknowledged as poison, while the family claims exclusive terminal decisions. |
+| VG16-3 C08g propose without proof root or fence | **medium / patch** — preverified: `:2283` is never reached; with it removed, a proof-less, fence-less proposal closes to public `PublishFailed`. |
+| VG16-O1 integrity script breaks when main moves | **medium / patch (root P9)** — verified: `git diff --name-only BASELINE` includes every later commit, so any later path outside `STORY \| OWNER_AUTOMATION` fails it. The task mandated this design; the defect is that the candidate presents it without stating its point-in-time scope. |
+| VG16-O2 156 of 371 raise sites survive removal | **medium / defer (root D13)** — upper bound, some redundant; a systemic kill sweep over pre-existing guards, related to VG15-2. |
+| EC16-1 exact pin charge above reservation | **medium / intent_gap (root B1)** — verified: "conservative planned size" (candidate `:59`) is defined nowhere. 6.5a A8's preflight reserves first-outcome records, not the C1 global pin, whose renderings and header images are CAS-pinned only before send (`:51`). Implementations cannot agree when the admission hold fires, the state BH15-12 was meant to remove. |
+| EC16-2 mixed-kind shared object account | **medium / patch (root P4)** — reproduced: after `charge(b'tenant-a', b'object:x', …)`, `charge(b'scope:iso', b'object:x', …)` raises `Conflict`, although C3/C4 permit an addressed and an unidentified duty on one canonical object and the prose says "charged once" without naming the account. |
+| EC16-3 unidentified scopes fill the deployment ceiling | **medium / defer (root D1)** — real design refinement; the outcome is a deterministic hold. |
+| EC16-4 overhead `o` unbounded in C01d | **low / defer (root D3)** — reproduced (`o` = 2 GiB accepted); the prose bound is not exact either. |
+| EC16-5 `tag_12` discriminator guard untested | **low / patch (root P5)** — verified: the `b'\x02' + config` vector also fails the prefix check, so removing the new guard at `:469` still passes. |
+| EC16-6 reference address not decoded as `U` | **low / defer (root D5)** — the UTF-8 half is real (draft §4 `U` is strict UTF-8); the 1,024-byte half is false because §4 `U` has no general cap. The config bytes are still hash-verified. |
+| EC16-7 configuration content vs component/topic | **low / defer (root D6)** — the derivation is deterministic; whether configuration content must agree with tags `0a`/`0b` is an outbox-admission refinement. |
+| EC16-8 accepted-scope check is format-only | **medium / patch (root P8)** — verified: `accepted_scope_fields` (`:1284`) only matches `hxdst1-[0-9a-f]{64}`, so a well-formed foreign ID enters both keys; the prose requires recomputation, and this is the exact known-bad state the loop claims to avoid. |
+| EC16-9 other illegal header-value bytes | **medium / defer (root D7)** — real; pass-15 scoped EC15-5 to CR/LF/NUL. |
+| EC16-10 header-name charset narrower than tchar | **low / defer (root D8)** — pre-existing model restriction. |
+| EC16-11 Structured optional `time`/`subject` rejected | **medium / defer (root D9)** — verified against draft §7 renderer rules; pre-existing C02c model deviation. |
+| EC16-12 Binary `ce-time`/`ce-subject` unchecked | **medium / defer (root D9)** — pre-existing C02c model deviation; the prose rule is deterministic. |
+| EC16-13 Binary requires `ce-datacontenttype` | **medium / defer (root D9)** — verified: draft §7 carries event content type as outer `Content-Type` in Binary; pre-existing model deviation. |
+| EC16-14 commit tags not bound to readback | **medium / defer (root D10)** — commit tag `08` authority and tag `03` route-decision key hash (formula unpinned) are not compared; the suggested UTC comparison is false because commit and readback times differ by design. The explicit prose comparison list matches the model. |
+| EC16-15 replayed Rejected01 consumes an attempt | **medium / defer (root D11)** — `ParentMemberChain.observe` (pre-existing) has no observation identity. |
+| EC16-16 C11f count above 2^31−1 | **low / defer (root D12)** — unreachable under the signed attempt maximum; direct bound missing. |
+| EC16-17 guards never exercised | **medium / split** — the new-loop members join root P5 (patch); the pre-existing `:412/:587/:593-595/:1606/:2097` members join root D13 (defer). |
+| EC16-18 harness has no timeout | **low / defer (root D14)** — no current mutation hangs. |
+| EC16-19 allowlisted paths exempt from content checks | **low / defer (root D15)** — real; pinning blob SHAs would break at closure bookkeeping. |
+| EC16-20 untracked files invisible | **low / defer (root D16)** — `git diff BASELINE` ignores untracked files; the AC already requires a clean committed tree. |
+| EC16-21 `references/` dropped from protected set | **low / defer (root D15)** — only the four allowlisted gitlinks are exempt; other gitlinks still fail the path check. |
+| EC16-22 `Retryable=false` claim vs shipped doc | **medium / patch (root P1)** — verified: `CommandStatusRecord.cs:19` defines `false` as "terminal, no further automatic attempt"; the handoff's "never signals command terminality" contradicts source. |
+| EC16-23 "same answer before and after commit" | **medium / patch (root P9)** — same root as VG16-O1. |
+| EC16-24 no mutation for new guards | **medium / patch (root P5)** — verified: about 20 guard lines added or changed by this loop have no mutation targeting them (for example `:469`, `:532`, `:540`, `:681`, `:2140`, `:2538`), against the loop task "Add a mutation for each new guard". |
+| EC16-25 plan-time `destinationId` source | **low / patch (root P7)** — verified: C5's retry plan precedes the outbox intent, yet C1 derives the ID only from the read-back intent; the plan-time source is ungrounded. |
+| BH16-1 `Retryable=false` behavior change | **medium / patch (root P1)** — same root as EC16-22; today's exhausted record is `PublishFailed` with `Retryable=false` (`AggregateActor.cs:2912`). |
+| BH16-2 today's `PublishFailed` writers omitted | **medium / defer (root D17)** — verified at `AggregateActor.cs:1721` (recoverable, drain armed) and `:2912` (exhausted); pre-existing inventory/handoff gap for integration. |
+| BH16-3 conversion rule vs Structured `ce-*` rule | **medium / patch (root P2)** — verified: `:51` allows only "mode rendering and mode-specific Content-Type" while `:81` allows the "mode-specific complete header image"; after EC15-4 every conversion must drop the Binary `ce-*` headers. |
+| BH16-4 C01b Binary minimum header set | **low / defer (root D18)** — the abstract length model omits Binary `ce-*` core headers; size bounds are unaffected. |
+| BH16-5 6,123-byte bound vs largest legal attestation | **medium / patch (root P3)** — verified by arithmetic: the purpose-02 claim frames to 5,288 bytes at 1,024-byte identifiers, so the attestation is 5,385 bytes plus key ID; no key-ID bound exists, so any key ID over 738 bytes is unsendable in both modes, contrary to C1's "never meets an attestation that one mode cannot carry". |
+| BH16-6 infeasible C01d object sizes | **low / defer (root D4)** — 600 MiB pin and 300 MiB side record exceed C1/C4 maxima; the ceiling arithmetic is unaffected. |
+| BH16-7 shared-object account | **medium / patch (root P4)** — same root as EC16-2. |
+| BH16-8 planned size, conversion and early release | **medium / intent_gap (root B1)** — same root as EC16-1; also "the unused part is released" reads against the no-early-release refund rule. |
+| BH16-9 one backend descriptor, four stores | **low / defer (root D2)** — the counter's home is unnamed; per-object charges stay deterministic. |
+| BH16-10 full counter blocks poison containment | **medium / defer (root D1)** — same root as EC16-3. |
+| BH16-11 destination-ID models check format only | **medium / patch (root P8)** — same root as EC16-8. |
+| BH16-12 known-answer config names other topic | **low / defer (root D6)** — same root as EC16-7. |
+| BH16-13 integrity script validity and allowlist | **medium / split** — durability joins root P9; allowlist content joins D15; untracked files join D16; the "owner" ledger label is **false**, because those entries record the owner's 2026-09-29 routing decision. |
+| BH16-14 frozen digest sealed by the editing loop | **false / reject** — this loop's diff leaves the frozen block byte-identical to committed `801f3e52`, the owner-approved state; the digest pins that block. |
+| BH16-15 EC15-17/25 deferred beyond the owner decision | **low / patch (root P10; carried EC15-17 and EC15-25)** — verified still present: `PreSendAdmission.verify(member, None, …)` raises an untyped error, and `reserve` concatenates unframed, unchecked scope/head. The frozen decision says "correct every model/prose contradiction"; both carried rows keep their pass-15 `patch` route. |
+| BH16-16 execution-record inconsistencies | **low / reject** — the fix edits this build's own spec. |
+| BH16-17 BH6-1 ledger entry still open | **low / reject** — story-closure bookkeeping, as BH15-9b. |
+| BH16-18 CR/LF/NUL carrier final disposition | **medium / defer (root D19)** — the quarantine path for a `DeliveryPinConflict` carrier is unstated while BH15-11 is deferred. |
+
+Review pass 16 routing: root B1 (EC16-1/BH16-8, publication-pin reservation sizing) is acceptance-breaking but has two viable fixes that the spec does not choose between, and the frozen decision closes the story after this review. That conflict is an `intent_gap` for the owner. Patch roots P1–P10 stay required, and roots D1–D19 are deferred to Story 6.5 integration under the bar. BH16-14/16/17 are rejected. The candidate is not reverted pending the owner's resolution.
 
 ## Design Notes
 
