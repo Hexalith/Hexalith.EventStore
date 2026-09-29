@@ -5146,6 +5146,9 @@ status: open
   summary: Align the C1 destination-configuration hash-mismatch outcome: the prose says it "holds", the C01c model raises `Conflict`.
   evidence: BH6 (pass 17). `resolve_configuration` and `destination_id` raise `Conflict` for a reference content-hash or tag-`0e` mismatch, and the vectors assert `Conflict`, while C1 says "any hash mismatch holds before pin, send or evidence write". The sentence predates the pass-16 patch round.
   status: open
+
+## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 18, owner routing bar)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Define the resume protocol for a pin CAS held by `PublicationPinCapacityHold`: its durable re-attempt trigger, re-validation of claim/membership/key inputs that drift during the hold, and ordering of held CASes when capacity frees.
   evidence: D1 (pass 18; BH18-8/9/10, EC18-10/11/12). C1 says "the pin CAS resumes only after authenticated capacity readback shows room" and "retries the same exact pin bytes", but names no component or schedule that re-drives it. It does not say whether an expired claim, rotated key or changed membership during the hold means re-rendering or the downstream C2 holds. Nor does it order competing held CASes, so partially pinned commands can starve one another under a full counter. Each held outcome is deterministic (`CommandOutcomeHold`), so this is liveness, deferred under the owner's 6.5a routing bar; it is adjacent to BH15-11. A capacity retry cannot reach `PublicationRetryExhaustedHold`, because no send occurs.
@@ -5168,4 +5171,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: D17 addendum. The handoff's "`Status` alone carries terminality" amendment requires D17's retirement or fencing of every recoverable `PublishFailed` writer, and the Story 6.6 gate must cover C5's terminal reason code.
   evidence: BH19-15, AA19-4, EC19-9 (pass 19). Besides `AggregateActor.cs:1719-1727` and `:2912`, which D17 names, `:2701-2710` and `:2750-2759` (drain retry, `retryable: retryRemains`) and `:4416-4424` (resumed pipeline, `retryable: drainReminderArmed || recoveryEntryTracked`) also write `PublishFailed` with a computed `Retryable`. An integration that makes `Status` alone carry terminality before retiring them makes those recoverable records read as terminal. The handoff's Story 6.6 gate adds only `publication_retry_exhausted_hold` to the guide's reason-code table, while C5's terminal `RecoveryReasonCode="PublishFailed"` is also missing from it (D17's casing item).
+  status: open
+
+## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 20, owner routing bar)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: AA2 addendum. The `EventsStored` plus `Retryable=false` public-contract break also contradicts the `CommandStatusRecord` class summary and the command-status endpoint's OpenAPI remarks, so the approved breaking-change path must amend all four shipped surfaces.
+  evidence: pass 20. The open pass-17 AA2 entry (`deferred-work.md:5134`) cites only `CommandStatusRecord.cs:19` and `docs/operations/drain-failure-reason-codes.md:27`. `CommandStatusRecord.cs:4-5` also states "Non-terminal states have null values for terminal-specific fields", while `PublicationRetryExhaustedHold` fills `Retryable` and `RecoveryReasonCode` on the nonterminal `EventsStored`. `CommandStatusController.cs:43-46` lists "**PublishFailed**: Event publication failed after retry exhaustion" among the terminal states and `EventsStored` among the in-flight ones, while the hold reports retry exhaustion as `EventsStored`. The 6.5c candidate's handoff and C6 now name all four surfaces for the Story 6.6 gate.
   status: open

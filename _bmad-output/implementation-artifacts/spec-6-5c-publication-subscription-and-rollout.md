@@ -336,7 +336,7 @@ The **entire** 6.5b ten-item integration handoff is a simultaneous activation ch
 | 9. Final visibility | Replay, timeline, query, export and named projection rows are visible only through authenticated final pointer/complete proof; partial generations authorize no subscription/command/publication status. |
 | 10. Admin timeline | Disclose B9 behavior: target above 1,000 events/64 MiB cumulative timeline state or absent qualified protection returns `TimelineLimit`/`TimelineProtectionHold`, without partial timeline. |
 
-Reader-first activation also needs A3 bounded V1 writer/result ingress, streaming raw provider readback **before typed materialization**, complete valid retained V1 signed manifest/sidecars/branch-02 or independently approved corrupt disposition, historical global MessageId collision inventory and same-backend cross-instance reservation/CAS proof. A5 new V1 branch-01 and V2 complete actor receipt capability precede their reads; a dormant binary advertises no active read capability. Keep old source/wire/DTO constructors and `EventStoreDomainEventContext` binary compatibility through additive optional members; old callers are V1 only under exact alias/capability gate. Public status compatibility: C5's `PublicationRetryExhaustedHold` projects nonterminal `EventsStored` with `Retryable=false`, which two shipped surfaces define as terminal: the `CommandStatusRecord` `Retryable` XML doc and the command-status retryability table in `docs/operations/drain-failure-reason-codes.md`. That guide's `recoveryReasonCode` field also names only values from its reason-code table, which has no `publication_retry_exhausted_hold` row. Story 6.6's compatibility gate must verify the integration amendment of both surfaces and that table before activation. Package and consumer manifests pin actual implementation/options/transitive managed/native dependency bytes and backend identity; changed package/handler graph cannot advertise unchanged capability. AOT/trimming is not claimed. A missing provider primitive holds affected domain/route; fixture-only hashes and historical V23 probe do not confer readiness. Epic 8 remains optional.
+Reader-first activation also needs A3 bounded V1 writer/result ingress, streaming raw provider readback **before typed materialization**, complete valid retained V1 signed manifest/sidecars/branch-02 or independently approved corrupt disposition, historical global MessageId collision inventory and same-backend cross-instance reservation/CAS proof. A5 new V1 branch-01 and V2 complete actor receipt capability precede their reads; a dormant binary advertises no active read capability. Keep old source/wire/DTO constructors and `EventStoreDomainEventContext` binary compatibility through additive optional members; old callers are V1 only under exact alias/capability gate. Public status compatibility: C5's `PublicationRetryExhaustedHold` projects nonterminal `EventsStored` with `Retryable=false` and a `RecoveryReasonCode`, which four shipped surfaces contradict. The `CommandStatusRecord` `Retryable` XML doc and the command-status retryability table in `docs/operations/drain-failure-reason-codes.md` define `false` as terminal, the `CommandStatusRecord` class summary gives non-terminal states null terminal-specific fields, and the `CommandStatusController` status endpoint's OpenAPI remarks list `PublishFailed` after retry exhaustion as terminal. That guide's `recoveryReasonCode` field also names only values from its reason-code table, which has no `publication_retry_exhausted_hold` row. Story 6.6's compatibility gate must verify the integration amendment of all four surfaces and that table before activation. Package and consumer manifests pin actual implementation/options/transitive managed/native dependency bytes and backend identity; changed package/handler graph cannot advertise unchanged capability. AOT/trimming is not claimed. A missing provider primitive holds affected domain/route; fixture-only hashes and historical V23 probe do not confer readiness. Epic 8 remains optional.
 
 After reader/consumer, effect provider, capture and broker gates pass, enable binary V2 per domain/component/topic under current signed membership. Migrate queued JSON by C4 and reconcile old markers/outboxes/broker unacked counts before removing old ingress. Once V2 history exists, every serving command, replay, projection, rebuild and subscription endpoint in forward **and rollback** deployment must prove V2 read/evolution capability for all retained versions; returning writer mode to V1 does not erase V2 history. Fence a V1-only endpoint before Apply/effect; no capable endpoint is `RollbackReaderCapabilityHold`. A trust-only rotation refreshes transient proof and preserves compatible state after verification; read/Apply or selected handler semantic change requires authenticated replay/rebuild or approved migration. An unknown external member, lost key, changed route set, expired claim or unsupported rollback holds send/effect without acknowledgement. Every active logical consumer needs its own exact lease/probe, even behind one physical route.
 
@@ -863,15 +863,40 @@ must_raise(Hold, lambda: a8_first_outcome(capacity_pin, ()))
 capacity.release(b'object:filler', True, True)  # Authenticated capacity readback after a refund.
 assert capacity_pin.create('held', plain, attestation, b'binary', identity) == held_candidate
 assert capacity.tenants[b'tenant-capacity'] == capacity.total == 1645 + MIB  # Exact length plus o.
+assert capacity.owners.get(b'pin:held') == (b'tenant-capacity', 'GlobalPin', 1645 + MIB)  # Kind and pin: owner key.
 assert capacity_pin.create('held', plain, attestation, b'binary', identity) == held_candidate  # Replay charges nothing.
 assert capacity.total == 1645 + MIB
 assert a8_first_outcome(capacity_pin, ('held',)) == 'RevisionZero'
 assert a8_first_outcome(capacity_pin, ('held', 'still-missing')) == 'CommandOutcomeHold'  # Partial set: no revision zero.
+assert a8_first_outcome(capacity_pin, ('still-missing', 'held')) == 'CommandOutcomeHold'  # An earlier member is missing.
 capacity_pin.create('held-2', offset(60), attestation, b'binary', identity)  # A distinct MessageId has its own charge.
 assert capacity.tenants[b'tenant-capacity'] == capacity.total == 2 * (1645 + MIB)
+assert a8_first_outcome(capacity_pin, ('held', 'held-2')) == 'RevisionZero'  # Every member pinned.
+assert a8_first_outcome(capacity_pin, ('held', 'still-missing', 'held-2')) == 'CommandOutcomeHold'  # Middle member.
 Pin(capacity, b'tenant-other').create('other-held', plain, attestation, b'binary', identity)
 assert capacity.tenants.get(b'tenant-other') == 1645 + MIB  # The charge lands on the pin's own account.
 assert capacity.tenants[b'tenant-capacity'] == 2 * (1645 + MIB)
+assert capacity.total == 3 * (1645 + MIB)  # Deployment counter: both accounts.
+sized_candidate = (plain, attestation + b'-longer', b'binary', identity)  # A pin of a different literal size.
+assert pin_size(sized_candidate) == 1652
+capacity_pin.create('held-3', *sized_candidate)
+assert capacity.tenants[b'tenant-capacity'] == 2 * (1645 + MIB) + 1652 + MIB  # Its own size plus o.
+assert capacity.owners.get(b'pin:held-3') == (b'tenant-capacity', 'GlobalPin', 1652 + MIB)
+assert capacity.total == 3 * (1645 + MIB) + 1652 + MIB
+short_candidate = (plain[:100], attestation, b'binary', identity)  # A body shorter than plain.
+assert pin_size(short_candidate) == 903
+capacity_pin.create('held-short', *short_candidate)
+assert capacity.owners.get(b'pin:held-short') == (b'tenant-capacity', 'GlobalPin', 903 + MIB)
+assert capacity.tenants[b'tenant-capacity'] == 2 * (1645 + MIB) + 1652 + MIB + 903 + MIB
+assert capacity.total == 3 * (1645 + MIB) + 1652 + MIB + 903 + MIB
+a8_pins = Pin()  # Uncharged store, so the capacity totals above stay exact.
+for size in range(2, 6):  # Every missing position k in sets of 2..5 members.
+    members = tuple(f'a8-{size}-{index}' for index in range(size))
+    for member in members: a8_pins.create(member, plain, attestation, b'binary', identity)
+    assert a8_first_outcome(a8_pins, members) == 'RevisionZero'
+    for missing in range(size):
+        partial = members[:missing] + (f'a8-{size}-unpinned',) + members[missing + 1:]
+        assert a8_first_outcome(a8_pins, partial) == 'CommandOutcomeHold', (size, missing)
 assert capacity_pin.send('held', 'send-held', 1, b'held-nonce', 'Accepted') == 'Accepted'
 print('C02e scoped pin, pin-CAS capacity charge, recorded Unknown, immutable per-attempt result and separate operation acceptance passed')
 
@@ -3448,7 +3473,7 @@ print('C11h exhausted rejection metadata and status-polling semantics passed')
 
 ## Integration handoff and review disposition
 
-Integrate C1–C6 with 6.5a A3–A8 and 6.5b B2/B6/B8 as **one** change to the AD-13 draft. Replace draft codec-01 public outcome with A8 codec-03 complete observations and immutable first POST pin; add C5 purpose-29 signed branch-scoped terminal proposal, atomic final-head pointer, nonterminal `PublicationRetryExhaustedHold`, explicit terminal-source `AuthMode` and complete evidence before public `PublishFailed`. The hold reuses the "no further automatic attempt (attempts exhausted)" meaning of `Retryable=false`, while `Status` stays the nonterminal `EventsStored` and `RecoveryReasonCode="publication_retry_exhausted_hold"` names the operator-held state. This `EventsStored` plus `Retryable=false` combination is a public-contract change on two shipped surfaces: the `CommandStatusRecord` `Retryable` XML doc and the command-status retryability table in `docs/operations/drain-failure-reason-codes.md` both define `false` as "terminal", and today's exhausted record is `PublishFailed` with `Retryable=false`. That guide's `recoveryReasonCode` field names only values from its reason-code table, which has no `publication_retry_exhausted_hold` row. Integration must amend both surfaces so that `Status` alone carries terminality and add that reason code to the table, and Story 6.6 must gate the change in its compatibility checks (C6). External HTTP pollers cannot be fenced, so no client fence is claimed; the hold authorizes no resend, new send ID or replay. C1/C2 add the purpose-2a pre-first-send membership outcome without repinning and the exact purpose-13 historical-renewal chain. C2 adds one old-obligation-keyed historical replacement owner/CAS. C3 scopes `EventEffectKey` by physical subscription plus route and separates the immutable precommit effect record from its exact eighteen-tag provider readback; `EffectReceiptHash` codec 03 consumes the precommit record, nine-tag commit, readback and its authentication carrier. C3/C4 require one purpose-2b canonical physical-object mapping and object-wide capture fence across all handoffs and unidentified duties, a single proof-refresh chain, purpose-28 stable physical-filter identity and acyclic pre-CAS-record/post-CAS-receipt hashes for every retained object. These additions replace any older route-only effect key, informal grant renewal, per-handoff/proof-keyed capture fence, hash-only cross-record or seven-tag terminal-source interpretation. **C3 supersedes draft §7's 4 KiB complete `EventEffectReceipt` cap with 16 KiB** for both writer/provider preflight and all readers (including old marker adapters and rollback consumers); activation requires a versioned receipt-capability/probe and reader-first compatibility across mixed fleets. An old 4 KiB-only reader may read historical ≤4 KiB records but must be fenced from any route that can produce a larger C3 receipt. No record may be truncated to fit the old cap. Replace V1/new V2 save assumptions with A5 codec-02 complete-set certificate/readback, and retain B2's V2 five-flag raw-proof rule. Preserve historic V17/V20/V22/V23 literals, old lease byte shape, old public constructors and §12 six-field `UNAPPROVED` receipt until separately approved integration. **BH37-9: accepted; historical Loop-7 UTC-only wording is superseded by C1's `T`/`O(T)` original-offset rule and four fixed digest vectors.** The historical triage row remains intact. No activation or Story 6.6 authorization follows from this child candidate.
+Integrate C1–C6 with 6.5a A3–A8 and 6.5b B2/B6/B8 as **one** change to the AD-13 draft. Replace draft codec-01 public outcome with A8 codec-03 complete observations and immutable first POST pin; add C5 purpose-29 signed branch-scoped terminal proposal, atomic final-head pointer, nonterminal `PublicationRetryExhaustedHold`, explicit terminal-source `AuthMode` and complete evidence before public `PublishFailed`. The hold reuses the "no further automatic attempt (attempts exhausted)" meaning of `Retryable=false`, while `Status` stays the nonterminal `EventsStored` and `RecoveryReasonCode="publication_retry_exhausted_hold"` names the operator-held state. This `EventsStored` plus `Retryable=false` combination is a public-contract change on four shipped surfaces. The `CommandStatusRecord` `Retryable` XML doc and the command-status retryability table in `docs/operations/drain-failure-reason-codes.md` both define `false` as "terminal", and today's exhausted record is `PublishFailed` with `Retryable=false`. The third surface, the `CommandStatusRecord` class summary, states "Non-terminal states have null values for terminal-specific fields": at the baseline, every shipped writer that sets `Retryable` or `RecoveryReasonCode` writes a terminal `Completed`, `Rejected` or `PublishFailed` record, while the hold fills both on the nonterminal `EventsStored`. The fourth, the status endpoint's OpenAPI remarks in `CommandStatusController`, list `**PublishFailed**: Event publication failed after retry exhaustion` among the terminal states and `EventsStored` among the in-flight ones, while the hold reports retry exhaustion as in-flight `EventsStored`. That guide's `recoveryReasonCode` field names only values from its reason-code table, which has no `publication_retry_exhausted_hold` row. Integration must amend all four surfaces, so that `Status` alone carries terminality and a nonterminal record may carry `Retryable` and `RecoveryReasonCode`, and add that reason code to the table; Story 6.6 must gate the change in its compatibility checks (C6). External HTTP pollers cannot be fenced, so no client fence is claimed; the hold authorizes no resend, new send ID or replay. C1/C2 add the purpose-2a pre-first-send membership outcome without repinning and the exact purpose-13 historical-renewal chain. C2 adds one old-obligation-keyed historical replacement owner/CAS. C3 scopes `EventEffectKey` by physical subscription plus route and separates the immutable precommit effect record from its exact eighteen-tag provider readback; `EffectReceiptHash` codec 03 consumes the precommit record, nine-tag commit, readback and its authentication carrier. C3/C4 require one purpose-2b canonical physical-object mapping and object-wide capture fence across all handoffs and unidentified duties, a single proof-refresh chain, purpose-28 stable physical-filter identity and acyclic pre-CAS-record/post-CAS-receipt hashes for every retained object. These additions replace any older route-only effect key, informal grant renewal, per-handoff/proof-keyed capture fence, hash-only cross-record or seven-tag terminal-source interpretation. **C3 supersedes draft §7's 4 KiB complete `EventEffectReceipt` cap with 16 KiB** for both writer/provider preflight and all readers (including old marker adapters and rollback consumers); activation requires a versioned receipt-capability/probe and reader-first compatibility across mixed fleets. An old 4 KiB-only reader may read historical ≤4 KiB records but must be fenced from any route that can produce a larger C3 receipt. No record may be truncated to fit the old cap. Replace V1/new V2 save assumptions with A5 codec-02 complete-set certificate/readback, and retain B2's V2 five-flag raw-proof rule. Preserve historic V17/V20/V22/V23 literals, old lease byte shape, old public constructors and §12 six-field `UNAPPROVED` receipt until separately approved integration. **BH37-9: accepted; historical Loop-7 UTC-only wording is superseded by C1's `T`/`O(T)` original-offset rule and four fixed digest vectors.** The historical triage row remains intact. No activation or Story 6.6 authorization follows from this child candidate.
 
 The integration amendment must use the one `HistoricalAcceptedObligationHash` for grants, renewals, mappings and the accepted-delivery reverse index; introduce the thirteen-tag reverse index, thirteen-tag codec-02 destination-bearing immutable log and twelve-tag atomic bundle receipt before an empty-route filter identity exists; and apply C3's all-route acknowledgement rule to authenticated Structured and Binary carriers alike. It must import the exact 23-field legacy handoff manifest and the handoff-scoped 64-variant head/bundle transaction, not the earlier grouped summary or independent-record count. For retained objects it must import purpose-2c's fifteen-field codec-01 extension, the complete nine-field codec-02 identity attachment, the discriminated initial anchor, the separately keyed forward record and the purpose-18 extension variant under one shared mixed-kind extension head; each later unidentified delivery keeps its own purpose-16 identity, purpose-1b scope and purpose-18 retention source. C5 integration must import the full ten-tag drain-head/eight-tag CAS pairing, closed two-value terminal `AuthMode`, exact one-byte-plus-`B` Auth framing, counted Evidence, role-typed complete eight-tag terminal claims/hashes and the fixed drain/no-accept/policy source order. It must also import C1's canonical `destinationId` derivation and known answers for every destination field and both accepted-delivery keys, resolving the open 6.5a BH6-1 ledger item; the per-tenant and deployment publication-retention ceilings, charging each global pin at its exact size at the pin CAS before any send and each side record or retained object before its write or attach (`PublicationPinCapacityHold`); and C1's single 1..6,123-byte decoded-attestation bound with its 1..738-byte purpose-02 delivery key ID, which supersedes draft §6's 8 KiB maximum, together with the Structured `ce-*` rejection and CR/LF/NUL header-value rules. A pin-CAS capacity hold leaves no A8 revision zero, so the POST reply and status inspection return A8's `CommandOutcomeHold`. Because the tenant and deployment levels are discovered only after commit, they supersede 6.5a A8's rule that revision zero must never first discover after commit that its complete outcome is unrepresentable, for those two levels only, and command admission accepts no backpressure from them. Any integration that retains a shorter hash, alternate order or independently mutable component is incompatible and fenced before activation.
 
@@ -3883,9 +3908,42 @@ MUTATIONS = [  # (name, owning family, expected final exception, exact unique ta
     ('pin size stand-in', 'C02e', 'AssertionError',
      '    return sum(4 + len(part) for part in (value, attestation, mode_bytes, *identity))',
      '    return 1'),
+    ('pin size constant stand-in', 'C02e', 'AssertionError',
+     '    return sum(4 + len(part) for part in (value, attestation, mode_bytes, *identity))',
+     '    return 1645'),
+    ('pin charge constant size', 'C02e', 'AssertionError',
+     "'GlobalPin', pin_size(candidate))  # B1: at the pin CAS.",
+     "'GlobalPin', 1645)  # B1: at the pin CAS."),
+    ('pin charge kind', 'C02e', 'AssertionError',
+     "b'pin:' + mid.encode('utf-8'), 'GlobalPin'",
+     "b'pin:' + mid.encode('utf-8'), 'RetainedObject'"),
+    ('pin owner namespace dropped', 'C02e', 'AssertionError',
+     "b'pin:' + mid.encode('utf-8')",
+     "mid.encode('utf-8')"),
+    ('pin owner namespace replaced', 'C02e', 'AssertionError',
+     "b'pin:' + mid.encode('utf-8')",
+     "b'object:' + mid.encode('utf-8')"),
     ('A8 partial expected set', 'C02e', 'AssertionError',
      'if any(mid not in pin.by_id for mid in expected_members)',
      'if all(mid not in pin.by_id for mid in expected_members)'),
+    ('A8 partial set last member only', 'C02e', 'AssertionError',
+     'for mid in expected_members)',
+     'for mid in expected_members[-1:])'),
+    ('A8 partial set first member only', 'C02e', 'AssertionError',
+     'for mid in expected_members)',
+     'for mid in expected_members[:1])'),
+    ('A8 partial set end members only', 'C02e', 'AssertionError',
+     'for mid in expected_members)',
+     'for mid in (expected_members[0], expected_members[-1]))'),
+    ('A8 partial set prefix only', 'C02e', 'AssertionError',
+     'for mid in expected_members)',
+     'for mid in expected_members[:2])'),
+    ('A8 partial set suffix only', 'C02e', 'AssertionError',
+     'for mid in expected_members)',
+     'for mid in expected_members[-2:])'),
+    ('pin charge floor', 'C02e', 'AssertionError',
+     "'GlobalPin', pin_size(candidate))  # B1: at the pin CAS.",
+     "'GlobalPin', max(pin_size(candidate), 1645))  # B1: at the pin CAS."),
     ('exact pin charge size', 'C02e', 'AssertionError',
      "'GlobalPin', pin_size(candidate))  # B1: at the pin CAS.",
      "'GlobalPin', pin_size(candidate) + 4096)  # B1: at the pin CAS."),
@@ -3998,7 +4056,7 @@ MUTATIONS = [  # (name, owning family, expected final exception, exact unique ta
      'or (count is not None and count < 0)',
      'or False'),
 ]
-assert len(MUTATIONS) == 158 and len({row[0] for row in MUTATIONS}) == len(MUTATIONS)
+assert len(MUTATIONS) == 169 and len({row[0] for row in MUTATIONS}) == len(MUTATIONS)
 for name, family, exception, old, new in MUTATIONS:
     assert model.count(old) == 1, f'{name}: target must occur exactly once'
     mutated = subprocess.run(['python3', '-'], input=model.replace(old, new), capture_output=True, text=True)
@@ -4012,9 +4070,9 @@ print(f'{len(MUTATIONS)} guard mutations rejected, each in its owning family')
 PY
 ```
 
-It must exit zero, print `42 model families passed with unique labels`, one `REJECTED:` line per mutation and finally `158 guard mutations rejected, each in its owning family`. C01c compares the destination-ID known answers with fixed literals, recomputed independently with `sha256sum`; C08c compares the complete segment bytes and SHA-256 with its fixed literals; C11g compares the fixed terminal-root digest. An encoder-width, framing or source-order change therefore cannot regenerate its own expected answer.
+It must exit zero, print `42 model families passed with unique labels`, one `REJECTED:` line per mutation and finally `169 guard mutations rejected, each in its owning family`. C01c compares the destination-ID known answers with fixed literals, recomputed independently with `sha256sum`; C08c compares the complete segment bytes and SHA-256 with its fixed literals; C11g compares the fixed terminal-root digest. An encoder-width, framing or source-order change therefore cannot regenerate its own expected answer.
 
-Then run the documentation-integrity check. It compares against the recorded `baseline_commit`, not `HEAD`, so it gives the same answer before and after the story is committed. It pins the SHA-256 of the approved frozen block, which now carries the owner's 2026-09-29 routing decision. It names every other path changed after the baseline: this story's own ledger and sprint-row bookkeeping, the planning artifacts another owner changed, and automation's gitlink bumps, each labelled with its commits. The script is point-in-time evidence for this story's baseline range: a later path change outside `STORY | OWNER_AUTOMATION`, such as another story's file, a new gitlink bump or a `src`/`tests` edit, makes it fail, and that failure requires re-pinning the path list, not a story fix. Any other changed path, any protected-artifact or runtime/test/deploy/docs change, a broken link, a whitespace error or a missing `UNAPPROVED` receipt fails it.
+Then run the documentation-integrity check. It compares against the recorded `baseline_commit`, not `HEAD`, so it gives the same answer before and after the story is committed. It pins the SHA-256 of the approved frozen block, which now carries the owner's 2026-09-29 routing decision. It names every other path changed after the baseline, each labelled with its commits. This story's own ledger and sprint-row bookkeeping and automation's gitlink bumps are admitted by the path list alone. The planning artifacts, evidence, deploy note, guides, runtime and test files that other owners changed are checked by commit attribution: each must have no worktree change against `HEAD`, and every commit in `BASELINE..HEAD` that touches any of them must be one of the five named other-owner commits, compared by full hash. A story edit to one of those files, committed or not, therefore fails. The script is point-in-time evidence for this story's baseline range: a later path change outside `STORY | OWNER_AUTOMATION`, such as another story's file, a new gitlink bump or a `src`/`tests` edit, makes it fail, and that failure requires re-pinning the path list, not a story fix. Any other changed path, any protected-artifact or unnamed runtime/test/deploy/docs change, a broken link, a whitespace error or a missing `UNAPPROVED` receipt fails it.
 
 ```sh
 set -eu
@@ -4030,19 +4088,64 @@ root = '_bmad-output/implementation-artifacts/'
 candidate = Path(root + 'spec-6-5c-publication-subscription-and-rollout.md')
 record = Path(root + 'spec-6-5c-publication-subscription-and-rollout-2.md')
 STORY = {candidate.as_posix(), record.as_posix()}
-OWNER_AUTOMATION = {  # Every path outside the two story files that changed after the baseline.
+BOOKKEEPING = {  # This story's ledger and sprint row and automation's gitlink bumps; admitted by the path list alone.
     root + 'deferred-work.md',     # story ledger: owner-routed pass-15 defers (801f3e52), this story's pass-16
-                                   # D1-D19 (72c5814c), pass-17 defers (59ac4a8e) and pass-17 resolutions
+                                   # D1-D19 (72c5814c), pass-17 defers (59ac4a8e); pass-17 resolutions, pass-18 D1/D2
+                                   # and the D17 evidence correction (d598ddbf, rebased from 17ccbed5); pass-19 defers
+                                   # and D17 addendum (cc79c03a, rebased from 36c29e03); pass-19 round's pass-18
+                                   # heading; pass-20 AA2 addendum
     root + 'sprint-status.yaml',   # story status row: 95fb1eff in-progress, 72c5814c review, 59ac4a8e in-progress,
-                                   # pass-17 patch round review
-    '_bmad-output/planning-artifacts/architecture.md',  # other owner: 4fcb2b5c McpCli course correction
-    '_bmad-output/planning-artifacts/epics.md',         # other owner: 4fcb2b5c
-    '_bmad-output/planning-artifacts/prd.md',           # other owner: 4fcb2b5c
+                                   # d598ddbf review (pass-17 round and pass-18 closure), cc79c03a in-progress (pass-19
+                                   # reopen), and any later closure flip of this row
     'references/Hexalith.AI.Tools',        # automation gitlink bump: 3902ee0e
-    'references/Hexalith.FrontComposer',   # automation gitlink bumps: 3902ee0e, bc747f70, 801f3e52, 788c62f2
+    'references/Hexalith.Builds',          # automation gitlink bump: cc79c03a
+    'references/Hexalith.FrontComposer',   # automation gitlink bumps: 3902ee0e, bc747f70, 801f3e52, 788c62f2, cc79c03a
     'references/Hexalith.Memories',        # automation gitlink bump: 3902ee0e
     'references/Hexalith.Tenants',         # automation gitlink bumps: 3902ee0e, bc747f70, 87e5b565, 788c62f2
 }
+OTHER_OWNER_COMMITS = {  # Every other owner's commit after the baseline, by full hash.
+    '4fcb2b5c913045a71ba8587560217e34f271a1dd',  # McpCli course correction
+    '489e5d76253f68c6cf53c443aa8755ad059e621e',  # rollback-probe evidence
+    '33688a83d658b760b66d9257d36b394f53805cfb',  # trusted-effect and app-channel token runtime, tests and guides
+    '7509d95202d917303cd8761f4097ff11f9be1e52',  # security guides
+    '771269ae9ba03357150b1deec8ee4b6e48f688f5',  # trusted-effects documentation
+}
+OTHER_OWNER = {  # Paths only OTHER_OWNER_COMMITS may change; checked by commit attribution below.
+    *('_bmad-output/planning-artifacts/' + name for name in (  # 4fcb2b5c
+        'architecture.md', 'epics.md', 'prd.md')),
+    *(root + 'evidence/6-1-p1r-3108/' + name for name in (  # 489e5d76
+        'README.md', 'rollback-probe/NuGet.Config', 'rollback-probe/Program.cs', 'rollback-probe/README.md',
+        'rollback-probe/v3108/Probe.csproj', 'rollback-probe/v370/Probe.csproj')),
+    'deploy/README.md',  # 771269ae
+    *('docs/guides/' + name for name in (  # 33688a83 (first four), 7509d952 (next two), 771269ae (last two)
+        'deployment-azure-container-apps.md', 'deployment-docker-compose.md', 'deployment-kubernetes.md',
+        'troubleshooting.md', 'security-model.md', 'upgrade-path.md', 'configuration-reference.md',
+        'trusted-effects.md')),
+    *('src/Hexalith.EventStore' + name for name in (  # 33688a83
+        '.Server/Actors/AggregateActor.cs', '.Server/Actors/IdempotencyChecker.cs',
+        '.Server/Actors/IdempotencyTenantLifecycleActor.cs', '.Server/Actors/TrustedEffectAggregateErasure.cs',
+        '.Server/Commands/TrustedEffectAdmissionPolicy.cs', '.Server/Commands/TrustedEffectRetentionGate.cs',
+        '.Server/Events/AggregateMetadata.cs', '/Authentication/DaprAppChannelTokenValidator.cs',
+        '/Authentication/DaprInternalAuthenticationHandler.cs', '/Authentication/JwtTrustedEffectDelegationVerifier.cs',
+        '/Controllers/TrustedEffectsController.cs', '/HealthChecks/DaprAppChannelTokenHealthCheck.cs',
+        '/HealthChecks/HealthCheckBuilderExtensions.cs', '/Program.cs')),
+    *('tests/Hexalith.EventStore.' + name for name in (  # 33688a83
+        'Contracts.Tests/Effects/EffectIdentityCodecTests.cs',
+        'Contracts.Tests/Packaging/TrustedEffectPackageContractTests.cs',
+        'Server.Tests/Actors/IdempotencyTenantLifecycleActorTests.cs',
+        'Server.Tests/Actors/TrustedEffectAggregateErasureTests.cs',
+        'Server.Tests/Actors/TrustedEffectJointOffboardingTests.cs', 'Server.Tests/Actors/TrustedEffectReceiptTests.cs',
+        'Server.Tests/Authentication/DaprInternalAuthenticationHandlerTests.cs',
+        'Server.Tests/Authentication/JwtTrustedEffectDelegationVerifierTests.cs',
+        'Server.Tests/Commands/ConfiguredTrustedEffectCommandAuthorityTests.cs',
+        'Server.Tests/Commands/TrustedEffectAdmissionPolicyTests.cs',
+        'Server.Tests/Commands/TrustedEffectGatewayProofTests.cs',
+        'Server.Tests/Commands/TrustedEffectRetentionGateTests.cs',
+        'Server.Tests/Controllers/CommandsControllerTrustedEffectNamespaceTests.cs',
+        'Server.Tests/Controllers/TrustedEffectsControllerTests.cs', 'Server.Tests/Events/AggregateMetadataTests.cs',
+        'Server.Tests/HealthChecks/HealthCheckRegistrationTests.cs')),
+}
+OWNER_AUTOMATION = BOOKKEEPING | OTHER_OWNER  # Every path outside the two story files that changed after the baseline.
 PROTECTED = [root + name for name in (
     'spec-event-versioning-upcasting.md', 'story-6-5-review-triage.md', 'story-6-5-design-notes.md',
     'spec-6-5a-event-contract-writer-and-migration-evidence.md',
@@ -4064,11 +4167,16 @@ assert len(local) == 24 and not missing, (len(local), missing)
 changed = set(git('diff', '--name-only', BASELINE).splitlines())
 assert STORY <= changed, sorted(STORY - changed)
 assert changed <= STORY | OWNER_AUTOMATION, sorted(changed - STORY - OWNER_AUTOMATION)
-subprocess.run(['git', 'diff', '--quiet', BASELINE, '--', *PROTECTED, 'src', 'tests', 'deploy', 'docs'], check=True)
+subprocess.run(['git', 'diff', '--quiet', BASELINE, '--', *PROTECTED, 'src', 'tests', 'deploy', 'docs',
+                *(':(exclude)' + path for path in sorted(OTHER_OWNER))], check=True)
+subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', *sorted(OTHER_OWNER)], check=True)  # No uncommitted edit.
+touching = set(git('log', '--full-history', '--format=%H', BASELINE + '..HEAD', '--', *sorted(OTHER_OWNER)).split())
+assert touching <= OTHER_OWNER_COMMITS, sorted(touching - OTHER_OWNER_COMMITS)
 subprocess.run(['git', 'diff', '--check', BASELINE, '--', *sorted(STORY)], check=True)
 assert 'ApprovalEvidence: UNAPPROVED' in Path(PROTECTED[0]).read_text(encoding='utf-8')
 print('baseline and frozen digest match; 24 relative links resolve; only story and named owner/automation paths changed; '
-      'protected artifacts and runtime/tests unchanged; AD-13 UNAPPROVED')
+      'protected artifacts and unnamed runtime/tests/deploy/docs unchanged; named other-owner paths changed only by '
+      'their named commits; AD-13 UNAPPROVED')
 PY
 ```
 
