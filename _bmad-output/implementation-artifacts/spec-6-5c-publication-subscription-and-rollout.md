@@ -46,7 +46,7 @@ Import draft §4's checked big-endian `U`, `B`, `B32`, `N`, `I`, `T`, `Q`, `O(X)
 
 At actor commit, 6.5a A5 **codec-02** intent/receipt and member root bind exact immutable event, encoding/digest sidecars, outbox and **domain/append result payload hash**, including rejection events. The draft §7 outbox intent `HX-EV-OUTBOX-INTENT-1\0 || 01 || 0012` stages exact source URI, component/topic, routing map/policy, destination configuration digest/bytes or immutable reference, optional subject/time `O(T)` and stored-form core derivation in the same save. Its tag `12` is one `B` containing `00 || inline configuration` or `01 || complete immutable configuration-reference record`, with no nested second `B`; readback resolves and hashes the exact configuration. Mutable publisher options never fill absent intent. An old outbox without authenticated intended-route evidence holds for separately approved migration. Derive the first pin only from authenticated original source/readability and that read-back intent, after A5 complete generation readback and globally Committed batch root. Same-ID append retry compares the **entire** original batch/result/fingerprint; a member proof grants only one already committed member's publication/effect check.
 
-The exact global MessageId CAS pin contains decoded body, purpose-02 `HX-EV-ATTEST-1\0 || 01 || 0003` claim/key ID/64-byte P1363 signature, DeliveryDigest, StoredDigest, scope, old approved RegistryFingerprint, signed claim tag-`0a` issuance UTC, routing intent hash, renderer version, precomputed exact request and predicted accepted outbound bytes, C2 complete ordered request and predicted accepted transport-header images, and their equal six-header signed projection for each authorized mode pair, and exact hashes of the retained body, attestation, mode renderings and complete header images. Key is the **exact MessageId**, never `(MessageId,digest)`; changed body, header, destination, scope or same-mode rendering conflicts. Before any send, the publisher deterministically renders and CAS-pins **both** exact request and predicted accepted body/header images from the immutable destination configuration, accepted membership revision, proposed accepted mode, renderer version and signed routing intent. The broker must attest that its complete accepted image will equal this prediction; no post-acceptance result may choose new bytes for the global pin. An unpredicted broker-added, reordered or normalized header holds before acceptance, while an authorized Binary-to-Structured conversion may change only its predicted mode rendering and mode-specific Content-Type. The two complete images are independently pinned and compared; decoded body, attestation and all six signed routing headers remain equal. A provider unable to inspect and compare the complete predicted image in its atomic accept path cannot advertise publication readiness. First-pin recovery requires durable no-prior-send proof; ambiguous prior send holds. Pin capacity is reserved before send (`PublicationPinCapacityHold`). Its signed historic obligation remains through queue, broker retry, quarantine, rollback and late-delivery obligations. A hash-only tombstone cannot perform C2's required full-byte duplicate comparison. Full pin body, attestation, original/accepted renderings, complete ordered header images, signing evidence and source remain available byte-for-byte throughout every possible late duplicate, retry, route, rollback and incident obligation. Only after authenticated closure proves no future same-MessageId comparison can arise may a CAS tombstone replace these bytes; alternatively a tombstone may name one independently authenticated immutable full-byte comparison source, with exact authority/key/generation/ETag, source bytes and no-expiry obligation read back for the whole enforceable redelivery horizon. On every duplicate, the reader resolves that source and compares all bytes before returning Accepted; missing or expired source holds. No finite broker horizon by itself makes hashes sufficient. Missing historic key/pin/source holds, never permits a new send or false duplicate.
+The exact global MessageId CAS pin contains decoded body, purpose-02 `HX-EV-ATTEST-1\0 || 01 || 0003` claim/key ID/64-byte P1363 signature, DeliveryDigest, StoredDigest, scope, old approved RegistryFingerprint, signed claim tag-`0a` issuance UTC, routing intent hash, renderer version, the exact accepted membership claim hash/revision, precomputed exact request and predicted accepted outbound bytes, C2 complete ordered request and predicted accepted transport-header images, and their equal six-header signed projection for each authorized mode pair, and exact hashes of the retained body, attestation, mode renderings and complete header images. Key is the **exact MessageId**, never `(MessageId,digest)`; changed body, header, destination, scope or same-mode rendering conflicts. Before any send, the publisher deterministically renders and CAS-pins **both** exact request and predicted accepted body/header images from the immutable destination configuration, accepted membership revision, proposed accepted mode, renderer version and signed routing intent. The broker must attest that its complete accepted image will equal this prediction; no post-acceptance result may choose new bytes for the global pin. An unpredicted broker-added, reordered or normalized header holds before acceptance, while an authorized Binary-to-Structured conversion may change only its predicted mode rendering and mode-specific Content-Type. The two complete images are independently pinned and compared; decoded body, attestation and all six signed routing headers remain equal. A provider unable to inspect and compare the complete predicted image in its atomic accept path cannot advertise publication readiness. First-pin recovery requires durable no-prior-send proof; ambiguous prior send holds. Pin capacity is reserved before send (`PublicationPinCapacityHold`). Its signed historic obligation remains through queue, broker retry, quarantine, rollback and late-delivery obligations. A hash-only tombstone cannot perform C2's required full-byte duplicate comparison. Full pin body, attestation, original/accepted renderings, complete ordered header images, signing evidence and source remain available byte-for-byte throughout every possible late duplicate, retry, route, rollback and incident obligation. Only after authenticated closure proves no future same-MessageId comparison can arise may a CAS tombstone replace these bytes; alternatively a tombstone may name one independently authenticated immutable full-byte comparison source, with exact authority/key/generation/ETag, source bytes and no-expiry obligation read back for the whole enforceable redelivery horizon. On every duplicate, the reader resolves that source and compares all bytes before returning Accepted; missing or expired source holds. No finite broker horizon by itself makes hashes sufficient. Missing historic key/pin/source holds, never permits a new send or false duplicate.
 
 Transport is exact binary `application/vnd.hexalith.eventstore.v2+octet-stream` body with canonical padded Base64 `ce-hyevattestation`, or sorted structured CloudEvents JSON with canonical padded `data_base64` and `hyevattestation`. Both modes strictly decode to the same body/attestation and signed `specversion=1.0`, id/type/source, optional subject/time with original offset, content type, component/topic and six `hx-*` routing headers. The six are `hx-tenant-id`, `hx-domain`, `hx-aggregate-id`, `hx-aggregate-type`, `hx-event-contract-type`, `hx-payload-version`; structured mode keeps them outside the CloudEvent object. V1 header type/version comes from exact registered domain alias descriptor while stored body pair remains absent/null. Case-fold only legal HTTP header-name case to identify **decision fields**: the six routing names, every `hx-*`, CloudEvent `ce-*` field, `ce-hyevattestation`, `Content-Type`, and any configured mode or attestation selector. A duplicate of any such name, including a differently cased spelling, is `DeliveryPinConflict`; unknown `hx-*`/CloudEvent attributes, changed values, alternate Base64 and noncanonical mode rendering also conflict. Exact ordered duplicates of other HTTP names are admitted only when the signed destination configuration names them as non-decision inputs and the C2 full-byte broker/sidecar/ingress probe proves they cannot affect routing, trust, filtering, effects, quarantine identity or mode selection. Otherwise hold admission; the generic duplicate rule never rejects an otherwise proved non-routing image. JSON object member names remain unique under strict JSON parsing. Non-`hx-*` broker headers cannot route. All six signed headers are required on new deliveries and sorted by unsigned UTF-8 name; `hx-payload-version` is canonical unsigned ASCII decimal 1..1024 without sign, space or leading zero. Generic object publication/DTO binding does not satisfy this contract. Same-mode retry uses retained exact outbound bytes; a broker mode conversion is accepted only after strict decode and canonical re-render to the same pin.
 
@@ -65,6 +65,10 @@ Production tag-`09` capability is `SHA256("HX-EV-BINARY-CAP-2\0" || 01 || B32 ba
 Production duplicate-safety readiness requires draft `HX-EV-DEDUP-PROBE-3\0 || 03 || 0015`, with **two different** route IDs, one injected crash between A's effect and receipt commit, A retry and A/B duplicates, exactly one final effect and complete `EventEffectReceipt` per route, plus the six-row purpose-`0c` provider-signed transcript. Require one V3 probe for every mode/backend/options/revision in use; V23's one-route probe is historical fixture evidence only. Broker independently queries full provider receipts and validates transcript/key/mode/backend/version/ETag before signing a lease. An effect-capable DI dependency outside the selected atomic write session or exact-key provider blocks readiness; a configured provider name cannot stand in for a probe.
 
 At acceptance, `TryPublishAtRevision(tenant, domain, component, topic, expectedRevision, fenceNonce, operationId, ExactCanonicalPinDigest, requestMode, exactRequestModeTransportBytes, exactCompleteRequestHeaderImage, proposedAcceptedMode, exactPredictedAcceptedTransportBytes, exactPredictedAcceptedHeaderImage)` atomically checks authoritative broker UTC, active member set, every lease/configuration/probe/fingerprint, revision and fence expiry/nonce **with the complete accepting body and header bytes**. `ExactCanonicalPinDigest = SHA256("HX-EV-BROKER-PIN-1\0" || 01 || B(exact decoded body) || B(exact decoded attestation))`. The proposed accepted mode is either the request mode or a specifically authorized canonical conversion; the broker atomically compares the actual accepted mode, exact canonical body rendering and complete accepted header image with the already pinned prediction and returns all three exact actual images in its signed Accepted result; any difference holds **before** acceptance with no new pin. Both modes are exactly `Binary` or `Structured`. Publisher precheck or a later header hash is insufficient. Join, leave, filter/handler/provider/registry change advances revision and invalidates old fence/leases. Missing compare-and-accept is `ConsumerMembershipFenceUnavailable`. The broker enforces **one unique key** `(U tenant, U domain, U component, U topic, U memberSendOperationId)` before digest comparison; its immutable value binds the canonical pin digest, request mode and exact request body, accepted mode and exact accepted rendering, the complete request and accepted `HX-EV-BROKER-HEADERS-2` header images and authenticated parent binding. Both request and accepted body/header images are retained and read back byte-for-byte; conversion may change only the **precommitted** canonical mode rendering and its mode-specific complete header image, including Content-Type; decoded body, attestation and signed six-header projection remain equal. A different digest, either mode, bytes, either complete header image or parent under that same key conflicts; the digest is never part of key selection. Every member send OperationId, including a future retry-nonce ID, requires `HX-EV-SEND-PARENT-1\0 || 01 || 000c`: `01` U authenticated tenant, `02..04` U domain/component/topic, `05` U original parent command OperationId, `06` B32 A5 tenant-scoped ScopeOpHash, `07` N A8 member position, `08` U event MessageId, `09` U member send OperationId, `0a` B32 exact outbox-intent/pin binding hash (`SHA256(B(exact outbox intent) || B(exact global pin))`), `0b` U configured broker send-parent issuer ID and `0c` Q signed issuance UTC. Its complete record/signature carrier is ≤16 KiB, reserved before A4 Prepared; its key is the unique broker operation key above. Authenticate complete same-save outbox/preparation evidence, signed send intent and broker parent-index CAS/readback before acceptance. The broker parent index is append-only under the authenticated tenant and ScopeOpHash parent namespace; an unbound, mismatched or late-invented send ID holds before acceptance. A terminal parent reject fence keyed by the authenticated tenant and original command ScopeOpHash is checked atomically across **every** A8 destination in that tenant **before** the unique-key duplicate path on every accept path, including delayed old and newly presented member IDs; a broker without that cross-destination atomic check cannot certify C5 terminality; a matching historical Accepted receipt remains queryable but cannot create new acceptance. Accepted is idempotent only for the matching unique key and immutable value. After uncertain send, `GetPublicationReceipt` uses the exact attempt key and complete-chain rules below; an operation-level latest result cannot authorize retry or erase a prior Unknown. Matching Accepted records without resend; a proved class-01 Rejected permits renewal of fence/nonce for the same member send OperationId/pin; Unknown or unavailable evidence holds without new nonce/send. Receipt retention covers pin, parent binding, retry, handoff and rollback obligations. Cancellation after send starts follows the same lookup under a bounded recovery token; caller cancellation cannot infer nonacceptance.
+
+If membership changes after the global pin is committed but before this member's first acceptance, the old pin is never rewritten or silently repinned. Before any send under the new revision, the broker freezes the old member namespace and produces one complete authenticated zero-send proof covering every configured destination/alias partition and the parent-member namespace from its initial generation. The proof has exactly one of two states: `EmptyNamespace`, with no purpose-20 attempt registration, parent-member row/head, queued or in-flight send, acceptance index or definitive/Unknown result; or `InitialRowOnly`, with exactly the immutable ordinal-one parent-member row and purpose-23 head required by the signed A8 plan, zero cumulative/local attempts, no result or acceptance index, and no queued or in-flight send. `InitialRowOnly` binds the complete row, head, purpose-23 carrier and row/head CAS receipts into the zero-send root; those bytes remain the ordinal-one predecessor under the new revision and are not recreated. Any later row, attempt, result, queue or acceptance evidence makes both states false. The broker then signs `HX-EV-FIRST-SEND-MEMBERSHIP-1\0 || 01 || 000f` (claim/carrier ≤16 KiB) under distinct purpose `2a`: ordered `01..04` U tenant/domain/component/topic, `05` U MessageId, `06` B32 ScopeOpHash, `07` N one-based A8 member position, `08` B32 immutable global-pin hash, `09` B32 old membership claim hash, `0a` N old revision, `0b` B32 new membership claim hash, `0c` N new revision, `0d` B32 complete zero-send proof root, `0e` U disposition and `0f` Q decision UTC. Disposition is exactly `ContinueSamePin` or `FirstSendMembershipChangedHold`. `ContinueSamePin` is legal only when the new signed membership/configuration deterministically selects the same logical consumer and destination and reproduces byte-for-byte the pinned request body/header image, predicted accepted body/header image, mode pair, renderer and six-header projection; it changes only the revision checked by the atomic accept and does not create another MessageId pin. Any changed pinned image, removed/renamed route, provider ambiguity, incomplete zero-send proof or inability to fence the old namespace yields the closed typed `FirstSendMembershipChangedHold`, which authorizes no send and requires a separately approved migration/new command path while preserving the original pin and identity.
+
+The stable outcome key is `first-send-membership:` plus lowercase-hex `SHA256("HX-EV-FIRST-SEND-MEMBERSHIP-KEY-1\0" || 01 || U tenant || B32 ScopeOpHash || N member position || U MessageId || B32 immutable global-pin hash)`. The accepted broker membership authority named in both revisions owns one create-once CAS at this key; the exact claim, purpose-`2a` carrier and zero-send proof commit atomically with an authenticated receipt naming absent prior value, installed claim/carrier hash, resulting generation/ETag, authority and commit UTC. Verify issuer/SPKI, purpose, tenant/scope/member, both signed membership claims, decision UTC in the authority interval, current revocation, complete partition manifest/index roots and exact pinned bytes before following the disposition. Lost acknowledgement reads the same record and receipt; identical bytes resume, while a different new revision, disposition, proof, signer or image at that key conflicts and remains held. Once any attempt, row, queue or acceptance evidence exists, this pre-first-send outcome is unavailable and normal historical-obligation rules apply.
 
 `HX-EV-SEND-PARENT-1` is signed under **distinct purpose `1c`**, by the configured broker send-intent authority named in the pre-Prepared destination configuration and accepted revision's broker trust map. Purpose-`1c` keys are bound to that issuer, tenant, destination and A5 parent ScopeOpHash namespace; event, membership, historical-grant, policy and generic broker signatures cannot substitute. Before broker parent-index CAS or any send, verify the exact twelve-tag claim, fixed P-256/P1363 draft §6 carrier, issuer/SPKI/purpose, signed tag-`0c` UTC within the issuer's `[notBefore,notAfter)` interval, current revocation state, complete same-save A5 outbox/preparation root, original command and member-plan position, MessageId, pin/outbox bytes and destination configuration. For a **new acceptance**, broker UTC must also be within the pinned purpose-`1c` authority interval and at or after signed issuance; reverify purpose, issuer, tenant/parent index and current revocation against the accepted revision's independently configured trust map. An old Accepted receipt remains queryable after key expiry only under its retained historic trust obligation; expiry cannot authorize another acceptance, and a fresh send ID after a proved rejection requires a freshly signed parent claim under an active key. A changed key or issuer without authenticated retained-history mapping holds. Retain the exact claim/carrier and original trust interval through all send, receipt, terminal, rollback and delayed-delivery obligations. A claim with a valid generic carrier but wrong purpose, unknown issuer, expired-at-issuance time or revoked key grants no send authority.
 
@@ -88,17 +92,31 @@ The **parent-member send-ID chain** has one namespace key `parent-member-sends:`
 
 At every renewal, new ID, terminal decision or public status read, enumerate **all** send ordinals `1..head.count` from the broker's authenticated member namespace, read each full row/CAS receipt and each historical signed head, recompute row/head hashes and predecessor links, compare count, unique send IDs, cumulative prior nonce counts and the complete purpose-`20/21/22` per-ID attempt/observation chains. The per-ID attempt ordinal is local to its send ID; C5's flat terminal attempt ordinal is the contiguous member-wide order obtained by adding row tag-`0d` to that local ordinal. Sum of all IDs' nonce attempts stays ≤the one frozen 1..64 member maximum; send-row count cannot exceed that maximum. Any omitted ID, gap, fork, unindexed accepted operation, wrong issuer/purpose, changed pin or count mismatch holds every status projection; an unresolved signed Unknown holds renewal and terminality and may project only the authenticated A8 nonterminal `unknown` shape after complete chain verification. A latest operation receipt or parent-index hash alone cannot prove completeness. The head and all predecessor generations/rows remain retained through the maximum route, terminal, key-rotation, rollback and incident horizon. Before A4 Prepared, reserve worst-case 64 complete rows/heads plus every permitted attempt/result record under A8's 64 MiB referenced-evidence limit; a provider unable to atomically fence row/head/parent acceptance or retain their full bytes is not V3 ready.
 
-An Accepted broker receipt freezes each addressed `(physical subscription ID, HandlerRouteId, configuration hash, membership revision)` as a historical execution obligation. The broker and coordinator refuse a join, leave, rename, filter, provider/backend change or lease replacement that would remove an owed route until its terminal result is authenticated, unless they first CAS-install an authenticated old-to-new execution mapping. `HX-EV-HISTORICAL-EXECUTION-GRANT-1\0 || 01 || 000e` is a ≤16 KiB ordered claim: `01..04` U domain/component/topic/physical subscription, `05` U old HandlerRouteId, `06` B32 Accepted-receipt hash, `07` B32 global pin hash, `08` B32 old EventEffectKey hash, `09` B32 old configuration hash, `0a` B32 old handler/effect/backend capability hash, `0b` B32 old membership/lease hash, `0c` U replacement endpoint or old endpoint identity, `0d..0e` Q issued/expiry UTC. It is signed with distinct purpose `13` by the configured broker membership authority, whose stable issuer identity, SPKI, interval and revocation state are pinned in the accepted revision's broker trust map. Verify exact bytes, purpose, issuer, signature, Accepted receipt, old key/configuration and broker UTC within `[issued,expiry)` on every invocation; a later revocation blocks the grant unless an authenticated safe replacement already owns the obligation. The grant authorizes **only** that old route/pin/effect key, no new publication or changed filter decision. The mapping binds this grant and Accepted receipt to the replacement endpoint/handler graph and provider mode/backend V3 probe. A replacement must query the old provider's exact-key receipt and every uncertain effect operation, then CAS-migrate authenticated completed receipts or install a fenced shared exact-key provider before any handler rerun. If the old provider is unreachable, an outcome is uncertain or a cross-provider transaction cannot prove one effect, hold mapping, membership transition and route; never rerun under a new backend. A mapping preserves the old HandlerRouteId and EventEffectKey; it cannot create a second effect or turn an incomplete route into `Filtered`. Grant validity or an authenticated exact-obligation renewal path must cover the full outstanding route horizon before a replacement revision activates; a grant expiry without renewal leaves the old route held under its original obligation and blocks that transition. Broker/coordinator readback proves drain or the exact mapping/grant and reconciliation before activating a revision.
+One domain-separated identity names the definitive old Accepted obligation everywhere below. `HistoricalAcceptedObligationHash = SHA256("HX-EV-HISTORICAL-ACCEPTED-OBLIGATION-1\0" || 01 || B(exact first definitive purpose-21 Accepted result claim) || B(exact purpose-21 carrier) || B(exact broker acceptance-index record named by that result) || B(exact authenticated acceptance-index CAS/readback receipt))`. The verifier authenticates the purpose-20 attempt, purpose-21 result/carrier, purpose-22 chain head, immutable send value and the full acceptance-index bytes before computing it. The complete source bytes and receipts remain retained and are reverified; this B32 is an identity input, never a substitute for them. Grant tag `06`, renewal tag `09` and stable key, replacement mapping tag `08` and stable key, and the accepted-delivery reverse index in C3 all use this identical B32 value. Alternate `Accepted receipt`, `ResultObservationHash` or locally combined result/index digests are invalid for these fields.
 
-The replacement mapping is `HX-EV-HISTORICAL-EXECUTION-MAPPING-1\0 || 01 || 0010` (≤16 KiB), with ordered `01` U authenticated tenant, `02..04` U domain/component/topic, `05` U physical subscription, `06` U **old** HandlerRouteId, `07` N **old** accepted membership revision, `08` B32 exact old Accepted-receipt hash, `09` B32 old EventEffectKey hash, `0a` B32 old global-pin hash, `0b` B32 purpose-13 grant claim-and-carrier hash, `0c` U replacement endpoint identity, `0d` U replacement provider/backend identity, `0e` B32 replacement V3 probe/configuration/**handler-graph** hash, `0f` B32 exact old-provider reconciliation and exclusion-source hash and `10` N exclusive mapping generation. Its key is `historical-execution-mapping:` plus `SHA256("HX-EV-HISTORICAL-MAPPING-KEY-1\0" || 01 || U tenant || U domain || U component || U topic || U old physical subscription || U old HandlerRouteId || N old revision || B32 old Accepted-receipt hash)`; replacement bytes are values, never key material. The broker membership authority owns one linearizable create-once CAS at this key. Its authenticated CAS receipt includes the exact pre-CAS mapping-record hash, absent prior value, resulting generation/ETag, issuer and commit UTC, and is retained/read back with full mapping bytes. A lost acknowledgement queries this same key and receipt; an identical mapping follows it, while a competing endpoint/provider/backend/probe/grant conflicts and may not create another mapping. Before the owner can invoke, it reads every exact-key old provider receipt, in-flight operation and uncertain-commit ledger under the old `EventEffectKey`, atomically installs a cross-provider exclusion fence against any old owner/handler commit, then CAS-owns the mapping generation with the exact signed reconciliation result. The old and replacement providers must jointly enforce that fence on every effect path and verify one shared key/receipt; missing old readback, uncertain effect, unsupported atomic fence, changed owner generation or competing mapping holds without invoking. Completion is CAS-recorded under the same mapping owner and old route-decision key; the replacement cannot reset that decision, issue a new effect key or bypass the old takeover chain. `ReplacementCapabilityHash = SHA256("HX-EV-HISTORICAL-REPLACEMENT-CAP-1\0" || 01 || B(exact replacement V3 probe claim/carrier) || B(exact replacement configuration) || B(exact handler graph and loader closure))` is tag `0e`; tag `08` uses C2's authenticated purpose-21 `ResultObservationHash` for the definitive Accepted result together with the exact acceptance-index readback named by that result. `OldEffectKeyHash = SHA256("HX-EV-OLD-EFFECT-KEY-1\0" || 01 || B(exact seven-field old EventEffectKey))`; `HistoricalMappingHash = SHA256("HX-EV-HISTORICAL-MAPPING-HASH-1\0" || 01 || B(exact mapping record) || B(exact authenticated mapping CAS receipt))`; tag `0f` is `SHA256("HX-EV-HISTORICAL-RECONCILIATION-1\0" || 01 || B(exact old-provider receipt and uncertain-operation ledger) || B(exact pre-mapping cross-provider exclusion-fence receipt))`; the ownership-CAS receipt is issued **after** sealing the mapping record and is authenticated in `HistoricalMappingHash`, never included in tag `0f`. The mapping receipt's installed-record tag hashes **only** the exact pre-CAS mapping record under `SHA256("HX-EV-HISTORICAL-MAPPING-RECORD-1\0" || 01 || B(exact record))`; its generation/ETag then contributes to `HistoricalMappingHash`. Purpose-13 grant validity is checked separately at accepted revision and invocation; a mapping record or its digest alone grants no historical authority. Expired/revoked current leases prohibit new acceptance but do not erase an already accepted obligation; unprovable historical authority is `ConsumerMembershipFenceUnavailable` and keeps physical acknowledgement pending.
+An Accepted broker receipt freezes each addressed `(physical subscription ID, HandlerRouteId, configuration hash, membership revision)` as a historical execution obligation. The broker and coordinator refuse a join, leave, rename, filter, provider/backend change or lease replacement that would remove an owed route until its terminal result is authenticated, unless they first CAS-install an authenticated old-to-new execution mapping. `HX-EV-HISTORICAL-EXECUTION-GRANT-1\0 || 01 || 000e` is a ≤16 KiB ordered claim: `01..04` U domain/component/topic/physical subscription, `05` U old HandlerRouteId, `06` B32 `HistoricalAcceptedObligationHash`, `07` B32 global pin hash, `08` B32 old EventEffectKey hash, `09` B32 old configuration hash, `0a` B32 old handler/effect/backend capability hash, `0b` B32 old membership/lease hash, `0c` U replacement endpoint or old endpoint identity, `0d..0e` Q issued/expiry UTC. It is signed with distinct purpose `13` by the configured broker membership authority, whose stable issuer identity, SPKI, interval and revocation state are pinned in the accepted revision's broker trust map. Verify exact bytes, purpose, issuer, signature, the complete Accepted result/index source behind tag `06`, old key/configuration and broker UTC within `[issued,expiry)` on every invocation; a later revocation blocks the grant unless an authenticated safe replacement already owns the obligation. The grant authorizes **only** that old route/pin/effect key, no new publication or changed filter decision. The mapping binds this grant and the same historical obligation to the replacement endpoint/handler graph and provider mode/backend V3 probe. A replacement must query the old provider's exact-key receipt and every uncertain effect operation, then CAS-migrate authenticated completed receipts or install a fenced shared exact-key provider before any handler rerun. If the old provider is unreachable, an outcome is uncertain or a cross-provider transaction cannot prove one effect, hold mapping, membership transition and route; never rerun under a new backend. A mapping preserves the old HandlerRouteId and EventEffectKey; it cannot create a second effect or turn an incomplete route into `Filtered`. Grant validity or an authenticated exact-obligation renewal path must cover the full outstanding route horizon before a replacement revision activates; a grant expiry without renewal leaves the old route held under its original obligation and blocks that transition. Broker/coordinator readback proves drain or the exact mapping/grant and reconciliation before activating a revision.
+
+Purpose-`13` renewal is itself an exact authenticated obligation, not an informal extension of `expiry`. `HX-EV-HISTORICAL-EXECUTION-RENEWAL-1\0 || 01 || 0011` (claim/carrier ≤16 KiB) has ordered `01` U issuer ID, `02` U authenticated tenant, `03..05` U domain/component/topic, `06` U old physical subscription, `07` U old HandlerRouteId, `08` N old accepted membership revision, `09` B32 `HistoricalAcceptedObligationHash`, `0a` B32 old global-pin hash, `0b` B32 old eight-field EventEffectKey hash, `0c` B32 old configuration/membership/lease hash, `0d` B32 predecessor authority hash, `0e` N positive contiguous renewal ordinal, `0f` U exclusive renewal owner ID and `10..11` Q issued/expiry UTC. At ordinal one, tag `0d` is `SHA256("HX-EV-HISTORICAL-GRANT-AUTH-1\0" || 01 || B(exact original purpose-13 grant claim) || B(exact original carrier))`; later it is the immediately preceding `HistoricalRenewalHash`. The same accepted-revision broker membership authority signs the renewal under purpose `13`; the distinct codec domain, exact old obligation and predecessor prevent interpreting another purpose-13 grant as a renewal. Verify the original grant, the complete Accepted result/index source behind tag `09`, pin, old key/configuration, issuer/SPKI, signed UTC in `[issued,expiry)`, current revocation and unchanged old obligation before invocation. Renewal extends only that obligation's execution window and never changes endpoint, provider, filter, bytes, effect key or mapping owner.
+
+Its one stable key is `historical-execution-renewal:` plus lowercase-hex `SHA256("HX-EV-HISTORICAL-RENEWAL-KEY-1\0" || 01 || U tenant || U domain || U component || U topic || U old physical subscription || U old HandlerRouteId || N old revision || B32 HistoricalAcceptedObligationHash || B32 old EventEffectKey hash)`. Under this key the broker authority maintains one linearizable CAS head; claim, carrier and `HX-EV-HISTORICAL-RENEWAL-HEAD-1\0 || 01 || 0007` commit atomically. The **pre-CAS** head contains `01` B32 stable key hash, `02` N renewal ordinal, `03` B32 predecessor authority hash, `04` B32 exact renewal claim/carrier hash, `05` U exclusive owner ID, `06` O(N) expected predecessor generation and `07` O(U) expected predecessor ETag; tags `06..07` are absent together only for ordinal one and present together thereafter. No pre-CAS head or signed renewal claim contains its own resulting generation/ETag. The authenticated post-CAS `HX-EV-HISTORICAL-RENEWAL-CAS-1\0 || 01 || 0009` receipt has `01` U stable renewal key, `02` U deterministic CAS operation ID, `03` B32 exact pre-CAS head/claim/carrier installed hash, `04` O(N) expected generation, `05` O(U) expected ETag, `06` N resulting generation, `07` U resulting ETag, `08` U authority and `09` Q commit UTC. Its operation ID is lowercase hex `SHA256("HX-EV-HISTORICAL-RENEWAL-CAS-OP-1\0" || 01 || U stable key || N renewal ordinal || B32 exact pre-CAS installed hash)`. The provider atomically installs the claim/carrier/head and immutable receipt; the next head consumes receipt tags `06..07`. `HistoricalRenewalHash = SHA256("HX-EV-HISTORICAL-RENEWAL-HASH-1\0" || 01 || B(exact renewal claim) || B(exact purpose-13 carrier) || B(exact pre-CAS head) || B(exact post-CAS receipt))`. The authority-hash predecessor is the original grant at ordinal one and the immediately prior `HistoricalRenewalHash` thereafter; the storage compare predecessor is absent at ordinal one and the immediately prior receipt's resulting values thereafter. A gap, fork, changed owner, compare mismatch or overlapping different bytes conflicts. Lost acknowledgement queries the deterministic operation ID and same stable head key, authenticates the retained receipt and reuses identical bytes. A delayed owed route may execute only while the latest complete chain is valid and read back with its exact exclusive owner; expiry, unavailable readback or a competing renewal is `ConsumerMembershipFenceUnavailable`, not execution authority.
+
+The replacement mapping is `HX-EV-HISTORICAL-EXECUTION-MAPPING-1\0 || 01 || 0010` (≤16 KiB), with ordered `01` U authenticated tenant, `02..04` U domain/component/topic, `05` U physical subscription, `06` U **old** HandlerRouteId, `07` N **old** accepted membership revision, `08` B32 `HistoricalAcceptedObligationHash`, `09` B32 old EventEffectKey hash, `0a` B32 old global-pin hash, `0b` B32 purpose-13 grant claim-and-carrier hash, `0c` U replacement endpoint identity, `0d` U replacement provider/backend identity, `0e` B32 replacement V3 probe/configuration/**handler-graph** hash, `0f` B32 exact old-provider reconciliation and exclusion-source hash and `10` N exclusive mapping generation. Its key is `historical-execution-mapping:` plus `SHA256("HX-EV-HISTORICAL-MAPPING-KEY-1\0" || 01 || U tenant || U domain || U component || U topic || U old physical subscription || U old HandlerRouteId || N old revision || B32 HistoricalAcceptedObligationHash)`; replacement bytes are values, never key material. The broker membership authority owns one linearizable create-once CAS at this key. Its authenticated CAS receipt includes the exact pre-CAS mapping-record hash, absent prior value, resulting generation/ETag, issuer and commit UTC, and is retained/read back with full mapping bytes. A lost acknowledgement queries this same key and receipt; an identical mapping follows it only after byte-identical comparison of the complete record, old-provider reconciliation, exclusion fence and ownership-CAS evidence, while any changed endpoint/provider/backend/probe/grant or evidence conflicts and may not create another mapping. Before the owner can invoke, it reads every exact-key old provider receipt, in-flight operation and uncertain-commit ledger under the old `EventEffectKey`, atomically installs a cross-provider exclusion fence against any old owner/handler commit, then CAS-owns the mapping generation with the exact signed reconciliation result. The old and replacement providers must jointly enforce that fence on every effect path and verify one shared key/receipt; missing old readback, uncertain effect, unsupported atomic fence, changed owner generation or competing mapping holds without invoking. Completion is CAS-recorded under the same mapping owner and old route-decision key; the replacement cannot reset that decision, issue a new effect key or bypass the old takeover chain. `ReplacementCapabilityHash = SHA256("HX-EV-HISTORICAL-REPLACEMENT-CAP-1\0" || 01 || B(exact replacement V3 probe claim/carrier) || B(exact replacement configuration) || B(exact handler graph and loader closure))` is tag `0e`; tag `08` is the one C2 `HistoricalAcceptedObligationHash`, after reauthenticating its complete purpose-21 result and acceptance-index sources. `OldEffectKeyHash = SHA256("HX-EV-OLD-EFFECT-KEY-1\0" || 01 || B(exact eight-field old EventEffectKey))`; `HistoricalMappingHash = SHA256("HX-EV-HISTORICAL-MAPPING-HASH-1\0" || 01 || B(exact mapping record) || B(exact authenticated mapping CAS receipt) || B(exact ownership-CAS receipt))`; tag `0f` is `SHA256("HX-EV-HISTORICAL-RECONCILIATION-1\0" || 01 || B(exact old-provider receipt and uncertain-operation ledger) || B(exact pre-mapping cross-provider exclusion-fence receipt))`; the ownership-CAS receipt is issued **after** sealing the mapping record, retained separately and authenticated in `HistoricalMappingHash`, never included in tag `0f`. The mapping receipt's installed-record tag hashes **only** the exact pre-CAS mapping record under `SHA256("HX-EV-HISTORICAL-MAPPING-RECORD-1\0" || 01 || B(exact record))`; its generation/ETag then contributes to the ownership CAS and `HistoricalMappingHash`. Purpose-13 grant or complete renewal-chain validity is checked separately at accepted revision and invocation; a mapping record or its digest alone grants no historical authority. Expired/revoked current leases prohibit new acceptance but do not erase an already accepted obligation; unprovable historical authority is `ConsumerMembershipFenceUnavailable` and keeps physical acknowledgement pending.
 
 ## C3. Raw ingress, route effects and physical acknowledgement
+
+Every identified-addressed acknowledgement rule in C3 applies identically to authenticated Binary and Structured CloudEvents. Both modes use the same committed handoff key, complete addressed route set, empty-set physical-filter rule and all-route terminal-decision gate; Structured mode's canonical JSON/body and separately transported signed routing headers must verify against the global pin before the handoff can commit. Legacy JSON additionally requires C4's migration evidence. Therefore “identified addressed Binary or legacy JSON” below is inclusive shorthand for identified addressed Binary, identified addressed Structured and legacy JSON; no Structured delivery may bypass the committed handoff, complete-route decisions or empty-set proof.
 
 Replace DTO-only `MapEventStoreDomainEvents` with bounded raw ingress that authenticates Binary or structured data, CloudEvent core, component/topic and `hx-*` application metadata into `VerifiedDeliveryContext` **before** DTO/marker/handler selection. It verifies purpose-02 signature, exact prior pin obligation where old RegistryFingerprint is approved, global Committed MessageId batch root and addressed member proof, fresh authenticated actor source/StoredDigest and current purpose-01 effective route/view. An old purpose-02 pin is valid only under original signed issuance/key interval and exact retained obligation; independently re-evolve the current view under active registry/trust. Missing old key/obligation or current source/view holds, not poison acceptance. DTO `isAdapted`, `verifiedEffectiveEvent` or caller headers never assert authority. The public unsealed six-argument `EventStoreDomainEventContext` and nullable `GlobalPosition` remain source/binary compatible; the additive immutable verified wrapper carries non-null signed global position where required, exact stored/effective provenance, route/digests and private proof copies. Old handlers remain callable only behind a proven effect-safe adapter.
 
 At the authenticated physical membership revision, resolve the **complete** sorted addressed HandlerRouteId set. A valid addressed event with no handler is `HandlerCapabilityMismatch` and retries; a predeclared signed catalog filter may terminalize only its proven out-of-scope route. CAS-stage/read back `HX-EV-BINARY-HANDOFF-1\0 || 01 || 0011`: tags `01..08` U MessageId/tenant/domain/aggregate type/aggregate ID/component/topic/physical subscription ID, `09` N membership revision, `0a..0e` B32 StoredDigest/DeliveryDigest/pinned body hash/pinned attestation hash/route-set hash, `0f` B route set (`u32 count || sorted unique U HandlerRouteId`), `10` U stable delivery OperationId, `11` B32 pinned core/header/transport-rule hash. At most 4,096 routes and 1 MiB complete manifest. Its key hashes component/topic/physical subscription/MessageId; revision, digests and route set are **values** under that one key. Partial staging or changed evidence leaves physical delivery unacknowledged. A committed pointer authorizes the complete set only after all route records and pin read back. Duplicate admission checks global pin/tombstone, actor source, manifest and each route receipt first; another route's receipt never completes this route.
 
-`EventEffectKey` is exactly `(tenant, domain, aggregateType, aggregateId, MessageId, DeliveryDigest, HandlerRouteId)`. Provider's canonical `HX-EV-EFFECT-RECEIPT-1\0 || 01 || 000e` (≤16 KiB) fields `01..07` are that seven-part key; `08` U provider operation ID, `09` B32 committed effect-result digest, `0a` U provider identity, `0b` B exact backend descriptor, `0c` U mode, `0d` N actual commit version, `0e` U actual ETag. `ReceiptDigest = SHA256(exact complete record)` remains the historical receipt-content digest; C3 terminal-decision references use the separately domain-separated `EffectReceiptHash` below, which also binds the provider commit/readback receipt. Authenticate full bytes/readback, not DTO or digest alone. `AtomicStore` commits enlisted effects and unique-key receipt in **one** serializable transaction; `ProviderIdempotency` enforces the exact key on the external effect and exposes the same queryable result/receipt across restarts. Before handler invocation query the exact receipt. After crash/uncertain commit query again; a match finalizes that route without invoking handler. Changed key, mode, backend, ETag or result conflicts. A standalone marker or later receipt cannot emulate atomic safety. `HandlerCapabilityHold` occurs before effect/ack if the route lacks this contract and its V3 probe.
+`EventEffectKey` is exactly `(tenant, domain, aggregateType, aggregateId, MessageId, DeliveryDigest, physicalSubscriptionId, HandlerRouteId)`, encoded as `HX-EV-EFFECT-KEY-2\0 || 02 || 0008 || 01 U tenant || 02 U domain || 03 U aggregateType || 04 U aggregateId || 05 U MessageId || 06 B32 DeliveryDigest || 07 U physicalSubscriptionId || 08 U HandlerRouteId`; `EventEffectKeyHash = SHA256("HX-EV-EFFECT-KEY-HASH-2\0" || 01 || B(exact eight-field key bytes))`. The final two fields are the logical-consumer identity from C2: two physical subscriptions reusing one HandlerRouteId select different effect keys, while redelivery to the same physical subscription/route selects the identical key. Provider's canonical precommit `HX-EV-EFFECT-RECORD-2\0 || 02 || 000d` (≤16 KiB) fields `01..08` are that eight-part key; `09` U provider operation ID, `0a` B32 committed effect-result digest, `0b` U provider identity, `0c` B exact backend descriptor and `0d` U mode. It deliberately contains no provider-assigned commit version or ETag. `ReceiptDigest = SHA256(exact complete precommit effect record)` remains the historical receipt-content digest; C3 terminal-decision references use the separately domain-separated postcommit `EffectReceiptHash` below. Authenticate full bytes/readback, not DTO or digest alone.
+
+Within **one** serializable `AtomicStore` transaction, the provider allocates the definitive commit version/ETag, seals `HX-EV-EFFECT-COMMIT-1\0 || 01 || 0009` from those values, and atomically commits the enlisted effects, unique-key precommit record and commit receipt. The receipt has ordered `01` B32 exact precommit effect-record hash, `02` U provider operation ID, `03` B32 route-decision key hash, `04` U provider transaction ID, `05` N actual commit version, `06` U actual ETag, `07` B32 exact committed effect-result digest, `08` U provider authority ID and `09` Q commit UTC. The receipt is not embedded in or required to seal the precommit record.
+
+The provider's authenticated readback is the exact `HX-EV-EFFECT-READBACK-1\0 || 01 || 0012` codec (complete record and authentication carrier ≤16 KiB): `01` U provider identity, `02` U provider authority ID, `03` U mode exactly `AtomicStore` or `ProviderIdempotency`, `04` U provider operation ID, `05` U definitive provider transaction or external-result identity, `06` B exact eight-field `EventEffectKey` bytes, `07` U immutable precommit-record storage key, `08` U committed-effect/result storage key, `09` U route-decision key, `0a` B32 exact complete precommit-record byte hash, `0b` B32 exact committed effect/result byte hash, `0c` B32 exact installed terminal-decision byte hash, `0d` O(N) expected prior generation, `0e` O(U) expected prior ETag, `0f` N positive resulting commit version/generation, `10` U resulting ETag, `11` B32 exact nine-tag `HX-EV-EFFECT-COMMIT-1` byte hash and `12` Q readback UTC. Tags `0d..0e` are absent together only for a create and present together for a compare/update; every U is 1..1,024 bytes, tag `06` is ≤12 KiB and the whole record is preflight under C3's cap. The configured effect-provider authority authenticates these exact bytes with a provider-specific signed carrier or backend transaction receipt whose issuer, mode, operation/transaction scope and trust interval are pinned by the V3 probe; provider DTO serialization is never an identity codec.
+
+`EffectReadbackInstalledHash = SHA256("HX-EV-EFFECT-READBACK-INSTALLED-1\0" || 01 || B(exact precommit record) || B(exact committed effect/result bytes) || B(exact terminal-decision record) || B(exact nine-tag commit receipt))`. The provider seals the readback receipt only after all four inputs and the assigned version/ETag are known, but in the same atomic transaction as their immutable visibility; none of those installed inputs contains the readback receipt, its carrier or `EffectReceiptHash`. The provider then reads the three exact keys named by tags `07..09`, compares their complete bytes, recomputes tags `0a..0c`, authenticates tag `11` and the commit receipt's operation/transaction/result/version/ETag, and returns the retained readback receipt and authentication carrier. `ProviderIdempotency` enforces the same eight-field key on the external effect and atomically creates the same queryable commit and readback receipts with its definitive provider result; a provider unable to bind its idempotent commit and receipts atomically holds before invocation. Before handler invocation query the exact key/record/commit/readback tuple. After crash or uncertain commit query again; only a byte-identical complete tuple finalizes that route without invoking the handler. Changed subscription, route, key, mode, backend, operation/transaction identity, effect or decision bytes, expected/result generation/ETag, authority or authentication carrier conflicts. A standalone marker or a receipt synthesized later from mutable provider state cannot emulate atomic safety. `HandlerCapabilityHold` occurs before effect/ack if the route lacks this contract and its V3 probe.
 
 All C3 effect, route-decision, filtered, route-quarantine and physical-filter records have a 16 KiB complete encoded cap, including domain/version/tag framing; the C4 physical-quarantine receipt has the same cap. Every U field obeys A8's 1,024-byte encoded-value bound, and the effect receipt's backend descriptor B is at most 1,024 bytes. Before A4 Prepared, preflight the worst-case complete encoded record for each planned member/route using full admitted identifiers, provider IDs, backend descriptor, ETag, signed claim and reference lengths; reserve its record slots, effect-provider transaction capacity, B6 scratch and A8 referenced-evidence quota. Before any handler/effect invocation, redo exact-byte preflight for the accepted revision and actual provider descriptor/ETag bound. A provider that cannot atomically store/read back the full receipt and terminal decision under those caps cannot advertise V3 readiness. If a valid admitted route cannot fit, hold before Prepared or before invocation; never commit an effect that cannot be receipted. The retry policy's maximum attempts must also fit the 64 MiB complete referenced-evidence reservation with up to two 16 KiB result observations per attempt plus chain heads, or admission lowers the signed maximum before Prepared. No identifier is truncated or assigned a new public cap.
 
@@ -108,15 +126,19 @@ Reserve for at most 60 seconds using the provider's authoritative UTC; renewal r
 
 Each transfer appends `HX-EV-EFFECT-TAKEOVER-1\0 || 01 || 000d` under the **same route-decision key namespace** plus `:takeover:` and checked positive new-fence `N`, with ordered `01` B32 exact route-decision key hash, `02` B32 handoff/pin hash, `03` N old fence, `04` U old owner, `05` U old decision ETag, `06` Q old lease expiry, `07` N new fence, `08` U new owner, `09` B32 exact provider old-owner-exclusion receipt hash, `0a` B32 exact old-key uncertain-effect query/receipt hash, `0b` B32 predecessor takeover-record hash (all zero for the first), `0c` Q provider takeover UTC and `0d` U new decision ETag. The signed/provider-authenticated complete record and exact exclusion/query source images are ≤8 KiB and ≤16 KiB respectively, CAS-create once and read back in the provider's decision transaction. The provider must allocate and expose the new decision ETag inside the same linearizable CAS transaction before sealing tag `0d` of the takeover record, then prove that exact ETag in the authenticated postcommit readback; a provider that cannot do so cannot advertise fenced takeover. The decision's tag `0d` is the **latest complete takeover-record hash**, not a replaceable reconciliation assertion. Its first transfer links from the initial reservation's owner/fence/ETag; every later record must name the immediately preceding record, prior new owner/fence and decision ETag. Verify the full ordered chain from fence 1 to tag `0d`, each old-owner exclusion and uncertain-effect result, exact predecessor hashes, provider ETags and final receipt before invoking or acknowledging. Reserve up to 64 transfers and their ≤2 MiB total record/source evidence before first reservation; a 65th transfer or missing/ambiguous prior record holds the route and requires separately authorized recovery, never chain truncation or a reset fence. An accepted historical route/provider mapping retains this chain with the unchanged `EventEffectKey` through the maximum delivery/rollback horizon.
 
-Takeover tag `02` is exactly `SHA256("HX-EV-EFFECT-TAKEOVER-BIND-1\0" || 01 || B(exact committed C3 binary handoff manifest) || B(exact global MessageId pin) || U tenant || U domain || U aggregateType || U aggregateId || U MessageId || B32 DeliveryDigest || U HandlerRouteId || U accepted providerId || U accepted backendId)`. B uses draft §4's checked four-byte length and hashes the complete retained bytes in streaming order; the scoped identifiers are the authenticated accepted EventEffectKey and configuration, each within A8's U bound. The accepted provider/backend identity stays fixed across every takeover even if a later mapping uses another provider. Read back the exact handoff, pin, key and accepted configuration, recompute tag `02` for every chain record, and require identical bytes and hash across the chain. A missing old pin/handoff or changed provider identity holds before another invocation.
+Takeover tag `02` is exactly `SHA256("HX-EV-EFFECT-TAKEOVER-BIND-1\0" || 01 || B(exact committed C3 binary handoff manifest) || B(exact global MessageId pin) || U tenant || U domain || U aggregateType || U aggregateId || U MessageId || B32 DeliveryDigest || U physicalSubscriptionId || U HandlerRouteId || U accepted providerId || U accepted backendId)`. B uses draft §4's checked four-byte length and hashes the complete retained bytes in streaming order; the scoped identifiers are the authenticated accepted eight-field EventEffectKey and configuration, each within A8's U bound. The accepted provider/backend identity stays fixed across every takeover even if a later mapping uses another provider. Read back the exact handoff, pin, key and accepted configuration, recompute tag `02` for every chain record, and require identical bytes and hash across the chain. A missing old pin/handoff or changed provider identity holds before another invocation.
 
 Physical acknowledgement for an **identified addressed Binary or legacy JSON** delivery requires the committed handoff pointer and **every** addressed route's authenticated durable terminal decision and matching `Completed` effect receipt or permitted `Filtered` proof read back. A separately proven permanently invalid source uses a matching `Quarantined` decision and capture proof below; handoff alone is never a route result. One completed and one failed/unavailable route remains unacknowledged; redelivery resumes only incomplete routes. An authenticated identified empty addressed set is success only under C3's exact signed physical-filter receipt. C4's unidentified physical quarantine follows its separate no-MessageId rule and cannot be presented as a handoff or route result. `InProgress` acquisition needs a persisted fenced lease; current DAPR read-only acquisition is insufficient. Old `Completed`/`Dispatched` markers migrate by CAS only with independent scoped actor plus route-specific receipt/outbox/catalog proof and global-ID inventory; `Dispatched` finalizes from receipt, old `InProgress` retries only with proved idempotency. Ambiguous evidence holds. No-handler, unavailable key/provider, new capability/limit hold, cancellation or pin mismatch never maps to 200. Deterministic authenticated permanent schema/identity poison may be acknowledged **only after** exact-byte AD-31 durable capture/readback or the C4 authenticated broker-owned full-byte reference **and** one durable `Quarantined` decision/receipt for every addressed route. Its distinct canonical receipt is `HX-EV-ROUTE-QUARANTINE-1\0 || 01 || 000a`: `01..05` U component/topic/physical subscription/HandlerRouteId/MessageId, `06` O(B32) StoredDigest, `07` O(B32) DeliveryDigest, `08` B tagged authority reference, `09` B32 exact carrier-byte-and-header hash, `0a` B32 exact authenticated source/retention proof hash. Tag `08` is exactly `00 || U AD-31 capture key || B32 exact AD-31 item/index proof hash` or `01 || U broker immutable full-byte reference ID || B32 exact broker reference proof hash`, enclosed once by `B`; other discriminators, untagged strings and bare hashes are invalid. The `00` verifier decrypts and reads back the complete AD-31 item and index, checking exact bytes, headers, tenant/scope, ETag, proof and retention. The `01` verifier uses the accepted broker authority to resolve and read back the **entire** ≤193 MiB carrier and every header under its immutable ID, then checks signed reference/retention proof, byte-for-byte equality and the horizon. Neither authority's proof is interchangeable with the other. It is ≤16 KiB, keyed by physical delivery plus route ID under the handoff, create-once/read back, and its optional digests cannot be fabricated when parsing failed; the 128 MiB local capture limit never turns a larger structured addressed carrier into an uncloseable poison route. Compare exact source, route set, captured/referenced bytes and retention on duplicate. It records no effect and cannot stand in for `Completed` on a valid event, missing handler or unavailable capability. Only after all decisions, receipts, capture/reference and manifest readback may poison receive 2xx. Capture never permits replay/projection checkpoint advancement. An untrusted carrier is not proven permanent source poison.
 
 An **addressed** `Quarantined` route needs one active **physical retained-object-scoped** complete obligation set before any route decision or 2xx; C4's unidentified physical **disposition receipt** has a separate key, while its storage obligation uses this same canonical object key and head. The canonical physical object ID is the immutable AD-31 capture object key (tag `00`) or broker immutable full-byte object ID (tag `01`), inside its authenticated storage partition and named storage authority. The tagged reference proof hash and generation/ETag are authenticated **values** at that object, never identity or key components. The stable key is `retained-object-obligation:` plus lowercase-hex `SHA256("HX-EV-RETAINED-OBJECT-KEY-1\0" || 01 || U authenticated storage partition || U storage authority ID || u8 authority tag || U canonical physical object ID)`; no handoff key or retry ID enters it. One storage object has exactly one linearizable head and one no-expiry fence even if several committed Binary/legacy handoffs cite it. Different bytes, partition or tagged authority at the same key conflict; changed reference proof follows the object-wide version/CAS chain with authenticated source and full-byte readback, or conflicts. An unproved exclusive-reference claim does not excuse use of the object-wide key. Capacity for up to 128 open entries, all anticipated handoff links and route binds is reserved before the first quarantine decision; a 129th obligation holds before attachment rather than splitting the same object across fences. An AD-31 item/index key or broker reference resolves to exactly one canonical object ID through an immutable signed authority mapping, verified with complete bytes and the storage CAS readback. Distinct IDs may carry identical bytes only with independent fences; two aliases for the **same** object require a signed canonical-ID mapping to this one key. A renewed proof/generation for the same object must traverse this one version/CAS head with full-byte readback or conflict; it cannot create another addressed or unidentified fence. Capture links, purpose-18 sources and every handoff obligation resolve the same canonical object/head.
 
+The canonical-ID authority mapping is exact and precedes every retained-object key lookup. The storage provider first resolves any presented AD-31 item/index key or broker reference to its provider-native immutable object handle under the authenticated partition; this handle is provider-assigned, queryable and unique for one physical stored object, never chosen from carrier bytes or a proof generation. Its only mapping key is `canonical-physical-object:` plus lowercase-hex `SHA256("HX-EV-CANONICAL-PHYSICAL-OBJECT-KEY-1\0" || 01 || U authenticated storage partition || U storage authority ID || u8 authority tag || U provider-native immutable object handle)`. Providers that cannot return and atomically enforce one handle for all aliases of the same object cannot advertise quarantine readiness. The signed `HX-EV-CANONICAL-PHYSICAL-OBJECT-1\0 || 01 || 000f` claim (≤16 KiB) has ordered `01` U partition, `02` U storage authority ID, `03` B the exact one-byte authority tag, `04` U provider-native immutable object handle, `05` U canonical physical object ID, `06` B32 complete retained-body/ordered-header hash, `07` B complete sorted alias/proof set, `08` B32 authority configuration/trust hash, `09` U mapping issuer ID, `0a` B32 predecessor mapping hash (all zero at creation), `0b` N positive contiguous mapping version, `0c` Q signed mapping UTC, `0d` U literal `Canonical`, `0e` O(N) expected prior mapping generation and `0f` O(U) expected prior mapping ETag. The last two are absent only at version one and present together thereafter.
+
+Tag `07` is `u16 aliasCount ||` 1..128 sorted unique entries, each `U alias kind || U exact alias identifier || B32 exact signed authority-proof hash || N proof generation || U proof ETag`; alias kind is exactly `AD31ItemIndex` for tag `00` or `BrokerFullByteReference` for tag `01`. The configured storage authority signs the complete mapping under distinct purpose `2b`, with issuer/SPKI/partition/tag/provider-handle scope, interval and revocation pinned in the storage trust map. Claim, carrier and an authenticated CAS receipt commit atomically at the one mapping key. The receipt names expected prior generation/ETag, exact pre-CAS claim/carrier hash, resulting generation/ETag, authority and commit UTC; `CanonicalPhysicalObjectMapHash = SHA256("HX-EV-CANONICAL-PHYSICAL-OBJECT-HASH-1\0" || 01 || B(exact mapping claim) || B(exact purpose-2b carrier) || B(exact mapping CAS receipt))`. Every update names the immediately prior map hash/version/compare values and preserves partition, authority tag, provider handle, canonical ID and complete carrier hash. A new alias appends its authenticated entry; a refreshed proof replaces only that alias's proof hash/generation/ETag while the predecessor map remains retained. Removal requires separately signed proof that the alias can never reference the object again and that no open obligation names it; otherwise it remains in the full set. Lost acknowledgement reads the same mapping generation and receipt. A competing canonical ID, handle, byte hash, authority/tag, fork, skipped version or same alias with unrelated proof conflicts. All addressed and unidentified fences derive their object key only from the latest verified mapping's partition, authority, tag and canonical ID, and retain the entire map chain; signed capture scope and mutable tagged proof are values verified against that chain, never alternative key material.
+
 The storage authority CAS-installs `HX-EV-ADDRESSED-OBLIGATION-SET-1\0 || 02 || 000b` (≤16 KiB) at that object key: `01` U authenticated storage partition, `02` B exact tagged reference, `03` B32 complete carrier/body/ordered-header hash, `04` B32 signed immutable reference/source hash, `05` O(N) expected prior object generation, `06` O(U) expected prior ETag (both absent only at creation), `07` B complete canonical open-obligation entries, `08` U `NoExpiryUntilClosure`, `09` U storage authority, `0a` Q install UTC and `0b` B32 partition/access-policy hash. Resulting generation/ETag occur only in the atomic post-CAS receipt. This initial record CAS-creates the **one** shared retained-object head; an existing unidentified physical initialization at the same key prevents a second initial record and requires a signed conversion of all obligations under the one head or holds. The first handoff's `AddressedRoutes` entry opens in this initial list; a later handoff must CAS-append its own entry to the same head **before** its capture link or any quarantine decision. The immutable committed handoff contains only its own historical route set and pin; it never claims to bind a future object set. Every handoff independently proves all of its routes against its own post-handoff link, while object readback proves the union of every handoff's open obligations and closures.
 
-The canonical open-list is `HX-EV-CAPTURE-OBLIGATIONS-1\0 || 01 || u16 count ||` 0..128 `B(exact entry)` fields sorted uniquely by `(kind, obligationId)` encoded bytes. Each `HX-EV-CAPTURE-OBLIGATION-ENTRY-1\0 || 01 || 0005` entry is `01` U kind from `AddressedRoutes`, `Retry`, `DelayedDelivery`, `Rollback`, `Backup`, `Incident`; `02` U stable obligation ID; `03` B32 exact authenticated opening-source hash; `04` Q opened UTC; `05` U owning authority. An initial list must be nonempty; a zero-entry later version is legal only with authenticated closure of every prior entry and broker no-future-duty proof. `CaptureEntryHash = SHA256("HX-EV-CAPTURE-ENTRY-HASH-1\0" || 01 || B(exact canonical entry))`; each opening-source hash is `SHA256("HX-EV-CAPTURE-OPEN-SOURCE-1\0" || 01 || B(exact authority record and carrier) || B(exact source readback receipt))`, whose authority and bytes are verified for that entry kind. Each `AddressedRoutes` entry uses one committed handoff key as its unique ID, with the exact handoff/route-set hash and authenticated opening receipt as source, and covers **every** route in that handoff's complete signed set. A shared object retains one distinct entry per handoff; closure of one requires all of that handoff's matching terminal route decisions/receipts and broker no-future-route proof, and cannot remove any other handoff entry. Every other open duty has a separate exact entry. The complete list is ≤12 KiB inside each ≤16 KiB set/version; source records, exact entries and their authority signatures are retained and read back, so a root alone grants no removal. An addition supplies an authenticated opening source and appears in the next full list before its duty becomes active. A removal requires `HX-EV-CAPTURE-OBLIGATION-CLOSE-1\0 || 01 || 0006`: `01` B32 exact entry hash, `02` B32 initial obligation-anchor hash (addressed initial set or physical initial fence), `03` B32 authenticated completion-source hash, `04` B32 broker/storage no-future-duty proof hash, `05` Q closure UTC, `06` U closure issuer; its draft §6 P-256/P1363 carrier is signed under distinct capture-closure purpose `27` by the configured AD-31 or broker storage authority. Verify exact claim bytes, issuer/SPKI, purpose, signed UTC within the pinned interval, revocation, complete completion/no-future-duty source and byte-identical readback before removing that one entry. The carrier, full source and readback are retained for the whole chain. Closure of one route cannot remove the collective `AddressedRoutes` entry. Unknown kinds, duplicate IDs, missing source, unsupported count/byte capacity or an unproved closure hold before quarantine.
+The canonical open-list is `HX-EV-CAPTURE-OBLIGATIONS-1\0 || 01 || u16 count ||` 0..128 `B(exact entry)` fields sorted uniquely by `(kind, obligationId)` encoded bytes. Each `HX-EV-CAPTURE-OBLIGATION-ENTRY-1\0 || 01 || 0005` entry is `01` U kind from `AddressedRoutes`, `Retry`, `DelayedDelivery`, `Rollback`, `Backup`, `Incident`; `02` U stable obligation ID; `03` B32 exact authenticated opening-source hash; `04` Q opened UTC; `05` U owning authority. An initial list must be nonempty; a zero-entry later version is legal only with authenticated closure of every prior entry and broker no-future-duty proof. `CaptureEntryHash = SHA256("HX-EV-CAPTURE-ENTRY-HASH-1\0" || 01 || B(exact canonical entry))`; each opening-source hash is `SHA256("HX-EV-CAPTURE-OPEN-SOURCE-1\0" || 01 || B(exact authority record and carrier) || B(exact source readback receipt))`, whose authority and bytes are verified for that entry kind. Each `AddressedRoutes` entry uses one committed handoff key as its unique ID, with the exact handoff/route-set hash and authenticated opening receipt as source, and covers **every** route in that handoff's complete signed set. A shared object retains one distinct entry per handoff; closure of one requires all of that handoff's matching terminal route decisions/receipts and broker no-future-route proof, and cannot remove any other handoff entry. Every other open duty has a separate exact entry. The complete list is ≤12 KiB inside each ≤16 KiB set/version; source records, exact entries and their authority signatures are retained and read back, so a root alone grants no removal. An addition supplies an authenticated opening source and appears in the next full list before its duty becomes active. A removal requires `HX-EV-CAPTURE-OBLIGATION-CLOSE-1\0 || 02 || 0006`: `01` B32 exact entry hash, `02` B exact `InitialObjectAnchor`, `03` B32 authenticated completion-source hash, `04` B32 broker/storage no-future-duty proof hash, `05` Q closure UTC, `06` U closure issuer; its draft §6 P-256/P1363 carrier is signed under distinct capture-closure purpose `27` by the configured AD-31 or broker storage authority. Verify the anchor discriminator and exact initial record/receipt, claim bytes, issuer/SPKI, purpose, signed UTC within the pinned interval, revocation, complete completion/no-future-duty source and byte-identical readback before removing that one entry. The carrier, full source and readback are retained for the whole chain. Closure of one route cannot remove the collective `AddressedRoutes` entry. Unknown kinds, duplicate/unsorted IDs, missing source, unsupported count/byte capacity or an unproved closure hold before quarantine.
 
 The common authenticated storage CAS receipt is `HX-EV-CAPTURE-CAS-RECEIPT-1\0 || 01 || 000a` (≤16 KiB): `01` U stable object key, `02` U unique CAS operation ID, `03` B32 `CaptureInstalledRecordHash = SHA256("HX-EV-CAPTURE-INSTALLED-1\0" || 01 || B(exact **pre-CAS** installed record))`, `04` O(N) expected prior generation, `05` O(U) expected prior ETag, `06` N resulting generation, `07` U resulting ETag, `08` B32 full retained-object bytes hash (including ordered headers for a carrier object), `09` U storage authority ID and `0a` Q commit UTC. `CaptureCasReceiptHash = SHA256("HX-EV-CAPTURE-CAS-RECEIPT-HASH-1\0" || 01 || B(exact authenticated receipt))`; all new CAS-receipt references use this hash after full receipt verification. The provider must atomically commit the record/object fence and persist this receipt under the operation ID, allocating the resulting generation/ETag inside that linearizable transaction. Lost acknowledgement queries the immutable receipt by operation ID; a changed replay conflicts. The selected provider capability is the atomic post-CAS receipt: it cannot place an unknown postcommit ETag inside a pre-CAS signed record or synthesize a receipt later from mutable object state. Set/version readback verifies exact installed bytes, receipt signature or backend authority, prior compare values, resulting generation/ETag, full retained bytes and current object head together; missing atomic receipt or unsupported provider holds. `InitialSetHash = SHA256("HX-EV-ADDRESSED-SET-HASH-1\0" || 01 || B(exact set record) || B(exact storage CAS receipt))`; `AddressedVersionHash = SHA256("HX-EV-ADDRESSED-VERSION-HASH-1\0" || 01 || B(exact version record) || B(exact storage CAS receipt))`. All references to initial set or predecessor version hash below use these formulas, after authenticating both full inputs.
 
@@ -124,9 +146,11 @@ The order is record bytes → `CaptureInstalledRecordHash` → atomic CAS receip
 
 Each closure-list value is `u16 count ||` 0..128 `B(item)` fields ordered by closed `CaptureEntryHash`, where `item = B(exact purpose-27 claim) || B(exact purpose-27 carrier) || B(exact completion-source readback receipt)`. Duplicate closure entries, an unclosed removal or a closure unrelated to the preceding open list conflict.
 
-All C3 cross-record B32 fields use full authenticated bytes and the following exact formulas: `RouteDecisionHash = SHA256("HX-EV-ROUTE-DECISION-HASH-1\0" || 01 || B(exact decision record) || B(exact provider CAS receipt))`; `EffectReceiptHash = SHA256("HX-EV-EFFECT-RECEIPT-HASH-2\0" || 01 || B(exact complete immutable effect record) || B(exact authenticated provider effect-commit/CAS receipt) || B(exact provider readback receipt))`; `FilteredReceiptHash = SHA256("HX-EV-FILTERED-RECEIPT-HASH-1\0" || 01 || B(exact filtered receipt) || B(exact predicate claim and carrier) || B(exact decision transcript) || B(exact CAS receipt))`; `RouteQuarantineHash = SHA256("HX-EV-ROUTE-QUARANTINE-HASH-1\0" || 01 || B(exact quarantine receipt) || B(exact tagged-authority full-byte readback receipt) || B(exact CAS receipt))`; `PhysicalFilterHash = SHA256("HX-EV-PHYSICAL-FILTER-HASH-1\0" || 01 || B(exact physical-filter receipt) || B(exact purpose-28 identity claim and carrier) || B(exact filter transcript) || B(exact CAS receipt))`; `CaptureRouteBindHash = SHA256("HX-EV-CAPTURE-ROUTE-BIND-HASH-1\0" || 01 || B(exact route-bind record) || B(exact backend CAS receipt))`. Their keys remain the stable keys named above; every referenced record/carrier/CAS receipt is read back and authority-verified before computing a hash. To avoid a self-reference, the atomic `AtomicStore` transaction writes the complete effect record and `Completed` decision tag `09` as the historical `ReceiptDigest = SHA256(exact complete effect record)`; it does not embed the later `EffectReceiptHash`. The provider atomically persists an immutable commit/CAS receipt keyed by the effect operation and decision key, naming exact installed record hashes, resulting version/ETag and transaction identity, then supplies a separate authenticated readback receipt for those same bytes and keys. Only **after** commit/readback does the verifier derive `EffectReceiptHash` above and authorize the decision or route bind; a missing, changed or unqueryable provider receipt holds even if the precommit decision exists. `ProviderIdempotency` follows the same ordered readback rule. The decision verifier requires both its tag-`09` precommit digest and the postcommit `EffectReceiptHash`/provider receipts; neither may be inferred from the other. The C3 route-bind tag `04` uses `RouteDecisionHash`, tag `05` uses the matching one of `EffectReceiptHash`, `FilteredReceiptHash` or `RouteQuarantineHash`; C3 route-decision tag `09` uses the matching `FilteredReceiptHash` or `RouteQuarantineHash`; for `Completed` it uses the precommit `ReceiptDigest` and must additionally verify the postcommit `EffectReceiptHash` and both provider receipts before the state has terminal authority. A bare SHA-256 of a DTO or a hash-only proof grants no route decision. The embedded cross-record fields are also fixed: filtered receipt tag `12` is `FilteredDecisionTranscriptHash = SHA256("HX-EV-FILTER-TRANSCRIPT-HASH-1\0" || 01 || B(exact accepted-revision route transcript))`, while physical-filter tag `0e` is `PhysicalFilterDecisionTranscriptHash = SHA256("HX-EV-PHYSICAL-FILTER-TRANSCRIPT-HASH-1\0" || 01 || B(exact accepted-revision physical transcript))`. Route-quarantine tag `09` is `AddressedCarrierHash = SHA256("HX-EV-ADDRESSED-CARRIER-1\0" || 01 || B(exact complete transport body) || u32 orderedHeaderCount ||` each `B(exact original header name) || B(exact original header value))`; its tag `0a` uses the `HX-EV-ADDRESSED-ROUTE-PROOF-1` formula below. The tagged AD-31 reference proof is `SHA256("HX-EV-AD31-REFERENCE-PROOF-1\0" || 01 || B(exact signed item/index record and carrier) || B(exact storage CAS receipt) || B(exact full-byte readback receipt))`; the tagged broker reference proof uses the distinct `HX-EV-BROKER-REFERENCE-PROOF-1\0` domain with the same framed three source classes under broker authority. Compare each full authenticated source, signer, generation/ETag and byte stream before its digest. No alternate bare-hash encoding is accepted.
+All C3 cross-record B32 fields use full authenticated bytes and the following exact formulas: `RouteDecisionHash = SHA256("HX-EV-ROUTE-DECISION-HASH-1\0" || 01 || B(exact decision record) || B(exact provider CAS receipt))`; `EffectReceiptHash = SHA256("HX-EV-EFFECT-RECEIPT-HASH-3\0" || 01 || B(exact complete immutable precommit effect record) || B(exact authenticated nine-tag provider effect-commit receipt) || B(exact eighteen-tag provider readback receipt) || B(exact provider readback authentication carrier))`; `FilteredReceiptHash = SHA256("HX-EV-FILTERED-RECEIPT-HASH-1\0" || 01 || B(exact filtered receipt) || B(exact predicate claim and carrier) || B(exact decision transcript) || B(exact CAS receipt))`; `RouteQuarantineHash = SHA256("HX-EV-ROUTE-QUARANTINE-HASH-1\0" || 01 || B(exact quarantine receipt) || B(exact tagged-authority full-byte readback receipt) || B(exact CAS receipt))`; `PhysicalFilterHash = SHA256("HX-EV-PHYSICAL-FILTER-HASH-1\0" || 01 || B(exact physical-filter receipt) || B(exact purpose-28 identity claim and carrier) || B(exact filter transcript) || B(exact CAS receipt))`; `CaptureRouteBindHash = SHA256("HX-EV-CAPTURE-ROUTE-BIND-HASH-1\0" || 01 || B(exact route-bind record) || B(exact backend CAS receipt))`. Their keys remain the stable keys named above; every referenced record/carrier/CAS receipt is read back and authority-verified before computing a hash. To avoid a self-reference, the atomic provider transaction writes the complete precommit effect record and `Completed` decision tag `09` as the historical `ReceiptDigest = SHA256(exact complete precommit effect record)`; it does not embed the commit receipt, provider-assigned version/ETag, readback receipt or `EffectReceiptHash`. The transaction then seals the nine-tag commit receipt and eighteen-tag readback receipt from the installed immutable bytes and actual assigned values. Only **after** complete readback does the verifier derive `EffectReceiptHash` and authorize the decision or route bind; a missing, changed or unqueryable commit/readback receipt or authentication carrier holds even if the precommit decision exists. `ProviderIdempotency` follows the same atomic definitive-result receipt and ordered readback rule. The decision verifier requires both its tag-`09` precommit digest and the postcommit `EffectReceiptHash`/provider receipts; neither may be inferred from the other. The C3 route-bind tag `04` uses `RouteDecisionHash`, tag `05` uses the matching one of `EffectReceiptHash`, `FilteredReceiptHash` or `RouteQuarantineHash`; C3 route-decision tag `09` uses the matching `FilteredReceiptHash` or `RouteQuarantineHash`; for `Completed` it uses the precommit `ReceiptDigest` and must additionally verify the postcommit `EffectReceiptHash` and both provider receipts before the state has terminal authority. A bare SHA-256 of a DTO, provider-selected serialization or hash-only proof grants no route decision. The embedded cross-record fields are also fixed: filtered receipt tag `12` is `FilteredDecisionTranscriptHash = SHA256("HX-EV-FILTER-TRANSCRIPT-HASH-1\0" || 01 || B(exact accepted-revision route transcript))`, while physical-filter tag `0e` is `PhysicalFilterDecisionTranscriptHash = SHA256("HX-EV-PHYSICAL-FILTER-TRANSCRIPT-HASH-1\0" || 01 || B(exact accepted-revision physical transcript))`. Route-quarantine tag `09` is `AddressedCarrierHash = SHA256("HX-EV-ADDRESSED-CARRIER-1\0" || 01 || B(exact complete transport body) || u32 orderedHeaderCount ||` each `B(exact original header name) || B(exact original header value))`; its tag `0a` uses the `HX-EV-ADDRESSED-ROUTE-PROOF-1` formula below. The tagged AD-31 reference proof is `SHA256("HX-EV-AD31-REFERENCE-PROOF-1\0" || 01 || B(exact signed item/index record and carrier) || B(exact storage CAS receipt) || B(exact full-byte readback receipt))`; the tagged broker reference proof uses the distinct `HX-EV-BROKER-REFERENCE-PROOF-1\0` domain with the same framed three source classes under broker authority. Compare each full authenticated source, signer, generation/ETag and byte stream before its digest. No alternate bare-hash encoding is accepted.
 
-After the initial set and CAS/full-byte readback, CAS-create `HX-EV-ADDRESSED-CAPTURE-LINK-1\0 || 01 || 000b` (≤16 KiB) at `addressed-capture-link:` plus SHA-256 of `U handoff key || B32 exact handoff hash`: `01` U handoff key, `02` B32 handoff hash, `03` B32 full handoff route-set root, `04` B tagged reference, `05` B32 exact initial object-set anchor hash, `06` B32 active object-head CAS-receipt hash **at this handoff attachment**, `07` N resulting attachment generation, `08` U resulting attachment ETag, `09` B32 complete carrier/header hash, `0a` U storage authority ID and `0b` Q link UTC. The link is signed/backend-authenticated and read back with the committed handoff, initial object set and complete chain through the attachment generation; that generation must contain this handoff's exact `AddressedRoutes` entry before link creation. Its immutable create-once `HX-EV-ADDRESSED-CAPTURE-LINK-CAS-1\0 || 01 || 0007` receipt (≤16 KiB) has `01` U link key, `02` B32 exact link hash, `03` U literal `Absent`, `04` N resulting link generation, `05` U resulting link ETag, `06` U storage authority ID and `07` Q link commit UTC; the link and receipt commit atomically and read back together. The link key excludes the tagged reference, so another reference or changed link for this same handoff conflicts rather than creating a second authoritative link. `CaptureLinkHash = SHA256("HX-EV-ADDRESSED-CAPTURE-LINK-HASH-1\0" || 01 || B(exact link) || B(exact authenticated link CAS receipt))`; route binds and readback use this hash after both inputs verify. Each route-quarantine tag `0a` is `SHA256("HX-EV-ADDRESSED-ROUTE-PROOF-1\0" || 01 || B(exact permanent-poison proof) || B(exact link and link CAS receipt) || B(exact initial set and storage CAS receipt) || B(each complete object-version record and CAS receipt through this handoff attachment) || B(exact full-byte readback receipt) || U HandlerRouteId)`. It proves that the handoff entry exists in the object-wide union before its first quarantine decision; every later 2xx separately verifies the chain through the current head. The route decision references that exact quarantine receipt. For every route in the complete handoff set, CAS-create `HX-EV-ADDRESSED-CAPTURE-ROUTE-BIND-1\0 || 01 || 0007` (≤16 KiB) at the capture-link key plus `U HandlerRouteId`: `01` B32 exact capture-link hash, `02` B32 initial set hash, `03` U HandlerRouteId, `04` B32 exact terminal route-decision hash, `05` B32 exact matching completed/filtered/quarantined receipt hash, `06` B32 committed handoff hash and `07` U receipt authority ID. It is backend-authenticated and read back with the exact decision and receipt. A completed or filtered decision made before capture is linked **forward** only by this post-handoff record; its immutable old bytes are never claimed to bind a future set. A quarantined decision additionally binds the link through its tag-`0a` receipt proof. Before 2xx, enumerate the handoff route set and require exactly one matching route-bind record per route, all naming this handoff's **same** link/object-set anchor/route root/tagged reference, plus the active storage chain. A missing link/bind, a route absent from the handoff, a second conflicting reference or a changed earlier decision holds; the immutable handoff itself is never rewritten. Preflight one link, one create-once link receipt and at most 4,096 complete route-bind records within provider and B6/A8 evidence quotas **before** the first quarantine decision; an unsupported slot/record size holds before any route effect or physical 2xx.
+After the handoff's `AddressedRoutes` entry and identity attachment are installed and CAS/read back, create `HX-EV-ADDRESSED-CAPTURE-LINK-1\0 || 02 || 000b` (≤16 KiB) at `addressed-capture-link:` plus SHA-256 of `U handoff key || B32 exact handoff hash`: `01` U handoff key, `02` B32 handoff hash, `03` B32 full handoff route-set root, `04` B tagged reference, `05` B exact `InitialObjectAnchor`, `06` B32 active object-head CAS-receipt hash at this handoff attachment, `07` N resulting attachment generation, `08` U resulting attachment ETag, `09` B32 complete carrier/header hash, `0a` U storage authority ID and `0b` Q link UTC. The link verifies either initial kind plus the complete extension chain through the attachment generation; that generation must contain this handoff's exact entry/attachment. Its immutable create-once `HX-EV-ADDRESSED-CAPTURE-LINK-CAS-1\0 || 01 || 0007` receipt has `01` U link key, `02` B32 exact link hash, `03` U literal `Absent`, `04` N resulting link generation, `05` U resulting link ETag, `06` U authority and `07` Q commit UTC. `CaptureLinkHash = SHA256("HX-EV-ADDRESSED-CAPTURE-LINK-HASH-2\0" || 02 || B(exact link) || B(exact link CAS receipt))`. The corresponding `00` retained-object forward record is required before a route quarantine decision.
+
+Each route-quarantine tag `0a` is `SHA256("HX-EV-ADDRESSED-ROUTE-PROOF-2\0" || 02 || B(exact permanent-poison proof) || B(exact link and link CAS receipt) || B(exact InitialObjectAnchor and initial record/receipt) || B(each complete extension/version and CAS receipt through this attachment) || B(exact addressed forward record and receipt) || B(exact full-byte readback receipt) || U HandlerRouteId)`. For every route, CAS-create `HX-EV-ADDRESSED-CAPTURE-ROUTE-BIND-1\0 || 02 || 0007`: `01` B32 exact capture-link hash, `02` B exact `InitialObjectAnchor`, `03` U HandlerRouteId, `04` B32 exact terminal route-decision hash, `05` B32 exact matching completed/filtered/quarantined receipt hash, `06` B32 committed handoff hash and `07` U receipt authority ID. It is backend-authenticated and read back with the exact decision/receipt. A completed or filtered decision made before capture is linked forward only here; a quarantined decision also binds the link and `00` forward record through its route proof. Before 2xx, enumerate the canonical handoff route set and require exactly one bind per route, all naming the same link/anchor/route root/reference and active chain. Missing link/bind/forward record, a route absent from the handoff, a conflicting reference or changed earlier decision holds. Preflight one link/receipt, one forward record/receipt and at most 4,096 route binds before the first quarantine decision.
 
 To change duties, CAS-append `HX-EV-ADDRESSED-OBLIGATION-VERSION-1\0 || 01 || 0009` (≤16 KiB) under the same storage key plus contiguous version: `01` B32 initial set hash, `02` N version, `03` B32 prior version hash (initial set hash at version one), `04` N expected prior generation, `05` U expected prior ETag, `06` B complete **full** current open-list, `07` B exact list of `B(signed closure record and source receipt)` for entries removed at this version, sorted by the closed entry hash (empty if none), `08` U `NoExpiryUntilClosure`, `09` Q version UTC. The storage CAS atomically advances the object/head and persists a common post-CAS receipt whose tag `03` names only the exact pre-CAS version-record hash and whose later tags contain resulting generation/ETag; version `n+1` names version `n` and consumes its resulting compare values. Every prior open entry is present in the new full list unless its individually authenticated closure is in tag `07`; every addition has its opening source. The initial object identity and each immutable handoff capture link never change; later handoff entries enlarge the object-wide union before their links are created. Earlier receipts retain the immutable initial link/set and verify **every** complete version, closure, receipt and full list through the active storage head rather than demand their initial ETag equal the current one. Every original or duplicate poison 2xx reads back the exact retained body and all ordered headers, active no-expiry fence, all open entries and closure proofs, handoff/link, and every addressed route decision/receipt under the current generation/ETag. Missing bytes, partial set, a gap, stale or expiring fence holds non-2xx. Storage atomically blocks expiry, deletion, key retirement and quota refund until every obligation closes with independent proof and no new delivery can arise; a calendar horizon or promised renewal is insufficient.
 
@@ -136,15 +160,37 @@ The only admitted expression language is `01 || u16 rowCount ||` 1..64 rows, eac
 
 Ordinary expiry after a route was accepted does not revoke its historical filter decision: the accepted broker receipt retains the signed claim, acceptance UTC, key/interval proof and exact predicate/input/transform bytes until the owed route closes. A delayed route decision verifies that the claim was valid **at acceptance**, not that delivery occurs before its expiry. Explicit later key revocation, missing accepted-time proof or changed retained bytes holds the route; current catalog settings never classify that already accepted delivery. Physical filtering for an empty accepted set uses the same historical-time rule.
 
-`Filtered` has one distinct, durable, effect-free receipt: `HX-EV-FILTERED-RECEIPT-1\0 || 01 || 0014`, with ordered tags `01..07` equal to the exact seven `EventEffectKey` fields, `08..0a` U component/topic/physical subscription ID, `0b` N accepted membership revision, `0c` B32 handoff route-set hash, `0d..0e` B32 pinned body/attestation hashes, `0f` B exact purpose-specific signed catalog predicate claim, `10` N predicate/route revision, `11` B32 authenticated **accepted-revision** source/view proof hash, `12` B32 exact decision-transcript hash, `13` U literal `Filtered`, `14` B32 exact predicate-input hash. The complete record is ≤16 KiB; a separately retained ≤64 KiB transcript binds full source/pin, selected event type/version, accepted RegistryFingerprint/transform, exact effective predicate input bytes, catalog route identity, predicate bytes and deterministic out-of-scope decision. The accepted membership revision pins both predicate **and input**. Current evolution cannot silently substitute a later effective view; if the original input is unavailable, historical reconstruction is permitted only from authenticated original source and retained accepted-revision registry/transform implementation bytes plus a matching signed proof, otherwise hold. The signed catalog claim fixes predicate bytes, route revision, scope and validity at acceptance. Its receipt key is the C3 handoff key plus `U HandlerRouteId` and `filtered:`, independent of attempt ID. CAS create-once, authenticate the retained acceptance-time signed claim, broker UTC interval and trust proof at the accepted membership revision, plus current revocation state and exact transcript/source/input, then read back complete bytes and referenced proof before proposing the matching `Filtered` route decision. Changed pin, route, revision, input or decision conflicts. `Filtered` authorizes no handler/effect, marker completion by itself or checkpoint; a failed handler cannot be relabeled filtered.
+`Filtered` has one distinct, durable, effect-free receipt: `HX-EV-FILTERED-RECEIPT-1\0 || 02 || 0014`, with ordered tags `01..08` equal to the exact eight `EventEffectKey` fields and `09..0a` U component/topic, `0b` N accepted membership revision, `0c` B32 handoff route-set hash, `0d..0e` B32 pinned body/attestation hashes, `0f` B exact purpose-specific signed catalog predicate claim, `10` N predicate/route revision, `11` B32 authenticated **accepted-revision** source/view proof hash, `12` B32 exact decision-transcript hash, `13` U literal `Filtered`, `14` B32 exact predicate-input hash. The complete record is ≤16 KiB; a separately retained ≤64 KiB transcript binds full source/pin, selected event type/version, accepted RegistryFingerprint/transform, exact effective predicate input bytes, catalog route identity, predicate bytes and deterministic out-of-scope decision. The accepted membership revision pins both predicate **and input**. Current evolution cannot silently substitute a later effective view; if the original input is unavailable, historical reconstruction is permitted only from authenticated original source and retained accepted-revision registry/transform implementation bytes plus a matching signed proof, otherwise hold. The signed catalog claim fixes predicate bytes, route revision, scope and validity at acceptance. Its receipt key is the C3 handoff key plus `U HandlerRouteId` and `filtered:`, independent of attempt ID. CAS create-once, authenticate the retained acceptance-time signed claim, broker UTC interval and trust proof at the accepted membership revision, plus current revocation state and exact transcript/source/input, then read back complete bytes and referenced proof before proposing the matching `Filtered` route decision. Changed pin, subscription, route, revision, input or decision conflicts. `Filtered` authorizes no handler/effect, marker completion by itself or checkpoint; a failed handler cannot be relabeled filtered.
 
 An empty addressed set requires `HX-EV-PHYSICAL-FILTER-1\0 || 01 || 0010` (≤16 KiB), keyed by `physical-filter:` plus SHA-256 of `U component || U topic || U physical subscription || U stable delivery OperationId || U MessageId`, never broker attempt ID. Ordered tags are `01..05` those five U values, `06` N accepted membership revision, `07..08` B32 exact pinned body/attestation hashes, `09` B32 authenticated source/StoredDigest hash, `0a` B32 empty canonical route-set hash, `0b` B exact signed accepted-revision catalog predicate claim, `0c` N predicate/route revision, `0d` B32 accepted-revision predicate-input hash, `0e` B32 full decision-transcript hash, `0f` U literal `Filtered`, `10` B32 `FilterAcceptedSourceHash` from the first definitive C2 Accepted result and immutable broker delivery-log entry below. Its retained transcript proves the same accepted-revision source/input and deterministic physical out-of-scope predicate; no current route state substitutes. CAS create-once and authenticate/read back exact claim, input, transcript, pin, source, empty route set and broker receipt before 2xx. A duplicate with changed bytes, revision or proof conflicts. No unauthenticated empty set, status name alone or filter receipt lacking the matching decision authorizes physical acknowledgement.
 
-The stable delivery OperationId in the physical-filter key and tag 04 is derived from C2's first definitive Accepted HX-EV-PUBLICATION-ATTEMPT-RESULT-1 claim and purpose-21 carrier, its purpose-20 registered attempt, the purpose-22 signed chain head and the broker's immutable physical delivery-log entry. The broker CAS-creates HX-EV-ACCEPTED-DELIVERY-LOG-1\0 || 01 || 000c: tags 01..06 are U authenticated tenant/domain/component/topic/physical subscription/broker-log partition; 07 is U immutable physical delivery-log ID; 08..09 are N accepted membership revision/log generation; 0a is B32 C2 ResultObservationHash; 0b is B32 AcceptedImageHash; and 0c is B32 exact broker acceptance-index hash. AcceptedImageHash = SHA256("HX-EV-ACCEPTED-IMAGE-1\0" || 01 || B(exact accepted rendered body) || B(exact complete accepted header image)). The accepted-revision broker delivery authority signs the complete log claim under purpose 28; an atomic log CAS receipt names only the pre-CAS log claim/carrier hash, expected generation/ETag, resulting generation/ETag, authority and commit UTC. No signed log claim contains an unknown resulting ETag. The create-once log key is `accepted-delivery-log:` plus lowercase-hex `SHA256("HX-EV-ACCEPTED-DELIVERY-LOG-KEY-1\0" || 01 || U tenant || U domain || U component || U topic || U physical subscription || U broker-log partition || U immutable physical delivery-log ID)`; broker attempt ID is never an input. It maps every redelivery to the same log generation, first Accepted result and partition. A changed log entry, result, accepted revision or image at that key conflicts; missing readback holds.
+The stable delivery OperationId in the physical-filter key and tag `04` is derived from C2's exact first definitive Accepted result and the single current accepted-delivery codec below. `HX-EV-ACCEPTED-DELIVERY-LOG-1\0 || 02 || 000d` (≤16 KiB) has exactly these ordered fields: `01` U authenticated tenant, `02` U domain, `03` U component, `04` U topic, `05` U destination ID, `06` U physical subscription ID, `07` U broker-log partition, `08` U immutable physical delivery-log ID, `09` N positive accepted membership revision, `0a` N positive immutable broker delivery-log generation, `0b` B32 `HistoricalAcceptedObligationHash`, `0c` B32 `AcceptedImageHash` and `0d` B32 exact broker acceptance-index record-and-readback hash. Every U is 1..1,024 bytes. `AcceptedImageHash = SHA256("HX-EV-ACCEPTED-IMAGE-1\0" || 01 || B(exact accepted rendered body) || B(exact complete accepted header image))`. Tag `0b` is always the one C2 formula over the exact purpose-21 claim/carrier plus acceptance-index record/readback; codec version `01` and the historical tag-`0a` `ResultObservationHash` interpretation are superseded and have no current authority. The accepted-revision broker delivery authority signs the exact thirteen-field claim under purpose `28`, with issuer/SPKI, tenant/destination/subscription/partition scope, interval and revocation pinned in the accepted revision's broker trust map.
 
-FilterAcceptedSourceHash = SHA256("HX-EV-PHYSICAL-FILTER-ACCEPTED-1\0" || 01 || B(exact first Accepted result claim) || B(exact purpose-21 carrier) || B(exact signed log claim) || B(exact purpose-28 log carrier) || B(exact atomic log CAS receipt)). StableFilterOperationId is canonical lowercase hex of SHA256("HX-EV-PHYSICAL-FILTER-OP-2\0" || 01 || B32 FilterAcceptedSourceHash || U(exact committed C3 handoff key text)); C3 physical-filter receipt tag 10 and purpose-28 identity tag 05 equal FilterAcceptedSourceHash. The broker signs HX-EV-PHYSICAL-FILTER-IDENTITY-1\0 || 01 || 0008 under distinct physical-delivery purpose 28: tags 01..03 are U component/topic/subscription, 04 is U derived OperationId, 05 is B32 FilterAcceptedSourceHash, 06 is B32 handoff hash, 07 is N signed accepted membership revision and 08 is Q Accepted UTC. Its ≤16 KiB claim/carrier, complete first Accepted result/attempt/chain, immutable signed delivery-log claim/carrier/CAS receipt and handoff are retained/read back before the physical-filter create-once CAS. The verifier checks tenant, domain, component/topic, subscription, partition, accepted revision, complete body/header pin, C2 attempt/index, log generation/ETag and signed Accepted UTC against the accepted revision's pinned broker physical-delivery issuer/SPKI/purpose/interval and current revocation. Redelivery or a changed broker attempt ID resolves the same log entry, source hash and filter key; changed source, pin, revision, route-set or predicate bytes at that key conflict. A missing original Accepted result/log identity, handoff or signed revision holds empty-route acknowledgement.
+The create-once log key is `accepted-delivery-log:` plus lowercase-hex `SHA256("HX-EV-ACCEPTED-DELIVERY-LOG-KEY-2\0" || 01 || U tenant || U domain || U component || U topic || U destination ID || U physical subscription || U broker-log partition || U immutable physical delivery-log ID)`; broker attempt ID is never an input. The broker-selected log ID is discoverable only through `accepted-delivery-index:` plus lowercase-hex `SHA256("HX-EV-ACCEPTED-DELIVERY-INDEX-KEY-1\0" || 01 || B32 HistoricalAcceptedObligationHash || U tenant || U domain || U component || U topic || U destination ID || U physical subscription || U broker-log partition)`. `HX-EV-ACCEPTED-DELIVERY-INDEX-1\0 || 01 || 000d` (≤16 KiB) has ordered `01` B32 `HistoricalAcceptedObligationHash`, `02..08` U tenant/domain/component/topic/destination ID/physical subscription/partition, `09` U immutable physical delivery-log ID, `0a` N the same positive broker delivery-log generation as log tag `0a`, `0b` B32 exact purpose-28 log claim-and-carrier hash, `0c` B32 deterministic atomic bundle operation hash and `0d` U broker delivery authority. `AcceptedDeliveryBundleOperationHash = SHA256("HX-EV-ACCEPTED-DELIVERY-BUNDLE-OP-1\0" || 01 || U reverse-index key || U accepted-log key || B32 HistoricalAcceptedObligationHash || B32 log claim-and-carrier hash)`; its lowercase hex is the bundle operation ID. The same purpose-28 authority signs the exact index claim and retains both carriers. No pre-CAS claim contains the later bundle receipt or resulting record ETag.
+
+Reverse index and log commit under one exact `HX-EV-ACCEPTED-DELIVERY-BUNDLE-CAS-1\0 || 01 || 000c` receipt: `01` U reverse-index key, `02` U accepted-log key, `03` U deterministic bundle operation ID, `04` B32 exact index claim-and-carrier hash, `05` B32 exact log claim-and-carrier hash, `06` U literal `Absent/Absent`, `07` N positive resulting reverse-index record generation, `08` U resulting reverse-index ETag, `09` N positive resulting accepted-log record generation, `0a` U resulting accepted-log ETag, `0b` U broker delivery authority and `0c` Q commit UTC. Receipt tag `03` is the lowercase-hex rendering of index tag `0c`. The provider atomically installs both exact claims/carriers and this backend-authenticated immutable receipt; neither signed claim contains its resulting record generation/ETag. `AcceptedDeliveryBundleReceiptHash = SHA256("HX-EV-ACCEPTED-DELIVERY-BUNDLE-CAS-HASH-1\0" || 01 || B(exact twelve-tag receipt))` is retained beside both records and consumed by `FilterAcceptedSourceHash`, not embedded back into either pre-CAS claim. Readback verifies both keys, claims, carriers, operation hash, record generations/ETags and the broker delivery-log generation independently. A different ID, generation, scope, destination, obligation, accepted image, acceptance index or carrier at either key conflicts before a second log or filter OperationId exists. Lost acknowledgement queries the reverse key first, authenticates the one bundle receipt and follows its exact log ID; a broker unable to provide this atomic bundle is not empty-route-filter ready.
+
+`FilterAcceptedSourceHash = SHA256("HX-EV-PHYSICAL-FILTER-ACCEPTED-2\0" || 01 || B(exact first Accepted result claim) || B(exact purpose-21 carrier) || B(exact acceptance-index record) || B(exact authenticated acceptance-index readback receipt) || B(exact signed reverse-index claim) || B(exact purpose-28 reverse-index carrier) || B(exact signed thirteen-field log claim) || B(exact purpose-28 log carrier) || B(exact twelve-tag atomic bundle-CAS receipt))`. `StableFilterOperationId` is canonical lowercase hex of `SHA256("HX-EV-PHYSICAL-FILTER-OP-2\0" || 01 || B32 FilterAcceptedSourceHash || U exact committed C3 handoff key text)`. C3 physical-filter receipt tag `10` and purpose-28 identity tag `05` equal this source hash. The broker signs `HX-EV-PHYSICAL-FILTER-IDENTITY-1\0 || 01 || 0008` under purpose `28`: tags `01..03` U component/topic/subscription, `04` U derived OperationId, `05` B32 `FilterAcceptedSourceHash`, `06` B32 handoff hash, `07` N accepted membership revision and `08` Q Accepted UTC. Before its create-once CAS, verify and retain the complete purpose-20 attempt, purpose-21 result/carrier, purpose-22 head, acceptance-index record/readback, exact reverse-index and log claims/carriers, atomic bundle receipt and handoff. Redelivery resolves the reverse index before the log and reproduces the same source hash/OperationId; a bare log ID, Python/local tuple rendering, broker retry token or superseded `PHYSICAL-FILTER-OP-1` bytes has no authority.
+
+Every retained-object head has one immutable discriminated initial anchor used by capture links, route proofs, closure records, purpose-18 retention and full readback: `InitialObjectAnchor = 00 || B32 InitialSetHash || B32 CaptureCasReceiptHash` for `AddressedInitial`, or `01 || B32 PhysicalFenceHash || B32 CaptureCasReceiptHash` for `PhysicalInitial`, enclosed exactly once by `B` when stored in a tagged codec. Other discriminators, a mixed extension presented as an initial anchor or a hash without the exact initial record and receipt are invalid. The anchor never changes after the first CAS. A physical-first→addressed join keeps discriminator `01`; the addressed capture link and every route proof accept and verify that physical initial record/source plus the complete extension chain. An addressed-first→unidentified join keeps discriminator `00`; purpose-18 uses the extension-backed retention variant below and never demands a forbidden second physical initial fence. All closures and 2xx readback start from this anchor, then traverse every exact common CAS receipt and extension through the current head.
+
+When a new delivery kind joins, its pre-CAS identity is `HX-EV-CAPTURE-IDENTITY-ATTACHMENT-2\0 || 02 || 0009` (≤16 KiB): `01` U kind exactly `Addressed` or `Unidentified`, `02` U stable handoff key or stable physical delivery ID, `03` B32 exact committed handoff hash or purpose-16 `PhysicalIdentityHash`, `04` O(B32) exact purpose-1b capture-scope claim-and-carrier hash (absent for `Addressed`, present for `Unidentified`), `05` O(B32) exact retention-opening evidence hash (absent for `Addressed`, present for `Unidentified`), `06` B32 latest purpose-2b canonical-object mapping hash, `07` B32 exact opening `CaptureEntryHash`, `08` B exact `InitialObjectAnchor` and `09` B32 exact retained carrier/body-and-ordered-header hash. `RetentionOpeningHash = SHA256("HX-EV-RETENTION-OPENING-1\0" || 01 || B(exact tagged reference and full-byte readback receipt) || B(exact no-expiry storage authority/configuration claim) || B(exact purpose-18 issuer authorization))`; all inputs exist and authenticate before extension CAS, but it is not the later purpose-18 source. `IdentityAttachmentHash = SHA256("HX-EV-CAPTURE-IDENTITY-ATTACHMENT-HASH-2\0" || 02 || B(exact attachment))`. The attachment contains no capture-link, purpose-18 claim/carrier, physical-quarantine receipt or other future bytes. A later delivery sharing the object appends its own attachment and entries; it never replaces the original initial record/source, borrows another delivery's scope or collapses two physical identities.
+
+The first cross-kind transition and every later mixed-kind update use signed `HX-EV-RETAINED-OBJECT-EXTENSION-1\0 || 01 || 000f` (fifteen fields, ≤16 KiB) at the existing canonical retained-object key: `01` U exact stable object-key text, `02` N positive contiguous extension ordinal, `03` U predecessor kind exactly `AddressedInitial`, `PhysicalInitial` or `MixedExtension`, `04` B32 authenticated immediate predecessor head hash, `05` N expected prior generation, `06` U expected prior ETag, `07` B complete current canonical open-obligation list, `08` B sorted unique new opening entries with their complete authority claims/carriers/readback receipts, `09` B sorted closure list using C3's exact closure codec, `0a` B32 latest canonical-object mapping hash, `0b` B32 complete retained-byte/header hash, `0c` B sorted unique complete identity attachments, `0d` U literal `NoExpiryUntilClosure`, `0e` U storage issuer and `0f` Q extension UTC. The configured storage authority signs the exact record under purpose `2c`, with issuer/SPKI/partition/object scope, interval and revocation pinned in the storage trust map. The common post-CAS receipt atomically commits the extension, full obligation union, new attachments and retained object, names only the pre-CAS extension hash plus tags `05..06`, and supplies resulting generation/ETag. `RetainedObjectExtensionHash = SHA256("HX-EV-RETAINED-OBJECT-EXTENSION-HASH-1\0" || 01 || B(exact extension) || B(exact purpose-2c carrier) || B(exact common post-CAS receipt))`; the next extension consumes this hash and the receipt's resulting compare values. The first extension preserves every predecessor entry and the initial anchor, adds the joining kind's complete entries/attachment in that same linearizable CAS, and leaves the original initial record/source byte-identical. Once mixed, all additions, removals, proof refreshes and later deliveries use this extension codec, never either single-kind version codec.
+
+Each attachment gains later evidence only through create-once `HX-EV-RETAINED-OBJECT-FORWARD-1\0 || 01 || 0008` (≤16 KiB), keyed by lowercase-hex `SHA256("HX-EV-RETAINED-OBJECT-FORWARD-KEY-1\0" || 01 || U stable object key || U attachment kind || U attachment stable identity)`: `01` U stable object key, `02` B32 `IdentityAttachmentHash`, `03` B32 exact extension hash that installed it, `04` B exact `InitialObjectAnchor`, `05` B one-byte discriminator plus B32 target hash (`00 || CaptureLinkHash` for `Addressed`, `01 || PhysicalQuarantineReceiptHash` for `Unidentified`), `06` O(B32) exact purpose-18 source hash (absent only for `Addressed`), `07` U storage authority and `08` Q forward-record UTC. Its backend-authenticated CAS receipt names the exact pre-CAS record hash, absent prior value, resulting generation/ETag, authority and commit UTC. The addressed record is created after its capture link and before a quarantine decision can authorize 2xx; the unidentified record is created after purpose-18 and the physical-quarantine receipt, but before physical 2xx. An identical lost acknowledgement follows the same forward key/receipt; a second target, changed attachment/extension/anchor/source or wrong discriminator conflicts. Route proofs and physical receipt readback verify their exact forward record. This forward-only relationship removes every immutable attachment/link cycle.
+
+For an unidentified duty installed by extension, purpose-18 uses `HX-EV-PHYSICAL-RETENTION-1\0 || 02 || 0009` with the same tags `01..08` as C4 and tag `09` changed from B32 to `B RetentionAnchor`: `00 || B32 PhysicalFenceHash` for physical-initial, or `01 || B32 RetainedObjectExtensionHash || B32 IdentityAttachmentHash` for extension-backed retention. The exact tagged value is enclosed once by `B`. The purpose-18 authority signs only after the referenced initial fence or extension and full-byte readback exist; therefore the source is acyclic and does not occur inside its attachment. `PhysicalRetentionSourceHash = SHA256("HX-EV-PHYSICAL-RETENTION-HASH-2\0" || 02 || B(exact purpose-18 claim) || B(exact carrier))`. The later physical receipt and forward record bind this source. Lost extension acknowledgement queries the deterministic operation ID derived from stable object key, ordinal and pre-CAS extension hash. A gap, stale compare, noncanonical union, missing source/attachment/forward record or attempt to install the other initial codec holds before quarantine or 2xx.
 
 ## C4. Legacy handoff, capture and safe diagnostics
+
+The exact legacy manifest schema is `HX-EV-LEGACY-HANDOFF-1\0 || 01 || 0017` with these ordered draft §4 values, superseding the grouped `01..0d` summary below: `01` U component, `02` U topic, `03` U physical subscription ID, `04` N authenticated historical membership/configuration revision, `05` U MessageId, `06` U tenant, `07` U domain, `08` U aggregate type, `09` U aggregate ID, `0a` N aggregate sequence, `0b` N authenticated global position, `0c` B32 StoredDigest, `0d` N exact original JSON byte length, `0e` B32 exact received JSON byte hash, `0f` B32 exact original CloudEvent core/ordered-header identity hash, `10` B32 canonical decoded stored-event/readable-payload/protection/core identity hash, `11` B complete sorted historical route set, `12` U stable handoff OperationId, `13` B32 shared global binary-pin hash, `14` B32 exact binary delivery-body hash, `15` B32 exact purpose-02 attestation hash, `16` B exact immutable send-intent bytes, and `17` B32 authenticated encrypted first-variant side-record hash. Every N is checked nonnegative and within the imported bound; every U/B is length-framed once. The verifier compares all 23 exact tag/type/value triples, so scope and event identity cannot be encoded by a writer-selected composite.
+
+The 64-variant limit is enforced by one handoff-scoped linearizable ledger, not by counting independent hash-keyed attempt records. `HX-EV-LEGACY-VARIANT-ENTRY-1\0 || 01 || 0008` has ordered `01` U stable handoff key, `02` N contiguous ordinal 1..64, `03` B32 exact attempt-key hash, `04` B32 exact attempt-record hash, `05` B32 exact protected variant-side hash, `06` B32 exact attempt-side-link hash, `07` B32 predecessor entry hash (zero only at ordinal one) and `08` Q storage commit UTC. Its reverse key is `legacy-variant-index:` plus lowercase-hex `SHA256("HX-EV-LEGACY-VARIANT-INDEX-KEY-1\0" || 01 || U stable handoff key || B32 exact attempt-key hash)` and maps one exact attempt to one immutable ordinal/entry.
+
+`HX-EV-LEGACY-VARIANT-HEAD-1\0 || 01 || 0008` contains `01` U stable handoff key, `02` N checked variant count, `03` B32 latest entry hash, `04` B32 previous authenticated head hash (zero at first), `05` O(N) expected prior generation, `06` O(U) expected prior ETag, `07` U storage authority and `08` Q head UTC. Tags `05..06` are absent together only for the first CAS and present together thereafter; resulting generation/ETag occur only in `HX-EV-LEGACY-VARIANT-CAS-1\0 || 01 || 0009`: `01` U stable handoff key, `02` U deterministic CAS operation ID, `03` B32 exact pre-CAS bundle hash, `04` O(N) expected generation, `05` O(U) expected ETag, `06` N resulting generation, `07` U resulting ETag, `08` U storage authority and `09` Q commit UTC. The operation ID is derived from handoff key, proposed ordinal and exact pre-CAS bundle hash.
+
+For a new exact attempt, one storage transaction CAS-compares the variant head and atomically creates the reverse index, contiguous entry, `HX-EV-LEGACY-ATTEMPT-1`, protected variant-side object/metadata, attempt CAS receipt, side CAS receipt, attempt-side link, new head and immutable bundle receipt. Ordinal one also binds manifest tag `17`; later ordinals preserve it. Duplicate lookup starts at the reverse key and compares the complete attempt/body/core/headers/protected side/link/head bytes. Lost acknowledgement queries the deterministic operation ID and reverse key, then follows the retained receipt; identical bytes reuse the ordinal. Two writers observing count 63 compete on the same head ETag, so only one ordinal 64 bundle can commit and the loser follows it or holds; count 64 rejects every distinct sixty-fifth attempt as `LegacyHandoffCapacityHold`. Any provider that cannot atomically reserve the ordinal with all attempt/side evidence holds before writing any partial variant or acknowledging the carrier. These atomic bundle rules supersede any later prose that could otherwise be read as permitting separate visible attempt, side and link commits.
 
 Queued flat JSON is a separately selected ingress mode. Authenticate original broker component/topic/physical subscription/configuration revision, exact body/core/headers and original publication/outbox, then trusted source lookup by scoped MessageId. Derive the **historical complete** logical route set; current membership or broker attempt ID cannot fill a missing route. A one-time JSON→binary migration is permitted only with independent proof of **no prior binary pin/send**. If an authenticated prior binary pin already exists, reuse its exact bytes only after matching original JSON source, historic route set and send intent; an ambiguous prior send or pin conflicts/holds without a second pin. Under global MessageId CAS, install or reuse that one binary pin/shared send intent and `HX-EV-LEGACY-HANDOFF-1\0 || 01 || 0017` manifest plus every route record under one committed batch pointer. Handoff OperationId encodes component/topic/physical subscription/MessageId/original revision; per-route key adds HandlerRouteId. Manifest tags `01..0d` bind component/topic/subscription/revision/MessageId/scope/event key/sequence/StoredDigest/original JSON length; `0e` hashes **exact received JSON bytes**, `0f` binds exact original core/header identity, `10` hashes canonical decoded stored event/readable payload/protection/core identity, `11` complete sorted route set, `12` OperationId, `13..15` shared binary pin/body/attestation hashes, `16` exact immutable send intent, `17` authenticated encrypted original-body side-record hash. Manifest ≤2 MiB, send intent ≤1 MiB, ≤4,096 routes, original raw body ≤128 MiB and complete encrypted side record ≤193 MiB as specified below, checked before allocation. Whitespace may vary only when each exact attempt and all canonical decoded fields independently authenticate. Changed source, JSON content, route set, side record, revision or pin is `LegacyHandoffConflict` with no second effect. The old JSON physical delivery remains **unacknowledged** after handoff staging/readback. Acknowledge it only after the exact shared binary send has durable broker acceptance, side record/manifest/**all** route records and pin/send intent read back, **and every addressed route** has a durable terminal decision with authenticated `Completed`/`Filtered` receipt (or C3's capture-backed/broker-referenced `Quarantined` decision and receipt for proven permanent poison). No original JSON ack is inferred from merely creating a route record. Crash before pointer commit or before the last route result leaves JSON unacknowledged; after all results, redelivery reuses the same pin and receipts and only then acknowledges. A binary duplicate caused by redelivery uses the same per-route receipts and cannot create another effect.
 
@@ -168,15 +214,27 @@ The broker coordinates three separately signed **source records** before unident
 
 For physical source and receipt references, `PhysicalIdentityHash = SHA256("HX-EV-PHYSICAL-IDENTITY-HASH-1\0" || 01 || B(exact purpose-16 claim) || B(exact purpose-16 carrier) || B(exact immutable broker-log readback receipt))`; `PhysicalNonadmissibilityHash = SHA256("HX-EV-PHYSICAL-NONADMISSIBLE-HASH-1\0" || 01 || B(exact purpose-17 claim) || B(exact purpose-17 carrier) || B(exact no-route/reject-fence receipt))`; `PhysicalQuarantineReceiptHash = SHA256("HX-EV-PHYSICAL-QUARANTINE-HASH-1\0" || 01 || B(exact nine-tag quarantine receipt) || B(exact authenticated receipt CAS readback))`. Receipt tag `06` is `SHA256("HX-EV-PHYSICAL-RETENTION-READBACK-1\0" || 01 || B(exact purpose-18 claim) || B(exact purpose-18 carrier) || B(exact **initial** full-byte readback receipt) || B(exact **initial** physical-fence CAS receipt))`, and tag `09` is `PhysicalNonadmissibilityHash`; later physical-version heads are verified separately on each 2xx and never rewrite immutable receipt tag `06`. Purpose-17 tag `01` and purpose-18 tag `01` are `PhysicalIdentityHash`. These inputs are authenticated in that order, with the exact complete carrier/header bytes and broker/storage readbacks verified before digest comparison. The physical quarantine receipt uses a create-once CAS under the stable physical key; its CAS receipt uses the common pre-CAS installed-record hash rule. No bare source digest, unsigned carrier or unverified ETag can authorize 2xx.
 
+For current purpose-18 codec `02`, the preceding receipt-tag-`06` formula is superseded by `PhysicalRetentionReadbackHash = SHA256("HX-EV-PHYSICAL-RETENTION-READBACK-2\0" || 02 || B(exact purpose-18 claim) || B(exact purpose-18 carrier) || B(exact full-byte readback receipt at retention-source creation) || B(exact discriminated RetentionAnchor source bytes) || B(exact CAS receipt named by that anchor))`. For discriminator `00`, the final two inputs are the physical initial fence and its receipt. For discriminator `01`, they are the exact extension/attachment and common receipt that installed the unidentified duty; no physical initial fence exists. Physical-quarantine receipt tag `06` uses this hash. Its separate retained-object forward record later binds the exact `PhysicalQuarantineReceiptHash` without rewriting receipt tag `06`.
+
 For an AD-31-only physical capture, tag `05` of the quarantine receipt, identity tag `07`, retention tag `02` and obligation-fence tag `02` all carry the **same** `00` tagged AD-31 key/item-index proof; no broker full-byte reference ID is required. The broker still signs the immutable physical delivery ID, complete byte/header hash, historical no-route proof and no-future-route fence from its own delivery log. Purpose-`18` is signed by the configured AD-31 storage authority, with the initial post-CAS generation/ETag receipt hash in tag `06`, exact AD-31 item/index readback-receipt hash in tag `08`, and the initial AD-31 no-expiry obligation record/receipt in tag `09`. Before 2xx, resolve the key only inside the signed purpose-`1b` isolated scope, decrypt and compare the **complete** retained transport bytes and ordered headers to broker source bytes, verify item/index proof, generation, ETag and fence in one authority-specific readback; a hash match without full bytes holds. This branch admits only a carrier fitting the 128 MiB AD-31 raw cap and exact protected-output/header budgets. For a larger carrier, the `01` broker-reference branch remains mandatory, with purpose-`18` and the obligation fence signed/read back by the broker storage authority. A mixed discriminator, missing authority-specific trust map, cross-scope reference, shorter retention or unsupported atomic storage fence holds. Both branches use the same stable physical CAS key, signed nonadmissibility record and receipt bound; neither grants an addressed route result.
 
 The initial physical fence is `HX-EV-PHYSICAL-OBLIGATION-FENCE-1\0 || 01 || 000b` (≤16 KiB): `01` U signed capture scope ID, `02` B exact tagged authority reference from identity tag `07`, `03` B32 physical identity-record hash, `04` B32 complete carrier hash, `05` O(N) expected prior storage generation, `06` O(U) expected prior ETag (both absent only on create), `07` B exact complete canonical open-obligation list using C3's `HX-EV-CAPTURE-OBLIGATIONS-1` and entry/closure codecs, `08` U `NoExpiryUntilClosure`, `09` Q fence-install UTC, `0a` U storage authority ID and `0b` B32 partition/access-policy hash. The stable key is `retained-object-obligation:` plus lowercase-hex `SHA256("HX-EV-RETAINED-OBJECT-KEY-1\0" || 01 || U authenticated storage partition || U storage authority ID || u8 authority tag || U canonical physical object ID)` using C3's exact canonical-ID authority mapping; the tagged reference proof, signed capture scope and stable physical delivery ID are verified **values** at that one object key, never key components; the identity hash is an immutable value at that key, so changing identity bytes cannot create an alternate fence branch. The initial list includes separate exact retry, delayed-delivery, rollback, backup and incident entries with their signed opening sources; a broker no-future-delivery proof is necessary for their eventual closure. A second delivery or refreshed AD-31 item/index proof for this same physical object joins this head and extends its union before physical quarantine; a changed proof without a verified next CAS version conflicts. Purpose-18 tag `09`, the physical identity and quarantine receipt resolve this same canonical ID/head. A signed canonical-ID mapping is mandatory before any alias can name an already fenced object; it supplies the same canonical partition, authority ID, tag and object ID for key derivation regardless of the alias issuer. Independently fenced distinct IDs may carry equal bytes. The storage authority atomically installs the fence on the tagged AD-31 item/index or broker full-byte object and persists C3's common authenticated post-CAS receipt under the exact stable key and operation ID. This is the same key and CAS head used for addressed capture. If an addressed initial set already owns that head, a second physical initial fence conflicts; a signed, atomic cross-kind extension preserving the complete existing obligation union is required or physical quarantine holds. The inverse transition follows the same rule. A proof refresh can advance only this shared head and cannot create a second addressed or unidentified initial fence. The receipt, **not a pre-CAS record field**, contains resulting generation/ETag. Purpose-`18` retention tag `09` is `PhysicalFenceHash = SHA256("HX-EV-PHYSICAL-FENCE-HASH-1\0" || 01 || B(exact initial fence record) || B(exact initial post-CAS receipt))`; the signed purpose-`18` source and immutable full-byte reference anchor all later versions. If the provider cannot persist/query the post-CAS receipt atomically with the object CAS, physical quarantine holds before 2xx.
 
-Every update appends `HX-EV-PHYSICAL-OBLIGATION-VERSION-1\0 || 01 || 000d` (≤16 KiB) under the stable physical key plus one-based contiguous version: `01` U signed capture scope, `02` B exact tagged reference, `03` B32 physical identity-record hash, `04` B32 exact initial signed purpose-`18` retention-source hash, `05` N version, `06` B32 immediate predecessor hash (initial fence hash at version one), `07` N expected prior generation, `08` U expected prior ETag, `09` B complete current canonical open-list, `0a` B exact signed closure records/source receipts for removed entries, sorted by the closed entry hash, `0b` B32 complete carrier hash, `0c` U `NoExpiryUntilClosure` and `0d` Q update UTC. The same storage CAS advances the current physical-fence head, installs this version, keeps full retained bytes and persists the common post-CAS receipt with resulting generation/ETag; the next version consumes those exact compare values. Define `PhysicalVersionHash = SHA256("HX-EV-PHYSICAL-VERSION-HASH-1\0" || 01 || B(exact version record) || B(exact version post-CAS receipt))` and `PhysicalRetentionSourceHash = SHA256("HX-EV-PHYSICAL-RETENTION-HASH-1\0" || 01 || B(exact signed purpose-18 claim) || B(exact purpose-18 carrier))`; version tag `04` uses the latter, and tag `06` uses the preceding `PhysicalVersionHash` (or `PhysicalFenceHash` at version one). The version verifies the purpose-`18` source's initial fence/receipt and every predecessor, opening source, individual closure and generation/ETag receipt; no update can replace the initial signed source, drop an unclosed entry or change scope, reference, carrier bytes or partition. A closure record may remove one open entry only after independent signed completion and broker no-future-duty proof; a root alone never proves removal. The storage authority readback returns the complete initial source/fence and **all** versions through the current head, current no-expiry state and all body/header bytes in one object generation. Every original and duplicate physical-quarantine 2xx repeats this full verification and the purpose-`16/17/18` source checks. A changed generation without its version/CAS receipt, missing bytes, stale or expiring fence, chain gap, changed scope or unproved removal holds non-2xx; the original purpose-`18` proof remains anchored and verifiable after a legitimate update. The backend blocks expiration, deletion, key retirement and quota refund until independently authenticated closure of every open duty and no future acceptance.
+That last purpose-18 sentence describes only current codec-02 `RetentionAnchor` discriminator `00` (physical-first). If the addressed initial set already owns the head, the provider instead installs the unidentified attachment/open entries through purpose-2c, signs purpose-18 with discriminator `01 || RetainedObjectExtensionHash || IdentityAttachmentHash`, creates the physical receipt, and finally installs its `01` retained-object forward record. It never creates `HX-EV-PHYSICAL-OBLIGATION-FENCE-1`. Conversely, when physical initial owns the head, the later addressed attachment enters by purpose-2c and its link/route proof uses the physical `InitialObjectAnchor`. In both directions, every initial record/source remains immutable and the full union is verified under the one generation/ETag chain.
 
-A finite retention-through UTC in the signed source is a lower bound, never permission to delete. Before 2xx the storage authority CAS-installs an authenticated obligation fence keyed by signed capture scope and exact tagged authority reference: it blocks expiration, deletion, quota refund and key retirement while **any** retry, delayed-delivery, rollback, backup or incident obligation is open. The signed purpose-18 source's tag `09` binds the exact initial fence record and post-CAS receipt, including its resulting generation/ETag, full initial open entries and no-expiry rule. Every readback traverses the purpose-`18`-anchored version chain and verifies both full bytes and the current active fence under the same tagged reference. A finite expiry path is permitted only with a signed closed maximum horizon for every obligation, a storage-enforced expiry strictly later than that horizon and a broker proof that no new obligation can arise; otherwise the active fence remains nonexpiring until independently authenticated closure. Renewal intent or a calendar date alone never grants 2xx. Deletion requires a final fenced CAS proving all obligations closed and no future acceptance, then authenticated absence; a previously acknowledged poison blob cannot expire while an obligation is open.
+Every update appends `HX-EV-PHYSICAL-OBLIGATION-VERSION-1\0 || 01 || 000d` (≤16 KiB) under the stable physical key plus one-based contiguous version: `01` U signed capture scope, `02` B exact **current** tagged reference/proof, `03` B32 physical identity-record hash, `04` B32 exact initial signed purpose-`18` retention-source hash, `05` N version, `06` B32 immediate predecessor hash (initial fence hash at version one), `07` N expected prior generation, `08` U expected prior ETag, `09` B complete current canonical open-list, `0a` B exact signed closure records/source receipts for removed entries, sorted by the closed entry hash, `0b` B32 complete carrier hash, `0c` U `NoExpiryUntilClosure` and `0d` Q update UTC. The same storage CAS advances the current physical-fence head, installs this version, keeps full retained bytes and persists the common post-CAS receipt with resulting generation/ETag; the next version consumes those exact compare values. Define `PhysicalVersionHash = SHA256("HX-EV-PHYSICAL-VERSION-HASH-1\0" || 01 || B(exact version record) || B(exact version post-CAS receipt))` and `PhysicalRetentionSourceHash = SHA256("HX-EV-PHYSICAL-RETENTION-HASH-1\0" || 01 || B(exact signed purpose-18 claim) || B(exact purpose-18 carrier))`; version tag `04` uses the latter, and tag `06` uses the preceding `PhysicalVersionHash` (or `PhysicalFenceHash` at version one).
+
+The physical-version codec is legal only while the head remains physical-only. After the first cross-kind extension, every update uses the fifteen-field purpose-2c extension and `PhysicalRetentionSourceHash` is the current codec-02 formula from C3; the version-01 hash formula above is historical. Extension-backed purpose-18 readback starts from the addressed `InitialObjectAnchor`, verifies the attachment and extension receipt named by its discriminator-`01` `RetentionAnchor`, and then traverses later purpose-2c records plus the physical forward record. No physical-version record may be appended beside or after a mixed extension.
+
+The version verifies the purpose-`18` source's initial fence/receipt, the complete purpose-`2b` canonical-object mapping chain and every predecessor, opening source, individual closure and generation/ETag receipt. It cannot replace the initial signed purpose-`18` source, drop an unclosed entry or change capture scope, authority tag, provider-native handle, canonical physical object ID, carrier bytes or partition. Tag `02` **may** advance from an old AD-31 item/index or broker proof generation to its refreshed proof only when the immediately preceding canonical-object map version identifies the old alias/proof and the next map version, signed by the same storage authority, preserves the same handle/canonical ID/bytes and installs the new proof hash/generation/ETag under one CAS predecessor. The physical version then carries that exact current tagged proof and consumes the mapping update's authenticated receipt; a refreshed proof never rewrites the initial identity/source and never selects another fence key. A different alias is legal only after its alias entry joins that same canonical mapping and the physical version authenticates the old-to-current alias transition; an unregistered alias or another canonical ID conflicts. A closure record may remove one open entry only after independent signed completion and broker no-future-duty proof; a root alone never proves removal. The storage authority readback returns the complete initial source/fence, canonical mapping chain and **all** versions through the current head, current no-expiry state and all body/header bytes in one object generation. Every original and duplicate physical-quarantine 2xx repeats this full verification and the purpose-`16/17/18` source checks. A changed proof/generation without its mapping update and physical version/CAS receipt, missing bytes, stale or expiring fence, chain gap, changed scope/canonical ID or unproved removal holds non-2xx; the original purpose-`18` proof remains anchored and verifiable after a legitimate refresh. The backend blocks expiration, deletion, key retirement and quota refund until independently authenticated closure of every open duty and no future acceptance.
+
+A finite retention-through UTC in the signed source is a lower bound, never permission to delete. Before 2xx the storage authority CAS-installs an authenticated obligation fence at the one C3 canonical retained-object key derived from partition, authority tag and canonical physical object ID; signed capture scope and the exact current tagged authority proof are verified values under that head, never alternate key inputs. The fence blocks expiration, deletion, quota refund and key retirement while **any** retry, delayed-delivery, rollback, backup or incident obligation is open. The signed purpose-18 source's tag `09` binds the exact initial fence record and post-CAS receipt, including its resulting generation/ETag, full initial open entries and no-expiry rule. Every readback traverses both the purpose-`18`-anchored physical version chain and the purpose-`2b` canonical mapping chain, verifies full bytes, historical-to-current proof transitions and the current active fence under that same canonical object. A finite expiry path is permitted only with a signed closed maximum horizon for every obligation, a storage-enforced expiry strictly later than that horizon and a broker proof that no new obligation can arise; otherwise the active fence remains nonexpiring until independently authenticated closure. Renewal intent or a calendar date alone never grants 2xx. Deletion requires a final fenced CAS proving all obligations closed and no future acceptance, then authenticated absence; a previously acknowledged poison blob cannot expire while an obligation is open.
+
+In the current codec, “initial fence” in the retention rule means the exact discriminated `RetentionAnchor`: a physical fence for discriminator `00`, or the installing extension plus attachment for discriminator `01`. Likewise “physical version chain” means physical versions while physical-only and the purpose-2c extension chain after mixing. The same nonexpiry, full-byte and authenticated-closure rule applies to both forms.
 
 ## C5. A8 public outcome and terminal `PublishFailed`
+
+The atomic receipt paired with each purpose-25 coordinator drain head is exactly `HX-EV-COORDINATOR-DRAIN-CAS-1\0 || 01 || 0008`: `01` B32 `SHA256("HX-EV-COORDINATOR-DRAIN-INSTALLED-1\0" || 01 || B(exact ten-tag head claim) || B(exact purpose-25 carrier))`, `02` N expected prior coordinator-index generation, `03` O(U) expected prior ETag, `04` N resulting coordinator-index generation, `05` U resulting ETag, `06` B32 exact predecessor `DrainHeadHash`, `07` U backend authority and `08` Q commit UTC. Tag `03` is absent only for the initial CAS; tag `06` is 32 zero bytes only for the first head. The full ten-tag head decoder must verify ordered tags `01..0a`, exact field types, nullable count/latest-row pairing, generation, tag-`07` ETag, predecessor and issuer before comparing this receipt. A matching isolated tag-`07` fragment is never proof of a head or receipt.
 
 Import 6.5a A8's **codec-03** `HX-EV-COMMAND-OUTCOME-1\0` (not draft codec 01): its twelve tag types, `pending/published/failed/unknown/not-applicable`, tag `08` complete publication-set hash for every eventful outcome and absent only for no-op. Exactly one destination per committed event, including rejection events; the expected set is sorted `(ordinal, MessageId, destinationId, exact outbox-intent hash, exact pin hash)`. `HX-EV-PUBLICATION-SET-1\0 || 01 || 0006` binds every observation row under one coordinator fence; ≤1,000 V1 or 256 V2 members, ≤2 MiB complete set, ≤64 MiB distinct referenced receipt/proof evidence. Reserve worst-case complete-set capacity **before** A4 Prepared/append. Accepted rows remain accepted and are never resent; unknown broker attempts reconcile before retry; failed is a definitive **attempt** outcome and may move to higher admitted attempt. Reduce all accepted→published; otherwise any unknown→unknown; otherwise any pending→pending; otherwise failed. A no-op is `not-applicable` with no publication. A partial accepted/pending/failed set never yields published.
 
@@ -200,7 +258,7 @@ Only after exact outcome and reservation readback does the successor-head CAS fi
 
 The **first committed POST reply** remains 6.5a A8's immutable revision-zero pin and is publication-independent except its fixed `resultPayload` gate: only revision-zero `published` includes the payload. Revision-zero pending/unknown/failed accepted commands pin the same 202 `{correlationId,messageId}` application response; committed rejection pins existing ProblemDetails classified from immutable result bytes, never transient publication status. `HX-EV-RESPONSE-PREPARATION-1\0` proceeds NeverStarted→Rendering→Prepared→Pinned under fence, with one render and exact byte readback before first response. Later status revisions never replace that response; exact retry returns original status/application headers/body after current access checks. Never overwrite A5 domain/append result or first response pin with `PublishFailed`; failure after actor save is a publication observation, not proof of no commit. No-op returns its original no-op public shape without publication. Lost response, cancellation or ambiguous save reads back append, full observation, response preparation/pin and head under bounded recovery; missing authority holds without rerender or restaging.
 
-Tags `07..09` of the terminal record hash three **separately retained authenticated canonical source records**, never operator assertions. Each uses draft §4 `U/B/B32/N/Q`, ordered tags, version byte, ≤64 KiB complete record and a purpose-specific broker/provider signature or backend-authenticated CAS/ETag under the exact OperationId and coordinator fence. `HX-EV-TERMINAL-DRAIN-1\0 || 01 || 0007` binds `01` U OperationId, `02` B32 final complete publication-set hash, `03` B **framed** complete member/last-attempt roster, `04` B32 combined authenticated outbox/queue empty-state and coordinator drain-ledger readback, `05` B32 in-flight send ledger closure, `06` B exact coordinator/backend fence (≤8 KiB), `07` Q final observation UTC. Tag `03` is `u32 totalMemberCount || B32 completeRosterHash || u32 segmentCount ||` sorted contiguous descriptors, each `u32 firstOrdinal || u32 count || B32 segmentHash`; count is 1..1,000, segment count 1..1,000, no gaps/overlap, and the descriptor list is ≤48 KiB. Each retained `HX-EV-TERMINAL-MEMBERS-1\0 || 01` segment is ≤64 KiB and contains its exact framed rows: `u32 rowCount` followed by ascending `N ordinal || B32 MessageIdHash || B32 destinationIdHash || B32 pinHash || N actualAttemptCount || O(B32) lastAttemptOperationIdHash || U outcome || O(B32) exact lastReceiptHash || O(B32) exact signed nonadmissibilityProofHash`. For zero attempts the two last-attempt fields are **absent** (`00`), the proof hash is present (`02` plus B32), and outcome is `failed`; with one or more attempts the last-attempt fields are present and the nonadmissibility proof hash is absent. Explicit null (`01`) is invalid in all three optional fields. The proof hash names the exact signed member nonadmissibility record below and is bound by both this roster row and the policy row. `actualAttemptCount` is 0..the signed member maximum; roster outcome is exactly `accepted` or `failed` at terminality and must match the final publication-set row. No `unknown` or `pending` member can terminalize. Deterministically take the longest contiguous prefix satisfying both the kind's row-count cap and the complete 64 KiB encoded-segment cap, then the next; one oversized row holds. Set `segmentHash = SHA256(exact complete segment bytes)` and `completeRosterHash = SHA256("HX-EV-TERMINAL-ROSTER-1\0" || 01 || u32 totalMemberCount || u32 segmentCount || B(each exact ordered segment))`. Compare every row to the final publication set and every exact Accepted/rejected/exhausted definitive C2 result observation; the lastReceiptHash is C2 `ResultObservationHash` of that exact definitive observation/carrier, and the complete immutable observation chain and broker head must verify. The original A8 complete publication set remains ≤2 MiB; the separately retained segments and receipt images are charged under its ≤64 MiB referenced-evidence bound. The immutable signed retry policy fixes 1..64 attempts per member, with ≤1,000 members (≤256 V2) and ≤64,000 attempted sends. Before A4 Prepared, reserve the policy's **worst-case** two observations per attempt, chain head, segment, descriptor and roster bytes under A8's 64 MiB referenced-evidence and 1 GiB operation quotas; if the provider's exact receipt bound will not fit, lower and sign the retry maximum before Prepared or hold admission. It cannot grow afterward. Every roster/attempt/policy row is ≤512 bytes and each scoped segment header (OperationId hash, final-set hash, segment ordinal and row count) is ≤1 KiB. Deterministically fill each ≤64 KiB segment with the longest contiguous sorted row prefix satisfying its row-count and complete encoded-byte caps. A row or segment over its cap holds before the attempt or terminal decision that would exceed it. CAS-create segments under the same OperationId/final set/fence, authenticate exact backend ETag/readback and compare complete bytes to the signed root's descriptor hashes. At terminal CAS and each status inspection, verify **all** exact segments and referenced receipts. Missing, partial, ambiguous or over-budget evidence is `CommandOutcomeHold`, never a truncated proof.
+Tags `07..09` of the terminal record hash three **separately retained authenticated canonical source records**, never operator assertions. Each uses draft §4 `U/B/B32/N/Q`, ordered tags, version byte, ≤64 KiB complete record and a purpose-specific broker/provider signature or backend-authenticated CAS/ETag under the exact OperationId and coordinator fence. Each source claim is codec `02` with an eighth `AuthMode` tag, so its authentication variant is part of the bytes before signing or CAS creation. `HX-EV-TERMINAL-DRAIN-1\0 || 02 || 0008` binds `01` U OperationId, `02` B32 final complete publication-set hash, `03` B **framed** complete member/last-attempt roster, `04` B32 combined authenticated outbox/queue empty-state and coordinator drain-ledger readback, `05` B32 in-flight send ledger closure, `06` B exact coordinator/backend fence (≤8 KiB), `07` Q final observation UTC and `08` U `AuthMode`, exactly `SignedCarrier` or `BackendCas`. Tag `03` is `u32 totalMemberCount || B32 completeRosterHash || u32 segmentCount ||` sorted contiguous descriptors, each `u32 firstOrdinal || u32 count || B32 segmentHash`; count is 1..1,000, segment count 1..1,000, no gaps/overlap, and the descriptor list is ≤48 KiB. Each retained `HX-EV-TERMINAL-MEMBERS-1\0 || 01` segment is ≤64 KiB and contains its exact framed rows: `u32 rowCount` followed by ascending `N ordinal || B32 MessageIdHash || B32 destinationIdHash || B32 pinHash || N actualAttemptCount || O(B32) lastAttemptOperationIdHash || U outcome || O(B32) exact lastReceiptHash || O(B32) exact signed nonadmissibilityProofHash`. For zero attempts the two last-attempt fields are **absent** (`00`), the proof hash is present (`02` plus B32), and outcome is `failed`; with one or more attempts the last-attempt fields are present and the nonadmissibility proof hash is absent. Explicit null (`01`) is invalid in all three optional fields. The proof hash names the exact signed member nonadmissibility record below and is bound by both this roster row and the policy row. `actualAttemptCount` is 0..the signed member maximum; roster outcome is exactly `accepted` or `failed` at terminality and must match the final publication-set row. No `unknown` or `pending` member can terminalize. Deterministically take the longest contiguous prefix satisfying both the kind's row-count cap and the complete 64 KiB encoded-segment cap, then the next; one oversized row holds. Set `segmentHash = SHA256(exact complete segment bytes)` and `completeRosterHash = SHA256("HX-EV-TERMINAL-ROSTER-1\0" || 01 || u32 totalMemberCount || u32 segmentCount || B(each exact ordered segment))`. Compare every row to the final publication set and every exact Accepted/rejected/exhausted definitive C2 result observation; the lastReceiptHash is C2 `ResultObservationHash` of that exact definitive observation/carrier, and the complete immutable observation chain and broker head must verify. The original A8 complete publication set remains ≤2 MiB; the separately retained segments and receipt images are charged under its ≤64 MiB referenced-evidence bound. The immutable signed retry policy fixes 1..64 attempts per member, with ≤1,000 members (≤256 V2) and ≤64,000 attempted sends. Before A4 Prepared, reserve the policy's **worst-case** two observations per attempt, chain head, segment, descriptor and roster bytes under A8's 64 MiB referenced-evidence and 1 GiB operation quotas; if the provider's exact receipt bound will not fit, lower and sign the retry maximum before Prepared or hold admission. It cannot grow afterward. Every roster/attempt/policy row is ≤512 bytes and each scoped segment header (OperationId hash, final-set hash, segment ordinal and row count) is ≤1 KiB. Deterministically fill each ≤64 KiB segment with the longest contiguous sorted row prefix satisfying its row-count and complete encoded-byte caps. A row or segment over its cap holds before the attempt or terminal decision that would exceed it. CAS-create segments under the same OperationId/final set/fence, authenticate exact backend ETag/readback and compare complete bytes to the signed root's descriptor hashes. At terminal CAS and each status inspection, verify **all** exact segments and referenced receipts. Missing, partial, ambiguous or over-budget evidence is `CommandOutcomeHold`, never a truncated proof.
 
 `DrainAttemptCount` counts **coordinator drain invocations**, never broker publication sends or C2 nonce attempts. Before each actual drain invocation, the coordinator CAS-appends `HX-EV-COORDINATOR-DRAIN-ATTEMPT-1\0 || 01 || 0008` (≤16 KiB): `01` U authenticated tenant, `02` B32 ScopeOpHash, `03` U original OperationId, `04` N contiguous one-based drain ordinal, `05` U immutable drain invocation ID, `06` B32 predecessor drain-row hash (zero for first), `07` Q coordinator start UTC and `08` B32 exact coordinator fence/source hash. `DrainRowHash = SHA256("HX-EV-COORDINATOR-DRAIN-ROW-1\0" || 01 || B(exact backend-authenticated row))`. The row and indexed head generation commit atomically; invocation without durable registration is unsupported. A lost acknowledgement queries that exact invocation ID and cannot increment twice. The signed `HX-EV-COORDINATOR-DRAIN-HEAD-1\0 || 01 || 000a` (≤16 KiB) contains `01` U tenant, `02` B32 ScopeOpHash, `03` U OperationId, `04` O(N) count, `05` O(B32) latest row hash, `06` N coordinator index generation, `07` U resulting ETag, `08` B32 predecessor signed head hash, `09` Q coordinator UTC and `0a` U pinned issuer. Purpose `25` signs it under the accepted coordinator trust map, issuer/SPKI, interval and revocation rules. Before signing the head, the provider must preallocate and durably reserve its **resulting** ETag under the expected predecessor generation/ETag, then atomically CAS-install exactly that signed head and an immutable backend receipt naming its pre-CAS claim/carrier hash, expected compare values and same allocated result ETag. An unused allocation is inert; a mismatched allocated/actual ETag or provider without this atomic preallocation-and-sign capability holds. No signed head may guess or claim an unknown postcommit ETag. `DrainHeadHash = SHA256("HX-EV-COORDINATOR-DRAIN-HEAD-HASH-1\0" || 01 || B(exact signed purpose-25 head claim) || B(exact purpose-25 carrier) || B(exact atomic backend CAS receipt))`; head tag `08` is exactly the preceding generation's `DrainHeadHash` or 32 zero bytes for the first head. Read back and verify every predecessor claim, carrier and CAS receipt before using a count. Present count zero has present `O(N)` value `0` and absent latest row; present positive count matches all rows `1..count`. An **absent** `O(N)` and absent row hash mean explicit `null`, allowed only with a signed legacy/no-drain absence declaration and complete coordinator-index generation/ETag readback; it does not assert zero historical invocations. Explicit null and present zero have different exact bytes and status values. No invented count or head can be derived from broker attempt totals.
 
@@ -208,9 +266,9 @@ Explicit `null` additionally requires `HX-EV-COORDINATOR-DRAIN-ABSENCE-1\0 || 01
 
 The complete referenced drain evidence is one discriminated byte string: `00 || u32 rowCount ||` each ordinal-ordered `B(exact drain-attempt record) || B(exact backend CAS receipt)` for a present count, or `01 || B(exact purpose-26 absence record) || B(exact purpose-26 carrier) || B(exact coordinator-index absence receipt)` for explicit `null`. Present row count must equal the purpose-`25` head count, including the canonical zero-row `00 || u32(0)`; the absent variant requires absent count/row hash in that signed head. The terminal drain source's tag `04` is `SHA256("HX-EV-TERMINAL-DRAIN-READBACK-2\0" || 01 || B(exact outbox/queue empty-state receipt) || B(exact purpose-25 signed drain-head) || B(exact purpose-25 carrier) || B(exact discriminated drain evidence))`. Its final coordinator fence, index generation/ETag and UTC must agree with the tag-`05` in-flight closure and final status record; read back every drain row, head predecessor and backend receipt to prove the complete contiguous count. The terminal status record binds this exact head/evidence image and count. Status inspection projects `DrainAttemptCount` as the present count (including zero) or `null` from the authenticated absent variant, preserving its existing nullable integer shape. A count beyond `Int32.MaxValue`, missing row, changed head, absent declaration with a row or unavailable coordinator authority is `CommandOutcomeHold`. Admission reserves the configuration's maximum drain rows and receipts within A8's referenced-evidence/operation quotas before Prepared; after the reserved limit, another drain attempt holds rather than truncating history or inventing a count. Retain the complete source through status, retry, rollback and incident obligations.
 
-`HX-EV-TERMINAL-NO-ACCEPT-1\0 || 01 || 0007` binds `01` U OperationId, `02` B32 final set, `03` B complete attempt-set descriptor, `04` B exact broker durable reject-fence receipt (≤16 KiB), `05` B exact producer/coordinator attempt-disable receipt (≤16 KiB), `06` B32 drain-record hash and `07` Q fence UTC. Tag `03` is `u32 totalAttemptCount || B32 completeAttemptSetHash || u32 segmentCount ||` contiguous descriptors `u32 firstFlatOrdinal || u32 rowCount || B32 segmentHash`; ≤512 segments, ≤24 KiB descriptors and 0..64,000 attempts. Zero attempts have zero segments and the canonical empty root; otherwise every segment is nonempty. Each `HX-EV-TERMINAL-ATTEMPTS-1\0 || 01` segment contains its scoped header and `u32 rowCount` followed by ≤512-byte rows sorted uniquely by `(memberOrdinal, attemptOrdinal)`: `u32 memberOrdinal || u32 attemptOrdinal || B32 brokerOperationIdHash || B exact 16-byte fenceNonce || B32 exactPinHash || U definitive outcome || B32 exactReceiptHash`. Member ordinals match the final set; attempt ordinals are contiguous `1..actualFinalAttemptOrdinal` for each member with attempts, where that ordinal is ≤ its immutable signed maximum of 1..64. A member may stop earlier after Accepted or proven terminal exhaustion; zero-attempt members have no attempt rows. Only authenticated `Accepted` or `Rejected` is definitive; `Unknown` prevents terminality. Within one send OperationId the broker operation identity and global pin remain unchanged across renewed nonces; C5 flat `attemptOrdinal` equals its C2 parent-member row tag-`0d` cumulative prior-attempt count plus the local per-send-ID ordinal, and every member-wide ordinal is contiguous across all signed send rows; a new send ID is allowed only by C2's signed same-parent retry chain after complete class-01 Rejected proof, and its original MessageId/pin cannot change. No attempt follows Accepted. `segmentHash = SHA256(exact complete segment bytes)`; `completeAttemptSetHash = SHA256("HX-EV-TERMINAL-ATTEMPT-SET-1\0" || 01 || u32 totalAttemptCount || u32 segmentCount || B(each exact ordered segment))`. Reconcile every row against **every** full parent-member send row, its purpose-23 signed head/predecessor generations, purpose-20/21/22 attempt/result/head chain and the exact definitive result observation for each indexed send ID. `exactReceiptHash` is C2 `ResultObservationHash` of that signed definitive result/carrier; a prior signed Unknown remains in the verified chain and cannot be silently discarded. An unresolved Unknown holds terminality. A zero-attempt member needs both the separately signed pre-send reason/source and post-fence complete zero-attempt ledger, bound by its nonadmissibility record. The broker fence still covers this OperationId and all current/future member send IDs on every accept path.
+`HX-EV-TERMINAL-NO-ACCEPT-1\0 || 02 || 0008` binds `01` U OperationId, `02` B32 final set, `03` B complete attempt-set descriptor, `04` B exact broker durable reject-fence receipt (≤16 KiB), `05` B exact producer/coordinator attempt-disable receipt (≤16 KiB), `06` B32 drain-record hash, `07` Q fence UTC and `08` U exact `AuthMode`. Tag `03` is `u32 totalAttemptCount || B32 completeAttemptSetHash || u32 segmentCount ||` contiguous descriptors `u32 firstFlatOrdinal || u32 rowCount || B32 segmentHash`; ≤512 segments, ≤24 KiB descriptors and 0..64,000 attempts. Zero attempts have zero segments and the canonical empty root; otherwise every segment is nonempty. Each `HX-EV-TERMINAL-ATTEMPTS-1\0 || 01` segment contains its scoped header and `u32 rowCount` followed by ≤512-byte rows sorted uniquely by `(memberOrdinal, attemptOrdinal)`: `u32 memberOrdinal || u32 attemptOrdinal || B32 brokerOperationIdHash || B exact 16-byte fenceNonce || B32 exactPinHash || U definitive outcome || B32 exactReceiptHash`. Member ordinals match the final set; attempt ordinals are contiguous `1..actualFinalAttemptOrdinal` for each member with attempts, where that ordinal is ≤ its immutable signed maximum of 1..64. A member may stop earlier after Accepted or proven terminal exhaustion; zero-attempt members have no attempt rows. Only authenticated `Accepted` or `Rejected` is definitive; `Unknown` prevents terminality. Within one send OperationId the broker operation identity and global pin remain unchanged across renewed nonces; C5 flat `attemptOrdinal` equals its C2 parent-member row tag-`0d` cumulative prior-attempt count plus the local per-send-ID ordinal, and every member-wide ordinal is contiguous across all signed send rows; a new send ID is allowed only by C2's signed same-parent retry chain after complete class-01 Rejected proof, and its original MessageId/pin cannot change. No attempt follows Accepted. `segmentHash = SHA256(exact complete segment bytes)`; `completeAttemptSetHash = SHA256("HX-EV-TERMINAL-ATTEMPT-SET-1\0" || 01 || u32 totalAttemptCount || u32 segmentCount || B(each exact ordered segment))`. Reconcile every row against **every** full parent-member send row, its purpose-23 signed head/predecessor generations, purpose-20/21/22 attempt/result/head chain and the exact definitive result observation for each indexed send ID. `exactReceiptHash` is C2 `ResultObservationHash` of that signed definitive result/carrier; a prior signed Unknown remains in the verified chain and cannot be silently discarded. An unresolved Unknown holds terminality. A zero-attempt member needs both the separately signed pre-send reason/source and post-fence complete zero-attempt ledger, bound by its nonadmissibility record. The broker fence still covers this OperationId and all current/future member send IDs on every accept path.
 
-`HX-EV-TERMINAL-POLICY-1\0 || 01 || 0007` binds `01` U OperationId, `02` B32 final set, `03` B32 `RetryPolicyHash`, `04` B complete member-decision descriptor, `05` B32 drain hash, `06` B32 no-accept hash and `07` Q decision UTC. Tag `04` has the same framed descriptor form with `u32 memberCount || B32 completePolicySetHash || u32 segmentCount`; member count exactly matches the final set's sorted unique 1..1,000 (≤256 V2) members, with 1..8 segments and ≤1 KiB descriptors. Each `HX-EV-TERMINAL-POLICY-MEMBERS-1\0 || 01` segment contains its scoped header and ≤512-byte rows sorted uniquely by final-set member ordinal: `u32 memberOrdinal || B32 MessageIdHash || B32 terminalReasonHash || N actualAttemptCount || O(B32) exact final-attempt receipt hash || O(B32) exact signed nonadmissibilityProofHash`. For a zero-attempt member count is zero, final receipt is absent (`00`) and nonadmissibility proof hash is present (`02` plus B32); for any attempted member the final receipt is present and nonadmissibility proof absent. Explicit null is invalid. Counts/reasons match the complete attempt set and fixed signed policy; an Accepted member has exact terminal reason literal `Accepted` and its authenticated Accepted receipt, while every failed reason must occur in the signed rule table with the required class. A member ending below its signed attempt maximum requires an exact class-`02` terminal Rejected receipt or an Accepted receipt; the maximum is a ceiling, not a mandatory number of sends. `completePolicySetHash = SHA256("HX-EV-TERMINAL-POLICY-SET-1\0" || 01 || u32 memberCount || u32 segmentCount || B(each exact ordered segment))`. Retryable failures cannot satisfy exhaustion.
+`HX-EV-TERMINAL-POLICY-1\0 || 02 || 0008` binds `01` U OperationId, `02` B32 final set, `03` B32 `RetryPolicyHash`, `04` B complete member-decision descriptor, `05` B32 drain hash, `06` B32 no-accept hash, `07` Q decision UTC and `08` U exact `AuthMode`. Tag `04` has the same framed descriptor form with `u32 memberCount || B32 completePolicySetHash || u32 segmentCount`; member count exactly matches the final set's sorted unique 1..1,000 (≤256 V2) members, with 1..8 segments and ≤1 KiB descriptors. Each `HX-EV-TERMINAL-POLICY-MEMBERS-1\0 || 01` segment contains its scoped header and ≤512-byte rows sorted uniquely by final-set member ordinal: `u32 memberOrdinal || B32 MessageIdHash || B32 terminalReasonHash || N actualAttemptCount || O(B32) exact final-attempt receipt hash || O(B32) exact signed nonadmissibilityProofHash`. For a zero-attempt member count is zero, final receipt is absent (`00`) and nonadmissibility proof hash is present (`02` plus B32); for any attempted member the final receipt is present and nonadmissibility proof absent. Explicit null is invalid. Counts/reasons match the complete attempt set and fixed signed policy; an Accepted member has exact terminal reason literal `Accepted` and its authenticated Accepted receipt, while every failed reason must occur in the signed rule table with the required class. A member ending below its signed attempt maximum requires an exact class-`02` terminal Rejected receipt or an Accepted receipt; the maximum is a ceiling, not a mandatory number of sends. `completePolicySetHash = SHA256("HX-EV-TERMINAL-POLICY-SET-1\0" || 01 || u32 memberCount || u32 segmentCount || B(each exact ordered segment))`. Retryable failures cannot satisfy exhaustion.
 
 All three segment kinds use the **same exact complete record framing**, with only their ASCII NUL-terminated domain separator differing: `HX-EV-TERMINAL-MEMBERS-1\0`, `HX-EV-TERMINAL-ATTEMPTS-1\0` or `HX-EV-TERMINAL-POLICY-MEMBERS-1\0`. Exact bytes are `domainSeparator || 01 || u16(7) || 01 B32 OperationIdHash || 02 B32 finalPublicationSetHash || 03 B32 coordinatorFenceHash || 04 N zeroBasedSegmentIndex || 05 N firstOrdinal || 06 N rowCount || 07 B rowBlob`, with one-byte tag numbers shown, draft §4 scalar encodings, no extra bytes and complete record ≤65,536 bytes. `coordinatorFenceHash = SHA256(B(exact terminal coordinator fence))`; each segment's fence hash must match the terminal source records. The terminal member ordinal is the one-based **position** in A8's immutable expected set sorted by its original `I event ordinal`; it does not replace or renumber that original event ordinal. `firstOrdinal` is the first terminal member position for roster/policy, or the one-based flat ordinal in `(memberPosition, attemptOrdinal)` order for attempts. It matches its descriptor; segment indexes are contiguous from zero. `rowCount` is 1..1,000 for roster, 1..125 for attempts and 1..125 for policy, and also equals the descriptor count and the first `u32` in `rowBlob`. The remainder of `rowBlob` is exactly `rowCount` repetitions of `u32 rowByteLength || rowBytes`; `rowByteLength` is 1..512, fits within the declared `B` length, and `rowBytes` is **only** the ordered typed row fields given above, with no tags, padding, JSON, alternate integer widths or trailing bytes. Attempt and policy `u32` ordinals/counts use checked big-endian; roster's `N` uses signed big-endian i64 and must be positive. Canonically partition the sorted complete rows into the longest contiguous prefix whose **complete encoded segment** fits 65,536 bytes and whose row count stays within that kind's cap, then repeat; a row that cannot fit in a fresh segment holds. The ≤1 KiB scoped-header and 64 KiB segment reservations, existing per-kind descriptor caps and operation reservations still apply: `125 × (512 + 4) + 1,024 = 65,524 ≤ 65,536`, `64,000 / 125 = 512` attempt segments and `1,000 / 125 = 8` policy segments at the worst permitted row size. The complete encoded header, including all tags and the `B` length, consumes its actual bytes and must be ≤1,024. Each descriptor hash is SHA-256 of those exact complete segment bytes. Every set root's `B(each exact ordered segment)` means the concatenation of one draft §4 `B(segmentBytes)` per descriptor in order, including its length, so no serializer choice changes a hash. Zero attempts mean no attempt segment, count zero, and the root hashes the separator, version and two zero `u32` counts with no `B` values. CAS/readback compares the exact bytes before the final terminal root is trusted.
 
@@ -236,9 +294,11 @@ A zero-attempt reason is `HX-EV-MEMBER-NONADMISSIBLE-1\0 || 01 || 000c` with ord
 
 The pre-send admission, post-fence no-attempt and nonadmissibility records and their exact source images/receipts are verified under one fence/head; source hashes alone confer no authority.
 
-The three source hashes and final root have one acyclic byte order. For each terminal source, `Auth(x)` is exactly `01 || B(exact purpose-specific signed carrier)` when the named issuer signs the complete source claim, or `02 || B(exact backend-authenticated post-CAS receipt)` when the provider is the named authority; the source record declares and pins that one variant before creation. Every backend CAS receipt names only `SHA256("HX-EV-TERMINAL-INSTALLED-1\0" || 01 || B(exact pre-CAS source claim))`, expected generation/ETag, resulting generation/ETag, authority and commit UTC; it never names its own source hash. `SourceCas(x)` is the exact authenticated source CAS receipt when `Auth(x)` selects a signed carrier and the empty byte string when `Auth(x)` is the provider CAS receipt; its enclosing `B` always appears once. `Evidence(x)` is `u32 count ||` one `B(exact authenticated item)` per item in the fixed order below; zero count has no items. The drain order is its exact roster descriptor, then each complete roster segment in descriptor order, then each segment CAS/readback receipt, then the final queue/outbox/in-flight readback, then exact purpose-25 drain-head claim/carrier/CAS receipt and every predecessor head/receipt in ascending generation, then each coordinator drain row/CAS receipt in ascending ordinal (or the purpose-26 absence claim/carrier/index receipt), then the exact final coordinator-fence receipt. The no-accept order is its exact attempt descriptor, then each complete attempt segment and CAS/readback receipt in descriptor order, then the exact broker reject-fence receipt, producer-disable receipt, complete signed send/attempt ledger and final empty-state readback. The policy order is its exact member-decision descriptor, then each complete policy segment and CAS/readback receipt in descriptor order, then exact signed retry-policy claim/carrier, each full member identifier/outbox/pin image and every definitive C2 result observation/carrier in member and attempt order, each zero-attempt pre-send source/carrier and post-fence ledger/carrier where applicable. Counts, order, complete bytes, signatures, ETags and full identifiers are mandatory; absent evidence holds.
+The three source hashes and final root have one acyclic byte order. For each terminal source, exact claim tag `08` selects its authentication bytes before creation. `Auth(x)` is exactly `01 || B(exact purpose-specific signed carrier)` when tag `08` is `SignedCarrier`, or `02 || B(exact backend-authenticated post-CAS receipt)` when tag `08` is `BackendCas`; any other value or discriminator/byte mismatch holds. For `SignedCarrier`, the named purpose-specific issuer signs the complete eight-tag claim including `AuthMode`; if the signed record is also persisted by CAS, `SourceCas(x)` is that exact authenticated storage receipt, otherwise it is the empty byte string. For `BackendCas`, `SourceCas(x)` is always the empty byte string because the one post-CAS receipt already appears inside `Auth(x)`. Every backend receipt, in either position, names only `SHA256("HX-EV-TERMINAL-INSTALLED-1\0" || 01 || B(exact pre-CAS eight-tag source claim))`, expected generation/ETag, resulting generation/ETag, authority and commit UTC; it never names its own source hash. The enclosing `B(SourceCas(x))` always appears once, including when empty. A signed carrier cannot be supplied for `BackendCas`, a backend receipt cannot substitute for `SignedCarrier`, and no writer or reader may choose the shorter variant after seeing a result.
 
-`TerminalDrainSourceHash = SHA256("HX-EV-TERMINAL-DRAIN-SOURCE-1\0" || 01 || B(exact seven-tag drain claim) || B(Auth(drain)) || B(SourceCas(drain)) || B(Evidence(drain)))`. Drain claim tag `04` and its descriptor are verified before this hash. No-accept claim tag `06` is exactly `TerminalDrainSourceHash`; `TerminalNoAcceptSourceHash = SHA256("HX-EV-TERMINAL-NO-ACCEPT-SOURCE-1\0" || 01 || B(exact seven-tag no-accept claim) || B(Auth(no-accept)) || B(SourceCas(no-accept)) || B(Evidence(no-accept)))`. Policy claim tags `05..06` are exactly these drain/no-accept hashes; `TerminalPolicySourceHash = SHA256("HX-EV-TERMINAL-POLICY-SOURCE-1\0" || 01 || B(exact seven-tag policy claim) || B(Auth(policy)) || B(SourceCas(policy)) || B(Evidence(policy)))`. Proposal tags `07..09` are respectively these three full-source hashes. `TerminalProofRoot = SHA256("HX-EV-TERMINAL-PROOF-ROOT-1\0" || 01 || U authenticated tenant || B32 ScopeOpHash || B32 exact final failed A8 head hash || B32 exact final publication-set hash || B32 TerminalDrainSourceHash || B32 TerminalNoAcceptSourceHash || B32 TerminalPolicySourceHash || B(exact seven-tag drain claim) || B(Auth(drain)) || B(exact seven-tag no-accept claim) || B(Auth(no-accept)) || B(exact seven-tag policy claim) || B(Auth(policy)))`. The root consumes complete authenticated source records directly as well as their ordered segment evidence through the three hashes. Pointer tag `09` equals this root; pointer tag `07` equals the retained first proposal/carrier hash. Every proposal/pointer/status reader recomputes the full sequence from retained bytes, provider receipts and readbacks, with no writer-selected subset or postcommit ETag inside a pre-CAS claim.
+`Evidence(x)` is `u32 count ||` one `B(exact authenticated item)` per item in the fixed order below; zero count has no items. The drain order is its exact roster descriptor, then each complete roster segment in descriptor order, then each segment CAS/readback receipt, then the final queue/outbox/in-flight readback, then exact purpose-25 drain-head claim/carrier/CAS receipt and every predecessor head/receipt in ascending generation, then each coordinator drain row/CAS receipt in ascending ordinal (or the purpose-26 absence claim/carrier/index receipt), then the exact final coordinator-fence receipt. The no-accept order is its exact attempt descriptor, then each complete attempt segment and CAS/readback receipt in descriptor order, then the exact broker reject-fence receipt, producer-disable receipt, complete signed send/attempt ledger and final empty-state readback. The policy order is its exact member-decision descriptor, then each complete policy segment and CAS/readback receipt in descriptor order, then exact signed retry-policy claim/carrier, each full member identifier/outbox/pin image and every definitive C2 result observation/carrier in member and attempt order, each zero-attempt pre-send source/carrier and post-fence ledger/carrier where applicable. Counts, order, complete bytes, signatures, ETags and full identifiers are mandatory; absent evidence holds.
+
+`TerminalDrainSourceHash = SHA256("HX-EV-TERMINAL-DRAIN-SOURCE-1\0" || 01 || B(exact eight-tag drain claim) || B(Auth(drain)) || B(SourceCas(drain)) || B(Evidence(drain)))`. Drain claim tag `04`, tag `08` and its descriptor are verified before this hash. No-accept claim tag `06` is exactly `TerminalDrainSourceHash`; `TerminalNoAcceptSourceHash = SHA256("HX-EV-TERMINAL-NO-ACCEPT-SOURCE-1\0" || 01 || B(exact eight-tag no-accept claim) || B(Auth(no-accept)) || B(SourceCas(no-accept)) || B(Evidence(no-accept)))`. Policy claim tags `05..06` are exactly these drain/no-accept hashes; `TerminalPolicySourceHash = SHA256("HX-EV-TERMINAL-POLICY-SOURCE-1\0" || 01 || B(exact eight-tag policy claim) || B(Auth(policy)) || B(SourceCas(policy)) || B(Evidence(policy)))`. Proposal tags `07..09` are respectively these three full-source hashes. `TerminalProofRoot = SHA256("HX-EV-TERMINAL-PROOF-ROOT-1\0" || 01 || U authenticated tenant || B32 ScopeOpHash || B32 exact final failed A8 head hash || B32 exact final publication-set hash || B32 TerminalDrainSourceHash || B32 TerminalNoAcceptSourceHash || B32 TerminalPolicySourceHash || B(exact eight-tag drain claim) || B(Auth(drain)) || B(SourceCas(drain)) || B(exact eight-tag no-accept claim) || B(Auth(no-accept)) || B(SourceCas(no-accept)) || B(exact eight-tag policy claim) || B(Auth(policy)) || B(SourceCas(policy)))`. The root consumes each complete authenticated source claim, its declared authentication bytes and any separate CAS receipt directly, as well as ordered segment evidence through the three hashes. Pointer tag `09` equals this root; pointer tag `07` equals the retained first proposal/carrier hash. Every proposal/pointer/status reader recomputes the full sequence from retained bytes, provider receipts and readbacks, with no writer-selected subset or postcommit ETag inside a pre-CAS claim.
 
 
 Terminal closure has this required linearization order: (1) CAS-disable the producer/coordinator for the original OperationId under a durable fence, freezing the complete member/send-ID namespace and blocking new attempts; (2) atomically install and read back the broker reject fence for that **operation namespace**, so no future accept can succeed even with a delayed or newly presented ID; (3) query/reconcile every send that may have been accepted before the broker fence, retaining each Accepted receipt and definitive rejection, then drain all destination queues, outboxes and in-flight ledgers; (4) perform the **final** empty-state observation/readback after the broker fence, under the same fence generation, and build the drain/no-accept/policy records; (5) authenticate the final failed A8 head and its immutable clock/finalization receipt, CAS-create the branch-scoped terminal proposal, then atomically CAS the authoritative terminal pointer/closure index conditional on that exact head ETag and broker fence; public projection follows only pointer/head/proof readback. An accept between steps 1 and 2 is included in step 3; an accept after step 2 contradicts the broker fence and holds as an incident. Every source timestamp/ETag and broker fence generation is checked for this ordering; a stale empty observation cannot terminalize. A rejected fence installation, unknown send, changing queue, missing key or unproven closed delivery horizon is `CommandOutcomeHold`. The status reader authenticates the final head, terminal pointer and proposal, exact source records, at least one final nonaccepted member, every retained Accepted receipt and the ordered fence/empty evidence on each authorized lookup. Retry, status revision or rollback cannot un-fence the same OperationId or change the immutable first POST pin. Closure retains all required pin/key/source bytes until obligations end.
@@ -253,9 +313,9 @@ The **entire** 6.5b ten-item integration handoff is a simultaneous activation ch
 | --- | --- |
 | 1. Current versus historical proof | Authenticate fresh purpose-10 source separately from A5 historic codec-02 complete save/provider images; valid retained V1 branch-02 and corrupt disposition remain distinct. Never require old commit ETag to equal today's head. |
 | 2. Old writer/endpoint fence | Fence pre-existing V1 appenders at gateway **and actor**, reconcile in-flight old writes; new bounded evidence-writing V1 serves only after same-save/receipt probe. V1-only endpoints never receive V2 or mode-bearing work. |
-| 3. Purpose-12 selector/trust | Install purpose-12 selector keys and revised TrustMapDigest verifier-first. Attest one new per-domain RegistryFingerprint across serving peers; restart stale paged operations at page 1. Retain historic fixture/pin/key obligations, including the distinct purpose-13 broker grant authority where an accepted route remains owed. |
+| 3. Purpose-12 selector/trust | Install purpose-12 selector keys and revised TrustMapDigest verifier-first. Attest one new per-domain RegistryFingerprint across serving peers; restart stale paged operations at page 1. Retain historic fixture/pin/key obligations, including the distinct purpose-13 broker grant/renewal authority where an accepted route remains owed, purpose-2a first-send membership outcome authority, purpose-2b canonical physical-object mapping authority and purpose-2c retained-object extension authority. |
 | 4. Route bounds/capability | Pin B6 complete phase reservation and R/W/legacy-array/deployment budgets; 64 MiB event + 64 MiB prior state + positive work holds. Select only a proven bounded current-type route, including all multi-type capabilities. |
-| 5. Retention/rollback | Keep source, purpose-01/02/06/10/11/12 event keys, purpose-13 historical broker-grant keys/trust intervals, purpose-14 catalog-filter, purpose-15 member-nonadmissibility, purpose-1b physical capture-scope, purpose-1c send-parent keys, purpose-20/21/22/23 attempt/result/attempt-head/member-head authorities, purpose-24 pre-send admission, purpose-25/26 drain head/absence, purpose-27 capture-closure, purpose-28 physical-filter delivery identity and purpose-29 terminal-proposal closure authorities, purpose-1d pre-send and purpose-1f no-attempt ledger keys/trust intervals, accepted-revision catalog predicate/input and transform bytes, old approved fingerprints, migration authority/decoder, backend evidence, pins, route decisions/reservation owner-fence histories/reconciliation proofs/receipts, broker-owned full-byte references or AD-31-only tagged references and both complete addressed-object and unidentified physical obligation fences with every version link, signed capture scopes, terminal proposals/pointers/closure CAS receipts, source records/segments/pre-send and zero-attempt proofs and response records through event/queue/retry/backup/rollback obligations. No capable endpoint → `RollbackReaderCapabilityHold`. |
+| 5. Retention/rollback | Keep source, purpose-01/02/06/10/11/12 event keys, purpose-13 historical broker-grant/renewal keys and complete CAS heads/trust intervals, purpose-14 catalog-filter, purpose-15 member-nonadmissibility, purpose-1b physical capture-scope, purpose-1c send-parent keys, purpose-20/21/22/23 attempt/result/attempt-head/member-head authorities, purpose-24 pre-send admission, purpose-25/26 drain head/absence, purpose-27 capture-closure, purpose-28 physical-filter delivery identity, purpose-29 terminal-proposal closure, purpose-2a first-send membership outcome, purpose-2b canonical physical-object mapping and purpose-2c retained-object extension authorities, purpose-1d pre-send and purpose-1f no-attempt ledger keys/trust intervals, accepted-revision catalog predicate/input and transform bytes, old approved fingerprints, migration authority/decoder, backend evidence, pins, route decisions/reservation owner-fence histories/reconciliation proofs/receipts, broker-owned full-byte references or AD-31-only tagged references, canonical alias/proof mapping chains, cross-kind identity attachments and the one complete shared addressed/unidentified obligation fence with every version link, signed capture scopes, terminal proposals/pointers/closure CAS receipts, eight-tag source records with declared Auth bytes, segments/pre-send and zero-attempt proofs and response records through event/queue/retry/backup/rollback obligations. No capable endpoint → `RollbackReaderCapabilityHold`. |
 | 6. Fold/query catalog | Activate B7 `5a` fold-mode and `5b` query catalog rows with pinned deployment capability. Read/Apply/handler semantic change needs authenticated rebuild; F-only write change refreshes transient proof without semantic invalidation. |
 | 7. Cache classification | Atomically activate versioned-cache classification and quarantine old entries; no stale cache claims current query or route state. |
 | 8. Storage ceilings | Pin B6 1 GiB **per-operation** quota and one **deployment** replay-storage ceiling across replicas, replay and B9 exports; ambiguous deletion retains charge. Named 64 GiB retained state has its own shared cap. |
@@ -272,18 +332,18 @@ Cancellation before preparation CAS leaves zero mutation. After durable preparat
 
 | Frozen matrix or risk | Model check below | Future production/provider/crash proof (unexecuted) |
 | --- | --- | --- |
-| Retry and key rotation | C01/C02/C02b/C02c/C02d/C07/C11a/C11d | Crash after actor save/pin/send/accepted receipt; compare exact source, body, attestation, same-mode bytes, complete original ordered application/broker header image and six-header projection, purpose-1c and 20/21/22/23 issuer/trust intervals and current effective route. Query each nonce attempt and its complete signed observation chain plus every parent-member send-ID row/head; race two successors from one Rejected ID and reject omission, wrong purpose and stale head; an old Rejected remains Rejected after later acceptance, while unresolved Unknown holds. Exercise same-key duplicate non-routing headers with original order/casing preserved, a changed duplicate value, and case-fold-colliding `Content-Type`/CloudEvent/attestation headers; authorized Binary/Structured conversion pins each mode-specific `Content-Type` in its own complete image. Changed bytes under one tenant-scoped broker operation key conflict; equal send IDs in different tenants remain independent, while delayed/new member send IDs in the fenced tenant carry the original parent binding and fail its terminal fence; missing old trust holds. |
-| Multiple routes | C03/C03b/C03c/C03d/C03e/C06/C11c | Two logical routes behind one physical subscription; crash after reservation and after first effect/receipt; exclude the old owner, query uncertain effect, then inspect one exclusive route-decision CAS and full-size effect receipt per route, full handoff, accepted-revision filter input and no broker ack until second receipt. Delay a filtered route beyond ordinary claim expiry with retained acceptance-time proof, then revoke its key and require hold. Leave/rename/provider replacement must drain or preserve the exact historical grant/key; race two replacements on the **old-obligation-scoped** mapping CAS, then query every uncertain old-provider effect and prove cross-provider exclusion before replacement invocation. Changed provider/endpoint bytes on the same stable key must conflict. Chain two takeovers and inspect tag-02 exact handoff/pin hash, every old owner/fence/ETag and reconciliation source through the final decision. |
-| Legacy handoff | C04/C04b | Queued original JSON and old marker; compare exact source/route set/side record, whitespace-equivalent decoded value, each bounded exact attempt record and deterministic per-variant side key/link; crash between attempt, encrypted variant CAS and link, then require full body/core/header byte readback before receipt reuse, matching/conflicting/ambiguous prior binary pin and changed payload/header including a same-body changed-core/header retry. Crash before/after pointer and each route receipt; an empty historical set needs its purpose-28 signed Accepted-delivery-derived physical-filter OperationId and receipt; changed broker attempt ID must reuse the same create-once key; old physical JSON ack waits for the complete set; an addressed poison duplicate must recheck the shared capture-set fence. |
-| Poison/capture | C01b/C04b/C05/C05b/C05c/C05d/C11b | Separate Binary/structured encoded, decoded, attestation and total header boundaries; physically feasible 128 MiB raw/protected-output side-record boundary, malformed/unidentified carrier, structured addressed poison above local AD-31 capture, changed full bytes at stable physical scope, lost blob/index readback and retry exhaustion. Prove purpose-1b isolated physical capture scope, purpose-16 identity, purpose-17 historical nonadmissibility/fence and purpose-18 active retention/obligation-fence source records against complete byte/header readback for both AD-31-only and broker-reference authority; no 200 without the post-handoff capture link, complete framed addressed open entries and independently authenticated closures, atomic post-CAS generation/ETag receipts and all addressed quarantine decisions, or the separate unidentified signed no-route physical quarantine receipt and its purpose-18-anchored complete physical version chain. Test two **handoffs** sharing one tagged retained object, object-wide union CAS, each handoff's complete route binds, added duty, closure of only one handoff, lost CAS acknowledgement, changed ETag without a version, and original/duplicate 2xx after version advance; all require exact full-byte retention. |
+| Retry and key rotation | C01/C02/C02b/C02c/C02d/C07/C11a/C11d | Crash after actor save/pin/send/accepted receipt; compare exact source, body, attestation, same-mode bytes, complete original ordered application/broker header image and six-header projection, purpose-1c and 20/21/22/23 issuer/trust intervals and current effective route. Query each nonce attempt and its complete signed observation chain plus every parent-member send-ID row/head; a result without a registered row holds, race two successors from one Rejected ID and reject omission, wrong purpose and stale head; an old Rejected remains Rejected after later acceptance, while unresolved Unknown holds. Change membership after pin but before first send: require the complete zero-send namespace proof and one purpose-2a create-once `ContinueSamePin` outcome only for byte-identical request/accepted images, otherwise retain the original pin under `FirstSendMembershipChangedHold`. Exercise same-key duplicate non-routing headers with original order/casing preserved, a changed request image even when accepted bytes match, and case-fold-colliding `Content-Type`/CloudEvent/attestation headers; authorized Binary/Structured conversion pins each mode-specific `Content-Type` in its own complete image. Changed bytes under one tenant-scoped broker operation key conflict; equal send IDs in different tenants remain independent, while delayed/new member send IDs in the fenced tenant carry the original parent binding and fail its terminal fence; missing old trust holds. |
+| Multiple routes | C03/C03b/C03c/C03d/C03e/C06/C11c/C11d | Two logical routes behind one physical subscription and two physical subscriptions reusing one HandlerRouteId; the latter must select distinct eight-field effect keys while redelivery selects the original key. Crash after effect transaction allocation and after the precommit record; inspect the atomic postcommit provider receipt/readback and exclude any receipt that had to guess its version/ETag. Then inspect one exclusive route-decision CAS and full-size effect receipt per route, full handoff, accepted-revision filter input and no broker ack until second receipt. Delay a filtered route beyond ordinary claim expiry with retained acceptance-time proof, then revoke its key and require hold. Leave/rename/provider replacement must drain or preserve the exact `HistoricalAcceptedObligationHash`, grant and key; append two exact purpose-13 renewals at that obligation key, reject a gap/changed owner, race two replacements on the same old-obligation-scoped mapping CAS, and require duplicate mappings to compare complete reconciliation, exclusion and ownership evidence before following. Query every uncertain old-provider effect and prove cross-provider exclusion before replacement invocation. Changed provider/endpoint/evidence bytes on the same stable key must conflict. Race two immutable Accepted-delivery log IDs at one reverse-index key and reject the loser before a second log or filter OperationId. Chain two takeovers and inspect tag-02 exact handoff/pin hash, subscription identity, every old owner/fence/ETag and reconciliation source through the final decision. |
+| Legacy handoff | C04/C04b | Queued original JSON and old marker; compare every exact `HX-EV-LEGACY-HANDOFF-1` tag `01..17`, source/route set/side record, whitespace-equivalent decoded value, each bounded exact attempt record and deterministic per-variant side key/link. Race two writers after variant count 63 and prove only one atomic reverse-index/entry/attempt/side/link/head bundle reaches ordinal 64; every distinct sixty-fifth variant holds before a partial write or 2xx. Crash/lost acknowledgement before and after that bundle, then require full body/core/header byte readback before receipt reuse, matching/conflicting/ambiguous prior binary pin and changed payload/header including a same-body changed-core/header retry. Crash before/after pointer and each route receipt; an empty historical set needs its purpose-28 signed Accepted-delivery-derived physical-filter OperationId and receipt; changed broker attempt ID must reuse the same create-once key; old physical JSON ack waits for the complete set; an addressed poison duplicate must recheck the shared capture-set fence. |
+| Poison/capture | C01b/C04b/C05/C05b/C05c/C05d/C11b | Separate Binary/structured encoded, decoded, attestation and total header boundaries; physically feasible 128 MiB raw/protected-output side-record boundary, malformed/unidentified carrier, structured addressed poison above local AD-31 capture, changed full bytes at stable physical scope, lost blob/index readback and retry exhaustion. Prove purpose-1b isolated physical capture scope, purpose-16 identity, purpose-17 historical nonadmissibility/fence, purpose-18 active retention, purpose-2b canonical object mapping and purpose-2c cross-kind retained-object extension against complete byte/header readback for both AD-31-only and broker-reference authority. Resolve two aliases/proof generations through one authority-scoped provider-native handle and canonical-ID CAS chain; permit equal handle text in different scopes, but reject a reverse alias mapped to another handle/canonical ID. A refreshed proof advances that chain without changing the fence key, while a changed canonical ID conflicts. No 200 without the post-handoff capture link, complete framed addressed open entries and independently authenticated closures, atomic post-CAS generation/ETag receipts and all addressed quarantine decisions, or the separate unidentified signed no-route physical quarantine receipt and its purpose-18-anchored complete physical version chain. Test addressed-first→unidentified and physical-first→addressed construction under one discriminated initial anchor, two **handoffs** plus an unidentified duty sharing one canonical retained object, each complete nine-field `HX-EV-CAPTURE-IDENTITY-ATTACHMENT-2` retaining its own identity/scope/opening source, and each separately keyed forward record retaining the later capture-link or purpose-18 physical receipt without a future hash in the attachment. One fifteen-field purpose-2c object-wide union CAS, each handoff's complete route binds, added duty, closure of only one handoff, lost CAS acknowledgement, changed ETag without a version, and original/duplicate 2xx after version advance all require exact full-byte retention. |
 | Rollout/time | C01/C06/C09 | Equal instant/different offset Binary and structured paths; old endpoint joins after V2 append, purpose-12/key rotation, multi-replica capacity, same-revision configuration/probe/nonce mutation and lease-expiry acceptance race. |
-| A8 failure/recovery | C08/C08a/C08b/C08c/C08d/C08e/C08f/C08g/C08h/C10/C11e/C11f/C11g/C11h | Empty eventful set, partial Accepted set, definitive rejection later retried, ordered producer/broker fences and final empty observation, signed pre-Prepared retry-policy and acyclic member plan, full 1,024-byte identifiers through compact terminal rows, A8 immutable r+1 outcome reconciliation, orphan-safe revision-clock reservation/head-CAS finalization/readback and rejection of a skipped A8 outcome revision before creation, segmented complete roster/attempt/policy proofs including the atomic signed pre-send rejection rule/zero-admission ledger and separate post-fence complete zero-attempt ledger, explicit zero-event no-op without policy, permanent closure and coordinator drain-ledger count/explicit-absence status projection; deny fresh ReplayController resubmission of a committed `PublishFailed`, including partial acceptance. Inspect exact first pin/head, purpose-29 signed branch-scoped terminal proposals and pointer tag-07 carrier hash, class-01 Rejected-at-maximum `PublicationRetryExhaustedHold` with stable nonterminal public status/operator gate, authoritative pointer/closure CAS readback, authenticated **failed** final A8 head, source records and broker reject fence; a published head with the same bytes/ETag must not close a terminal pointer. |
+| A8 failure/recovery | C08/C08a/C08b/C08c/C08d/C08e/C08f/C08g/C08h/C10/C11e/C11f/C11g/C11h | Empty eventful set, partial Accepted set, definitive rejection later retried, ordered producer/broker fences and final empty observation, signed pre-Prepared retry-policy and acyclic member plan, full 1,024-byte identifiers through compact terminal rows, A8 immutable r+1 outcome reconciliation, orphan-safe revision-clock reservation/head-CAS finalization/readback and rejection of a skipped A8 outcome revision before creation, segmented complete roster/attempt/policy proofs including the atomic signed pre-send rejection rule/zero-admission ledger and separate post-fence complete zero-attempt ledger, explicit zero-event no-op without policy, permanent closure and coordinator drain-ledger count/explicit-absence status projection; deny fresh ReplayController resubmission of a committed `PublishFailed`, including partial acceptance. Derive proposal tenant/scope/head only from its retained reservation, decode the signed drain-head tag-07 ETag against the atomic CAS receipt, and hash each complete eight-tag terminal source claim with its declared `SignedCarrier`/`BackendCas` Auth bytes, separate SourceCas bytes and ordered descriptors. Inspect exact first pin/head, purpose-29 signed branch-scoped terminal proposals and pointer tag-07 carrier hash, class-01 Rejected-at-maximum `PublicationRetryExhaustedHold` with stable nonterminal public status/operator gate, authoritative pointer/closure CAS readback, authenticated **failed** final A8 head, source records and broker reject fence; a published head with the same bytes/ETag must not close a terminal pointer. |
 
 Models do **not** establish production provider support. Vectors must inspect actor/provider raw bytes and complete A5 generation images; global pin or authenticated full-byte tombstone comparison source; signed broker claims, complete request/accepted mode and header readback, receipt and physical ack; route effect/receipt counts; encrypted AD-31 capture/readback; first response pin/head; and last-good checkpoint after each injected crash. Run on the configured production provider and a second independent provider or conforming harness. Do not mark activation ready from a runtime build, old tests or local arithmetic.
 
 ### Executable local codec and state-model checks
 
-The block reads the unchanged V17 body. C01 checks both `T` placements byte-for-byte; C01b and C04b check independent transport and side-record arithmetic. C02–C10 and focused C02b/C02c/C02d/C03b/C03c/C03d/C03e/C05b/C05c/C05d/C08a/C08b/C08c/C08d/C08e/C08f/C08g/C08h/C11a–C11h model decisions, framing and crash boundaries; injected auth/readback booleans stand for **unexecuted** provider evidence. These small models do not parse real signed claims, typed terminal rows or provider receipts, emulate provider transactions or prove broker linearizability.
+The block reads the unchanged V17 body. C01 checks both `T` placements byte-for-byte; C01b and C04b check independent transport and side-record arithmetic. C02–C10 and focused C02b/C02c/C02d/C03b/C03c/C03d/C03e/C05b/C05c/C05d/C08a/C08b/C08c/C08d/C08e/C08f/C08g/C08h/C11a–C11h model decisions, framing and crash boundaries; injected auth/readback booleans stand for **unexecuted** provider evidence. The focused models parse only the explicitly modeled claim/receipt fields (including C11f's full drain head/CAS pair and C11g's typed terminal sources); they do not validate real signatures, emulate provider transactions or prove broker linearizability.
 
 ```python
 from pathlib import Path
@@ -334,9 +394,9 @@ def carrier_bound(decoded, attestation_decoded, attestation_encoded, encoded_bod
                   header_pairs, mode, framing=0, structured_overhead=0):
     if mode not in ('Binary', 'Structured'): raise Hold()
     if min(decoded, attestation_decoded, attestation_encoded, encoded_body, framing) < 0: raise Hold()
-    if len(header_pairs) > 128 or any(min(name, value) < 0 or name + value + 2 > 8192
+    if len(header_pairs) > 128 or any(min(name, value) < 0 or name + value + 8 > 8192
                                       for name, value in header_pairs): raise Hold()
-    headers = sum(name + value + 2 for name, value in header_pairs)
+    headers = sum(name + value + 8 for name, value in header_pairs)
     padded_attestation = 4 * ((attestation_decoded + 2) // 3)
     if mode == 'Binary':
         expected_body = decoded
@@ -361,6 +421,7 @@ must_raise(Hold, lambda: carrier_bound(128 * MIB, 0, 0, 128 * MIB + 1, (), 'Bina
 must_raise(Hold, lambda: carrier_bound(1, 1, 4, 5, (), 'Structured', structured_overhead=1))
 must_raise(Hold, lambda: carrier_bound(1, 1, 4, 9, (), 'Other', structured_overhead=1))
 must_raise(Hold, lambda: carrier_bound(1, 1, 4, 1, ((1, 8190),), 'Binary'))
+assert carrier_bound(1, 1, 4, 1, ((1, 8183),), 'Binary')  # Exact two-u32-framed pair boundary.
 must_raise(Hold, lambda: carrier_bound(1, 1, 4, 1, ((1, 1),) * 129, 'Binary'))
 must_raise(Hold, lambda: carrier_bound(128 * MIB + 1, 0, 0, 128 * MIB + 1, (), 'Binary'))
 print('C01b canonical mode, encoded/decoded relation and header-pair bounds passed')
@@ -395,7 +456,8 @@ def broker_header_image(received, signed):
             if lowered in canonical or value != signed[lowered]: raise Conflict()
             canonical[lowered] = value
             routing.append((name, value))
-    if total > 65536 or len(routing) != 6 or set(canonical) != set(ROUTING_HEADERS): raise Hold()
+    if (total > 65536 or len(routing) != 6 or set(canonical) != set(ROUTING_HEADERS)
+        or b'content-type' not in seen_decision): raise Hold()
     def row(pairs):
         return len(pairs).to_bytes(2, 'big') + b''.join(len(name).to_bytes(4, 'big') + name
             + len(value).to_bytes(4, 'big') + value for name, value in pairs)
@@ -407,7 +469,8 @@ def broker_header_image(received, signed):
     return image
 
 signed_headers = {name: b'value-' + bytes((i,)) for i, name in enumerate(ROUTING_HEADERS, 1)}
-original_headers = tuple((name, signed_headers[name]) for name in ROUTING_HEADERS)
+routing_headers = tuple((name, signed_headers[name]) for name in ROUTING_HEADERS)
+original_headers = (*routing_headers, (b'Content-Type', BINARY_MEDIA))
 header_image = broker_header_image(original_headers, signed_headers)
 assert header_image == broker_header_image(original_headers, signed_headers)
 assert header_image != broker_header_image(tuple(reversed(original_headers)), signed_headers)
@@ -418,6 +481,7 @@ must_raise(Conflict, lambda: broker_header_image(tuple(changed_structured), sign
 must_raise(Conflict, lambda: broker_header_image((original_headers[0], original_headers[0],
                                                 *original_headers[2:]), signed_headers))
 must_raise(Hold, lambda: broker_header_image(original_headers[:-1], signed_headers))
+must_raise(Hold, lambda: broker_header_image(routing_headers, signed_headers))
 with_extra = (*original_headers, (b'X-Trace', b'one'), (b'x-trace', b'two'))
 extra_image = broker_header_image(with_extra, signed_headers)
 assert extra_image != header_image
@@ -427,8 +491,8 @@ assert broker_header_image(with_extra, signed_headers) != broker_header_image(
     (*original_headers, (b'x-trace', b'one'), (b'X-Trace', b'two')), signed_headers)
 assert broker_header_image(with_extra, signed_headers) != broker_header_image(
     (*original_headers, (b'x-trace', b'two'), (b'X-Trace', b'one')), signed_headers)
-must_raise(Conflict, lambda: broker_header_image((*original_headers,
-    (b'Content-Type', b'binary'), (b'content-type', b'binary')), signed_headers))
+must_raise(Conflict, lambda: broker_header_image((*routing_headers,
+    (b'Content-Type', BINARY_MEDIA), (b'content-type', BINARY_MEDIA)), signed_headers))
 must_raise(Conflict, lambda: broker_header_image((*original_headers,
     (b'ce-id', b'one'), (b'CE-Id', b'one')), signed_headers))
 must_raise(Conflict, lambda: broker_header_image((*original_headers,
@@ -436,11 +500,11 @@ must_raise(Conflict, lambda: broker_header_image((*original_headers,
 must_raise(Hold, lambda: broker_header_image((*original_headers, (b'X-Unproved', b'one')), signed_headers))
 must_raise(Hold, lambda: broker_header_image((*original_headers,
     (b'X-Unproved', b'one'), (b'x-unproved', b'two')), signed_headers))
-assert broker_header_image((*original_headers, (b'Content-Type', BINARY_MEDIA)), signed_headers)
-assert broker_header_image((*original_headers, (b'Content-Type', STRUCTURED_MEDIA)), signed_headers)
+assert broker_header_image(original_headers, signed_headers)
+assert broker_header_image((*routing_headers, (b'Content-Type', STRUCTURED_MEDIA)), signed_headers)
 for invalid_media in (b'binary', b'structured', b'application/json'):
     must_raise(Conflict, lambda invalid_media=invalid_media: broker_header_image(
-        (*original_headers, (b'Content-Type', invalid_media)), signed_headers))
+        (*routing_headers, (b'Content-Type', invalid_media)), signed_headers))
 must_raise(Hold, lambda: broker_header_image((*original_headers, (b'X-Trace', b'x' * 8192)), signed_headers))
 must_raise(Hold, lambda: broker_header_image((*original_headers, *((b'X-Trace', b'x') for _ in range(123))), signed_headers))
 
@@ -560,7 +624,8 @@ class ParentMemberChain:  # C02b: signed/CAS evidence is modeled by pinned purpo
         self.head = hashlib.sha256(b'purpose-23-head:' + self.head + row_hash).digest()
         return self.head
     def observe(self, send_id, result, purposes=(20, 21, 22), issuer=b'pinned-broker'):
-        if purposes != (20, 21, 22) or issuer != b'pinned-broker' or send_id != self.rows[-1][0]: raise Hold()
+        if (not self.rows or purposes != (20, 21, 22) or issuer != b'pinned-broker'
+            or send_id != self.rows[-1][0]): raise Hold()
         if result not in ('Rejected01', 'Rejected02', 'Accepted', 'Unknown'): raise Hold()
         attempts = self.results.setdefault(send_id, [])
         if attempts and attempts[-1] != 'Rejected01': raise Hold()
@@ -602,7 +667,48 @@ uncertain_chain = ParentMemberChain(*parent_identity)
 uncertain_chain.append(b'uncertain', 0, parent_identity, 23, b'pinned-broker')
 uncertain_chain.observe(b'uncertain', 'Unknown')
 must_raise(Hold, lambda: uncertain_chain.append(b'successor', 1, parent_identity, 23, b'pinned-broker', 'Unknown'))
-print('C02b pending initial row, terminal completeness, successor race and purpose guards passed')
+empty_chain = ParentMemberChain(*parent_identity)
+must_raise(Hold, lambda: empty_chain.observe(b'unregistered', 'Accepted'))
+
+class HistoricalRenewals:
+    def __init__(self, obligation):
+        self.obligation = obligation; self.rows = []; self.owner = None
+    def renew(self, obligation, ordinal, predecessor, owner, signed, expected_generation,
+              expected_etag, resulting_generation, resulting_etag, claimed_result=None):
+        expected = self.rows[-1]['hash'] if self.rows else b'original-grant'
+        compare = (self.rows[-1]['result_generation'], self.rows[-1]['result_etag']) if self.rows else (None, None)
+        if (obligation != self.obligation or ordinal != len(self.rows) + 1 or predecessor != expected
+            or not owner or not signed or (expected_generation, expected_etag) != compare
+            or resulting_generation <= (expected_generation or 0) or not resulting_etag
+            or claimed_result is not None): raise Hold()  # Result values never occur in the signed/pre-CAS head.
+        if self.owner is not None and self.owner != owner: raise Conflict()
+        encode = lambda value: len(value).to_bytes(4, 'big') + value
+        head = (encode(obligation) + ordinal.to_bytes(4, 'big') + encode(predecessor) + encode(owner)
+                + (expected_generation or 0).to_bytes(4, 'big') + encode(expected_etag or b''))
+        receipt = (hashlib.sha256(head).digest() + resulting_generation.to_bytes(4, 'big')
+                   + encode(resulting_etag))
+        row_hash = hashlib.sha256(b'HX-EV-HISTORICAL-RENEWAL-HASH-1\0' + b'\x01' +
+            encode(head) + encode(receipt)).digest()
+        self.owner = owner
+        self.rows.append({'hash': row_hash, 'head': head, 'result_generation': resulting_generation,
+                          'result_etag': resulting_etag})
+        return row_hash
+
+renewals = HistoricalRenewals(b'old-subscription+route+accepted+effect-key')
+renewal_1 = renewals.renew(renewals.obligation, 1, b'original-grant', b'owner-a', True,
+                           None, None, 1, b'etag-1')
+renewal_2 = renewals.renew(renewals.obligation, 2, renewal_1, b'owner-a', True,
+                           1, b'etag-1', 2, b'etag-2')
+assert renewal_2 != renewal_1
+must_raise(Hold, lambda: renewals.renew(renewals.obligation, 4, renewal_2, b'owner-a', True,
+    2, b'etag-2', 3, b'etag-3'))
+must_raise(Conflict, lambda: renewals.renew(renewals.obligation, 3, renewal_2, b'owner-b', True,
+    2, b'etag-2', 3, b'etag-3'))
+must_raise(Hold, lambda: renewals.renew(renewals.obligation, 3, renewal_2, b'owner-a', True,
+    2, b'etag-2', 3, b'etag-3', claimed_result=(3, b'etag-3')))
+must_raise(Hold, lambda: HistoricalRenewals(b'obligation').renew(
+    b'changed', 1, b'original-grant', b'owner', True, None, None, 1, b'etag-1'))
+print('C02b pending row, empty-result hold, successor race and historical-renewal guards passed')
 
 class RetainedSend:  # C02c: canonical renderings and exact signed header projection.
     @staticmethod
@@ -616,20 +722,25 @@ class RetainedSend:  # C02c: canonical renderings and exact signed header projec
     def decode(rendering, headers, mode):
         if mode not in ('Binary', 'Structured'): raise Hold()
         header_map = {}
+        core_names = (b'ce-specversion', b'ce-id', b'ce-type', b'ce-source', b'ce-datacontenttype')
         for name, value in headers:
             lowered = name.lower()
-            if lowered in (b'content-type', b'ce-hyevattestation'):
+            if lowered in (b'content-type', b'ce-hyevattestation', *core_names):
                 if lowered in header_map: raise Conflict()
                 header_map[lowered] = value
         expected_media = BINARY_MEDIA if mode == 'Binary' else STRUCTURED_MEDIA
         if header_map.get(b'content-type') != expected_media: raise Conflict()
+        expected_core = {b'ce-specversion': b'1.0', b'ce-id': b'fixture-event',
+                         b'ce-type': b'fixture.contract', b'ce-source': b'urn:hexalith:fixture',
+                         b'ce-datacontenttype': BINARY_MEDIA}
         if mode == 'Binary':
             encoded = header_map.get(b'ce-hyevattestation')
-            if encoded is None: raise Hold()
+            if encoded is None or any(header_map.get(name) != value for name, value in expected_core.items()):
+                raise Hold()
             try: attestation = base64.b64decode(encoded, validate=True)
             except (ValueError, binascii.Error): raise Conflict()
             if base64.b64encode(attestation) != encoded: raise Conflict()
-            return rendering, attestation
+            return rendering, attestation, tuple(sorted(expected_core.items()))
         if b'ce-hyevattestation' in header_map: raise Conflict()
         try:
             obj = json.loads(rendering)
@@ -639,7 +750,12 @@ class RetainedSend:  # C02c: canonical renderings and exact signed header projec
             attestation = base64.b64decode(obj['hyevattestation'], validate=True)
         except (ValueError, KeyError, TypeError, binascii.Error): raise Conflict()
         if RetainedSend.render(body, attestation) != rendering: raise Conflict()
-        return body, attestation
+        structured_core = {b'ce-specversion': obj['specversion'].encode('utf-8'),
+                           b'ce-id': obj['id'].encode('utf-8'), b'ce-type': obj['type'].encode('utf-8'),
+                           b'ce-source': obj['source'].encode('utf-8'),
+                           b'ce-datacontenttype': obj['datacontenttype'].encode('utf-8')}
+        if structured_core != expected_core: raise Conflict()
+        return body, attestation, tuple(sorted(structured_core.items()))
     def __init__(self, body, headers, request_mode, accepted_mode, accepted_body,
                  accepted_headers, signed, conversion_authorized=False):
         request_projection = broker_header_image(headers, signed)
@@ -668,9 +784,12 @@ class RetainedSend:  # C02c: canonical renderings and exact signed header projec
         self.decode(accepted_body, accepted_headers, accepted_mode)
         return 'original-Accepted'
 
-binary_headers = (*original_headers, (b'Content-Type', BINARY_MEDIA),
-                  (b'ce-hyevattestation', base64.b64encode(b'fixture-attestation')))
-structured_headers = (*original_headers, (b'Content-Type', STRUCTURED_MEDIA))
+binary_headers = (*original_headers,
+                  (b'ce-hyevattestation', base64.b64encode(b'fixture-attestation')),
+                  (b'ce-specversion', b'1.0'), (b'ce-id', b'fixture-event'),
+                  (b'ce-type', b'fixture.contract'), (b'ce-source', b'urn:hexalith:fixture'),
+                  (b'ce-datacontenttype', BINARY_MEDIA))
+structured_headers = (*routing_headers, (b'Content-Type', STRUCTURED_MEDIA))
 structured_body = RetainedSend.render(b'body', b'fixture-attestation')
 send = RetainedSend(b'body', binary_headers, 'Binary', 'Structured', structured_body,
                     structured_headers, signed_headers, conversion_authorized=True)
@@ -689,6 +808,10 @@ must_raise(Conflict, lambda: RetainedSend(b'body', binary_headers, 'Binary', 'St
 must_raise(Conflict, lambda: RetainedSend(b'body', binary_headers, 'Binary', 'Structured',
     structured_body, (*structured_headers, (b'Content-Type', STRUCTURED_MEDIA)),
     signed_headers, conversion_authorized=True))
+changed_core_headers = tuple((name, b'changed-event') if name.lower() == b'ce-id' else (name, value)
+                             for name, value in binary_headers)
+must_raise(Hold, lambda: RetainedSend(b'body', changed_core_headers, 'Binary', 'Structured',
+    structured_body, structured_headers, signed_headers, conversion_authorized=True))
 must_raise(Hold, lambda: RetainedSend(b'body', binary_headers, 'Binary', 'Structured',
     structured_body, structured_headers, signed_headers))
 must_raise(Conflict, lambda: send.duplicate(b'body', (*binary_headers, (b'X-Trace', b'two')),
@@ -756,21 +879,28 @@ class HistoricalMapping:  # C02d: one old-obligation key, not one key per replac
             raise Hold()
         current = self.by_old.get(old_obligation)
         if current:
-            if current[0] != replacement: raise Conflict()
+            duplicate = (replacement, 1, old_query, exclusion, ownership_cas, grant)
+            if current != duplicate: raise Conflict()
             return current
         if expected_generation != 0: raise Conflict()
-        self.by_old[old_obligation] = (replacement, 1, old_query, exclusion)
+        self.by_old[old_obligation] = (replacement, 1, old_query, exclusion, ownership_cas, grant)
         return self.by_old[old_obligation]
 
 mapping = HistoricalMapping()
 old_obligation = (b'accepted-receipt', b'old-route', b'old-effect-key')
 must_raise(Hold, lambda: mapping.claim(old_obligation, b'new-provider-a', True, False, True))
-first_mapping = mapping.claim(old_obligation, b'new-provider-a', True, True, True)
-assert mapping.claim(old_obligation, b'new-provider-a', True, True, True) == first_mapping
+first_mapping = mapping.claim(old_obligation, b'new-provider-a', b'old-query', b'exclusion', b'ownership')
+assert mapping.claim(old_obligation, b'new-provider-a', b'old-query', b'exclusion', b'ownership') == first_mapping
+must_raise(Conflict, lambda: mapping.claim(old_obligation, b'new-provider-a',
+    b'changed-query', b'exclusion', b'ownership'))
+must_raise(Conflict, lambda: mapping.claim(old_obligation, b'new-provider-a',
+    b'old-query', b'changed-exclusion', b'ownership'))
+must_raise(Conflict, lambda: mapping.claim(old_obligation, b'new-provider-a',
+    b'old-query', b'exclusion', b'changed-ownership'))
 must_raise(Conflict, lambda: mapping.claim(old_obligation, b'new-provider-b', True, True, True))
 must_raise(Conflict, lambda: mapping.claim(old_obligation, b'new-provider-a/changed-backend', True, True, True))
 assert mapping.claim((b'other-accepted', b'old-route', b'old-effect-key'),
-                     b'new-provider-b', True, True, True)
+                     b'new-provider-b', b'old-query', b'exclusion', b'ownership')
 print('C02d old-obligation mapping CAS, exclusion and competing replacement passed')
 
 class Routes:
@@ -919,19 +1049,61 @@ print('C03c signed accepted-revision selector and input guards passed')
 
 
 
-def physical_filter_operation(accepted_claim, accepted_carrier, handoff_key, attempt_id):
-    if not accepted_claim or not accepted_carrier or not handoff_key: raise Hold()
-    # A broker retry token is deliberately excluded from the stable key.
-    return hashlib.sha256(b'HX-EV-PHYSICAL-FILTER-OP-1\0' + b'\x01'
-        + len(accepted_claim + accepted_carrier).to_bytes(4, 'big') + accepted_claim + accepted_carrier
-        + len(handoff_key).to_bytes(4, 'big') + handoff_key).hexdigest().encode('ascii')
+def f_u(value):
+    if not isinstance(value, bytes) or not 1 <= len(value) <= 1024: raise Hold()
+    return len(value).to_bytes(4, 'big') + value
+def f_n(value):
+    if not isinstance(value, int) or value < 1 or value >= 1 << 63: raise Hold()
+    return value.to_bytes(8, 'big', signed=True)
+def f_b32(value):
+    if not isinstance(value, bytes) or len(value) != 32: raise Hold()
+    return value
+def f_tag(tag, value): return bytes((tag,)) + value
 
-filter_op = physical_filter_operation(b'signed-accepted', b'carrier', b'handoff', b'attempt-1')
-assert filter_op == physical_filter_operation(b'signed-accepted', b'carrier', b'handoff', b'attempt-2')
-assert filter_op != physical_filter_operation(b'changed-accepted', b'carrier', b'handoff', b'attempt-1')
-assert filter_op != physical_filter_operation(b'signed-accepted', b'carrier', b'other-handoff', b'attempt-1')
-must_raise(Hold, lambda: physical_filter_operation(b'', b'carrier', b'handoff', b'attempt'))
-print('C03e signed Accepted delivery derives stable physical-filter operation passed')
+def accepted_log_bytes(scope, log_id, accepted_revision, log_generation,
+                       obligation, accepted_image, acceptance_index_hash):
+    if len(scope) != 7: raise Hold()
+    values = (*scope[:4], scope[4], scope[5], scope[6], log_id)
+    return (b'HX-EV-ACCEPTED-DELIVERY-LOG-1\0\x02\x00\x0d' +
+        b''.join(f_tag(tag, f_u(value)) for tag, value in enumerate(values, 1)) +
+        f_tag(9, f_n(accepted_revision)) + f_tag(10, f_n(log_generation)) +
+        f_tag(11, f_b32(obligation)) + f_tag(12, f_b32(accepted_image)) +
+        f_tag(13, f_b32(acceptance_index_hash)))
+
+def accepted_log_key(scope, log_id):
+    return (b'accepted-delivery-log:' + hashlib.sha256(
+        b'HX-EV-ACCEPTED-DELIVERY-LOG-KEY-2\0\x01' +
+        b''.join(f_u(value) for value in (*scope, log_id))).hexdigest().encode('ascii'))
+
+def accepted_index_key(scope, obligation):
+    return (b'accepted-delivery-index:' + hashlib.sha256(
+        b'HX-EV-ACCEPTED-DELIVERY-INDEX-KEY-1\0\x01' + obligation +
+        b''.join(f_u(value) for value in scope)).hexdigest().encode('ascii'))
+
+def accepted_bundle_operation(reverse_key, log_key, obligation, log_claim_carrier_hash):
+    return hashlib.sha256(b'HX-EV-ACCEPTED-DELIVERY-BUNDLE-OP-1\0\x01' +
+        f_u(reverse_key) + f_u(log_key) + obligation + log_claim_carrier_hash).digest()
+
+accepted_scope = (b'tenant', b'domain', b'component', b'topic', b'destination', b'subscription', b'partition')
+accepted_obligation_fixture = hashlib.sha256(b'obligation').digest()
+accepted_image_fixture = hashlib.sha256(b'accepted-image').digest()
+acceptance_index_fixture = hashlib.sha256(b'acceptance-index').digest()
+accepted_log_fixture = accepted_log_bytes(accepted_scope, b'log-7', 7, 3,
+    accepted_obligation_fixture, accepted_image_fixture, acceptance_index_fixture)
+assert accepted_log_fixture.startswith(b'HX-EV-ACCEPTED-DELIVERY-LOG-1\0\x02\x00\x0d')
+assert accepted_log_fixture.count(b'destination') == 1
+accepted_log_key_fixture = accepted_log_key(accepted_scope, b'log-7')
+accepted_index_key_fixture = accepted_index_key(accepted_scope, accepted_obligation_fixture)
+accepted_log_claim_carrier_hash = hashlib.sha256(b'purpose-28-log').digest()
+accepted_bundle_fixture = accepted_bundle_operation(accepted_index_key_fixture,
+    accepted_log_key_fixture, accepted_obligation_fixture, accepted_log_claim_carrier_hash)
+assert accepted_bundle_fixture != accepted_bundle_operation(accepted_index_key_fixture,
+    accepted_log_key_fixture, accepted_obligation_fixture, hashlib.sha256(b'changed-log').digest())
+must_raise(Hold, lambda: accepted_log_bytes(accepted_scope, b'log-7', 7, 0,
+    accepted_obligation_fixture, accepted_image_fixture, acceptance_index_fixture))
+must_raise(Hold, lambda: accepted_log_bytes(accepted_scope[:-1], b'log-7', 7, 3,
+    accepted_obligation_fixture, accepted_image_fixture, acceptance_index_fixture))
+print('C03e exact accepted-delivery log and OP-2 framing passed')
 
 class Handoff:
     def __init__(self):
@@ -941,7 +1113,7 @@ class Handoff:
               no_prior_pin_send_proof=False, historical_empty=False, core_header=b"exact-core-headers"):
         if not names and not historical_empty: raise Hold()  # Historical empty scope requires signed filtering.
         if tuple(names) != tuple(sorted(set(names))): raise Conflict()
-        if prior_binary == 'ambiguous': raise Hold()
+        if prior_binary == 'ambiguous' or not isinstance(attempt, bytes) or not attempt: raise Hold()
         if not core_header: raise Hold()
         if self.core_header is not None and self.core_header != core_header: raise Conflict()
         if self.pin is None and prior_binary is None and not no_prior_pin_send_proof: raise Hold()
@@ -986,6 +1158,45 @@ class Handoff:
             if result == 'Quarantined' and (addressed_fence_check is None or not addressed_fence_check(name)):
                 raise Hold()  # Active complete object-set readback on every current attempt.
         return True
+
+class LegacyVariantLedger:  # C04: one handoff-scoped CAS head reserves every exact variant.
+    def __init__(self):
+        self.entries = []; self.by_attempt = {}; self.head = b'\0' * 32
+    def append(self, attempt_key, expected_count, body, core_headers, protected_side, side_link):
+        candidate = (body, core_headers, protected_side, side_link)
+        if attempt_key in self.by_attempt:
+            ordinal, retained = self.by_attempt[attempt_key]
+            if retained != candidate: raise Conflict()
+            return ordinal
+        if expected_count != len(self.entries): raise Conflict()
+        if len(self.entries) >= 64: raise Hold()
+        if not all((attempt_key, body, core_headers, protected_side, side_link)): raise Hold()
+        ordinal = len(self.entries) + 1
+        entry = hashlib.sha256(b'HX-EV-LEGACY-VARIANT-ENTRY-1\0' + b'\x01' +
+            ordinal.to_bytes(8, 'big') + self.head + hashlib.sha256(attempt_key).digest() +
+            hashlib.sha256(body + core_headers + protected_side + side_link).digest()).digest()
+        new_head = hashlib.sha256(b'HX-EV-LEGACY-VARIANT-HEAD-1\0' + b'\x01' +
+            ordinal.to_bytes(8, 'big') + self.head + entry).digest()
+        # All validation precedes this atomic state replacement.
+        self.entries = [*self.entries, entry]
+        self.by_attempt = {**self.by_attempt, attempt_key: (ordinal, candidate)}
+        self.head = new_head
+        return ordinal
+
+variant_ledger = LegacyVariantLedger()
+must_raise(Hold, lambda: Handoff().stage(b'source', (b'route',), b'pin', b'', b'canonical',
+                                        no_prior_pin_send_proof=True))
+for variant_number in range(1, 64):
+    key = b'variant-' + str(variant_number).encode('ascii')
+    assert variant_ledger.append(key, variant_number - 1, key, b'core', b'side', b'link') == variant_number
+assert variant_ledger.append(b'variant-64-a', 63, b'body-a', b'core', b'side', b'link') == 64
+must_raise(Conflict, lambda: variant_ledger.append(
+    b'variant-64-b', 63, b'body-b', b'core', b'side', b'link'))
+must_raise(Hold, lambda: variant_ledger.append(
+    b'variant-65', 64, b'body', b'core', b'side', b'link'))
+assert variant_ledger.append(b'variant-64-a', 64, b'body-a', b'core', b'side', b'link') == 64
+must_raise(Conflict, lambda: variant_ledger.append(
+    b'variant-64-a', 64, b'changed', b'core', b'side', b'link'))
 
 handoff = Handoff(); source = ('pub', 'topic', 'sub', 7, 'm'); canonical = b'canonical-source'
 must_raise(Hold, lambda: handoff.stage(source, ('a', 'b'), (plain, attestation), b'exact-json-1', canonical))
@@ -1145,7 +1356,12 @@ class AddressedRetention:  # C05c: one CAS head per partition plus tagged retain
         row = self.objects[key]
         if (not signed or not monotonic or not row['active'] or generation <= row['generation']
             or (previous_generation, previous_etag) != (row['generation'], row['etag'])): raise Hold()
-        proposed = set(row['open']) if open_list is None else set(open_list)
+        if open_list is None:
+            proposed = set(row['open'])
+        else:
+            canonical = tuple(open_list)
+            if canonical != tuple(sorted(set(canonical))): raise Hold()
+            proposed = set(canonical)
         if not proposed.issubset(row['all_entries']): raise Hold()  # New entries require attach/opening proof.
         removed = row['open'] - proposed
         if removed != set(closures) or not set(closures).issubset(row['closed']): raise Hold()
@@ -1158,11 +1374,14 @@ class AddressedRetention:  # C05c: one CAS head per partition plus tagged retain
             or not routes or routes != tuple(sorted(set(routes))) or len(row['open']) >= 128): raise Hold()
         if (previous_generation, previous_etag) != (row['generation'], row['etag']) or generation <= row['generation']:
             raise Hold()
-        row['handoffs'][handoff] = routes
-        row['binds'][handoff] = {}
-        row['all_entries'].add(handoff)
-        self.extend(key, generation, etag, previous_generation, previous_etag,
-                    open_list=row['open'] | {handoff})
+        proposed_open = set(row['open']) | {handoff}
+        version = (generation, etag, frozenset(proposed_open), frozenset())
+        # Model one CAS replacement: a failed precondition leaves every collection unchanged.
+        row['handoffs'] = {**row['handoffs'], handoff: routes}
+        row['binds'] = {**row['binds'], handoff: {}}
+        row['all_entries'] = set(row['all_entries']) | {handoff}
+        row['versions'] = (*row['versions'], version)
+        row['generation'], row['etag'], row['open'] = generation, etag, proposed_open
     def bind(self, key, handoff, route, terminal_decision, receipt, post_handoff_link=True):
         row = self.objects[key]
         if (handoff not in row['open'] or route not in row['handoffs'][handoff]
@@ -1217,9 +1436,13 @@ must_raise(Hold, lambda: addressed.acknowledge(shared_key, b'route-a', b'exact-b
     ((b'x-trace', b'one'),), 7, b'etag', True))
 must_raise(Hold, lambda: addressed.extend(shared_key, 8, b'etag-8', 6, b'etag'))
 addressed.extend(shared_key, 8, b'etag-8', 7, b'etag')
-must_raise(Hold, lambda: addressed.extend(shared_key, 9, b'etag-9', 8, b'etag-8', open_list=set()))
+must_raise(Hold, lambda: addressed.extend(shared_key, 9, b'etag-9', 8, b'etag-8', open_list=()))
 assert addressed.acknowledge(shared_key, b'route-a', b'exact-body',
     ((b'X-Trace', b'one'),), 8, b'etag-8', True)
+before_failed_attach = repr(addressed.objects[shared_key])
+must_raise(Hold, lambda: addressed.attach(
+    shared_key, b'orphan-handoff', (b'route-z',), 9, b'etag-9', 7, b'stale-etag'))
+assert repr(addressed.objects[shared_key]) == before_failed_attach
 addressed.attach(shared_key, b'handoff-b', (b'route-c',), 9, b'etag-9', 8, b'etag-8')
 assert addressed.objects[shared_key]['open'] == {b'handoff-a', b'handoff-b'}
 must_raise(Hold, lambda: addressed.acknowledge(shared_key, b'route-c', b'exact-body',
@@ -1229,9 +1452,13 @@ assert addressed.acknowledge(shared_key, b'route-c', b'exact-body',
     ((b'X-Trace', b'one'),), 9, b'etag-9', True, handoff=b'handoff-b')
 addressed.close(shared_key, b'handoff-a', True, True, True)
 must_raise(Hold, lambda: addressed.extend(shared_key, 10, b'etag-10', 9, b'etag-9',
-    open_list=set(), closures=(b'handoff-a',)))
+    open_list=(), closures=(b'handoff-a',)))
+must_raise(Hold, lambda: addressed.extend(shared_key, 10, b'etag-10', 9, b'etag-9',
+    open_list=(b'handoff-b', b'handoff-b'), closures=(b'handoff-a',)))
+must_raise(Hold, lambda: addressed.extend(shared_key, 10, b'etag-10', 9, b'etag-9',
+    open_list=(b'handoff-b', b'handoff-a'), closures=(b'handoff-a',)))
 addressed.extend(shared_key, 10, b'etag-10', 9, b'etag-9',
-                 open_list={b'handoff-b'}, closures=(b'handoff-a',))
+                 open_list=(b'handoff-b',), closures=(b'handoff-a',))
 assert addressed.objects[shared_key]['open'] == {b'handoff-b'}
 assert addressed.acknowledge(shared_key, b'route-c', b'exact-body',
     ((b'X-Trace', b'one'),), 10, b'etag-10', True, handoff=b'handoff-b')
@@ -1462,7 +1689,7 @@ def member_proof_hash(record, carrier):
 
 def terminal_member(attempts, maximum, roster, policy, signed_proof, final_class=None):
     if maximum < 1 or maximum > 64 or len(attempts) > maximum: raise Hold()
-    if tuple(number for number, _ in attempts) != tuple(range(1, len(attempts) + 1)): raise Hold()
+    if tuple(number for number, _, _ in attempts) != tuple(range(1, len(attempts) + 1)): raise Hold()
     if not attempts:
         if signed_proof is None or len(signed_proof) != 5 or signed_proof[2:] != (True, True, True): raise Hold()
         proof_hash = member_proof_hash(signed_proof[0], signed_proof[1])
@@ -1470,8 +1697,9 @@ def terminal_member(attempts, maximum, roster, policy, signed_proof, final_class
         return 'zero-attempt-nonadmissible'
     if final_class not in ('Accepted', 'Rejected02'): raise Hold()
     if signed_proof is not None or roster[0] != len(attempts) or policy[0] != len(attempts): raise Hold()
-    if roster[1] is None or roster[2] != attempts[-1][1] or roster[3] is not None: raise Hold()
-    if policy[1] != attempts[-1][1] or policy[2] is not None: raise Hold()
+    if (roster[1] != attempts[-1][1] or roster[2] != attempts[-1][2]
+        or roster[3] is not None): raise Hold()
+    if policy[1] != attempts[-1][2] or policy[2] is not None: raise Hold()
     return 'attempted'
 
 nonadmissible = (b'exact-member-proof-record', b'exact-signature-carrier', True, True, True)
@@ -1489,16 +1717,18 @@ must_raise(Hold, lambda: terminal_member((), 64, zero_roster, zero_policy,
                                         (nonadmissible[0], nonadmissible[1], True, True, False)))
 must_raise(Hold, lambda: terminal_member((), 64, zero_roster, zero_policy,
                                         (nonadmissible[0], b'changed-carrier', True, True, True)))
-receipt = b'exact-receipt-hash'
-assert terminal_member(((1, receipt),), 64, (1, b'broker-op', receipt, None),
+receipt = b'exact-receipt-hash'; broker_operation = b'broker-op'
+assert terminal_member(((1, broker_operation, receipt),), 64, (1, broker_operation, receipt, None),
                        (1, receipt, None), None, 'Rejected02') == 'attempted'
-must_raise(Hold, lambda: terminal_member(((1, receipt),), 64, (1, b'broker-op', receipt, None),
+must_raise(Hold, lambda: terminal_member(((1, broker_operation, receipt),), 64, (1, b'wrong-operation', receipt, None),
+                                        (1, receipt, None), None, 'Rejected02'))
+must_raise(Hold, lambda: terminal_member(((1, broker_operation, receipt),), 64, (1, broker_operation, receipt, None),
                                         (1, receipt, None), None, 'Rejected01'))
-must_raise(Hold, lambda: terminal_member(((1, receipt),), 64, (1, b'broker-op', receipt, None),
+must_raise(Hold, lambda: terminal_member(((1, broker_operation, receipt),), 64, (1, broker_operation, receipt, None),
                                         (1, receipt, None), None, 'Unknown'))
-assert terminal_member(((1, receipt),), 64, (1, b'broker-op', receipt, None),
+assert terminal_member(((1, broker_operation, receipt),), 64, (1, broker_operation, receipt, None),
                        (1, receipt, None), None, 'Accepted') == 'attempted'
-must_raise(Hold, lambda: terminal_member(((2, receipt),), 64, (1, b'broker-op', receipt, None),
+must_raise(Hold, lambda: terminal_member(((2, broker_operation, receipt),), 64, (1, broker_operation, receipt, None),
                                         (1, receipt, None), None, 'Rejected02'))
 
 def terminal_segment_bytes(kind, operation, final_set_hash, fence_hash, index, first, rows):
@@ -1524,6 +1754,13 @@ def terminal_segment_bytes(kind, operation, final_set_hash, fence_hash, index, f
 
 segment = terminal_segment_bytes('members', b'operation', b's' * 32, b'f' * 32, 0, 1, (b'row',))
 assert segment == terminal_segment_bytes('members', b'operation', b's' * 32, b'f' * 32, 0, 1, (b'row',))
+assert segment.hex() == ('48582d45562d5445524d494e414c2d4d454d424552532d3100010007015ee9ac9d'
+                         'b9bb36d6f8ad7f0f75131aafa9990cdeef430697fce088a0a81894dd0273737373'
+                         '737373737373737373737373737373737373737373737373737373730366666666'
+                         '666666666666666666666666666666666666666666666666666666660400000000'
+                         '00000000050000000000000001060000000000000001070000000b0000000100'
+                         '000003726f77')
+assert hashlib.sha256(segment).hexdigest() == '0b84bb3ff0d34a9da50412f43e83fb54294bc8a636d78f172e7f3f1d111ebcf6'
 assert hashlib.sha256(segment).digest() != hashlib.sha256(terminal_segment_bytes(
     'policy', b'operation', b's' * 32, b'f' * 32, 0, 1, (b'row',))).digest()
 assert hashlib.sha256(segment).digest() != hashlib.sha256(terminal_segment_bytes(
@@ -1544,6 +1781,8 @@ print('C08c presend/zero-ledger stand-ins and exact segment framing passed')
 class PreSendAdmission:  # C08e: member-scoped atomic broker rule and zero-index source stand-ins.
     def __init__(self, partitions):
         self.partitions = tuple(partitions)
+        if not self.partitions or self.partitions != tuple(dict.fromkeys(self.partitions)) \
+                or any(not partition for partition in self.partitions): raise Hold()
         self.registered = set(); self.queued = set(); self.accepted = set(); self.inflight = set()
         self.rules = {}; self.generation = 0
     def has_prior(self, member):
@@ -1551,11 +1790,13 @@ class PreSendAdmission:  # C08e: member-scoped atomic broker rule and zero-index
                    (self.registered, self.queued, self.accepted, self.inflight) for entry in ledger)
     def install(self, member, policy, configuration, source, manifest, purpose=24,
                 issuer=b'pinned-admission', signed=True):
+        manifest = tuple(manifest)
         if (purpose != 24 or issuer != b'pinned-admission' or not signed or not source
-            or not policy or not configuration or tuple(manifest) != self.partitions
+            or not policy or not configuration or not manifest
+            or manifest != tuple(dict.fromkeys(manifest)) or manifest != self.partitions
             or self.has_prior(member) or member in self.rules): raise Hold()
         self.generation += 1
-        self.rules[member] = (member, policy, configuration, source, self.generation, tuple(manifest))
+        self.rules[member] = (member, policy, configuration, source, self.generation, manifest)
         return self.rules[member]
     def send(self, member, send_id):
         if member in self.rules: raise Hold()
@@ -1577,6 +1818,13 @@ must_raise(Hold, lambda: presend.send(member_b, b'late-send'))
 must_raise(Hold, lambda: presend.verify(member_b, rule, (b'destination-a',)))
 must_raise(Hold, lambda: PreSendAdmission((b'destination-a',)).install(
     member_b, b'policy', b'config', b'late-revocation', (b'destination-a',), purpose=21))
+must_raise(Hold, lambda: PreSendAdmission(()))
+must_raise(Hold, lambda: PreSendAdmission((b'destination-a', b'destination-a')))
+must_raise(Hold, lambda: presend.install(
+    (b'tenant', b'parent', b'member-c'), b'policy', b'config', b'source', ()))
+must_raise(Hold, lambda: presend.install(
+    (b'tenant', b'parent', b'member-c'), b'policy', b'config', b'source',
+    (b'destination-a', b'destination-a')))
 print('C08e member-scoped pre-send rule and unrelated-member guard passed')
 
 class DrainLedger:  # C08f: coordinator invocations differ from broker sends.
@@ -1616,7 +1864,7 @@ def compact_policy_member(full_set, broker_id, reason, row, policy, receipt_clas
                           signed_policy, signed_receipt, parent_bound):
     message_id, destination_id, pin_hash, configuration_hash = full_set  # Exact A8 set and outbox.
     position, msg_hash, dest_hash, send_hash, reason_hash, row_pin = row
-    policy_position, policy_msg, policy_dest, policy_config, maximum = policy
+    policy_position, policy_msg, policy_dest, policy_config, maximum, reason_rules = policy
     if (not signed_policy or not signed_receipt or not parent_bound or not 1 <= maximum <= 64
         or position < 1 or policy_position < 1 or position != policy_position or msg_hash != u_hash(message_id)
         or dest_hash != u_hash(destination_id) or send_hash != u_hash(broker_id)
@@ -1625,6 +1873,7 @@ def compact_policy_member(full_set, broker_id, reason, row, policy, receipt_clas
         raise Hold()
     if receipt_class not in ('Accepted', 'TerminalRejected'): raise Hold()
     if receipt_class == 'Accepted' and reason != b'Accepted': raise Hold()
+    if (reason, receipt_class) not in reason_rules: raise Hold()
     encoded = position.to_bytes(4, 'big') + msg_hash + dest_hash + send_hash + reason_hash + row_pin
     if len(encoded) > 512: raise Hold()
     return encoded
@@ -1632,7 +1881,8 @@ def compact_policy_member(full_set, broker_id, reason, row, policy, receipt_clas
 full_member = (b'm' * 1024, b'd' * 1024, b'p' * 32, b'c' * 32)
 compact_row = (1, u_hash(full_member[0]), u_hash(full_member[1]), u_hash(b'send'),
                u_hash(b'closed-reason'), full_member[2])
-signed_member_policy = (1, compact_row[1], compact_row[2], full_member[3], 2)
+signed_reason_rules = ((b'Accepted', 'Accepted'), (b'closed-reason', 'TerminalRejected'))
+signed_member_policy = (1, compact_row[1], compact_row[2], full_member[3], 2, signed_reason_rules)
 assert len(compact_policy_member(full_member, b'send', b'closed-reason', compact_row,
                                  signed_member_policy, 'TerminalRejected', True, True, True)) < 512
 must_raise(Hold, lambda: compact_policy_member((b'n' * 1024, full_member[1], full_member[2], full_member[3]),
@@ -1647,6 +1897,10 @@ must_raise(Hold, lambda: compact_policy_member(full_member, b'invented-send', b'
 must_raise(Hold, lambda: compact_policy_member(full_member, b'send', b'closed-reason',
                                            compact_row, signed_member_policy,
                                            'RetryableRejected', True, True, True))
+invented_reason_row = (*compact_row[:4], u_hash(b'invented-reason'), compact_row[5])
+must_raise(Hold, lambda: compact_policy_member(full_member, b'send', b'invented-reason',
+                                           invented_reason_row, signed_member_policy,
+                                           'TerminalRejected', True, True, True))
 accepted_row = (compact_row[0], compact_row[1], compact_row[2], compact_row[3],
                 u_hash(b'Accepted'), compact_row[5])
 assert compact_policy_member(full_member, b'send', b'Accepted', accepted_row,
@@ -1668,7 +1922,8 @@ class RevisionClock:  # C08d: immutable A8 outcome key precedes final head CAS.
         self.head_revision = 0
         self.final = {}
     def reserve(self, revision, predecessor, outcome_hash, head_hash, utc, signed, readback):
-        if not signed or not readback or revision < 1 or not outcome_hash or not head_hash: raise Hold()
+        if (not signed or not readback or revision < 1 or not outcome_hash or not head_hash
+            or not isinstance(utc, int) or not -(2**63) <= utc < 2**63): raise Hold()
         key = (revision, predecessor, outcome_hash)
         row = (head_hash, utc)
         if key in self.reservations and self.reservations[key][0] != head_hash: raise Conflict()
@@ -1742,6 +1997,7 @@ later = lost_ack.reserve(2, b'occupied-head', b'new-observation', b'new-head-2',
 lost_ack.create_outcome(later, True, True)
 assert lost_ack.finalize(later, b'occupied-head', True, True) == 132
 must_raise(Hold, lambda: clock.reserve(3, b'head-2', b'x', b'y', 128, True, False))
+must_raise(Hold, lambda: clock.reserve(3, b'head-2', b'x', b'y', None, True, True))
 print('C08d contiguous A8 revision, occupied outcome, predecessor and clock recovery passed')
 
 class TerminalPointer:  # C08g: proposals cannot become public without final-head CAS.
@@ -1804,20 +2060,29 @@ assert failed_pointer.close(failed_proposal, b'failed-head-1', b'etag-1')
 print('C08g authenticated failed A8 head, stale proposal and pointer passed')
 
 
-def capture_version_hash(record, prior_receipt, generation, etag):  # C05d: acyclic CAS order.
-    if not record or not prior_receipt or generation < 1 or not etag: raise Hold()
-    installed = hashlib.sha256(b'HX-EV-CAPTURE-INSTALLED-1\0' + b'\x01'
-                               + len(record).to_bytes(4, 'big') + record).digest()
-    receipt = b'CAS:' + installed + generation.to_bytes(4, 'big') + etag
+def capture_version_hash(record, predecessor, expected_predecessor, generation, etag):  # C05d: acyclic CAS order.
+    if (not record or predecessor != expected_predecessor or len(predecessor) != 3
+        or len(predecessor[0]) != 32 or predecessor[1] < 0 or not predecessor[2]
+        or generation != predecessor[1] + 1 or not etag): raise Hold()
+    B = lambda value: len(value).to_bytes(4, 'big') + value
+    installed = hashlib.sha256(b'HX-EV-CAPTURE-INSTALLED-1\0' + b'\x01' + B(record)).digest()
+    receipt = (b'CAS:' + installed + B(predecessor[0])
+               + predecessor[1].to_bytes(8, 'big', signed=True) + B(predecessor[2])
+               + generation.to_bytes(8, 'big', signed=True) + B(etag))
     version = hashlib.sha256(b'HX-EV-ADDRESSED-VERSION-HASH-1\0' + b'\x01'
-                             + len(record).to_bytes(4, 'big') + record
-                             + len(receipt).to_bytes(4, 'big') + receipt).digest()
+                             + B(record) + B(receipt)).digest()
     return installed, receipt, version
 
-installed, cas_receipt, version_hash = capture_version_hash(b'pre-CAS-version', b'prior', 9, b'etag-9')
+capture_predecessor = (hashlib.sha256(b'prior-version').digest(), 8, b'etag-8')
+installed, cas_receipt, version_hash = capture_version_hash(
+    b'pre-CAS-version', capture_predecessor, capture_predecessor, 9, b'etag-9')
 assert installed in cas_receipt and version_hash not in cas_receipt
-assert version_hash != capture_version_hash(b'changed-version', b'prior', 9, b'etag-9')[2]
-assert version_hash != capture_version_hash(b'pre-CAS-version', b'prior', 10, b'etag-10')[2]
+assert version_hash != capture_version_hash(
+    b'changed-version', capture_predecessor, capture_predecessor, 9, b'etag-9')[2]
+must_raise(Hold, lambda: capture_version_hash(b'pre-CAS-version', capture_predecessor,
+    (hashlib.sha256(b'other-prior').digest(), 8, b'etag-8'), 9, b'etag-9'))
+must_raise(Hold, lambda: capture_version_hash(
+    b'pre-CAS-version', capture_predecessor, capture_predecessor, 10, b'etag-10'))
 print('C05d pre-CAS record, post-CAS receipt and acyclic version hash passed')
 
 class RetryExhausted:  # C08h: retryable max is visible, nonterminal, and gated.
@@ -1866,6 +2131,8 @@ print('C09 rollback/source/budget admission passed')
 def cancellation(preparation_started, save_started, commit_proven, receipt_proven,
                  no_commit_readback=False, preparation_readback=False):
     if receipt_proven and not commit_proven: raise Hold()
+    if preparation_readback and not preparation_started: raise Hold()
+    if no_commit_readback and commit_proven: raise Hold()
     if not preparation_started and (save_started or commit_proven or receipt_proven): raise Hold()
     if not preparation_started and not save_started: return 'cancelled-no-mutation'
     if save_started and not preparation_started: raise Hold()
@@ -1880,6 +2147,7 @@ assert cancellation(False, False, False, False) == 'cancelled-no-mutation'
 must_raise(Hold, lambda: cancellation(False, False, True, False))
 must_raise(Hold, lambda: cancellation(False, False, False, True))
 must_raise(Hold, lambda: cancellation(False, False, True, True))
+must_raise(Hold, lambda: cancellation(False, False, False, False, preparation_readback=True))
 must_raise(Hold, lambda: cancellation(True, False, False, False))
 must_raise(Hold, lambda: cancellation(True, False, False, False, no_commit_readback=True))
 must_raise(Hold, lambda: cancellation(True, False, False, False, preparation_readback=True))
@@ -1888,28 +2156,78 @@ assert cancellation(True, False, False, False, no_commit_readback=True,
 must_raise(Hold, lambda: cancellation(True, True, False, False, preparation_readback=True))
 assert cancellation(True, True, True, False, preparation_readback=True) == 'committed-pending'
 assert cancellation(True, True, True, True, preparation_readback=True) == 'committed-published'
+must_raise(Hold, lambda: cancellation(True, True, True, False,
+                                      no_commit_readback=True, preparation_readback=True))
 print('C10 durable preparation/readback and cancellation commit truth passed')
 
 # C11a: accepted body and full headers are predicted from immutable configuration before send.
 class PrecommittedAcceptance:
+    @staticmethod
+    def signed_values(signed_six):
+        if not isinstance(signed_six, dict) or set(signed_six) != set(ROUTING_HEADERS): raise Hold()
+        return tuple(sorted(signed_six.items()))
     def __init__(self, request_body, request_headers, accepted_body, accepted_headers, decoded, attestation, signed_six):
         self.request = (request_body, tuple(request_headers))
         self.accepted = (accepted_body, tuple(accepted_headers))
-        self.common = (decoded, attestation, tuple(signed_six))
-    def accept(self, actual_body, actual_headers, decoded, attestation, signed_six):
-        if (actual_body, tuple(actual_headers)) != self.accepted or (decoded, attestation, tuple(signed_six)) != self.common:
+        self.common = (decoded, attestation, self.signed_values(signed_six))
+    def accept(self, request_body, request_headers, actual_body, actual_headers, decoded, attestation, signed_six):
+        if ((request_body, tuple(request_headers)) != self.request
+            or (actual_body, tuple(actual_headers)) != self.accepted
+            or (decoded, attestation, self.signed_values(signed_six)) != self.common):
             raise Conflict()
         return self.request, self.accepted
 
 precommitted = PrecommittedAcceptance(b'binary', ((b'Content-Type', BINARY_MEDIA),),
     b'structured', ((b'Content-Type', STRUCTURED_MEDIA),), b'body', b'attest', signed_headers)
-assert precommitted.accept(b'structured', ((b'Content-Type', STRUCTURED_MEDIA),),
+assert precommitted.accept(b'binary', ((b'Content-Type', BINARY_MEDIA),),
+    b'structured', ((b'Content-Type', STRUCTURED_MEDIA),),
     b'body', b'attest', signed_headers)[1][0] == b'structured'
-must_raise(Conflict, lambda: precommitted.accept(b'structured',
+must_raise(Conflict, lambda: precommitted.accept(b'changed-request', ((b'Content-Type', BINARY_MEDIA),),
+    b'structured', ((b'Content-Type', STRUCTURED_MEDIA),), b'body', b'attest', signed_headers))
+must_raise(Conflict, lambda: precommitted.accept(b'binary', ((b'Content-Type', BINARY_MEDIA),), b'structured',
     ((b'Content-Type', STRUCTURED_MEDIA), (b'X-Broker', b'added')), b'body', b'attest', signed_headers))
-must_raise(Conflict, lambda: precommitted.accept(b'structured',
+must_raise(Conflict, lambda: precommitted.accept(b'binary', ((b'Content-Type', BINARY_MEDIA),), b'structured',
     ((b'Content-Type', STRUCTURED_MEDIA),), b'changed', b'attest', signed_headers))
-print('C11a precommitted accepted rendering and complete header image passed')
+changed_signed_headers = dict(signed_headers); changed_signed_headers[b'hx-domain'] = b'changed-domain'
+must_raise(Conflict, lambda: precommitted.accept(b'binary', ((b'Content-Type', BINARY_MEDIA),), b'structured',
+    ((b'Content-Type', STRUCTURED_MEDIA),), b'body', b'attest', changed_signed_headers))
+
+class FirstSendMembership:
+    def __init__(self): self.outcomes = {}
+    def decide(self, key, old_revision, new_revision, pinned_images, new_images, zero_send_proof):
+        empty = (isinstance(zero_send_proof, tuple) and len(zero_send_proof) == 5
+                 and zero_send_proof[0] == 'EmptyNamespace' and all(zero_send_proof[1:]))
+        initial = (isinstance(zero_send_proof, tuple) and len(zero_send_proof) == 7
+                   and zero_send_proof[0] == 'InitialRowOnly' and all(zero_send_proof[1:]))
+        if not (empty or initial) or new_revision <= old_revision: raise Hold()
+        disposition = 'ContinueSamePin' if pinned_images == new_images else 'FirstSendMembershipChangedHold'
+        proof_values = tuple(value if isinstance(value, bytes) else str(value).encode('ascii')
+                             for value in zero_send_proof)
+        proof_bytes = b''.join(len(value).to_bytes(4, 'big') + value for value in proof_values)
+        proof_hash = hashlib.sha256(b'HX-EV-FIRST-SEND-ZERO-PROOF-1\0\x01' + proof_bytes).digest()
+        record = (old_revision, new_revision, pinned_images, new_images, proof_hash, zero_send_proof, disposition)
+        if key in self.outcomes and self.outcomes[key] != record: raise Conflict()
+        self.outcomes[key] = record
+        return disposition
+
+membership_outcome = FirstSendMembership()
+pinned_images = (precommitted.request, precommitted.accepted)
+assert membership_outcome.decide(b'message+scope+member+pin', 7, 8,
+    pinned_images, pinned_images, ('EmptyNamespace', b'exact-zero-ledger', b'partition-manifest', True, True)) == 'ContinueSamePin'
+assert FirstSendMembership().decide(b'installed-row-key', 7, 8, pinned_images, pinned_images,
+    ('InitialRowOnly', b'row', b'purpose-23-head', b'row-head-CAS', b'zero-attempt-index',
+     b'partition-manifest', True)) == 'ContinueSamePin'
+must_raise(Hold, lambda: FirstSendMembership().decide(b'key', 7, 8,
+    pinned_images, pinned_images, ('InitialRowOnly', b'row', b'purpose-23-head', b'',
+                                   b'zero-attempt-index', b'partition-manifest', True)))
+assert FirstSendMembership().decide(b'key', 7, 8, pinned_images,
+    (precommitted.request, (b'changed', precommitted.accepted[1])),
+    ('EmptyNamespace', b'exact-zero-ledger', b'partition-manifest', True, True)) == 'FirstSendMembershipChangedHold'
+must_raise(Conflict, lambda: membership_outcome.decide(b'message+scope+member+pin', 7, 9,
+    pinned_images, pinned_images, ('EmptyNamespace', b'exact-zero-ledger', b'partition-manifest', True, True)))
+must_raise(Conflict, lambda: membership_outcome.decide(b'message+scope+member+pin', 7, 8,
+    pinned_images, pinned_images, ('EmptyNamespace', b'changed-zero-ledger', b'partition-manifest', True, True)))
+print('C11a precommitted request/accepted images and first-send membership outcome passed')
 
 # C11b: authority proof generations are values at one canonical physical-object key.
 def framed(value): return len(value).to_bytes(4, 'big') + value
@@ -1918,64 +2236,363 @@ def object_key(partition, authority, tag, object_id):
     return hashlib.sha256(b'HX-EV-RETAINED-OBJECT-KEY-1\0' + b'\x01' +
         framed(partition) + framed(authority) + bytes((tag,)) + framed(object_id)).digest()
 
-key_a = object_key(b'partition', b'ad31', 0, b'object-1')
+identity_attachment_prefix = b'HX-EV-CAPTURE-IDENTITY-ATTACHMENT-2\0\x02\x00\x09'
+extension_prefix = b'HX-EV-RETAINED-OBJECT-EXTENSION-1\0' + b'\x01' + (15).to_bytes(2, 'big')
+assert identity_attachment_prefix.endswith(b'\x02\x00\x09')
+assert extension_prefix == b'HX-EV-RETAINED-OBJECT-EXTENSION-1\0\x01\x00\x0f'
+
+class CanonicalObjectMap:
+    def __init__(self): self.handles = {}; self.alias_owners = {}
+    def resolve(self, partition, authority, tag, handle, canonical_id, alias, proof, carrier):
+        resolved_key = object_key(partition, authority, tag, canonical_id)  # Validate before mutation.
+        if not handle or not alias or not proof or not carrier: raise Hold()
+        identity = (partition, authority, tag, canonical_id, carrier)
+        scoped_handle = (partition, authority, tag, handle)
+        scoped_alias = (partition, authority, tag, alias)
+        owner = self.alias_owners.get(scoped_alias)
+        if owner is not None and owner != scoped_handle: raise Conflict()
+        current = self.handles.get(scoped_handle)
+        if current is not None and current[:5] != identity: raise Conflict()
+        aliases = {} if current is None else dict(current[5])
+        if alias in aliases and aliases[alias] != proof: raise Conflict()
+        aliases[alias] = proof
+        self.handles[scoped_handle] = identity + (aliases,)
+        self.alias_owners[scoped_alias] = scoped_handle
+        return resolved_key
+    def refresh(self, partition, authority, tag, handle, alias, old_proof, new_proof, cas_receipt):
+        scoped_handle = (partition, authority, tag, handle)
+        if not cas_receipt or scoped_handle not in self.handles: raise Hold()
+        current = self.handles[scoped_handle]; aliases = dict(current[5])
+        if aliases.get(alias) != old_proof: raise Hold()
+        aliases[alias] = new_proof; self.handles[scoped_handle] = current[:5] + (aliases,)
+
+mapping = CanonicalObjectMap()
+key_a = mapping.resolve(b'partition', b'ad31', 0, b'native-handle-1', b'object-1',
+    b'item-index-a', b'proof-1', b'bytes')
 assert key_a == object_key(b'partition', b'ad31', 0, b'object-1')
-assert key_a != object_key(b'partition', b'ad31', 0, b'object-2')
+assert key_a == mapping.resolve(b'partition', b'ad31', 0, b'native-handle-1', b'object-1',
+    b'item-index-b', b'proof-b', b'bytes')
+must_raise(Conflict, lambda: mapping.resolve(b'partition', b'ad31', 0, b'native-handle-1',
+    b'object-2', b'alias-c', b'proof-c', b'bytes'))
+other_scope_key = mapping.resolve(b'other-partition', b'ad31', 0, b'native-handle-1', b'object-2',
+    b'item-index-a', b'other-proof', b'other-bytes')
+assert other_scope_key != key_a  # Equal provider handle text is legal in a different authenticated scope.
+must_raise(Conflict, lambda: mapping.resolve(b'partition', b'ad31', 0, b'native-handle-2',
+    b'object-2', b'item-index-a', b'fork-proof', b'bytes'))
+before_invalid_map = (dict(mapping.handles), dict(mapping.alias_owners))
+must_raise(Hold, lambda: mapping.resolve(b'', b'ad31', 0, b'native-handle-x',
+    b'object-x', b'alias-x', b'proof-x', b'bytes'))
+assert (mapping.handles, mapping.alias_owners) == before_invalid_map
 class CanonicalFence:
     def __init__(self): self.heads = {}
-    def install(self, key, proof, carrier, kind):
+    def initialize(self, key, initial_kind, anchor, proof, carrier, cas_receipt=True):
+        if (initial_kind not in ('AddressedInitial', 'PhysicalInitial') or not anchor
+            or not proof or not carrier or not cas_receipt): raise Hold()
+        candidate = (initial_kind, anchor, carrier)
+        if key in self.heads and self.heads[key][:3] != candidate: raise Conflict()
+        self.heads.setdefault(key, candidate + ({proof}, set(), {}, {}))
+    def attach(self, key, proof, duty, identity_source, capture_scope=None,
+               retention_opening=None, cas_receipt=True):
         old = self.heads.get(key)
-        if old is not None and old != (proof, carrier, kind): raise Conflict()
-        self.heads[key] = (proof, carrier, kind)
-    def renew(self, key, old_proof, new_proof, carrier, cas_receipt):
+        if (old is None or proof not in old[3] or not cas_receipt or not identity_source
+            or duty[0] not in ('Addressed', 'Unidentified')): raise Hold()
+        if duty[0] == 'Unidentified' and (not capture_scope or not retention_opening): raise Hold()
+        if duty[0] == 'Addressed' and (capture_scope is not None or retention_opening is not None): raise Hold()
+        duties = set(old[4]); attachments = dict(old[5]); forwards = dict(old[6])
+        attachment = (identity_source, capture_scope, retention_opening, old[1])
+        if duty in attachments and attachments[duty] != attachment: raise Conflict()
+        duties.add(duty); attachments[duty] = attachment
+        self.heads[key] = old[:4] + (frozenset(duties), attachments, forwards)
+    def forward(self, key, duty, target_kind, target_hash, purpose18=None, cas_receipt=True):
         old = self.heads.get(key)
-        if not cas_receipt or old is None or old[0] != old_proof or old[1] != carrier: raise Hold()
-        self.heads[key] = (new_proof, carrier, old[2])
+        if (old is None or duty not in old[5] or target_kind not in ('CaptureLink', 'PhysicalReceipt')
+            or not target_hash or not cas_receipt): raise Hold()
+        if (duty[0] == 'Addressed') != (target_kind == 'CaptureLink'): raise Conflict()
+        if target_kind == 'PhysicalReceipt' and not purpose18: raise Hold()
+        if target_kind == 'CaptureLink' and purpose18 is not None: raise Hold()
+        forwards = dict(old[6]); candidate = (target_kind, target_hash, purpose18)
+        if duty in forwards and forwards[duty] != candidate: raise Conflict()
+        forwards[duty] = candidate
+        self.heads[key] = old[:6] + (forwards,)
+    def close(self, key, duty, closure):
+        old = self.heads.get(key)
+        if not closure or old is None or duty not in old[4] or duty not in old[6]: raise Hold()
+        duties = set(old[4]); duties.remove(duty)
+        self.heads[key] = old[:4] + (frozenset(duties), old[5], old[6])
+    def add_proof(self, key, prior_proof, new_proof, carrier, cas_receipt):
+        old = self.heads.get(key)
+        if (not cas_receipt or old is None or prior_proof not in old[3]
+            or not new_proof or old[2] != carrier): raise Hold()
+        self.heads[key] = old[:3] + (set(old[3]) | {new_proof},) + old[4:]
 
-fence = CanonicalFence(); fence.install(key_a, b'proof-1', b'bytes', 'Addressed')
-must_raise(Conflict, lambda: fence.install(key_a, b'proof-2', b'bytes', 'Addressed'))
-must_raise(Conflict, lambda: fence.install(key_a, b'proof-1', b'bytes', 'Unidentified'))
-must_raise(Hold, lambda: fence.renew(key_a, b'proof-1', b'proof-2', b'bytes', False))
-fence.renew(key_a, b'proof-1', b'proof-2', b'bytes', True)
-assert len(fence.heads) == 1 and fence.heads[key_a][0] == b'proof-2'
-print('C11b canonical physical object ID and shared proof-version head passed')
+fence = CanonicalFence()
+fence.initialize(key_a, 'AddressedInitial', b'\x00addressed-anchor', b'proof-1', b'bytes')
+fence.attach(key_a, b'proof-1', ('Addressed', 'handoff-a'), b'handoff-a')
+fence.attach(key_a, b'proof-1', ('Addressed', 'handoff-b'), b'handoff-b')
+fence.attach(key_a, b'proof-1', ('Unidentified', 'physical-delivery-c'),
+             b'purpose-16-c', b'capture-scope-c', b'retention-opening-c')
+fence.forward(key_a, ('Addressed', 'handoff-a'), 'CaptureLink', b'capture-link-a')
+fence.forward(key_a, ('Addressed', 'handoff-b'), 'CaptureLink', b'capture-link-b')
+fence.forward(key_a, ('Unidentified', 'physical-delivery-c'), 'PhysicalReceipt',
+              b'physical-receipt-c', b'purpose-18-c')
+assert len(fence.heads) == 1 and len(fence.heads[key_a][4]) == 3
+fence.close(key_a, ('Addressed', 'handoff-a'), True)
+assert ('Addressed', 'handoff-b') in fence.heads[key_a][4]
+assert ('Unidentified', 'physical-delivery-c') in fence.heads[key_a][4]
+assert fence.heads[key_a][5][('Unidentified', 'physical-delivery-c')][:3] == (
+    b'purpose-16-c', b'capture-scope-c', b'retention-opening-c')
+must_raise(Conflict, lambda: fence.attach(key_a, b'proof-1',
+    ('Unidentified', 'physical-delivery-c'), b'purpose-16-changed', b'capture-scope-c', b'retention-opening-c'))
+must_raise(Hold, lambda: fence.attach(key_a, b'proof-1',
+    ('Unidentified', 'physical-delivery-d'), b'purpose-16-d'))
+must_raise(Hold, lambda: fence.add_proof(key_a, b'proof-1', b'proof-2', b'bytes', False))
+mapping.refresh(b'partition', b'ad31', 0, b'native-handle-1', b'item-index-a',
+                b'proof-1', b'proof-2', True)
+fence.add_proof(key_a, b'proof-1', b'proof-2', b'bytes', True)
+fence.add_proof(key_a, b'proof-2', b'proof-b', b'bytes', True)
+assert len(fence.heads) == 1 and fence.heads[key_a][3] == {b'proof-1', b'proof-2', b'proof-b'}
+fence.attach(key_a, b'proof-b', ('Addressed', 'handoff-d'), b'handoff-d')
+fence.forward(key_a, ('Addressed', 'handoff-d'), 'CaptureLink', b'capture-link-d')
+must_raise(Hold, lambda: mapping.refresh(b'partition', b'ad31', 0, b'native-handle-1',
+    b'item-index-a', b'proof-1', b'proof-3', True))
+physical_first = CanonicalFence()
+physical_first.initialize(key_a, 'PhysicalInitial', b'\x01physical-anchor', b'proof-2', b'bytes')
+physical_first.attach(key_a, b'proof-2', ('Unidentified', 'physical-first'), b'purpose-16-first',
+                      b'capture-scope-first', b'retention-opening-first')
+physical_first.attach(key_a, b'proof-2', ('Addressed', 'handoff-after-physical'), b'handoff-after-physical')
+must_raise(Hold, lambda: physical_first.forward(
+    key_a, ('Unidentified', 'physical-first'), 'PhysicalReceipt', b'physical-receipt-first'))
+physical_first.forward(key_a, ('Unidentified', 'physical-first'), 'PhysicalReceipt',
+                       b'physical-receipt-first', b'purpose-18-first')
+physical_first.forward(key_a, ('Addressed', 'handoff-after-physical'), 'CaptureLink', b'link-after-physical')
+assert physical_first.heads[key_a][0] == 'PhysicalInitial'
+print('C11b canonical aliases, both cross-kind anchors and acyclic forward records passed')
 
 # C11c: the postcommit effect hash authenticates immutable record and provider proof.
-def effect_hash(record, provider_commit, provider_readback):
-    if not record or not provider_commit or not provider_readback: raise Hold()
-    return hashlib.sha256(b'HX-EV-EFFECT-RECEIPT-HASH-2\0' + b'\x01' +
-        framed(record) + framed(provider_commit) + framed(provider_readback)).digest()
-effect_h = effect_hash(b'exact-effect', b'commit-etag-1', b'readback-etag-1')
-assert effect_h != effect_hash(b'changed-effect', b'commit-etag-1', b'readback-etag-1')
-assert effect_h != effect_hash(b'exact-effect', b'commit-etag-2', b'readback-etag-1')
-assert effect_h != effect_hash(b'exact-effect', b'commit-etag-1', b'readback-etag-2')
-must_raise(Hold, lambda: effect_hash(b'exact-effect', b'', b'readback-etag-1'))
+def effect_key(tenant, domain, aggregate_type, aggregate_id, message_id, delivery_digest,
+               physical_subscription, route):
+    values = (tenant, domain, aggregate_type, aggregate_id, message_id, physical_subscription, route)
+    if any(not value for value in values): raise Hold()
+    if len(delivery_digest) != 32: raise Hold()
+    key = (b'HX-EV-EFFECT-KEY-2\0' + b'\x02\x00\x08' +
+        b'\x01' + framed(tenant) + b'\x02' + framed(domain) +
+        b'\x03' + framed(aggregate_type) + b'\x04' + framed(aggregate_id) +
+        b'\x05' + framed(message_id) + b'\x06' + delivery_digest +
+        b'\x07' + framed(physical_subscription) + b'\x08' + framed(route))
+    return hashlib.sha256(b'HX-EV-EFFECT-KEY-HASH-2\0' + b'\x01' + framed(key)).digest()
+
+delivery_digest = hashlib.sha256(b'delivery').digest()
+effect_a = effect_key(b'tenant', b'domain', b'aggregate-type', b'aggregate-id', b'message',
+    delivery_digest, b'subscription-a', b'route-1')
+assert effect_a == effect_key(b'tenant', b'domain', b'aggregate-type', b'aggregate-id', b'message',
+    delivery_digest, b'subscription-a', b'route-1')
+assert effect_a != effect_key(b'tenant', b'domain', b'aggregate-type', b'aggregate-id', b'message',
+    delivery_digest, b'subscription-b', b'route-1')
+def effect_readback_bytes(provider, authority, mode, operation, transaction, effect_key_bytes,
+                          record_key, result_key, decision_key, record_hash, result_hash,
+                          decision_hash, expected_generation, expected_etag, resulting_generation,
+                          resulting_etag, commit_hash, utc):
+    if mode not in (b'AtomicStore', b'ProviderIdempotency') or not 1 <= len(effect_key_bytes) <= 12 * 1024:
+        raise Hold()
+    if (expected_generation is None) != (expected_etag is None): raise Hold()
+    optional_n = b'\x00' if expected_generation is None else b'\x02' + f_n(expected_generation)
+    optional_u = b'\x00' if expected_etag is None else b'\x02' + f_u(expected_etag)
+    values = (
+        f_u(provider), f_u(authority), f_u(mode), f_u(operation), f_u(transaction), framed(effect_key_bytes),
+        f_u(record_key), f_u(result_key), f_u(decision_key), f_b32(record_hash), f_b32(result_hash),
+        f_b32(decision_hash), optional_n, optional_u, f_n(resulting_generation), f_u(resulting_etag),
+        f_b32(commit_hash), utc)
+    if not isinstance(utc, bytes) or len(utc) != 8: raise Hold()
+    receipt = b'HX-EV-EFFECT-READBACK-1\0\x01\x00\x12' + b''.join(
+        bytes((tag,)) + value for tag, value in enumerate(values, 1))
+    if len(receipt) > 16 * 1024: raise Hold()
+    return receipt
+
+effect_record = b'exact-effect-record'
+effect_result = b'exact-effect-result'
+effect_decision = b'exact-completed-decision'
+provider_commit = b'exact-nine-tag-commit'
+effect_readback = effect_readback_bytes(b'provider', b'authority', b'AtomicStore', b'operation',
+    b'transaction', b'eight-field-effect-key', b'record-key', b'result-key', b'decision-key',
+    hashlib.sha256(effect_record).digest(), hashlib.sha256(effect_result).digest(),
+    hashlib.sha256(effect_decision).digest(), None, None, 7, b'etag-7',
+    hashlib.sha256(provider_commit).digest(), (7).to_bytes(8, 'big', signed=True))
+def effect_readback_fields(record):
+    prefix = b'HX-EV-EFFECT-READBACK-1\0\x01\x00\x12'
+    kinds = ('U', 'U', 'U', 'U', 'U', 'B', 'U', 'U', 'U', 'B32', 'B32', 'B32',
+             'ON', 'OU', 'N', 'U', 'B32', 'Q')
+    if not record.startswith(prefix): raise Hold()
+    cursor = len(prefix); values = {}
+    for tag, kind in enumerate(kinds, 1):
+        if cursor >= len(record) or record[cursor] != tag: raise Hold()
+        cursor += 1
+        if kind in ('U', 'B'):
+            if cursor + 4 > len(record): raise Hold()
+            size = int.from_bytes(record[cursor:cursor + 4], 'big'); cursor += 4
+            if size < 1 or cursor + size > len(record): raise Hold()
+            values[tag] = record[cursor:cursor + size]; cursor += size
+        elif kind in ('B32', 'N', 'Q'):
+            size = 32 if kind == 'B32' else 8
+            if cursor + size > len(record): raise Hold()
+            values[tag] = record[cursor:cursor + size]; cursor += size
+        else:
+            if cursor >= len(record) or record[cursor] not in (0, 2): raise Hold()
+            discriminator = record[cursor]; cursor += 1
+            if discriminator == 0: values[tag] = None
+            elif kind == 'ON':
+                if cursor + 8 > len(record): raise Hold()
+                values[tag] = record[cursor:cursor + 8]; cursor += 8
+            else:
+                if cursor + 4 > len(record): raise Hold()
+                size = int.from_bytes(record[cursor:cursor + 4], 'big'); cursor += 4
+                if size < 1 or cursor + size > len(record): raise Hold()
+                values[tag] = record[cursor:cursor + size]; cursor += size
+    if cursor != len(record): raise Hold()
+    return values
+def effect_hash(record, result, decision, provider_commit, provider_readback,
+                readback_auth, expected_authority):
+    if not all((record, result, decision, provider_commit, provider_readback,
+                readback_auth, expected_authority)): raise Hold()
+    fields = effect_readback_fields(provider_readback)
+    resulting_generation = int.from_bytes(fields[15], 'big', signed=True)
+    if (fields[2] != expected_authority or fields[3] not in (b'AtomicStore', b'ProviderIdempotency')
+        or fields[10] != hashlib.sha256(record).digest()
+        or fields[11] != hashlib.sha256(result).digest()
+        or fields[12] != hashlib.sha256(decision).digest()
+        or (fields[13] is None) != (fields[14] is None)
+        or resulting_generation < 1 or fields[17] != hashlib.sha256(provider_commit).digest()): raise Hold()
+    return hashlib.sha256(b'HX-EV-EFFECT-RECEIPT-HASH-3\0' + b'\x01' +
+        framed(record) + framed(provider_commit) + framed(provider_readback) + framed(readback_auth)).digest()
+effect_h = effect_hash(effect_record, effect_result, effect_decision, provider_commit,
+                       effect_readback, b'provider-readback-auth', b'authority')
+must_raise(Hold, lambda: effect_hash(b'changed-effect', effect_result, effect_decision, provider_commit,
+                                    effect_readback, b'provider-readback-auth', b'authority'))
+must_raise(Hold, lambda: effect_hash(effect_record, effect_result, effect_decision, b'changed-commit',
+                                    effect_readback, b'provider-readback-auth', b'authority'))
+changed_readback = effect_readback_bytes(b'provider', b'authority', b'AtomicStore', b'operation',
+    b'transaction', b'eight-field-effect-key', b'record-key', b'result-key', b'decision-key',
+    hashlib.sha256(effect_record).digest(), hashlib.sha256(effect_result).digest(),
+    hashlib.sha256(b'changed-decision').digest(), None, None, 7, b'etag-7',
+    hashlib.sha256(provider_commit).digest(), (7).to_bytes(8, 'big', signed=True))
+must_raise(Hold, lambda: effect_hash(effect_record, effect_result, effect_decision, provider_commit,
+                                    changed_readback, b'provider-readback-auth', b'authority'))
+must_raise(Hold, lambda: effect_hash(effect_record, effect_result, effect_decision, provider_commit,
+                                    effect_readback, b'provider-readback-auth', b'wrong-authority'))
+must_raise(Hold, lambda: effect_hash(effect_record, effect_result, effect_decision, provider_commit,
+                                    effect_readback + b'trailing', b'provider-readback-auth', b'authority'))
+must_raise(Hold, lambda: effect_hash(effect_record, effect_result, effect_decision, provider_commit,
+                                    effect_readback, b'', b'authority'))
+must_raise(Hold, lambda: effect_readback_bytes(b'provider', b'authority', b'AtomicStore', b'operation',
+    b'transaction', b'eight-field-effect-key', b'record-key', b'result-key', b'decision-key',
+    hashlib.sha256(effect_record).digest(), hashlib.sha256(effect_result).digest(),
+    hashlib.sha256(effect_decision).digest(), 1, None, 7, b'etag-7',
+    hashlib.sha256(provider_commit).digest(), (7).to_bytes(8, 'big', signed=True)))
 def route_key(tenant, handoff_key_text, route):
     return hashlib.sha256(b'HX-EV-ROUTE-DECISION-KEY-1\0' + b'\x01' +
         framed(tenant) + framed(handoff_key_text) + framed(route)).digest()
 assert route_key(b'tenant', b'handoff:abc', b'route') == route_key(b'tenant', b'handoff:abc', b'route')
 assert route_key(b'tenant', b'handoff:abc', b'route') != route_key(b'tenant', b'abc', b'route')
-print('C11c effect record/provider proof and framed route key passed')
+print('C11c subscription-scoped effect key, provider proof and framed route key passed')
 
 # C11d: physical filter identity consumes the C2 Accepted result and immutable log entry.
-def filter_operation(accepted_claim, carrier, signed_log, log_carrier, log_cas, handoff_key):
-    if not all((accepted_claim, carrier, signed_log, log_carrier, log_cas, handoff_key)): raise Hold()
-    source = hashlib.sha256(b'HX-EV-PHYSICAL-FILTER-ACCEPTED-1\0' + b'\x01' +
-        framed(accepted_claim) + framed(carrier) + framed(signed_log) +
-        framed(log_carrier) + framed(log_cas)).digest()
+def historical_accepted_obligation(accepted_claim, carrier, acceptance_index, index_receipt):
+    if not all((accepted_claim, carrier, acceptance_index, index_receipt)): raise Hold()
+    return hashlib.sha256(b'HX-EV-HISTORICAL-ACCEPTED-OBLIGATION-1\0' + b'\x01' +
+        framed(accepted_claim) + framed(carrier) + framed(acceptance_index) + framed(index_receipt)).digest()
+
+def accepted_log_claim_carrier_hash(log_claim, log_carrier):
+    if not log_claim or not log_carrier: raise Hold()
+    return hashlib.sha256(b'HX-EV-ACCEPTED-DELIVERY-LOG-CLAIM-2\0\x01' +
+        framed(log_claim) + framed(log_carrier)).digest()
+
+def accepted_index_bytes(scope, obligation, log_id, log_generation, log_pair_hash,
+                         operation_hash, authority):
+    if len(scope) != 7 or log_generation < 1: raise Hold()
+    values = (f_b32(obligation), *(f_u(value) for value in scope), f_u(log_id),
+              f_n(log_generation), f_b32(log_pair_hash), f_b32(operation_hash), f_u(authority))
+    return b'HX-EV-ACCEPTED-DELIVERY-INDEX-1\0\x01\x00\x0d' + b''.join(
+        bytes((tag,)) + value for tag, value in enumerate(values, 1))
+
+def accepted_bundle_receipt(reverse_key, log_key, operation_hash, index_claim, index_carrier,
+                            log_claim, log_carrier, reverse_generation, reverse_etag,
+                            log_record_generation, log_etag, authority, utc):
+    if (min(reverse_generation, log_record_generation) < 1 or len(utc) != 8
+        or not all((index_claim, index_carrier, log_claim, log_carrier))): raise Hold()
+    index_pair = hashlib.sha256(b'HX-EV-ACCEPTED-DELIVERY-INDEX-CLAIM-1\0\x01' +
+        framed(index_claim) + framed(index_carrier)).digest()
+    log_pair = accepted_log_claim_carrier_hash(log_claim, log_carrier)
+    values = (f_u(reverse_key), f_u(log_key), f_u(operation_hash.hex().encode('ascii')),
+              index_pair, log_pair, f_u(b'Absent/Absent'), f_n(reverse_generation),
+              f_u(reverse_etag), f_n(log_record_generation), f_u(log_etag), f_u(authority), utc)
+    return b'HX-EV-ACCEPTED-DELIVERY-BUNDLE-CAS-1\0\x01\x00\x0c' + b''.join(
+        bytes((tag,)) + value for tag, value in enumerate(values, 1))
+
+class AcceptedDeliveryIndex:
+    def __init__(self): self.rows = {}
+    def create(self, scope, obligation, log_id, log_generation, accepted_revision, accepted_image,
+               acceptance_hash, log_carrier, index_carrier, reverse_generation, reverse_etag,
+               log_record_generation, log_etag, authority, utc):
+        if len(scope) != 7 or any(not value for value in scope) or len(obligation) != 32: raise Hold()
+        reverse_key = accepted_index_key(scope, obligation)
+        log_key = accepted_log_key(scope, log_id)
+        log_claim = accepted_log_bytes(scope, log_id, accepted_revision, log_generation,
+            obligation, accepted_image, acceptance_hash)
+        log_pair = accepted_log_claim_carrier_hash(log_claim, log_carrier)
+        operation_hash = accepted_bundle_operation(reverse_key, log_key, obligation, log_pair)
+        index_claim = accepted_index_bytes(scope, obligation, log_id, log_generation,
+            log_pair, operation_hash, authority)
+        bundle_receipt = accepted_bundle_receipt(reverse_key, log_key, operation_hash,
+            index_claim, index_carrier, log_claim, log_carrier, reverse_generation, reverse_etag,
+            log_record_generation, log_etag, authority, utc)
+        key = hashlib.sha256(reverse_key).digest()
+        candidate = (obligation, scope, log_id, log_generation, log_claim, log_carrier,
+                     index_claim, index_carrier, bundle_receipt, operation_hash)
+        if key in self.rows and self.rows[key] != candidate: raise Conflict()
+        self.rows[key] = candidate
+        return key, candidate
+
+def filter_operation(accepted_claim, carrier, acceptance_index, index_receipt,
+                     reverse_record, handoff_key):
+    if not all((accepted_claim, carrier, acceptance_index, index_receipt, reverse_record,
+                handoff_key)): raise Hold()
+    obligation = historical_accepted_obligation(accepted_claim, carrier, acceptance_index, index_receipt)
+    if reverse_record[0] != obligation: raise Conflict()
+    _, _, _, _, log_claim, log_carrier, index_claim, index_carrier, bundle_receipt, _ = reverse_record
+    source = hashlib.sha256(b'HX-EV-PHYSICAL-FILTER-ACCEPTED-2\0' + b'\x01' +
+        framed(accepted_claim) + framed(carrier) + framed(acceptance_index) + framed(index_receipt) +
+        framed(index_claim) + framed(index_carrier) + framed(log_claim) + framed(log_carrier) +
+        framed(bundle_receipt)).digest()
     return hashlib.sha256(b'HX-EV-PHYSICAL-FILTER-OP-2\0' + b'\x01' +
         source + framed(handoff_key)).hexdigest()
-filter_id = filter_operation(b'C2-Accepted', b'purpose-21', b'log-id-7',
-    b'purpose-28', b'CAS-generation-1', b'handoff:7')
-assert filter_id == filter_operation(b'C2-Accepted', b'purpose-21', b'log-id-7',
-    b'purpose-28', b'CAS-generation-1', b'handoff:7')  # New attempt ID is not an input.
-assert filter_id != filter_operation(b'C2-Accepted', b'purpose-21', b'log-id-8',
-    b'purpose-28', b'CAS-generation-1', b'handoff:7')
-assert filter_id != filter_operation(b'C2-Accepted', b'purpose-21', b'log-id-7',
-    b'purpose-28', b'CAS-generation-2', b'handoff:7')
-must_raise(Hold, lambda: filter_operation(b'', b'purpose-21', b'log-id-7',
-    b'purpose-28', b'CAS-generation-1', b'handoff:7'))
-print('C11d C2 Accepted/log physical-filter identity passed')
+accepted_claim = b'C2-Accepted'; accepted_carrier = b'purpose-21'
+acceptance_index = b'acceptance-index'; index_receipt = b'acceptance-index-CAS'
+obligation = historical_accepted_obligation(
+    accepted_claim, accepted_carrier, acceptance_index, index_receipt)
+assert obligation.hex() == '4ddfaecba4bc5963f96d74a7761f1f9109de3d3ae206db6fe8ac8ed739d56007'
+delivery_scope = (b'tenant', b'domain', b'component', b'topic', b'destination', b'subscription', b'partition')
+delivery_index = AcceptedDeliveryIndex()
+delivery_args = (delivery_scope, obligation, b'log-id-7', 3, 7, hashlib.sha256(b'accepted-image').digest(),
+    hashlib.sha256(b'acceptance-index').digest(), b'purpose-28-log', b'purpose-28-index',
+    1, b'index-etag-1', 1, b'log-etag-1', b'delivery-authority', (7).to_bytes(8, 'big', signed=True))
+_, reverse_record = delivery_index.create(*delivery_args)
+assert delivery_index.create(*delivery_args)[1] == reverse_record
+must_raise(Conflict, lambda: delivery_index.create(delivery_scope, obligation, b'log-id-8', 3, 7,
+    hashlib.sha256(b'accepted-image').digest(), hashlib.sha256(b'acceptance-index').digest(),
+    b'purpose-28-log-8', b'purpose-28-index', 1, b'index-etag-1', 1, b'log-etag-1',
+    b'delivery-authority', (7).to_bytes(8, 'big', signed=True)))
+filter_id = filter_operation(accepted_claim, accepted_carrier, acceptance_index, index_receipt,
+    reverse_record, b'handoff:7')
+assert filter_id == filter_operation(accepted_claim, accepted_carrier, acceptance_index, index_receipt,
+    reverse_record, b'handoff:7')
+must_raise(Conflict, lambda: filter_operation(accepted_claim, accepted_carrier,
+    b'changed-index', index_receipt, reverse_record, b'handoff:7'))
+must_raise(Hold, lambda: filter_operation(b'', accepted_carrier, acceptance_index, index_receipt,
+    reverse_record, b'handoff:7'))
+must_raise(Hold, lambda: delivery_index.create(delivery_scope, obligation, b'log-id-negative', -1, 7,
+    hashlib.sha256(b'accepted-image').digest(), hashlib.sha256(b'acceptance-index').digest(),
+    b'purpose-28-log', b'purpose-28-index', 1, b'index-etag-1', 1, b'log-etag-1',
+    b'delivery-authority', (7).to_bytes(8, 'big', signed=True)))
+print('C11d exact Accepted log/index bundle and physical-filter identity passed')
 
 # C11e: the first unsigned proposal and carrier are one branch-scoped CAS outcome.
 class TerminalProposalStore:
@@ -1983,58 +2600,306 @@ class TerminalProposalStore:
     def reserve(self, tenant, scope, head, unsigned):
         branch = hashlib.sha256(b'HX-EV-TERMINAL-BRANCH-1\0' + b'\x01' +
             framed(tenant) + scope + head).digest()
-        if branch in self.reservations and self.reservations[branch] != unsigned: raise Conflict()
-        self.reservations[branch] = unsigned
+        reservation = (tenant, scope, head, unsigned)
+        if branch in self.reservations and self.reservations[branch] != reservation: raise Conflict()
+        self.reservations[branch] = reservation
         return branch
-    def create(self, branch, scope, head, carrier):
-        unsigned = self.reservations[branch]
+    def create(self, branch, carrier, expected=None):
+        if branch not in self.reservations: raise Hold()
+        tenant, scope, head, unsigned = self.reservations[branch]
+        if expected is not None and expected != (tenant, scope, head): raise Hold()
         uh = hashlib.sha256(b'HX-EV-TERMINAL-PROPOSAL-UNSIGNED-1\0' + b'\x01' + framed(unsigned)).digest()
         key = hashlib.sha256(b'HX-EV-TERMINAL-PROPOSAL-KEY-1\0' + b'\x01' +
-            framed(b'tenant') + scope + head + uh).digest()
+            framed(tenant) + scope + head + uh).digest()
         if key in self.proposals and self.proposals[key] != (unsigned, carrier): raise Conflict()
         self.proposals[key] = (unsigned, carrier)
         return key, self.proposals[key]
 proposal_store = TerminalProposalStore()
 branch = proposal_store.reserve(b'tenant', b'scope', b'failed-head', b'proposal@UTC-1')
-proposal_key, retained = proposal_store.create(branch, b'scope', b'failed-head', b'carrier-1')
-assert proposal_store.create(branch, b'scope', b'failed-head', b'carrier-1') == (proposal_key, retained)
-must_raise(Conflict, lambda: proposal_store.create(branch, b'scope', b'failed-head', b'carrier-2'))
+proposal_key, retained = proposal_store.create(branch, b'carrier-1',
+    (b'tenant', b'scope', b'failed-head'))
+assert proposal_store.create(branch, b'carrier-1') == (proposal_key, retained)
+must_raise(Conflict, lambda: proposal_store.create(branch, b'carrier-2'))
+must_raise(Hold, lambda: proposal_store.create(branch, b'carrier-1',
+    (b'tenant', b'other-scope', b'failed-head')))
 must_raise(Conflict, lambda: proposal_store.reserve(b'tenant', b'scope', b'failed-head', b'proposal@UTC-2'))
-print('C11e unsigned terminal proposal key, first carrier and UTC retry passed')
+other_tenant_branch = proposal_store.reserve(b'other-tenant', b'scope', b'failed-head', b'proposal@UTC-1')
+other_key, _ = proposal_store.create(other_tenant_branch, b'carrier-1')
+assert other_tenant_branch != branch and other_key != proposal_key
+must_raise(Hold, lambda: proposal_store.create(b'missing-branch', b'carrier'))
+print('C11e reservation-derived tenant/scope/head, first carrier and UTC retry passed')
 
 # C11f: signed drain predecessor includes carrier and atomic CAS receipt; result ETag is allocated first.
-def drain_head_hash(claim, carrier, cas_receipt, allocated_etag, actual_etag):
-    if not all((claim, carrier, cas_receipt, allocated_etag, actual_etag)) or allocated_etag != actual_etag:
-        raise Hold()
+DRAIN_HEAD_PREFIX = b'HX-EV-COORDINATOR-DRAIN-HEAD-1\0\x01\x00\x0a'
+DRAIN_CAS_PREFIX = b'HX-EV-COORDINATOR-DRAIN-CAS-1\0\x01\x00\x08'
+def tagged(tag, value): return bytes((tag,)) + value
+def u_value(value): return framed(value)
+def n_value(value): return value.to_bytes(8, 'big', signed=True)
+def optional_value(value, encoder): return b'\x00' if value is None else b'\x02' + encoder(value)
+def drain_head_bytes(tenant, scope, operation, count, latest, generation, etag, predecessor, utc, issuer):
+    if len(scope) != 32 or len(predecessor) != 32 or len(utc) != 8: raise Hold()
+    return (DRAIN_HEAD_PREFIX + tagged(1, u_value(tenant)) + tagged(2, scope) +
+        tagged(3, u_value(operation)) + tagged(4, optional_value(count, n_value)) +
+        tagged(5, optional_value(latest, lambda value: value)) + tagged(6, n_value(generation)) +
+        tagged(7, u_value(etag)) + tagged(8, predecessor) + tagged(9, utc) + tagged(10, u_value(issuer)))
+def drain_cas_bytes(installed, expected_generation, expected_etag, resulting_generation,
+                    resulting_etag, predecessor, authority, utc):
+    return (DRAIN_CAS_PREFIX + tagged(1, installed) + tagged(2, n_value(expected_generation)) +
+        tagged(3, optional_value(expected_etag, u_value)) + tagged(4, n_value(resulting_generation)) +
+        tagged(5, u_value(resulting_etag)) + tagged(6, predecessor) +
+        tagged(7, u_value(authority)) + tagged(8, utc))
+def decode_fields(record, prefix, kinds):
+    if not record.startswith(prefix): raise Hold()
+    cursor = len(prefix); values = {}
+    for tag, kind in enumerate(kinds, 1):
+        if cursor >= len(record) or record[cursor] != tag: raise Hold()
+        cursor += 1
+        if kind in ('U', 'B'):
+            if cursor + 4 > len(record): raise Hold()
+            size = int.from_bytes(record[cursor:cursor + 4], 'big'); cursor += 4
+            if size < 1 or cursor + size > len(record): raise Hold()
+            values[tag] = record[cursor:cursor + size]; cursor += size
+        elif kind in ('B32', 'Q', 'N'):
+            size = 32 if kind == 'B32' else 8
+            if cursor + size > len(record): raise Hold()
+            values[tag] = record[cursor:cursor + size]; cursor += size
+        elif kind in ('ON', 'OB32', 'OU'):
+            if cursor >= len(record) or record[cursor] not in (0, 2): raise Hold()
+            discriminator = record[cursor]; cursor += 1
+            if discriminator == 0: values[tag] = None
+            elif kind == 'ON': values[tag] = record[cursor:cursor + 8]; cursor += 8
+            elif kind == 'OB32': values[tag] = record[cursor:cursor + 32]; cursor += 32
+            else:
+                if cursor + 4 > len(record): raise Hold()
+                size = int.from_bytes(record[cursor:cursor + 4], 'big'); cursor += 4
+                if size < 1 or cursor + size > len(record): raise Hold()
+                values[tag] = record[cursor:cursor + size]; cursor += size
+    if cursor != len(record): raise Hold()
+    return values
+def drain_head_hash(claim, carrier, cas_receipt, allocated_etag, expected_previous=None):
+    head = decode_fields(claim, DRAIN_HEAD_PREFIX,
+        ('U', 'B32', 'U', 'ON', 'OB32', 'N', 'U', 'B32', 'Q', 'U'))
+    receipt = decode_fields(cas_receipt, DRAIN_CAS_PREFIX,
+        ('B32', 'N', 'OU', 'N', 'U', 'B32', 'U', 'Q'))
+    installed = hashlib.sha256(b'HX-EV-COORDINATOR-DRAIN-INSTALLED-1\0' + b'\x01' +
+        framed(claim) + framed(carrier)).digest()
+    head_generation = int.from_bytes(head[6], 'big', signed=True)
+    expected_generation = int.from_bytes(receipt[2], 'big', signed=True)
+    resulting_generation = int.from_bytes(receipt[4], 'big', signed=True)
+    count = None if head[4] is None else int.from_bytes(head[4], 'big', signed=True)
+    if (not all((carrier, allocated_etag)) or head[7] != allocated_etag
+        or receipt[5] != allocated_etag or receipt[1] != installed
+        or head[6] != receipt[4] or head[8] != receipt[6]
+        or head[10] != receipt[7] or head[9] != receipt[8]
+        or (head[4] is None) != (head[5] is None)
+        or (count is not None and count < 1)
+        or (head[5] is not None and len(head[5]) != 32)
+        or head_generation < 1 or resulting_generation != head_generation): raise Hold()
+    if expected_previous is None:
+        if expected_generation != 0 or receipt[3] is not None or head_generation != 1 or head[8] != b'\0' * 32:
+            raise Hold()
+    else:
+        prior_generation, prior_etag, prior_hash = expected_previous
+        if (expected_generation != prior_generation or receipt[3] != prior_etag
+            or head_generation != prior_generation + 1 or head[8] != prior_hash): raise Hold()
     return hashlib.sha256(b'HX-EV-COORDINATOR-DRAIN-HEAD-HASH-1\0' + b'\x01' +
         framed(claim) + framed(carrier) + framed(cas_receipt)).digest()
-drain_head = drain_head_hash(b'head', b'purpose-25', b'CAS:etag-1', b'etag-1', b'etag-1')
-assert drain_head != drain_head_hash(b'head', b'changed-carrier', b'CAS:etag-1', b'etag-1', b'etag-1')
-assert drain_head != drain_head_hash(b'head', b'purpose-25', b'CAS:etag-2', b'etag-2', b'etag-2')
-must_raise(Hold, lambda: drain_head_hash(b'head', b'purpose-25', b'CAS:etag-2', b'etag-1', b'etag-2'))
-print('C11f drain predecessor and preallocated ETag/CAS order passed')
+zero_hash = b'\0' * 32; utc_1 = (1).to_bytes(8, 'big', signed=True)
+head_claim_1 = drain_head_bytes(b'tenant', b's' * 32, b'operation', 1, b'r' * 32,
+    1, b'etag-1', zero_hash, utc_1, b'issuer')
+installed_1 = hashlib.sha256(b'HX-EV-COORDINATOR-DRAIN-INSTALLED-1\0' + b'\x01' +
+    framed(head_claim_1) + framed(b'purpose-25')).digest()
+cas_receipt_1 = drain_cas_bytes(installed_1, 0, None, 1, b'etag-1',
+    zero_hash, b'issuer', utc_1)
+drain_head = drain_head_hash(head_claim_1, b'purpose-25', cas_receipt_1, b'etag-1')
+must_raise(Hold, lambda: drain_head_hash(
+    head_claim_1, b'changed-carrier', cas_receipt_1, b'etag-1'))
+head_claim_2 = drain_head_bytes(b'tenant', b's' * 32, b'operation', 2, b't' * 32,
+    2, b'etag-2', drain_head, utc_1, b'issuer')
+installed_2 = hashlib.sha256(b'HX-EV-COORDINATOR-DRAIN-INSTALLED-1\0' + b'\x01' +
+    framed(head_claim_2) + framed(b'purpose-25')).digest()
+cas_receipt_2 = drain_cas_bytes(installed_2, 1, b'etag-1', 2, b'etag-2',
+    drain_head, b'issuer', utc_1)
+assert drain_head != drain_head_hash(head_claim_2, b'purpose-25', cas_receipt_2, b'etag-2',
+                                    (1, b'etag-1', drain_head))
+wrong_head_etag = drain_head_bytes(b'tenant', b's' * 32, b'operation', 1, b'r' * 32,
+    1, b'etag-999', zero_hash, utc_1, b'issuer')
+must_raise(Hold, lambda: drain_head_hash(wrong_head_etag, b'purpose-25', cas_receipt_1, b'etag-1'))
+must_raise(Hold, lambda: drain_head_hash(head_claim_1, b'purpose-25',
+    drain_cas_bytes(installed_1, 0, None, 1, b'etag-2', zero_hash, b'issuer', utc_1), b'etag-1'))
+must_raise(Hold, lambda: drain_head_hash(head_claim_2, b'purpose-25',
+    drain_cas_bytes(installed_2, 999, b'wrong-etag', 2, b'etag-2', drain_head, b'issuer', utc_1),
+    b'etag-2', (1, b'etag-1', drain_head)))
+must_raise(Hold, lambda: drain_head_hash(head_claim_2, b'purpose-25',
+    drain_cas_bytes(installed_2, 999, b'etag-1', 2, b'etag-2', drain_head, b'issuer', utc_1),
+    b'etag-2', (1, b'etag-1', drain_head)))
+must_raise(Hold, lambda: drain_head_hash(head_claim_1, b'purpose-25',
+    drain_cas_bytes(installed_1, 0, None, 1, b'etag-1', zero_hash, b'wrong-authority', utc_1), b'etag-1'))
+must_raise(Hold, lambda: drain_head_hash(head_claim_1, b'purpose-25',
+    drain_cas_bytes(installed_1, 0, None, 1, b'etag-1', zero_hash, b'issuer',
+                    (2).to_bytes(8, 'big', signed=True)), b'etag-1'))
+zero_count_head = drain_head_bytes(b'tenant', b's' * 32, b'operation', 0, b'r' * 32,
+    1, b'etag-1', zero_hash, utc_1, b'issuer')
+zero_count_installed = hashlib.sha256(b'HX-EV-COORDINATOR-DRAIN-INSTALLED-1\0' + b'\x01' +
+    framed(zero_count_head) + framed(b'purpose-25')).digest()
+must_raise(Hold, lambda: drain_head_hash(zero_count_head, b'purpose-25',
+    drain_cas_bytes(zero_count_installed, 0, None, 1, b'etag-1', zero_hash, b'issuer', utc_1), b'etag-1'))
+must_raise(Hold, lambda: drain_head_hash(head_claim_1[:-1], b'purpose-25', cas_receipt_1, b'etag-1'))
+must_raise(Hold, lambda: drain_head_hash(head_claim_1, b'purpose-25', cas_receipt_1[:-1], b'etag-1'))
+print('C11f decoded signed tag-07 ETag and atomic CAS receipt order passed')
 
 # C11g: terminal source hashes and root bind all three ordered authenticated sources.
-def terminal_hash(domain, record, carrier, receipt, evidence):
-    if not all((record, carrier, receipt, evidence)): raise Hold()
-    return hashlib.sha256(domain + b'\x01' + framed(record) + framed(carrier) +
-        framed(receipt) + framed(evidence)).digest()
-def terminal_root(drain_source, no_accept_source, policy_source):
+TERMINAL_CLAIMS = {
+    'drain': (b'HX-EV-TERMINAL-DRAIN-1\0\x02\x00\x08', ('U', 'B32', 'B', 'B32', 'B32', 'B', 'Q', 'U')),
+    'no_accept': (b'HX-EV-TERMINAL-NO-ACCEPT-1\0\x02\x00\x08', ('U', 'B32', 'B', 'B', 'B', 'B32', 'Q', 'U')),
+    'policy': (b'HX-EV-TERMINAL-POLICY-1\0\x02\x00\x08', ('U', 'B32', 'B32', 'B', 'B32', 'B32', 'Q', 'U')),
+}
+def terminal_field(kind, value):
+    if kind in ('U', 'B'):
+        if not isinstance(value, bytes) or not value: raise Hold()
+        return framed(value)
+    if kind == 'B32': return f_b32(value)
+    if kind == 'Q':
+        if not isinstance(value, bytes) or len(value) != 8: raise Hold()
+        return value
+    raise Hold()
+def terminal_claim(role, operation, final_set, role_fields, utc, auth_mode):
+    if role not in TERMINAL_CLAIMS or auth_mode not in (b'SignedCarrier', b'BackendCas'): raise Hold()
+    prefix, kinds = TERMINAL_CLAIMS[role]
+    values = (operation, final_set, *tuple(role_fields), utc, auth_mode)
+    if len(values) != 8: raise Hold()
+    claim = prefix + b''.join(bytes((tag,)) + terminal_field(kind, value)
+                              for tag, (kind, value) in enumerate(zip(kinds, values), 1))
+    if len(claim) > 64 * 1024: raise Hold()
+    decode_fields(claim, prefix, kinds)
+    return claim
+def terminal_claim_fields(role, claim):
+    if role not in TERMINAL_CLAIMS: raise Hold()
+    return decode_fields(claim, *TERMINAL_CLAIMS[role])
+def auth_bytes(discriminator, payload):
+    if discriminator not in (1, 2) or not payload: raise Hold()
+    return bytes((discriminator,)) + framed(payload)
+def parse_auth_bytes(auth):
+    if len(auth) < 6 or auth[0] not in (1, 2): raise Hold()
+    size = int.from_bytes(auth[1:5], 'big')
+    if size < 1 or 5 + size != len(auth): raise Hold()
+    return auth[0], auth[5:]
+def evidence_bytes(*items):
+    if any(not isinstance(item, bytes) or not item for item in items): raise Hold()
+    return len(items).to_bytes(4, 'big') + b''.join(framed(item) for item in items)
+def parse_evidence(evidence):
+    if len(evidence) < 4: raise Hold()
+    count = int.from_bytes(evidence[:4], 'big'); cursor = 4; items = []
+    for _ in range(count):
+        if cursor + 4 > len(evidence): raise Hold()
+        size = int.from_bytes(evidence[cursor:cursor + 4], 'big'); cursor += 4
+        if size < 1 or cursor + size > len(evidence): raise Hold()
+        items.append(evidence[cursor:cursor + size]); cursor += size
+    if cursor != len(evidence): raise Hold()
+    return tuple(items)
+def terminal_hash(role, claim, auth, source_cas, evidence, prior_hashes=()):
+    domains = {'drain': b'HX-EV-TERMINAL-DRAIN-SOURCE-1\0',
+               'no_accept': b'HX-EV-TERMINAL-NO-ACCEPT-SOURCE-1\0',
+               'policy': b'HX-EV-TERMINAL-POLICY-SOURCE-1\0'}
+    if role not in domains: raise Hold()
+    fields = terminal_claim_fields(role, claim)
+    discriminator, _ = parse_auth_bytes(auth)
+    parse_evidence(evidence)
+    mode = fields[8]
+    if (mode not in (b'SignedCarrier', b'BackendCas')
+        or (mode == b'SignedCarrier' and discriminator != 1)
+        or (mode == b'BackendCas' and (discriminator != 2 or source_cas))): raise Hold()
+    if role == 'drain' and prior_hashes: raise Hold()
+    if role == 'no_accept' and (len(prior_hashes) != 1 or fields[6] != prior_hashes[0]): raise Hold()
+    if role == 'policy' and (len(prior_hashes) != 2
+        or fields[5] != prior_hashes[0] or fields[6] != prior_hashes[1]): raise Hold()
+    return hashlib.sha256(domains[role] + b'\x01' + framed(claim) + framed(auth) +
+        framed(source_cas) + framed(evidence)).digest()
+def terminal_root(tenant, scope, head, final_set, sources):
+    if (len(sources) != 3 or any(len(value) != 32 for value in (scope, head, final_set))
+        or not isinstance(tenant, bytes) or not 1 <= len(tenant) <= 1024): raise Hold()
+    expected_roles = ('drain', 'no_accept', 'policy')
+    computed = []; source_bytes = b''; operation = None
+    for expected_role, source in zip(expected_roles, sources):
+        if len(source) != 5: raise Hold()
+        role, claim, auth, source_cas, evidence = source
+        if role != expected_role: raise Hold()
+        fields = terminal_claim_fields(role, claim)
+        if fields[2] != final_set or (operation is not None and fields[1] != operation): raise Hold()
+        operation = fields[1]
+        source_hash = terminal_hash(role, claim, auth, source_cas, evidence, tuple(computed))
+        computed.append(source_hash)
+        source_bytes += framed(claim) + framed(auth) + framed(source_cas)
     return hashlib.sha256(b'HX-EV-TERMINAL-PROOF-ROOT-1\0' + b'\x01' +
-        framed(b'tenant') + b'scope' + b'failed-head' + b'final-set' +
-        drain_source + no_accept_source + policy_source).digest()
-drain_source = terminal_hash(b'HX-EV-TERMINAL-DRAIN-SOURCE-1\0', b'drain', b'signer', b'CAS', b'ordered-roster')
-no_accept_source = terminal_hash(b'HX-EV-TERMINAL-NO-ACCEPT-SOURCE-1\0', b'noaccept'+drain_source, b'signer', b'CAS', b'ordered-attempts')
-policy_source = terminal_hash(b'HX-EV-TERMINAL-POLICY-SOURCE-1\0', b'policy'+no_accept_source, b'signer', b'CAS', b'ordered-policy')
-root = terminal_root(drain_source, no_accept_source, policy_source)
-changed_policy = terminal_hash(b'HX-EV-TERMINAL-POLICY-SOURCE-1\0', b'policy'+no_accept_source, b'signer', b'CAS', b'changed-policy')
-assert root != terminal_root(drain_source, no_accept_source, changed_policy)
-assert root != terminal_root(no_accept_source, drain_source, policy_source)
-print('C11g ordered terminal source records, segment evidence and root passed')
+        framed(tenant) + scope + head + final_set + b''.join(computed) + source_bytes).digest()
+
+terminal_operation = b'operation'; terminal_set = hashlib.sha256(b'final-set').digest()
+terminal_scope = hashlib.sha256(b'scope').digest(); terminal_head = hashlib.sha256(b'failed-head').digest()
+terminal_utc = (17).to_bytes(8, 'big', signed=True)
+drain_claim = terminal_claim('drain', terminal_operation, terminal_set,
+    (b'roster-descriptor', hashlib.sha256(b'empty-state').digest(),
+     hashlib.sha256(b'in-flight-closure').digest(), b'coordinator-fence'),
+    terminal_utc, b'SignedCarrier')
+drain_auth = auth_bytes(1, b'purpose-specific-drain-carrier')
+drain_cas = b'drain-storage-CAS'
+drain_evidence = evidence_bytes(b'roster-descriptor+segments', b'drain-head+receipts')
+drain_source = terminal_hash('drain', drain_claim, drain_auth, drain_cas, drain_evidence)
+no_accept_claim = terminal_claim('no_accept', terminal_operation, terminal_set,
+    (b'attempt-descriptor', b'broker-reject-fence', b'producer-disable', drain_source),
+    terminal_utc, b'BackendCas')
+no_accept_auth = auth_bytes(2, b'no-accept-backend-receipt')
+no_accept_evidence = evidence_bytes(b'attempt-descriptor+segments+fence')
+no_accept_source = terminal_hash('no_accept', no_accept_claim, no_accept_auth, b'',
+                                 no_accept_evidence, (drain_source,))
+policy_claim = terminal_claim('policy', terminal_operation, terminal_set,
+    (hashlib.sha256(b'retry-policy').digest(), b'policy-descriptor', drain_source, no_accept_source),
+    terminal_utc, b'SignedCarrier')
+policy_auth = auth_bytes(1, b'purpose-specific-policy-carrier')
+policy_evidence = evidence_bytes(b'policy-descriptor+segments+member-sources')
+policy_source = terminal_hash('policy', policy_claim, policy_auth, b'',
+                              policy_evidence, (drain_source, no_accept_source))
+sources = (('drain', drain_claim, drain_auth, drain_cas, drain_evidence),
+           ('no_accept', no_accept_claim, no_accept_auth, b'', no_accept_evidence),
+           ('policy', policy_claim, policy_auth, b'', policy_evidence))
+root = terminal_root(b'tenant', terminal_scope, terminal_head, terminal_set, sources)
+assert root.hex() == '756d9a00f0f90c34ab9bbb711fade80fd0acf6dcba68ce5b3b13a4f8dddcb9bf'
+changed_policy_evidence = evidence_bytes(b'changed-policy-order')
+changed_sources = sources[:2] + (('policy', policy_claim, policy_auth, b'', changed_policy_evidence),)
+assert root != terminal_root(b'tenant', terminal_scope, terminal_head, terminal_set, changed_sources)
+must_raise(Hold, lambda: terminal_root(b'tenant', terminal_scope, terminal_head, terminal_set,
+    (sources[1], sources[0], sources[2])))
+must_raise(Hold, lambda: terminal_root(b'tenant', terminal_scope, terminal_head, terminal_set,
+    (('drain', drain_claim, drain_auth, b'changed-CAS', drain_evidence), sources[1], sources[2])))
+must_raise(Hold, lambda: terminal_hash('drain',
+    drain_claim, auth_bytes(2, b'wrong-backend-auth'), b'', drain_evidence))
+unknown_mode_claim = drain_claim.replace(
+    b'\x08' + framed(b'SignedCarrier'), b'\x08' + framed(b'UnknownMode'))
+must_raise(Hold, lambda: terminal_hash(
+    'drain', unknown_mode_claim, drain_auth, drain_cas, drain_evidence))
+must_raise(Hold, lambda: terminal_hash('no_accept',
+    no_accept_claim, no_accept_auth, b'unexpected-second-CAS', no_accept_evidence, (drain_source,)))
+must_raise(Hold, lambda: terminal_hash('drain', drain_claim, drain_auth[:-1], drain_cas, drain_evidence))
+must_raise(Hold, lambda: terminal_hash('drain', drain_claim, drain_auth + b'trailing', drain_cas, drain_evidence))
+must_raise(Hold, lambda: terminal_hash('drain', drain_claim, drain_auth, drain_cas,
+                                      b'\x00\x00\x00\x02' + framed(b'one-item')))
+must_raise(Hold, lambda: terminal_hash('drain', drain_claim, drain_auth, drain_cas,
+                                      drain_evidence + b'trailing'))
+must_raise(Hold, lambda: terminal_hash('no_accept', drain_claim, no_accept_auth, b'',
+                                      no_accept_evidence, (drain_source,)))
+changed_drain_reference = terminal_claim('no_accept', terminal_operation, terminal_set,
+    (b'attempt-descriptor', b'broker-reject-fence', b'producer-disable', hashlib.sha256(b'other').digest()),
+    terminal_utc, b'BackendCas')
+must_raise(Hold, lambda: terminal_hash('no_accept', changed_drain_reference, no_accept_auth, b'',
+                                      no_accept_evidence, (drain_source,)))
+print('C11g complete claims, declared Auth bytes, ordered evidence and terminal root passed')
 
 # C11h: exhausted rejection retains committed nullable metadata and polling interval.
-def exhausted_public_status(original, member_receipt, utc_source):
-    if not member_receipt or not utc_source: raise Hold()
+def exhausted_public_status(original, member_receipt, utc_source, signed_maximum):
+    if (not isinstance(member_receipt, tuple) or len(member_receipt) != 4 or not utc_source
+        or not 1 <= signed_maximum <= 64): raise Hold()
+    attempts, receipt_maximum, final_class, authenticated = member_receipt
+    if (not authenticated or attempts != signed_maximum or receipt_maximum != signed_maximum
+        or final_class != 'Rejected01'): raise Hold()
     retained = ('CorrelationId', 'MessageId', 'AggregateId', 'EventCount',
                 'RejectionEventType', 'TimeoutDuration', 'TenantId', 'DrainAttemptCount')
     result = {field: original[field] for field in retained}
@@ -2045,23 +2910,142 @@ def exhausted_public_status(original, member_receipt, utc_source):
 source_status = {'CorrelationId': 'corr', 'MessageId': 'message', 'AggregateId': None,
     'EventCount': 1, 'RejectionEventType': 'order-rejected', 'TimeoutDuration': None,
     'TenantId': 'tenant', 'DrainAttemptCount': 3}
-status = exhausted_public_status(source_status, b'final-Rejected01', b'original-UTC')
+exhausted_receipt = (2, 2, 'Rejected01', True)
+status = exhausted_public_status(source_status, exhausted_receipt, b'original-UTC', 2)
 for field in ('CorrelationId', 'MessageId', 'AggregateId', 'EventCount', 'RejectionEventType',
               'TimeoutDuration', 'TenantId', 'DrainAttemptCount'):
     assert status[field] == source_status[field]
 assert status['RejectionEventType'] == 'order-rejected' and status['Retryable'] is False
 assert status['Retry-After'] == '1' and status['Timestamp'] == b'original-UTC'
-assert exhausted_public_status(dict(source_status, RejectionEventType=None), b'receipt', b'UTC')['RejectionEventType'] is None
-must_raise(Hold, lambda: exhausted_public_status(source_status, b'', b'UTC'))
+assert exhausted_public_status(dict(source_status, RejectionEventType=None),
+                               exhausted_receipt, b'UTC', 2)['RejectionEventType'] is None
+must_raise(Hold, lambda: exhausted_public_status(source_status, (1, 2, 'Rejected01', True), b'UTC', 2))
+must_raise(Hold, lambda: exhausted_public_status(source_status, (2, 2, 'Rejected02', True), b'UTC', 2))
+must_raise(Hold, lambda: exhausted_public_status(source_status, (2, 2, 'Rejected01', False), b'UTC', 2))
 print('C11h exhausted rejection metadata and status-polling semantics passed')
 ```
 
 ## Integration handoff and review disposition
 
-Integrate C1–C6 with 6.5a A3–A8 and 6.5b B2/B6/B8 as **one** change to the AD-13 draft. Replace draft codec-01 public outcome with A8 codec-03 complete observations and immutable first POST pin; add C5 purpose-29 signed branch-scoped terminal proposal, atomic final-head pointer, nonterminal `PublicationRetryExhaustedHold` and complete evidence before public `PublishFailed`. Reader-first rollout must update status consumers to interpret `Retryable=false` with `EventsStored` and `RecoveryReasonCode="publication_retry_exhausted_hold"` as an operator-held nonterminal state; clients that infer terminality from `Retryable=false` alone are fenced until compatible. C2 adds one old-obligation-keyed historical replacement owner/CAS; C3/C4 require one object-wide addressed capture fence across all handoffs, purpose-28 stable physical-filter identity and acyclic pre-CAS-record/post-CAS-receipt hashes for every retained object. These additions replace any older per-handoff capture-fence or hash-only cross-record interpretation. **C3 supersedes draft §7's 4 KiB complete `EventEffectReceipt` cap with 16 KiB** for both writer/provider preflight and all readers (including old marker adapters and rollback consumers); activation requires a versioned receipt-capability/probe and reader-first compatibility across mixed fleets. An old 4 KiB-only reader may read historical ≤4 KiB records but must be fenced from any route that can produce a larger C3 receipt. No record may be truncated to fit the old cap. Replace V1/new V2 save assumptions with A5 codec-02 complete-set certificate/readback, and retain B2's V2 five-flag raw-proof rule. Preserve historic V17/V20/V22/V23 literals, old lease byte shape, old public constructors and §12 six-field `UNAPPROVED` receipt until separately approved integration. **BH37-9: accepted; historical Loop-7 UTC-only wording is superseded by C1's `T`/`O(T)` original-offset rule and four fixed digest vectors.** The historical triage row remains intact. No activation or Story 6.6 authorization follows from this child candidate.
+Integrate C1–C6 with 6.5a A3–A8 and 6.5b B2/B6/B8 as **one** change to the AD-13 draft. Replace draft codec-01 public outcome with A8 codec-03 complete observations and immutable first POST pin; add C5 purpose-29 signed branch-scoped terminal proposal, atomic final-head pointer, nonterminal `PublicationRetryExhaustedHold`, explicit terminal-source `AuthMode` and complete evidence before public `PublishFailed`. Reader-first rollout must update status consumers to interpret `Retryable=false` with `EventsStored` and `RecoveryReasonCode="publication_retry_exhausted_hold"` as an operator-held nonterminal state; clients that infer terminality from `Retryable=false` alone are fenced until compatible. C1/C2 add the purpose-2a pre-first-send membership outcome without repinning and the exact purpose-13 historical-renewal chain. C2 adds one old-obligation-keyed historical replacement owner/CAS. C3 scopes `EventEffectKey` by physical subscription plus route and separates the immutable precommit effect record from its exact eighteen-tag provider readback; `EffectReceiptHash` codec 03 consumes the precommit record, nine-tag commit, readback and its authentication carrier. C3/C4 require one purpose-2b canonical physical-object mapping and object-wide capture fence across all handoffs and unidentified duties, a single proof-refresh chain, purpose-28 stable physical-filter identity and acyclic pre-CAS-record/post-CAS-receipt hashes for every retained object. These additions replace any older route-only effect key, informal grant renewal, per-handoff/proof-keyed capture fence, hash-only cross-record or seven-tag terminal-source interpretation. **C3 supersedes draft §7's 4 KiB complete `EventEffectReceipt` cap with 16 KiB** for both writer/provider preflight and all readers (including old marker adapters and rollback consumers); activation requires a versioned receipt-capability/probe and reader-first compatibility across mixed fleets. An old 4 KiB-only reader may read historical ≤4 KiB records but must be fenced from any route that can produce a larger C3 receipt. No record may be truncated to fit the old cap. Replace V1/new V2 save assumptions with A5 codec-02 complete-set certificate/readback, and retain B2's V2 five-flag raw-proof rule. Preserve historic V17/V20/V22/V23 literals, old lease byte shape, old public constructors and §12 six-field `UNAPPROVED` receipt until separately approved integration. **BH37-9: accepted; historical Loop-7 UTC-only wording is superseded by C1's `T`/`O(T)` original-offset rule and four fixed digest vectors.** The historical triage row remains intact. No activation or Story 6.6 authorization follows from this child candidate.
+
+The integration amendment must use the one `HistoricalAcceptedObligationHash` for grants, renewals, mappings and the accepted-delivery reverse index; introduce the thirteen-tag reverse index, thirteen-tag codec-02 destination-bearing immutable log and twelve-tag atomic bundle receipt before an empty-route filter identity exists; and apply C3's all-route acknowledgement rule to authenticated Structured and Binary carriers alike. It must import the exact 23-field legacy handoff manifest and the handoff-scoped 64-variant head/bundle transaction, not the earlier grouped summary or independent-record count. For retained objects it must import purpose-2c's fifteen-field codec-01 extension, the complete nine-field codec-02 identity attachment, the discriminated initial anchor, the separately keyed forward record and the purpose-18 extension variant under one shared mixed-kind extension head; each later unidentified delivery keeps its own purpose-16 identity, purpose-1b scope and purpose-18 retention source. C5 integration must import the full ten-tag drain-head/eight-tag CAS pairing, closed two-value terminal `AuthMode`, exact one-byte-plus-`B` Auth framing, counted Evidence, role-typed complete eight-tag terminal claims/hashes and the fixed drain/no-accept/policy source order. Any integration that retains a shorter hash, alternate order or independently mutable component is incompatible and fenced before activation.
 
 Independent review should challenge: A8 no-future-acceptance proof under a real broker and partial accepted set; same-transaction effect/receipt and multi-route pointer linearizability; raw ingress/capture preallocation and retention under actual DAPR intermediaries; offset preservation in Binary and structured carriers; B6 accounting across replicas; and all ten B handoff gates. An unresolved provider fact blocks readiness and requires approved integration amendment, not local 6.6 improvisation. C01–C11 and focused model families prove only local byte/state models; C7 provider/crash vectors are unexecuted.
 
 ## Verification
 
-Run the fenced Python block with `python3` from repository root and mutation-check C01 digest and C03/C05/C08 acknowledgement guards. Run `git diff --check`, resolve relative file/section links, compare protected normative/triage/6.5a/6.5b/runtime/test hashes and changed paths, and confirm AD-13 receipt stays `UNAPPROVED`. Current runtime tests establish only the inventory's present behavior; they do not validate this future contract. Record exact local results and review findings in the separate 6.5c execution record.
+Run these checks from the repository root. The positive model command is exact:
+
+```sh
+awk '/^```python$/{inside=1; next} inside && /^```$/{exit} inside{print}' \
+  _bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout.md | python3
+```
+
+It must exit zero and print exactly 40 passing family lines, beginning `C01 T/O(T) equal-instant offset bytes passed` and ending `C11h exhausted rejection metadata and status-polling semantics passed`. C08c additionally compares the complete segment bytes and SHA-256 with its fixed literals; C11g compares the fixed terminal-root digest, so an encoder-width or source-order change cannot regenerate its own expected answer.
+
+Run the negative guard suite below unchanged. Every mutated model process must exit nonzero, the command itself must exit zero, it must print one `REJECTED:` line for each named mutation, and its final line must be `37 guard mutations rejected`:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import re
+import subprocess
+
+path = Path('_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout.md')
+text = path.read_text(encoding='utf-8')
+match = re.search(r'^```python\n(.*?)^```$', text, re.MULTILINE | re.DOTALL)
+assert match
+model = match.group(1)
+mutations = {
+    'header pair framing': ('or name + value + 8 > 8192', 'or name + value > 8192'),
+    'required Content-Type': ("or b'content-type' not in seen_decision", 'or False'),
+    'Binary CloudEvent core': ("if encoded is None or any(header_map.get(name) != value for name, value in expected_core.items()):", 'if encoded is None:'),
+    'renewal result acyclicity': ('or claimed_result is not None): raise Hold()', 'or False): raise Hold()'),
+    'mapping duplicate evidence': ('if current != duplicate: raise Conflict()', 'if current[:2] != duplicate[:2]: raise Conflict()'),
+    'legacy 64-variant cap': ('if len(self.entries) >= 64: raise Hold()', 'if len(self.entries) > 64: raise Hold()'),
+    'signed routing values': ('return tuple(sorted(signed_six.items()))', 'return tuple(sorted(signed_six))'),
+    'scoped canonical handle': ('scoped_handle = (partition, authority, tag, handle)', 'scoped_handle = handle'),
+    'atomic identity attachment': ('if duty in attachments and attachments[duty] != attachment: raise Conflict()', 'if False: raise Conflict()'),
+    'complete partition manifest': ('if not self.partitions or self.partitions != tuple(dict.fromkeys(self.partitions))', 'if self.partitions != tuple(dict.fromkeys(self.partitions))'),
+    'Accepted reverse index conflict': ('if key in self.rows and self.rows[key] != candidate: raise Conflict()', 'if False: raise Conflict()'),
+    'full drain installed bytes': ('or receipt[5] != allocated_etag or receipt[1] != installed', 'or receipt[5] != allocated_etag or False'),
+    'closed terminal AuthMode': ("if (mode not in (b'SignedCarrier', b'BackendCas')", 'if (False'),
+    'terminal root field order': ("framed(tenant) + scope + head + final_set + b''.join(computed) + source_bytes", "framed(tenant) + scope + final_set + head + b''.join(computed) + source_bytes"),
+    'C08c fixed golden': ("n64 = lambda n: n.to_bytes(8, 'big', signed=True)", "n64 = lambda n: n.to_bytes(4, 'big', signed=True)"),
+    'HistoricalAccepted framing': ("framed(accepted_claim) + framed(carrier) + framed(acceptance_index) + framed(index_receipt)).digest()", "framed(accepted_claim) + carrier + framed(acceptance_index) + framed(index_receipt)).digest()"),
+    'zero-send proof bytes': ('proof_hash, zero_send_proof, disposition)', "b'', None, disposition)"),
+    'purpose-2c field count': ("(15).to_bytes(2, 'big')", "(16).to_bytes(2, 'big')"),
+    'empty legacy attempt key': ('or not isinstance(attempt, bytes) or not attempt: raise Hold()', 'or not isinstance(attempt, bytes): raise Hold()'),
+    'canonical obligation list': ('if canonical != tuple(sorted(set(canonical))): raise Hold()', 'if False: raise Hold()'),
+    'roster operation identity': ('if (roster[1] != attempts[-1][1] or roster[2] != attempts[-1][2]', 'if (False or roster[2] != attempts[-1][2]'),
+    'signed terminal reason': ('if (reason, receipt_class) not in reason_rules: raise Hold()', 'if False: raise Hold()'),
+    'revision-clock UTC': ('or not isinstance(utc, int) or not -(2**63) <= utc < 2**63', 'or False'),
+    'capture predecessor binding': ('not record or predecessor != expected_predecessor or len(predecessor) != 3', 'not record or False or len(predecessor) != 3'),
+    'cancellation preparation contradiction': ('if preparation_readback and not preparation_started: raise Hold()', 'if False: raise Hold()'),
+    'cancellation commit contradiction': ('if no_commit_readback and commit_proven: raise Hold()', 'if False: raise Hold()'),
+    'canonical key prevalidation': ('resolved_key = object_key(partition, authority, tag, canonical_id)  # Validate before mutation.', "resolved_key = b'unvalidated'  # MUTATED"),
+    'positive N/log generation': ('if not isinstance(value, int) or value < 1 or value >= 1 << 63: raise Hold()', 'if not isinstance(value, int) or value < 0 or value >= 1 << 63: raise Hold()'),
+    'exhausted status proof': ("or final_class != 'Rejected01'): raise Hold()", 'or False): raise Hold()'),
+    'drain predecessor generation': ('if (expected_generation != prior_generation or receipt[3] != prior_etag', 'if (False or receipt[3] != prior_etag'),
+    'drain authority': ('or head[10] != receipt[7] or head[9] != receipt[8]', 'or False or head[9] != receipt[8]'),
+    'drain UTC': ('or head[10] != receipt[7] or head[9] != receipt[8]', 'or head[10] != receipt[7] or False'),
+    'Auth framing': ('if size < 1 or 5 + size != len(auth): raise Hold()', 'if size < 1: raise Hold()'),
+    'Evidence count framing': ('if cursor != len(evidence): raise Hold()', 'if False: raise Hold()'),
+    'effect authority': ('if (fields[2] != expected_authority or fields[3] not in', 'if (False or fields[3] not in'),
+    'effect decision hash': ('or fields[12] != hashlib.sha256(decision).digest()', 'or False'),
+    'physical forward purpose-18': ("if target_kind == 'PhysicalReceipt' and not purpose18: raise Hold()", 'if False: raise Hold()'),
+}
+for name, (old, new) in mutations.items():
+    assert model.count(old) >= 1, name
+    changed = model.replace(old, new, 1)
+    result = subprocess.run(['python3', '-'], input=changed, capture_output=True, text=True)
+    assert result.returncode != 0, f'{name} mutation escaped guards'
+    print(f'REJECTED: {name}')
+print(f'{len(mutations)} guard mutations rejected')
+PY
+```
+
+Then run the documentation-integrity checks:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import re
+import subprocess
+
+candidate = Path('_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout.md')
+links = [target.split('#', 1)[0] for target in
+         re.findall(r'\[[^]]+\]\(([^)]+)\)', candidate.read_text(encoding='utf-8'))]
+local = [target for target in links if target and '://' not in target]
+missing = [target for target in local if not (candidate.parent / target).resolve().exists()]
+assert len(local) == 24 and not missing, (len(local), missing)
+
+record = Path('_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md')
+current = record.read_text(encoding='utf-8')
+baseline = subprocess.check_output(['git', 'show', f'HEAD:{record.as_posix()}'], text=True)
+pattern = r'<frozen-after-approval.*?</frozen-after-approval>'
+assert re.search(pattern, current, re.DOTALL).group(0) == re.search(pattern, baseline, re.DOTALL).group(0)
+
+changed = set(subprocess.check_output(['git', 'diff', '--name-only', 'HEAD'], text=True).splitlines())
+assert changed == {record.as_posix(), candidate.as_posix()}, changed
+print('24 relative links resolve; frozen intent/matrix match HEAD; changed paths are the two 6.5c records')
+PY
+
+git diff --check -- \
+  _bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md \
+  _bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout.md
+
+git diff --quiet HEAD -- \
+  _bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md \
+  _bmad-output/implementation-artifacts/story-6-5-review-triage.md \
+  _bmad-output/implementation-artifacts/story-6-5-design-notes.md \
+  _bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence.md \
+  _bmad-output/implementation-artifacts/spec-6-5b-verified-read-replay-and-projection.md \
+  src tests references deploy docs
+
+rg -n 'ApprovalEvidence: UNAPPROVED' \
+  _bmad-output/implementation-artifacts/spec-event-versioning-upcasting.md
+```
+
+The two `git diff` checks must exit zero, the link/frozen/scope script must print its single success line, and the final search must still find the normative `ApprovalEvidence: UNAPPROVED` line. Current runtime tests establish only the inventory's present behavior; they do not validate this future contract. Production provider, broker and injected-crash vectors in C7 remain unexecuted, so no activation-readiness conclusion is permitted. Record exact local results and independent review findings in the separate 6.5c execution record.
