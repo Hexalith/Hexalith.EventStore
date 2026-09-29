@@ -17,15 +17,55 @@ scheme. Production must also restrict direct gateway access and attest the
 caller app through Dapr mTLS and deny-by-default ACLs, because the current
 internal authentication handler reads the `dapr-caller-app-id` header. Outside
 Development, internal authentication also requires the `dapr-api-token` header
-to match the gateway's `APP_API_TOKEN` secret. The receiving Dapr sidecar must
-be configured with the same app token; a caller-ID header alone is rejected.
-Missing token configuration fails readiness outside Development. This is an
-application-channel check, not deployment proof of mTLS or ACLs. The
-gateway validates the short-lived asymmetric delegation against
-the configured OIDC authority. The delegation must bind the complete identity
-tuple, command type, server-derived canonical command digest, workload, purpose,
-and causation. `EventStore:TrustedEffects:Authority:Rules` is an exact allow-list
-of workload, purpose, target domain, and command type. Empty rules deny all.
+to match the gateway's `APP_API_TOKEN` secret; in Development a configured token
+is compared too. The receiving Dapr sidecar must be configured with the same app
+token; a caller-ID header alone is rejected. Outside Development, missing token
+configuration fails readiness while `Authentication:DaprInternal:AllowedCallers`
+is non-empty. This is an application-channel check, not deployment proof of mTLS
+or ACLs. The gateway validates the short-lived asymmetric delegation against
+the configured OIDC authority. An expired, badly signed, or wrong-audience
+delegation is returned as `403 Forbidden`, not a server error. The delegation
+must bind the complete identity tuple, command type, server-derived canonical
+command digest, workload, purpose, and causation, as listed below.
+`EventStore:TrustedEffects:Authority:Rules` is an exact allow-list of workload,
+purpose, target domain, and command type. Empty rules deny all.
+
+### Delegation claim contract
+
+`JwtTrustedEffectDelegationVerifier` enforces this contract. Every binding claim
+must appear exactly once and match ordinally.
+
+| Claim or rule | Required value |
+| --- | --- |
+| `effect_id` | `EffectIdentityCodec.ComputeEffectId` of the submitted tuple (52 Crockford Base32 characters) |
+| `tenant` | Identity tenant |
+| `source_domain` | Identity source domain |
+| `source_aggregate` | Identity source aggregate |
+| `source_envelope_sequence` | Source EventStore envelope sequence, invariant-culture decimal |
+| `effect_kind` | Identity effect kind from `EffectKindCatalog` |
+| `target_domain` | Identity target domain |
+| `target_aggregate` | Identity target aggregate |
+| `effect_ordinal` | Identity ordinal, invariant-culture decimal |
+| `command_type` | Submitted command type |
+| `command_digest` | Server-derived semantic digest (see below) |
+| `workload` | The attested caller app ID, which the gateway takes from Dapr internal authentication, not from the request body |
+| `purpose` | Submitted delegated purpose |
+| `causation` | Submitted causation identifier |
+| `aud` | Exactly `eventstore-gateway` |
+| `iss` and signature | Issuer and signing keys from the configured OIDC authority metadata; symmetric keys are refused. An unknown key ID refreshes the metadata once and retries |
+| Algorithm | An `RS*`, `PS*`, or `ES*` algorithm |
+| `exp` | Required; validated with a 30-second clock skew |
+| `iat` | Required; no later than now plus 30 seconds |
+| Lifetime | `exp` minus `iat` at most 15 minutes (`JwtTrustedEffectDelegationVerifier.MaximumLifetime`) |
+| Size | At most 16,384 bytes |
+
+The gateway derives `command_digest` itself. It builds the target `SubmitCommand`
+with the tuple's tenant, target domain, target aggregate, command type, and
+payload, using `wrk-<EffectId>` as the message and correlation identifier. The
+registered `IIdempotencyIntentAdapter` for that command type produces the
+canonical intent bytes. The digest is their SHA-256, rendered by
+`EffectIdentityCodec.RenderDigest`. Caller-supplied extensions and digests are
+never trusted.
 
 The target aggregate actor revalidates admission before reading a receipt. The
 gateway also signs its attested caller decision with a domain-separated HMAC;
@@ -69,8 +109,16 @@ The target receipt and collision index is staged with those records. Each
 aggregate erasure writes a durable progress marker before removing bounded
 event batches, then removes stream metadata, snapshot, receipts, and collisions.
 A retry resumes from that marker; a completed marker fences a target turn that
-was queued before deletion. The lifecycle clears its effect inventory only
-after every aggregate erasure completes. Legal hold prevents erasure. A failed
+was queued before deletion. The terminal erasure batch also removes each
+registered effect's `idempotency:wrk-<EffectId>` record, which carries the
+recorded result payload. Ordinary-command idempotency records and legacy
+redirects in the partition are not erased by this path; they belong to the
+broader AD-28 tenant offboarding workflow. While a partition holds a deletion
+fence or an erasure cursor, ordinary commands are also rejected, so a resumed
+erasure cannot orphan newly appended events. The lifecycle clears its effect
+inventory only after every aggregate erasure completes. Each partition's
+capability is issued immediately before its own fence or erasure call, so a
+large tenant cannot outlive the capability lifetime of later partitions. Legal hold prevents erasure. A failed
 turn leaves the lifecycle purge-eligible for retry. The existing protected
 tenant/key admission tombstones, directory aliases, and legacy inventory
 entries are purged after the stream evidence and before lifecycle `Purged`.
@@ -83,9 +131,13 @@ deletion and purge finish during an in-flight target turn, the router's later
 completion fails closed. On deletion entry, the lifecycle first sends a signed,
 purpose-separated deletion-fence capability to every registered source and target
 partition, then commits its non-active state. The actor persists a deletion fence
-before it can read a receipt or execute another trusted effect. A failed fence
+before it can read a receipt or execute another trusted effect, and audits the
+denial of any later trusted effect. A failed fence
 leaves deletion entry uncommitted and any already-fenced partitions closed; retry
-can finish the transition. Legal hold preserves the fence, so a previously signed
+can finish the transition. A retry may carry a new approval time or an inventory
+that grew after the failure; a validly signed fence capability then replaces the
+earlier fence, and the replacement is audited. A deletion approval later than the
+lifecycle clock plus 30 seconds is rejected before any partition is fenced. Legal hold preserves the fence, so a previously signed
 gateway proof cannot disclose a receipt during hold. A deletion-fence capability
 cannot authorize erasure, and a purge capability cannot install a deletion fence.
 The terminal erasure batch removes the deletion fence together with stream and

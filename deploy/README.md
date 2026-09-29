@@ -343,9 +343,12 @@ aspire publish --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
                     dapr.io/app-id: "eventstore"
                     dapr.io/app-port: "8080"
                     dapr.io/config: "accesscontrol"
+                    dapr.io/app-token-secret: "app-api-token"
     ```
 
     Use `dapr.io/config: "accesscontrol-eventstore-admin"` for the `eventstore-admin` workload and `dapr.io/config: "accesscontrol-sample"` for the `sample` workload.
+
+    **Breaking upgrade step: EventStore app-channel token.** Outside `Development`, the EventStore gateway no longer admits an internal Dapr caller from the `dapr-caller-app-id` header alone. Each caller in `Authentication:DaprInternal:AllowedCallers` must present a `dapr-api-token` header that matches the `APP_API_TOKEN` secret, and `dapr-app-channel-token` readiness is Unhealthy while callers are allow-listed and the secret is missing. The AppHost publish path does not generate this wiring, because the Kubernetes publisher emits no Dapr annotations. Add the `dapr.io/app-token-secret` annotation above to the `eventstore` pod template. Also add an `APP_API_TOKEN` environment variable to the `eventstore` container from the same Secret (`secretKeyRef` name `app-api-token`, key `token`); see `samples/deploy/kubernetes/secrets-template.yaml`. Until both are deployed, existing Staging and Production internal callers receive `401 Unauthorized`.
 
 2. Install the DAPR operator in your Kubernetes cluster.
 3. Apply production DAPR components as Kubernetes CRDs:

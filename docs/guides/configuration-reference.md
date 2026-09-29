@@ -447,6 +447,16 @@ Configuration section: `Authentication:JwtBearer`
 - Authority URIs must be absolute and contain no user information, query, or fragment. Explicit and discovered token endpoints must be absolute URIs without user information or fragment; a standards-compliant fixed query is allowed. An HTTP authority or token endpoint is accepted only in Development and only when `RequireHttpsMetadata=false`; outside Development all endpoints must use HTTPS and HTTPS metadata cannot be disabled
 - When `SigningKey` is set, it must be at least 32 UTF-8 bytes. Production always rejects symmetric mode; outside Production and Development it additionally requires `AllowInsecureSymmetricKey=true`
 
+### Internal Dapr callers
+
+Configuration section: `Authentication:DaprInternal`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `AllowedCallers` | string[] | `[]` | Exact, case-sensitive Dapr app IDs admitted by the `DaprInternal` scheme from the `dapr-caller-app-id` header. Empty admits no internal caller |
+
+Outside `Development`, an allow-listed caller also needs a `dapr-api-token` header that matches `APP_API_TOKEN` (see [Environment Variables](#dapr)). This is a breaking upgrade step for existing Staging and Production deployments. The trusted-effect endpoint `POST /api/v1/trusted-effects` accepts only this scheme; its delegation and authority rules are described in [Trusted effect submission](trusted-effects.md).
+
 ### Published UI token acquisition
 
 The AppHost configures the sample and Admin UIs as distinct external service identities. Each UI
@@ -607,6 +617,7 @@ Environment variables configure infrastructure connections and operational behav
 | `DAPR_HTTP_PORT` | (auto) | Override the DAPR sidecar HTTP port. Normally auto-assigned by DAPR |
 | `DAPR_TRUST_DOMAIN` | `"hexalith.io"` | SPIFFE trust domain for mTLS between services |
 | `DAPR_NAMESPACE` | `"hexalith"` | Kubernetes namespace used in DAPR access control policies |
+| `APP_API_TOKEN` | (empty) | EventStore app-channel secret compared with the inbound `dapr-api-token` header. **Breaking upgrade step:** required outside `Development` whenever `Authentication:DaprInternal:AllowedCallers` is non-empty. Otherwise allow-listed internal callers receive `401` and `dapr-app-channel-token` readiness is Unhealthy. The receiving sidecar must hold the same token: `dapr.io/app-token-secret` on Kubernetes, or `APP_API_TOKEN` on self-hosted `daprd`. In `Development`, a configured value is also compared |
 
 ### Infrastructure
 
