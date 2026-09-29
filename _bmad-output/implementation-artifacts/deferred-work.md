@@ -5020,3 +5020,31 @@ status: open
   summary: After v2 activation, existing full-replay projections on long streams hold readiness where today they work.
   evidence: Candidate [B7](spec-6-5b-verified-read-replay-and-projection.md#b7-projection-capability-durable-checkpoint-and-named-query-visibility) treats routes without a `5a` row as legacy full-replay, whose complete input is bounded by the draft §8 legacy complete array (`spec-event-versioning-upcasting.md:381`: 256 MiB accounting at 8,192 B/event, so at most about 32,768 events, or 64 MiB readable, whichever first). Otherwise it holds readiness. `ProjectionUpdateOrchestrator.UpdateProjectionAsync` currently reads `GetEventsAsync(0)` with no such bound. The limit is pre-existing in the draft; neither the draft nor the candidate inventories affected streams or offers a remediation path (incremental capability is opt-in per route). Reconcile during Story 6.5 integration.
   status: open
+
+
+## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 15, owner routing bar)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Define what happens to a held, non-poison delivery when the broker stops redelivering it, during Story 6.5 integration.
+  evidence: BH15-11. Every 6.5c hold returns non-2xx and relies on redelivery ("redelivery resumes only incomplete routes"). No contract covers a DAPR/broker retry budget, dead-letter topic or TTL that stops redelivering a held route; "retry exhaustion" appears only as an unexecuted C7 poison vector. Integration must prove held deliveries are retained, or define a dead-letter continuation that keeps every route obligation, plus a provider vector. Deferred under the owner's 6.5a routing bar (2026-09-29).
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Give operators a way to discover indefinitely held commands (hold inventory, metric or alert), during Story 6.5 integration.
+  evidence: BH15-13. The 6.5c candidate introduces indefinite holds that need operator action, including `PublicationRetryExhaustedHold`, `FirstSendMembershipChangedHold` and `RollbackReaderCapabilityHold`, but exposes them only through per-command status reads. Today's drain-exhaustion path emits a dead-letter message and an activity error status. Deferred under the owner's 6.5a routing bar (2026-09-29).
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Tighten two 6.5c local-model robustness guards (typed Hold for an absent pre-send proof; 32-byte checks on terminal-branch scope/head) if the model is carried into Story 6.5 integration.
+  evidence: EC15-17: `PreSendAdmission.verify(member, None, ...)` raises `TypeError` instead of `Hold`, though it still rejects. EC15-25: `TerminalProposalStore.reserve` concatenates unframed scope/head without a length check; callers pass fixed 32-byte hashes. Neither is acceptance-breaking under the owner's routing bar.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Add an automated check that extracts and runs the 6.5c embedded model families and mutation harness.
+  evidence: VG13-1/VG14-4/VG15-2. Normal CI never executes the fenced Python block, so its golden vectors and guards are protected only by manual runs. The frozen documentation-only boundary forbids adding the harness in Story 6.5c; it needs separately authorized test/CI work.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Record an approval source for the McpCli course correction and carry it through FR26, the architecture context and Story 7.5.
+  evidence: BH15-14/BH15-15 (found in the 6.5c review range, caused by `4fcb2b5c`, not by Story 6.5c). No sprint-change proposal mentions McpCli, although the PRD, architecture and epics banners say "Approved (2026-09-27)". Story 7.5 (`backlog`) still carries Admin.Cli typed-client work on a surface the banner declares obsolete, and the architecture's CLI/MCP wording is unchanged.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Re-pin `epics.md` `inputDocumentDigests` for `prd.md` and `architecture.md`.
+  evidence: BH15-16. `epics.md` pins `b99effdb…` and `7e3dbc7b…`, while the files now hash to `b3febbf2…` and `3b819c6f…`. This is pre-existing drift (see the earlier `epics.md:14` entry) that commit `4fcb2b5c` widened; it is not a Story 6.5c change.
+  status: open

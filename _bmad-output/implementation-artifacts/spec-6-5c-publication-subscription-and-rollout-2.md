@@ -2,10 +2,10 @@
 title: 'Story 6.5c: Publication, Subscription, and Rollout Candidate'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-review'
+status: 'ready-for-dev'
 baseline_commit: 'e29b44a2d185b01ddafe534672153308285b4444'
 route: 'dispatch'
-review_loop_iteration: 2
+review_loop_iteration: 3
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
 ---
@@ -23,6 +23,8 @@ context:
 **Always:** Preserve history, MessageId, offsets and public compatibility. Pin retries; require durable results for every addressed route before physical acknowledgement. Separate implemented behavior, proposals and unexecuted evidence.
 
 **Never:** Edit runtime/tests, 6.5a/6.5b, historical notes, signed fixtures or the normative artifact/`UNAPPROVED` receipt; authorize 6.6; silently acknowledge poison or unavailable evidence. Epic 8 remains optional.
+
+**Decision (owner, 2026-09-29, after review pass 15):** Review routing follows the Story 6.5a bar. Fix now only acceptance-breaking findings: an ungrounded rule, a boundary with a non-deterministic outcome, or overstated verification. Defer other refinements to Story 6.5 integration. For pass 15, define the destination-ID derivation and the publication-retention capacity, repair the integrity and mutation evidence, and correct every model/prose contradiction. Defer held-delivery redelivery exhaustion (BH15-11) and held-command discoverability (BH15-13). One focused loop follows; its review applies the same bar, then the story closes.
 
 ## I/O & Edge-Case Matrix
 
@@ -52,6 +54,13 @@ Runtime anchors, to inspect without editing:
 - `src/Hexalith.EventStore.DomainService/EventStoreDomainEventsEndpointExtensions.cs`: DTO ingress acknowledges skipped/invalid outcomes.
 - `src/Hexalith.EventStore.Operations/Endpoints/DeadLetterOperationsEndpointExtensions.cs` and `src/Hexalith.EventStore.Operations/Actors/DeadLetterDrainActor.cs`: bounded capture, retention and unsafe acknowledgement inventory; AD-31 readiness remains unproven.
 
+Pass-15 focused-loop anchors (pre-edit line numbers in the candidate; locate by text):
+
+- Destination ID: 6.5a A8 "Complete publication observations" defines `destinationId` only as the pinned component/topic/configuration; the open 6.5a BH6-1 ledger entry asks for its derivation. Draft §7 outbox routing intent (`spec-event-versioning-upcasting.md` ~:333) and candidate C1 outbox tag `12` hold the pinned configuration. Consumers: C2 parent-member row/head, C5 terminal/policy/pre-send rows, and the accepted-delivery log/index keys (C3 `accepted-delivery-log:`/`accepted-delivery-index:`; model `accepted_log_key`/`accepted_index_key`).
+- Capacity: `PublicationPinCapacityHold` (C1, one occurrence) and C6 item 8 "Storage ceilings"; reuse 6.5b B6's per-operation/deployment ceiling pattern rather than inventing a new quota style.
+- C1 transport bounds paragraph (attestation, header pair, Structured JSON); the Structured decoder and `broker_header_image` in the model; the handoff `Retryable=false` sentence in "Integration handoff and review disposition".
+- Model families cited by pass-15 EC rows, and candidate §Verification (positive command, 37-mutation harness, integrity script).
+
 ## Tasks & Acceptance
 
 All content tasks edit `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout.md`:
@@ -62,11 +71,31 @@ All content tasks edit `_bmad-output/implementation-artifacts/spec-6-5c-publicat
 - [x] Accept `BH37-9` as a historical wording conflict: retain §4 `T` and §7 CloudEvent `O(T)`; explicitly supersede UTC-only wording. Add byte-level equal-instant/different-offset delivery-digest vectors without altering existing literals.
 - [x] Add executable codec/state-model checks for each matrix row and future provider/crash vectors; map claims to evidence and independently review.
 
+**Pass-15 focused loop (owner routing bar; all edits in the candidate):**
+
+- [ ] C2/C3/C5: define one canonical `destinationId` derivation from the pinned component, topic and destination configuration: exact codec, bounds and known-answer vectors. Use it in every `destinationId` field and in the accepted-delivery log/index keys, and record that it resolves the 6.5a BH6-1 ledger item (BH15-9a).
+- [ ] C1/C6: give `PublicationPinCapacityHold` exact per-tenant and deployment ceilings covering global pins, legacy side records and retained objects. Charge them before send or attach, and hold with a typed outcome when full. Add them to C6 item 8 (BH15-12).
+- [ ] C1/C2 and handoff:
+  - one consistent Binary attestation bound (EC15-1);
+  - Structured carriers reject, or exactly match, any `ce-*` header (EC15-4);
+  - header values reject CR, LF and NUL (EC15-5);
+  - replace the unenforceable `Retryable=false` client-fence sentence (BH15-10).
+- [ ] Embedded model: correct each contradiction in pass-15 rows EC15-2/3/6–15/18–24/26/27, with a positive and a negative vector for each.
+- [ ] Candidate §Verification (VG15-1/BH15-7/BH15-8):
+  - Integrity script: compare against `baseline_commit`, pin the SHA-256 of the approved frozen block, name the owner/automation paths in the range explicitly, and stop on the first failure.
+  - Mutation harness: require exactly one occurrence of each target and the expected exception inside the owning family.
+  - Family labels: make them unique and list every expected line.
+  - Add a mutation for each new guard.
+
 **Acceptance Criteria:**
 
 - Given sources and BH37-9, when reviewed, then contracts have exact fields, bounds, outcomes and evidence anchors.
 - Given retries, partial effects, poison or incompatible peers, when vectors run, then identity, route effects and acknowledgements have deterministic outcomes.
 - Given 6.5a/6.5b integration, when handed off, then replacements/disposition are explicit while AD-13 remains unapproved and 6.6 unauthorized.
+- Given the pass-15 focused loop, when the candidate's verification runs on a clean, committed tree, then:
+  - the integrity script passes against `baseline_commit` with the pinned frozen digest;
+  - every model family and every mutation passes, each mutation dying in its owning family;
+  - the destination-ID and capacity rules each have a known-answer vector.
 
 ## Implementation Notes
 
@@ -111,6 +140,26 @@ Review-loop-4 implementation: restored the fourth candidate snapshot and added a
 Review-loop-5 implementation: restored the fifth candidate snapshot and resolved every routed pass-5 finding in C2–C5. Broker send identity and the parent fence now include authenticated tenant; C3 receipt sizing and preflight cover admitted identifiers; accepted-time filter proof survives ordinary expiry; unidentified poison uses a signed isolated capture scope and active retention obligation fence; zero-attempt terminality binds reason-specific pre-send and complete post-fence ledger evidence; the A8 no-op branch precedes policy creation; and takeover tag 02 has one exact framed hash. C02/C04/C06/C08c/C08d and focused C03d/C05/C08a local checks cover new send IDs, exact headers, two destinations, one-based positions, identifier bounds, receipt capacity, scope/retention and no-op. Embedded Python checks passed; six digest/acknowledgement/scope/fence/position/identifier mutations failed as intended. All 24 relative links resolve, and the candidate passes git diff --check. Provider, broker and injected-crash vectors remain unexecuted; this documentation candidate does not prove activation readiness.
 
 ## Spec Change Log
+
+2026-09-29, owner routing decision after review pass 15 (intent_gap BH15-4): The owner adopted the Story 6.5a routing bar, now recorded in the frozen Boundaries block. Pass 15's four `bad_spec` roots split under it:
+- BH15-9a (destination ID, a non-deterministic key) and BH15-12 (an ungrounded capacity hold) are fixed in this loop.
+- BH15-11 and BH15-13 go to Story 6.5 integration through `deferred-work.md`, together with EC15-17/25 and the non-story BH15-14/15/16.
+
+The candidate is amended in place, not reverted. The pass-15 focused-loop tasks give the exact scope.
+
+Known-bad states this avoids:
+- accepted-delivery keys forked by writer-selected destination IDs;
+- a capacity hold that no implementation can evaluate;
+- an integrity script that fails on every committed state while its scope checks test nothing;
+- a mutation harness that counts a crash as a kill;
+- model families that accept states the prose forbids.
+
+KEEP: Every earlier KEEP stays binding, with one exception: the frozen block now carries the owner decision, so the integrity check pins the new block's digest instead of comparing bytes with HEAD. Also keep:
+- the 40 passing families and 37 rejected mutations;
+- the 24 links and the protected artifacts;
+- the AD-13 `UNAPPROVED` receipt and the documentation-only footprint.
+
+Add no contracts beyond the listed tasks. At the next review, a finding outside the bar is deferred, not fixed.
 
 2026-09-28, authorized cycle 3 loop 3 after review pass 14: The reviewed candidate is preserved byte-for-byte at `/tmp/bmad-6-5c-before-review-14.md`. Re-derive the three non-frozen contract roots below before applying the retained direct model fixes. The frozen intent and documentation-only boundary are unchanged.
 
@@ -631,6 +680,66 @@ Review pass 14, authorized cycle 3 loop 2, 2026-09-28. All three layers reviewed
 | VG14-4 automated embedded-model execution | **medium / defer after loopback (carried VG13-1)** — normal CI still never executes the Markdown model; the frozen documentation-only boundary forbids adding the required repository test/harness in this story. |
 
 Review pass 14 routing: BH14-2/4/5/6/7 and EC14-15 form three `bad_spec` roots: one exact accepted-delivery-log codec, constructible acyclic cross-kind retained-object transitions in both directions, and an exact provider readback-receipt codec. They trigger loopback. All direct model/codec patches remain required after rederivation; VG14-4 remains separately authorized deferred automation. BH14-1/3/8/15/16 are rejected. The review counter advances from 1 to 2.
+
+Review pass 15, authorized cycle 3 loop 3, 2026-09-29. All three layers reviewed the complete 602,489-byte `e29b44a2..87e5b565` diff (Blind Hunter floor 10). The candidate content under review was committed by concurrent automation as `95fb1eff`, `bc747f70` and `87e5b565`; the working tree was clean. The parent independently re-ran the extracted model (40 family lines, exit 0) and the 37-mutation suite (all rejected: 36 on the intended assertion, `scoped canonical handle` on an uncaught `Conflict` inside its own C11b family). The integrity script exits 1 at HEAD. Each finding is classified below before grouping; verification-gap findings are accepted as preverified.
+
+| Finding | Verdict, evidence, route |
+| --- | --- |
+| VG15-1 HEAD-relative integrity check | **medium / patch after loopback** — preverified and reproduced: the script asserts `git diff --name-only HEAD == {record, candidate}` and exits 1 with `AssertionError: set()` once the candidate is committed; its frozen-block and `git diff --quiet HEAD` scope checks then compare committed content with itself. Compare against the recorded `baseline_commit`, pin the frozen block by digest and list accepted non-story paths explicitly. |
+| VG15-2 automated embedded-model execution | **medium / defer after loopback (carried VG14-4)** — normal CI still never executes the Markdown model or mutation harness; the frozen documentation-only boundary forbids adding the harness in this story. |
+| VG15-3 story content under unrelated commit subjects | **low / reject (same root as BH15-2)** — see BH15-2. |
+| BH15-1 Verification block fails at HEAD | **medium / patch after loopback (same root as VG15-1)** — independently reproduced; `git diff --name-only e29b44a2 -- references` lists four gitlinks that the HEAD-relative `--quiet` check cannot see. The `-2` record's "match HEAD" statements are this build's own spec and are not patched here. |
+| BH15-2 misleading commit subjects | **low / reject** — real: `95fb1eff`, `bc747f70` and `87e5b565` carry candidate/record content under sprint-status or submodule subjects. They were created by concurrent automation, not by this build, and two are already on `origin/main`; the only fix is rewriting published history. Surfaced to the owner instead. |
+| BH15-3 `/tmp`-only snapshots | **false / reject (carried BH13-14)** — same claim and location; `/tmp` copies are same-run recovery aids, and every reviewed state since pass 13 is now reconstructible from committed history. |
+| BH15-4 no size budget or stopping rule | **high / intent_gap** — verified: 15 passes across three cycles with two human counter resets; the candidate is 428,517 bytes, close to the 441,713-byte AD-13 draft; passes 12–15 each opened 3–8 new `bad_spec` roots. The frozen AC ("contracts have exact fields, bounds, outcomes and evidence anchors") has two readings: every contract complete here, or a section candidate whose non-AC-breaking gaps defer to Story 6.5 integration as the owner decided for 6.5a. The intent does not choose, so the loop cannot terminate by itself. |
+| BH15-5 latest loop not independently verified | **false / reject** — this review is the independent review task 5 names; the parent independently re-ran all 40 families and all 37 mutations for pass 15. |
+| BH15-6 status/date inconsistency | **low / reject** — `-2` `in-review` versus candidate/tracker `in-progress` reflects workflow bookkeeping; the `-2` frontmatter is this build's spec and the tracker is updated at closure. |
+| BH15-7 mutation harness accepts any nonzero exit | **low / patch after loopback** — reproduced: `returncode != 0` counts crashes as kills, and `model.count(old) >= 1` lets `scoped canonical handle` (two occurrences) mutate only the `resolve` copy, leaving `refresh` scoping unmutated. No current kill is vacuous; require the expected family/exception and exactly one occurrence per target. |
+| BH15-8 non-unique family labels | **low / patch after loopback** — verified: three lines print `C02`, one prints `C04/C05c`, and C7 cites bare `C02`; the positive check verifies only count and first/last lines. Give unique labels and list all 40 expected lines. |
+| BH15-9a destination-ID derivation | **medium / bad_spec** — the open ledger entry "Define the exact publication destination-ID derivation during Story 6.5/6.5c integration" (6.5a BH6-1) is unresolved, yet the candidate now uses `U destinationId` in the parent-member row/head, terminal rows and the accepted-delivery log and reverse-index **keys**. Independent brokers/verifiers can derive different keys for one delivery and fork the log or physical-filter OperationId. The intent does not exclude it. |
+| BH15-9b ledger entries not closed | **low / reject** — closing the 6.5a PublishFailed-reconciliation ledger entry is story-closure bookkeeping, not a candidate defect. |
+| BH15-9c VG13-1/VG14-4 absent from ledger | **false / reject** — defer rows are written only when a pass processes defers; every pass since 13 looped back first. |
+| BH15-10 `Retryable=false` external clients | **low / patch after loopback** — `CommandStatusRecord` already lists "attempts exhausted" as a `false` case, so the hold's meaning matches the shipped doc. The real defect is the handoff sentence that fences clients inferring terminality from `Retryable=false`; external HTTP pollers cannot be fenced. Correct the sentence. |
+| BH15-11 held deliveries after broker redelivery exhaustion | **medium / bad_spec** — every hold relies on redelivery ("redelivery resumes only incomplete routes"), but no contract covers a broker/DAPR retry budget, dead-letter routing or TTL that stops redelivering a held, non-poison delivery. "Retry exhaustion" appears only as an unexecuted C7 poison vector. A dead-lettered held route silently loses its obligation, against the frozen Poison/Rollout rows. |
+| BH15-12 unbounded publication retention | **medium / bad_spec** — `PublicationPinCapacityHold` appears once ("Pin capacity is reserved before send") with no capacity; pins retain ≤128 MiB bodies plus renderings, and legacy side records and retained objects sit under no-expiry fences. C6 item 8 bounds only B6 replay and the named 64 GiB state. Implementations cannot agree when the hold fires, contrary to the epic bounded-cost constraint. |
+| BH15-13 held commands not discoverable | **medium / bad_spec** — the candidate introduces indefinite holds, `PublicationRetryExhaustedHold` among them, that need operator action, but exposes them only through per-command status reads. There is no hold inventory, metric or alert contract, while today's exhaustion path emits a dead-letter message and activity error status. |
+| BH15-14 McpCli approval record | **low / defer** — verified: no sprint-change proposal mentions McpCli; banners in `4fcb2b5c` assert approval. That commit is not this story's change. |
+| BH15-15 McpCli propagation | **medium / defer** — Story 7.5 (`backlog`) still carries Admin.Cli typed-client work while the banner declares Admin.Cli obsolete; FR26/architecture wording remains partial. Caused by `4fcb2b5c`, not this story. |
+| BH15-16 stale `epics.md` input digests | **low / defer** — verified `b99effdb…`/`7e3dbc7b…` versus actual `b3febbf2…`/`3b819c6f…`; pre-existing drift already in the ledger and widened by `4fcb2b5c`, not this story. |
+| BH15-17 Implementation Notes ordering | **low / reject** — the fix edits this build's own spec. |
+| EC15-1 Binary attestation cap | **low / patch after loopback** — C1 admits an 8 KiB decoded attestation (≤16 KiB encoded), but Binary carries it in `ce-hyevattestation`, whose name/value pair is capped at 8 KiB, so attestations above 6,123 bytes can never be sent in Binary. State one consistent bound. |
+| EC15-2 physically impossible zero tuple | **low / patch after loopback** — reproduced: `carrier_bound` accepts zero attestation and zero headers, and line 418 asserts that as a positive vector, contrary to C1's physically-feasible rule. |
+| EC15-3 empty attestation | **low / patch after loopback** — an empty `ce-hyevattestation` decodes to empty bytes and re-encodes equal, so an unsigned rendering is admitted. |
+| EC15-4 Structured `ce-*` headers | **medium / patch after loopback** — Structured decoding rejects only `ce-hyevattestation`; a contradictory `ce-id`/`ce-type` header is admitted beside the JSON attributes, and the prose leaves Structured header/JSON disagreement undecided. Reject or require exact equality. |
+| EC15-5 CR/LF/NUL in header values | **medium / patch after loopback** — names are validated, values are not; a retained image containing CR/LF/NUL would be replayed byte-exactly. Reject illegal field-value bytes. |
+| EC15-6 Unknown then new nonce | **low / patch after loopback** — the C02 scoped-pin model raises `Hold` on `Unknown` without recording it, so a different nonce at the same attempt ordinal is later accepted. |
+| EC15-7 Unknown replay after reconcile | **low / patch after loopback** — `AttemptObservations.register` raises `Conflict` for an identical lost-acknowledgement replay once a definitive observation follows the Unknown. |
+| EC15-8 `N` width | **low / patch after loopback** — the renewal and compact-row models encode `N` with 4 bytes, while the normative `N` is 8-byte signed (as C08c's `n64` shows); large values raise an untyped `OverflowError`. |
+| EC15-9 invoke without reservation | **low / patch after loopback** — reproduced: `EffectReservation().invoke(None, 0, -1, True)` executes the effect. |
+| EC15-10 filter input version | **low / patch after loopback** — `catalog_filter` never bounds the accepted-effective input version, so 0 or >1024 becomes `Filtered`. |
+| EC15-11 selector row order | **medium / patch after loopback** — the model sorts Python tuples, while C3 sorts by complete encoded `U`/`I` bytes; the orders differ for unequal string lengths, so signer and verifier disagree. |
+| EC15-12 legacy variant entry framing | **medium / patch after loopback** — the entry hash concatenates body/core/side/link without framing, so boundary-shifted variants collide. C4 uses separate B32 tags. |
+| EC15-13 closed handoff reopened | **medium / patch after loopback** — `extend` checks only `all_entries`, so a closed handoff can return to the open list without a new opening source. |
+| EC15-14 attach to expired object | **medium / patch after loopback** — `attach` never checks `active`, so obligations join an expired fence. |
+| EC15-15 membership revision regression | **low / patch after loopback** — `Broker.change` accepts a lower revision and reuses the fixed fence nonce. |
+| EC15-16 replay of Rejected/TimedOut | **false / reject** — no runtime path writes `TimedOut`, and replaying a domain `Rejected` command is the intended replay feature, not a publication duplicate; the gate correctly targets committed `PublishFailed`. |
+| EC15-17 `verify` with absent proof | **low / patch after loopback** — `PreSendAdmission.verify(member, None, …)` raises `TypeError` instead of `Hold`. |
+| EC15-18 present zero flips to null | **medium / patch after loopback** — reproduced: `DrainLedger.status(0, 'head')` then `status(None, 'absent')` returns `0` then `None`, changing public `DrainAttemptCount`. |
+| EC15-19 exhausted maximum bounds | **low / patch after loopback** — reproduced: `RetryExhausted(…, 0).status(0, 'Rejected01', True)` projects the hold with zero attempts. |
+| EC15-20 alias count | **low / patch after loopback** — reproduced: 130 aliases are stored for one handle despite the 1..128 tag-`07` bound. |
+| EC15-21 silent re-initialize | **low / patch after loopback** — `CanonicalFence.initialize` with a different proof silently succeeds without recording it. |
+| EC15-22 closed duty reattached | **medium / patch after loopback** — `close` keeps the attachment, so an identical `attach` replay re-opens a closed duty without new opening proof. |
+| EC15-23 effect readback not bound to commit | **medium / patch after loopback** — `effect_hash` checks tag `11` but never compares readback tags `04`/`05`/`0f`/`10` with commit tags `02`/`04`/`05`/`06`, or tag `06` with the expected key, as C3 requires. The multiple-routes matrix evidence therefore passes a cross-route or stale readback. |
+| EC15-24 accepted log ID reuse | **medium / patch after loopback** — `AcceptedDeliveryIndex` detects conflicts only on the reverse key, so two obligations can share one log key; C3 requires conflict at either key. |
+| EC15-25 proposal branch framing | **low / patch after loopback** — `reserve` concatenates unframed `scope`/`head` without checking 32-byte length. |
+| EC15-26 C11f rejects present zero | **medium / patch after loopback** — C5 allows present count `0` with absent latest row, but C11f requires both optional fields to be present together and count ≥1. The pass-14 fix overcorrected. |
+| EC15-27 empty terminal Evidence | **medium / patch after loopback** — `terminal_hash` parses the count but accepts zero items, although each role's fixed order begins with required records (for example the drain roster descriptor). |
+| EC15-28 integrity checks after commit | **medium / patch after loopback (same root as VG15-1)** — reproduced; the fenced block also has no `set -e`, so a failing step does not stop the sequence. |
+| EC15-29 tracker/record status | **low / reject (same root as BH15-6)** — workflow bookkeeping. |
+| EC15-30 exact-bounds claim | **medium / patch after loopback (members EC15-1/11/26)** — the three contradictions are real and are grouped with those rows. |
+| EC15-31 multiple-routes evidence claim | **medium / patch after loopback (same root as EC15-23)** — see EC15-23. |
+
+Review pass 15 routing: BH15-4 is an `intent_gap`; it takes precedence and loops back to the human. BH15-9a/11/12/13 form four `bad_spec` contract roots: canonical destination identity, held-delivery redelivery exhaustion, aggregate publication-retention ceilings and held-command discoverability. The integrity-script, harness, label and model/prose guard patches remain required after any rederivation. BH15-14/15/16 are routed to defer as not this story's changes, and VG15-2 carries VG14-4. BH15-2/3/5/6/9b/9c/17 and EC15-16/29 are rejected. The review counter advances from 2 to 3. The candidate is not reverted pending the owner's resolution, because the choices below differ in whether its content survives.
 
 ## Design Notes
 
