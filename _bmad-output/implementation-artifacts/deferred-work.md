@@ -5048,3 +5048,82 @@ status: open
   summary: Re-pin `epics.md` `inputDocumentDigests` for `prd.md` and `architecture.md`.
   evidence: BH15-16. `epics.md` pins `b99effdb…` and `7e3dbc7b…`, while the files now hash to `b3febbf2…` and `3b819c6f…`. This is pre-existing drift (see the earlier `epics.md:14` entry) that commit `4fcb2b5c` widened; it is not a Story 6.5c change.
   status: open
+
+## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 16, owner routing bar)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Reserve publication-retention headroom so unidentified-scope accounts or full tenants cannot block poison capture, and define lowering a ceiling below current usage.
+  evidence: D1 (EC16-3, BH16-10). Each unidentified carrier is charged to its own purpose-1b scope account with no aggregate sublimit, and tenant ceilings have no guaranteed floor, so poison objects or two 1 GiB tenants can fill a 2 GiB deployment; C01d's own vector then holds an unidentified capture. The hold is deterministic, so it falls outside the 6.5c routing bar.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Name where the publication-retention counters live when charged objects span the actor state store, legacy storage, AD-31 capture storage and broker-owned storage.
+  evidence: D2 (BH16-9). C1 scopes both ceilings to B6's `(deployment identity, canonical backend descriptor)` for "the publication-retention backend", but broker-owned objects have no EventStore descriptor. Per-object charges stay deterministic; only the counter's home is unnamed.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Bound the C01d per-object overhead `o` exactly in both prose and model.
+  evidence: D3 (EC16-4). `PublicationRetention` accepts any `overhead >= 0` (2 GiB makes every charge hold), and the prose bound ("≤1 MiB protection expansion" plus framing) is not an exact byte limit.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Use physically feasible object sizes in the C01d capacity known answer and add per-kind maxima to `charge`.
+  evidence: D4 (BH16-6). The known answer charges a 600 MiB and a 1,023 MiB global pin and a 300 MiB legacy side record, above the ~448 MiB C1 pin maximum and C4's 193 MiB side-record cap; `charge` has no per-kind upper bound. The ceiling arithmetic itself is unaffected.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Decode the C01c configuration-reference address as a strict UTF-8 `U` value.
+  evidence: D5 (EC16-6). `resolve_configuration` accepts a non-UTF-8 address such as 2,000 `0xFF` bytes, while draft §7 defines it as `U` (§4: strict UTF-8). The resolved configuration is still hash-verified; §4 `U` has no general 1,024-byte cap, so only the UTF-8 half is real.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: State whether destination-configuration content must agree with outbox intent tags `0a`/`0b` or is opaque to the destination ID.
+  evidence: D6 (EC16-7, BH16-12). The C01c delimiter-shift known answers reuse configuration bytes naming `pubsub`/`orders` with different component/topic pairs; the derivation is deterministic either way, but admission of a contradictory configuration is unspecified.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Reject or normalize the remaining illegal HTTP field-value bytes (leading/trailing SP/HTAB, other controls, DEL, obs-text) in retained header images.
+  evidence: D7 (EC16-9). Pass 15 scoped EC15-5 to CR/LF/NUL; intermediaries may strip or reject the other bytes, so a later full-byte duplicate comparison can fail depending on the hop.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Align the C02 model's header-name check with RFC 9110 `tchar`, or state in the prose that decision headers use only ALPHA/DIGIT/`-`.
+  evidence: D8 (EC16-10). `broker_header_image` holds a proven non-decision header such as `X_Trace` although the prose admits legal HTTP names. Pre-existing model restriction.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Make the C02c decoder follow the draft §7 renderer attribute set in both modes.
+  evidence: D9 (EC16-11, EC16-12, EC16-13). The model requires `ce-datacontenttype` in Binary (draft §7 carries the event content type as the outer `Content-Type`), rejects Structured `time`/`subject` (draft §7: present when signed) and never compares Binary `ce-time`/`ce-subject` with the signed body. The prose rule is deterministic; these are pre-existing model deviations.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Bind effect-commit tags `03` (route-decision key hash) and `08` (provider authority) to the readback, and pin the route-decision key hash formula.
+  evidence: D10 (EC16-14). `effect_hash` compares the commit's operation/transaction/result/version/ETag with the readback, matching C3's explicit list, but not tag `08` or tag `03`, whose formula is not pinned in prose. Commit UTC and readback UTC legitimately differ.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Give C2 parent-member observations an identity so an identical replay after a lost acknowledgement does not consume a retry attempt.
+  evidence: D11 (EC16-15). `ParentMemberChain.observe` appends every result, so replaying the same `Rejected01` counts twice toward the signed maximum and the successor then holds. Pre-existing model abstraction.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Bound the C11f signed drain-head count to the range C08f can project.
+  evidence: D12 (EC16-16). C11f authenticates counts up to 2^63−1 while C08f projects only ≤2^31−1; unreachable under the signed 1..64 attempt maximum.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Run a single-removal kill sweep over the 6.5c embedded model's pre-existing guards and add killing vectors or remove redundant guards.
+  evidence: D13 (VG16-O2, EC16-17 pre-existing members). 156 of 371 `raise Hold()`/`raise Conflict()` sites can each be removed with all families still passing (an upper bound; some are redundant), including the negative-length, header-name, unknown `ce-*`, closure-subset and absence-after-head guards. Related to the VG15-2 automation entry.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Add a per-mutation timeout to the 6.5c mutation harness.
+  evidence: D14 (EC16-18). `subprocess.run` has no timeout, so a future mutation that loops would hang instead of failing; no current mutation hangs.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Constrain edits to the integrity script's owner/automation paths (for example by pinned blob or gitlink SHAs) without breaking closure bookkeeping.
+  evidence: D15 (EC16-19, EC16-21, BH16-13). `OWNER_AUTOMATION` exempts the whole content of the ledger, sprint status, three planning documents and four gitlinks; other gitlinks and protected paths are still checked.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Make the 6.5c integrity script fail on untracked files.
+  evidence: D16 (EC16-20, BH16-13). `git diff BASELINE` ignores untracked files; the acceptance criterion already requires a clean committed tree.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Inventory today's recoverable and exhausted `PublishFailed` writers and define their retirement or fencing, `MaxDrainAttempts` mapping and reason-code casing in the 6.5c handoff.
+  evidence: D17 (BH16-2). `AggregateActor.cs:1721` writes `PublishFailed` with `Retryable=true` and `drain_publish_failed` on first failure, and `:2912` writes the exhausted record; the candidate inventory lists only terminal `PublishFailed`, and C5's `RecoveryReasonCode="PublishFailed"` differs from the shipped snake_case codes.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Model the Binary `ce-*` core headers in C01b's carrier-size family.
+  evidence: D18 (BH16-4). The abstract length model requires only seven headers in both modes and identifies the attestation pair by its length tuple; the prose requires Binary's `ce-*` core headers too. Size bounds are unaffected.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: State the final disposition (retry or quarantine) of a carrier rejected for CR/LF/NUL header values.
+  evidence: D19 (BH16-18). C1 makes such a carrier `DeliveryPinConflict` and forbids retaining the value in a pin or header image, but does not say whether it reaches C4 physical quarantine; with BH15-11 deferred it may retry indefinitely or be dead-lettered silently.
+  status: open

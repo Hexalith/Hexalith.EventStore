@@ -46,25 +46,25 @@ Import draft §4's checked big-endian `U`, `B`, `B32`, `N`, `I`, `T`, `Q`, `O(X)
 
 At actor commit, 6.5a A5 **codec-02** intent/receipt and member root bind exact immutable event, encoding/digest sidecars, outbox and **domain/append result payload hash**, including rejection events. The draft §7 outbox intent `HX-EV-OUTBOX-INTENT-1\0 || 01 || 0012` stages exact source URI, component/topic, routing map/policy, destination configuration digest/bytes or immutable reference, optional subject/time `O(T)` and stored-form core derivation in the same save. Its tag `12` is one `B` containing `00 || inline configuration` or `01 || complete immutable configuration-reference record`, with no nested second `B`; readback resolves and hashes the exact configuration. Mutable publisher options never fill absent intent. An old outbox without authenticated intended-route evidence holds for separately approved migration. Derive the first pin only from authenticated original source/readability and that read-back intent, after A5 complete generation readback and globally Committed batch root. Same-ID append retry compares the **entire** original batch/result/fingerprint; a member proof grants only one already committed member's publication/effect check.
 
-**Canonical destination ID.** This resolves the open 6.5a BH6-1 ledger item in `deferred-work.md` ("Define the exact publication destination-ID derivation during Story 6.5/6.5c integration"). A8's `U destinationId` is exactly `"hxdst1-" || lowercase-hex(SHA256("HX-EV-DESTINATION-ID-1\0" || 01 || U component || U topic || B32 DestinationConfigurationHash))`: 71 ASCII bytes, encoded as `00000047` plus those bytes wherever a `U destinationId` or `U destination ID` appears. `component` and `topic` are the authenticated read-back outbox intent tags `0a` and `0b`, byte-for-byte, each 1..1,024 bytes of strict UTF-8 with no case folding, trimming or Unicode normalization. `DestinationConfigurationHash` is intent tag `0e`, used only after tag `12` resolves to exact configuration bytes whose SHA-256 equals tag `0e`; for the reference variant `01`, the resolved bytes must also match the reference record's own content hash. The storage variant is not identity, so equal resolved bytes give one ID. A missing or unresolved configuration, a length or UTF-8 violation, or any hash mismatch holds before pin, send or evidence write. The ID is derived, never chosen: display names, current or retry configuration, provider aliases and broker-assigned names cannot supply it. Every destination-ID field in this candidate carries exactly this value: A8 `ExpectedEntries`, the C2 parent-member row and head, the C3 accepted-delivery log and reverse index **and both of their keys**, and the C5 retry-plan, policy, pre-send, rule, partition-manifest, no-attempt and nonadmissibility records and terminal-row `destinationIdHash` inputs. A verifier recomputes it from the pinned outbox intent; any other bytes are a conflict that holds the record or status that carries them. Known answers (C01c): configuration bytes `{"component":"pubsub","mode":"Binary","topic":"orders","version":1}` (SHA-256 `127208325ff55766b0a9b98a0c8bda6bf499bb5f4e8f15add0e1eb454272c2d2`) with component `pubsub` and topic `orders` give `hxdst1-4b06bdae283a395dcd542ab0c6328ea9403a7914589bc077fb9ca79ec6f0bd63` in both the inline and reference forms. The same configuration under the delimiter-shifted pairs `pubsub.orders`/`events` and `pubsub`/`orders.events` gives `hxdst1-5b1a8f0661e8f66202017982d87a9d73b42b4373c73da7db7951859f866dd1b6` and `hxdst1-f2e0c543f5186d36a46ba2855930203bb3ce9d0eb163094023806f9a454aa169`. Changing only `"version":1` to `"version":2` gives `hxdst1-991eef72e86e51e04f4a233ea44ac7297516469b085d0ec150c7fabf41caa16b`.
+**Canonical destination ID.** This resolves the open 6.5a BH6-1 ledger item in `deferred-work.md` ("Define the exact publication destination-ID derivation during Story 6.5/6.5c integration"). A8's `U destinationId` is exactly `"hxdst1-" || lowercase-hex(SHA256("HX-EV-DESTINATION-ID-1\0" || 01 || U component || U topic || B32 DestinationConfigurationHash))`: 71 ASCII bytes, encoded as `00000047` plus those bytes wherever a `U destinationId` or `U destination ID` appears. `component` and `topic` are the authenticated read-back outbox intent tags `0a` and `0b`, byte-for-byte, each 1..1,024 bytes of strict UTF-8 with no case folding, trimming or Unicode normalization. `DestinationConfigurationHash` is intent tag `0e`, used only after tag `12` resolves to exact configuration bytes whose SHA-256 equals tag `0e`; for the reference variant `01`, the resolved bytes must also match the reference record's own content hash. The storage variant is not identity, so equal resolved bytes give one ID. A missing or unresolved configuration, a length or UTF-8 violation, or any hash mismatch holds before pin, send or evidence write. The ID is derived, never chosen: display names, current or retry configuration, provider aliases and broker-assigned names cannot supply it. Every destination-ID field in this candidate carries exactly this value: A8 `ExpectedEntries`, the C2 parent-member row and head, the C3 accepted-delivery log and reverse index **and both of their keys**, and the C5 retry-plan, policy, pre-send, rule, partition-manifest, no-attempt and nonadmissibility records and terminal-row `destinationIdHash` inputs. A verifier recomputes it from the pinned outbox intent; any other bytes are a conflict that holds the record or status that carries them. Before the intent is committed, the admission owner derives the ID for the C5 retry plan and policy from the exact component, topic, tag-`12` and tag-`0e` values it will write into that intent; post-commit readback recomputation must reproduce it, or it conflicts. Known answers (C01c): configuration bytes `{"component":"pubsub","mode":"Binary","topic":"orders","version":1}` (SHA-256 `127208325ff55766b0a9b98a0c8bda6bf499bb5f4e8f15add0e1eb454272c2d2`) with component `pubsub` and topic `orders` give `hxdst1-4b06bdae283a395dcd542ab0c6328ea9403a7914589bc077fb9ca79ec6f0bd63` in both the inline and reference forms. The same configuration under the delimiter-shifted pairs `pubsub.orders`/`events` and `pubsub`/`orders.events` gives `hxdst1-5b1a8f0661e8f66202017982d87a9d73b42b4373c73da7db7951859f866dd1b6` and `hxdst1-f2e0c543f5186d36a46ba2855930203bb3ce9d0eb163094023806f9a454aa169`. Changing only `"version":1` to `"version":2` gives `hxdst1-991eef72e86e51e04f4a233ea44ac7297516469b085d0ec150c7fabf41caa16b`.
 
-The exact global MessageId CAS pin contains decoded body, purpose-02 `HX-EV-ATTEST-1\0 || 01 || 0003` claim/key ID/64-byte P1363 signature, DeliveryDigest, StoredDigest, scope, old approved RegistryFingerprint, signed claim tag-`0a` issuance UTC, routing intent hash, renderer version, the exact accepted membership claim hash/revision, precomputed exact request and predicted accepted outbound bytes, C2 complete ordered request and predicted accepted transport-header images, and their equal six-header signed projection for each authorized mode pair, and exact hashes of the retained body, attestation, mode renderings and complete header images. Key is the **exact MessageId**, never `(MessageId,digest)`; changed body, header, destination, scope or same-mode rendering conflicts. Before any send, the publisher deterministically renders and CAS-pins **both** exact request and predicted accepted body/header images from the immutable destination configuration, accepted membership revision, proposed accepted mode, renderer version and signed routing intent. The broker must attest that its complete accepted image will equal this prediction; no post-acceptance result may choose new bytes for the global pin. An unpredicted broker-added, reordered or normalized header holds before acceptance, while an authorized Binary-to-Structured conversion may change only its predicted mode rendering and mode-specific Content-Type. The two complete images are independently pinned and compared; decoded body, attestation and all six signed routing headers remain equal. A provider unable to inspect and compare the complete predicted image in its atomic accept path cannot advertise publication readiness. First-pin recovery requires durable no-prior-send proof; ambiguous prior send holds. Pin capacity is charged before send under the publication-retention ceilings below (`PublicationPinCapacityHold`). Its signed historic obligation remains through queue, broker retry, quarantine, rollback and late-delivery obligations. A hash-only tombstone cannot perform C2's required full-byte duplicate comparison. Full pin body, attestation, original/accepted renderings, complete ordered header images, signing evidence and source remain available byte-for-byte throughout every possible late duplicate, retry, route, rollback and incident obligation. Only after authenticated closure proves no future same-MessageId comparison can arise may a CAS tombstone replace these bytes; alternatively a tombstone may name one independently authenticated immutable full-byte comparison source, with exact authority/key/generation/ETag, source bytes and no-expiry obligation read back for the whole enforceable redelivery horizon. On every duplicate, the reader resolves that source and compares all bytes before returning Accepted; missing or expired source holds. No finite broker horizon by itself makes hashes sufficient. Missing historic key/pin/source holds, never permits a new send or false duplicate.
+The exact global MessageId CAS pin contains decoded body, purpose-02 `HX-EV-ATTEST-1\0 || 01 || 0003` claim/key ID/64-byte P1363 signature, DeliveryDigest, StoredDigest, scope, old approved RegistryFingerprint, signed claim tag-`0a` issuance UTC, routing intent hash, renderer version, the exact accepted membership claim hash/revision, precomputed exact request and predicted accepted outbound bytes, C2 complete ordered request and predicted accepted transport-header images, and their equal six-header signed projection for each authorized mode pair, and exact hashes of the retained body, attestation, mode renderings and complete header images. Key is the **exact MessageId**, never `(MessageId,digest)`; changed body, header, destination, scope or same-mode rendering conflicts. Before any send, the publisher deterministically renders and CAS-pins **both** exact request and predicted accepted body/header images from the immutable destination configuration, accepted membership revision, proposed accepted mode, renderer version and signed routing intent. The broker must attest that its complete accepted image will equal this prediction; no post-acceptance result may choose new bytes for the global pin. An unpredicted broker-added, reordered or normalized header holds before acceptance, while an authorized Binary-to-Structured conversion may change only its predicted mode rendering and its mode-specific complete header image: `Content-Type` and the Binary-only `ce-*` core and `ce-hyevattestation` headers, which the Structured image must omit. The two complete images are independently pinned and compared; decoded body, attestation and all six signed routing headers remain equal. A provider unable to inspect and compare the complete predicted image in its atomic accept path cannot advertise publication readiness. First-pin recovery requires durable no-prior-send proof; ambiguous prior send holds. Pin capacity is charged before send under the publication-retention ceilings below (`PublicationPinCapacityHold`). Its signed historic obligation remains through queue, broker retry, quarantine, rollback and late-delivery obligations. A hash-only tombstone cannot perform C2's required full-byte duplicate comparison. Full pin body, attestation, original/accepted renderings, complete ordered header images, signing evidence and source remain available byte-for-byte throughout every possible late duplicate, retry, route, rollback and incident obligation. Only after authenticated closure proves no future same-MessageId comparison can arise may a CAS tombstone replace these bytes; alternatively a tombstone may name one independently authenticated immutable full-byte comparison source, with exact authority/key/generation/ETag, source bytes and no-expiry obligation read back for the whole enforceable redelivery horizon. On every duplicate, the reader resolves that source and compares all bytes before returning Accepted; missing or expired source holds. No finite broker horizon by itself makes hashes sufficient. Missing historic key/pin/source holds, never permits a new send or false duplicate.
 
 **Publication-retention capacity.** `PublicationPinCapacityHold` reuses 6.5b B6's per-operation/deployment storage pattern and adds a tenant sublimit. Level one is unchanged: the 6.5a A3/A8 1 GiB per-operation quota, which already reserves each eventful command's worst-case pins and referenced evidence before A4 Prepared. Level two is the **per-tenant publication-retention ceiling** and level three the **deployment publication-retention ceiling**. Both are exact u64 byte counts pinned in the authenticated deployment capability, for B6's stable `(deployment identity, canonical backend descriptor)` scope applied to the publication-retention backend, with `1 GiB ≤ tenant ceiling ≤ deployment ceiling`. The tenant ceiling is an intersection inside the deployment ceiling, never an extra allowance. Restarts, rolling upgrades, capability changes and namespace renames cannot reset either counter. Three kinds of retained object are charged:
 - each global MessageId pin, with every separately stored full-byte rendering, complete header image, attestation, signing evidence and authenticated tombstone comparison source;
 - each C4 legacy original or variant side record, with its manifest, attempt, side-link, variant-entry and head records;
 - each retained object under a C3/C4 obligation fence, whether an AD-31 capture object or a broker-owned full-byte object.
 
-An object's charge is its exact canonical encoded byte length plus the capability's pinned per-object overhead `o`: one exact byte count covering worst-case protection expansion (≤1 MiB, as C4 requires) and outer record metadata/framing. The account is the authenticated tenant; an unidentified physical object is charged to its purpose-`1b` signed isolated capture/access scope ID as its own tenant account. One physical owner is charged once, when the purpose-`2b` canonical-object mapping or the pin/handoff key proves it is the same owner; a changed charge for the same owner conflicts. Under B6's linearizable quota fence, each charge is taken atomically against both counters at these points:
-- a global pin is reserved at its conservative planned size before A4 Prepared, with A8's first-outcome reservation, and converted to its exact charge at the pin CAS before any send; the unused part is released in the same fence once pin readback proves the exact charge;
+An object's charge is its exact canonical encoded byte length plus the capability's pinned per-object overhead `o`: one exact byte count covering worst-case protection expansion (≤1 MiB, as C4 requires) and outer record metadata/framing. The account is the authenticated tenant; an unidentified physical object is charged to its purpose-`1b` signed isolated capture/access scope ID as its own tenant account. One physical owner is charged once, to the account of its first charge, when the purpose-`2b` canonical-object mapping or the pin/handoff key proves it is the same owner. A later attach from any account with the same kind and amount returns already-charged and charges nothing; a different kind or amount conflicts. The refund returns to the charged account after the object's final closure. Under B6's linearizable quota fence, each charge is taken atomically against both counters at these points:
+- a global pin is charged at its exact size at the pin CAS, atomically with that CAS and before any send; there is no admission-time publication-retention reservation;
 - a legacy side record is charged before the C4 variant bundle writes it;
 - a retained object is charged before a C3/C4 fence install, attach or purpose-`2c` extension first adds an obligation to it.
 
-If either counter would exceed its ceiling, the typed, nonterminal result is `PublicationPinCapacityHold`. At admission it stops the command before append. At a side-record write or retained-object attach it returns non-2xx with no fence change, route decision or acknowledgement, and redelivery retries only after authenticated capacity readback. Refunds follow B6's no-early-release rule: only after authenticated closure of every obligation and deletion or tombstone readback, updating both counters once under the same fence. An ambiguous deletion keeps its charge, and recovery reconciles the counters before new admissions. Known answer (C01d): with a 1 GiB tenant ceiling, a 2 GiB deployment ceiling and `o` = 1 MiB, charges of 100 MiB (a shared retained object, charged once although attached twice), 600 MiB and 300 MiB occupy 1,003 MiB; a further 20 MiB pin fits exactly at 1 GiB, while 21 MiB is `PublicationPinCapacityHold` with both counters unchanged. With another tenant at 1,024 MiB the deployment counter is full, so a 10 MiB unidentified object in its own scope account also holds until a refund with deletion readback frees capacity.
+If either counter would exceed its ceiling, the typed, nonterminal result is `PublicationPinCapacityHold`. At the pin CAS it creates no pin and permits no send: the committed events and outbox stay stored, the A8 member stays pending, public status is the nonterminal `EventsStored`, and publication resumes only after authenticated capacity readback. At a side-record write or retained-object attach it returns non-2xx with no fence change, route decision or acknowledgement, and redelivery retries only after authenticated capacity readback. Refunds follow B6's no-early-release rule: only after authenticated closure of every obligation and deletion or tombstone readback, updating both counters once under the same fence. An ambiguous deletion keeps its charge, and recovery reconciles the counters before new admissions. Known answer (C01d): with a 1 GiB tenant ceiling, a 2 GiB deployment ceiling and `o` = 1 MiB, charges of 100 MiB (a shared retained object, charged once although attached twice), 600 MiB and 300 MiB occupy 1,003 MiB; a further 20 MiB pin fits exactly at 1 GiB, while 21 MiB is `PublicationPinCapacityHold` with both counters unchanged. With another tenant at 1,024 MiB the deployment counter is full, so a 10 MiB unidentified object in its own scope account also holds until a refund with deletion readback frees capacity. A later attach of the shared object from that scope account returns already-charged, and its refund after final closure returns 101 MiB to the first tenant.
 
 Transport is exact binary `application/vnd.hexalith.eventstore.v2+octet-stream` body with canonical padded Base64 `ce-hyevattestation`, or sorted structured CloudEvents JSON with canonical padded `data_base64` and `hyevattestation`. Both modes strictly decode to the same body/attestation and signed `specversion=1.0`, id/type/source, optional subject/time with original offset, content type, component/topic and six `hx-*` routing headers. The six are `hx-tenant-id`, `hx-domain`, `hx-aggregate-id`, `hx-aggregate-type`, `hx-event-contract-type`, `hx-payload-version`; structured mode keeps them outside the CloudEvent object. The attestation is always present and nonempty; an absent or empty `ce-hyevattestation` or `hyevattestation`, which would decode to an unsigned rendering, is `DeliveryPinConflict`. In Structured mode the CloudEvent attributes exist only in the JSON object: any `ce-*` HTTP header, in any case and including `ce-hyevattestation`, is `DeliveryPinConflict` before decode, so no header can agree or disagree with a JSON attribute. In Binary mode the `ce-*` headers are the only attribute source. Every header value is checked byte-for-byte: a value containing CR (`0x0d`), LF (`0x0a`) or NUL (`0x00`) is `DeliveryPinConflict`; it is never retained in a pin or header image, replayed, or used as a decision input. V1 header type/version comes from exact registered domain alias descriptor while stored body pair remains absent/null. Case-fold only legal HTTP header-name case to identify **decision fields**: the six routing names, every `hx-*`, CloudEvent `ce-*` field, `ce-hyevattestation`, `Content-Type`, and any configured mode or attestation selector. A duplicate of any such name, including a differently cased spelling, is `DeliveryPinConflict`; unknown `hx-*`/CloudEvent attributes, changed values, alternate Base64 and noncanonical mode rendering also conflict. Exact ordered duplicates of other HTTP names are admitted only when the signed destination configuration names them as non-decision inputs and the C2 full-byte broker/sidecar/ingress probe proves they cannot affect routing, trust, filtering, effects, quarantine identity or mode selection. Otherwise hold admission; the generic duplicate rule never rejects an otherwise proved non-routing image. JSON object member names remain unique under strict JSON parsing. Non-`hx-*` broker headers cannot route. All six signed headers are required on new deliveries and sorted by unsigned UTF-8 name; `hx-payload-version` is canonical unsigned ASCII decimal 1..1024 without sign, space or leading zero. Generic object publication/DTO binding does not satisfy this contract. Same-mode retry uses retained exact outbound bytes; a broker mode conversion is accepted only after strict decode and canonical re-render to the same pin.
 
-Before parsing, Base64 decoding, JSON DOM creation, signature verification, or buffer allocation, admission obtains a streaming length bound on **each** byte domain: decoded delivery body ≤128 MiB, decoded attestation 1..6,123 bytes with canonical padded Base64 ≤8,164 bytes as the Binary header or Structured JSON value, complete Binary transport body ≤128 MiB, and complete structured JSON transport body ≤192 MiB. Canonical padded Base64 of a 128 MiB body is exactly 178,956,972 bytes; a structured carrier is admitted only when its exact canonical JSON length equals `4 * ceil(actual decoded body length / 3)` canonical padded-Base64 bytes plus the actual bounded JSON attribute, attestation and framing bytes and remains ≤192 MiB. The 178,956,972-byte figure is only the 128 MiB decoded-body boundary vector; it is not a lower bound for smaller bodies. Binary body length equals decoded body length. All broker/application headers together are ≤64 KiB of exact name/value bytes including separators, ≤128 entries and ≤8 KiB per name/value pair, each pair charged as its exact name and value bytes plus 8 framing bytes (the two u32 lengths of its C2 retained-image entry); the complete body-plus-header/framing carrier is ≤193 MiB. One attestation bound serves both modes: the Binary `ce-hyevattestation` pair is at most 18 + 8,164 + 8 = 8,190 bytes, inside the 8 KiB pair bound, so an authorized Binary/Structured conversion never meets an attestation that one mode cannot carry. This supersedes draft §6's 8 KiB decoded-attestation maximum for carriers under this candidate. A carrier has a nonempty body and attestation and at least seven headers, the six routing headers and `Content-Type`; a Binary carrier additionally carries its required `ce-*` core headers and exactly one `ce-hyevattestation` pair whose value length is the attestation's canonical Base64 length. A zero-length attestation or a shorter header set is not physically feasible and holds. Only `Binary` and `Structured` are legal modes. All domains and the mode/length relationship are independently checked before growth; a tuple of individually small but physically impossible lengths is invalid. The carrier is parsed/decoded incrementally in bounded chunks; a 192 MiB JSON DOM or full decoded-plus-encoded copy is never allocated. Length-prefixed fields, JSON strings, Base64 output, sorting scratch and signatures are charged before growth; overflow, unknown length, truncated stream or unsupported provider streaming limit yields `DeliveryCarrierLimitHold` and non-2xx, with no parsed identity or effect. A production probe must prove these bounds through broker, sidecar, ingress and AD-31 capture without a larger intermediate allocation. An over-limit carrier can be acknowledged only through C4's separately proved exact-full-byte physical quarantine; a truncated hash or captured prefix grants no authority.
+Before parsing, Base64 decoding, JSON DOM creation, signature verification, or buffer allocation, admission obtains a streaming length bound on **each** byte domain: decoded delivery body ≤128 MiB, decoded attestation 1..6,123 bytes with canonical padded Base64 ≤8,164 bytes as the Binary header or Structured JSON value, complete Binary transport body ≤128 MiB, and complete structured JSON transport body ≤192 MiB. Canonical padded Base64 of a 128 MiB body is exactly 178,956,972 bytes; a structured carrier is admitted only when its exact canonical JSON length equals `4 * ceil(actual decoded body length / 3)` canonical padded-Base64 bytes plus the actual bounded JSON attribute, attestation and framing bytes and remains ≤192 MiB. The 178,956,972-byte figure is only the 128 MiB decoded-body boundary vector; it is not a lower bound for smaller bodies. Binary body length equals decoded body length. All broker/application headers together are ≤64 KiB of exact name/value bytes including separators, ≤128 entries and ≤8 KiB per name/value pair, each pair charged as its exact name and value bytes plus 8 framing bytes (the two u32 lengths of its C2 retained-image entry); the complete body-plus-header/framing carrier is ≤193 MiB. One attestation bound serves both modes: the Binary `ce-hyevattestation` pair is at most 18 + 8,164 + 8 = 8,190 bytes, inside the 8 KiB pair bound, so an authorized Binary/Structured conversion never meets an attestation that one mode cannot carry. This supersedes draft §6's 8 KiB decoded-attestation maximum for carriers under this candidate. The maximum admits every legal attestation: a purpose-02 `HX-EV-DELIVERY-CLAIM-1` claim with 1,024-byte identifiers frames to 5,288 bytes, so the attestation is 15 + 1 + 2 + (1 + 4 + 5,288) + (1 + 4 + key ID) + (1 + 4 + 64) = 5,385 bytes plus its key ID. The purpose-02 delivery key ID is therefore 1..738 bytes (5,385 + 738 = 6,123), and pinning a trust map rejects a longer key ID before any admission. A carrier has a nonempty body and attestation and at least seven headers, the six routing headers and `Content-Type`; a Binary carrier additionally carries its required `ce-*` core headers and exactly one `ce-hyevattestation` pair whose value length is the attestation's canonical Base64 length. A zero-length attestation or a shorter header set is not physically feasible and holds. Only `Binary` and `Structured` are legal modes. All domains and the mode/length relationship are independently checked before growth; a tuple of individually small but physically impossible lengths is invalid. The carrier is parsed/decoded incrementally in bounded chunks; a 192 MiB JSON DOM or full decoded-plus-encoded copy is never allocated. Length-prefixed fields, JSON strings, Base64 output, sorting scratch and signatures are charged before growth; overflow, unknown length, truncated stream or unsupported provider streaming limit yields `DeliveryCarrierLimitHold` and non-2xx, with no parsed identity or effect. A production probe must prove these bounds through broker, sidecar, ingress and AD-31 capture without a larger intermediate allocation. An over-limit carrier can be acknowledged only through C4's separately proved exact-full-byte physical quarantine; a truncated hash or captured prefix grants no authority.
 
 ### BH37-9 disposition and byte vectors
 
@@ -332,7 +332,7 @@ The **entire** 6.5b ten-item integration handoff is a simultaneous activation ch
 | 5. Retention/rollback | Keep source, purpose-01/02/06/10/11/12 event keys, purpose-13 historical broker-grant/renewal keys and complete CAS heads/trust intervals, purpose-14 catalog-filter, purpose-15 member-nonadmissibility, purpose-1b physical capture-scope, purpose-1c send-parent keys, purpose-20/21/22/23 attempt/result/attempt-head/member-head authorities, purpose-24 pre-send admission, purpose-25/26 drain head/absence, purpose-27 capture-closure, purpose-28 physical-filter delivery identity, purpose-29 terminal-proposal closure, purpose-2a first-send membership outcome, purpose-2b canonical physical-object mapping and purpose-2c retained-object extension authorities, purpose-1d pre-send and purpose-1f no-attempt ledger keys/trust intervals, accepted-revision catalog predicate/input and transform bytes, old approved fingerprints, migration authority/decoder, backend evidence, pins, route decisions/reservation owner-fence histories/reconciliation proofs/receipts, broker-owned full-byte references or AD-31-only tagged references, canonical alias/proof mapping chains, cross-kind identity attachments and the one complete shared addressed/unidentified obligation fence with every version link, signed capture scopes, terminal proposals/pointers/closure CAS receipts, eight-tag source records with declared Auth bytes, segments/pre-send and zero-attempt proofs and response records through event/queue/retry/backup/rollback obligations. No capable endpoint → `RollbackReaderCapabilityHold`. |
 | 6. Fold/query catalog | Activate B7 `5a` fold-mode and `5b` query catalog rows with pinned deployment capability. Read/Apply/handler semantic change needs authenticated rebuild; F-only write change refreshes transient proof without semantic invalidation. |
 | 7. Cache classification | Atomically activate versioned-cache classification and quarantine old entries; no stale cache claims current query or route state. |
-| 8. Storage ceilings | Pin B6 1 GiB **per-operation** quota and one **deployment** replay-storage ceiling across replicas, replay and B9 exports; ambiguous deletion retains charge. Named 64 GiB retained state has its own shared cap. Pin C1's per-tenant and deployment **publication-retention** ceilings (exact byte counts, `1 GiB ≤ tenant ≤ deployment`, per-object overhead `o`) over global pins, legacy side records and fenced retained objects; each charge precedes its send, side-record write or attach, and a full counter is `PublicationPinCapacityHold`. |
+| 8. Storage ceilings | Pin B6 1 GiB **per-operation** quota and one **deployment** replay-storage ceiling across replicas, replay and B9 exports; ambiguous deletion retains charge. Named 64 GiB retained state has its own shared cap. Pin C1's per-tenant and deployment **publication-retention** ceilings (exact byte counts, `1 GiB ≤ tenant ≤ deployment`, per-object overhead `o`) over global pins, legacy side records and fenced retained objects; each global pin is charged at its exact size at the pin CAS before any send, and each side record or retained object before its write or attach; a full counter is `PublicationPinCapacityHold`, with events stored and status nonterminal `EventsStored` for a pin. |
 | 9. Final visibility | Replay, timeline, query, export and named projection rows are visible only through authenticated final pointer/complete proof; partial generations authorize no subscription/command/publication status. |
 | 10. Admin timeline | Disclose B9 behavior: target above 1,000 events/64 MiB cumulative timeline state or absent qualified protection returns `TimelineLimit`/`TimelineProtectionHold`, without partial timeline. |
 
@@ -402,10 +402,30 @@ def must_raise(error, action):
     try: action()
     except error: return
     raise AssertionError(f'expected {error.__name__}')
+def must_raise_typed(expected, action):  # Any other exception type fails as an assertion, not a crash.
+    try: action()
+    except Exception as error:
+        assert isinstance(error, expected), f'expected typed {expected.__name__}, got {type(error).__name__}'
+        return
+    raise AssertionError(f'expected {expected.__name__}')
+def must_hold_typed(action): must_raise_typed(Hold, action)
 
 MIB = 1 << 20
 ATTESTATION_MAX = 6123  # One bound for both modes: 18-byte name + 8,164 Base64 bytes + 8 framing = 8,190.
 ATTESTATION_HEADER = len(b'ce-hyevattestation')
+ATTESTATION_KEY_ID_MAX = 738  # Purpose-02 delivery key ID: 5,385 fixed/claim bytes + 738 = 6,123.
+def trust_key_id(key_id):  # Checked when the trust map is pinned, before any admission.
+    if not isinstance(key_id, bytes) or not 1 <= len(key_id) <= ATTESTATION_KEY_ID_MAX: raise Hold()
+    return key_id
+def delivery_claim_bytes(identifier_length):  # HX-EV-DELIVERY-CLAIM-1: 3 x B32, 5 x U, N and Q.
+    u = lambda: identifier_length.to_bytes(4, 'big') + b'i' * identifier_length
+    return (b'HX-EV-DELIVERY-CLAIM-1\0\x01\x00\x0a' + b'\x01' + b's' * 32 + b'\x02' + b'd' * 32
+            + b'\x03' + u() + b'\x04' + u() + b'\x05' + u() + b'\x06' + u() + b'\x07' + (1).to_bytes(8, 'big')
+            + b'\x08' + u() + b'\x09' + b'r' * 32 + b'\x0a' + (1).to_bytes(8, 'big'))
+def attestation_bytes(claim, key_id, signature):  # HX-EV-ATTEST-1: B claim, U key ID, B 64-byte signature.
+    framed_value = lambda value: len(value).to_bytes(4, 'big') + value
+    return (b'HX-EV-ATTEST-1\0\x01\x00\x03' + b'\x01' + framed_value(claim)
+            + b'\x02' + framed_value(trust_key_id(key_id)) + b'\x03' + framed_value(signature))
 def carrier_bound(decoded, attestation_decoded, attestation_encoded, encoded_body,
                   header_pairs, mode, framing=0, structured_overhead=0):
     if mode not in ('Binary', 'Structured'): raise Hold()
@@ -456,12 +476,16 @@ must_raise(Hold, lambda: carrier_bound(1, 1, 4, 4 + 4 + 17, carrier_pairs('Struc
 must_raise(Hold, lambda: carrier_bound(1, ATTESTATION_MAX + 1, 8168, 4 + 8168 + 17,
                                        carrier_pairs('Structured', ATTESTATION_MAX + 1), 'Structured', structured_overhead=17))
 must_raise(Hold, lambda: carrier_bound(1, 1, 4, 1, carrier_pairs('Structured', 1), 'Binary'))
+assert len(delivery_claim_bytes(1024)) == 5288  # Maximum purpose-02 claim at 1,024-byte identifiers.
+assert len(attestation_bytes(delivery_claim_bytes(1024), b'k' * ATTESTATION_KEY_ID_MAX, b'g' * 64)) == ATTESTATION_MAX
+must_raise(Hold, lambda: trust_key_id(b'k' * (ATTESTATION_KEY_ID_MAX + 1)))
+must_raise(Hold, lambda: trust_key_id(b''))
 print('C01b canonical mode, encoded/decoded relation, attestation and header-pair bounds passed')
 
 # C01c: one canonical destinationId from the authenticated read-back outbox intent (resolves 6.5a BH6-1).
 CONFIG_REF_PREFIX = b'HX-EV-OUTBOX-CONFIG-REF-1\0\x01'
 def destination_u(value):
-    if not isinstance(value, bytes) or not 1 <= len(value) <= 1024: raise Hold()
+    if not isinstance(value, bytes) or not 1 <= len(value) <= 1024: raise Hold()  # Intent tags 0a/0b.
     try: value.decode('utf-8', 'strict')
     except UnicodeDecodeError: raise Hold()
     return len(value).to_bytes(4, 'big') + value
@@ -512,7 +536,17 @@ must_raise(Conflict, lambda: verify_destination_id(b'orders', b'pubsub', b'order
 must_raise(Conflict, lambda: destination_id(b'pubsub', b'orders', b'\x00' + changed_config, destination_config_digest))
 must_raise(Conflict, lambda: destination_id(b'pubsub', b'orders', reference_config, destination_config_digest,
                                             {config_address: changed_config}))
-must_raise(Hold, lambda: destination_id(b'pubsub', b'orders', reference_config, destination_config_digest))
+must_hold_typed(lambda: destination_id(b'pubsub', b'orders', reference_config, destination_config_digest))
+must_raise(Hold, lambda: destination_id(b'pubsub', b'orders', b'\x02' + CONFIG_REF_PREFIX + destination_config_digest
+                                        + len(config_address).to_bytes(4, 'big') + config_address, destination_config_digest,
+                                        {config_address: destination_config}))  # Only discriminators 00 and 01.
+must_hold_typed(lambda: destination_id(b'pubsub', b'orders', b'', destination_config_digest))
+must_raise(Hold, lambda: destination_id(b'pubsub', b'orders', b'\x01' + b'HX-EV-OUTBOX-CONFIG-REF-2\0\x01'
+                                        + destination_config_digest + len(config_address).to_bytes(4, 'big') + config_address,
+                                        destination_config_digest, {config_address: destination_config}))
+must_raise(Hold, lambda: destination_id(b'pubsub', b'orders', b'\x01' + CONFIG_REF_PREFIX + destination_config_digest
+                                        + (len(config_address) - 1).to_bytes(4, 'big') + config_address,
+                                        destination_config_digest, {config_address: destination_config}))
 mismatched_reference = (b'\x01' + CONFIG_REF_PREFIX + hashlib.sha256(changed_config).digest()
                         + len(config_address).to_bytes(4, 'big') + config_address)
 must_raise(Conflict, lambda: destination_id(b'pubsub', b'orders', mismatched_reference, destination_config_digest,
@@ -537,7 +571,7 @@ class PublicationRetention:
             or not isinstance(canonical_bytes, int) or canonical_bytes < 1): raise Hold()
         amount = canonical_bytes + self.overhead
         if owner in self.owners:  # Shared physical owner.
-            if self.owners[owner] != (account, kind, amount): raise Conflict()
+            if self.owners[owner][1:] != (kind, amount): raise Conflict()  # First charge's account keeps it.
             return 'already-charged'
         used = self.tenants.get(account, 0)
         if used + amount > self.tenant_ceiling or self.total + amount > self.deployment_ceiling:
@@ -570,6 +604,13 @@ assert retention.charge(b'scope:broker-isolation', b'object:unidentified-1', 'Re
 must_raise(Hold, lambda: retention.charge(b'tenant-b', b'pin:message-4', 'Rendering', MIB))
 must_raise(Hold, lambda: PublicationRetention((1 << 30) - 1, 2 << 30, MIB))
 must_raise(Hold, lambda: PublicationRetention(2 << 30, 1 << 30, MIB))
+must_raise(Hold, lambda: PublicationRetention(float(1 << 30), 2 << 30, MIB))
+must_raise(Hold, lambda: retention.charge(b'tenant-b', b'pin:zero', 'GlobalPin', 0))
+assert retention.charge(b'scope:broker-isolation', b'object:canonical-1', 'RetainedObject', 100 * MIB) == 'already-charged'
+assert retention.tenants[b'scope:broker-isolation'] == 11 * MIB  # Mixed accounts: charged once, to tenant-a.
+must_raise(Conflict, lambda: retention.charge(b'scope:broker-isolation', b'object:canonical-1', 'LegacySideRecord', 100 * MIB))
+retention.release(b'object:canonical-1', True, True)
+assert retention.tenants[b'tenant-a'] == 923 * MIB  # The refund returns to the charged account.
 print('C01d publication-retention per-tenant/deployment ceilings and typed capacity hold passed')
 
 ROUTING_HEADERS = (b'hx-tenant-id', b'hx-domain', b'hx-aggregate-id', b'hx-aggregate-type',
@@ -706,8 +747,8 @@ class Pin:
             previous = sorted((number, history) for (op, number), (_, history) in self.receipts.items()
                               if op == operation)
             if attempt != len(previous) + 1 or (previous and previous[-1][1][-1] != 'Rejected'): raise Hold()
-            if any(prior_nonce == nonce for (op, _), (prior_nonce, _) in self.receipts.items()
-                   if op == operation): raise Conflict()
+            nonces = {prior_nonce for (op, _), (prior_nonce, _) in self.receipts.items() if op == operation}
+            if nonce in nonces: raise Conflict()  # A nonce is unique across the operation's attempts.
             history = ()
         self.receipts[key] = (nonce, history + (receipt,))  # Immutable observations for this attempt/fence nonce.
         if receipt == 'Unknown': raise Hold()
@@ -753,6 +794,16 @@ assert retry_pin.send('retry-member', 'send-2', 1, b'nonce-2', 'Accepted') == 'A
 assert retry_pin.operation_acceptance('send-2') == (plain, attestation, b'binary', identity)
 must_raise(Conflict, lambda: retry_pin.send('retry-member', 'send-2', 1, b'nonce-2', 'Accepted', parent='other-parent'))
 must_raise(Conflict, lambda: retry_pin.bind_retry('retry-member', 'send-3', 'command', 'send-2', True))
+must_raise(Conflict, lambda: retry_pin.send('retry-member', 'send-1', 2, b'nonce-late', 'Accepted'))  # Member accepted.
+unresolved_pin = Pin(); unresolved_pin.create('r', plain, attestation, b'binary', identity)
+must_raise(Hold, lambda: unresolved_pin.send('r', 'send-r1', 1, b'r-nonce', 'Unknown'))
+must_raise(Hold, lambda: unresolved_pin.bind_retry('r', 'send-r2', 'command', 'send-r1', True))  # Unknown is not Rejected.
+chained_pin = Pin(); chained_pin.create('c', plain, attestation, b'binary', identity)
+assert chained_pin.send('c', 'send-c1', 1, b'c-nonce', 'Rejected') == 'Rejected'
+chained_pin.bind_retry('c', 'send-c2', 'command', 'send-c1', True)
+must_raise(Hold, lambda: chained_pin.bind_retry('c', 'send-c3', 'command', 'send-c2', True))  # No result for send-c2.
+forged_pin = Pin(); forged_pin.create('f', plain, attestation, b'binary', identity)
+must_raise(Hold, lambda: forged_pin.send('f', 'send-f', 1, b'f-nonce', 'Forged'))
 assert pin.create('other-message', plain, attestation, b'binary', identity)
 must_raise(Conflict, lambda: pin.send('other-message', 'op', 1, b'other-nonce', 'Accepted'))
 must_raise(Hold, lambda: pin.send('m', 'op', 3, b'n3', 'Forged'))
@@ -839,13 +890,6 @@ must_raise(Hold, lambda: empty_chain.observe(b'unregistered', 'Accepted'))
 def checked_n(value):  # Draft §4 N: signed big-endian i64; out of range is a typed hold, never OverflowError.
     if not isinstance(value, int) or not -(1 << 63) <= value < 1 << 63: raise Hold()
     return value.to_bytes(8, byteorder='big', signed=True)
-def must_hold_typed(action):
-    try: action()
-    except Exception as error:
-        assert isinstance(error, Hold), f'expected typed Hold, got {type(error).__name__}'
-        return
-    raise AssertionError('expected Hold')
-
 class HistoricalRenewals:
     def __init__(self, obligation):
         self.obligation = obligation; self.rows = []; self.owner = None
@@ -896,6 +940,8 @@ assert checked_n(1 << 40) in wide_renewals.rows[1]['head']
 must_hold_typed(lambda: HistoricalRenewals(b'max').renew(b'max', 1, b'original-grant', b'owner', True,
                                                          None, None, 1 << 63, b'etag-overflow'))
 must_hold_typed(lambda: checked_n(-(1 << 63) - 1))
+must_hold_typed(lambda: HistoricalRenewals(b'typed').renew(b'typed', 1, b'original-grant', b'owner', True,
+                                                           None, None, '2', b'etag-text'))
 print('C02b pending row, empty-result hold, successor race, 8-byte N and historical-renewal guards passed')
 
 def strict_attestation(encoded):
@@ -1015,6 +1061,12 @@ empty_binary_attestation = tuple((name, b'') if name == b'ce-hyevattestation' el
                                  for name, value in binary_headers)
 must_raise(Conflict, lambda: RetainedSend.decode(b'body', empty_binary_attestation, 'Binary'))  # EC15-3.
 must_raise(Conflict, lambda: RetainedSend.decode(RetainedSend.render(b'body', b''), structured_headers, 'Structured'))
+must_raise_typed(Conflict, lambda: strict_attestation(b'not base64!'))
+numeric_attestation = json.dumps({'specversion': '1.0', 'id': 'fixture-event', 'type': 'fixture.contract',
+    'source': 'urn:hexalith:fixture', 'datacontenttype': BINARY_MEDIA.decode('ascii'),
+    'data_base64': base64.b64encode(b'body').decode('ascii'), 'hyevattestation': 5},
+    sort_keys=True, separators=(',', ':')).encode('utf-8')
+must_raise_typed(Conflict, lambda: RetainedSend.decode(numeric_attestation, structured_headers, 'Structured'))
 for ce_header in ((b'ce-id', b'fixture-event'), (b'CE-Type', b'other.contract'), (b'ce-subject', b'x')):  # EC15-4.
     must_raise(Conflict, lambda ce_header=ce_header: RetainedSend.decode(
         structured_body, (*structured_headers, ce_header), 'Structured'))
@@ -1140,6 +1192,7 @@ class Routes:
         return True
 
 routes = Routes(('a', 'b'), (plain, attestation)); routes.commit('a')
+must_raise(Conflict, lambda: routes.quarantine('a', ((plain, attestation), 'a', 'full-byte-capture', True)))
 must_raise(Hold, routes.ack)
 routes.admit(('a', 'b'), (plain, attestation)); routes.commit('a'); routes.commit('b')
 assert routes.ack() and routes.effects == {'a': 1, 'b': 1}
@@ -1253,6 +1306,7 @@ must_raise(Hold, lambda: catalog_filter(catalog_claim, accepted_input[:-1] + (b'
                                         True, True, True))
 must_raise(Hold, lambda: catalog_filter(catalog_claim[:4] + ('unknown', catalog_claim[5]),
                                         accepted_input, 7, True, True, True))
+must_raise(Hold, lambda: catalog_filter(catalog_claim[:5] + ((),), accepted_input, 7, True, True, True))
 for invalid_version in (0, 1025):  # EC15-10: out-of-range accepted-effective input is never Filtered.
     must_raise(Hold, lambda invalid_version=invalid_version: catalog_filter(
         catalog_claim, accepted_input[:3] + (invalid_version,) + accepted_input[4:], 7, True, True, True))
@@ -1280,13 +1334,14 @@ def f_b32(value):
     return value
 def f_tag(tag, value): return bytes((tag,)) + value
 
-def accepted_scope_fields(scope):  # Tag/key destination ID is C1's canonical form, never a display name.
-    if len(scope) != 7 or not re.fullmatch(rb'hxdst1-[0-9a-f]{64}', scope[4]): raise Hold()
+def accepted_scope_fields(scope, intent):  # Recompute C1's destination ID from the pinned outbox intent.
+    if len(scope) != 7 or len(intent) not in (2, 3): raise Hold()
+    if scope[4] != destination_id(scope[2], scope[3], *intent): raise Conflict()
     return scope
 
-def accepted_log_bytes(scope, log_id, accepted_revision, log_generation,
+def accepted_log_bytes(scope, intent, log_id, accepted_revision, log_generation,
                        obligation, accepted_image, acceptance_index_hash):
-    scope = accepted_scope_fields(scope)
+    scope = accepted_scope_fields(scope, intent)
     values = (*scope[:4], scope[4], scope[5], scope[6], log_id)
     return (b'HX-EV-ACCEPTED-DELIVERY-LOG-1\0\x02\x00\x0d' +
         b''.join(f_tag(tag, f_u(value)) for tag, value in enumerate(values, 1)) +
@@ -1294,43 +1349,48 @@ def accepted_log_bytes(scope, log_id, accepted_revision, log_generation,
         f_tag(11, f_b32(obligation)) + f_tag(12, f_b32(accepted_image)) +
         f_tag(13, f_b32(acceptance_index_hash)))
 
-def accepted_log_key(scope, log_id):
+def accepted_log_key(scope, intent, log_id):
     return (b'accepted-delivery-log:' + hashlib.sha256(
         b'HX-EV-ACCEPTED-DELIVERY-LOG-KEY-2\0\x01' +
-        b''.join(f_u(value) for value in (*accepted_scope_fields(scope), log_id))).hexdigest().encode('ascii'))
+        b''.join(f_u(value) for value in (*accepted_scope_fields(scope, intent), log_id))).hexdigest().encode('ascii'))
 
-def accepted_index_key(scope, obligation):
+def accepted_index_key(scope, intent, obligation):
     return (b'accepted-delivery-index:' + hashlib.sha256(
         b'HX-EV-ACCEPTED-DELIVERY-INDEX-KEY-1\0\x01' + f_b32(obligation) +
-        b''.join(f_u(value) for value in accepted_scope_fields(scope))).hexdigest().encode('ascii'))
+        b''.join(f_u(value) for value in accepted_scope_fields(scope, intent))).hexdigest().encode('ascii'))
 
 def accepted_bundle_operation(reverse_key, log_key, obligation, log_claim_carrier_hash):
     return hashlib.sha256(b'HX-EV-ACCEPTED-DELIVERY-BUNDLE-OP-1\0\x01' +
         f_u(reverse_key) + f_u(log_key) + obligation + log_claim_carrier_hash).digest()
 
 accepted_scope = (b'tenant', b'domain', b'pubsub', b'orders', fixture_destination, b'subscription', b'partition')
+accepted_intent = (inline_config, destination_config_digest)  # Pinned outbox-intent tags 12 and 0e.
 accepted_obligation_fixture = hashlib.sha256(b'obligation').digest()
 accepted_image_fixture = hashlib.sha256(b'accepted-image').digest()
 acceptance_index_fixture = hashlib.sha256(b'acceptance-index').digest()
-accepted_log_fixture = accepted_log_bytes(accepted_scope, b'log-7', 7, 3,
+accepted_log_fixture = accepted_log_bytes(accepted_scope, accepted_intent, b'log-7', 7, 3,
     accepted_obligation_fixture, accepted_image_fixture, acceptance_index_fixture)
 assert accepted_log_fixture.startswith(b'HX-EV-ACCEPTED-DELIVERY-LOG-1\0\x02\x00\x0d')
 assert accepted_log_fixture.count(fixture_destination) == 1
-accepted_log_key_fixture = accepted_log_key(accepted_scope, b'log-7')
-accepted_index_key_fixture = accepted_index_key(accepted_scope, accepted_obligation_fixture)
+accepted_log_key_fixture = accepted_log_key(accepted_scope, accepted_intent, b'log-7')
+accepted_index_key_fixture = accepted_index_key(accepted_scope, accepted_intent, accepted_obligation_fixture)
 accepted_log_claim_carrier_hash = hashlib.sha256(b'purpose-28-log').digest()
 accepted_bundle_fixture = accepted_bundle_operation(accepted_index_key_fixture,
     accepted_log_key_fixture, accepted_obligation_fixture, accepted_log_claim_carrier_hash)
 assert accepted_bundle_fixture != accepted_bundle_operation(accepted_index_key_fixture,
     accepted_log_key_fixture, accepted_obligation_fixture, hashlib.sha256(b'changed-log').digest())
-must_raise(Hold, lambda: accepted_log_bytes(accepted_scope, b'log-7', 7, 0,
+must_raise(Hold, lambda: accepted_log_bytes(accepted_scope, accepted_intent, b'log-7', 7, 0,
     accepted_obligation_fixture, accepted_image_fixture, acceptance_index_fixture))
-must_raise(Hold, lambda: accepted_log_bytes(accepted_scope[:-1], b'log-7', 7, 3,
+must_hold_typed(lambda: accepted_log_key(accepted_scope, (inline_config,), b'log-7'))  # Tags 12 and 0e are both pinned.
+must_hold_typed(lambda: accepted_log_bytes(accepted_scope[:-1], accepted_intent, b'log-7', 7, 3,
     accepted_obligation_fixture, accepted_image_fixture, acceptance_index_fixture))
 display_scope = accepted_scope[:4] + (b'orders-destination',) + accepted_scope[5:]
-must_raise(Hold, lambda: accepted_log_key(display_scope, b'log-7'))  # Writer-selected IDs cannot fork keys.
-must_raise(Hold, lambda: accepted_index_key(display_scope, accepted_obligation_fixture))
-must_raise(Hold, lambda: accepted_log_bytes(display_scope, b'log-7', 7, 3,
+must_raise(Conflict, lambda: accepted_log_key(display_scope, accepted_intent, b'log-7'))  # Writer-selected IDs cannot fork keys.
+must_raise(Conflict, lambda: accepted_index_key(display_scope, accepted_intent, accepted_obligation_fixture))
+foreign_scope = accepted_scope[:4] + (destination_id(b'pubsub.orders', b'events', inline_config,
+                                                     destination_config_digest),) + accepted_scope[5:]
+must_raise(Conflict, lambda: accepted_index_key(foreign_scope, accepted_intent, accepted_obligation_fixture))  # Well-formed, foreign.
+must_raise(Conflict, lambda: accepted_log_bytes(display_scope, accepted_intent, b'log-7', 7, 3,
     accepted_obligation_fixture, accepted_image_fixture, acceptance_index_fixture))
 print('C03e exact accepted-delivery log, canonical destination key field and OP-2 framing passed')
 
@@ -2058,6 +2118,7 @@ class PreSendAdmission:  # C08e: member-scoped atomic broker rule and zero-index
         if member in self.rules: raise Hold()
         self.registered.add((member, send_id))
     def verify(self, member, proof, manifest, signed=True):
+        if not isinstance(proof, tuple) or len(proof) != 6: raise Hold()  # Absent or malformed proof.
         if (not signed or self.rules.get(member) != proof or proof[0] != member
             or tuple(manifest) != self.partitions or self.has_prior(member)): raise Hold()
         return True
@@ -2072,6 +2133,7 @@ must_raise(Hold, lambda: presend.install((b'tenant', b'parent', b'member-a'),
     b'policy', b'config', b'late-revocation', (b'destination-a', b'alias-a')))
 must_raise(Hold, lambda: presend.send(member_b, b'late-send'))
 must_raise(Hold, lambda: presend.verify(member_b, rule, (b'destination-a',)))
+must_hold_typed(lambda: presend.verify((b'tenant', b'parent', b'member-c'), None, (b'destination-a', b'alias-a')))
 must_raise(Hold, lambda: PreSendAdmission((b'destination-a',)).install(
     member_b, b'policy', b'config', b'late-revocation', (b'destination-a',), purpose=21))
 must_raise(Hold, lambda: PreSendAdmission(()))
@@ -2186,6 +2248,8 @@ must_raise(Hold, lambda: compact_policy_member(full_member, b'send', b'closed-re
                                                'TerminalRejected', True, True, True, attempts=65))
 must_raise(Hold, lambda: compact_policy_member(full_member, b'send', b'closed-reason', compact_row,
                                                signed_member_policy, 'TerminalRejected', True, True, True, attempts=3))
+must_raise(Hold, lambda: compact_policy_member(full_member, b'send', b'closed-reason', compact_row, wide_policy,
+                                               'TerminalRejected', True, True, True, final_receipt=b'short'))
 must_hold_typed(lambda: compact_policy_member(full_member, b'send', b'closed-reason', (1 << 32, *compact_row[1:]),
                                               (1 << 32, *wide_policy[1:]), 'TerminalRejected', True, True, True))
 
@@ -2307,6 +2371,7 @@ class TerminalPointer:  # C08g: proposals cannot become public without final-hea
         return 'PublishFailed'
 
 terminal_pointer = TerminalPointer()
+must_raise(Hold, lambda: terminal_pointer.propose(b'failed-head-1', ('Accepted', 'Rejected02'), b'', b''))
 must_raise(Conflict, lambda: terminal_pointer.propose(b'failed-head-1', ('Accepted',), b'proof', b'fence'))
 old_proposal = terminal_pointer.propose(b'failed-head-1', ('Accepted', 'Rejected02'), b'proof-1', b'fence')
 must_raise(Hold, lambda: terminal_pointer.status())  # Proposal alone has no public status.
@@ -2653,6 +2718,8 @@ fence.attach(key_a, b'proof-b', ('Addressed', 'handoff-d'), b'handoff-d')
 fence.forward(key_a, ('Addressed', 'handoff-d'), 'CaptureLink', b'capture-link-d')
 must_raise(Hold, lambda: mapping.refresh(b'partition', b'ad31', 0, b'native-handle-1',
     b'item-index-a', b'proof-1', b'proof-3', True))
+must_hold_typed(lambda: mapping.refresh(b'partition', b'ad31', 0, b'unknown-handle',
+    b'item-index-a', b'proof-2', b'proof-4', True))
 physical_first = CanonicalFence()
 physical_first.initialize(key_a, 'PhysicalInitial', b'\x01physical-anchor', b'proof-2', b'bytes')
 physical_first.attach(key_a, b'proof-2', ('Unidentified', 'physical-first'), b'purpose-16-first',
@@ -2709,7 +2776,7 @@ def effect_readback_bytes(provider, authority, mode, operation, transaction, eff
 EFFECT_COMMIT_PREFIX = b'HX-EV-EFFECT-COMMIT-1\0\x01\x00\x09'
 def effect_commit_bytes(record_hash, operation, route_key_hash, transaction, version, etag,
                         result_digest, authority, utc):
-    if not isinstance(utc, bytes) or len(utc) != 8: raise Hold()
+    if not isinstance(utc, bytes) or len(utc) != 8: raise Hold()  # Commit tag 09 is Q.
     values = (f_b32(record_hash), f_u(operation), f_b32(route_key_hash), f_u(transaction), f_n(version),
               f_u(etag), f_b32(result_digest), f_u(authority), utc)
     return EFFECT_COMMIT_PREFIX + b''.join(bytes((tag,)) + value for tag, value in enumerate(values, 1))
@@ -2816,6 +2883,15 @@ for stale in ({'generation': 6}, {'etag': b'etag-6'}, {'transaction': b'other-tr
 stale_commit = effect_commit_bytes(hashlib.sha256(effect_record).digest(), b'operation',
     hashlib.sha256(b'decision-key').digest(), b'transaction', 6, b'etag-6',
     hashlib.sha256(effect_result).digest(), b'authority', effect_utc)
+must_raise(Hold, lambda: effect_commit_bytes(hashlib.sha256(effect_record).digest(), b'operation',
+    hashlib.sha256(b'decision-key').digest(), b'transaction', 7, b'etag-7',
+    hashlib.sha256(effect_result).digest(), b'authority', b'short'))
+foreign_record_commit = effect_commit_bytes(hashlib.sha256(b'other-record').digest(), b'operation',
+    hashlib.sha256(b'decision-key').digest(), b'transaction', 7, b'etag-7',
+    hashlib.sha256(effect_result).digest(), b'authority', effect_utc)
+must_raise(Hold, lambda: effect_hash(effect_record, effect_result, effect_decision, foreign_record_commit,
+                                    readback_for(commit=foreign_record_commit), b'provider-readback-auth',
+                                    b'authority', b'eight-field-effect-key'))
 must_raise(Hold, lambda: effect_hash(effect_record, effect_result, effect_decision, stale_commit,
                                     readback_for(commit=stale_commit), b'provider-readback-auth',
                                     b'authority', b'eight-field-effect-key'))
@@ -2861,13 +2937,13 @@ def accepted_bundle_receipt(reverse_key, log_key, operation_hash, index_claim, i
 
 class AcceptedDeliveryIndex:
     def __init__(self): self.rows = {}; self.logs = {}
-    def create(self, scope, obligation, log_id, log_generation, accepted_revision, accepted_image,
+    def create(self, scope, intent, obligation, log_id, log_generation, accepted_revision, accepted_image,
                acceptance_hash, log_carrier, index_carrier, reverse_generation, reverse_etag,
                log_record_generation, log_etag, authority, utc):
         if len(scope) != 7 or any(not value for value in scope) or len(obligation) != 32: raise Hold()
-        reverse_key = accepted_index_key(scope, obligation)
-        log_key = accepted_log_key(scope, log_id)
-        log_claim = accepted_log_bytes(scope, log_id, accepted_revision, log_generation,
+        reverse_key = accepted_index_key(scope, intent, obligation)
+        log_key = accepted_log_key(scope, intent, log_id)
+        log_claim = accepted_log_bytes(scope, intent, log_id, accepted_revision, log_generation,
             obligation, accepted_image, acceptance_hash)
         log_pair = accepted_log_claim_carrier_hash(log_claim, log_carrier)
         operation_hash = accepted_bundle_operation(reverse_key, log_key, obligation, log_pair)
@@ -2905,12 +2981,12 @@ obligation = historical_accepted_obligation(
 assert obligation.hex() == '4ddfaecba4bc5963f96d74a7761f1f9109de3d3ae206db6fe8ac8ed739d56007'
 delivery_scope = (b'tenant', b'domain', b'pubsub', b'orders', fixture_destination, b'subscription', b'partition')
 delivery_index = AcceptedDeliveryIndex()
-delivery_args = (delivery_scope, obligation, b'log-id-7', 3, 7, hashlib.sha256(b'accepted-image').digest(),
+delivery_args = (delivery_scope, accepted_intent, obligation, b'log-id-7', 3, 7, hashlib.sha256(b'accepted-image').digest(),
     hashlib.sha256(b'acceptance-index').digest(), b'purpose-28-log', b'purpose-28-index',
     1, b'index-etag-1', 1, b'log-etag-1', b'delivery-authority', (7).to_bytes(8, 'big', signed=True))
 _, reverse_record = delivery_index.create(*delivery_args)
 assert delivery_index.create(*delivery_args)[1] == reverse_record
-must_raise(Conflict, lambda: delivery_index.create(delivery_scope, obligation, b'log-id-8', 3, 7,
+must_raise(Conflict, lambda: delivery_index.create(delivery_scope, accepted_intent, obligation, b'log-id-8', 3, 7,
     hashlib.sha256(b'accepted-image').digest(), hashlib.sha256(b'acceptance-index').digest(),
     b'purpose-28-log-8', b'purpose-28-index', 1, b'index-etag-1', 1, b'log-etag-1',
     b'delivery-authority', (7).to_bytes(8, 'big', signed=True)))
@@ -2922,14 +2998,14 @@ must_raise(Conflict, lambda: filter_operation(accepted_claim, accepted_carrier,
     b'changed-index', index_receipt, reverse_record, b'handoff:7'))
 must_raise(Hold, lambda: filter_operation(b'', accepted_carrier, acceptance_index, index_receipt,
     reverse_record, b'handoff:7'))
-must_raise(Hold, lambda: delivery_index.create(delivery_scope, obligation, b'log-id-negative', -1, 7,
+must_raise(Hold, lambda: delivery_index.create(delivery_scope, accepted_intent, obligation, b'log-id-negative', -1, 7,
     hashlib.sha256(b'accepted-image').digest(), hashlib.sha256(b'acceptance-index').digest(),
     b'purpose-28-log', b'purpose-28-index', 1, b'index-etag-1', 1, b'log-etag-1',
     b'delivery-authority', (7).to_bytes(8, 'big', signed=True)))
 other_obligation = historical_accepted_obligation(b'C2-Accepted-other', accepted_carrier, b'acceptance-index-other',
                                                   index_receipt)  # EC15-24: one log key has one obligation.
-must_raise(Conflict, lambda: delivery_index.create(delivery_scope, other_obligation, *delivery_args[2:]))
-assert delivery_index.create(delivery_scope, other_obligation, b'log-id-9', *delivery_args[3:])[1][2] == b'log-id-9'
+must_raise(Conflict, lambda: delivery_index.create(delivery_scope, accepted_intent, other_obligation, *delivery_args[3:]))
+assert delivery_index.create(delivery_scope, accepted_intent, other_obligation, b'log-id-9', *delivery_args[4:])[1][2] == b'log-id-9'
 print('C11d exact Accepted log/index bundle, both-key conflict and physical-filter identity passed')
 
 # C11e: the first unsigned proposal and carrier are one branch-scoped CAS outcome.
@@ -2937,7 +3013,7 @@ class TerminalProposalStore:
     def __init__(self): self.reservations = {}; self.proposals = {}
     def reserve(self, tenant, scope, head, unsigned):
         branch = hashlib.sha256(b'HX-EV-TERMINAL-BRANCH-1\0' + b'\x01' +
-            framed(tenant) + scope + head).digest()
+            framed(tenant) + f_b32(scope) + f_b32(head)).digest()
         reservation = (tenant, scope, head, unsigned)
         if branch in self.reservations and self.reservations[branch] != reservation: raise Conflict()
         self.reservations[branch] = reservation
@@ -2953,15 +3029,18 @@ class TerminalProposalStore:
         self.proposals[key] = (unsigned, carrier)
         return key, self.proposals[key]
 proposal_store = TerminalProposalStore()
-branch = proposal_store.reserve(b'tenant', b'scope', b'failed-head', b'proposal@UTC-1')
+scope32 = hashlib.sha256(b'scope').digest(); head32 = hashlib.sha256(b'failed-head').digest()
+branch = proposal_store.reserve(b'tenant', scope32, head32, b'proposal@UTC-1')
 proposal_key, retained = proposal_store.create(branch, b'carrier-1',
-    (b'tenant', b'scope', b'failed-head'))
+    (b'tenant', scope32, head32))
 assert proposal_store.create(branch, b'carrier-1') == (proposal_key, retained)
 must_raise(Conflict, lambda: proposal_store.create(branch, b'carrier-2'))
 must_raise(Hold, lambda: proposal_store.create(branch, b'carrier-1',
-    (b'tenant', b'other-scope', b'failed-head')))
-must_raise(Conflict, lambda: proposal_store.reserve(b'tenant', b'scope', b'failed-head', b'proposal@UTC-2'))
-other_tenant_branch = proposal_store.reserve(b'other-tenant', b'scope', b'failed-head', b'proposal@UTC-1')
+    (b'tenant', hashlib.sha256(b'other-scope').digest(), head32)))
+must_raise(Conflict, lambda: proposal_store.reserve(b'tenant', scope32, head32, b'proposal@UTC-2'))
+must_raise(Hold, lambda: proposal_store.reserve(b'tenant', b'scope', head32, b'proposal@UTC-3'))  # EC15-25.
+must_raise(Hold, lambda: proposal_store.reserve(b'tenant', scope32, head32[:31], b'proposal@UTC-3'))
+other_tenant_branch = proposal_store.reserve(b'other-tenant', scope32, head32, b'proposal@UTC-1')
 other_key, _ = proposal_store.create(other_tenant_branch, b'carrier-1')
 assert other_tenant_branch != branch and other_key != proposal_key
 must_raise(Hold, lambda: proposal_store.create(b'missing-branch', b'carrier'))
@@ -3277,9 +3356,9 @@ print('C11h exhausted rejection metadata and status-polling semantics passed')
 
 ## Integration handoff and review disposition
 
-Integrate C1–C6 with 6.5a A3–A8 and 6.5b B2/B6/B8 as **one** change to the AD-13 draft. Replace draft codec-01 public outcome with A8 codec-03 complete observations and immutable first POST pin; add C5 purpose-29 signed branch-scoped terminal proposal, atomic final-head pointer, nonterminal `PublicationRetryExhaustedHold`, explicit terminal-source `AuthMode` and complete evidence before public `PublishFailed`. `Retryable=false` keeps its shipped `CommandStatusRecord` meaning, no further automatic attempt (attempts exhausted), and never signals command terminality, which `Status` alone carries: `EventsStored` stays nonterminal and `RecoveryReasonCode="publication_retry_exhausted_hold"` names the operator-held state. External HTTP pollers cannot be fenced, so no client fence is claimed. A client that already reads `Retryable=false` as permanent failure sees this hold as it sees today's drain-exhausted record, and safety does not depend on client behavior because the hold authorizes no resend, new send ID or replay. C1/C2 add the purpose-2a pre-first-send membership outcome without repinning and the exact purpose-13 historical-renewal chain. C2 adds one old-obligation-keyed historical replacement owner/CAS. C3 scopes `EventEffectKey` by physical subscription plus route and separates the immutable precommit effect record from its exact eighteen-tag provider readback; `EffectReceiptHash` codec 03 consumes the precommit record, nine-tag commit, readback and its authentication carrier. C3/C4 require one purpose-2b canonical physical-object mapping and object-wide capture fence across all handoffs and unidentified duties, a single proof-refresh chain, purpose-28 stable physical-filter identity and acyclic pre-CAS-record/post-CAS-receipt hashes for every retained object. These additions replace any older route-only effect key, informal grant renewal, per-handoff/proof-keyed capture fence, hash-only cross-record or seven-tag terminal-source interpretation. **C3 supersedes draft §7's 4 KiB complete `EventEffectReceipt` cap with 16 KiB** for both writer/provider preflight and all readers (including old marker adapters and rollback consumers); activation requires a versioned receipt-capability/probe and reader-first compatibility across mixed fleets. An old 4 KiB-only reader may read historical ≤4 KiB records but must be fenced from any route that can produce a larger C3 receipt. No record may be truncated to fit the old cap. Replace V1/new V2 save assumptions with A5 codec-02 complete-set certificate/readback, and retain B2's V2 five-flag raw-proof rule. Preserve historic V17/V20/V22/V23 literals, old lease byte shape, old public constructors and §12 six-field `UNAPPROVED` receipt until separately approved integration. **BH37-9: accepted; historical Loop-7 UTC-only wording is superseded by C1's `T`/`O(T)` original-offset rule and four fixed digest vectors.** The historical triage row remains intact. No activation or Story 6.6 authorization follows from this child candidate.
+Integrate C1–C6 with 6.5a A3–A8 and 6.5b B2/B6/B8 as **one** change to the AD-13 draft. Replace draft codec-01 public outcome with A8 codec-03 complete observations and immutable first POST pin; add C5 purpose-29 signed branch-scoped terminal proposal, atomic final-head pointer, nonterminal `PublicationRetryExhaustedHold`, explicit terminal-source `AuthMode` and complete evidence before public `PublishFailed`. The hold reuses the "no further automatic attempt (attempts exhausted)" meaning of `Retryable=false`, while `Status` stays the nonterminal `EventsStored` and `RecoveryReasonCode="publication_retry_exhausted_hold"` names the operator-held state. This `EventsStored` plus `Retryable=false` combination is a public-contract change: the shipped `CommandStatusRecord` XML doc defines `false` as "terminal", and today's exhausted record is `PublishFailed` with `Retryable=false`. Integration must amend the `Retryable` XML doc so that `Status` alone carries terminality, and Story 6.6 must gate the change in its compatibility checks. External HTTP pollers cannot be fenced, so no client fence is claimed; the hold authorizes no resend, new send ID or replay. C1/C2 add the purpose-2a pre-first-send membership outcome without repinning and the exact purpose-13 historical-renewal chain. C2 adds one old-obligation-keyed historical replacement owner/CAS. C3 scopes `EventEffectKey` by physical subscription plus route and separates the immutable precommit effect record from its exact eighteen-tag provider readback; `EffectReceiptHash` codec 03 consumes the precommit record, nine-tag commit, readback and its authentication carrier. C3/C4 require one purpose-2b canonical physical-object mapping and object-wide capture fence across all handoffs and unidentified duties, a single proof-refresh chain, purpose-28 stable physical-filter identity and acyclic pre-CAS-record/post-CAS-receipt hashes for every retained object. These additions replace any older route-only effect key, informal grant renewal, per-handoff/proof-keyed capture fence, hash-only cross-record or seven-tag terminal-source interpretation. **C3 supersedes draft §7's 4 KiB complete `EventEffectReceipt` cap with 16 KiB** for both writer/provider preflight and all readers (including old marker adapters and rollback consumers); activation requires a versioned receipt-capability/probe and reader-first compatibility across mixed fleets. An old 4 KiB-only reader may read historical ≤4 KiB records but must be fenced from any route that can produce a larger C3 receipt. No record may be truncated to fit the old cap. Replace V1/new V2 save assumptions with A5 codec-02 complete-set certificate/readback, and retain B2's V2 five-flag raw-proof rule. Preserve historic V17/V20/V22/V23 literals, old lease byte shape, old public constructors and §12 six-field `UNAPPROVED` receipt until separately approved integration. **BH37-9: accepted; historical Loop-7 UTC-only wording is superseded by C1's `T`/`O(T)` original-offset rule and four fixed digest vectors.** The historical triage row remains intact. No activation or Story 6.6 authorization follows from this child candidate.
 
-The integration amendment must use the one `HistoricalAcceptedObligationHash` for grants, renewals, mappings and the accepted-delivery reverse index; introduce the thirteen-tag reverse index, thirteen-tag codec-02 destination-bearing immutable log and twelve-tag atomic bundle receipt before an empty-route filter identity exists; and apply C3's all-route acknowledgement rule to authenticated Structured and Binary carriers alike. It must import the exact 23-field legacy handoff manifest and the handoff-scoped 64-variant head/bundle transaction, not the earlier grouped summary or independent-record count. For retained objects it must import purpose-2c's fifteen-field codec-01 extension, the complete nine-field codec-02 identity attachment, the discriminated initial anchor, the separately keyed forward record and the purpose-18 extension variant under one shared mixed-kind extension head; each later unidentified delivery keeps its own purpose-16 identity, purpose-1b scope and purpose-18 retention source. C5 integration must import the full ten-tag drain-head/eight-tag CAS pairing, closed two-value terminal `AuthMode`, exact one-byte-plus-`B` Auth framing, counted Evidence, role-typed complete eight-tag terminal claims/hashes and the fixed drain/no-accept/policy source order. It must also import C1's canonical `destinationId` derivation and known answers for every destination field and both accepted-delivery keys, resolving the open 6.5a BH6-1 ledger item; the per-tenant and deployment publication-retention ceilings with their `PublicationPinCapacityHold` charge points; and C1's single 1..6,123-byte decoded-attestation bound, which supersedes draft §6's 8 KiB maximum, together with the Structured `ce-*` rejection and CR/LF/NUL header-value rules. Any integration that retains a shorter hash, alternate order or independently mutable component is incompatible and fenced before activation.
+The integration amendment must use the one `HistoricalAcceptedObligationHash` for grants, renewals, mappings and the accepted-delivery reverse index; introduce the thirteen-tag reverse index, thirteen-tag codec-02 destination-bearing immutable log and twelve-tag atomic bundle receipt before an empty-route filter identity exists; and apply C3's all-route acknowledgement rule to authenticated Structured and Binary carriers alike. It must import the exact 23-field legacy handoff manifest and the handoff-scoped 64-variant head/bundle transaction, not the earlier grouped summary or independent-record count. For retained objects it must import purpose-2c's fifteen-field codec-01 extension, the complete nine-field codec-02 identity attachment, the discriminated initial anchor, the separately keyed forward record and the purpose-18 extension variant under one shared mixed-kind extension head; each later unidentified delivery keeps its own purpose-16 identity, purpose-1b scope and purpose-18 retention source. C5 integration must import the full ten-tag drain-head/eight-tag CAS pairing, closed two-value terminal `AuthMode`, exact one-byte-plus-`B` Auth framing, counted Evidence, role-typed complete eight-tag terminal claims/hashes and the fixed drain/no-accept/policy source order. It must also import C1's canonical `destinationId` derivation and known answers for every destination field and both accepted-delivery keys, resolving the open 6.5a BH6-1 ledger item; the per-tenant and deployment publication-retention ceilings, charging each global pin at its exact size at the pin CAS before any send and each side record or retained object before its write or attach (`PublicationPinCapacityHold`); and C1's single 1..6,123-byte decoded-attestation bound with its 1..738-byte purpose-02 delivery key ID, which supersedes draft §6's 8 KiB maximum, together with the Structured `ce-*` rejection and CR/LF/NUL header-value rules. Any integration that retains a shorter hash, alternate order or independently mutable component is incompatible and fenced before activation.
 
 Independent review should challenge: A8 no-future-acceptance proof under a real broker and partial accepted set; same-transaction effect/receipt and multi-route pointer linearizability; raw ingress/capture preallocation and retention under actual DAPR intermediaries; offset preservation in Binary and structured carriers; B6 accounting across replicas; and all ten B handoff gates. An unresolved provider fact blocks readiness and requires approved integration amendment, not local 6.6 improvisation. C01–C11 and the focused model families, including C01c/C01d, prove only local byte/state models; C7 provider/crash vectors are unexecuted.
 
@@ -3530,9 +3609,9 @@ MUTATIONS = [  # (name, owning family, expected final exception, exact unique ta
     ('selector encoded order', 'C03c', 'AssertionError',
      'if encoded != sorted(set(encoded)): raise Hold()',
      'if list(rows) != sorted(set(rows)): raise Hold()'),
-    ('canonical destination key field', 'C03e', 'AssertionError',
-     "if len(scope) != 7 or not re.fullmatch(rb'hxdst1-[0-9a-f]{64}', scope[4]): raise Hold()",
-     'if len(scope) != 7: raise Hold()'),
+    ('canonical destination key recompute', 'C03e', 'AssertionError',
+     'if scope[4] != destination_id(scope[2], scope[3], *intent): raise Conflict()',
+     'if False: raise Conflict()'),
     ('legacy variant entry framing', 'C04', 'AssertionError',
      'attempt_record = hashlib.sha256(B(body) + B(core_headers)).digest()',
      'attempt_record = hashlib.sha256(body + core_headers).digest()'),
@@ -3587,8 +3666,131 @@ MUTATIONS = [  # (name, owning family, expected final exception, exact unique ta
     ('nonempty terminal Evidence', 'C11g', 'AssertionError',
      'if not parse_evidence(evidence): raise Hold()',
      'parse_evidence(evidence)'),
+    ('attestation key-ID bound', 'C01b', 'AssertionError',
+     'if not isinstance(key_id, bytes) or not 1 <= len(key_id) <= ATTESTATION_KEY_ID_MAX: raise Hold()',
+     'if not isinstance(key_id, bytes) or not key_id: raise Hold()'),
+    ('attestation maximum from claim framing', 'C01b', 'AssertionError',
+     'ATTESTATION_KEY_ID_MAX = 738',
+     'ATTESTATION_KEY_ID_MAX = 739'),
+    ('destinationId U bounds', 'C01c', 'AssertionError',
+     'if not isinstance(value, bytes) or not 1 <= len(value) <= 1024: raise Hold()  # Intent tags 0a/0b.',
+     'if not isinstance(value, bytes): raise Hold()  # Intent tags 0a/0b.'),
+    ('tag-12 discriminator', 'C01c', 'AssertionError',
+     'or len(tag_12) < 2 or tag_12[0] not in (0, 1): raise Hold()',
+     'or len(tag_12) < 2: raise Hold()'),
+    ('tag-12 minimum length', 'C01c', 'AssertionError',
+     'if not isinstance(tag_12, bytes) or len(tag_12) < 2 or',
+     'if not isinstance(tag_12, bytes) or'),
+    ('config reference prefix', 'C01c', 'AssertionError',
+     'if not reference.startswith(CONFIG_REF_PREFIX) or len(reference)',
+     'if len(reference)'),
+    ('config reference size framing', 'C01c', 'AssertionError',
+     'if size < 1 or size != len(address) or address not in immutable_store: raise Hold()',
+     'if size < 1 or address not in immutable_store: raise Hold()'),
+    ('config reference address readback', 'C01c', 'AssertionError',
+     'if size < 1 or size != len(address) or address not in immutable_store: raise Hold()',
+     'if size < 1 or size != len(address): raise Hold()'),
+    ('publication ceiling order', 'C01d', 'AssertionError',
+     'or not 1 << 30 <= tenant_ceiling <= deployment_ceiling < 1 << 63 or overhead < 0): raise Hold()',
+     'or overhead < 0): raise Hold()'),
+    ('publication ceiling integer types', 'C01d', 'AssertionError',
+     'if (not all(isinstance(value, int) for value in (tenant_ceiling, deployment_ceiling, overhead))',
+     'if (False'),
+    ('publication charge kind', 'C01d', 'AssertionError',
+     "kind not in ('GlobalPin', 'LegacySideRecord', 'RetainedObject')",
+     'False'),
+    ('publication charge size', 'C01d', 'AssertionError',
+     'or not isinstance(canonical_bytes, int) or canonical_bytes < 1): raise Hold()',
+     '): raise Hold()'),
+    ('typed capacity hold', 'C01d', 'Hold',
+     'raise PublicationPinCapacityHold()',
+     'raise Hold()'),
+    ('charged account kept', 'C01d', 'Conflict',
+     'if self.owners[owner][1:] != (kind, amount): raise Conflict()',
+     'if self.owners[owner] != (account, kind, amount): raise Conflict()'),
+    ('shared owner kind/amount', 'C01d', 'AssertionError',
+     'if self.owners[owner][1:] != (kind, amount): raise Conflict()',
+     'if False: raise Conflict()'),
+    ('retry after unresolved Unknown', 'C02e', 'AssertionError',
+     "if not prior or any(history[-1] != 'Rejected' for _, history in prior): raise Hold()",
+     'if not prior: raise Hold()'),
+    ('retry without prior result', 'C02e', 'AssertionError',
+     "if not prior or any(history[-1] != 'Rejected' for _, history in prior): raise Hold()",
+     "if any(history[-1] != 'Rejected' for _, history in prior): raise Hold()"),
+    ('closed receipt vocabulary', 'C02e', 'AssertionError',
+     "if receipt not in ('Accepted', 'Rejected', 'Unknown'): raise Hold()",
+     'if False: raise Hold()'),
+    ('unresolved Unknown replay holds', 'C02e', 'AssertionError',
+     "if history[-1] == 'Unknown': raise Hold()",
+     'if False: raise Hold()'),
+    ('single reconciliation of Unknown', 'C02e', 'AssertionError',
+     "if history != ('Unknown',) or receipt == 'Unknown' or member_accepted: raise Conflict()",
+     'if False: raise Conflict()'),
+    ('accepted member blocks new attempt', 'C02e', 'Hold',
+     "if receipt != 'Unknown' and member_accepted: raise Conflict()",
+     'if False: raise Conflict()'),
+    ('contiguous attempt ordinal', 'C02e', 'AssertionError',
+     "if attempt != len(previous) + 1 or (previous and previous[-1][1][-1] != 'Rejected'): raise Hold()",
+     'if False: raise Hold()'),
+    ('operation nonce uniqueness', 'C02e', 'AssertionError',
+     'if nonce in nonces: raise Conflict()',
+     'if False: raise Conflict()'),
+    ('Unknown is a hold', 'C02e', 'AssertionError',
+     "if receipt == 'Unknown': raise Hold()",
+     'if False: raise Hold()'),
+    ('renewal result generation type', 'C02b', 'AssertionError',
+     'or not isinstance(resulting_generation, int)',
+     'or False'),
+    ('typed attestation decode failure', 'C02c', 'AssertionError',
+     'except (ValueError, binascii.Error): raise Conflict()',
+     'except ZeroDivisionError: raise Conflict()'),
+    ('typed Structured decode failure', 'C02c', 'AssertionError',
+     'except (ValueError, KeyError, TypeError, AttributeError, binascii.Error): raise Conflict()',
+     'except (ValueError, KeyError, TypeError, binascii.Error): raise Conflict()'),
+    ('exclusive quarantine decision', 'C03', 'AssertionError',
+     "if route in self.decisions and self.decisions[route] != ('Quarantined', proof): raise Conflict()",
+     'if False: raise Conflict()'),
+    ('selector language', 'C03c', 'AssertionError',
+     "or language != 'HX-EV-SELECTOR-1' or not 1 <= len(rows) <= 64): raise Hold()",
+     'or not 1 <= len(rows) <= 64): raise Hold()'),
+    ('selector row count', 'C03c', 'AssertionError',
+     "or language != 'HX-EV-SELECTOR-1' or not 1 <= len(rows) <= 64): raise Hold()",
+     "or language != 'HX-EV-SELECTOR-1'): raise Hold()"),
+    ('accepted scope arity', 'C03e', 'AssertionError',
+     'if len(scope) != 7 or len(intent) not in (2, 3): raise Hold()',
+     'if len(intent) not in (2, 3): raise Hold()'),
+    ('accepted intent arity', 'C03e', 'AssertionError',
+     'if len(scope) != 7 or len(intent) not in (2, 3): raise Hold()',
+     'if len(scope) != 7: raise Hold()'),
+    ('compact row attempt bound', 'C08d', 'AssertionError',
+     'if not isinstance(attempts, int) or not 1 <= attempts <= maximum or len(final_receipt) != 32: raise Hold()',
+     'if not isinstance(attempts, int) or len(final_receipt) != 32: raise Hold()'),
+    ('compact row receipt width', 'C08d', 'AssertionError',
+     'if not isinstance(attempts, int) or not 1 <= attempts <= maximum or len(final_receipt) != 32: raise Hold()',
+     'if not isinstance(attempts, int) or not 1 <= attempts <= maximum: raise Hold()'),
+    ('absent pre-send proof', 'C08e', 'AssertionError',
+     'if not isinstance(proof, tuple) or len(proof) != 6: raise Hold()',
+     'if False: raise Hold()'),
+    ('proposal preconditions', 'C08g', 'AssertionError',
+     'if not proof_root or not broker_fence or not members: raise Hold()',
+     'if False: raise Hold()'),
+    ('refresh requires scoped handle', 'C11b', 'AssertionError',
+     'if not cas_receipt or refreshed_handle not in self.handles: raise Hold()',
+     'if not cas_receipt: raise Hold()'),
+    ('effect commit UTC width', 'C11c', 'AssertionError',
+     'if not isinstance(utc, bytes) or len(utc) != 8: raise Hold()  # Commit tag 09 is Q.',
+     'if False: raise Hold()  # Commit tag 09 is Q.'),
+    ('effect commit record hash', 'C11c', 'AssertionError',
+     'if (commit[1] != fields[10]',
+     'if (False'),
+    ('terminal branch 32-byte framing', 'C11e', 'AssertionError',
+     'framed(tenant) + f_b32(scope) + f_b32(head)).digest()',
+     'framed(tenant) + scope + head).digest()'),
+    ('drain count sign', 'C11f', 'AssertionError',
+     'or (count is not None and count < 0)',
+     'or False'),
 ]
-assert len(MUTATIONS) == 79 and len({row[0] for row in MUTATIONS}) == len(MUTATIONS)
+assert len(MUTATIONS) == 120 and len({row[0] for row in MUTATIONS}) == len(MUTATIONS)
 for name, family, exception, old, new in MUTATIONS:
     assert model.count(old) == 1, f'{name}: target must occur exactly once'
     mutated = subprocess.run(['python3', '-'], input=model.replace(old, new), capture_output=True, text=True)
@@ -3602,9 +3804,9 @@ print(f'{len(MUTATIONS)} guard mutations rejected, each in its owning family')
 PY
 ```
 
-It must exit zero, print `42 model families passed with unique labels`, one `REJECTED:` line per mutation and finally `79 guard mutations rejected, each in its owning family`. C01c compares the destination-ID known answers with fixed literals, recomputed independently with `sha256sum`; C08c compares the complete segment bytes and SHA-256 with its fixed literals; C11g compares the fixed terminal-root digest. An encoder-width, framing or source-order change therefore cannot regenerate its own expected answer.
+It must exit zero, print `42 model families passed with unique labels`, one `REJECTED:` line per mutation and finally `120 guard mutations rejected, each in its owning family`. C01c compares the destination-ID known answers with fixed literals, recomputed independently with `sha256sum`; C08c compares the complete segment bytes and SHA-256 with its fixed literals; C11g compares the fixed terminal-root digest. An encoder-width, framing or source-order change therefore cannot regenerate its own expected answer.
 
-Then run the documentation-integrity check. It compares against the recorded `baseline_commit`, not `HEAD`, so it gives the same answer before and after the story is committed. It pins the SHA-256 of the approved frozen block, which now carries the owner's 2026-09-29 routing decision. It names every path that other owners or automation changed after the baseline. Any other changed path, any protected-artifact or runtime/test/deploy/docs change, a broken link, a whitespace error or a missing `UNAPPROVED` receipt fails it.
+Then run the documentation-integrity check. It compares against the recorded `baseline_commit`, not `HEAD`, so it gives the same answer before and after the story is committed. It pins the SHA-256 of the approved frozen block, which now carries the owner's 2026-09-29 routing decision. It names every path that other owners or automation changed after the baseline. The script is point-in-time evidence for this story's baseline range: a later path change outside `STORY | OWNER_AUTOMATION`, such as another story's file, a new gitlink bump or a `src`/`tests` edit, makes it fail, and that failure requires re-pinning the path list, not a story fix. Any other changed path, any protected-artifact or runtime/test/deploy/docs change, a broken link, a whitespace error or a missing `UNAPPROVED` receipt fails it.
 
 ```sh
 set -eu
@@ -3626,7 +3828,7 @@ OWNER_AUTOMATION = {  # Changed after the baseline by other owners or automation
     '_bmad-output/planning-artifacts/architecture.md',  # owner: 4fcb2b5c McpCli course correction
     '_bmad-output/planning-artifacts/epics.md',         # owner: 4fcb2b5c
     '_bmad-output/planning-artifacts/prd.md',           # owner: 4fcb2b5c
-    'references/Hexalith.AI.Tools',                     # automation: gitlink bumps 3902ee0e..801f3e52
+    'references/Hexalith.AI.Tools',                     # automation: gitlink bumps 3902ee0e..788c62f2
     'references/Hexalith.FrontComposer',
     'references/Hexalith.Memories',
     'references/Hexalith.Tenants',

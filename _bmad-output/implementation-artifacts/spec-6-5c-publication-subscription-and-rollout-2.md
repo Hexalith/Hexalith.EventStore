@@ -2,7 +2,7 @@
 title: 'Story 6.5c: Publication, Subscription, and Rollout Candidate'
 type: 'feature'
 created: '2026-09-27'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'e29b44a2d185b01ddafe534672153308285b4444'
 route: 'dispatch'
 review_loop_iteration: 3
@@ -99,6 +99,8 @@ All content tasks edit `_bmad-output/implementation-artifacts/spec-6-5c-publicat
 
 ## Implementation Notes
 
+2026-09-29, pass-16 patch round (owner resolution of root B1; no loopback): applied P1–P10 and B1 in the candidate. `Retryable=false` is now stated as a public-contract change against the shipped `CommandStatusRecord` doc. The conversion wording names the mode-specific complete header image. The purpose-02 key ID is bounded to 1..738 bytes (5,385 + 738 = 6,123). Each global pin is charged at its exact size at the pin CAS before any send, replacing the admission-time reservation. A shared object keeps its first charged account. Accepted-delivery keys recompute the destination ID from the pinned outbox intent, and the plan-time derivation source is stated. The carried EC15-17/25 guards are fixed, and every guard this loop added now has a killing vector and mutation, except three conditions that an earlier guard always pre-empts. The parent re-ran both candidate §Verification blocks on the working tree and on a committed scratch clone: 42 families, 120 mutations each rejected in its owning family, integrity success, exit 0. This supersedes the 79-mutation count and the pin-reservation wording in the entry below. D1–D19 are appended to `deferred-work.md`, and its checker exits 0. The earlier EC15-17/25 and 6.5a BH6-1 ledger entries are now resolved but left unedited for closure bookkeeping.
+
 2026-09-29, pass-15 focused loop under the owner routing bar: amended the candidate in place; the pre-loop candidate is the committed `801f3e52` content.
 - Destination ID (BH15-9a): C1 derives one canonical `destinationId`, `hxdst1-` plus lowercase-hex SHA-256 over framed component, topic and the read-back configuration hash (71 bytes; component/topic 1..1,024 strict UTF-8). Four fixed known answers cover the inline/reference forms, both delimiter shifts and a configuration change. Every destination field and both accepted-delivery keys use it, and C1 and the handoff record that it resolves the open 6.5a BH6-1 ledger item.
 - Capacity (BH15-12): `PublicationPinCapacityHold` has exact per-tenant and deployment publication-retention ceilings (`1 GiB ≤ tenant ≤ deployment`, per-object overhead `o`) over global pins, legacy side records and retained objects, reusing B6's pattern. Charges precede send, side-record write or attach; a known answer and a C6 item 8 entry were added.
@@ -149,6 +151,8 @@ Review-loop-4 implementation: restored the fourth candidate snapshot and added a
 Review-loop-5 implementation: restored the fifth candidate snapshot and resolved every routed pass-5 finding in C2–C5. Broker send identity and the parent fence now include authenticated tenant; C3 receipt sizing and preflight cover admitted identifiers; accepted-time filter proof survives ordinary expiry; unidentified poison uses a signed isolated capture scope and active retention obligation fence; zero-attempt terminality binds reason-specific pre-send and complete post-fence ledger evidence; the A8 no-op branch precedes policy creation; and takeover tag 02 has one exact framed hash. C02/C04/C06/C08c/C08d and focused C03d/C05/C08a local checks cover new send IDs, exact headers, two destinations, one-based positions, identifier bounds, receipt capacity, scope/retention and no-op. Embedded Python checks passed; six digest/acknowledgement/scope/fence/position/identifier mutations failed as intended. All 24 relative links resolve, and the candidate passes git diff --check. Provider, broker and injected-crash vectors remain unexecuted; this documentation candidate does not prove activation readiness.
 
 ## Spec Change Log
+
+2026-09-29, owner resolution after review pass 16 (intent_gap on root B1): The owner chose to charge each global publication pin at its exact size at the pin CAS before any send, replacing the undefined admission-time "conservative planned size" reservation, and to close after patching without a pass-17 review. Known-bad state avoided: a capacity hold whose admission-time firing point no two implementations can agree on. KEEP: the canonical `destinationId` derivation and its four known answers, the per-tenant/deployment ceilings and their side-record/attach charge points, the 42 unique family labels, the owning-family mutation harness and the `baseline_commit`-relative integrity script with its pinned frozen digest.
 
 2026-09-29, owner routing decision after review pass 15 (intent_gap BH15-4): The owner adopted the Story 6.5a routing bar, now recorded in the frozen Boundaries block. Pass 15's four `bad_spec` roots split under it:
 - BH15-9a (destination ID, a non-deterministic key) and BH15-12 (an ungrounded capacity hold) are fixed in this loop.
@@ -804,6 +808,8 @@ Review pass 16, focused loop under the owner routing bar, 2026-09-29. All three 
 | BH16-18 CR/LF/NUL carrier final disposition | **medium / defer (root D19)** — the quarantine path for a `DeliveryPinConflict` carrier is unstated while BH15-11 is deferred. |
 
 Review pass 16 routing: root B1 (EC16-1/BH16-8, publication-pin reservation sizing) is acceptance-breaking but has two viable fixes that the spec does not choose between, and the frozen decision closes the story after this review. That conflict is an `intent_gap` for the owner. Patch roots P1–P10 stay required, and roots D1–D19 are deferred to Story 6.5 integration under the bar. BH16-14/16/17 are rejected. The candidate is not reverted pending the owner's resolution.
+
+Owner resolution, 2026-09-29: B1 is fixed by charging each global pin at its exact size at the pin CAS before any send, dropping the admission-time planned-size reservation; a full counter holds before send with events stored and status nonterminal. With B1 now a patch, no `intent_gap` or `bad_spec` root remains, so no loopback occurs and the counter stays at 3. Patches P1–P10 and B1 are applied, both candidate verification blocks are re-run, D1–D19 are appended to `deferred-work.md`, and the story closes without another review pass, as the frozen decision requires.
 
 ## Design Notes
 
