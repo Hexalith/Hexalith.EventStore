@@ -5003,7 +5003,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Define the exact publication destination-ID derivation during Story 6.5/6.5c integration.
   evidence: BH6-1 identifies [A8 ExpectedEntries](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations), whose U destinationId denotes pinned component/topic/configuration without a canonical string codec or immutable source field. The exact outbox/pin hashes still bind the destination, but independent producers/verifiers can derive different ExpectedSetHash values for equivalent evidence. Specify one bounded derivation and delimiter/configuration-change known answers before interoperable runtime readiness; retain the existing one-destination-per-event contract.
-  status: open
+  status: resolved 2026-09-29 by the Story 6.5c candidate's C1 "Canonical destination ID": `destinationId` is `hxdst1-` plus lowercase-hex SHA-256 over framed outbox-intent component, topic and destination-configuration hash (71 bytes; component/topic 1..1,024 strict UTF-8), with four fixed C01c known answers covering the inline/reference forms, both delimiter shifts and a configuration change. Every destination field and both accepted-delivery keys carry that value, and the Story 6.5 integration handoff imports it with the one-destination-per-event contract unchanged.
 
 
 ## Deferred from: code review of spec-6-5a-event-contract-writer-and-migration-evidence-2.md (2026-09-27, pass 7)
@@ -5035,7 +5035,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Tighten two 6.5c local-model robustness guards (typed Hold for an absent pre-send proof; 32-byte checks on terminal-branch scope/head) if the model is carried into Story 6.5 integration.
   evidence: EC15-17: `PreSendAdmission.verify(member, None, ...)` raises `TypeError` instead of `Hold`, though it still rejects. EC15-25: `TerminalProposalStore.reserve` concatenates unframed scope/head without a length check; callers pass fixed 32-byte hashes. Neither is acceptance-breaking under the owner's routing bar.
-  status: open
+  status: resolved 2026-09-29 by the pass-16 patch round (P10, `72c5814c`): `PreSendAdmission.verify` raises a typed `Hold` for an absent or malformed proof, and `TerminalProposalStore.reserve` frames scope and head with 32-byte `f_b32` checks. The `absent pre-send proof` and `terminal branch 32-byte framing` mutations are rejected in C08e and C11e.
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Add an automated check that extracts and runs the 6.5c embedded model families and mutation harness.
   evidence: VG13-1/VG14-4/VG15-2. Normal CI never executes the fenced Python block, so its golden vectors and guards are protected only by manual runs. The frozen documentation-only boundary forbids adding the harness in Story 6.5c; it needs separately authorized test/CI work.
@@ -5117,7 +5117,7 @@ status: open
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Inventory today's recoverable and exhausted `PublishFailed` writers and define their retirement or fencing, `MaxDrainAttempts` mapping and reason-code casing in the 6.5c handoff.
-  evidence: D17 (BH16-2). `AggregateActor.cs:1721` writes `PublishFailed` with `Retryable=true` and `drain_publish_failed` on first failure, and `:2912` writes the exhausted record; the candidate inventory lists only terminal `PublishFailed`, and C5's `RecoveryReasonCode="PublishFailed"` differs from the shipped snake_case codes.
+  evidence: D17 (BH16-2). `AggregateActor.cs:1719-1727` writes `PublishFailed` with `retryable: drainReminderArmed || recoveryEntryTracked` and `drain_publish_failed` on first failure, so `Retryable` is `false` when neither a drain reminder nor a recovery entry is tracked, and `:2912` writes the exhausted record; the candidate inventory lists only terminal `PublishFailed`, and C5's `RecoveryReasonCode="PublishFailed"` differs from the shipped snake_case codes.
   status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Model the Binary `ce-*` core headers in C01b's carrier-size family.
@@ -5145,4 +5145,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Align the C1 destination-configuration hash-mismatch outcome: the prose says it "holds", the C01c model raises `Conflict`.
   evidence: BH6 (pass 17). `resolve_configuration` and `destination_id` raise `Conflict` for a reference content-hash or tag-`0e` mismatch, and the vectors assert `Conflict`, while C1 says "any hash mismatch holds before pin, send or evidence write". The sentence predates the pass-16 patch round.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Define the resume protocol for a pin CAS held by `PublicationPinCapacityHold`: its durable re-attempt trigger, re-validation of claim/membership/key inputs that drift during the hold, and ordering of held CASes when capacity frees.
+  evidence: D1 (pass 18; BH18-8/9/10, EC18-10/11/12). C1 says "the pin CAS resumes only after authenticated capacity readback shows room" and "retries the same exact pin bytes", but names no component or schedule that re-drives it. It does not say whether an expired claim, rotated key or changed membership during the hold means re-rendering or the downstream C2 holds. Nor does it order competing held CASes, so partially pinned commands can starve one another under a full counter. Each held outcome is deterministic (`CommandOutcomeHold`), so this is liveness, deferred under the owner's 6.5a routing bar; it is adjacent to BH15-11. A capacity retry cannot reach `PublicationRetryExhaustedHold`, because no send occurs.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Make a capacity-caused `CommandOutcomeHold` distinguishable and disclosed: its wire form and reason, its public-compatibility entry at the Story 6.6 gate, its place in the BH15-13 held-command inventory, and the reply for a command whose rejection-event pin is held.
+  evidence: D2 (pass 18; BH18-7/12/13, EC18-13/14). Under owner option 1 (pass 17), a pin-CAS capacity hold projects A8's existing `CommandOutcomeHold`, and the candidate adds no reason code. So a committed command held for capacity looks the same as an evidence-corruption hold, and a domain rejection whose rejection-event pin is held replies `CommandOutcomeHold`, not its pinned rejection, until capacity frees. The outcome's wire form is still the open 6.5a "six new typed outcomes are not enumerated" entry. Neither the C6 public-status paragraph nor the BH15-13 inventory entry names this post-commit cause. Deferred under the owner's 6.5a routing bar.
   status: open
