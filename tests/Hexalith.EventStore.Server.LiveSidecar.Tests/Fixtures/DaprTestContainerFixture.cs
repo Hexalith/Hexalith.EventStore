@@ -9,7 +9,10 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Client;
 
+using Hexalith.EventStore.Client.Effects;
+using Hexalith.EventStore.Client.Reminders;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Projections;
@@ -139,6 +142,18 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     /// <summary>Gets the isolated aggregate actor type name registered by this fixture run.</summary>
     public string AggregateActorTypeName { get; } = $"AggregateActorTests{Guid.NewGuid():N}";
+
+    /// <summary>Gets the isolated typed-reminder actor type name registered by this fixture run.</summary>
+    public string ReminderActorTypeName { get; } = $"ReminderActorTests{Guid.NewGuid():N}";
+
+    /// <summary>
+    /// Gets the per-run Dapr app-channel token. The primary sidecar presents it on every app call and the
+    /// reminder callback filter requires it, because the fixture host runs outside Development.
+    /// </summary>
+    public string AppApiToken { get; } = $"live-app-token-{Guid.NewGuid():N}";
+
+    /// <summary>Gets the synthetic reminder intents the live intent source re-folds; they survive host restarts.</summary>
+    public LiveReminderIntents ReminderIntents { get; } = new();
 
     /// <summary>Gets the fake domain service invoker for configuring test responses.</summary>
     public FakeDomainServiceInvoker DomainServiceInvoker { get; } = new();
@@ -738,6 +753,9 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             EnableRaisingEvents = true,
         };
 
+        // The sidecar presents this token on every app-channel call, which the reminder callback filter requires.
+        _daprProcess.StartInfo.Environment["APP_API_TOKEN"] = AppApiToken;
+
         _daprProcess.OutputDataReceived += (_, e) =>
         {
             if (e.Data is not null)
@@ -1024,6 +1042,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
 
         _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
+        ConfigureTypedReminders(builder);
 
         _testHost = builder.Build();
         EnsureTestingEnvironment(_testHost.Services, "primary");
@@ -1035,6 +1054,9 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         });
 
         _ = _testHost.MapActorsHandlers();
+
+        // The actor handlers are already mapped, so this proves the SDK mapping yields to the host.
+        _ = _testHost.MapEventStoreReminders();
         _ = _testHost.MapPost(
             "/project",
             (ProjectionRequest request) => Microsoft.AspNetCore.Http.Results.Ok(
@@ -1178,6 +1200,29 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = _replicaTestHost.MapActorsHandlers();
         _ = _replicaTestHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
         await _replicaTestHost.StartAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Registers the Story 4.11 typed-reminder runtime on the primary host with synthetic seams: the intent
+    /// source reads <see cref="ReminderIntents"/>, delegation is the fixture-only token, and submission routes
+    /// through the synthetic admission policy and gateway proof straight to the target aggregate actor.
+    /// Periodic reconciliation is disabled so tests drive each pass explicitly.
+    /// </summary>
+    private void ConfigureTypedReminders(WebApplicationBuilder builder)
+    {
+        builder.Configuration["APP_API_TOKEN"] = AppApiToken;
+        builder.Configuration["EventStore:Reminders:ActorTypeName"] = ReminderActorTypeName;
+        builder.Configuration["EventStore:Reminders:Workload"] = "synthetic-test";
+        builder.Configuration["EventStore:Reminders:Purposes:" + EffectKindCatalog.DateResume] = "synthetic-integration";
+        builder.Configuration["EventStore:Reminders:ReconciliationEnabled"] = "false";
+        _ = builder.Services.AddSingleton(ReminderIntents);
+        _ = builder.Services.AddEventStoreReminders<LiveReminderIntentSource>();
+        _ = builder.Services.AddSingleton<IReminderDelegationTokenProvider, SyntheticReminderDelegationTokenProvider>();
+        _ = builder.Services.AddSingleton<ITrustedEffectSubmitter>(serviceProvider => new LiveActorTrustedEffectSubmitter(
+            serviceProvider.GetRequiredService<ITrustedEffectAdmissionPolicy>(),
+            serviceProvider.GetRequiredService<ITrustedEffectGatewayProof>(),
+            serviceProvider.GetRequiredService<IActorProxyFactory>(),
+            AggregateActorTypeName));
     }
 
     private static void ConfigureIdempotencyAdmission(WebApplicationBuilder builder)
