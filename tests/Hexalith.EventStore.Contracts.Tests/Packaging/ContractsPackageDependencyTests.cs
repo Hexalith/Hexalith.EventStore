@@ -8,6 +8,15 @@ public sealed class ContractsPackageDependencyTests
     private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
     private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(3);
 
+    // Hash-bound release evidence that restores the published 3.108.1 and 3.70.1 packages
+    // outside the repository build graph; pinning those exact versions is their purpose.
+    private static readonly string[] _standaloneEvidenceProbeProjects =
+    [
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v3108/Probe.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v370/Probe.csproj",
+    ];
+
     [Fact]
     public void Contracts_package_pins_commons_unique_ids_centrally()
     {
@@ -167,6 +176,8 @@ public sealed class ContractsPackageDependencyTests
         process.StartInfo.ArgumentList.Add(root);
         process.StartInfo.ArgumentList.Add("-CatalogPath");
         process.StartInfo.ArgumentList.Add(catalogPath);
+        process.StartInfo.ArgumentList.Add("-ExcludedPath");
+        process.StartInfo.ArgumentList.Add(string.Join(';', _standaloneEvidenceProbeProjects));
 
         process.Start().ShouldBeTrue("Could not start the shared consumer package authority validator.");
         Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
