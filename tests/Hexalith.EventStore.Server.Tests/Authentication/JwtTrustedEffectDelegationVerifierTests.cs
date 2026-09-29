@@ -94,7 +94,11 @@ public sealed class JwtTrustedEffectDelegationVerifierTests
         await verifier.VerifyAsync(submission, Context(withinSkew), digest);
     }
 
-    /// <summary>An unknown signing key refreshes authority metadata once and retries validation.</summary>
+    /// <summary>
+    /// With a configuration manager that refreshes synchronously, as IdentityModel does under its
+    /// blocking-refresh switch, an unknown signing key refreshes authority metadata once and the
+    /// in-request retry succeeds.
+    /// </summary>
     [Fact]
     public async Task UnknownSigningKeyRefreshesAuthorityMetadataAndRetriesOnce()
     {
@@ -120,6 +124,64 @@ public sealed class JwtTrustedEffectDelegationVerifierTests
             () => verifier.VerifyAsync(submission, Context(unknown), digest));
         manager.RefreshRequests.ShouldBe(2);
         manager.Fetches.ShouldBe(4);
+    }
+
+    /// <summary>
+    /// With IdentityModel's default background refresh, an unknown signing key requests a refresh
+    /// but the in-request retry still sees the cached keys. The delegation is denied, and a later
+    /// submission succeeds once the refresh completes.
+    /// </summary>
+    [Fact]
+    public async Task UnknownSigningKeyWithBackgroundRefreshSucceedsOnLaterSubmission()
+    {
+        using RSA oldRsa = RSA.Create(2048);
+        using RSA newRsa = RSA.Create(2048);
+        var oldKey = new RsaSecurityKey(oldRsa) { KeyId = "old-key" };
+        var newKey = new RsaSecurityKey(newRsa) { KeyId = "new-key" };
+        var retriever = new GatedConfigurationRetriever(Configuration(oldKey), Configuration(newKey));
+        var manager = new ConfigurationManager<OpenIdConnectConfiguration>(
+            Issuer + "/.well-known/openid-configuration", retriever);
+        var verifier = new JwtTrustedEffectDelegationVerifier(Monitor(manager));
+        (TrustedEffectSubmission submission, string digest) = CreateSubmission();
+        DateTime issuedAt = DateTime.UtcNow.AddMinutes(-1);
+        string rotated = CreateToken(newKey, submission, digest, issuedAt, issuedAt.AddMinutes(5));
+
+        // The background fetch is held open, so the retry inside this call reads the cached keys.
+        await Should.ThrowAsync<SecurityTokenSignatureKeyNotFoundException>(
+            () => verifier.VerifyAsync(submission, Context(rotated), digest));
+        await retriever.RefreshStarted.WaitAsync(TimeSpan.FromSeconds(10));
+        retriever.ReleaseRefresh();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        while (!(await manager.GetConfigurationAsync(timeout.Token)).SigningKeys.Contains(newKey))
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(20), timeout.Token);
+        }
+
+        await verifier.VerifyAsync(submission, Context(rotated), digest);
+        retriever.Fetches.ShouldBe(2);
+    }
+
+    /// <summary>An <c>iat</c> within the 30-second clock skew is accepted.</summary>
+    [Fact]
+    public async Task FutureIssuedAtWithinClockSkewIsAccepted()
+    {
+        (JwtTrustedEffectDelegationVerifier verifier, RsaSecurityKey key, TrustedEffectSubmission submission, string digest) = CreateVerifier();
+        DateTime issuedAt = DateTime.UtcNow.AddSeconds(10);
+        string token = CreateToken(key, submission, digest, issuedAt, issuedAt.AddMinutes(5), includeNotBefore: false);
+
+        await verifier.VerifyAsync(submission, Context(token), digest);
+    }
+
+    /// <summary>An <c>iat</c> beyond the 30-second clock skew is rejected even without <c>nbf</c>.</summary>
+    [Fact]
+    public async Task FutureIssuedAtBeyondClockSkewIsRejected()
+    {
+        (JwtTrustedEffectDelegationVerifier verifier, RsaSecurityKey key, TrustedEffectSubmission submission, string digest) = CreateVerifier();
+        DateTime issuedAt = DateTime.UtcNow.AddMinutes(2);
+        string token = CreateToken(key, submission, digest, issuedAt, issuedAt.AddMinutes(5), includeNotBefore: false);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => verifier.VerifyAsync(submission, Context(token), digest));
     }
 
     private static (JwtTrustedEffectDelegationVerifier Verifier, RsaSecurityKey Key, TrustedEffectSubmission Submission, string Digest) CreateVerifier()
@@ -166,7 +228,8 @@ public sealed class JwtTrustedEffectDelegationVerifierTests
         TrustedEffectSubmission submission,
         string digest,
         DateTime issuedAt,
-        DateTime expiresAt)
+        DateTime expiresAt,
+        bool includeNotBefore = true)
     {
         EffectIdentity identity = submission.Identity;
         Claim[] claims =
@@ -191,7 +254,7 @@ public sealed class JwtTrustedEffectDelegationVerifierTests
             Issuer,
             "eventstore-gateway",
             claims,
-            issuedAt,
+            includeNotBefore ? issuedAt : null,
             expiresAt,
             new SigningCredentials(key, SecurityAlgorithms.RsaSha256));
         return new JwtSecurityTokenHandler().WriteToken(jwt);
@@ -217,6 +280,36 @@ public sealed class JwtTrustedEffectDelegationVerifierTests
         {
             RefreshRequests++;
             _refreshed = true;
+        }
+    }
+
+    private sealed class GatedConfigurationRetriever(
+        OpenIdConnectConfiguration current,
+        OpenIdConnectConfiguration rotated) : IConfigurationRetriever<OpenIdConnectConfiguration>
+    {
+        private readonly TaskCompletionSource _refreshStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _fetches;
+
+        public int Fetches => Volatile.Read(ref _fetches);
+
+        public Task RefreshStarted => _refreshStarted.Task;
+
+        public void ReleaseRefresh() => _release.TrySetResult();
+
+        public async Task<OpenIdConnectConfiguration> GetConfigurationAsync(
+            string address,
+            IDocumentRetriever retriever,
+            CancellationToken cancel)
+        {
+            if (Interlocked.Increment(ref _fetches) == 1)
+            {
+                return current;
+            }
+
+            _refreshStarted.TrySetResult();
+            await _release.Task.ConfigureAwait(false);
+            return rotated;
         }
     }
 }

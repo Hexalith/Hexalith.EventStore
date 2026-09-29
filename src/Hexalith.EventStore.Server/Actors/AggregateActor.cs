@@ -214,13 +214,13 @@ public partial class AggregateActor(
             .ConfigureAwait(false);
         if (erasure.HasValue)
         {
-            await AuditTrustedEffectDenialAsync("erasure-progress", admission).ConfigureAwait(false);
+            await AuditTrustedEffectDenialAsync("erasure-progress", admission, effectId).ConfigureAwait(false);
             throw new InvalidOperationException("Trusted effect target partition is being erased.");
         }
 
         if (await StateManager.ContainsStateAsync(TrustedEffectDeletionFence.StateName).ConfigureAwait(false))
         {
-            await AuditTrustedEffectDenialAsync("deletion-fence", admission).ConfigureAwait(false);
+            await AuditTrustedEffectDenialAsync("deletion-fence", admission, effectId).ConfigureAwait(false);
             throw new InvalidOperationException("Trusted effect target partition is under tenant deletion.");
         }
 
@@ -267,13 +267,24 @@ public partial class AggregateActor(
         return new TrustedEffectResult(effectId, receipt.Disposition, Replayed: false, receipt.ResultPayload);
     }
 
-    private async Task AuditTrustedEffectDenialAsync(string action, TrustedEffectAdmission admission)
+    private async Task AuditTrustedEffectDenialAsync(string action, TrustedEffectAdmission admission, string effectId)
     {
         ITrustedEffectAuditSink audit = trustedEffectAuditSink
             ?? throw new InvalidOperationException("Trusted effect denial audit is unavailable.");
         await audit.AppendAsync(new TrustedEffectAuditRecord(
-            action, admission.Submission.Identity.Tenant, null,
+            action, admission.Submission.Identity.Tenant, effectId,
             admission.Context.Workload, admission.Context.Purpose, "denied"))
+            .ConfigureAwait(false);
+    }
+
+    // Capability denials are recorded against the actor's own partition tenant, never the
+    // request's claimed tenant, which is unverified when the capability is rejected.
+    private async Task AuditLifecycleCapabilityDenialAsync(string action, AggregateIdentity identity)
+    {
+        ITrustedEffectAuditSink audit = trustedEffectAuditSink
+            ?? throw new InvalidOperationException("Trusted effect capability denial audit is unavailable.");
+        await audit.AppendAsync(new TrustedEffectAuditRecord(
+            action, identity.TenantId, null, null, null, "denied"))
             .ConfigureAwait(false);
     }
 
@@ -684,11 +695,11 @@ public partial class AggregateActor(
 
             await EnsureStateCacheBarrierAsync(command.CorrelationId, processActivity).ConfigureAwait(false);
 
-            // Trusted-effect tenant deletion fences and erasure cursors close the partition to
-            // ordinary commands too; otherwise a resumed erasure would orphan new events.
+            // Once trusted-effect erasure starts, its cursor closes the partition to ordinary
+            // commands too; otherwise a resumed erasure would orphan new events. A deletion fence
+            // alone does not close it: a failed deletion entry can leave a fence on an Active tenant.
             if (effectAdmission is null
-                && (await StateManager.ContainsStateAsync(TrustedEffectErasureProgress.StateName).ConfigureAwait(false)
-                    || await StateManager.ContainsStateAsync(TrustedEffectDeletionFence.StateName).ConfigureAwait(false)))
+                && await StateManager.ContainsStateAsync(TrustedEffectErasureProgress.StateName).ConfigureAwait(false))
             {
                 throw new InvalidOperationException("The aggregate partition is closed by tenant deletion.");
             }
@@ -1949,17 +1960,26 @@ public partial class AggregateActor(
     {
         ArgumentNullException.ThrowIfNull(request);
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
-        if (request.Purpose != TrustedEffectAggregateErasure.DeletionFencePurpose
-            || !string.Equals(request.Tenant, identity.TenantId, StringComparison.Ordinal)
-            || !string.Equals(request.Domain, identity.Domain, StringComparison.Ordinal)
-            || !string.Equals(request.Aggregate, identity.AggregateId, StringComparison.Ordinal))
+        try
         {
-            throw new InvalidOperationException("Trusted effect deletion fence partition is invalid.");
+            if (request.Purpose != TrustedEffectAggregateErasure.DeletionFencePurpose
+                || !string.Equals(request.Tenant, identity.TenantId, StringComparison.Ordinal)
+                || !string.Equals(request.Domain, identity.Domain, StringComparison.Ordinal)
+                || !string.Equals(request.Aggregate, identity.AggregateId, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Trusted effect deletion fence partition is invalid.");
+            }
+
+            ITrustedEffectErasureAuthority authority = trustedEffectErasureAuthority
+                ?? throw new InvalidOperationException("Trusted effect deletion fence authority is unavailable.");
+            await authority.ValidateAsync(request).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await AuditLifecycleCapabilityDenialAsync("deletion-fence", identity).ConfigureAwait(false);
+            throw;
         }
 
-        ITrustedEffectErasureAuthority authority = trustedEffectErasureAuthority
-            ?? throw new InvalidOperationException("Trusted effect deletion fence authority is unavailable.");
-        await authority.ValidateAsync(request).ConfigureAwait(false);
         await StateManager.ClearCacheAsync().ConfigureAwait(false);
         ConditionalValue<TrustedEffectDeletionFence> existing = await StateManager
             .TryGetStateAsync<TrustedEffectDeletionFence>(TrustedEffectDeletionFence.StateName)
@@ -1991,19 +2011,27 @@ public partial class AggregateActor(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.EffectIds);
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
-        if (request.Purpose != TrustedEffectAggregateErasure.ErasurePurpose
-            || !string.Equals(request.Tenant, identity.TenantId, StringComparison.Ordinal)
-            || !string.Equals(request.Domain, identity.Domain, StringComparison.Ordinal)
-            || !string.Equals(request.Aggregate, identity.AggregateId, StringComparison.Ordinal)
-            || request.EffectIds.Any(string.IsNullOrWhiteSpace)
-            || request.EffectIds.Distinct(StringComparer.Ordinal).Count() != request.EffectIds.Length)
+        try
         {
-            throw new InvalidOperationException("Trusted effect erasure partition or inventory is invalid.");
-        }
+            if (request.Purpose != TrustedEffectAggregateErasure.ErasurePurpose
+                || !string.Equals(request.Tenant, identity.TenantId, StringComparison.Ordinal)
+                || !string.Equals(request.Domain, identity.Domain, StringComparison.Ordinal)
+                || !string.Equals(request.Aggregate, identity.AggregateId, StringComparison.Ordinal)
+                || request.EffectIds.Any(string.IsNullOrWhiteSpace)
+                || request.EffectIds.Distinct(StringComparer.Ordinal).Count() != request.EffectIds.Length)
+            {
+                throw new InvalidOperationException("Trusted effect erasure partition or inventory is invalid.");
+            }
 
-        ITrustedEffectErasureAuthority authority = trustedEffectErasureAuthority
-            ?? throw new InvalidOperationException("Trusted effect erasure authority is unavailable.");
-        await authority.ValidateAsync(request).ConfigureAwait(false);
+            ITrustedEffectErasureAuthority authority = trustedEffectErasureAuthority
+                ?? throw new InvalidOperationException("Trusted effect erasure authority is unavailable.");
+            await authority.ValidateAsync(request).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await AuditLifecycleCapabilityDenialAsync("offboarding-erasure", identity).ConfigureAwait(false);
+            throw;
+        }
 
         await StateManager.ClearCacheAsync().ConfigureAwait(false);
         ConditionalValue<TrustedEffectErasureProgress> savedProgress = await StateManager
@@ -2012,6 +2040,7 @@ public partial class AggregateActor(
         if (savedProgress.HasValue
             && string.Equals(savedProgress.Value.CapabilityNonce, request.Nonce, StringComparison.Ordinal))
         {
+            await AuditLifecycleCapabilityDenialAsync("offboarding-erasure", identity).ConfigureAwait(false);
             throw new InvalidOperationException("Trusted effect erasure capability has already been consumed.");
         }
 

@@ -333,8 +333,9 @@ spec:
         spec:
             containers:
                 - name: eventstore
-                  # ... (existing image, env, ports from generated template)
+                  # ... (existing image, ports from generated template)
                   env:
+                      # Append this item to the generated env list; do not add a second env key.
                       # The app compares dapr-api-token with this same secret.
                       - name: APP_API_TOKEN
                         valueFrom:

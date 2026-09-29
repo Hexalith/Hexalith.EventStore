@@ -394,7 +394,7 @@ error loading component statestore: component statestore is not initialized
 **Resolution:**
 
 1. Create one random token per receiving gateway. Supply it to the EventStore container as `APP_API_TOKEN`.
-2. Give the receiving Dapr sidecar the same token. On Kubernetes, use the `dapr.io/app-token-secret` annotation. With self-hosted `daprd`, including Docker Compose, set its `APP_API_TOKEN` environment variable. See [Kubernetes](deployment-kubernetes.md), [Docker Compose](deployment-docker-compose.md), and [Azure Container Apps](deployment-azure-container-apps.md).
+2. Give the receiving Dapr sidecar the same token. On Kubernetes, use the `dapr.io/app-token-secret` annotation. With self-hosted `daprd`, including Docker Compose, set its `APP_API_TOKEN` environment variable. On Azure Container Apps, the platform injects `APP_API_TOKEN` and the managed sidecar sends it; skip steps 1 and 2 and remove any user-defined `APP_API_TOKEN`. See [Kubernetes](deployment-kubernetes.md), [Docker Compose](deployment-docker-compose.md), and [Azure Container Apps](deployment-azure-container-apps.md).
 3. If an environment admits no internal callers, leave `AllowedCallers` empty. Readiness then does not require the token.
 4. Keep the application port private to its sidecar. The token authenticates only the sidecar-to-app channel; it does not replace mTLS or deny-by-default access control.
 

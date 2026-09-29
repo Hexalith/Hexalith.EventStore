@@ -9,9 +9,10 @@ namespace Hexalith.EventStore.Authentication;
 /// <summary>
 /// Authenticates DAPR service-invocation requests from trusted internal apps. Reads the
 /// <c>dapr-caller-app-id</c> header set by the calling sidecar, validates it against
-/// <see cref="DaprInternalAuthenticationOptions.AllowedCallers"/>, requires the Dapr
-/// app-channel token outside Development and compares it whenever one is configured, and issues a system principal with
-/// <c>global_admin</c> so the request can submit commands and queries without user claims.
+/// <see cref="DaprInternalAuthenticationOptions.AllowedCallers"/>, and checks the Dapr
+/// app-channel token. The token is required outside Development and compared whenever one is
+/// configured. The handler then issues a system principal with <c>global_admin</c> so the
+/// request can submit commands and queries without user claims.
 /// Non-allow-listed callers return NoResult so the JWT scheme runs.
 /// </summary>
 public sealed class DaprInternalAuthenticationHandler(

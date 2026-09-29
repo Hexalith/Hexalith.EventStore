@@ -13,10 +13,17 @@ public interface ITrustedEffectJointRetentionPolicy
     Task ValidateAsync(EffectIdentity identity, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Idempotently erases every source stream, target stream, receipt, collision record, and
-    /// related tenant key only after one authorized offboarding decision. The implementation
-    /// must return only after durable erasure is proven; failure leaves the lifecycle open.
+    /// Idempotently erases the source or target stream, receipts, collision records, and
+    /// trusted-effect idempotency records of each authorized partition, under one authorized
+    /// offboarding decision. The tenant lifecycle calls this once per registered partition, each
+    /// time with a single freshly signed capability, so an implementation must treat
+    /// <paramref name="authorizedPartitions"/> as a subset of the tenant, not the whole tenant.
+    /// It must return only after durable erasure of those partitions is proven; failure leaves
+    /// the lifecycle open for retry.
     /// </summary>
+    /// <param name="tenant">The tenant being offboarded.</param>
+    /// <param name="authorizedPartitions">The lifecycle-signed partitions to erase in this call.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
     Task EraseTenantAsync(
         string tenant,
         TrustedEffectAggregateErasure[] authorizedPartitions,

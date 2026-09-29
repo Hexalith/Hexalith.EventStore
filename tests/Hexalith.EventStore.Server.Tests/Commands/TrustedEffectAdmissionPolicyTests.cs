@@ -201,6 +201,37 @@ public sealed class TrustedEffectAdmissionPolicyTests
         _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!);
     }
 
+    /// <summary>
+    /// A failed authorization entry, written after lifecycle registration, still denies admission
+    /// and is followed by a denial record.
+    /// </summary>
+    [Fact]
+    public async Task AuthorizedAuditFailureAfterRegistrationDeniesAdmission()
+    {
+        var adapters = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var verifier = Substitute.For<ITrustedEffectDelegationVerifier>();
+        var authority = Substitute.For<ITrustedEffectCommandAuthority>();
+        var retention = Substitute.For<ITrustedEffectRetentionGate>();
+        var audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context) = CreateEffect();
+        _ = adapters.Resolve(Arg.Any<SubmitCommand>()).Returns(new TrustedIdempotencyDescriptor(
+            "adapter", "operation", 1, [1], IdempotencyReplayRetentionTier.Mutation));
+        _ = authority.IsAllowed(submission, context).Returns(true);
+        _ = audit.AppendAsync(
+                Arg.Is<TrustedEffectAuditRecord>(record => record.Disposition == "authorized"),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new IOException("audit unavailable"));
+        var policy = new TrustedEffectAdmissionPolicy(adapters, verifier, authority, retention, audit);
+
+        await Should.ThrowAsync<IOException>(() => policy.AdmitAsync(submission, context));
+
+        _ = retention.Received(1).ValidateAsync(submission.Identity, Arg.Any<CancellationToken>());
+        string[] dispositions = audit.ReceivedCalls()
+            .Select(static call => ((TrustedEffectAuditRecord)call.GetArguments()[0]!).Disposition)
+            .ToArray();
+        dispositions.ShouldBe(["attempted", "authorized", "denied"]);
+    }
+
     private static (TrustedEffectSubmission, TrustedEffectContext) CreateEffect()
     {
         var identity = new EffectIdentity(

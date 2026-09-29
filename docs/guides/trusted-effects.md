@@ -51,8 +51,8 @@ must appear exactly once and match ordinally.
 | `workload` | The attested caller app ID, which the gateway takes from Dapr internal authentication, not from the request body |
 | `purpose` | Submitted delegated purpose |
 | `causation` | Submitted causation identifier |
-| `aud` | Exactly `eventstore-gateway` |
-| `iss` and signature | Issuer and signing keys from the configured OIDC authority metadata; symmetric keys are refused. An unknown key ID refreshes the metadata once and retries |
+| `aud` | Must include `eventstore-gateway`; a multi-valued `aud` that contains it is accepted |
+| `iss` and signature | Issuer and signing keys from the configured OIDC authority metadata; symmetric keys are refused. An unknown key ID requests a metadata refresh and retries once. With the default background refresh, that retry can still see the cached keys, so the submission is denied; a later submission succeeds once the refresh completes. Refresh requests are throttled by the configuration manager's `RefreshInterval` |
 | Algorithm | An `RS*`, `PS*`, or `ES*` algorithm |
 | `exp` | Required; validated with a 30-second clock skew |
 | `iat` | Required; no later than now plus 30 seconds |
@@ -61,7 +61,8 @@ must appear exactly once and match ordinally.
 
 The gateway derives `command_digest` itself. It builds the target `SubmitCommand`
 with the tuple's tenant, target domain, target aggregate, command type, and
-payload, using `wrk-<EffectId>` as the message and correlation identifier. The
+payload, using `wrk-<EffectId>` as the message and correlation identifier, the
+attested workload as `UserId`, no extensions, and no `IdempotencyKey`. The
 registered `IIdempotencyIntentAdapter` for that command type produces the
 canonical intent bytes. The digest is their SHA-256, rendered by
 `EffectIdentityCodec.RenderDigest`. Caller-supplied extensions and digests are
@@ -113,12 +114,14 @@ was queued before deletion. The terminal erasure batch also removes each
 registered effect's `idempotency:wrk-<EffectId>` record, which carries the
 recorded result payload. Ordinary-command idempotency records and legacy
 redirects in the partition are not erased by this path; they belong to the
-broader AD-28 tenant offboarding workflow. While a partition holds a deletion
-fence or an erasure cursor, ordinary commands are also rejected, so a resumed
-erasure cannot orphan newly appended events. The lifecycle clears its effect
-inventory only after every aggregate erasure completes. Each partition's
-capability is issued immediately before its own fence or erasure call, so a
-large tenant cannot outlive the capability lifetime of later partitions. Legal hold prevents erasure. A failed
+broader AD-28 tenant offboarding workflow. Once a partition holds an erasure
+cursor, ordinary commands are also rejected, so a resumed erasure cannot orphan
+newly appended events. A deletion fence alone does not reject ordinary
+commands, because a failed deletion entry can leave a fence on a tenant that is
+still `Active`. The lifecycle clears its effect inventory only after every
+aggregate erasure completes. Each partition's capability is issued immediately
+before its own fence or erasure call, so a large tenant cannot outlive the
+capability lifetime of later partitions. Legal hold prevents erasure. A failed
 turn leaves the lifecycle purge-eligible for retry. The existing protected
 tenant/key admission tombstones, directory aliases, and legacy inventory
 entries are purged after the stream evidence and before lifecycle `Purged`.
@@ -132,14 +135,17 @@ completion fails closed. On deletion entry, the lifecycle first sends a signed,
 purpose-separated deletion-fence capability to every registered source and target
 partition, then commits its non-active state. The actor persists a deletion fence
 before it can read a receipt or execute another trusted effect, and audits the
-denial of any later trusted effect. A failed fence
-leaves deletion entry uncommitted and any already-fenced partitions closed; retry
+denial of any later trusted effect. A failed fence leaves deletion entry
+uncommitted and any already-fenced partitions closed to trusted effects; retry
 can finish the transition. A retry may carry a new approval time or an inventory
 that grew after the failure; a validly signed fence capability then replaces the
 earlier fence, and the replacement is audited. A deletion approval later than the
-lifecycle clock plus 30 seconds is rejected before any partition is fenced. Legal hold preserves the fence, so a previously signed
-gateway proof cannot disclose a receipt during hold. A deletion-fence capability
+lifecycle clock plus 30 seconds is rejected before any partition is fenced. Legal
+hold preserves the fence, so a previously signed gateway proof cannot disclose a
+receipt during hold. A deletion-fence capability
 cannot authorize erasure, and a purge capability cannot install a deletion fence.
+A rejected, expired, forged, or already-consumed fence or erasure capability is
+audited as a denial against the actor partition's own tenant.
 The terminal erasure batch removes the deletion fence together with stream and
 receipt evidence; its actor-local erasure marker prevents a queued target turn
 from writing afterward. Production trusted-effect admission remains closed until the

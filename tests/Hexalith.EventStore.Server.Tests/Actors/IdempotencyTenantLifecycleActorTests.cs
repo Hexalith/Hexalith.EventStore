@@ -121,6 +121,48 @@ public class IdempotencyTenantLifecycleActorTests
         issued.Select(static request => request.IssuedAt).ShouldBe(erased.Select(static request => request.IssuedAt));
     }
 
+    /// <summary>Each partition's deletion-fence capability is issued immediately before its own fence call.</summary>
+    [Fact]
+    public async Task DeletionEntryIssuesEachPartitionFenceCapabilityImmediatelyBeforeItsFence()
+    {
+        var issued = new List<TrustedEffectAggregateErasure>();
+        var fenced = new List<TrustedEffectAggregateErasure>();
+        ITrustedEffectErasureAuthority authority = Substitute.For<ITrustedEffectErasureAuthority>();
+        _ = authority.IssueAsync(Arg.Any<TrustedEffectAggregateErasure>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                issued.Add(call.Arg<TrustedEffectAggregateErasure>());
+                return "capability-" + issued.Count;
+            });
+        FakeTimeProvider? clock = null;
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IAggregateActor partition = Substitute.For<IAggregateActor>();
+        _ = partition.FenceTrustedEffectsAsync(Arg.Any<TrustedEffectAggregateErasure>())
+            .Returns(call =>
+            {
+                fenced.Add(call.Arg<TrustedEffectAggregateErasure>());
+                clock!.Advance(TimeSpan.FromMinutes(4));
+                return Task.CompletedTask;
+            });
+        _ = factory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), nameof(AggregateActor)).Returns(partition);
+        (IdempotencyTenantLifecycleActor actor, _, FakeTimeProvider time) = CreateActor(
+            actorProxyFactory: factory,
+            trustedEffectErasureAuthority: authority);
+        clock = time;
+        await actor.RegisterTrustedEffectAsync(TrustedIdentity());
+        DateTimeOffset entryStart = time.GetUtcNow();
+
+        _ = await actor.EnterDeletionAsync(_now.AddDays(-401));
+
+        fenced.Count.ShouldBe(2);
+        fenced[0].IssuedAt.ShouldBe(entryStart);
+        fenced[1].IssuedAt.ShouldBe(entryStart.AddMinutes(4));
+        fenced.ShouldAllBe(request => request.ExpiresAt == request.IssuedAt.AddMinutes(5)
+            && request.Purpose == TrustedEffectAggregateErasure.DeletionFencePurpose);
+        fenced.Select(static request => request.Capability).ShouldBe(["capability-1", "capability-2"]);
+        issued.Select(static request => request.IssuedAt).ShouldBe(fenced.Select(static request => request.IssuedAt));
+    }
+
     /// <summary>A deletion approval beyond the allowed clock skew is refused before any partition is fenced.</summary>
     [Fact]
     public async Task FutureDeletionApprovalIsRejectedBeforeFencing()

@@ -484,9 +484,12 @@ public class TrustedEffectReceiptTests
         state.CommittedState.Keys.ShouldNotContain(key => key.StartsWith("idempotency:", StringComparison.Ordinal));
     }
 
-    /// <summary>A tenant deletion fence closes the partition to ordinary commands.</summary>
+    /// <summary>
+    /// A deletion fence alone leaves ordinary commands open. A failed deletion entry can leave a
+    /// fence on an Active tenant, and only erasure progress closes the partition.
+    /// </summary>
     [Fact]
-    public async Task OrdinaryCommandIsRejectedWhileDeletionFenceExists()
+    public async Task OrdinaryCommandIsAcceptedWhileOnlyDeletionFenceExists()
     {
         var state = new FaultInjectingActorStateManager();
         await state.SeedCommittedStateAsync(new Dictionary<string, object>
@@ -495,13 +498,22 @@ public class TrustedEffectReceiptTests
                 "test-tenant", DateTimeOffset.UnixEpoch, "INVENTORY"),
         });
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(stateManager: state);
+        _ = actor.Invoker.InvokeAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
+                Arg.Any<object?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new AggregateActorTestHelper.TestEvent()]));
 
-        await Should.ThrowAsync<InvalidOperationException>(
-            () => actor.Actor.ProcessCommandAsync(AggregateActorTestHelper.CreateTestEnvelope()));
+        CommandProcessingResult result = await actor.Actor.ProcessCommandAsync(
+            AggregateActorTestHelper.CreateTestEnvelope());
 
-        _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
-        state.CommittedState.Keys.ShouldNotContain(key => key.Contains(":events:", StringComparison.Ordinal));
-        state.CommittedState.Keys.ShouldNotContain(key => key.StartsWith("idempotency:", StringComparison.Ordinal));
+        result.Accepted.ShouldBeTrue();
+        _ = await actor.Invoker.Received(1).InvokeAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
+            Arg.Any<object?>(),
+            Arg.Any<CancellationToken>());
+        state.CommittedState.Keys.ShouldContain(key => key.Contains(":events:1", StringComparison.Ordinal));
+        state.CommittedState.Keys.ShouldContain(TrustedEffectDeletionFence.StateName);
     }
 
     /// <summary>Fence and erasure denials are audited before any receipt read.</summary>
@@ -538,7 +550,7 @@ public class TrustedEffectReceiptTests
             Arg.Is<TrustedEffectAuditRecord>(record => record.Action == (erasing ? "erasure-progress" : "deletion-fence")
                 && record.Disposition == "denied"
                 && record.Tenant == submission.Identity.Tenant
-                && record.EffectId == null),
+                && record.EffectId == EffectIdentityCodec.ComputeEffectId(submission.Identity)),
             Arg.Any<CancellationToken>());
         state.Trace.ShouldNotContain(entry => entry.StartsWith("TryGetState:effect_receipt_", StringComparison.Ordinal));
     }

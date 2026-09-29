@@ -358,8 +358,9 @@ public sealed class TrustedEffectJointOffboardingTests
         var signed = unsigned with { Capability = await authority.IssueAsync(unsigned) };
         await authority.ValidateAsync(signed);
         var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
         ActorTestContext target = AggregateActorTestHelper.CreateActor(
-            stateManager: state, trustedEffectErasureAuthority: authority);
+            stateManager: state, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
 
         await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.EraseTrustedEffectEvidenceAsync(
             signed with { Capability = "test-v1." + new string('0', 64) }));
@@ -387,6 +388,16 @@ public sealed class TrustedEffectJointOffboardingTests
 
         state.Trace.ShouldBeEmpty();
         state.CreateCommittedView().ShouldBeEmpty();
+        await audit.Received(6).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "offboarding-erasure"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+        await audit.Received(3).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "deletion-fence"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
     }
 
     /// <summary>A purge waiting for the target turn can finish before gateway completion calls lifecycle.</summary>
@@ -638,8 +649,9 @@ public sealed class TrustedEffectJointOffboardingTests
         var clock = new FakeTimeProvider(_now);
         ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, clock);
         var expiredState = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
         ActorTestContext expiredActor = AggregateActorTestHelper.CreateActor(
-            stateManager: expiredState, trustedEffectErasureAuthority: authority);
+            stateManager: expiredState, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
         TrustedEffectAggregateErasure issued = await SignedErasureAsync(authority, identity);
         clock.Advance(issued.ExpiresAt - _now + TimeSpan.FromTicks(1));
 
@@ -658,12 +670,95 @@ public sealed class TrustedEffectJointOffboardingTests
         var aheadState = new FaultInjectingActorStateManager();
         ActorTestContext aheadActor = AggregateActorTestHelper.CreateActor(
             stateManager: aheadState,
-            trustedEffectErasureAuthority: new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now)));
+            trustedEffectErasureAuthority: new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now)),
+            trustedEffectAuditSink: audit);
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => aheadActor.Actor.EraseTrustedEffectEvidenceAsync(ahead));
 
         aheadState.Trace.ShouldBeEmpty();
+        await audit.Received(2).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "offboarding-erasure"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A consumed erasure capability is denied and the denial is audited.</summary>
+    [Fact]
+    public async Task ConsumedErasureCapabilityIsDeniedAndAudited()
+    {
+        (EffectIdentity identity, _) = TargetIdentity();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(
+            keys, new FakeTimeProvider(_now));
+        var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        ActorTestContext target = AggregateActorTestHelper.CreateActor(
+            stateManager: state, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
+        TrustedEffectAggregateErasure erasure = await SignedErasureAsync(authority, identity);
+        await target.Actor.EraseTrustedEffectEvidenceAsync(erasure);
+        audit.ClearReceivedCalls();
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => target.Actor.EraseTrustedEffectEvidenceAsync(erasure));
+
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "offboarding-erasure"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// A differing, validly signed fence replaces the earlier one and is audited as a replacement;
+    /// re-sending the identical fence appends no audit record.
+    /// </summary>
+    [Fact]
+    public async Task FenceReplacementIsAuditedAndIdenticalFenceIsNot()
+    {
+        (EffectIdentity identity, _) = TargetIdentity();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(
+            keys, new FakeTimeProvider(_now));
+        var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        ActorTestContext target = AggregateActorTestHelper.CreateActor(
+            stateManager: state, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
+        TrustedEffectAggregateErasure unsignedFence = TrustedEffectErasureInventory.Build(
+                identity.Tenant, [identity], _now.AddDays(-401), _now)
+            .Single(request => request.Aggregate == identity.TargetAggregate)
+            with { Purpose = TrustedEffectAggregateErasure.DeletionFencePurpose };
+        TrustedEffectAggregateErasure fence = unsignedFence with
+        {
+            Capability = await authority.IssueAsync(unsignedFence),
+        };
+        TrustedEffectAggregateErasure unsignedReplacement = unsignedFence with
+        {
+            InventoryDigest = "DIFFERENT-INVENTORY",
+        };
+        TrustedEffectAggregateErasure replacement = unsignedReplacement with
+        {
+            Capability = await authority.IssueAsync(unsignedReplacement),
+        };
+
+        await target.Actor.FenceTrustedEffectsAsync(fence);
+        await target.Actor.FenceTrustedEffectsAsync(fence);
+        await target.Actor.FenceTrustedEffectsAsync(replacement);
+
+        await audit.Received(2).AppendAsync(Arg.Any<TrustedEffectAuditRecord>(), Arg.Any<CancellationToken>());
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "deletion-fence"
+                && record.Disposition == "started"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "deletion-fence"
+                && record.Disposition == "replaced"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+        ((TrustedEffectDeletionFence)state.CreateCommittedView()[TrustedEffectDeletionFence.StateName])
+            .InventoryDigest.ShouldBe("DIFFERENT-INVENTORY");
     }
 
     private static (EffectIdentity Identity, AggregateIdentity Target) TargetIdentity()
