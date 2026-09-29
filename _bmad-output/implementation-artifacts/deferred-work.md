@@ -5127,3 +5127,22 @@ status: open
   summary: State the final disposition (retry or quarantine) of a carrier rejected for CR/LF/NUL header values.
   evidence: D19 (BH16-18). C1 makes such a carrier `DeliveryPinConflict` and forbids retaining the value in a pin or header image, but does not say whether it reaches C4 physical quarantine; with BH15-11 deferred it may retry indefinitely or be dead-lettered silently.
   status: open
+
+## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 17, owner routing bar)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Settle the `EventsStored` plus `Retryable=false` public-contract break through an approved breaking-change path at AD-13 approval or the Story 6.6 compatibility gate.
+  evidence: AA2 (pass 17). `PublicationRetryExhaustedHold` projects nonterminal `EventsStored` with `Retryable=false`, which `CommandStatusRecord.cs:19` and `docs/operations/drain-failure-reason-codes.md:27` define as "terminal". The design predates the pass-16 patch round; P1 only disclosed it. The frozen 6.5c "Always: preserve public compatibility" and the Epic 6 "approved migration/breaking-change path" rule cannot be met inside the documentation candidate.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Model C1's canonical `destinationId` recomputation at every destination-bearing record, not only the C03e accepted-delivery keys.
+  evidence: VG4, BH7 (pass 17). `compact_policy_member` (C08d), `ParentMemberChain` (C02b) and `Pin.create` (C02e) accept a display name such as `orders-destination`, and the C08d fixture uses a 1,024-byte destination that no derivation can produce (a canonical ID is 71 bytes). The C5 plan-time derivation has no vector. The prose rule is deterministic, so this is a model coverage gap outside the routing bar.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Keep a shared retained owner attachable after a capability change of the per-object overhead `o`, for example by comparing the stored charged amount or pinning `o` per owner.
+  evidence: EC11 (pass 17). `PublicationRetention.charge` compares `(kind, canonical_bytes + current o)` with the stored charge, so once `o` changes every later attach of an existing shared owner raises `Conflict` and the obligation cannot be added. The comparison predates the pass-16 patch round; adjacent to D3.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
+  summary: Align the C1 destination-configuration hash-mismatch outcome: the prose says it "holds", the C01c model raises `Conflict`.
+  evidence: BH6 (pass 17). `resolve_configuration` and `destination_id` raise `Conflict` for a reference content-hash or tag-`0e` mismatch, and the vectors assert `Conflict`, while C1 says "any hash mismatch holds before pin, send or evidence write". The sentence predates the pass-16 patch round.
+  status: open
