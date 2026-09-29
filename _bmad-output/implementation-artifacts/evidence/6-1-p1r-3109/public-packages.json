@@ -1,0 +1,595 @@
+{
+  "version": "3.109.0",
+  "tag": "v3.109.0",
+  "tag_commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f",
+  "release_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.109.0",
+  "release_published_at": "2026-09-26T11:31:17Z",
+  "release_asset_count": 14,
+  "packages": [
+    {
+      "id": "Hexalith.EventStore.Contracts",
+      "project": "src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.contracts/3.109.0/hexalith.eventstore.contracts.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.contracts/3.109.0.json",
+      "nuget_sha256": "38f8ab2f116b477a2b8588810ce6ef31d8155e6c6c4f4cbd9d2d8bf76e8d0952",
+      "nuget_size": 181667,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Contracts.3.109.0.nupkg",
+      "github_asset_sha256": "fcee6d53ff034c86730d5b8f2f9afb5aeb237da747dfbe898922e23001fbe699",
+      "github_asset_digest": "sha256:fcee6d53ff034c86730d5b8f2f9afb5aeb237da747dfbe898922e23001fbe699",
+      "github_asset_size": 168581,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:00.32+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.32.37/hexalith.eventstore.contracts.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Client",
+      "project": "src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.client/3.109.0/hexalith.eventstore.client.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.client/3.109.0.json",
+      "nuget_sha256": "0cf1b8142d2abc854625984da0ca91b74bec5948209e7dcd926e915e87ab96db",
+      "nuget_size": 224682,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Client.3.109.0.nupkg",
+      "github_asset_sha256": "10708d5566e6770947df088d1b0c795f103a286c16337454142b00b58727d65b",
+      "github_asset_digest": "sha256:10708d5566e6770947df088d1b0c795f103a286c16337454142b00b58727d65b",
+      "github_asset_size": 211596,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:02.163+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.33.19/hexalith.eventstore.client.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Server",
+      "project": "src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.server/3.109.0/hexalith.eventstore.server.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.server/3.109.0.json",
+      "nuget_sha256": "c77537fc6a96cb56413652bdee76375551fe2d2ce17a902a954bf6e5eb1016b6",
+      "nuget_size": 515902,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Server.3.109.0.nupkg",
+      "github_asset_sha256": "a49485911595dbbdd0b07470c2cbd251c1e78d7d635cd4fcc376dfb66813b17e",
+      "github_asset_digest": "sha256:a49485911595dbbdd0b07470c2cbd251c1e78d7d635cd4fcc376dfb66813b17e",
+      "github_asset_size": 502815,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:26:57.843+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.30.23/hexalith.eventstore.server.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.SignalR",
+      "project": "src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.signalr/3.109.0/hexalith.eventstore.signalr.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.signalr/3.109.0.json",
+      "nuget_sha256": "88f4ebd9c6f0e04eacd0b6d9ab9b8f47720548ca07146b6a800950751ff57049",
+      "nuget_size": 34182,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.SignalR.3.109.0.nupkg",
+      "github_asset_sha256": "585a4bf86a0ccdfdb83e5d61ef5d8ccc76639aafcee73a685a99641924a6afb7",
+      "github_asset_digest": "sha256:585a4bf86a0ccdfdb83e5d61ef5d8ccc76639aafcee73a685a99641924a6afb7",
+      "github_asset_size": 21095,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:04.213+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.30.23/hexalith.eventstore.signalr.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Testing",
+      "project": "src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing/3.109.0/hexalith.eventstore.testing.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.testing/3.109.0.json",
+      "nuget_sha256": "483f5fcaa876e810505f487f124e961864584bb7e3219d43bb4d6369eff5523a",
+      "nuget_size": 67982,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Testing.3.109.0.nupkg",
+      "github_asset_sha256": "37756e460f26cb3d3a3d8aefe17e76f48a50e32e49614cda136b7e0301cddbb9",
+      "github_asset_digest": "sha256:37756e460f26cb3d3a3d8aefe17e76f48a50e32e49614cda136b7e0301cddbb9",
+      "github_asset_size": 54896,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:26:59.25+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.31.09/hexalith.eventstore.testing.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Testing.Integration",
+      "project": "src/Hexalith.EventStore.Testing.Integration/Hexalith.EventStore.Testing.Integration.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing.integration/3.109.0/hexalith.eventstore.testing.integration.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.testing.integration/3.109.0.json",
+      "nuget_sha256": "68d6a18086bd5202d007badca08375bb7ff58dc078e773493402f50859d9d3f2",
+      "nuget_size": 77007,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Testing.Integration.3.109.0.nupkg",
+      "github_asset_sha256": "3cedf30faf52f22b75b60fb17290c785198d145cf5c819279bdb6f9cc5348d21",
+      "github_asset_digest": "sha256:3cedf30faf52f22b75b60fb17290c785198d145cf5c819279bdb6f9cc5348d21",
+      "github_asset_size": 63921,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:03.693+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.31.56/hexalith.eventstore.testing.integration.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Aspire",
+      "project": "src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.aspire/3.109.0/hexalith.eventstore.aspire.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-gz-semver2/hexalith.eventstore.aspire/3.109.0.json",
+      "nuget_sha256": "6f75d1323c7c119139e94af824fe0a8b2d0924fcdfdea83b8a71bed04ecfe9e4",
+      "nuget_size": 42996,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Aspire.3.109.0.nupkg",
+      "github_asset_sha256": "9538f723a7f8b75f30e8581e5ec30031dc4d144d0dbf8b2ec7e56a4ff689c980",
+      "github_asset_digest": "sha256:9538f723a7f8b75f30e8581e5ec30031dc4d144d0dbf8b2ec7e56a4ff689c980",
+      "github_asset_size": 29909,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:02.657+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.31.09/hexalith.eventstore.aspire.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.ServiceDefaults",
+      "project": "src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.servicedefaults/3.109.0/hexalith.eventstore.servicedefaults.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.servicedefaults/3.109.0.json",
+      "nuget_sha256": "ea6e05c09fd152d8b1431f4bc6703179e882506a4d8e604ab2d3fda57420b3a7",
+      "nuget_size": 38227,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.ServiceDefaults.3.109.0.nupkg",
+      "github_asset_sha256": "6e0da041c6b5c1a24a89d6478df61208bc760a1d6617cf6d0bfef324e947cdbd",
+      "github_asset_digest": "sha256:6e0da041c6b5c1a24a89d6478df61208bc760a1d6617cf6d0bfef324e947cdbd",
+      "github_asset_size": 25141,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:26:58.35+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.31.09/hexalith.eventstore.servicedefaults.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.DomainService",
+      "project": "src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.domainservice/3.109.0/hexalith.eventstore.domainservice.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.domainservice/3.109.0.json",
+      "nuget_sha256": "d92894ded0cf9279c4b6510adbe4ed0dd3f239c2d4df14a8a18c669c158aa5ac",
+      "nuget_size": 91778,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.DomainService.3.109.0.nupkg",
+      "github_asset_sha256": "f04d7bf2be3e1275d6458dda8faa8b93078eac4cd47dbd60c1bb25492b39b6c8",
+      "github_asset_digest": "sha256:f04d7bf2be3e1275d6458dda8faa8b93078eac4cd47dbd60c1bb25492b39b6c8",
+      "github_asset_size": 78692,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:26:59.723+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.30.23/hexalith.eventstore.domainservice.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.RestApi.Generators",
+      "project": "src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.restapi.generators/3.109.0/hexalith.eventstore.restapi.generators.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.restapi.generators/3.109.0.json",
+      "nuget_sha256": "0d76b503d353c4c518f83b0ae5ef0978509b6edd4195385a85267fe7a84fa193",
+      "nuget_size": 50016,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.RestApi.Generators.3.109.0.nupkg",
+      "github_asset_sha256": "f858dc95db76f9fb947bae2f5cd2efa868cfcc16f5a00d42c1b94d916bcc49e2",
+      "github_asset_digest": "sha256:f858dc95db76f9fb947bae2f5cd2efa868cfcc16f5a00d42c1b94d916bcc49e2",
+      "github_asset_size": 36930,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:00.747+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.31.09/hexalith.eventstore.restapi.generators.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Gateway",
+      "project": "src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.gateway/3.109.0/hexalith.eventstore.gateway.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.gateway/3.109.0.json",
+      "nuget_sha256": "9c5cbd73b46cfb27b0fb996adf49797acb81e658152622c80e6a50e9c323244f",
+      "nuget_size": 253126,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Gateway.3.109.0.nupkg",
+      "github_asset_sha256": "f0ce147d9cc23372e552477be5727c8bc1a42eb671d8573aefcc84e8f32d71d9",
+      "github_asset_digest": "sha256:f0ce147d9cc23372e552477be5727c8bc1a42eb671d8573aefcc84e8f32d71d9",
+      "github_asset_size": 240039,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:01.16+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.30.23/hexalith.eventstore.gateway.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Admin.Abstractions",
+      "project": "src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.abstractions/3.109.0/hexalith.eventstore.admin.abstractions.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.admin.abstractions/3.109.0.json",
+      "nuget_sha256": "ed626c1f89dc4da469037acacedad8f5956b4d6830f7b7315752f36d80227824",
+      "nuget_size": 130278,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Admin.Abstractions.3.109.0.nupkg",
+      "github_asset_sha256": "ede56f064590092034081d3ef8d02e818ee366d0caff1b25e48848c601eec827",
+      "github_asset_digest": "sha256:ede56f064590092034081d3ef8d02e818ee366d0caff1b25e48848c601eec827",
+      "github_asset_size": 117192,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:01.64+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.31.09/hexalith.eventstore.admin.abstractions.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Admin.Cli",
+      "project": "src/Hexalith.EventStore.Admin.Cli/Hexalith.EventStore.Admin.Cli.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.cli/3.109.0/hexalith.eventstore.admin.cli.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.admin.cli/3.109.0.json",
+      "nuget_sha256": "67a6613eea5c664e537c647ee841aeadbdda827349b218ebf98afad63e9ee2cf",
+      "nuget_size": 704714,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Admin.Cli.3.109.0.nupkg",
+      "github_asset_sha256": "eb857929b90faf9c73323b48cf45f540ba90d19f3329ade9fd377f3159f6b6e7",
+      "github_asset_digest": "sha256:eb857929b90faf9c73323b48cf45f540ba90d19f3329ade9fd377f3159f6b6e7",
+      "github_asset_size": 691627,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:27:03.257+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.31.56/hexalith.eventstore.admin.cli.3.109.0.json"
+    },
+    {
+      "id": "Hexalith.EventStore.Admin.Server",
+      "project": "src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj",
+      "nuget_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.server/3.109.0/hexalith.eventstore.admin.server.3.109.0.nupkg",
+      "registration_url": "https://api.nuget.org/v3/registration5-semver1/hexalith.eventstore.admin.server/3.109.0.json",
+      "nuget_sha256": "9d68787cb700f2de270a3dfd05c5404fbd2132f4b2341abb990245bdb3f534f5",
+      "nuget_size": 191387,
+      "nuget_signed_archive_extra_entries": [
+        ".signature.p7s"
+      ],
+      "github_asset_url": "https://github.com/Hexalith/Hexalith.EventStore/releases/download/v3.109.0/Hexalith.EventStore.Admin.Server.3.109.0.nupkg",
+      "github_asset_sha256": "6f0574b3b2786a879aa88754bb5ab9f296a1d4ff34e15e7c0359477388ec5551",
+      "github_asset_digest": "sha256:6f0574b3b2786a879aa88754bb5ab9f296a1d4ff34e15e7c0359477388ec5551",
+      "github_asset_size": 178300,
+      "same_unsigned_payload": true,
+      "differing_shared_entries": [],
+      "nuget_version": "3.109.0",
+      "nuget_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "github_repository": {
+        "type": "git",
+        "url": "https://github.com/Hexalith/Hexalith.EventStore",
+        "commit": "818e28a8af421994e4f77e66327dc33a8c67ca5f"
+      },
+      "registration_published": "2026-09-26T11:26:58.787+00:00",
+      "catalog_entry_url": "https://api.nuget.org/v3/catalog0/data/2026.09.26.11.29.39/hexalith.eventstore.admin.server.3.109.0.json"
+    }
+  ],
+  "observed_at_utc": "2026-09-29T16:38:26Z",
+  "release_manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+  "release_manifest_current_checkout": {
+    "checkout": "489e5d76253f68c6cf53c443aa8755ad059e621e",
+    "sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+    "unchanged_since_tag": true,
+    "command": "git diff --quiet v3.109.0 489e5d76253f68c6cf53c443aa8755ad059e621e -- tools/release-packages.json",
+    "exit_code": 0
+  },
+  "release_workflow_run": {
+    "id": 36238526310,
+    "url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/36238526310",
+    "workflow": ".github/workflows/release.yml",
+    "event": "workflow_dispatch",
+    "head_sha": "818e28a8af421994e4f77e66327dc33a8c67ca5f",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "verify_source_job_id": 108394631248,
+    "publish_job_id": 108394643289,
+    "validation_bypass": {
+      "input": "bypass-validation",
+      "observed_env": "BYPASS_VALIDATION: true",
+      "evidence": "job 108394631248 log (step env) and job 108394643289 log (SOURCE_CI_WORKFLOW and HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: commitlint.yml)",
+      "effect": "release.yml at v3.109.0 maps bypass-validation=true to source_ci_workflow=commitlint.yml, so the exact-source proof required a successful push Commitlint run instead of a successful push CI run",
+      "source_proof_workflow": "commitlint.yml",
+      "source_proof_run_id": 36237813667,
+      "source_proof_run_conclusion": "success",
+      "green_ci_proof": false,
+      "disposition": "open-eventstore-owner-disposition"
+    },
+    "ci_source_run_id": 36237813667,
+    "ci_source_workflow": "commitlint.yml",
+    "release_evidence_artifact_name": "release-evidence-36238526310-1",
+    "release_evidence_artifact_id": 10905232490,
+    "release_evidence_artifact_digest": "sha256:cc9677ed56933e1adeef960fd3a3d3a9d3d8c5cf38e573a927e3d96c9188393b",
+    "release_evidence_artifact_sha256": "cc9677ed56933e1adeef960fd3a3d3a9d3d8c5cf38e573a927e3d96c9188393b",
+    "publication_identity_path": "3.109.0/preflight/publication-identity.json",
+    "publication_identity_sha256": "b81cdb3aa37296b705e3a4191047480955789b286c3e446da083f941b43b49dd",
+    "publication_identity_manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+    "publication_identity_package_count": 14,
+    "builds_execution_sha": "22a578b576a515d2af214fe81859447fffc97981"
+  },
+  "tag_ci_run": {
+    "id": 36237813612,
+    "url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/36237813612",
+    "workflow": ".github/workflows/ci.yml",
+    "event": "push",
+    "head_sha": "818e28a8af421994e4f77e66327dc33a8c67ca5f",
+    "conclusion": "failure",
+    "failed_job": {
+      "id": 108392695564,
+      "name": "ci / contracts"
+    },
+    "passed_jobs": [
+      "ci / build-and-test",
+      "ci / semantic-release-governance",
+      "ci / tenants-source-mode"
+    ],
+    "skipped_jobs": [
+      "ci / aspire-tests",
+      "ci / performance-tests"
+    ],
+    "contracts_test_summary": {
+      "total": 2129,
+      "failed": 3,
+      "succeeded": 2126,
+      "skipped": 0,
+      "exit_code": 2
+    },
+    "failed_tests": [
+      {
+        "name": "Hexalith.EventStore.Contracts.Tests.Packaging.Oq8PlatformClosureTests.CheckedInRepositoryFullValidationPassesWithoutMutation",
+        "message": "OQ8 evidence validation failed: Story 4.15 v5 reviewed packet, selector, or lifecycle validation failed"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts.Tests.Packaging.Oq8V5CandidateTests.V5SubjectPacketRemainsInactiveAndRejectsChangedInputs",
+        "message": "oq8-v5-packet: V5 source tree changed outside reviewed evidence and selector"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts.Tests.Packaging.Oq8V5CandidateTests.V5DraftValidatorRejectsAuthorityAndSourceMutations",
+        "message": "oq8-v5-packet: V5 source tree changed outside reviewed evidence and selector"
+      }
+    ],
+    "classification": "Story 4.15 OQ8 v5 evidence-governance tests in the Contracts test project; not a library runtime test",
+    "disposition": "open-eventstore-owner-disposition; green tag CI is absent"
+  },
+  "nuget_signature_verification": {
+    "command": "dotnet nuget verify --all /var/tmp/eventstore-3109-gather/signed/*.nupkg --verbosity minimal",
+    "exit_code": 0,
+    "package_count": 14,
+    "signature_type": "Repository",
+    "subject": "CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond, S=Washington, C=US",
+    "certificate_sha256": "1F4B311D9ACC115C8DC8018B5A49E00FCE6DA8E2855F9F014CA6F34570BC482D"
+  },
+  "independent_consumer": {
+    "sdk": "10.0.401",
+    "source": "https://api.nuget.org/v3/index.json",
+    "source_config": "consumer/NuGet.Config",
+    "central_package_management": "disabled in fixture",
+    "fresh_package_cache": "/var/tmp/eventstore-3109-replay/packages",
+    "library_package_count": 13,
+    "resolved_eventstore_libraries": 13,
+    "resolved_project_libraries": 0,
+    "restored_archive_hashes_match_nuget_sha256": 13,
+    "restore_exit_code": 0,
+    "restore_elapsed_seconds": 18.54,
+    "release_build_exit_code": 0,
+    "build_warnings": 0,
+    "build_errors": 0,
+    "scoped_api_compile_count": 7,
+    "dotnet_tool_id": "Hexalith.EventStore.Admin.Cli",
+    "tool_install_exit_code": 0,
+    "tool_help_exit_code": 0,
+    "tool_version_output": "3.109.0+818e28a8af421994e4f77e66327dc33a8c67ca5f",
+    "tool_archive_sha256": "67a6613eea5c664e537c647ee841aeadbdda827349b218ebf98afad63e9ee2cf",
+    "fresh_tool_package_cache": "/var/tmp/eventstore-3109-replay/tool-packages",
+    "fixture_sha256": {
+      "Consumer.csproj": "6591f48d248145986f59d268a07fe0e2e93221897f5c34f305cef1800b06b22e",
+      "PublishedApiSmoke.cs": "094c5eca45461694cb8cb007aea968af84b18ad05d544392b9a69e38a252c5ae",
+      "NuGet.Config": "288e7ea6a4e6262902d19228109822b09383dfc751d9b182b4eb67b08089c3fc"
+    },
+    "verified_in_place_on": "2026-09-29",
+    "restore_command": "DOTNET_CLI_HOME=/var/tmp/eventstore-3109-replay/dotnet-home NUGET_PACKAGES=/var/tmp/eventstore-3109-replay/packages dotnet restore Consumer.csproj --configfile NuGet.Config --disable-parallel --no-http-cache -p:NuGetAudit=false",
+    "build_command": "DOTNET_CLI_HOME=/var/tmp/eventstore-3109-replay/dotnet-home NUGET_PACKAGES=/var/tmp/eventstore-3109-replay/packages dotnet build Consumer.csproj --no-restore --configuration Release -warnaserror -p:NuGetAudit=false",
+    "tool_install_command": "DOTNET_CLI_HOME=/var/tmp/eventstore-3109-replay/dotnet-home NUGET_PACKAGES=/var/tmp/eventstore-3109-replay/tool-packages dotnet tool install Hexalith.EventStore.Admin.Cli --version 3.109.0 --tool-path /var/tmp/eventstore-3109-replay/tool --configfile NuGet.Config",
+    "tool_help_command": "/var/tmp/eventstore-3109-replay/tool/eventstore-admin --help",
+    "tool_version_command": "/var/tmp/eventstore-3109-replay/tool/eventstore-admin --version"
+  },
+  "candidate_builds": "the committed Projects Builds gitlink (a descendant of 85ca19bc99b137f0825d6a441199164653f537e9); exact SHA recorded in the Projects owner packet",
+  "builds_qualification_boundary": "Release run 36238526310 executed Builds 22a578b576a515d2af214fe81859447fffc97981. git merge-base --is-ancestor 22a578b5 85ca19bc exited 0 (184 commits later), so the candidate Builds is a later descendant; Github/publish-containers differs between the two revisions and the release did not qualify the candidate Builds with this tag. The candidate Builds revision requires independent qualification and owner acceptance.",
+  "newer_checkout_observation": {
+    "sha": "489e5d76253f68c6cf53c443aa8755ad059e621e",
+    "tag_ahead_commit_count": 28,
+    "changed_source_paths": 22,
+    "added_source_paths": 9,
+    "modified_source_paths": 13,
+    "deleted_source_paths": 0,
+    "release_manifest_unchanged": true,
+    "scoped_api_files_identical_across_3_106_0_3_108_1_3_109_0_and_head": 7,
+    "storage_record_blobs_identical_v3_70_1_to_head": [
+      "src/Hexalith.EventStore.Server/Events/EventEnvelope.cs",
+      "src/Hexalith.EventStore.Server/Events/SnapshotRecord.cs",
+      "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs"
+    ],
+    "storage_record_changed_after_tag": {
+      "path": "src/Hexalith.EventStore.Server/Events/AggregateMetadata.cs",
+      "blob_v3_70_1_to_v3_109_0": "8c55205276890385d3725a18f78671b78871b4c6",
+      "blob_head": "30a032ab60722f1904e0a98f47c36eee1d459031",
+      "change": "adds optional positional parameter RetainedFloor (default 1) to the persisted AggregateMetadata record"
+    },
+    "interface_changes_after_tag": [
+      "IAggregateActor adds FenceTrustedEffectsAsync, GetRetainedFloorAsync and EraseTrustedEffectEvidenceAsync",
+      "IIdempotencyTenantLifecycleActor adds CompleteTrustedEffectAsync",
+      "ITrustedEffectRetentionGate adds CompleteAsync",
+      "ITrustedEffectJointRetentionPolicy.EraseTenantAsync gains a required TrustedEffectAggregateErasure[] parameter"
+    ],
+    "source_breaking_for_implementers": true
+  },
+  "public_archive_replay": {
+    "command": "python3 verify_public_packages.py",
+    "working_directory": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109",
+    "exit_code": 0,
+    "result": "PASS: 14 public packages match recorded hashes, tagged source metadata, release assets, ZIP payloads, signatures, and manifest contract",
+    "verified_on": "2026-09-29"
+  }
+}

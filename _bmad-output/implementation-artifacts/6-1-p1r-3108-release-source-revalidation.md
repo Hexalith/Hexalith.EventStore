@@ -31,3 +31,13 @@ The scoped diff is zero for these seven files, including `QueryCursorScope`. Sep
 The previously accepted Projects tuple remains EventStore `3.106.0` / `v3.106.0` / `76051c70cbf868c40edc00ca0344fa5bd8879b69` with Builds `ad52f350a2f0bc47849179ae17b4594dafff5363`. Its rollback remains EventStore `3.70.1` / `v3.70.1` / `f13f9925fdca53efa2ab8c90d396ab106f91bb9c` with Builds `7af20f8bafbfe561df6f7705913a0800603090b5`.
 
 **Pending EventStore Owner decision:** confirm that the tagged source and `3.108.1` package family are the exact source/package coordinates to offer for a new P1R decision, and state how the later checkout's changes affect compatibility evidence. No four-role acceptance or G-6 approval is recorded here.
+
+## Later evidence and supersession (added 2026-09-29)
+
+This record reflects the `8ac62359` checkout and its 43 changed source paths only. Later observations were recorded elsewhere, and this record was not updated at the time:
+
+- The [3.108.1 public-package evidence](evidence/6-1-p1r-3108/README.md) and its [public-packages.json](evidence/6-1-p1r-3108/public-packages.json) replayed all 14 published archives. They also recorded the later checkouts `a1dd24f8` (53 commits) and `1cc6b44b` (55 commits after `v3.108.1`), together with the [bounded 3.108.1 to 3.70.1 rollback rehearsal](evidence/6-1-p1r-3108/rollback-probe/README.md).
+- On 2026-09-29, the owner retargeted the pending Projects P1R candidate to EventStore `3.109.0` (tag `v3.109.0`, `818e28a8af421994e4f77e66327dc33a8c67ca5f`). The `3.108.1` candidate is **superseded** and no longer the pending candidate. This record and the 3.108.1 evidence folder are kept unchanged as history.
+- The current candidate evidence is in [evidence/6-1-p1r-3109/README.md](evidence/6-1-p1r-3109/README.md), with [public-packages.json](evidence/6-1-p1r-3109/public-packages.json) and its [rollback rehearsal](evidence/6-1-p1r-3109/rollback-probe/README.md). It covers the 14-ID public replay, the `BYPASS_VALIDATION` release, the failing tag CI, and the drift from the tag to checkout `489e5d76253f68c6cf53c443aa8755ad059e621e`.
+
+No acceptance is inferred from this link.
