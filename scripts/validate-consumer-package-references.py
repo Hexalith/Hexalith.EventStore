@@ -94,6 +94,7 @@ def write_consumer_project(
         "Hexalith.EventStore.Contracts": textwrap.dedent("""\
             using Hexalith.EventStore.Contracts.Streams;
             using Hexalith.EventStore.Contracts.Effects;
+            using Hexalith.EventStore.Contracts.Reminders;
 
             var effectIdentity = new EffectIdentity("tenant-a", "widget", "source-1", 1,
                 EffectKindCatalog.DateResume, "widget", "item-1", 0);
@@ -107,6 +108,23 @@ def write_consumer_project(
                 || provenance.Workload != "synthetic-worker")
                 throw new InvalidOperationException("Trusted effect public identity API changed.");
 
+            var reminderIntent = new ReminderIntent("tenant-a", "widget", "item-1",
+                new DateTimeOffset(2026, 10, 1, 9, 30, 0, TimeSpan.Zero), EffectKindCatalog.DateResume,
+                "widget.resume.v1", [1], "widget", "item-1", 1, 1);
+            string reminderActor = ReminderIdentityCodec.ComputeActorId(reminderIntent);
+            string reminderName = ReminderIdentityCodec.ComputeReminderName(reminderIntent);
+            if (ReminderIdentityCodec.Version != 1
+                || reminderActor != "wra-HZT1ANXRJ95M9MPNEVPJYRE4QS912QRKTCMEZWE0EBFQK015G1WG"
+                || reminderName != "date-wrs-AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0"
+                || !ReminderIdentityCodec.TryParseReminderName(reminderName, out string reminderKind, out _)
+                || reminderKind != EffectKindCatalog.DateResume
+                || !ReminderIdentityCodec.Rederives("tenant-a", "item-1", EffectKindCatalog.DateResume,
+                    reminderIntent.DueUtc, 1, reminderActor, reminderName)
+                || ReminderIdentityCodec.IsSupportedKind(EffectKindCatalog.CascadeCancel)
+                || new ReminderConvergenceResult(1, 0, 0, 0, 0).Armed != 1
+                || ReminderDisposition.Submitted == ReminderDisposition.Stale)
+                throw new InvalidOperationException("Typed reminder identity API changed.");
+
             var request = new StreamReadRequest("tenant-a", "widget", "item-1");
             var page = new StreamReadPage("tenant-a", "widget", "item-1", [],
                 new StreamReadMetadata(0, null, null, 0, 0, false, null));
@@ -116,7 +134,9 @@ def write_consumer_project(
         "Hexalith.EventStore.Client": textwrap.dedent("""\
             using Hexalith.EventStore.Client.Projections;
             using Hexalith.EventStore.Client.Effects;
+            using Hexalith.EventStore.Client.Reminders;
             using Hexalith.EventStore.Contracts.Effects;
+            using Hexalith.EventStore.Contracts.Reminders;
             using System.Text.Json;
 
             var syntheticIdentity = new EffectIdentity("tenant-a", "widget", "source-1", 1,
@@ -183,7 +203,36 @@ def write_consumer_project(
                 || (await coordinator.GetStatusAsync(bounded)).PendingDeliveryCount != 128)
                 throw new InvalidOperationException("The bounded journal accepted an over-limit position.");
 
+            IReminderIntentSource reminderSource = new SyntheticReminderSource();
+            IReadOnlyList<ReminderIntent> reminderIntents = await reminderSource.GetCurrentIntentsAsync(
+                new ReminderTarget("tenant-a", "widget", "item-1"));
+            ReminderCommand reminderCommand = reminderSource.TranslateDueIntent(reminderIntents[0]);
+            IReminderDelegationTokenProvider reminderTokens = new SyntheticReminderTokens();
+            string? reminderToken = await reminderTokens.GetDelegationTokenAsync(new ReminderDelegationRequest(
+                new TrustedEffectSubmission(syntheticIdentity, reminderCommand.CommandType, reminderCommand.Payload,
+                    syntheticMessage, syntheticMessage),
+                "synthetic-worker", "synthetic-date-resume", ReminderIdentityCodec.ComputeReminderName(reminderIntents[0])));
+            if (reminderIntents.Count != 1 || reminderCommand.CommandType != "ResumeWidget"
+                || reminderToken != "synthetic-delegation" || typeof(IReminderRegistrar).GetMethod("ConvergeAsync") is null)
+                throw new InvalidOperationException("Typed reminder SDK API changed.");
+
             record Counter(int Value);
+
+            sealed class SyntheticReminderSource : IReminderIntentSource {
+                public Task<IReadOnlyList<ReminderIntent>> GetCurrentIntentsAsync(ReminderTarget target,
+                    CancellationToken cancellationToken = default)
+                    => Task.FromResult<IReadOnlyList<ReminderIntent>>([new ReminderIntent(target.Tenant, target.Domain,
+                        target.Aggregate, new DateTimeOffset(2026, 10, 1, 9, 30, 0, TimeSpan.Zero),
+                        EffectKindCatalog.DateResume, "widget.resume.v1", [1], target.Domain, target.Aggregate, 1, 1)]);
+
+                public ReminderCommand TranslateDueIntent(ReminderIntent intent) => new("ResumeWidget", intent.Payload);
+            }
+
+            sealed class SyntheticReminderTokens : IReminderDelegationTokenProvider {
+                public Task<string?> GetDelegationTokenAsync(ReminderDelegationRequest request,
+                    CancellationToken cancellationToken = default)
+                    => Task.FromResult<string?>(request.Purpose == "synthetic-date-resume" ? "synthetic-delegation" : null);
+            }
 
             sealed class SyntheticEffectHandler : HttpMessageHandler {
                 protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
@@ -258,14 +307,63 @@ def write_consumer_project(
             }
             """),
         "Hexalith.EventStore.DomainService": textwrap.dedent("""\
+            using Dapr.Actors.Runtime;
+            using Hexalith.EventStore.Client.Reminders;
+            using Hexalith.EventStore.Contracts.Effects;
             using Hexalith.EventStore.Contracts.Projections;
+            using Hexalith.EventStore.Contracts.Reminders;
             using Hexalith.EventStore.DomainService;
+            using Microsoft.Extensions.Configuration;
             using Microsoft.Extensions.DependencyInjection;
+            using Microsoft.Extensions.Diagnostics.HealthChecks;
+            using Microsoft.Extensions.Options;
 
             var request = new ProjectionRequest("tenant-a", "widget", "item-1", []);
             using var provider = new ServiceCollection().BuildServiceProvider();
             if (DomainProjectionDispatcher.Project(provider, request) is not null)
                 throw new InvalidOperationException("An unregistered projection route was admitted.");
+
+            var reminderServices = new ServiceCollection();
+            reminderServices.AddLogging();
+            reminderServices.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(
+                new Dictionary<string, string?> {
+                    ["EventStore:Reminders:ActorTypeName"] = "WidgetReminderActor",
+                    ["EventStore:Reminders:Workload"] = "widget-service",
+                    ["EventStore:Reminders:Purposes:" + EffectKindCatalog.DateResume] = "synthetic-date-resume",
+                }).Build());
+            reminderServices.AddDaprClient();
+            reminderServices.AddEventStoreReminders<SyntheticReminderSource>();
+            using (ServiceProvider reminderProvider = reminderServices.BuildServiceProvider()) {
+                IReminderRegistrar registrar = reminderProvider.GetRequiredService<IReminderRegistrar>();
+                ActorRuntimeOptions actorOptions = reminderProvider.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
+                HealthCheckServiceOptions health = reminderProvider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value;
+                EventStoreReminderOptions reminderOptions = reminderProvider
+                    .GetRequiredService<IOptions<EventStoreReminderOptions>>().Value;
+                if (!actorOptions.Actors.Any(registration => registration.Type.ActorTypeName == "WidgetReminderActor"
+                        && registration.Type.ImplementationType == typeof(ReminderActor))
+                    || !health.Registrations.Any(registration => registration.Name
+                        == EventStoreDomainTelemetry.RemindersUnresolvedHealthCheckName
+                        && registration.Tags.Contains("ready"))
+                    || reminderOptions.Purposes[EffectKindCatalog.DateResume] != "synthetic-date-resume")
+                    throw new InvalidOperationException("Typed reminder runtime registration changed.");
+                bool rejected = false;
+                try {
+                    await registrar.ConvergeAsync(new ReminderTarget("Tenant-A", "widget", "item-1"));
+                }
+                catch (ArgumentException) {
+                    rejected = true;
+                }
+                if (!rejected)
+                    throw new InvalidOperationException("A non-canonical reminder target was admitted.");
+            }
+
+            sealed class SyntheticReminderSource : IReminderIntentSource {
+                public Task<IReadOnlyList<ReminderIntent>> GetCurrentIntentsAsync(ReminderTarget target,
+                    CancellationToken cancellationToken = default)
+                    => Task.FromResult<IReadOnlyList<ReminderIntent>>([]);
+
+                public ReminderCommand TranslateDueIntent(ReminderIntent intent) => new("ResumeWidget", intent.Payload);
+            }
             """),
     }
     (consumer_dir / "ConsumerProbe.cs").write_text(
@@ -397,11 +495,27 @@ def validate_dotnet_tool_package(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package_directory", help="Directory containing manifest-built .nupkg files.")
+    parser.add_argument(
+        "--package",
+        action="append",
+        default=[],
+        metavar="PACKAGE_ID",
+        help=(
+            "Run only this package's consumer probe; repeatable. The whole inventory is "
+            "still validated, and an id outside the manifest is an error."
+        ),
+    )
     args = parser.parse_args()
 
     package_dir = pathlib.Path(args.package_directory)
     package_path = package_dir if package_dir.is_absolute() else ROOT / package_dir
     packages, version = validate_package_directory(package_path)
+    selected = set(args.package)
+    unknown = sorted(selected - {package.package_id for package in packages})
+    if unknown:
+        raise ValueError("Requested packages are not in the release inventory: " + ", ".join(unknown))
+    if selected:
+        packages = [package for package in packages if package.package_id in selected]
     # Route on the manifest tool contract, not on the archive's own <packageTypes>:
     # a library archive that declared DotnetTool would otherwise skip the
     # restore/build proof entirely and only be installed as a tool.
