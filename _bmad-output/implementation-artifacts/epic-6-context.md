@@ -16,6 +16,7 @@ Keep long-lived event streams operable as they grow. Folded snapshots and projec
 - Story 6.5a: Event Contract, Writer, and Migration Evidence Spec
 - Story 6.5b: Verified Read, Replay, and Projection Spec
 - Story 6.5c: Publication, Subscription, and Rollout Spec
+- Story 6.5d: Hold Lifecycle, Resume, and Legacy Admission Spec
 - Story 6.6: Event Versioning And Upcasting Implementation
 
 ## Requirements & Constraints
@@ -44,4 +45,4 @@ Keep long-lived event streams operable as they grow. Folded snapshots and projec
 ## Cross-Story Dependencies
 
 - The snapshot, projection, and event-evolution implementation slices each require their own approved specification. Projection optimization preserves the production-path correctness established by earlier projection stories; snapshot work does not depend on the optional protection engine.
-- Stories 6.5a, 6.5b, and 6.5c provide reviewed candidates for one normative Story 6.5 artifact. The writer/identity contract feeds verified reads; both feed publication and rollout. Story 6.5 must close the review findings and obtain exact-content human approval before Story 6.6 can start.
+- Stories 6.5a, 6.5b, 6.5c, and 6.5d provide reviewed candidates for one normative Story 6.5 artifact. The writer/identity contract feeds verified reads; both feed publication and rollout; 6.5d designs the hold, resume, capacity, and legacy-admission mechanisms the first three left to integration. Story 6.5 splices and cites the four candidates without inventing mechanisms, closes the review findings, and obtains exact-content human approval before Story 6.6 can start.
