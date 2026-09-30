@@ -4947,35 +4947,35 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The 6.5a integration handoff omits the codec-02 ActorBundleReadbackHash preimage change.
   evidence: Candidate [A5, step 8](spec-6-5a-event-contract-writer-and-migration-evidence.md#a5-complete-acyclic-intent-and-post-save-commit-proof) replaces the draft's codec-01 preimage (`spec-event-versioning-upcasting.md:331`, referenced at 118/360/370) that the batch root stores, but the [Integration handoff](spec-6-5a-event-contract-writer-and-migration-evidence.md#integration-handoff) lists only the codec-02 certificate/receipt for 6.5b. Reconcile during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-07] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Six new typed outcomes proposed by the 6.5a candidate are not enumerated as additions to the draft outcome set.
   evidence: `CommandIdentityConflict`, `AppendPreparationStale`, `CommandOutcomeHold`, `MetadataLimit`, `EventIdentityMismatch` and `UnknownEventContract` occur in the candidate but not in `spec-event-versioning-upcasting.md`. Neither the [A9 table](spec-6-5a-event-contract-writer-and-migration-evidence.md#a9-failure-cancellation-and-ordered-migration) nor the [Integration handoff](spec-6-5a-event-contract-writer-and-migration-evidence.md#integration-handoff) lists them for draft §8. Reconcile during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-40] in `spec-event-versioning-upcasting.md` §8.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The outcome-head predecessor/CAS-preparation evidence record has no codec, key or cap.
   evidence: Candidate [A8, Complete publication observations](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations), in the latest-pointer paragraph, makes recovery of revision `r+1` before the head CAS depend on "durable CAS-preparation evidence binding predecessor key/revision/hash", but defines no record name, key, fields or size bound. Specify it during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-08] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The K02/K07 known-answer fixtures use marker state keys that do not follow the stated key derivations.
   evidence: [K02/K07, Local codec known-answer vectors](spec-6-5a-event-contract-writer-and-migration-evidence.md#local-codec-known-answer-vectors) stage `batch-member-root:op` instead of `batch-member-root:` plus ScopeOpHash ([A5 key derivation](spec-6-5a-event-contract-writer-and-migration-evidence.md#a5-complete-acyclic-intent-and-post-save-commit-proof)), and `aggregate-operation-result:op` instead of the draft's hashed key (`spec-event-versioning-upcasting.md:336`), respectively. The fixed hashes freeze those keys, and the local-vector preamble disclaims only the marker after-images. Regenerate or disclaim during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-01 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Candidate A3 restates the V1 64 MiB/event and 128 MiB scratch limits that open BH37-4 contests, without marking them provisional.
   evidence: `story-6-5-review-triage.md:549` (BH37-4) shows one 64 MiB legacy event plus 64 MiB prior state exhausts 128 MiB scratch. The [Integration handoff](spec-6-5a-event-contract-writer-and-migration-evidence.md#integration-handoff) routes BH37-4 to integration, but [A3, boundary ceiling table](spec-6-5a-event-contract-writer-and-migration-evidence.md#a3-bounded-producer-and-whole-response-ingress) presents the numbers as settled inputs for 6.5b.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-38] in `spec-event-versioning-upcasting.md` §8.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Case variants of the writerMode/registryFingerprint negotiation property names are unspecified.
   evidence: Candidate [A2, negotiation rules](spec-6-5a-event-contract-writer-and-migration-evidence.md#a2-canonical-metadata-registry-and-compatibility) does not explicitly reject a wrong-case `WriterMode`/`RegistryFingerprint` in V1 mode, and [K06 `negotiated`](spec-6-5a-event-contract-writer-and-migration-evidence.md#local-codec-known-answer-vectors) treats it as implicit V1. The authenticated capability comparison still prevents a V2 downgrade. Clarify during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-03] in `spec-event-versioning-upcasting.md` §2.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: A failed publication observation row at an unchanged attempt can swap its failure receipt.
   evidence: [K09 `reduce_set`](spec-6-5a-event-contract-writer-and-migration-evidence.md#local-codec-known-answer-vectors) requires only that a same-attempt failed row stays failed, and [A8, complete-vector reduction](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations) does not state that a failed row is immutable for its attempt. Clarify during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-11] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The 6.5a recovery-token and retry-lifetime numbers are grounded but uncited.
   evidence: The "one 30-second attempt" in [A9, caller cancellation](spec-6-5a-event-contract-writer-and-migration-evidence.md#a9-failure-cancellation-and-ordered-migration) matches `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:2142`, and "at least 24 hours" in [A8, retry retention](spec-6-5a-event-contract-writer-and-migration-evidence.md#existing-retry-and-status-integration) matches the draft command-continuation budget (`spec-event-versioning-upcasting.md:383`), but neither source is cited. Add citations during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-02 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 
 
 ## Deferred from: Story 6.5a resumed build review (2026-09-27)
@@ -4983,11 +4983,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Specify the authenticated preparation-write evidence contract required to recover response preparation from Rendering with both output blobs.
   evidence: BH4-3 identifies [A8, Fenced first-response preparation, step 3](spec-6-5a-event-contract-writer-and-migration-evidence.md#fenced-first-response-preparation): authenticate which fenced owner wrote both response/outcome records, without a complete record schema, deterministic key, concrete cap or cross-reference contract. Missing authority already yields CommandOutcomeHold; Story 6.5 integration with 6.5c must define interoperable evidence before runtime readiness. The separate outcome-head predecessor/CAS evidence omission is already recorded and remains open.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-09] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: Reconcile per-attempt private publication failure with the permanent public PublishFailed contract during Story 6.5/6.5c integration.
   evidence: BH4-2 identified that [A8, Complete publication observations](spec-6-5a-event-contract-writer-and-migration-evidence.md#complete-publication-observations) permits later attempts after private failed, while CommandStatus and CommandStatusController make PublishFailed terminal and tell clients to stop polling. Under the pass-5 decision, the candidate deterministically holds status inspection of an unmapped private failed head; first POST replies remain publication-independent, and failed observations create ordinary private revisions/head transitions, including revision zero and its first pin (A10 V13/V20/V22/V23). Append truth and original pins remain intact. Integration must define the exact terminality evidence, existing public fields/polling semantics and permitted transitions before that mapping can become ready.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-10] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 
 ## Deferred from: code review of spec-6-5a-event-contract-writer-and-migration-evidence-2.md (2026-09-27, pass 5)
@@ -4995,7 +4995,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The tenant-wide one-scope-per-execution-MessageId rule (A8 "Explicit Review-32 replacement") has no retention horizon and no legacy coverage.
   evidence: The only enforcing record is the `required`-class `command-execution-scope:` lookup, retained only "through all retry/status obligations". Legacy executions have only the 24 h advisory `CommandStatusConstants.BuildKey` row and the `SubmitCommandHandler` archive check, which compares MessageId/CommandType but not scope. Same-tenant cross-scope reuse after reclamation, or after a legacy admission, is admitted or rejected depending on reclamation timing. Story 6.5 integration must state the uniqueness horizon (or retain a compact tenant/MessageId tombstone) and the legacy coverage.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-12] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 
 ## Deferred from: Story 6.5a pass-5 patch completion review (2026-09-27)
@@ -5011,7 +5011,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5a-event-contract-writer-and-migration-evidence-2.md`
   summary: The tenant/execution-MessageId scope lookup key hashes non-canonical tenant and MessageId strings.
   evidence: Candidate [A8, Existing retry and status integration](spec-6-5a-event-contract-writer-and-migration-evidence.md#existing-retry-and-status-integration) keys `command-execution-scope:` on SHA-256(`U tenant || U executionMessageId`) with no canonicalization or rejection of non-canonical forms. Case or Unicode variants of one logical tenant or ULID MessageId could therefore bind two lookup keys, and so two scopes, despite create-if-absent. Pre-existing: the same inputs feed ScopeOpHash and the current `CommandStatusConstants.BuildKey(tenantId, messageId)`, and tenant canonical form is an open architecture-level gap. Reconcile during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-13] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 
 ## Deferred from: code review of spec-6-5b-verified-read-replay-and-projection-2.md (2026-09-27)
@@ -5019,7 +5019,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5b-verified-read-replay-and-projection-2.md`
   summary: After v2 activation, existing full-replay projections on long streams hold readiness where today they work.
   evidence: Candidate [B7](spec-6-5b-verified-read-replay-and-projection.md#b7-projection-capability-durable-checkpoint-and-named-query-visibility) treats routes without a `5a` row as legacy full-replay, whose complete input is bounded by the draft §8 legacy complete array (`spec-event-versioning-upcasting.md:381`: 256 MiB accounting at 8,192 B/event, so at most about 32,768 events, or 64 MiB readable, whichever first). Otherwise it holds readiness. `ProjectionUpdateOrchestrator.UpdateProjectionAsync` currently reads `GetEventsAsync(0)` with no such bound. The limit is pre-existing in the draft; neither the draft nor the candidate inventories affected streams or offers a remediation path (incremental capability is opt-in per route). Reconcile during Story 6.5 integration.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-06] in `spec-event-versioning-upcasting.md` §6.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 
 ## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 15, owner routing bar)
@@ -5027,11 +5027,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Define what happens to a held, non-poison delivery when the broker stops redelivering it, during Story 6.5 integration.
   evidence: BH15-11. Every 6.5c hold returns non-2xx and relies on redelivery ("redelivery resumes only incomplete routes"). No contract covers a DAPR/broker retry budget, dead-letter topic or TTL that stops redelivering a held route; "retry exhaustion" appears only as an unexecuted C7 poison vector. Integration must prove held deliveries are retained, or define a dead-letter continuation that keeps every route obligation, plus a provider vector. Deferred under the owner's 6.5a routing bar (2026-09-29).
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-36] in `spec-event-versioning-upcasting.md` §7.3, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Give operators a way to discover indefinitely held commands (hold inventory, metric or alert), during Story 6.5 integration.
   evidence: BH15-13. The 6.5c candidate introduces indefinite holds that need operator action, including `PublicationRetryExhaustedHold`, `FirstSendMembershipChangedHold` and `RollbackReaderCapabilityHold`, but exposes them only through per-command status reads. Today's drain-exhaustion path emits a dead-letter message and an activity error status. Deferred under the owner's 6.5a routing bar (2026-09-29).
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-37] in `spec-event-versioning-upcasting.md` §7.3, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Tighten two 6.5c local-model robustness guards (typed Hold for an absent pre-send proof; 32-byte checks on terminal-branch scope/head) if the model is carried into Story 6.5 integration.
   evidence: EC15-17: `PreSendAdmission.verify(member, None, ...)` raises `TypeError` instead of `Hold`, though it still rejects. EC15-25: `TerminalProposalStore.reserve` concatenates unframed scope/head without a length check; callers pass fixed 32-byte hashes. Neither is acceptance-breaking under the owner's routing bar.
@@ -5039,7 +5039,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Add an automated check that extracts and runs the 6.5c embedded model families and mutation harness.
   evidence: VG13-1/VG14-4/VG15-2. Normal CI never executes the fenced Python block, so its golden vectors and guards are protected only by manual runs. The frozen documentation-only boundary forbids adding the harness in Story 6.5c; it needs separately authorized test/CI work.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-03 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Record an approval source for the McpCli course correction and carry it through FR26, the architecture context and Story 7.5.
   evidence: BH15-14/BH15-15 (found in the 6.5c review range, caused by `4fcb2b5c`, not by Story 6.5c). No sprint-change proposal mentions McpCli, although the PRD, architecture and epics banners say "Approved (2026-09-27)". Story 7.5 (`backlog`) still carries Admin.Cli typed-client work on a surface the banner declares obsolete, and the architecture's CLI/MCP wording is unchanged.
@@ -5054,139 +5054,144 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Reserve publication-retention headroom so unidentified-scope accounts or full tenants cannot block poison capture, and define lowering a ceiling below current usage.
   evidence: D1 (EC16-3, BH16-10). Each unidentified carrier is charged to its own purpose-1b scope account with no aggregate sublimit, and tenant ceilings have no guaranteed floor, so poison objects or two 1 GiB tenants can fill a 2 GiB deployment; C01d's own vector then holds an unidentified capture. The hold is deterministic, so it falls outside the 6.5c routing bar.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-30] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Name where the publication-retention counters live when charged objects span the actor state store, legacy storage, AD-31 capture storage and broker-owned storage.
   evidence: D2 (BH16-9). C1 scopes both ceilings to B6's `(deployment identity, canonical backend descriptor)` for "the publication-retention backend", but broker-owned objects have no EventStore descriptor. Per-object charges stay deterministic; only the counter's home is unnamed.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-29] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Bound the C01d per-object overhead `o` exactly in both prose and model.
   evidence: D3 (EC16-4). `PublicationRetention` accepts any `overhead >= 0` (2 GiB makes every charge hold), and the prose bound ("≤1 MiB protection expansion" plus framing) is not an exact byte limit.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-27] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Use physically feasible object sizes in the C01d capacity known answer and add per-kind maxima to `charge`.
   evidence: D4 (BH16-6). The known answer charges a 600 MiB and a 1,023 MiB global pin and a 300 MiB legacy side record, above the ~448 MiB C1 pin maximum and C4's 193 MiB side-record cap; `charge` has no per-kind upper bound. The ceiling arithmetic itself is unaffected.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-26] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Decode the C01c configuration-reference address as a strict UTF-8 `U` value.
   evidence: D5 (EC16-6). `resolve_configuration` accepts a non-UTF-8 address such as 2,000 `0xFF` bytes, while draft §7 defines it as `U` (§4: strict UTF-8). The resolved configuration is still hash-verified; §4 `U` has no general 1,024-byte cap, so only the UTF-8 half is real.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-18] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: State whether destination-configuration content must agree with outbox intent tags `0a`/`0b` or is opaque to the destination ID.
   evidence: D6 (EC16-7, BH16-12). The C01c delimiter-shift known answers reuse configuration bytes naming `pubsub`/`orders` with different component/topic pairs; the derivation is deterministic either way, but admission of a contradictory configuration is unspecified.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-17] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Reject or normalize the remaining illegal HTTP field-value bytes (leading/trailing SP/HTAB, other controls, DEL, obs-text) in retained header images.
   evidence: D7 (EC16-9). Pass 15 scoped EC15-5 to CR/LF/NUL; intermediaries may strip or reject the other bytes, so a later full-byte duplicate comparison can fail depending on the hop.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-20] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Align the C02 model's header-name check with RFC 9110 `tchar`, or state in the prose that decision headers use only ALPHA/DIGIT/`-`.
   evidence: D8 (EC16-10). `broker_header_image` holds a proven non-decision header such as `X_Trace` although the prose admits legal HTTP names. Pre-existing model restriction.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-21] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Make the C02c decoder follow the draft §7 renderer attribute set in both modes.
   evidence: D9 (EC16-11, EC16-12, EC16-13). The model requires `ce-datacontenttype` in Binary (draft §7 carries the event content type as the outer `Content-Type`), rejects Structured `time`/`subject` (draft §7: present when signed) and never compares Binary `ce-time`/`ce-subject` with the signed body. The prose rule is deterministic; these are pre-existing model deviations.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-22] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Bind effect-commit tags `03` (route-decision key hash) and `08` (provider authority) to the readback, and pin the route-decision key hash formula.
   evidence: D10 (EC16-14). `effect_hash` compares the commit's operation/transaction/result/version/ETag with the readback, matching C3's explicit list, but not tag `08` or tag `03`, whose formula is not pinned in prose. Commit UTC and readback UTC legitimately differ.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-33] in `spec-event-versioning-upcasting.md` §7.3, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Give C2 parent-member observations an identity so an identical replay after a lost acknowledgement does not consume a retry attempt.
   evidence: D11 (EC16-15). `ParentMemberChain.observe` appends every result, so replaying the same `Rejected01` counts twice toward the signed maximum and the successor then holds. Pre-existing model abstraction.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-34] in `spec-event-versioning-upcasting.md` §7.3, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Bound the C11f signed drain-head count to the range C08f can project.
   evidence: D12 (EC16-16). C11f authenticates counts up to 2^63−1 while C08f projects only ≤2^31−1; unreachable under the signed 1..64 attempt maximum.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-35] in `spec-event-versioning-upcasting.md` §7.3, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Run a single-removal kill sweep over the 6.5c embedded model's pre-existing guards and add killing vectors or remove redundant guards.
   evidence: D13 (VG16-O2, EC16-17 pre-existing members). 156 of 371 `raise Hold()`/`raise Conflict()` sites can each be removed with all families still passing (an upper bound; some are redundant), including the negative-length, header-name, unknown `ce-*`, closure-subset and absence-after-head guards. Related to the VG15-2 automation entry.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-04 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Add a per-mutation timeout to the 6.5c mutation harness.
   evidence: D14 (EC16-18). `subprocess.run` has no timeout, so a future mutation that loops would hang instead of failing; no current mutation hangs.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-05 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Constrain edits to the integrity script's owner/automation paths (for example by pinned blob or gitlink SHAs) without breaking closure bookkeeping.
   evidence: D15 (EC16-19, EC16-21, BH16-13). `OWNER_AUTOMATION` exempts the whole content of the ledger, sprint status, three planning documents and four gitlinks; other gitlinks and protected paths are still checked.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-47] in `spec-event-versioning-upcasting.md` §11.4, which does not port the historical 6.5c integrity script (O-06 withdrawn), disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Make the 6.5c integrity script fail on untracked files.
   evidence: D16 (EC16-20, BH16-13). `git diff BASELINE` ignores untracked files; the acceptance criterion already requires a clean committed tree.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-47] in `spec-event-versioning-upcasting.md` §11.4, which does not port the historical 6.5c integrity script (O-07 withdrawn), disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Inventory today's recoverable and exhausted `PublishFailed` writers and define their retirement or fencing, `MaxDrainAttempts` mapping and reason-code casing in the 6.5c handoff.
   evidence: D17 (BH16-2). `AggregateActor.cs:1719-1727` writes `PublishFailed` with `retryable: drainReminderArmed || recoveryEntryTracked` and `drain_publish_failed` on first failure, so `Retryable` is `false` when neither a drain reminder nor a recovery entry is tracked, and `:2912` writes the exhausted record; the candidate inventory lists only terminal `PublishFailed`, and C5's `RecoveryReasonCode="PublishFailed"` differs from the shipped snake_case codes.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-14] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Model the Binary `ce-*` core headers in C01b's carrier-size family.
   evidence: D18 (BH16-4). The abstract length model requires only seven headers in both modes and identifies the attestation pair by its length tuple; the prose requires Binary's `ce-*` core headers too. Size bounds are unaffected.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-08 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: State the final disposition (retry or quarantine) of a carrier rejected for CR/LF/NUL header values.
   evidence: D19 (BH16-18). C1 makes such a carrier `DeliveryPinConflict` and forbids retaining the value in a pin or header image, but does not say whether it reaches C4 physical quarantine; with BH15-11 deferred it may retry indefinitely or be dead-lettered silently.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-23] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 ## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 17, owner routing bar)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Settle the `EventsStored` plus `Retryable=false` public-contract break through an approved breaking-change path at AD-13 approval or the Story 6.6 compatibility gate.
   evidence: AA2 (pass 17). `PublicationRetryExhaustedHold` projects nonterminal `EventsStored` with `Retryable=false`, which `CommandStatusRecord.cs:19` and `docs/operations/drain-failure-reason-codes.md:27` define as "terminal". The design predates the pass-16 patch round; P1 only disclosed it. The frozen 6.5c "Always: preserve public compatibility" and the Epic 6 "approved migration/breaking-change path" rule cannot be met inside the documentation candidate.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-42] in `spec-event-versioning-upcasting.md` §10.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Model C1's canonical `destinationId` recomputation at every destination-bearing record, not only the C03e accepted-delivery keys.
   evidence: VG4, BH7 (pass 17). `compact_policy_member` (C08d), `ParentMemberChain` (C02b) and `Pin.create` (C02e) accept a display name such as `orders-destination`, and the C08d fixture uses a 1,024-byte destination that no derivation can produce (a canonical ID is 71 bytes). The C5 plan-time derivation has no vector. The prose rule is deterministic, so this is a model coverage gap outside the routing bar.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-09 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Keep a shared retained owner attachable after a capability change of the per-object overhead `o`, for example by comparing the stored charged amount or pinning `o` per owner.
   evidence: EC11 (pass 17). `PublicationRetention.charge` compares `(kind, canonical_bytes + current o)` with the stored charge, so once `o` changes every later attach of an existing shared owner raises `Conflict` and the obligation cannot be added. The comparison predates the pass-16 patch round; adjacent to D3.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-28] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Align the C1 destination-configuration hash-mismatch outcome: the prose says it "holds", the C01c model raises `Conflict`.
   evidence: BH6 (pass 17). `resolve_configuration` and `destination_id` raise `Conflict` for a reference content-hash or tag-`0e` mismatch, and the vectors assert `Conflict`, while C1 says "any hash mismatch holds before pin, send or evidence write". The sentence predates the pass-16 patch round.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-19] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 ## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 18, owner routing bar)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Define the resume protocol for a pin CAS held by `PublicationPinCapacityHold`: its durable re-attempt trigger, re-validation of claim/membership/key inputs that drift during the hold, and ordering of held CASes when capacity frees.
   evidence: D1 (pass 18; BH18-8/9/10, EC18-10/11/12). C1 says "the pin CAS resumes only after authenticated capacity readback shows room" and "retries the same exact pin bytes", but names no component or schedule that re-drives it. It does not say whether an expired claim, rotated key or changed membership during the hold means re-rendering or the downstream C2 holds. Nor does it order competing held CASes, so partially pinned commands can starve one another under a full counter. Each held outcome is deterministic (`CommandOutcomeHold`), so this is liveness, deferred under the owner's 6.5a routing bar; it is adjacent to BH15-11. A capacity retry cannot reach `PublicationRetryExhaustedHold`, because no send occurs.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-31] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Make a capacity-caused `CommandOutcomeHold` distinguishable and disclosed: its wire form and reason, its public-compatibility entry at the Story 6.6 gate, its place in the BH15-13 held-command inventory, and the reply for a command whose rejection-event pin is held.
   evidence: D2 (pass 18; BH18-7/12/13, EC18-13/14). Under owner option 1 (pass 17), a pin-CAS capacity hold projects A8's existing `CommandOutcomeHold`, and the candidate adds no reason code. So a committed command held for capacity looks the same as an evidence-corruption hold, and a domain rejection whose rejection-event pin is held replies `CommandOutcomeHold`, not its pinned rejection, until capacity frees. The outcome's wire form is still the open 6.5a "six new typed outcomes are not enumerated" entry. Neither the C6 public-status paragraph nor the BH15-13 inventory entry names this post-commit cause. Deferred under the owner's 6.5a routing bar.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-16] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 ## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 19, owner routing bar)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Define the global MessageId pin's canonical record encoding, or the exact components its publication-retention charge counts.
   evidence: BH19-12 (pass 19). C1 charges each object its "exact canonical encoded byte length plus `o`", and a global pin at its exact size at the pin CAS. But neither the candidate nor draft §7 defines a record codec for the global pin: only its components have canonical bytes (`ExactCanonicalPinDigest` covers the decoded body and attestation). Implementations can count the pin's own fields (scope, digests, fingerprint, claim UTC, membership hash/revision, hashes) differently, so a nearly full counter holds at different points. Refunds return each owner's recorded amount, so counters stay consistent within a deployment. The pass-18 note already says the C02e literal pins "the model's stand-in size, not a canonical pin codec".
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-25] in `spec-event-versioning-upcasting.md` §7.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Add C7 provider/crash vectors for a capacity-held pin CAS: resume after capacity readback, a partially pinned command keeping its sibling charges, and the charge's atomicity with the pin CAS.
   evidence: BH19-14 (pass 19). C1 charges a global pin "atomically with that CAS and before any send". The C7 "Retry and key rotation" row asks only for the hold (no pin, send or A8 revision zero; `CommandOutcomeHold`). No row requires a crash between charge and pin install, the resume with the same pin bytes and charge followed by revision zero and the first POST pin, or a partial set whose sibling pins keep their charges. The resume vector belongs with pass-18 D1.
-  status: open
+  status: dispositioned pending approval (2026-09-30): Story 6.6 verification obligation O-10 in `spec-event-versioning-upcasting.md` §11.7, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the obligation is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: D17 addendum. The handoff's "`Status` alone carries terminality" amendment requires D17's retirement or fencing of every recoverable `PublishFailed` writer, and the Story 6.6 gate must cover C5's terminal reason code.
   evidence: BH19-15, AA19-4, EC19-9 (pass 19). Besides `AggregateActor.cs:1719-1727` and `:2912`, which D17 names, `:2701-2710` and `:2750-2759` (drain retry, `retryable: retryRemains`) and `:4416-4424` (resumed pipeline, `retryable: drainReminderArmed || recoveryEntryTracked`) also write `PublishFailed` with a computed `Retryable`. An integration that makes `Status` alone carry terminality before retiring them makes those recoverable records read as terminal. The handoff's Story 6.6 gate adds only `publication_retry_exhausted_hold` to the guide's reason-code table, while C5's terminal `RecoveryReasonCode="PublishFailed"` is also missing from it (D17's casing item).
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-14] in `spec-event-versioning-upcasting.md` §7.1, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 ## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 20, owner routing bar)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: AA2 addendum. The `EventsStored` plus `Retryable=false` public-contract break also contradicts the `CommandStatusRecord` class summary and the command-status endpoint's OpenAPI remarks, so the approved breaking-change path must amend all four shipped surfaces.
   evidence: pass 20. The open pass-17 AA2 entry (`deferred-work.md:5134`) cites only `CommandStatusRecord.cs:19` and `docs/operations/drain-failure-reason-codes.md:27`. `CommandStatusRecord.cs:4-5` also states "Non-terminal states have null values for terminal-specific fields", while `PublicationRetryExhaustedHold` fills `Retryable` and `RecoveryReasonCode` on the nonterminal `EventsStored`. `CommandStatusController.cs:37-46` lists "**PublishFailed**: Event publication failed after retry exhaustion" among the terminal states and `EventsStored` among the in-flight ones, while the hold reports retry exhaustion as `EventsStored`. The 6.5c candidate's handoff and C6 now name all four surfaces for the Story 6.6 gate.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-42] in `spec-event-versioning-upcasting.md` §10.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 
 ## Deferred from: code review of spec-6-5c-publication-subscription-and-rollout-2.md (2026-09-29, pass 21, owner routing bar)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: Second AA2 addendum. The approved breaking-change path must amend every shipped surface the 6.5c candidate's handoff and C6 now list, not the four named by the pass-20 addendum, and must also amend the fields the hold carries from the committed result. The Story 6.6 gate must also search the repository for further surfaces.
   evidence: pass 21 (AA21-1, EC21-5, BH21-5, EC21-6). C5 and the C11h vector keep the committed result's `AggregateId`, `EventCount`, `RejectionEventType`, `TimeoutDuration` and `DrainAttemptCount` on the nonterminal `EventsStored` hold. This contradicts field-level surfaces: the `CommandStatusRecord.cs:10` and `:13` parameter docs ("Completed status only", "TimedOut status only") and the `docs/reference/command-api.md:311-317` response-field table ("(Completed status only)", "(Rejected status only)"; no `retryable` or `recoveryReasonCode` row). Other surfaces still make a publication failure terminal `PublishFailed`: `CommandStatus.cs:29`, `docs/reference/command-api.md:354-365` and `:439-454`, `docs/concepts/command-lifecycle.md:195-203` and `:251`, and the generated `docs/reference/api` pages for `CommandStatus` and `CommandStatusRecord`. The pass-20 addendum's "all four shipped surfaces" is superseded by this list.
-  status: open
+  status: dispositioned pending approval (2026-09-30): normative rule [I-42] in `spec-event-versioning-upcasting.md` §10.2, disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5c-publication-subscription-and-rollout-2.md`
   summary: D15 addendum. The integrity script's path-list-only admission now covers the ledger, the sprint row and five gitlinks; the planning documents moved to commit attribution.
   evidence: pass 21 (BH21-9, AA21-5). D15's evidence says `OWNER_AUTOMATION` exempts "three planning documents and four gitlinks". Pass 20 split it: `BOOKKEEPING` admits the ledger, the sprint row and five gitlinks by path alone, with `references/Hexalith.Builds` added in pass 19. `OTHER_OWNER` covers the planning documents, which are now checked by commit attribution against `OTHER_OWNER_COMMITS`. D15's remaining scope is the `BOOKKEEPING` set.
+  status: dispositioned pending approval (2026-09-30): normative rule [I-47] in `spec-event-versioning-upcasting.md` §11.4, which does not port the historical 6.5c integrity script (O-11 withdrawn), disposition register §11.5. It takes effect only when the §12 receipt validates, and it reopens if that receipt is refused or the rule is amended before approval ([I-44]).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5-event-versioning-and-upcasting-spec.md`
+  summary: Create and run Story 6.5d. It is a focused child spec that designs, under the children's routing bar, the mechanisms Story 6.5 integration had to invent: D-RESUME publication resume and legacy status-6 resume, hold inventory and redrive, pin-capacity wait queues, legacy execution-scope claims, and the long-stream activation record, together with the exits, reason codes and capacity rules they need.
+  evidence: Owner decision D-SPLIT (2026-09-30). Story 6.5 review pass 1 routed 9 bad_spec groups and 1 intent gap on integration-authored rules. After the loop-1 re-derivation, review pass 2 still found about 66 raw findings on the same mechanisms (see story-6-5-review-pass-2-findings.md). E2-34 is confirmed: `[I-45]` contradicts C5's operation-namespace closure fence. Story 6.5 is blocked until 6.5d is done; the epics and sprint entries need a correct-course.
   status: open
