@@ -27,8 +27,8 @@ namespace Hexalith.EventStore.DomainService;
 /// witness (otherwise an audited no-op cancels the reminder).
 /// </para>
 /// <para>
-/// A durable target receipt releases pending state after its audit record is written; the scheduler
-/// reminder is cancelled next. The index entry goes last only after a fresh fold reports no current intents.
+/// A durable target receipt releases pending state after its audit record is written and the scheduler
+/// reminder is successfully cancelled. The index entry goes last only after a fresh fold reports no current intents.
 /// An uncertain outcome keeps the state, re-arms a backoff reminder, and counts as unresolved. A callback
 /// never reports failure by throwing.
 /// </para>
@@ -911,13 +911,13 @@ internal sealed class ReminderCoordinator
 
         await RunSchedulerAsync(scheduler, actorId, toCancel, toRearm, cancellationToken).ConfigureAwait(false);
 
+        int unresolved = CountUnresolved(persisted);
         if (persisted is null || !HasWork(persisted))
         {
-            await ReleaseDiscoveryIfIdleAsync(actorId, target, cancellationToken).ConfigureAwait(false);
+            unresolved += await ReleaseDiscoveryIfIdleAsync(actorId, target, cancellationToken).ConfigureAwait(false);
             persisted = null;
         }
 
-        int unresolved = CountUnresolved(persisted);
         int quarantinedCount = CountQuarantined(persisted);
         _status.RecordItem(actorId, unresolved, quarantinedCount);
         return new ReminderConvergenceResult(armed, submitted, cancelled, unresolved, quarantinedCount);
@@ -1197,12 +1197,13 @@ internal sealed class ReminderCoordinator
             latest.Entries.Where(e => !string.Equals(e.ReminderName, entry.ReminderName, StringComparison.Ordinal)),
             latest.Quarantine);
         (ReminderItemState? persisted, _) = await PersistAsync(key, next, latestETag, cancellationToken).ConfigureAwait(false);
+        int unresolved = CountUnresolved(persisted);
         if (persisted is null || !HasWork(persisted))
         {
-            await ReleaseDiscoveryIfIdleAsync(actorId, target, cancellationToken).ConfigureAwait(false);
+            unresolved += await ReleaseDiscoveryIfIdleAsync(actorId, target, cancellationToken).ConfigureAwait(false);
         }
 
-        _status.RecordItem(actorId, CountUnresolved(persisted), CountQuarantined(persisted));
+        _status.RecordItem(actorId, unresolved, CountQuarantined(persisted));
         return ReminderDisposition.Stale;
     }
 
@@ -1230,13 +1231,14 @@ internal sealed class ReminderCoordinator
             state.Quarantine);
         (ReminderItemState? persisted, _) = await PersistAsync(key, next, etag, cancellationToken).ConfigureAwait(false);
         await RunSchedulerAsync(scheduler, actorId, toCancel, toRearm, cancellationToken).ConfigureAwait(false);
+        int unresolved = CountUnresolved(persisted);
         if (persisted is null || !HasWork(persisted))
         {
-            await ReleaseDiscoveryIfIdleAsync(actorId, new ReminderTarget(state.Tenant, state.Domain, state.Aggregate), cancellationToken)
+            unresolved += await ReleaseDiscoveryIfIdleAsync(actorId, new ReminderTarget(state.Tenant, state.Domain, state.Aggregate), cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        _status.RecordItem(actorId, CountUnresolved(persisted), CountQuarantined(persisted));
+        _status.RecordItem(actorId, unresolved, CountQuarantined(persisted));
         return applied;
     }
 
@@ -1425,11 +1427,12 @@ internal sealed class ReminderCoordinator
     /// Drops the discovery candidate only when a fresh fold reports no current intents. A null or failed fold,
     /// or a stream that still reports work, keeps the candidate so reconciliation can converge it again.
     /// </summary>
-    private async Task ReleaseDiscoveryIfIdleAsync(string actorId, ReminderTarget target, CancellationToken cancellationToken)
+    /// <returns>One unresolved item when the fold is unavailable or discovery cannot be ensured; zero otherwise.</returns>
+    private async Task<int> ReleaseDiscoveryIfIdleAsync(string actorId, ReminderTarget target, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(target.Domain))
         {
-            return;
+            return 1;
         }
 
         IReadOnlyList<ReminderIntent>? intents;
@@ -1444,7 +1447,7 @@ internal sealed class ReminderCoordinator
         catch (Exception exception)
         {
             ReminderLog.CallbackFailed(_logger, actorId, MalformedName, exception.GetType().Name);
-            return;
+            return 1;
         }
 
         if (intents is null || intents.Count > 0)
@@ -1456,17 +1459,14 @@ internal sealed class ReminderCoordinator
             catch (ReminderFailClosedException exception)
             {
                 ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode);
+                return 1;
             }
 
-            if (intents is null)
-            {
-                _status.RecordItem(actorId, 1, 0);
-            }
-
-            return;
+            return intents is null ? 1 : 0;
         }
 
         await _index.RemoveCandidateAsync(target, actorId, cancellationToken).ConfigureAwait(false);
+        return 0;
     }
 
     private async Task<(ReminderItemState? State, string? ETag)> LoadAsync(

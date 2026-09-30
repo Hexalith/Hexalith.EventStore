@@ -130,8 +130,10 @@ Callback admission runs in this order:
    needs a configured purpose. Without one, the callback is `Denied`, the work
    is retained, and a backoff reminder is re-armed.
 4. **Currency.** The intent source must still report the exact witness. A
-   superseded witness is audited as `Stale`. Nothing is submitted, the reminder
-   is cancelled, and the item re-converges with the intents just re-folded. If
+   superseded witness is audited as `Stale`. Nothing is submitted for that
+   witness. The item re-converges with the intents just re-folded, indexing and
+   persisting replacements while the stale witness and its Scheduler reminder
+   are still held. Cancellation then releases the stale witness. If
    more than one current intent carries the name with different evidence, or
    another current intent shares the effect identity, the witness is
    quarantined before any submission.
@@ -149,16 +151,22 @@ A durable receipt (`Success`, `Rejection`, or `NoOp`) releases the witness in
 this order:
 
 1. Write the `Submitted` audit record with the effect identifier.
-2. Delete the pending state.
-3. Cancel the Scheduler reminder.
-4. Remove the index entry.
+2. Cancel the Scheduler reminder successfully.
+3. Delete the pending witness.
+4. Re-fold the stream before removing the index entry. Retain discovery when
+   the stream still reports intents or the fold is unavailable.
 
-If the audit write fails, the witness stays. A later retry replays the same
-receipt. An exception, a mismatched receipt, or a missing submitter or
+If the audit write or Scheduler cancellation fails, the witness stays and
+counts as unresolved. A later retry replays the same receipt. An exception,
+a mismatched receipt, or a missing submitter or
 delegation keeps the witness as `Retrying`. It re-arms a backoff reminder that
 doubles from `RetryInitialDelay` up to `RetryMaxDelay`, and the work counts as
 unresolved. A callback never reports failure by throwing. Resubmitting the same
 witness after a restart returns the same effect identifier with `Replayed = true`.
+
+If the final stream fold returns null or throws after a receipt or stale
+disposition is settled, the discovery candidate stays and counts as unresolved.
+Readiness remains `Degraded` until a later convergence can re-fold the stream.
 
 Timing belongs to the Scheduler. The callback authenticates origin and witness;
 it does not re-check the due instant.

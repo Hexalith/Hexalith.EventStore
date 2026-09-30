@@ -44,6 +44,81 @@ public sealed class ReminderReconcilerTests
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
     }
 
+    /// <summary>An unavailable cleanup fold retains discovery and degrades readiness until a later pass succeeds.</summary>
+    [Theory]
+    [InlineData("callback", false)]
+    [InlineData("callback", true)]
+    [InlineData("convergence", false)]
+    [InlineData("convergence", true)]
+    [InlineData("stale-callback", false)]
+    [InlineData("stale-callback", true)]
+    public async Task UnavailableCleanupFoldRetainsUnresolvedReadiness(string operation, bool throws)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Status.CompletePass(harness.Time.Now, 0, [actorId]);
+        (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
+        harness.Time.Advance(TimeSpan.FromHours(1));
+        if (operation == "stale-callback")
+        {
+            harness.Source.Set(Item);
+        }
+
+        int cleanupRead = harness.Source.Reads + 2;
+        harness.Source.OnRead = reads =>
+        {
+            if (reads == cleanupRead)
+            {
+                if (throws)
+                {
+                    _ = harness.Source.Failing.Add(Item);
+                }
+                else
+                {
+                    harness.Source.ReturnNull = true;
+                }
+            }
+        };
+
+        if (operation == "convergence")
+        {
+            ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+            result.Submitted.ShouldBe(1);
+            result.Unresolved.ShouldBe(1);
+        }
+        else
+        {
+            (await harness.FireAsync(actorId, name)).ShouldBe(operation == "stale-callback"
+                ? ReminderDisposition.Stale
+                : ReminderDisposition.Submitted);
+        }
+
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.Submitter.Receipts.Count.ShouldBe(operation == "stale-callback" ? 0 : 1);
+        harness.Status.Snapshot().Unresolved.ShouldBe(1);
+        HealthCheckResult retained = await CheckAsync(harness);
+        retained.Status.ShouldBe(HealthStatus.Degraded);
+        retained.Data["unresolved"].ShouldBe(1);
+
+        harness.Source.OnRead = null;
+        harness.Source.ReturnNull = false;
+        harness.Source.Failing.Clear();
+        harness.Source.Set(Item);
+        ReminderReconciliationPass recovered = await harness.CreateReconciler().RunPassAsync(CancellationToken.None);
+
+        recovered.Unresolved.ShouldBe(0);
+        recovered.Incomplete.ShouldBe(0);
+        harness.Candidates().ShouldBeEmpty();
+        harness.Status.Snapshot().Unresolved.ShouldBe(0);
+        (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
+    }
+
     /// <summary>A scheduler reminder deleted before it fires is re-armed for its remaining time.</summary>
     [Fact]
     public async Task DeletedSchedulerReminderIsRearmed()
