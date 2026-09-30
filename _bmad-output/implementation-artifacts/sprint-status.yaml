@@ -233,7 +233,7 @@ development_status:
   6-5a-event-contract-writer-and-migration-evidence-spec: done
   6-5b-verified-read-replay-and-projection-spec: done
   6-5c-publication-subscription-and-rollout-spec: done
-  6-5d-hold-lifecycle-resume-and-legacy-admission-spec: backlog
+  6-5d-hold-lifecycle-resume-and-legacy-admission-spec: in-progress
   6-6-event-versioning-and-upcasting-implementation: backlog
   epic-6-retrospective: optional
 
