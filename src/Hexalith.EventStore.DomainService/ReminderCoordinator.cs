@@ -28,8 +28,9 @@ namespace Hexalith.EventStore.DomainService;
 /// </para>
 /// <para>
 /// A durable target receipt releases pending state after its audit record is written; the scheduler
-/// reminder is cancelled next and the index entry goes last. An uncertain outcome keeps the state, re-arms a
-/// backoff reminder, and counts as unresolved. A callback never reports failure by throwing.
+/// reminder is cancelled next. The index entry goes last only after a fresh fold reports no current intents.
+/// An uncertain outcome keeps the state, re-arms a backoff reminder, and counts as unresolved. A callback
+/// never reports failure by throwing.
 /// </para>
 /// </remarks>
 internal sealed class ReminderCoordinator
@@ -90,6 +91,11 @@ internal sealed class ReminderCoordinator
     public static string ComputeActorId(ReminderTarget target)
     {
         ArgumentNullException.ThrowIfNull(target);
+        if (string.IsNullOrWhiteSpace(target.Domain))
+        {
+            throw new ArgumentException("The target domain is required.", nameof(target));
+        }
+
         var identity = new AggregateIdentity(target.Tenant, target.Domain, target.Aggregate);
         if (!string.Equals(identity.TenantId, target.Tenant, StringComparison.Ordinal)
             || !string.Equals(identity.Domain, target.Domain, StringComparison.Ordinal))
@@ -116,7 +122,13 @@ internal sealed class ReminderCoordinator
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(scheduler);
+        if (string.IsNullOrWhiteSpace(target.Domain))
+        {
+            throw new ArgumentException("The target domain is required.", nameof(target));
+        }
+
         if (!string.Equals(ComputeActorId(target), actorId, StringComparison.Ordinal))
         {
             throw new ArgumentException("The target does not derive this reminder actor.", nameof(target));
@@ -133,9 +145,15 @@ internal sealed class ReminderCoordinator
                     .ConfigureAwait(false);
             }
 
-            IReadOnlyList<ReminderIntent> intents = await _source
+            IReadOnlyList<ReminderIntent>? intents = await _source
                 .GetCurrentIntentsAsync(target, cancellationToken)
-                .ConfigureAwait(false) ?? [];
+                .ConfigureAwait(false);
+            if (intents is null)
+            {
+                // A null fold is not an empty stream. Treating it as empty would cancel stored reminders.
+                throw new ReminderFailClosedException("source-unavailable");
+            }
+
             return await ConvergeCoreAsync(actorId, key, stored, etag, target, intents, now, scheduler, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -459,6 +477,14 @@ internal sealed class ReminderCoordinator
 
         try
         {
+            if (string.IsNullOrWhiteSpace(state.Domain))
+            {
+                // Effect identity cannot be derived. Leave the entry in place so the callback
+                // quarantines it as domain-invalid instead of repairing it into a nameless drop.
+                effectId = string.Empty;
+                return true;
+            }
+
             effectId = EffectIdentityCodec.ComputeEffectId(new EffectIdentity(
                 state.Tenant,
                 entry.SourceDomain,
@@ -532,7 +558,8 @@ internal sealed class ReminderCoordinator
         IReadOnlyList<ReminderIntent> intents,
         DateTimeOffset now,
         IReminderScheduler scheduler,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlySet<string>? retainedReminderNames = null)
     {
         ReminderItemState state = stored ?? new ReminderItemState(target.Tenant, target.Domain, target.Aggregate, 0, [], []);
         var quarantine = new List<ReminderQuarantineRecord>(state.Quarantine);
@@ -618,6 +645,12 @@ internal sealed class ReminderCoordinator
                 ReminderEntry quarantined = Quarantine(entry, collisionReason, now);
                 entries.Add(entry);
                 newlyQuarantined.Add((entry, quarantined));
+            }
+            else if (!desired.ContainsKey(entry.ReminderName)
+                && retainedReminderNames?.Contains(entry.ReminderName) == true)
+            {
+                // The caller still owns this witness. Do not cancel it until that caller's later step succeeds.
+                entries.Add(entry);
             }
             else if (!desired.TryGetValue(entry.ReminderName, out (ReminderIntent Intent, ReminderEntry Witness) current))
             {
@@ -880,7 +913,7 @@ internal sealed class ReminderCoordinator
 
         if (persisted is null || !HasWork(persisted))
         {
-            await _index.RemoveCandidateAsync(target, actorId, cancellationToken).ConfigureAwait(false);
+            await ReleaseDiscoveryIfIdleAsync(actorId, target, cancellationToken).ConfigureAwait(false);
             persisted = null;
         }
 
@@ -994,6 +1027,14 @@ internal sealed class ReminderCoordinator
             return ReminderDisposition.Quarantined;
         }
 
+        if (string.IsNullOrWhiteSpace(state.Domain))
+        {
+            // A blank domain cannot name a stream. Retiring the witness as stale would cancel a reminder
+            // the real stream may still hold.
+            return await SettleCallbackAsync(key, state, etag, actorId, entry, Outcome(ReminderDisposition.Quarantined, "domain-invalid"), now, scheduler, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         // Step 2: the stored full tuple must re-derive both the actor identifier and the reminder name.
         if (!ReminderIdentityCodec.Rederives(state.Tenant, state.Aggregate, entry.Kind, entry.DueUtc, entry.ScheduleRevision, actorId, reminderName)
             || !reminderName.EndsWith(entry.ScheduleToken, StringComparison.Ordinal))
@@ -1011,12 +1052,18 @@ internal sealed class ReminderCoordinator
 
         // Step 4: the stream must still report this exact witness.
         var target = new ReminderTarget(state.Tenant, state.Domain, state.Aggregate);
-        IReadOnlyList<ReminderIntent> current;
+        IReadOnlyList<ReminderIntent>? current;
         try
         {
-            current = await _source.GetCurrentIntentsAsync(target, cancellationToken).ConfigureAwait(false) ?? [];
+            current = await _source.GetCurrentIntentsAsync(target, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            return await SettleCallbackAsync(key, state, etag, actorId, entry, Outcome(ReminderDisposition.Retrying, "source-unavailable"), now, scheduler, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (current is null)
         {
             return await SettleCallbackAsync(key, state, etag, actorId, entry, Outcome(ReminderDisposition.Retrying, "source-unavailable"), now, scheduler, cancellationToken)
                 .ConfigureAwait(false);
@@ -1099,11 +1146,31 @@ internal sealed class ReminderCoordinator
             return ReminderDisposition.Retrying;
         }
 
+        // Index and persist the replacement while this witness and its scheduler reminder are still held.
+        // A fail-closed index or state write then leaves the firing in place for another callback.
+        _ = await ConvergeCoreAsync(
+            actorId,
+            key,
+            state,
+            etag,
+            target,
+            current,
+            now,
+            scheduler,
+            cancellationToken,
+            new HashSet<string>(StringComparer.Ordinal) { entry.ReminderName }).ConfigureAwait(false);
+
         if (!await TryCancelAsync(scheduler, actorId, entry.ReminderName, entry.ReminderName, cancellationToken).ConfigureAwait(false))
         {
+            (ReminderItemState? held, string? heldETag) = await LoadAsync(key, actorId, cancellationToken).ConfigureAwait(false);
+            if (held is null)
+            {
+                return ReminderDisposition.Retrying;
+            }
+
             ReminderItemState retained = WithEntries(
-                state,
-                state.Entries.Select(candidate => string.Equals(candidate.ReminderName, entry.ReminderName, StringComparison.Ordinal)
+                held,
+                held.Entries.Select(candidate => string.Equals(candidate.ReminderName, entry.ReminderName, StringComparison.Ordinal)
                     ? candidate with
                     {
                         Status = ReminderEntryStatus.Retrying,
@@ -1112,24 +1179,30 @@ internal sealed class ReminderCoordinator
                         UpdatedAt = now,
                     }
                     : candidate),
-                state.Quarantine);
-            (ReminderItemState? persistedRetry, _) = await PersistAsync(key, retained, etag, cancellationToken).ConfigureAwait(false);
+                held.Quarantine);
+            (ReminderItemState? persistedRetry, _) = await PersistAsync(key, retained, heldETag, cancellationToken).ConfigureAwait(false);
             _status.RecordItem(actorId, CountUnresolved(persistedRetry), CountQuarantined(persistedRetry));
             return ReminderDisposition.Retrying;
         }
 
         ReminderLog.Stale(_logger, actorId, entry.ReminderName);
-        ReminderItemState next = WithEntries(
-            state,
-            state.Entries.Where(e => !string.Equals(e.ReminderName, entry.ReminderName, StringComparison.Ordinal)),
-            state.Quarantine);
-        (ReminderItemState? persisted, string? persistedETag) = await PersistAsync(key, next, etag, cancellationToken).ConfigureAwait(false);
+        (ReminderItemState? latest, string? latestETag) = await LoadAsync(key, actorId, cancellationToken).ConfigureAwait(false);
+        if (latest is null)
+        {
+            return ReminderDisposition.Stale;
+        }
 
-        // The stream was just re-folded: converge with it so a witness that replaced the stale one is indexed
-        // and armed even if its own registration was lost. Convergence also removes the index entry last when
-        // the item holds nothing more.
-        _ = await ConvergeCoreAsync(actorId, key, persisted, persistedETag, target, current, now, scheduler, cancellationToken)
-            .ConfigureAwait(false);
+        ReminderItemState next = WithEntries(
+            latest,
+            latest.Entries.Where(e => !string.Equals(e.ReminderName, entry.ReminderName, StringComparison.Ordinal)),
+            latest.Quarantine);
+        (ReminderItemState? persisted, _) = await PersistAsync(key, next, latestETag, cancellationToken).ConfigureAwait(false);
+        if (persisted is null || !HasWork(persisted))
+        {
+            await ReleaseDiscoveryIfIdleAsync(actorId, target, cancellationToken).ConfigureAwait(false);
+        }
+
+        _status.RecordItem(actorId, CountUnresolved(persisted), CountQuarantined(persisted));
         return ReminderDisposition.Stale;
     }
 
@@ -1157,9 +1230,9 @@ internal sealed class ReminderCoordinator
             state.Quarantine);
         (ReminderItemState? persisted, _) = await PersistAsync(key, next, etag, cancellationToken).ConfigureAwait(false);
         await RunSchedulerAsync(scheduler, actorId, toCancel, toRearm, cancellationToken).ConfigureAwait(false);
-        if (persisted is null)
+        if (persisted is null || !HasWork(persisted))
         {
-            await _index.RemoveCandidateAsync(new ReminderTarget(state.Tenant, state.Domain, state.Aggregate), actorId, cancellationToken)
+            await ReleaseDiscoveryIfIdleAsync(actorId, new ReminderTarget(state.Tenant, state.Domain, state.Aggregate), cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -1327,9 +1400,14 @@ internal sealed class ReminderCoordinator
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             // The target may or may not hold a receipt. Retrying with the same effect identity replays it.
+            ReminderLog.SubmissionUncertain(
+                _logger,
+                ReminderIdentityCodec.ComputeActorId(state.Tenant, state.Aggregate),
+                entry.ReminderName,
+                exception.GetType().Name);
             return new ReminderSubmissionOutcome(ReminderDisposition.Retrying, "submission-uncertain", effectId, null);
         }
 
@@ -1341,6 +1419,54 @@ internal sealed class ReminderCoordinator
         }
 
         return new ReminderSubmissionOutcome(ReminderDisposition.Submitted, "receipt", effectId, receipt);
+    }
+
+    /// <summary>
+    /// Drops the discovery candidate only when a fresh fold reports no current intents. A null or failed fold,
+    /// or a stream that still reports work, keeps the candidate so reconciliation can converge it again.
+    /// </summary>
+    private async Task ReleaseDiscoveryIfIdleAsync(string actorId, ReminderTarget target, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(target.Domain))
+        {
+            return;
+        }
+
+        IReadOnlyList<ReminderIntent>? intents;
+        try
+        {
+            intents = await _source.GetCurrentIntentsAsync(target, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            ReminderLog.CallbackFailed(_logger, actorId, MalformedName, exception.GetType().Name);
+            return;
+        }
+
+        if (intents is null || intents.Count > 0)
+        {
+            try
+            {
+                await _index.EnsureCandidateAsync(target, actorId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ReminderFailClosedException exception)
+            {
+                ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode);
+            }
+
+            if (intents is null)
+            {
+                _status.RecordItem(actorId, 1, 0);
+            }
+
+            return;
+        }
+
+        await _index.RemoveCandidateAsync(target, actorId, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<(ReminderItemState? State, string? ETag)> LoadAsync(

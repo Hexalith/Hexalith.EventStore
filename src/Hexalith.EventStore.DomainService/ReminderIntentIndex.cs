@@ -75,9 +75,17 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
         var candidate = new ReminderCandidate(target.Domain, target.Aggregate, actorId);
         return UpdateAsync<ReminderTenantCandidates>(
             ReminderStateKeys.TenantCandidates(_options.ActorTypeName, target.Tenant),
-            current => current is null || !current.Candidates.Contains(candidate)
-                ? null
-                : current with { Candidates = [.. current.Candidates.Where(c => c != candidate)] },
+            current =>
+            {
+                // A null list is corrupt discovery data, not a list that contains this candidate.
+                if (current?.Candidates is not IReadOnlyList<ReminderCandidate> candidates
+                    || !candidates.Contains(candidate))
+                {
+                    return null;
+                }
+
+                return current with { Candidates = [.. candidates.Where(c => c != candidate)] };
+            },
             cancellationToken);
     }
 

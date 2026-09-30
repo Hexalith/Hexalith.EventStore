@@ -28,7 +28,10 @@ public sealed class ReminderActor : Actor, IReminderActor, IRemindable, IReminde
 
     /// <inheritdoc/>
     public Task<ReminderConvergenceResult> ConvergeAsync(ReminderTarget target)
-        => _coordinator.ConvergeAsync(Id.GetId(), target, this, CancellationToken.None);
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return _coordinator.ConvergeAsync(Id.GetId(), target, this, CancellationToken.None);
+    }
 
     /// <inheritdoc/>
     public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)

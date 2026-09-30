@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Client.Reminders;
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Reminders;
 using Hexalith.EventStore.DomainService.Tests.Fixtures;
@@ -121,9 +122,11 @@ public sealed class ReminderCallbackAdmissionTests
         ReminderDisposition? retained = await harness.FireAsync(actorId, staleName);
 
         retained.ShouldBe(ReminderDisposition.Retrying);
-        ReminderEntry retrying = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        ReminderItemState held = harness.ItemState(actorId).ShouldNotBeNull();
+        ReminderEntry retrying = held.Entries.Single(entry => entry.ReminderName == staleName);
         retrying.Status.ShouldBe(ReminderEntryStatus.Retrying);
         retrying.LastReasonCode.ShouldBe("cancel-failed");
+        held.Entries.ShouldContain(entry => entry.ReminderName == ReminderTestHarness.Name(current));
         harness.SchedulerFor(actorId).Armed.ShouldContainKey(staleName);
         harness.Candidates().ShouldHaveSingleItem();
 
@@ -358,6 +361,62 @@ public sealed class ReminderCallbackAdmissionTests
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("translation-failed");
     }
 
+    /// <summary>A null or blank translation is quarantined and is not submitted.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task BlankTranslationIsQuarantined(bool nullCommand)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        harness.Source.Set(Item, intent);
+        harness.Source.Translator = nullCommand
+            ? _ => null!
+            : _ => new ReminderCommand(" ", null!);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Time.Advance(TimeSpan.FromHours(1));
+
+        ReminderDisposition? disposition = await harness.FireAsync(actorId, ReminderTestHarness.Name(intent));
+
+        disposition.ShouldBe(ReminderDisposition.Quarantined);
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("translation-invalid");
+    }
+
+    /// <summary>
+    /// A stale firing whose replacement cannot be indexed leaves the original reminder armed.
+    /// </summary>
+    [Fact]
+    public async Task StaleCallbackKeepsReminderWhenReplacementIndexIsFull()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent stale = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2), revision: 1);
+        string staleName = ReminderTestHarness.Name(stale);
+        harness.Source.Set(Item, stale);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        ReminderTarget other = ReminderTestHarness.Target("item-2");
+        harness.Source.Set(other, ReminderTestHarness.Intent(other, harness.Time.Now.AddHours(3)));
+        _ = await harness.CreateRegistrar().ConvergeAsync(other);
+        harness.Options.MaxCandidatesPerTenant = 1;
+        harness.Store.SeedRaw(
+            harness.Options.StateStoreName,
+            ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, ReminderTestHarness.Tenant),
+            new ReminderTenantCandidates(
+                ReminderTestHarness.Tenant,
+                [new ReminderCandidate(other.Domain, other.Aggregate, ReminderTestHarness.ActorId(other))]));
+        harness.Source.Set(Item, ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(8), revision: 2, sequence: 6));
+
+        ReminderDisposition? disposition = await harness.FireAsync(actorId, staleName);
+
+        disposition.ShouldBe(ReminderDisposition.Retrying);
+        harness.SchedulerFor(actorId).Cancelled.ShouldNotContain(staleName);
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(staleName);
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldContain(entry => entry.ReminderName == staleName);
+        harness.Submitter.Calls.ShouldBeEmpty();
+    }
+
     /// <summary>Outside Development the reminder routes require the exact app-channel token.</summary>
     [Theory]
     [InlineData(null, "token-missing")]
@@ -378,6 +437,31 @@ public sealed class ReminderCallbackAdmissionTests
         filter.GetDenialReason(context.Request).ShouldBe(expectedDenial);
         reachedActor.ShouldBe(expectedDenial is null);
         context.Response.StatusCode.ShouldBe(expectedDenial is null ? StatusCodes.Status200OK : StatusCodes.Status401Unauthorized);
+        context.Response.Body.Length.ShouldBe(0);
+    }
+
+    /// <summary>A repeated app-channel token is denied even when the first value matches.</summary>
+    [Fact]
+    public async Task TokenFilterRejectsRepeatedAppChannelToken()
+    {
+        ReminderCallbackTokenFilter filter = CreateFilter(Environments.Production, "app-token");
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Put;
+        context.Request.Path = ReminderRoute;
+        context.Response.Body = new MemoryStream();
+        context.Request.Headers.Append(ReminderCallbackTokenFilter.HeaderName, "app-token");
+        context.Request.Headers.Append(ReminderCallbackTokenFilter.HeaderName, "second-token");
+        bool reachedActor = false;
+
+        await filter.InvokeAsync(context, _ =>
+        {
+            reachedActor = true;
+            return Task.CompletedTask;
+        });
+
+        filter.GetDenialReason(context.Request).ShouldBe("token-missing");
+        reachedActor.ShouldBeFalse();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
         context.Response.Body.Length.ShouldBe(0);
     }
 

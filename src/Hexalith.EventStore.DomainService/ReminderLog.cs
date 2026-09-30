@@ -83,4 +83,8 @@ internal static partial class ReminderLog
     [LoggerMessage(EventId = 200218, Level = LogLevel.Debug,
         Message = "Reminder lookup did not confirm the scheduler holds it; re-arming: ActorId={ActorId}, ReminderName={ReminderName}, ExceptionType={ExceptionType}")]
     public static partial void LookupFailed(ILogger logger, string actorId, string reminderName, string exceptionType);
+
+    [LoggerMessage(EventId = 200219, Level = LogLevel.Warning,
+        Message = "Reminder submission outcome is uncertain; the witness is retained for replay: ActorId={ActorId}, ReminderName={ReminderName}, ExceptionType={ExceptionType}")]
+    public static partial void SubmissionUncertain(ILogger logger, string actorId, string reminderName, string exceptionType);
 }

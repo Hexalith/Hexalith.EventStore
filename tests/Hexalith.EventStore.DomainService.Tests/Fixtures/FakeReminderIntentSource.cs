@@ -14,6 +14,9 @@ internal sealed class FakeReminderIntentSource : IReminderIntentSource
     /// <summary>Gets or sets an optional translator override.</summary>
     public Func<ReminderIntent, ReminderCommand>? Translator { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether the next fold returns null instead of a list.</summary>
+    public bool ReturnNull { get; set; }
+
     private int _reads;
 
     /// <summary>Gets or sets an observer invoked after each stream re-fold starts.</summary>
@@ -37,11 +40,18 @@ internal sealed class FakeReminderIntentSource : IReminderIntentSource
             throw new InvalidOperationException("Synthetic stream read failure.");
         }
 
+        if (ReturnNull)
+        {
+            return Task.FromResult<IReadOnlyList<ReminderIntent>>(null!);
+        }
+
         return Task.FromResult<IReadOnlyList<ReminderIntent>>(
             _intents.TryGetValue(target, out List<ReminderIntent>? intents) ? [.. intents] : []);
     }
 
     /// <inheritdoc/>
     public ReminderCommand TranslateDueIntent(ReminderIntent intent)
-        => Translator?.Invoke(intent) ?? new ReminderCommand("ResumeWidget", [.. intent.Payload]);
+        => Translator is null
+            ? new ReminderCommand("ResumeWidget", [.. intent.Payload])
+            : Translator.Invoke(intent);
 }

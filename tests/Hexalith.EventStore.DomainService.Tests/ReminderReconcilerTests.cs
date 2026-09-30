@@ -40,7 +40,7 @@ public sealed class ReminderReconcilerTests
         harness.Submitter.Receipts.Count.ShouldBe(1);
         harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Submitted);
         harness.ItemState(actorId).ShouldBeNull();
-        harness.Candidates().ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem();
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
     }
 
@@ -96,8 +96,9 @@ public sealed class ReminderReconcilerTests
         ReminderReconciliationPass complete = await harness.CreateReconciler().RunPassAsync(CancellationToken.None);
 
         complete.Incomplete.ShouldBe(0);
-        complete.Submitted.ShouldBe(1);
-        harness.Candidates("tenant-b").ShouldBeEmpty();
+        // The fake source still reports both intents, so the recovered item submits and the healthy item submits again.
+        complete.Submitted.ShouldBe(2);
+        harness.Candidates("tenant-b").ShouldHaveSingleItem();
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
     }
 

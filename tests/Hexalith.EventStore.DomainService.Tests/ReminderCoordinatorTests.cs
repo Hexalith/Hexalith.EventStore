@@ -262,7 +262,7 @@ public sealed class ReminderCoordinatorTests
         audit.TargetDisposition.ShouldBe(TrustedEffectDisposition.Success);
         audit.Replayed.ShouldBeFalse();
         harness.ItemState(actorId).ShouldBeNull();
-        harness.Candidates().ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem();
         harness.SchedulerFor(actorId).Cancelled.ShouldContain(name);
     }
 
@@ -322,7 +322,7 @@ public sealed class ReminderCoordinatorTests
         audit.EffectId.ShouldBe(harness.Submitter.Receipts.Keys.Single());
         harness.Submitter.Receipts.Count.ShouldBe(1);
         harness.ItemState(actorId).ShouldBeNull();
-        harness.Candidates().ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem();
     }
 
     /// <summary>A callback keeps a submitted receipt unresolved until its Scheduler reminder is cancelled.</summary>
@@ -357,7 +357,7 @@ public sealed class ReminderCoordinatorTests
         harness.Disposition(actorId, name).ShouldNotBeNull().Replayed.ShouldBeTrue();
         harness.ItemState(actorId).ShouldBeNull();
         harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
-        harness.Candidates().ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem();
         harness.Status.Snapshot().Unresolved.ShouldBe(0);
     }
 
@@ -389,7 +389,7 @@ public sealed class ReminderCoordinatorTests
         harness.Disposition(actorId, name).ShouldNotBeNull().Replayed.ShouldBeTrue();
         harness.ItemState(actorId).ShouldBeNull();
         harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
-        harness.Candidates().ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem();
     }
 
     /// <summary>An uncertain receipt keeps the witness, re-arms a backoff reminder, and is never acknowledged by throwing.</summary>
@@ -463,6 +463,103 @@ public sealed class ReminderCoordinatorTests
         retained.Status.ShouldBe(ReminderEntryStatus.Retrying);
         retained.LastReasonCode.ShouldBe(reasonCode);
         harness.Status.Snapshot().Unresolved.ShouldBe(1);
+    }
+
+    /// <summary>A blank workload is denied before delegation or submission, and the witness stays retained.</summary>
+    [Fact]
+    public async Task BlankWorkloadIsDeniedAndRetained()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Options.Workload = " ";
+        harness.Time.Advance(TimeSpan.FromHours(2));
+
+        ReminderDisposition? disposition = await harness.FireAsync(actorId, ReminderTestHarness.Name(intent));
+
+        disposition.ShouldBe(ReminderDisposition.Denied);
+        harness.Submitter.Calls.ShouldBeEmpty();
+        ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retained.Status.ShouldBe(ReminderEntryStatus.Retrying);
+        retained.LastReasonCode.ShouldBe("workload-unconfigured");
+    }
+
+    /// <summary>A null fold is not an empty stream: stored reminders stay armed.</summary>
+    [Fact]
+    public async Task NullIntentSourceDoesNotCancelStoredReminders()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.ReturnNull = true;
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+        ReminderDisposition? callback = await harness.FireAsync(actorId, name);
+
+        result.Cancelled.ShouldBe(0);
+        callback.ShouldBe(ReminderDisposition.Retrying);
+        harness.SchedulerFor(actorId).Cancelled.ShouldBeEmpty();
+        ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retained.ReminderName.ShouldBe(name);
+        retained.LastReasonCode.ShouldBe("source-unavailable");
+    }
+
+    /// <summary>A blank domain is rejected before it can be stored.</summary>
+    [Fact]
+    public async Task BlankTargetDomainIsRejected()
+    {
+        var harness = new ReminderTestHarness();
+        var blank = new ReminderTarget(ReminderTestHarness.Tenant, " ", "item-1");
+        harness.Source.Set(blank, ReminderTestHarness.Intent(blank, harness.Time.Now.AddHours(2)));
+
+        ArgumentException failure = await Should.ThrowAsync<ArgumentException>(
+            () => harness.CreateRegistrar().ConvergeAsync(blank));
+
+        failure.ParamName.ShouldBe("target");
+        harness.ItemState(ReminderTestHarness.ActorId(blank)).ShouldBeNull();
+        harness.Candidates().ShouldBeEmpty();
+    }
+
+    /// <summary>A restored blank domain is quarantined instead of being retired as a stale witness.</summary>
+    [Fact]
+    public async Task BlankStoredDomainIsQuarantined()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        ReminderItemState stored = harness.ItemState(actorId).ShouldNotBeNull();
+        harness.SeedItemState(actorId, stored with { Domain = " " });
+        harness.Time.Advance(TimeSpan.FromHours(1));
+
+        ReminderDisposition? disposition = await harness.FireAsync(actorId, name);
+
+        disposition.ShouldBe(ReminderDisposition.Quarantined);
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.Disposition(actorId, name).ShouldNotBeNull().Disposition.ShouldNotBe(ReminderDisposition.Stale);
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("domain-invalid");
+    }
+
+    /// <summary>A null persisted candidate list does not throw when a candidate is removed.</summary>
+    [Fact]
+    public async Task NullCandidateListIsIgnoredOnRemoval()
+    {
+        var harness = new ReminderTestHarness();
+        harness.Store.SeedRaw(
+            harness.Options.StateStoreName,
+            ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, ReminderTestHarness.Tenant),
+            new ReminderTenantCandidates(ReminderTestHarness.Tenant, null!));
+
+        await harness.CreateIndex().RemoveCandidateAsync(Item, ReminderTestHarness.ActorId(Item), CancellationToken.None);
+
+        harness.Candidates().ShouldBeEmpty();
     }
 
     /// <summary>Concurrent registrations from two hosts serialize in the actor turn and produce one registration.</summary>
@@ -963,7 +1060,7 @@ public sealed class ReminderCoordinatorTests
         audit.Disposition.ShouldBe(ReminderDisposition.Submitted);
         audit.TargetDisposition.ShouldBe(targetDisposition);
         harness.ItemState(actorId).ShouldBeNull();
-        harness.Candidates().ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem();
     }
 
     /// <summary>A complete pass prunes items it no longer discovers from readiness; an incomplete pass prunes nothing.</summary>
