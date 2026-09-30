@@ -80,6 +80,8 @@ public sealed class TrustedEffectJointOffboardingTests
             submission, context, "synthetic-proof");
         outcome.Disposition.ShouldBe(TrustedEffectDisposition.Success);
         string receiptKey = "effect_receipt_" + outcome.EffectId;
+        string effectIdempotencyKey = IdempotencyChecker.GetRecordKey(messageId);
+        targetStore.CommittedState.Keys.ShouldContain(effectIdempotencyKey);
         sourceStore.CommittedState.Keys.ShouldContain(sourceEventKey);
         targetStore.CommittedState.Keys.ShouldContain(receiptKey);
         targetStore.CommittedState.Keys.ShouldContain(key => key.Contains(":events:1", StringComparison.Ordinal));
@@ -170,7 +172,9 @@ public sealed class TrustedEffectJointOffboardingTests
         {
             Capability = await erasureAuthority.IssueAsync(unsignedChangedDecision),
         };
-        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.FenceTrustedEffectsAsync(changedDecision));
+        await target.Actor.FenceTrustedEffectsAsync(changedDecision);
+        ((TrustedEffectDeletionFence)targetStore.CreateCommittedView()[TrustedEffectDeletionFence.StateName])
+            .DeletionApprovedAt.ShouldBe(_now.AddDays(-400));
         TrustedEffectAggregateErasure unsignedChangedInventory = unsignedChangedDecision with
         {
             DeletionApprovedAt = _now.AddDays(-401),
@@ -180,7 +184,9 @@ public sealed class TrustedEffectJointOffboardingTests
         {
             Capability = await erasureAuthority.IssueAsync(unsignedChangedInventory),
         };
-        await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.FenceTrustedEffectsAsync(changedInventory));
+        await target.Actor.FenceTrustedEffectsAsync(changedInventory);
+        ((TrustedEffectDeletionFence)targetStore.CreateCommittedView()[TrustedEffectDeletionFence.StateName])
+            .InventoryDigest.ShouldBe("DIFFERENT-INVENTORY");
         _ = await lifecycle.EnterDeletionAsync(_now.AddDays(-401));
         _ = await lifecycle.PlaceLegalHoldAsync(_now);
         targetStore.Trace.Clear();
@@ -225,6 +231,7 @@ public sealed class TrustedEffectJointOffboardingTests
         sourceStore.CommittedState.Keys.ShouldNotContain(TrustedEffectDeletionFence.StateName);
         targetStore.CommittedState.Keys.ShouldNotContain(receiptKey);
         targetStore.CommittedState.Keys.ShouldNotContain(collisionKey);
+        targetStore.CommittedState.Keys.ShouldNotContain(effectIdempotencyKey);
         targetStore.CommittedState.Keys.ShouldNotContain(TrustedEffectDeletionFence.StateName);
         targetStore.CommittedState.Keys.ShouldNotContain(key => key.Contains(":events:1", StringComparison.Ordinal));
         targetStore.CommittedState.Keys.ShouldContain(TrustedEffectErasureProgress.StateName);
@@ -351,8 +358,9 @@ public sealed class TrustedEffectJointOffboardingTests
         var signed = unsigned with { Capability = await authority.IssueAsync(unsigned) };
         await authority.ValidateAsync(signed);
         var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
         ActorTestContext target = AggregateActorTestHelper.CreateActor(
-            stateManager: state, trustedEffectErasureAuthority: authority);
+            stateManager: state, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
 
         await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.EraseTrustedEffectEvidenceAsync(
             signed with { Capability = "test-v1." + new string('0', 64) }));
@@ -380,6 +388,16 @@ public sealed class TrustedEffectJointOffboardingTests
 
         state.Trace.ShouldBeEmpty();
         state.CreateCommittedView().ShouldBeEmpty();
+        await audit.Received(6).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "offboarding-erasure"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+        await audit.Received(3).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "deletion-fence"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
     }
 
     /// <summary>A purge waiting for the target turn can finish before gateway completion calls lifecycle.</summary>
@@ -454,5 +472,316 @@ public sealed class TrustedEffectJointOffboardingTests
         await Should.ThrowAsync<InvalidOperationException>(
             async () => _ = await routed.WaitAsync(TimeSpan.FromSeconds(5)));
         await gate.Received(1).CompleteAsync(identity, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// A partial fence failure followed by inventory growth and a new approval still commits
+    /// deletion entry, and every partition carries the latest signed decision.
+    /// </summary>
+    [Fact]
+    public async Task PartialFenceFailureRecoversAfterInventoryGrows()
+    {
+        var first = new EffectIdentity(
+            "test-tenant", "test-domain", "source-001", 7,
+            EffectKindCatalog.DateResume, "test-domain", "agg-001", 0);
+        EffectIdentity second = first with { SourceEnvelopeSequence = 8 };
+        var sourceIdentity = new AggregateIdentity(first.Tenant, first.SourceDomain, first.SourceAggregate);
+        var sourceStore = new FaultInjectingActorStateManager();
+        var targetStore = new FaultInjectingActorStateManager();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ActorTestContext source = AggregateActorTestHelper.CreateActor(
+            stateManager: sourceStore, trustedEffectErasureAuthority: authority, actorId: sourceIdentity.ActorId);
+        ActorTestContext target = AggregateActorTestHelper.CreateActor(
+            stateManager: targetStore, trustedEffectErasureAuthority: authority);
+        IActorProxyFactory proxies = Substitute.For<IActorProxyFactory>();
+        _ = proxies.CreateActorProxy<IAggregateActor>(
+            Arg.Is<ActorId>(id => id.GetId() == sourceIdentity.ActorId), nameof(AggregateActor))
+            .Returns(source.Actor);
+        _ = proxies.CreateActorProxy<IAggregateActor>(
+            Arg.Is<ActorId>(id => id.GetId() == "test-tenant:test-domain:agg-001"), nameof(AggregateActor))
+            .Returns(target.Actor);
+        var lifecycleStore = new FaultInjectingActorStateManager();
+        var lifecycle = new IdempotencyTenantLifecycleActor(
+            ActorHost.CreateForTest<IdempotencyTenantLifecycleActor>(
+                new ActorTestOptions { ActorId = new ActorId(first.Tenant) }),
+            NullLogger<IdempotencyTenantLifecycleActor>.Instance,
+            new FakeTimeProvider(_now),
+            actorProxyFactory: proxies,
+            trustedEffectAuditSink: Substitute.For<ITrustedEffectAuditSink>(),
+            trustedEffectErasureAuthority: authority);
+        ActorStateManagerTestHelper.SetStateManager(lifecycle, lifecycleStore);
+        await lifecycle.RegisterTrustedEffectAsync(first);
+        sourceStore.FaultOnCall("SetState:" + TrustedEffectDeletionFence.StateName, 1,
+            new IOException("source fence write interrupted"));
+
+        await Should.ThrowAsync<IOException>(() => lifecycle.EnterDeletionAsync(_now.AddDays(-401)));
+        (await lifecycle.GetAsync()).State.ShouldBe(IdempotencyTenantLifecycleState.Active);
+        targetStore.CommittedState.Keys.ShouldContain(TrustedEffectDeletionFence.StateName);
+        sourceStore.CommittedState.Keys.ShouldNotContain(TrustedEffectDeletionFence.StateName);
+        await lifecycle.RegisterTrustedEffectAsync(second);
+
+        IdempotencyTenantLifecycleRecord entered = await lifecycle.EnterDeletionAsync(_now.AddDays(-400));
+
+        entered.State.ShouldBe(IdempotencyTenantLifecycleState.PurgeEligible);
+        entered.DeletionApprovedAt.ShouldBe(_now.AddDays(-400));
+        string digest = TrustedEffectErasureInventory.ComputeDigest([first, second]);
+        foreach (FaultInjectingActorStateManager store in new[] { sourceStore, targetStore })
+        {
+            var fence = (TrustedEffectDeletionFence)store.CreateCommittedView()[TrustedEffectDeletionFence.StateName];
+            fence.DeletionApprovedAt.ShouldBe(_now.AddDays(-400));
+            fence.InventoryDigest.ShouldBe(digest);
+        }
+    }
+
+    /// <summary>Erasure removes more than one 64-event batch and commits its cursor between batches.</summary>
+    [Fact]
+    public async Task ErasureOfMoreThanSixtyFourEventsCommitsBoundedBatches()
+    {
+        (EffectIdentity identity, AggregateIdentity target) = TargetIdentity();
+        var state = new FaultInjectingActorStateManager();
+        var seed = new Dictionary<string, object> { [target.MetadataKey] = new AggregateMetadata(70, _now, null) };
+        for (int sequence = 1; sequence <= 70; sequence++)
+        {
+            seed[target.EventStreamKeyPrefix + sequence] = "event-" + sequence;
+        }
+
+        await state.SeedCommittedStateAsync(seed);
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(
+            stateManager: state, trustedEffectErasureAuthority: authority);
+
+        await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity));
+
+        IReadOnlyDictionary<string, object> committed = state.CreateCommittedView();
+        committed.Keys.ShouldNotContain(key => key.StartsWith(target.EventStreamKeyPrefix, StringComparison.Ordinal));
+        committed.Keys.ShouldNotContain(target.MetadataKey);
+        var progress = (TrustedEffectErasureProgress)committed[TrustedEffectErasureProgress.StateName];
+        progress.Completed.ShouldBeTrue();
+        progress.LastSequence.ShouldBe(70);
+        progress.NextSequence.ShouldBe(71);
+        state.CommittedSnapshots.ShouldContain(snapshot =>
+            snapshot.ContainsKey(TrustedEffectErasureProgress.StateName)
+            && ((TrustedEffectErasureProgress)snapshot[TrustedEffectErasureProgress.StateName]).NextSequence == 65
+            && !snapshot.ContainsKey(target.EventStreamKeyPrefix + "64")
+            && snapshot.ContainsKey(target.EventStreamKeyPrefix + "65"));
+    }
+
+    /// <summary>A retried erasure resumes from its durable cursor instead of the first sequence.</summary>
+    [Fact]
+    public async Task ResumedErasureStartsAtPersistedCursor()
+    {
+        (EffectIdentity identity, AggregateIdentity target) = TargetIdentity();
+        var state = new FaultInjectingActorStateManager();
+        var seed = new Dictionary<string, object>
+        {
+            [target.MetadataKey] = new AggregateMetadata(70, _now, null),
+            [TrustedEffectErasureProgress.StateName] = new TrustedEffectErasureProgress(
+                70, 65, Completed: false, new string('B', 32)),
+        };
+        for (int sequence = 65; sequence <= 70; sequence++)
+        {
+            seed[target.EventStreamKeyPrefix + sequence] = "event-" + sequence;
+        }
+
+        await state.SeedCommittedStateAsync(seed);
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(
+            stateManager: state, trustedEffectErasureAuthority: authority);
+
+        await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity));
+
+        for (int sequence = 1; sequence <= 64; sequence++)
+        {
+            state.Trace.ShouldNotContain("TryRemoveState:" + target.EventStreamKeyPrefix + sequence);
+        }
+
+        state.Trace.ShouldContain("TryRemoveState:" + target.EventStreamKeyPrefix + "65");
+        state.CreateCommittedView().Keys.ShouldNotContain(
+            key => key.StartsWith(target.EventStreamKeyPrefix, StringComparison.Ordinal));
+        ((TrustedEffectErasureProgress)state.CreateCommittedView()[TrustedEffectErasureProgress.StateName])
+            .Completed.ShouldBeTrue();
+    }
+
+    /// <summary>An older receipt without its actor-local index blocks erasure before any stream mutation.</summary>
+    [Fact]
+    public async Task UnindexedReceiptRejectsErasureBeforeStreamMutation()
+    {
+        (EffectIdentity identity, AggregateIdentity target) = TargetIdentity();
+        string effectId = EffectIdentityCodec.ComputeEffectId(identity);
+        string receiptKey = "effect_receipt_" + effectId;
+        var state = new FaultInjectingActorStateManager();
+        await state.SeedCommittedStateAsync(new Dictionary<string, object>
+        {
+            [target.MetadataKey] = new AggregateMetadata(2, _now, null),
+            [target.EventStreamKeyPrefix + "1"] = "event-1",
+            [target.EventStreamKeyPrefix + "2"] = "event-2",
+            [receiptKey] = new EffectReceipt(
+                effectId, identity, "DIGEST", TrustedEffectDisposition.Success,
+                "reactor", "date-resume", "source-cause", null),
+        });
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now));
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor(
+            stateManager: state, trustedEffectErasureAuthority: authority);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            async () => await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity)));
+        await Should.ThrowAsync<InvalidOperationException>(
+            async () => await actor.Actor.EraseTrustedEffectEvidenceAsync(await SignedErasureAsync(authority, identity)));
+
+        IReadOnlyDictionary<string, object> committed = state.CreateCommittedView();
+        committed.Keys.ShouldNotContain(TrustedEffectErasureProgress.StateName);
+        committed.Keys.ShouldContain(receiptKey);
+        committed.Keys.ShouldContain(target.MetadataKey);
+        committed.Keys.ShouldContain(target.EventStreamKeyPrefix + "1");
+        committed.Keys.ShouldContain(target.EventStreamKeyPrefix + "2");
+    }
+
+    /// <summary>An expired or future-issued capability is rejected before any actor state is read.</summary>
+    [Fact]
+    public async Task ExpiredErasureCapabilityCannotReadActorState()
+    {
+        (EffectIdentity identity, _) = TargetIdentity();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        var clock = new FakeTimeProvider(_now);
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(keys, clock);
+        var expiredState = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        ActorTestContext expiredActor = AggregateActorTestHelper.CreateActor(
+            stateManager: expiredState, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
+        TrustedEffectAggregateErasure issued = await SignedErasureAsync(authority, identity);
+        clock.Advance(issued.ExpiresAt - _now + TimeSpan.FromTicks(1));
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => expiredActor.Actor.EraseTrustedEffectEvidenceAsync(issued));
+
+        expiredState.Trace.ShouldBeEmpty();
+        TrustedEffectAggregateErasure unsignedAhead = TrustedEffectErasureInventory.Build(
+                identity.Tenant, [identity], _now.AddDays(-401), _now.AddSeconds(31))
+            .Single(request => request.Aggregate == identity.TargetAggregate);
+        TrustedEffectAggregateErasure ahead = unsignedAhead with
+        {
+            Capability = await new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now.AddSeconds(31)))
+                .IssueAsync(unsignedAhead),
+        };
+        var aheadState = new FaultInjectingActorStateManager();
+        ActorTestContext aheadActor = AggregateActorTestHelper.CreateActor(
+            stateManager: aheadState,
+            trustedEffectErasureAuthority: new TrustedEffectErasureCapability(keys, new FakeTimeProvider(_now)),
+            trustedEffectAuditSink: audit);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => aheadActor.Actor.EraseTrustedEffectEvidenceAsync(ahead));
+
+        aheadState.Trace.ShouldBeEmpty();
+        await audit.Received(2).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "offboarding-erasure"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A consumed erasure capability is denied and the denial is audited.</summary>
+    [Fact]
+    public async Task ConsumedErasureCapabilityIsDeniedAndAudited()
+    {
+        (EffectIdentity identity, _) = TargetIdentity();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(
+            keys, new FakeTimeProvider(_now));
+        var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        ActorTestContext target = AggregateActorTestHelper.CreateActor(
+            stateManager: state, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
+        TrustedEffectAggregateErasure erasure = await SignedErasureAsync(authority, identity);
+        await target.Actor.EraseTrustedEffectEvidenceAsync(erasure);
+        audit.ClearReceivedCalls();
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => target.Actor.EraseTrustedEffectEvidenceAsync(erasure));
+
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "offboarding-erasure"
+                && record.Disposition == "denied"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// A differing, validly signed fence replaces the earlier one and is audited as a replacement;
+    /// re-sending the identical fence appends no audit record.
+    /// </summary>
+    [Fact]
+    public async Task FenceReplacementIsAuditedAndIdenticalFenceIsNot()
+    {
+        (EffectIdentity identity, _) = TargetIdentity();
+        using StaticIdempotencyDigestKeyProvider keys = CreateKeys();
+        ITrustedEffectErasureAuthority authority = new TrustedEffectErasureCapability(
+            keys, new FakeTimeProvider(_now));
+        var state = new FaultInjectingActorStateManager();
+        ITrustedEffectAuditSink audit = Substitute.For<ITrustedEffectAuditSink>();
+        ActorTestContext target = AggregateActorTestHelper.CreateActor(
+            stateManager: state, trustedEffectErasureAuthority: authority, trustedEffectAuditSink: audit);
+        TrustedEffectAggregateErasure unsignedFence = TrustedEffectErasureInventory.Build(
+                identity.Tenant, [identity], _now.AddDays(-401), _now)
+            .Single(request => request.Aggregate == identity.TargetAggregate)
+            with { Purpose = TrustedEffectAggregateErasure.DeletionFencePurpose };
+        TrustedEffectAggregateErasure fence = unsignedFence with
+        {
+            Capability = await authority.IssueAsync(unsignedFence),
+        };
+        TrustedEffectAggregateErasure unsignedReplacement = unsignedFence with
+        {
+            InventoryDigest = "DIFFERENT-INVENTORY",
+        };
+        TrustedEffectAggregateErasure replacement = unsignedReplacement with
+        {
+            Capability = await authority.IssueAsync(unsignedReplacement),
+        };
+
+        await target.Actor.FenceTrustedEffectsAsync(fence);
+        await target.Actor.FenceTrustedEffectsAsync(fence);
+        await target.Actor.FenceTrustedEffectsAsync(replacement);
+
+        await audit.Received(2).AppendAsync(Arg.Any<TrustedEffectAuditRecord>(), Arg.Any<CancellationToken>());
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "deletion-fence"
+                && record.Disposition == "started"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Action == "deletion-fence"
+                && record.Disposition == "replaced"
+                && record.Tenant == "test-tenant"),
+            Arg.Any<CancellationToken>());
+        ((TrustedEffectDeletionFence)state.CreateCommittedView()[TrustedEffectDeletionFence.StateName])
+            .InventoryDigest.ShouldBe("DIFFERENT-INVENTORY");
+    }
+
+    private static (EffectIdentity Identity, AggregateIdentity Target) TargetIdentity()
+    {
+        var identity = new EffectIdentity(
+            "test-tenant", "test-domain", "source-001", 1,
+            EffectKindCatalog.DateResume, "test-domain", "agg-001", 0);
+        return (identity, new AggregateIdentity(identity.Tenant, identity.TargetDomain, identity.TargetAggregate));
+    }
+
+    private static StaticIdempotencyDigestKeyProvider CreateKeys()
+        => new("test-v1", new Dictionary<string, byte[]>
+        {
+            ["test-v1"] = Enumerable.Repeat((byte)7, 32).ToArray(),
+        }, []);
+
+    private static async Task<TrustedEffectAggregateErasure> SignedErasureAsync(
+        ITrustedEffectErasureAuthority authority,
+        EffectIdentity identity)
+    {
+        TrustedEffectAggregateErasure unsigned = TrustedEffectErasureInventory.Build(
+                identity.Tenant, [identity], _now.AddDays(-401), _now)
+            .Single(request => request.Aggregate == identity.TargetAggregate);
+        return unsigned with { Capability = await authority.IssueAsync(unsigned) };
     }
 }

@@ -15,6 +15,18 @@ namespace Hexalith.EventStore.Authentication;
 public sealed class JwtTrustedEffectDelegationVerifier(IOptionsMonitor<JwtBearerOptions> bearerOptions)
     : ITrustedEffectDelegationVerifier
 {
+    /// <summary>Gets the required delegation audience.</summary>
+    public const string Audience = "eventstore-gateway";
+
+    /// <summary>Gets the maximum accepted delegation token size in bytes.</summary>
+    public const int MaximumTokenSizeInBytes = 16_384;
+
+    /// <summary>Gets the maximum accepted delegation lifetime, measured as <c>exp</c> minus <c>iat</c>.</summary>
+    public static readonly TimeSpan MaximumLifetime = TimeSpan.FromMinutes(15);
+
+    /// <summary>Gets the symmetric clock skew applied to <c>exp</c> and <c>iat</c>.</summary>
+    public static readonly TimeSpan ClockSkew = TimeSpan.FromSeconds(30);
+
     /// <inheritdoc/>
     public async Task VerifyAsync(
         TrustedEffectSubmission submission,
@@ -30,43 +42,27 @@ public sealed class JwtTrustedEffectDelegationVerifier(IOptionsMonitor<JwtBearer
             throw new InvalidOperationException("Asymmetric delegation authority is not configured.");
         }
 
-        BaseConfiguration configuration = await options.ConfigurationManager
-            .GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
-        if (configuration.SigningKeys.Count == 0
-            || configuration.SigningKeys.Any(static key => key is SymmetricSecurityKey))
+        ClaimsPrincipal principal;
+        JwtSecurityToken jwt;
+        try
         {
-            throw new InvalidOperationException("Delegation authority has no safe asymmetric signing keys.");
+            (principal, jwt) = await ValidateTokenAsync(options, context.DelegationToken, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (SecurityTokenSignatureKeyNotFoundException)
+        {
+            // The authority may have rotated its signing key since the metadata was cached.
+            options.ConfigurationManager.RequestRefresh();
+            (principal, jwt) = await ValidateTokenAsync(options, context.DelegationToken, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        TokenValidationParameters parameters = options.TokenValidationParameters.Clone();
-        parameters.ValidateIssuer = true;
-        parameters.ValidIssuer = configuration.Issuer;
-        parameters.ValidateAudience = true;
-        parameters.ValidAudience = "eventstore-gateway";
-        parameters.ValidAudiences = null;
-        parameters.RequireSignedTokens = true;
-        parameters.RequireExpirationTime = true;
-        parameters.ValidateLifetime = true;
-        parameters.ValidateIssuerSigningKey = true;
-        parameters.IssuerSigningKeys = configuration.SigningKeys;
-        parameters.IssuerSigningKey = null;
-        parameters.ClockSkew = TimeSpan.Zero;
-
-        var handler = new JwtSecurityTokenHandler
-        {
-            MapInboundClaims = false,
-            MaximumTokenSizeInBytes = 16_384,
-        };
-        ClaimsPrincipal principal = handler.ValidateToken(
-            context.DelegationToken,
-            parameters,
-            out SecurityToken validatedToken);
-        if (validatedToken is not JwtSecurityToken jwt
-            || !(jwt.Header.Alg.StartsWith("RS", StringComparison.Ordinal)
+        if (!(jwt.Header.Alg.StartsWith("RS", StringComparison.Ordinal)
                 || jwt.Header.Alg.StartsWith("PS", StringComparison.Ordinal)
                 || jwt.Header.Alg.StartsWith("ES", StringComparison.Ordinal))
             || !jwt.Payload.ContainsKey("iat")
-            || jwt.Payload.IssuedAt > DateTime.UtcNow)
+            || jwt.Payload.IssuedAt > DateTime.UtcNow.Add(ClockSkew)
+            || jwt.ValidTo - jwt.Payload.IssuedAt > MaximumLifetime)
         {
             throw new InvalidOperationException("Workload delegation token is invalid.");
         }
@@ -89,6 +85,47 @@ public sealed class JwtTrustedEffectDelegationVerifier(IOptionsMonitor<JwtBearer
         {
             throw new InvalidOperationException("Workload delegation bindings do not match the effect.");
         }
+    }
+
+    private static async Task<(ClaimsPrincipal Principal, JwtSecurityToken Token)> ValidateTokenAsync(
+        JwtBearerOptions options,
+        string delegationToken,
+        CancellationToken cancellationToken)
+    {
+        BaseConfiguration configuration = await options.ConfigurationManager!
+            .GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
+        if (configuration.SigningKeys.Count == 0
+            || configuration.SigningKeys.Any(static key => key is SymmetricSecurityKey))
+        {
+            throw new InvalidOperationException("Delegation authority has no safe asymmetric signing keys.");
+        }
+
+        TokenValidationParameters parameters = options.TokenValidationParameters.Clone();
+        parameters.ValidateIssuer = true;
+        parameters.ValidIssuer = configuration.Issuer;
+        parameters.ValidateAudience = true;
+        parameters.ValidAudience = Audience;
+        parameters.ValidAudiences = null;
+        parameters.RequireSignedTokens = true;
+        parameters.RequireExpirationTime = true;
+        parameters.ValidateLifetime = true;
+        parameters.ValidateIssuerSigningKey = true;
+        parameters.IssuerSigningKeys = configuration.SigningKeys;
+        parameters.IssuerSigningKey = null;
+        parameters.ClockSkew = ClockSkew;
+
+        var handler = new JwtSecurityTokenHandler
+        {
+            MapInboundClaims = false,
+            MaximumTokenSizeInBytes = MaximumTokenSizeInBytes,
+        };
+        ClaimsPrincipal principal = handler.ValidateToken(
+            delegationToken,
+            parameters,
+            out SecurityToken validatedToken);
+        return validatedToken is JwtSecurityToken jwt
+            ? (principal, jwt)
+            : throw new InvalidOperationException("Workload delegation token is invalid.");
     }
 
     private static bool Has(ClaimsPrincipal principal, string name, string expected)

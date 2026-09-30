@@ -18,6 +18,7 @@ public partial class IdempotencyChecker(
 {
     private const string KeyPrefix = "idempotency:";
     private const string LegacyRedirectPrefix = "idempotency-legacy-redirect:";
+    private const string TrustedEffectMessagePrefix = "wrk-";
 
     private TimeProvider TimeProvider { get; } = timeProvider ?? TimeProvider.System;
 
@@ -48,7 +49,10 @@ public partial class IdempotencyChecker(
                 .ConfigureAwait(false);
         }
 
-        if (string.Equals(identity.MessageId, identity.CausationId, StringComparison.Ordinal))
+        // Trusted effects carry the source command as causation. When source and target share an
+        // aggregate, that command's own record is not a legacy record for the effect.
+        if (string.Equals(identity.MessageId, identity.CausationId, StringComparison.Ordinal)
+            || identity.MessageId.StartsWith(TrustedEffectMessagePrefix, StringComparison.Ordinal))
         {
             Log.IdempotencyCacheMiss(logger);
             return new IdempotencyCheckResult(IdempotencyCheckOutcome.Miss);

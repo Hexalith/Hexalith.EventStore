@@ -15,10 +15,7 @@ builder.AddServiceDefaults();
 builder.Services.AddDaprClient();
 builder.Services.AddHealthChecks()
     .AddEventStoreDaprHealthChecks()
-    .AddCheck<DaprAppChannelTokenHealthCheck>(
-        "dapr-app-channel-token",
-        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-        tags: ["ready"]);
+    .AddEventStoreAppChannelTokenHealthCheck();
 builder.Services.AddEventStore();
 builder.Services.AddEventStoreServer(builder.Configuration);
 builder.Services.AddEventStoreDomainQueryRouting();

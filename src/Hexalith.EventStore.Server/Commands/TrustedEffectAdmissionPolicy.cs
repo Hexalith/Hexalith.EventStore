@@ -45,8 +45,9 @@ public sealed class TrustedEffectAdmissionPolicy(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            // The tenant is not established until preparation succeeds.
             await auditSink.AppendAsync(new TrustedEffectAuditRecord(
-                "submission", submission.Identity?.Tenant, null,
+                "submission", null, null,
                 context.Workload, context.Purpose, "denied"), CancellationToken.None).ConfigureAwait(false);
             throw;
         }
@@ -71,11 +72,11 @@ public sealed class TrustedEffectAdmissionPolicy(
                 "submission", admission.Submission.Identity.Tenant, effectId,
                 admission.Context.Workload, admission.Context.Purpose, "attempted"), cancellationToken)
                 .ConfigureAwait(false);
+            await gate.ValidateAsync(admission.Submission.Identity, cancellationToken).ConfigureAwait(false);
             await audit.AppendAsync(new TrustedEffectAuditRecord(
                 "submission", admission.Submission.Identity.Tenant, effectId,
                 admission.Context.Workload, admission.Context.Purpose, "authorized"), cancellationToken)
                 .ConfigureAwait(false);
-            await gate.ValidateAsync(admission.Submission.Identity, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

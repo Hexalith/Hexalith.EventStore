@@ -66,13 +66,176 @@ public sealed class JwtTrustedEffectDelegationVerifierTests
             submission, context, new string('B', 52)));
     }
 
+    /// <summary>A delegation whose exp minus iat exceeds the documented maximum lifetime is rejected.</summary>
+    [Fact]
+    public async Task OverLongDelegationLifetimeIsRejected()
+    {
+        (JwtTrustedEffectDelegationVerifier verifier, RsaSecurityKey key, TrustedEffectSubmission submission, string digest) = CreateVerifier();
+        DateTime issuedAt = DateTime.UtcNow.AddMinutes(-1);
+        string withinBound = CreateToken(key, submission, digest, issuedAt, issuedAt.Add(JwtTrustedEffectDelegationVerifier.MaximumLifetime));
+        string tooLong = CreateToken(key, submission, digest, issuedAt, issuedAt.Add(JwtTrustedEffectDelegationVerifier.MaximumLifetime).AddSeconds(1));
+
+        await verifier.VerifyAsync(submission, Context(withinBound), digest);
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => verifier.VerifyAsync(submission, Context(tooLong), digest));
+    }
+
+    /// <summary>Expiry beyond the symmetric clock skew is a token validation failure; expiry within it is tolerated.</summary>
+    [Fact]
+    public async Task ExpiredDelegationIsRejectedOutsideClockSkew()
+    {
+        (JwtTrustedEffectDelegationVerifier verifier, RsaSecurityKey key, TrustedEffectSubmission submission, string digest) = CreateVerifier();
+        DateTime now = DateTime.UtcNow;
+        string expired = CreateToken(key, submission, digest, now.AddMinutes(-10), now.AddMinutes(-2));
+        string withinSkew = CreateToken(key, submission, digest, now.AddMinutes(-5), now.AddSeconds(-10));
+
+        await Should.ThrowAsync<SecurityTokenExpiredException>(
+            () => verifier.VerifyAsync(submission, Context(expired), digest));
+        await verifier.VerifyAsync(submission, Context(withinSkew), digest);
+    }
+
+    /// <summary>
+    /// With a configuration manager that refreshes synchronously, as IdentityModel does under its
+    /// blocking-refresh switch, an unknown signing key refreshes authority metadata once and the
+    /// in-request retry succeeds.
+    /// </summary>
+    [Fact]
+    public async Task UnknownSigningKeyRefreshesAuthorityMetadataAndRetriesOnce()
+    {
+        using RSA oldRsa = RSA.Create(2048);
+        using RSA newRsa = RSA.Create(2048);
+        var oldKey = new RsaSecurityKey(oldRsa) { KeyId = "old-key" };
+        var newKey = new RsaSecurityKey(newRsa) { KeyId = "new-key" };
+        var manager = new RotatingConfigurationManager(Configuration(oldKey), Configuration(newKey));
+        var verifier = new JwtTrustedEffectDelegationVerifier(Monitor(manager));
+        (TrustedEffectSubmission submission, string digest) = CreateSubmission();
+        DateTime issuedAt = DateTime.UtcNow.AddMinutes(-1);
+        string rotated = CreateToken(newKey, submission, digest, issuedAt, issuedAt.AddMinutes(5));
+
+        await verifier.VerifyAsync(submission, Context(rotated), digest);
+
+        manager.RefreshRequests.ShouldBe(1);
+        manager.Fetches.ShouldBe(2);
+
+        using RSA unknownRsa = RSA.Create(2048);
+        var unknownKey = new RsaSecurityKey(unknownRsa) { KeyId = "unknown-key" };
+        string unknown = CreateToken(unknownKey, submission, digest, issuedAt, issuedAt.AddMinutes(5));
+        await Should.ThrowAsync<SecurityTokenSignatureKeyNotFoundException>(
+            () => verifier.VerifyAsync(submission, Context(unknown), digest));
+        manager.RefreshRequests.ShouldBe(2);
+        manager.Fetches.ShouldBe(4);
+    }
+
+    /// <summary>
+    /// With IdentityModel's default background refresh, an unknown signing key requests a refresh
+    /// but the in-request retry still sees the cached keys. The delegation is denied, and a later
+    /// submission succeeds once the refresh completes.
+    /// </summary>
+    [Fact]
+    public async Task UnknownSigningKeyWithBackgroundRefreshSucceedsOnLaterSubmission()
+    {
+        using RSA oldRsa = RSA.Create(2048);
+        using RSA newRsa = RSA.Create(2048);
+        var oldKey = new RsaSecurityKey(oldRsa) { KeyId = "old-key" };
+        var newKey = new RsaSecurityKey(newRsa) { KeyId = "new-key" };
+        var retriever = new GatedConfigurationRetriever(Configuration(oldKey), Configuration(newKey));
+        var manager = new ConfigurationManager<OpenIdConnectConfiguration>(
+            Issuer + "/.well-known/openid-configuration", retriever);
+        var verifier = new JwtTrustedEffectDelegationVerifier(Monitor(manager));
+        (TrustedEffectSubmission submission, string digest) = CreateSubmission();
+        DateTime issuedAt = DateTime.UtcNow.AddMinutes(-1);
+        string rotated = CreateToken(newKey, submission, digest, issuedAt, issuedAt.AddMinutes(5));
+
+        // The background fetch is held open, so the retry inside this call reads the cached keys.
+        await Should.ThrowAsync<SecurityTokenSignatureKeyNotFoundException>(
+            () => verifier.VerifyAsync(submission, Context(rotated), digest));
+        await retriever.RefreshStarted.WaitAsync(TimeSpan.FromSeconds(10));
+        retriever.ReleaseRefresh();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        while (!(await manager.GetConfigurationAsync(timeout.Token)).SigningKeys.Contains(newKey))
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(20), timeout.Token);
+        }
+
+        await verifier.VerifyAsync(submission, Context(rotated), digest);
+        retriever.Fetches.ShouldBe(2);
+    }
+
+    /// <summary>An <c>iat</c> within the 30-second clock skew is accepted.</summary>
+    [Fact]
+    public async Task FutureIssuedAtWithinClockSkewIsAccepted()
+    {
+        (JwtTrustedEffectDelegationVerifier verifier, RsaSecurityKey key, TrustedEffectSubmission submission, string digest) = CreateVerifier();
+        DateTime issuedAt = DateTime.UtcNow.AddSeconds(10);
+        string token = CreateToken(key, submission, digest, issuedAt, issuedAt.AddMinutes(5), includeNotBefore: false);
+
+        await verifier.VerifyAsync(submission, Context(token), digest);
+    }
+
+    /// <summary>An <c>iat</c> beyond the 30-second clock skew is rejected even without <c>nbf</c>.</summary>
+    [Fact]
+    public async Task FutureIssuedAtBeyondClockSkewIsRejected()
+    {
+        (JwtTrustedEffectDelegationVerifier verifier, RsaSecurityKey key, TrustedEffectSubmission submission, string digest) = CreateVerifier();
+        DateTime issuedAt = DateTime.UtcNow.AddMinutes(2);
+        string token = CreateToken(key, submission, digest, issuedAt, issuedAt.AddMinutes(5), includeNotBefore: false);
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => verifier.VerifyAsync(submission, Context(token), digest));
+    }
+
+    private static (JwtTrustedEffectDelegationVerifier Verifier, RsaSecurityKey Key, TrustedEffectSubmission Submission, string Digest) CreateVerifier()
+    {
+        var key = new RsaSecurityKey(RSA.Create(2048)) { KeyId = "test-key" };
+        var verifier = new JwtTrustedEffectDelegationVerifier(
+            Monitor(new StaticConfigurationManager<OpenIdConnectConfiguration>(Configuration(key))));
+        (TrustedEffectSubmission submission, string digest) = CreateSubmission();
+        return (verifier, key, submission, digest);
+    }
+
+    private static (TrustedEffectSubmission Submission, string Digest) CreateSubmission()
+    {
+        var identity = new EffectIdentity(
+            "tenant-a", "works", "source-1", 7,
+            EffectKindCatalog.DateResume, "works", "target-1", 0);
+        string messageId = EffectIdentityCodec.ComputeMessageId(identity);
+        return (new TrustedEffectSubmission(identity, "ResumeWorkItem", [1, 2], messageId, messageId), new string('A', 52));
+    }
+
+    private static TrustedEffectContext Context(string token)
+        => new("reactor", "date-resume", "source-cause", token);
+
+    private static OpenIdConnectConfiguration Configuration(SecurityKey key)
+    {
+        var configuration = new OpenIdConnectConfiguration { Issuer = Issuer };
+        configuration.SigningKeys.Add(key);
+        return configuration;
+    }
+
+    private static IOptionsMonitor<JwtBearerOptions> Monitor(IConfigurationManager<OpenIdConnectConfiguration> manager)
+    {
+        var options = new JwtBearerOptions { ConfigurationManager = manager };
+        IOptionsMonitor<JwtBearerOptions> monitor = Substitute.For<IOptionsMonitor<JwtBearerOptions>>();
+        _ = monitor.Get(JwtBearerDefaults.AuthenticationScheme).Returns(options);
+        return monitor;
+    }
+
     private static string CreateToken(SecurityKey key, TrustedEffectSubmission submission, string digest)
+        => CreateToken(key, submission, digest, DateTime.UtcNow.AddMinutes(-1), DateTime.UtcNow.AddMinutes(5));
+
+    private static string CreateToken(
+        SecurityKey key,
+        TrustedEffectSubmission submission,
+        string digest,
+        DateTime issuedAt,
+        DateTime expiresAt,
+        bool includeNotBefore = true)
     {
         EffectIdentity identity = submission.Identity;
         Claim[] claims =
         [
             new("effect_id", EffectIdentityCodec.ComputeEffectId(identity)),
-            new("iat", DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
+            new("iat", new DateTimeOffset(issuedAt).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
             new("tenant", identity.Tenant),
             new("source_domain", identity.SourceDomain),
             new("source_aggregate", identity.SourceAggregate),
@@ -91,9 +254,62 @@ public sealed class JwtTrustedEffectDelegationVerifierTests
             Issuer,
             "eventstore-gateway",
             claims,
-            DateTime.UtcNow.AddMinutes(-1),
-            DateTime.UtcNow.AddMinutes(5),
+            includeNotBefore ? issuedAt : null,
+            expiresAt,
             new SigningCredentials(key, SecurityAlgorithms.RsaSha256));
         return new JwtSecurityTokenHandler().WriteToken(jwt);
+    }
+
+    private sealed class RotatingConfigurationManager(
+        OpenIdConnectConfiguration current,
+        OpenIdConnectConfiguration rotated) : IConfigurationManager<OpenIdConnectConfiguration>
+    {
+        private bool _refreshed;
+
+        public int Fetches { get; private set; }
+
+        public int RefreshRequests { get; private set; }
+
+        public Task<OpenIdConnectConfiguration> GetConfigurationAsync(CancellationToken cancel)
+        {
+            Fetches++;
+            return Task.FromResult(_refreshed ? rotated : current);
+        }
+
+        public void RequestRefresh()
+        {
+            RefreshRequests++;
+            _refreshed = true;
+        }
+    }
+
+    private sealed class GatedConfigurationRetriever(
+        OpenIdConnectConfiguration current,
+        OpenIdConnectConfiguration rotated) : IConfigurationRetriever<OpenIdConnectConfiguration>
+    {
+        private readonly TaskCompletionSource _refreshStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _fetches;
+
+        public int Fetches => Volatile.Read(ref _fetches);
+
+        public Task RefreshStarted => _refreshStarted.Task;
+
+        public void ReleaseRefresh() => _release.TrySetResult();
+
+        public async Task<OpenIdConnectConfiguration> GetConfigurationAsync(
+            string address,
+            IDocumentRetriever retriever,
+            CancellationToken cancel)
+        {
+            if (Interlocked.Increment(ref _fetches) == 1)
+            {
+                return current;
+            }
+
+            _refreshStarted.TrySetResult();
+            await _release.Task.ConfigureAwait(false);
+            return rotated;
+        }
     }
 }

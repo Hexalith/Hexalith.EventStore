@@ -385,6 +385,19 @@ error loading component statestore: component statestore is not initialized
 
 5. Consult the [DAPR Component Configuration Reference](dapr-component-reference.md) for detailed per-backend configuration guidance.
 
+### Internal Callers Receive 401 or Readiness Reports `dapr-app-channel-token` Unhealthy
+
+**Symptom:** After an upgrade, Staging or Production service-invocation calls from allow-listed internal apps return `401 Unauthorized`. Alternatively, `/ready` reports the `dapr-app-channel-token` check as Unhealthy.
+
+**Probable Cause:** This is a breaking upgrade step. Outside `Development`, the `dapr-caller-app-id` header alone no longer authenticates an internal caller. Each caller in `Authentication:DaprInternal:AllowedCallers` must present a `dapr-api-token` header that matches the gateway's `APP_API_TOKEN`. Readiness fails while callers are allow-listed and `APP_API_TOKEN` is missing. In `Development`, a configured token is also compared, so a sidecar with a different token is rejected.
+
+**Resolution:**
+
+1. Create one random token per receiving gateway. Supply it to the EventStore container as `APP_API_TOKEN`.
+2. Give the receiving Dapr sidecar the same token. On Kubernetes, use the `dapr.io/app-token-secret` annotation. With self-hosted `daprd`, including Docker Compose, set its `APP_API_TOKEN` environment variable. On Azure Container Apps, the platform injects `APP_API_TOKEN` and the managed sidecar sends it; skip steps 1 and 2 and remove any user-defined `APP_API_TOKEN`. See [Kubernetes](deployment-kubernetes.md), [Docker Compose](deployment-docker-compose.md), and [Azure Container Apps](deployment-azure-container-apps.md).
+3. If an environment admits no internal callers, leave `AllowedCallers` empty. Readiness then does not require the token.
+4. Keep the application port private to its sidecar. The token authenticates only the sidecar-to-app channel; it does not replace mTLS or deny-by-default access control.
+
 ## Docker Compose Deployment Issues
 
 These issues occur when deploying Hexalith.EventStore using Docker Compose. See the [Docker Compose Deployment Guide](deployment-docker-compose.md) for full setup instructions.

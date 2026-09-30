@@ -12,17 +12,22 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.Server.Commands;
 
 /// <summary>Rejects effects without a retained source event and a joint tenant retention decision.</summary>
+/// <remarks>
+/// The floor provider and joint retention policy are optional so a partial host registration
+/// cannot break ordinary actor activation; every trusted-effect call fails closed without them.
+/// </remarks>
 public sealed class TrustedEffectRetentionGate(
     IActorProxyFactory actorProxyFactory,
-    ITrustedEffectSourceFloorProvider sourceFloors,
-    ITrustedEffectJointRetentionPolicy jointRetention,
-    IOptions<EventStoreActorOptions> actorOptions) : ITrustedEffectRetentionGate
+    IOptions<EventStoreActorOptions> actorOptions,
+    ITrustedEffectSourceFloorProvider? sourceFloors = null,
+    ITrustedEffectJointRetentionPolicy? jointRetention = null) : ITrustedEffectRetentionGate
 {
     /// <inheritdoc/>
     public Task CompleteAsync(EffectIdentity identity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureConfigured();
         IIdempotencyTenantLifecycleActor lifecycle = actorProxyFactory
             .CreateActorProxy<IIdempotencyTenantLifecycleActor>(
                 new ActorId(identity.Tenant), IdempotencyTenantLifecycleActor.ActorTypeName);
@@ -34,6 +39,7 @@ public sealed class TrustedEffectRetentionGate(
     {
         ArgumentNullException.ThrowIfNull(identity);
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureConfigured();
         _ = EffectIdentityCodec.Encode(identity);
 
         // Lifecycle is serialized per tenant. Once deletion starts, neither a new effect nor a
@@ -48,8 +54,8 @@ public sealed class TrustedEffectRetentionGate(
             throw new InvalidOperationException("Trusted effect tenant retention is unavailable.");
         }
 
-        await jointRetention.ValidateAsync(identity, cancellationToken).ConfigureAwait(false);
-        long? floor = await sourceFloors.GetRetainedFloorAsync(identity, cancellationToken).ConfigureAwait(false);
+        await jointRetention!.ValidateAsync(identity, cancellationToken).ConfigureAwait(false);
+        long? floor = await sourceFloors!.GetRetainedFloorAsync(identity, cancellationToken).ConfigureAwait(false);
         if (floor is null || floor < 1 || identity.SourceEnvelopeSequence < floor)
         {
             throw new InvalidOperationException("Trusted effect source is below the retained floor.");
@@ -74,5 +80,13 @@ public sealed class TrustedEffectRetentionGate(
         // The lifecycle turn serializes evidence registration against deletion entry.
         // A concurrent offboarding transition makes this call fail before target dispatch.
         await lifecycle.RegisterTrustedEffectAsync(identity).ConfigureAwait(false);
+    }
+
+    private void EnsureConfigured()
+    {
+        if (sourceFloors is null || jointRetention is null)
+        {
+            throw new InvalidOperationException("Trusted effect source floor or joint retention policy is not configured.");
+        }
     }
 }

@@ -4,6 +4,7 @@ using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Hexalith.EventStore.Controllers;
 
@@ -56,6 +57,11 @@ public sealed class TrustedEffectsController(
         }
         catch (ArgumentException)
         {
+            return Forbid();
+        }
+        catch (SecurityTokenException)
+        {
+            // Expired, badly signed, or wrong-audience delegations are denials, not server faults.
             return Forbid();
         }
 

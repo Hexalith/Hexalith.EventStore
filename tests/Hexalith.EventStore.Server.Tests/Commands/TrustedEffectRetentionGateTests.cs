@@ -1,5 +1,7 @@
 using Dapr.Actors;
 using Dapr.Actors.Client;
+using Dapr.Actors.Runtime;
+using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Server.Actors;
@@ -8,6 +10,9 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Tests.Actors;
 
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -147,6 +152,77 @@ public sealed class TrustedEffectRetentionGateTests
         await Should.ThrowAsync<InvalidOperationException>(() => gate.ValidateAsync(identity));
     }
 
+    /// <summary>Completion is delegated to the serialized tenant lifecycle and its failure is not swallowed.</summary>
+    [Fact]
+    public async Task CompleteForwardsToTenantLifecycleAndPropagatesFailure()
+    {
+        (TrustedEffectRetentionGate gate, EffectIdentity identity, _, IIdempotencyTenantLifecycleActor lifecycle, _, _) = CreateGate();
+
+        await gate.CompleteAsync(identity);
+        await lifecycle.Received(1).CompleteTrustedEffectAsync(identity);
+
+        _ = lifecycle.CompleteTrustedEffectAsync(identity)
+            .Returns<Task>(_ => throw new InvalidOperationException("tenant purged"));
+        await Should.ThrowAsync<InvalidOperationException>(() => gate.CompleteAsync(identity));
+        await lifecycle.Received(2).CompleteTrustedEffectAsync(identity);
+    }
+
+    /// <summary>A gate without both host policies fails closed before any lifecycle or source access.</summary>
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task MissingSourceFloorOrJointPolicyFailsClosed(bool withFloors, bool withJoint)
+    {
+        var identity = new EffectIdentity(
+            "tenant-a", "works", "source-1", 7,
+            EffectKindCatalog.DateResume, "works", "target-1", 0);
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        var gate = new TrustedEffectRetentionGate(
+            factory,
+            Options.Create(new EventStoreActorOptions()),
+            withFloors ? Substitute.For<ITrustedEffectSourceFloorProvider>() : null,
+            withJoint ? Substitute.For<ITrustedEffectJointRetentionPolicy>() : null);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => gate.ValidateAsync(identity));
+        await Should.ThrowAsync<InvalidOperationException>(() => gate.CompleteAsync(identity));
+
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IIdempotencyTenantLifecycleActor>(default!, default!);
+        _ = factory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
+    }
+
+    /// <summary>
+    /// Registering only the gate cannot break ordinary aggregate actor activation; the gate
+    /// resolves and denies trusted effects instead.
+    /// </summary>
+    [Fact]
+    public async Task PartialRetentionRegistrationStillActivatesOrdinaryAggregateActor()
+    {
+        var services = new ServiceCollection();
+        _ = services.AddLogging();
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        _ = environment.EnvironmentName.Returns(Environments.Development);
+        _ = services.AddSingleton(environment);
+        _ = services.AddSingleton(Substitute.For<DaprClient>());
+        // The gateway host registers the status store; it is unrelated to trusted-effect retention.
+        _ = services.AddSingleton(Substitute.For<ICommandStatusStore>());
+        IConfiguration configuration = new ConfigurationBuilder().Build();
+        _ = services.AddSingleton(configuration);
+        _ = services.AddEventStoreServer(configuration);
+        _ = services.AddEventStoreTrustedEffectRetention();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        AggregateActor actor = ActivatorUtilities.CreateInstance<AggregateActor>(
+            provider,
+            ActorHost.CreateForTest<AggregateActor>(new ActorTestOptions { ActorId = new ActorId("tenant-a:works:target-1") }));
+
+        _ = actor.ShouldNotBeNull();
+        ITrustedEffectRetentionGate gate = provider.GetRequiredService<ITrustedEffectRetentionGate>();
+        await Should.ThrowAsync<InvalidOperationException>(() => gate.ValidateAsync(new EffectIdentity(
+            "tenant-a", "works", "source-1", 7,
+            EffectKindCatalog.DateResume, "works", "target-1", 0)));
+    }
+
     private static (TrustedEffectRetentionGate Gate, EffectIdentity Identity,
         ITrustedEffectSourceFloorProvider Floors, IIdempotencyTenantLifecycleActor Lifecycle,
         IAggregateActor Source, ITrustedEffectJointRetentionPolicy Joint) CreateGate()
@@ -167,7 +243,7 @@ public sealed class TrustedEffectRetentionGateTests
         _ = floors.GetRetainedFloorAsync(identity, Arg.Any<CancellationToken>()).Returns(1);
         _ = source.ReadEventsRangeAsync(6, 7, 1).Returns([SourceEnvelope()]);
         var gate = new TrustedEffectRetentionGate(
-            factory, floors, joint, Options.Create(new EventStoreActorOptions()));
+            factory, Options.Create(new EventStoreActorOptions()), floors, joint);
         return (gate, identity, floors, lifecycle, source, joint);
     }
 

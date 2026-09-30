@@ -4,7 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Hexalith.EventStore.HealthChecks;
 
-/// <summary>Fails readiness when a non-Development app-channel secret is absent.</summary>
+/// <summary>Fails readiness when allow-listed internal callers exist outside Development without an app-channel secret.</summary>
 public sealed class DaprAppChannelTokenHealthCheck(DaprAppChannelTokenValidator validator) : IHealthCheck
 {
     /// <inheritdoc/>

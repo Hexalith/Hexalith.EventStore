@@ -35,6 +35,11 @@ public sealed class IdempotencyTenantLifecycleActor(
     /// <summary>Gets the fixed lifecycle state name.</summary>
     public const string StateName = "lifecycle";
 
+    /// <summary>Gets the maximum future deletion-approval skew accepted by trusted-effect capabilities.</summary>
+    public static readonly TimeSpan ApprovalClockSkew = TimeSpan.FromSeconds(30);
+
+    private static readonly TimeSpan _capabilityLifetime = TimeSpan.FromMinutes(5);
+
     private TimeProvider Clock { get; } = timeProvider ?? TimeProvider.System;
 
     private ILogger<IdempotencyTenantLifecycleActor> LifecycleLogger { get; } = logger;
@@ -513,6 +518,13 @@ public sealed class IdempotencyTenantLifecycleActor(
             return await RefreshAsync(record).ConfigureAwait(false);
         }
 
+        if (approvedAt > Clock.GetUtcNow().Add(ApprovalClockSkew))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(approvedAt),
+                "A deletion approval cannot be later than the lifecycle clock plus its allowed skew.");
+        }
+
         DateTimeOffset effective = Max(Max(record.LastObservedAt, Clock.GetUtcNow()), approvedAt);
         DateTimeOffset deleteAfter = approvedAt.Add(IdempotencyTenantLifecycleRecord.PostDeletionRetention);
         TimeSpan remaining = deleteAfter > effective
@@ -529,10 +541,11 @@ public sealed class IdempotencyTenantLifecycleActor(
             await audit.AppendAsync(new TrustedEffectAuditRecord(
                 "deletion-fence", record.Tenant, null, null, null, "started")).ConfigureAwait(false);
             TrustedEffectAggregateErasure[] requests = TrustedEffectErasureInventory.Build(
-                record.Tenant, record.TrustedEffects, approvedAt, Clock.GetUtcNow());
+                record.Tenant, record.TrustedEffects, approvedAt, Max(Clock.GetUtcNow(), approvedAt));
             foreach (TrustedEffectAggregateErasure unsigned in requests)
             {
-                TrustedEffectAggregateErasure request = unsigned with
+                // Each partition gets a fresh lifetime immediately before its own actor call.
+                TrustedEffectAggregateErasure request = WithFreshLifetime(unsigned, approvedAt) with
                 {
                     Purpose = TrustedEffectAggregateErasure.DeletionFencePurpose,
                 };
@@ -640,18 +653,21 @@ public sealed class IdempotencyTenantLifecycleActor(
                 ?? throw new InvalidOperationException("Trusted effect erasure capability is unavailable.");
             await audit.AppendAsync(new TrustedEffectAuditRecord(
                 "offboarding-erasure", record.Tenant, null, null, null, "started")).ConfigureAwait(false);
+            DateTimeOffset approvedAt = record.DeletionApprovedAt!.Value;
             TrustedEffectAggregateErasure[] requests = TrustedEffectErasureInventory.Build(
                 record.Tenant,
                 record.TrustedEffects,
-                record.DeletionApprovedAt!.Value,
-                Clock.GetUtcNow());
-            for (int i = 0; i < requests.Length; i++)
+                approvedAt,
+                Max(Clock.GetUtcNow(), approvedAt));
+            foreach (TrustedEffectAggregateErasure unsigned in requests)
             {
-                string capability = await authority.IssueAsync(requests[i]).ConfigureAwait(false);
-                requests[i] = requests[i] with { Capability = capability };
+                // Sign each partition just before its erasure so large tenants cannot outlive
+                // the capability lifetime of later partitions.
+                TrustedEffectAggregateErasure request = WithFreshLifetime(unsigned, approvedAt);
+                request = request with { Capability = await authority.IssueAsync(request).ConfigureAwait(false) };
+                await policy.EraseTenantAsync(record.Tenant, [request]).ConfigureAwait(false);
             }
 
-            await policy.EraseTenantAsync(record.Tenant, requests).ConfigureAwait(false);
             record = await PersistAsync(record with
             {
                 TrustedEffectEvidenceErased = true,
@@ -1201,6 +1217,14 @@ public sealed class IdempotencyTenantLifecycleActor(
             CryptographicOperations.ZeroMemory(leftBytes);
             CryptographicOperations.ZeroMemory(rightBytes);
         }
+    }
+
+    private TrustedEffectAggregateErasure WithFreshLifetime(
+        TrustedEffectAggregateErasure request,
+        DateTimeOffset approvedAt)
+    {
+        DateTimeOffset issuedAt = Max(Clock.GetUtcNow(), approvedAt);
+        return request with { IssuedAt = issuedAt, ExpiresAt = issuedAt.Add(_capabilityLifetime) };
     }
 
     private static DateTimeOffset Max(DateTimeOffset left, DateTimeOffset right)

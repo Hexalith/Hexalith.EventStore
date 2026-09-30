@@ -154,6 +154,13 @@ public static class EventStoreDomainServiceExtensions {
         // Canonical domain-service endpoints invoked by the EventStore gateway.
         _ = app.MapEventStoreDomainService();
 
+        // Typed-reminder actor routes (AD-20 R6), wired only when AddEventStoreReminders registered the runtime.
+        // MapEventStoreReminders skips the Dapr actor handlers when the host already mapped them; the
+        // app-channel token filter is installed by the registration itself.
+        if (app.Services.GetService<ReminderIntentIndex>() is not null) {
+            _ = app.MapEventStoreReminders();
+        }
+
         if (consumesDomainEvents) {
             EventStoreDomainEventsOptions domainEvents = app.Services
                 .GetRequiredService<IOptions<EventStoreDomainEventsOptions>>()

@@ -216,7 +216,7 @@ $ cp src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.
 
 ### Step 2: Add DAPR Sidecar Containers
 
-Add the following service definitions to the generated `docker-compose.yaml`. Each DAPR sidecar shares the network namespace of its application container via `network_mode`:
+Add the following service definitions to the generated `docker-compose.yaml`. Each DAPR sidecar shares the network namespace of its application container via `network_mode`. Also append `- APP_API_TOKEN=${EVENTSTORE_APP_API_TOKEN}` to the existing `environment` list of the generated `eventstore` service, so the app compares the `dapr-api-token` header with the same token that `eventstore-dapr` sends:
 
 ```yaml
 services:
@@ -227,6 +227,9 @@ services:
         network_mode: "service:eventstore"
         depends_on:
             - eventstore
+        environment:
+            # daprd sends this token to the app as the dapr-api-token header.
+            - APP_API_TOKEN=${EVENTSTORE_APP_API_TOKEN}
         volumes:
             - ./dapr-components:/components
             - ./dapr-config:/config
@@ -344,7 +347,13 @@ AUTH_AUTHORITY=https://identity.example.com/realms/hexalith
 AUTH_ISSUER=https://identity.example.com/realms/hexalith
 AUTH_AUDIENCE=hexalith-eventstore
 AUTH_ALLOWED_ALGORITHM=RS256
+
+# EventStore internal app-channel token (random, per gateway). Pass it as
+# APP_API_TOKEN to both the eventstore container and the eventstore-dapr sidecar.
+EVENTSTORE_APP_API_TOKEN=
 ```
+
+> **Breaking upgrade step: internal app-channel token.** Outside `Development`, EventStore no longer admits an internal Dapr caller from the `dapr-caller-app-id` header alone. A caller listed in `Authentication:DaprInternal:AllowedCallers` must also present a `dapr-api-token` header that matches the gateway's `APP_API_TOKEN`. While callers are allow-listed and the secret is missing, the `dapr-app-channel-token` readiness check reports Unhealthy. Before you upgrade a non-Development Compose deployment, set `EVENTSTORE_APP_API_TOKEN`. Add `APP_API_TOKEN=${EVENTSTORE_APP_API_TOKEN}` to the `environment` of the generated `eventstore` service and of `eventstore-dapr`, as described in Step 2. Until both containers have it, existing internal callers receive `401 Unauthorized`. In `Development`, a configured token is also compared.
 
 > **Tip:** Build the container images from source using the .NET SDK container publishing feature (no Dockerfile required):
 >

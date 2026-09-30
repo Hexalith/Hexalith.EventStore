@@ -42,8 +42,63 @@ public sealed class TrustedEffectAdmissionPolicyTests
             () => policy.AdmitAsync(submission with { MessageId = "wrk-forged" }, context));
         _ = adapters.DidNotReceive().Resolve(Arg.Any<SubmitCommand>());
         await audit.Received(1).AppendAsync(
-            Arg.Is<TrustedEffectAuditRecord>(record => record.Disposition == "denied"),
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Disposition == "denied" && record.Tenant == null),
             Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An unlisted workload, purpose, domain, and command combination is denied and audited.</summary>
+    [Fact]
+    public async Task CommandAuthorityDenialDeniesAndAudits()
+    {
+        var adapters = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var verifier = Substitute.For<ITrustedEffectDelegationVerifier>();
+        var authority = Substitute.For<ITrustedEffectCommandAuthority>();
+        var retention = Substitute.For<ITrustedEffectRetentionGate>();
+        var audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context) = CreateEffect();
+        _ = adapters.Resolve(Arg.Any<SubmitCommand>()).Returns(new TrustedIdempotencyDescriptor(
+            "adapter", "operation", 1, [1], IdempotencyReplayRetentionTier.Mutation));
+        _ = authority.IsAllowed(submission, context).Returns(false);
+        var policy = new TrustedEffectAdmissionPolicy(adapters, verifier, authority, retention, audit);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => policy.AdmitAsync(submission, context));
+
+        _ = authority.Received(1).IsAllowed(submission, context);
+        _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!, default);
+        await audit.Received(1).AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Disposition == "denied"
+                && record.Tenant == null
+                && record.Workload == context.Workload
+                && record.Purpose == context.Purpose),
+            Arg.Any<CancellationToken>());
+        await audit.DidNotReceive().AppendAsync(
+            Arg.Is<TrustedEffectAuditRecord>(record => record.Disposition == "authorized"),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A retention-gate denial is never recorded as authorized.</summary>
+    [Fact]
+    public async Task RetentionDenialIsNotAuditedAsAuthorized()
+    {
+        var adapters = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var verifier = Substitute.For<ITrustedEffectDelegationVerifier>();
+        var authority = Substitute.For<ITrustedEffectCommandAuthority>();
+        var retention = Substitute.For<ITrustedEffectRetentionGate>();
+        var audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context) = CreateEffect();
+        _ = adapters.Resolve(Arg.Any<SubmitCommand>()).Returns(new TrustedIdempotencyDescriptor(
+            "adapter", "operation", 1, [1], IdempotencyReplayRetentionTier.Mutation));
+        _ = authority.IsAllowed(submission, context).Returns(true);
+        _ = retention.ValidateAsync(submission.Identity, Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("source below floor"));
+        var policy = new TrustedEffectAdmissionPolicy(adapters, verifier, authority, retention, audit);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => policy.AdmitAsync(submission, context));
+
+        string[] dispositions = audit.ReceivedCalls()
+            .Select(static call => ((TrustedEffectAuditRecord)call.GetArguments()[0]!).Disposition)
+            .ToArray();
+        dispositions.ShouldBe(["attempted", "denied"]);
     }
 
     /// <summary>Semantic digest comes from the registered adapter and must pass all gates.</summary>
@@ -122,9 +177,36 @@ public sealed class TrustedEffectAdmissionPolicyTests
         _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!, default);
     }
 
-    /// <summary>An audit failure after the attempt entry still prevents evidence registration.</summary>
+    /// <summary>A failed attempt entry prevents evidence registration.</summary>
     [Fact]
-    public async Task AuthorizationAuditFailurePreventsRetentionMutation()
+    public async Task AttemptAuditFailurePreventsRetentionMutation()
+    {
+        var adapters = Substitute.For<IIdempotencyIntentAdapterRegistry>();
+        var verifier = Substitute.For<ITrustedEffectDelegationVerifier>();
+        var authority = Substitute.For<ITrustedEffectCommandAuthority>();
+        var retention = Substitute.For<ITrustedEffectRetentionGate>();
+        var audit = Substitute.For<ITrustedEffectAuditSink>();
+        (TrustedEffectSubmission submission, TrustedEffectContext context) = CreateEffect();
+        _ = adapters.Resolve(Arg.Any<SubmitCommand>()).Returns(new TrustedIdempotencyDescriptor(
+            "adapter", "operation", 1, [1], IdempotencyReplayRetentionTier.Mutation));
+        _ = authority.IsAllowed(submission, context).Returns(true);
+        _ = audit.AppendAsync(
+                Arg.Is<TrustedEffectAuditRecord>(record => record.Disposition == "attempted"),
+                Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new IOException("audit unavailable"));
+        var policy = new TrustedEffectAdmissionPolicy(adapters, verifier, authority, retention, audit);
+
+        await Should.ThrowAsync<IOException>(() => policy.AdmitAsync(submission, context));
+
+        _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!);
+    }
+
+    /// <summary>
+    /// A failed authorization entry, written after lifecycle registration, still denies admission
+    /// and is followed by a denial record.
+    /// </summary>
+    [Fact]
+    public async Task AuthorizedAuditFailureAfterRegistrationDeniesAdmission()
     {
         var adapters = Substitute.For<IIdempotencyIntentAdapterRegistry>();
         var verifier = Substitute.For<ITrustedEffectDelegationVerifier>();
@@ -143,7 +225,11 @@ public sealed class TrustedEffectAdmissionPolicyTests
 
         await Should.ThrowAsync<IOException>(() => policy.AdmitAsync(submission, context));
 
-        _ = retention.DidNotReceiveWithAnyArgs().ValidateAsync(default!);
+        _ = retention.Received(1).ValidateAsync(submission.Identity, Arg.Any<CancellationToken>());
+        string[] dispositions = audit.ReceivedCalls()
+            .Select(static call => ((TrustedEffectAuditRecord)call.GetArguments()[0]!).Disposition)
+            .ToArray();
+        dispositions.ShouldBe(["attempted", "authorized", "denied"]);
     }
 
     private static (TrustedEffectSubmission, TrustedEffectContext) CreateEffect()

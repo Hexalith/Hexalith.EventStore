@@ -16,10 +16,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.DomainService.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.Server.LiveSidecar.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapr.AspNetCore" />
+    <PackageReference Include="Dapr.Actors.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>

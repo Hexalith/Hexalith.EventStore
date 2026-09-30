@@ -48,6 +48,7 @@ Run through this checklist before changing any package versions:
 - [ ] **Review event envelope schema changes** — envelope schema changes between Hexalith major versions are treated as major version bumps (see [Event Versioning](../concepts/event-versioning.md))
 - [ ] **Ensure all tests pass** on your current version before changing anything
 - [ ] **Back up production state stores** before upgrading — see [Disaster Recovery](disaster-recovery.md) for backup procedures
+- [ ] **Provision the internal app-channel token (breaking deployment step).** Outside `Development`, allow-listed internal Dapr callers in `Authentication:DaprInternal:AllowedCallers` are no longer admitted from the `dapr-caller-app-id` header alone. Supply a random per-gateway secret to the EventStore container as `APP_API_TOKEN`, and give its receiving sidecar the same token (`dapr.io/app-token-secret` on Kubernetes, `APP_API_TOKEN` on self-hosted `daprd`). Until both are deployed, internal callers receive `401 Unauthorized`, and readiness reports `dapr-app-channel-token` Unhealthy while callers are allow-listed. See [Troubleshooting](troubleshooting.md#internal-callers-receive-401-or-readiness-reports-dapr-app-channel-token-unhealthy).
 
 ## General Upgrade Procedure
 

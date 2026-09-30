@@ -358,6 +358,25 @@ Each registration entry has:
 
 To enable dynamic config-store routing, add `ConfigStoreName` explicitly and deploy a matching DAPR configuration component. If the component is absent or unavailable, the resolver falls through to convention routing only after static registrations miss.
 
+### Typed Reminders
+
+A domain service that calls `AddEventStoreReminders<TSource>()` binds `EventStore:Reminders`. The contract, callback admission, readiness, and operator runbook are described in [Typed reminder reconciliation](typed-reminders.md).
+
+Configuration section: `EventStore:Reminders`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `ActorTypeName` | string | none; required | Dapr actor type of the reminder actor. It must be unique to one application, because actor types are global under Dapr placement, and it scopes every persisted reminder key |
+| `StateStoreName` | string | `"statestore"` | State store for reminder witnesses, index, and dispositions |
+| `Workload` | string? | `DAPR_APP_ID`, then the application name | Workload named in trusted-effect submissions |
+| `Purposes:{kind}` | string | none | Named delegated purpose for `works.date-resume.v1` or `works.expiry.v1`. A kind without a purpose is denied at callback admission |
+| `ReconciliationEnabled` | bool | `true` | Runs the periodic reconciler |
+| `ReconciliationInterval` | TimeSpan | `00:05:00` | Interval between complete reconciliation passes |
+| `RetryInitialDelay` | TimeSpan | `00:00:30` | First retry delay, and the delay before retrying an incomplete pass |
+| `RetryMaxDelay` | TimeSpan | `00:15:00` | Longest retry delay, and the period of every armed reminder. It and the two delays above must not exceed 4294967294 milliseconds |
+| `MaxCandidatesPerTenant` | int | `10000` | A full tenant index fails registration closed |
+| `IndexWriteAttempts` | int | `8` | Compare-and-swap budget for one index update |
+
 ### OpenAPI
 
 Controls the Swagger UI endpoint for exploring the Command API interactively.
@@ -446,6 +465,16 @@ Configuration section: `Authentication:JwtBearer`
 - Symmetric mode accepts an empty `AllowedAlgorithms` list or exactly `HS256`; all other values are rejected
 - Authority URIs must be absolute and contain no user information, query, or fragment. Explicit and discovered token endpoints must be absolute URIs without user information or fragment; a standards-compliant fixed query is allowed. An HTTP authority or token endpoint is accepted only in Development and only when `RequireHttpsMetadata=false`; outside Development all endpoints must use HTTPS and HTTPS metadata cannot be disabled
 - When `SigningKey` is set, it must be at least 32 UTF-8 bytes. Production always rejects symmetric mode; outside Production and Development it additionally requires `AllowInsecureSymmetricKey=true`
+
+### Internal Dapr callers
+
+Configuration section: `Authentication:DaprInternal`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `AllowedCallers` | string[] | `[]` | Exact, case-sensitive Dapr app IDs admitted by the `DaprInternal` scheme from the `dapr-caller-app-id` header. Empty admits no internal caller |
+
+Outside `Development`, an allow-listed caller also needs a `dapr-api-token` header that matches `APP_API_TOKEN` (see [Environment Variables](#dapr)). This is a breaking upgrade step for existing Staging and Production deployments. The trusted-effect endpoint `POST /api/v1/trusted-effects` accepts only this scheme; its delegation and authority rules are described in [Trusted effect submission](trusted-effects.md).
 
 ### Published UI token acquisition
 
@@ -607,6 +636,7 @@ Environment variables configure infrastructure connections and operational behav
 | `DAPR_HTTP_PORT` | (auto) | Override the DAPR sidecar HTTP port. Normally auto-assigned by DAPR |
 | `DAPR_TRUST_DOMAIN` | `"hexalith.io"` | SPIFFE trust domain for mTLS between services |
 | `DAPR_NAMESPACE` | `"hexalith"` | Kubernetes namespace used in DAPR access control policies |
+| `APP_API_TOKEN` | (empty) | EventStore app-channel secret compared with the inbound `dapr-api-token` header. **Breaking upgrade step:** required outside `Development` whenever `Authentication:DaprInternal:AllowedCallers` is non-empty. Otherwise allow-listed internal callers receive `401` and `dapr-app-channel-token` readiness is Unhealthy. It is also required outside `Development` on every domain service that registers [typed reminders](typed-reminders.md): without it, every reminder actor call receives `401` and `eventstore-reminders-unresolved` readiness is Unhealthy. The receiving sidecar must hold the same token: `dapr.io/app-token-secret` on Kubernetes, or `APP_API_TOKEN` on self-hosted `daprd`. In `Development`, a configured value is also compared |
 
 ### Infrastructure
 

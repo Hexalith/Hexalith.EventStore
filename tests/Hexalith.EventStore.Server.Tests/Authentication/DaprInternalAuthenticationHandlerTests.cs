@@ -99,6 +99,45 @@ public class DaprInternalAuthenticationHandlerTests {
         result.Status.ShouldBe(expectedStatus);
     }
 
+    [Theory]
+    [InlineData(false, null, HealthStatus.Healthy)]
+    [InlineData(true, null, HealthStatus.Unhealthy)]
+    [InlineData(true, "configured-token", HealthStatus.Healthy)]
+    public async Task AppChannelReadiness_RequiresSecretOnlyWhenInternalCallersAreAllowListed(
+        bool hasAllowedCallers,
+        string? configuredToken,
+        HealthStatus expectedStatus) {
+        IHostEnvironment environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Production);
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { [DaprAppChannelTokenValidator.ConfigurationKey] = configuredToken })
+            .Build();
+        var options = new TestOptionsMonitor<DaprInternalAuthenticationOptions>(new DaprInternalAuthenticationOptions {
+            AllowedCallers = hasAllowedCallers ? ["tenants"] : [],
+        });
+        var check = new DaprAppChannelTokenHealthCheck(
+            new DaprAppChannelTokenValidator(environment, configuration, options));
+
+        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext());
+
+        result.Status.ShouldBe(expectedStatus);
+    }
+
+    [Theory]
+    [InlineData(null, null, true)]
+    [InlineData("configured-token", null, false)]
+    [InlineData("configured-token", "wrong-token", false)]
+    [InlineData("configured-token", "configured-token", true)]
+    public async Task HandleAuthenticate_DevelopmentComparesConfiguredToken(
+        string? configuredToken,
+        string? presentedToken,
+        bool expectedSuccess) {
+        AuthenticateResult result = await AuthenticateAsync(
+            "tenants", ["tenants"], Environments.Development, configuredToken, presentedToken);
+
+        result.Succeeded.ShouldBe(expectedSuccess);
+    }
+
     private static async Task<AuthenticateResult> AuthenticateAsync(
         string? header,
         IList<string> allowedCallers,

@@ -13,6 +13,13 @@ public static class EventStoreDomainTelemetry {
     /// <summary>The common prefix for every domain module's telemetry instrument names.</summary>
     public const string Prefix = "Hexalith.EventStore.Domain";
 
+    /// <summary>
+    /// The readiness health-check registration name of the typed-reminder runtime. It reports <c>Degraded</c>
+    /// while reminder work is unresolved, quarantined, or unscanned, and <c>Unhealthy</c> only when the
+    /// app-channel token is missing outside Development.
+    /// </summary>
+    public const string RemindersUnresolvedHealthCheckName = "eventstore-reminders-unresolved";
+
     /// <summary>Gets the conventional <see cref="ActivitySource"/> name for a domain (e.g. <c>Hexalith.EventStore.Domain.counter</c>).</summary>
     /// <param name="domain">The kebab-case domain name.</param>
     /// <returns>The conventional activity-source name.</returns>

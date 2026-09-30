@@ -8,6 +8,9 @@ namespace Hexalith.EventStore.HealthChecks;
 /// Extension methods for registering DAPR health checks.
 /// </summary>
 public static class HealthCheckBuilderExtensions {
+    /// <summary>Gets the registration name of the Dapr app-channel token readiness check.</summary>
+    public const string AppChannelTokenHealthCheckName = "dapr-app-channel-token";
+
     /// <summary>
     /// Registers all DAPR infrastructure health checks for the EventStore EventStore.
     /// </summary>
@@ -60,5 +63,17 @@ public static class HealthCheckBuilderExtensions {
                 timeout: healthCheckTimeout));
 
         return builder;
+    }
+
+    /// <summary>
+    /// Registers the readiness check that fails when allow-listed internal callers exist outside
+    /// Development without the Dapr app-channel token.
+    /// </summary>
+    public static IHealthChecksBuilder AddEventStoreAppChannelTokenHealthCheck(this IHealthChecksBuilder builder) {
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder.AddCheck<DaprAppChannelTokenHealthCheck>(
+            AppChannelTokenHealthCheckName,
+            failureStatus: HealthStatus.Unhealthy,
+            tags: ["ready"]);
     }
 }

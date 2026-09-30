@@ -46,4 +46,47 @@ public class EffectIdentityCodecTests
         Should.Throw<ArgumentException>(() => EffectIdentityCodec.Encode(identity with { Tenant = "e\u0301" }));
         Should.Throw<ArgumentOutOfRangeException>(() => EffectIdentityCodec.Encode(identity with { SourceEnvelopeSequence = 0 }));
     }
+
+    /// <summary>Uppercase tenant or domain text is not canonical and is refused rather than folded.</summary>
+    [Theory]
+    [InlineData("Tenant-a", "works", "works")]
+    [InlineData("tenant-a", "Works", "works")]
+    [InlineData("tenant-a", "works", "Works")]
+    public void NonCanonicalCaseIsRejected(string tenant, string sourceDomain, string targetDomain)
+    {
+        var identity = new EffectIdentity(tenant, sourceDomain, "source-1", 42, EffectKindCatalog.DateResume, targetDomain, "target-2", 0);
+
+        Should.Throw<ArgumentException>(() => EffectIdentityCodec.Encode(identity));
+    }
+
+    /// <summary>A family outside the version-one catalog has no identity.</summary>
+    [Fact]
+    public void UnknownEffectKindIsRejected()
+    {
+        var identity = new EffectIdentity("tenant-a", "works", "source-1", 42, "works.unknown.v1", "works", "target-2", 0);
+
+        EffectKindCatalog.IsKnown(identity.EffectKind).ShouldBeFalse();
+        ArgumentException exception = Should.Throw<ArgumentException>(() => EffectIdentityCodec.Encode(identity));
+        exception.Message.ShouldContain("catalog");
+    }
+
+    /// <summary>A negative ordinal is outside the immutable catalog range.</summary>
+    [Fact]
+    public void NegativeOrdinalIsRejected()
+    {
+        var identity = new EffectIdentity("tenant-a", "works", "source-1", 42, EffectKindCatalog.DateResume, "works", "target-2", -1);
+
+        Should.Throw<ArgumentOutOfRangeException>(() => EffectIdentityCodec.Encode(identity));
+    }
+
+    /// <summary>Only a 32-byte SHA-256 digest renders.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(31)]
+    [InlineData(33)]
+    public void RenderDigestRejectsWrongLength(int length)
+    {
+        Should.Throw<ArgumentException>(() => EffectIdentityCodec.RenderDigest(new byte[length]));
+        EffectIdentityCodec.RenderDigest(new byte[32]).Length.ShouldBe(52);
+    }
 }

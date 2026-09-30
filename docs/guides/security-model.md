@@ -337,6 +337,12 @@ spec:
 - **Admin passthrough isolation:** The EventStore sidecar allows only `eventstore-admin` to call its admin passthrough surface with the exact verbs currently required: GET, POST, and PUT.
 - **Domain service isolation:** Domain services have zero allowed operations — they cannot invoke any other service, access the state store, or publish to pub/sub. They receive commands from `eventstore` and return event payloads. Nothing else.
 
+### Internal App-Channel Token
+
+The EventStore `DaprInternal` scheme authenticates only callers listed in `Authentication:DaprInternal:AllowedCallers`. Outside `Development`, the request must also carry exactly one `dapr-api-token` header that matches the gateway's startup secret `APP_API_TOKEN`, compared in constant time. In `Development`, a configured token is compared too; the header alone is accepted only when no token is configured. The `dapr-app-channel-token` readiness check (tag `ready`, Unhealthy on failure) fails outside `Development` while callers are allow-listed and `APP_API_TOKEN` is missing.
+
+**Breaking upgrade step:** before you upgrade Staging or Production, give each receiving gateway a random `APP_API_TOKEN`. Configure its sidecar with the same token: `dapr.io/app-token-secret` on Kubernetes, or `APP_API_TOKEN` on self-hosted `daprd`. Until then, existing internal callers receive `401 Unauthorized`. The token proves only that the request came through the app's sidecar channel. It does not attest the claimed caller app ID; mTLS, deny-by-default access control, and a private application port remain required.
+
 ### Azure Container Apps Difference
 
 Azure Container Apps does not support DAPR `accesscontrol.yaml`. Instead, equivalent security is achieved through DAPR component scoping — restricting which app-ids can access each DAPR component (state store, pub/sub). Only the `eventstore` app-id is listed in component scopes. See the [Azure Container Apps Deployment Guide](deployment-azure-container-apps.md) for component scoping configuration.

@@ -1,3 +1,5 @@
+using System.Runtime.Serialization;
+
 namespace Hexalith.EventStore.Server.Actors;
 
 /// <summary>Identifies one tenant-owned aggregate for a signed deletion fence or final erasure.</summary>
@@ -11,17 +13,18 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="ExpiresAt">Short-lived capability expiry.</param>
 /// <param name="Nonce">Random one-use decision nonce for this partition.</param>
 /// <param name="Capability">Lifecycle-issued partition-bound signature.</param>
+[DataContract]
 public sealed record TrustedEffectAggregateErasure(
-    string Tenant,
-    string Domain,
-    string Aggregate,
-    string[] EffectIds,
-    string InventoryDigest,
-    DateTimeOffset DeletionApprovedAt,
-    DateTimeOffset IssuedAt,
-    DateTimeOffset ExpiresAt,
-    string Nonce,
-    string Capability)
+    [property: DataMember] string Tenant,
+    [property: DataMember] string Domain,
+    [property: DataMember] string Aggregate,
+    [property: DataMember] string[] EffectIds,
+    [property: DataMember] string InventoryDigest,
+    [property: DataMember] DateTimeOffset DeletionApprovedAt,
+    [property: DataMember] DateTimeOffset IssuedAt,
+    [property: DataMember] DateTimeOffset ExpiresAt,
+    [property: DataMember] string Nonce,
+    [property: DataMember] string Capability)
 {
     /// <summary>Capability purpose for a durable deletion-entry fence.</summary>
     public const string DeletionFencePurpose = "DeletionFence";
@@ -30,5 +33,6 @@ public sealed record TrustedEffectAggregateErasure(
     public const string ErasurePurpose = "PurgeEligible";
 
     /// <summary>Domain-separated lifecycle operation authorized by this capability.</summary>
+    [DataMember]
     public string Purpose { get; init; } = ErasurePurpose;
 }
