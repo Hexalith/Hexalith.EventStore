@@ -174,7 +174,7 @@ Per-kind maxima remain 449 MiB for one global pin, 193 MiB for side/ordinary ret
 
 A refused **valid, checked** D7 batch reservation creates one wait; it never leaves some pins charged. Invalid arithmetic/evidence remains the same indexed `PublicationPinCapacityHold` without a D8 queue row because no trustworthy tag `04` total or tag `05` holding counter exists. Its quota coordinator performs D1's 60-second and revision-triggered deterministic rerender/revalidation. Once checked evidence exists, it atomically creates the D8 row under the same stable subject before removing the inventory-only state; reservation still occurs only on a later whole-batch grant. `HX-EV-PIN-CAPACITY-WAIT-2\0 || 01 || 000c` (at most 4 KiB) has `01` U tenant, `02` B32 ScopeOpHash, `03` B32 candidate batch root, `04` N total charged amount, `05` U holding counter (`tenant` or `deployment`), `06` N global first-hold ticket, `07` Q first-hold UTC, `08` N re-attempt count, `09` U state (`queued` or `parked`), `0a` B32 current capability hash, `0b` B32 immutable outbox/member-plan root, and `0c` Q last-check UTC.
 
-There is one deployment directory and one directory for each tenant with waits. `HX-EV-PIN-CAPACITY-QUEUE-4\0 || 01 || 000a` (at most 64 MiB) has `01` U deployment identity, `02` U counter ID (`deployment` or `tenant:` plus tenant), `03` N generation, `04` N entry count, `05` B concatenated fixed-order rows with **no inner count** (`N ticket || U tenant || B32 ScopeOpHash || U state`), `06` N parked count, `07` N reserved-slot count, `08` N authenticated capability ceiling, `09` N last issued global ticket, and `0a` B32 predecessor directory hash followed by `0b` Q update UTC; the declared field count is therefore `000b`. Tag `04` controls exact parsing and equals queued plus parked; `entryCount + reservedSlotCount <= tag 08 <= 50,000`. The duplicated capability value must equal the authenticated D7 capability revision used by the transition. A row consumes exactly one previously reserved slot in the same CAS, so no operation ever appends to a full directory. Parked waits remain in this ordered directory and are discoverable in a key-only store.
+There is one deployment directory and one directory for each tenant with waits. `HX-EV-PIN-CAPACITY-QUEUE-4\0 || 01 || 000b` (at most 64 MiB) has `01` U deployment identity, `02` U counter ID (`deployment` or `tenant:` plus tenant), `03` N generation, `04` N entry count, `05` B concatenated fixed-order rows with **no inner count** (`N ticket || U tenant || B32 ScopeOpHash || U state`), `06` N parked count, `07` N reserved-slot count, `08` N authenticated capability ceiling, `09` N last issued global ticket, `0a` B32 predecessor directory hash, and `0b` Q update UTC. Tag `04` controls exact parsing and equals queued plus parked; `entryCount + reservedSlotCount <= tag 08 <= 50,000`. The duplicated capability value must equal the authenticated D7 capability revision used by the transition. A row consumes exactly one previously reserved slot in the same CAS, so no operation ever appends to a full directory. Parked waits remain in this ordered directory and are discoverable in a key-only store.
 
 The deployment directory is also the sole durable global ticket allocator. Its `lastIssuedTicket` starts at zero; admission reserves both slots and CAS-increments that field in the deployment row, assigning the resulting positive u64 to the wait. A lost acknowledgement rereads the stable subject's reservation and same ticket. A conflicting subject or predecessor loses without allocating a ticket. `lastIssuedTicket == 2^64-1` fails pre-commit admission as `pin_wait_ticket_exhausted`; it never wraps, reuses a ticket, or commits the command. Queue rows are canonically sorted by `(ticket as unsigned numeric u64, tenant as raw canonical UTF-8 bytes, ScopeOpHash as raw 32 bytes)`; state is not part of the sort key. Both decoding and reconstruction use that exact tuple.
 
@@ -194,7 +194,7 @@ Publication resume re-arms only unresolved publication of already committed even
 
 Every eligible hold inventory item exposes an opaque stable `resumeHandle = "hxrsm1-" || lowercase-hex SHA256(U tenant || U execution identity || B32 hold-source hash)`. Authorized Operators can read `GET /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}/precondition`; the response is support-safe `{ resumeHandle, eligibility, expectedHoldSourceHash, headHash, nextResumeOrdinal, predecessorAuditHash, expiresAt }`. It comes from one authenticated current-head read and is never an execution capability. A deployment route does not stand in for a tenant.
 
-`POST /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}` takes `{ "expectedHoldSourceHash": "<64 lowercase hex>", "idempotencyKey": "<1..128 ASCII visible bytes>", "reason": "<1..512 UTF-8 bytes>" }`. Its canonical caller carrier is `HX-EV-PUBLICATION-RESUME-CARRIER-1\0 || 01 || 0005` over `01` U tenant, `02` U resume handle, `03` B32 expected hold-source hash, `04` U idempotency key, and `05` U reason. `stableRequestIdentity = SHA256("HX-EV-PUBLICATION-RESUME-IDENTITY-1\0" || 01 || B(exact carrier bytes))`; server time, ordinal, and provider observations are deliberately absent. The Admin server authenticates tenant and Operator policy, first resolves that stable identity through the current live row, orphan audit, or expiry tombstone, then rereads the precondition and signs purpose `2d` claim `HX-EV-PUBLICATION-RESUME-3\0 || 01 || 0010` (at most 4 KiB): `01` U operator-action issuer, `02` U tenant, `03` U execution identity, `04` B32 ScopeOpHash (zero for legacy), `05` U eligibility (`retry-exhausted`, `drain-limit`, or `legacy-publish-failed`), `06` B32 current hold source or D10 capsule hash, `07` B32 latest A8 head (zero for legacy), `08` N next ordinal, `09` B32 predecessor successful audit hash, `0a` U resume handle, `0b` B32 stable request identity, `0c` B32 exact caller-carrier hash, `0d` U operator subject, `0e` Q request UTC, and `0f` Q expiry UTC no more than 15 minutes later. The caller need not discover internal ScopeOpHash, ordinal, or audit key separately; the server supplies and signs them from the same read. Stale fields fail before mutation.
+`POST /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}` takes `{ "expectedHoldSourceHash": "<64 lowercase hex>", "idempotencyKey": "<1..128 ASCII visible bytes>", "reason": "<1..512 UTF-8 bytes>" }`. Its canonical caller carrier is `HX-EV-PUBLICATION-RESUME-CARRIER-1\0 || 01 || 0005` over `01` U tenant, `02` U resume handle, `03` B32 expected hold-source hash, `04` U idempotency key, and `05` U reason. `stableRequestIdentity = SHA256("HX-EV-PUBLICATION-RESUME-IDENTITY-1\0" || 01 || B(exact carrier bytes))`; server time, ordinal, and provider observations are deliberately absent. The Admin server authenticates tenant and Operator policy, first resolves that stable identity through the current live row, orphan audit, or expiry tombstone, then rereads the precondition and signs purpose `2d` claim `HX-EV-PUBLICATION-RESUME-3\0 || 01 || 000f` (at most 4 KiB): `01` U operator-action issuer, `02` U tenant, `03` U execution identity, `04` B32 ScopeOpHash (zero for legacy), `05` U eligibility (`retry-exhausted`, `drain-limit`, or `legacy-publish-failed`), `06` B32 current hold source or D10 capsule hash, `07` B32 latest A8 head (zero for legacy), `08` N next ordinal, `09` B32 predecessor successful audit hash, `0a` U resume handle, `0b` B32 stable request identity, `0c` B32 exact caller-carrier hash, `0d` U operator subject, `0e` Q request UTC, and `0f` Q expiry UTC no more than 15 minutes later. The caller need not discover internal ScopeOpHash, ordinal, or audit key separately; the server supplies and signs them from the same read. Stale fields fail before mutation.
 
 The same stable identity with byte-identical carrier is one exact retry. A live result or orphan audit returns/completes that result without allocating an ordinal, window, charge, audit, or invocation. A retained expiry tombstone returns `resume_request_expired`. The same identity with different carrier bytes is `resume_request_conflict`, even after the live/audit body is reclaimed. A genuinely new request uses a new idempotency key and stable identity.
 
@@ -336,39 +336,39 @@ D12-cutover 146 669307293a19b9356da9801bc1d73473748f88df13c230b5133d51eaf43e302f
 D12-usage 113 c4d17deb523e29c0902c5e97f1f16c9bb72c914571aa93e77457ada88bbb03a5
 D12-tombstone 174 0327e353968be05a6c9216d6b99327b0248bb4b2fd9ab406102cc2b458822fd1
 D14-drain-limit 202 e22848b3ab4b7c6bd3357078b95410550c1ee0e552d968a9c01ec8068ea4f343
-D14-drain-resolution 197 82bbf9470ba7dae1b599e10a2d250f8f8ec8f7d0e6837366179c8b1cd9178efc
+D14-drain-resolution 197 9fe241c44c658302aac2187226a561138458983ae10d4e2cf81eacd2094b005e
 D16-membership-resolution 285 2875259659b0f8a7225a55f4f18b9110c6323796ee2f508343c319854a607c40
 D17-destination-config 98 048e9eb50252feb334b66506baa8af1c26f6fab1b56461b6fbb491ec12fdb320
 D29-capability 214 a0194011a460ccf2063d4e9c78b3b7ad4f7bbf70ce9e63a55f237a0ef2b52043
-D29-charge 209 06a6c62c8c8a6e62a1324cfed6857e0d38b2468dbcbbf8116d515649b49a2a5b
+D29-charge 211 e28e9a582d566ac854b6d1b24d133ed51d1cc62736515782524ba4666110ad15
 D29-counter 134 eca227f547122e041a159affbac58bf7b57375bf91d78876d88cd73f418d1fc8
-D29-pin-batch 297 44955e5efb3116f10cd0e7b20963b47b1f13b2e274c39790014b2f822d4ef477
+D29-pin-batch 330 82e7a4965c94f3be0092cbcb8adb20b8ea560ef13419c88a036f5dc2d62c4517
 D31-wait 238 7dca50b2d1f448628a84ee423ab3aa364600a320ed10886711cc9c128bc4f3b8
-D31-queue 183 ad2d4caf44730644794fbf316d49f93ce95f08bb484bf43cf2f0693431543c45
-D36-policy 186 2f88061e39810d1899d76897517bd52ffced65e4d203a0979bd0936628fd73d5
-D36-held 310 b380d04457fc6465394d7d6427f667cfa26d12812082bc7b62f563341d424168
+D31-queue 218 1c3c2b7655f178df7ddd09d33f4c64c66b5220ab0b6831abc088e5371b978584
+D36-policy 256 2b60c1df10f1968c8c6e5afbd50cf8dab7b2c7c1b7f067ce8a8157496a26e983
+D36-held 371 812399ecf7f18d8ca0c39efeff73d6d6a52b682416c5a14174334a96c62a1675
 D36-quarantine 336 5dcce10f015b54bb853a3beb633b865b87889685771beeeb603d351559536257
 D36-redrive 119 1a552c0f005efc61b9d74682a5f707925c0b47b5e31d559bdb0b43da43f8b49f
 D37-entry 219 30ca7e011c4e0cbe3d2bdc4e1e66f598d44879f54f38629c3a3e50e4e7d9716f
 D37-index 196 a14e6b24af414ad169f98ba8829f971635724de0acc686a901024ebeec6967fc
 D37-directory 184 d36d068c6a1cea553949c29cafc628cbde9881e712a190d26033211f26b19569
 D37-key 58 eabf14e49beb9484895f4233927107604705ea58aac8d049e34db91ce7152978
-D45-request 293 5f0ba7fb3a98922ccf312bdbb35d4c4b9334c86e9fcff9aa9887527109eee840
-D45-window 285 dc18be39aa60f35271938c3f096966d5aa6719abfeadb63d28163d1ceeb695d9
+D45-request 329 207bfdb0cfe95b3eb41158eb38e77a5c40d0d089ad08ce34ec0bd757cddd22b0
+D45-window 318 e530b0097f279d297c79160eb166cf44d06f5855058837088e773c4a2b7b7e7b
 D45-closure 327 9aa8f4c113926a097669a37f76876c4836b7f1113d65a5389b809cbfb9ab3976
-D45-state 364 9091a765df4f3f3afa26b66670b00ea8f9164ec9f7adfc655f4e5d8ac8a64022
-D45-audit 185 53409ca4f268d049050484ef59aa7c9d21b0803063364d8bfef705c6b6702019
-D46-capsule 300 538cb6c123e8f1b3f50541b4bfe98ccdd960476bc5c07f64f62e4824fd88f396
-D46-recovery 246 a120b923ff6b3bce44af962db5eea6c0d9e1730b531de851c4085e918f841958
+D45-state 405 20533a3edc199970c7c0108d2fccd4c07c6dd0f87610aa32c54a122c6acf8a0a
+D45-audit 218 a24a2940f578339336cd45a15f9a6a26090ba9baebad18285026d6886429cc20
+D46-capsule 338 4f8b6f1fdb402ac61d457571811506f28b612897bd2738e0e7091da0fa8e7d8c
+D46-recovery 257 0ed58bb5acb8f735b937768a593da7ac2deb9385b2868af33e5fe2e947e14944
 ```
 
 ```text
 D06-key 0f91a1983b2d87cad832582071c4c14b82fb4120da3f20615531f3d085bc132a
 D14-key 3d6106bf9476e5106018bc78cc6bc4bf771144175f662f3ca5e1c631af3e23df
 D45-closure-key 58b1b024adae4973e90e4e491aa8713593c439d51b5eb3941eaf66950e0b73b9
-D45-audit-key 9657f5d2d86e994d870e26d8b1e24f7c7c0bde6792faa2b69d21d9d1802df6f3
-D46-capsule-key 26646579b47f9a040aa3c51585ceedc3ee0779ab50e36f8170e69bebf76e6043
-D46-recovery-key cfdc03b45322572504d076f49bd1ef73efefbb4dd426532a8d3b8eda3b81ebf8
+D45-audit-key 1f05e253de2946318746839a6153cd8d1fbed21ad163610269f9d98e10c3198d
+D46-capsule-key bdd34978ca55de1163ea7224dd6cae35ee041002ab6d4cbe655090b4e544291a
+D46-recovery-key c217ad1a103ef00f16682630cb53fd7a6a26d93262d1d7a06115839c7fa27985
 ```
 
 This verifier independently reconstructs all 30 records and checks both byte length and SHA-256. Changing a domain separator, codec, field count/order/framing, fixture, length, or answer fails.
@@ -378,7 +378,6 @@ python3 - <<'PY'
 from hashlib import sha256
 from pathlib import Path
 from struct import pack
-import re
 
 path = Path('_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md')
 text = path.read_text(encoding='utf-8')
@@ -425,20 +424,20 @@ vectors['D12-cutover'] = R('HX-EV-LEGACY-SCOPE-CUTOVER-1', 8, U('*'), U('d'), N(
 vectors['D12-usage'] = R('HX-EV-SCOPE-SHARD-USAGE-1', 7, U('t'), N(7), N(2), N(1), N(9216), N(3), B32(H('usage-prev')))
 vectors['D12-tombstone'] = R('HX-EV-COMMAND-SCOPE-TOMBSTONE-2', 8, U('t'), U('op'), B32(H('scope')), B32(H('input')), B32(H('full-scope')), Q(t), Q(t+315360000000000), N(7))
 vectors['D14-drain-limit'] = R('HX-EV-PUBLICATION-DRAIN-LIMIT-2', 10, U('t'), B32(H('scope')), U('operation'), N(2), N(16), B32(H('drain-head')), B32(H('outcome-head')), N(4), U('pending'), Q(t))
-vectors['D14-drain-resolution'] = R('HX-EV-PUBLICATION-DRAIN-LIMIT-RESOLUTION-1', 8, U('t'), B32(H('scope')), B32(H('drain-limit')), U('resumed'), B32(H('resume-state')), N(2), U('coordinator'), Q(t))
+vectors['D14-drain-resolution'] = R('HX-EV-PUBLICATION-DRAIN-LIMIT-RESOLUTION-1', 8, U('t'), B32(H('scope')), B32(H('drain-limit')), U('resumed'), B32(H('window-intent')), N(2), U('coordinator'), Q(t))
 vectors['D16-membership-resolution'] = R('HX-EV-FIRST-SEND-MEMBERSHIP-RESOLUTION-1', 12, U('t'), B32(H('scope')), N(1), U('event-1'), B32(H('pin')), N(2), B32(H('previous')), B32(H('membership')), B32(H('zero-send')), U('ContinueSamePin'), U('broker'), Q(t))
 vectors['D17-destination-config'] = b'{"component":"pubsub","metadata":{},"schema":"hexalith.eventstore.destination/1","topic":"orders"}'
 vectors['D29-capability'] = R('HX-EV-PUBLICATION-RETENTION-CAPABILITY-2', 15, U('deployment-a'), N(3), B(b'backend'), N(1024*MiB), N(2048*MiB), N(256*MiB), N(512*MiB), N(MiB), N(128*MiB), B32(H('cap-prev')), Q(t), N(256), N(31536000), N(50000), N(256*MiB))
-vectors['D29-charge'] = R('HX-EV-PUBLICATION-CHARGE-1', 13, U('deployment-a'), U('tenant'), U('t'), B32(H('object')), U('pin-batch'), N(10*MiB), N(MiB), N(11*MiB), N(3), N(1), U('active'), B32(z), Q(t))
+vectors['D29-charge'] = R('HX-EV-PUBLICATION-CHARGE-2', 14, U('deployment-a'), U('tenant'), U('t'), B32(H('object')), U('pin-batch'), N(10*MiB), N(MiB), N(11*MiB), N(3), N(1), U('active'), B32(z), O(None), Q(t))
 vectors['D29-counter'] = R('HX-EV-PUBLICATION-COUNTER-1', 8, U('deployment-a'), U('tenant'), U('t'), N(11*MiB), N(1), N(4), B32(H('counter-prev')), Q(t))
 prow = pack('>I', 1) + U('event-1') + B32(H('pin')) + N(10*MiB) + N(11*MiB)
-vectors['D29-pin-batch'] = R('HX-EV-PIN-BATCH-RESERVATION-1', 12, U('t'), B32(H('scope')), B32(sha256(prow).digest()), N(1), B(prow), N(11*MiB), N(3), B32(H('tenant-counter')), B32(H('deployment-counter')), U('reserved'), N(1), Q(t))
+vectors['D29-pin-batch'] = R('HX-EV-PIN-BATCH-RESERVATION-2', 13, U('t'), B32(H('scope')), B32(sha256(prow).digest()), N(1), B(prow), N(11*MiB), N(3), B32(H('tenant-counter')), B32(H('tenant-pool-counter')), B32(H('deployment-counter')), U('reserved'), N(1), Q(t))
 vectors['D31-wait'] = R('HX-EV-PIN-CAPACITY-WAIT-2', 12, U('t'), B32(H('scope')), B32(H('batch')), N(11*MiB), U('deployment'), N(42), Q(t), N(0), U('queued'), B32(H('capability')), B32(H('outbox-plan')), Q(t))
 qrow = N(42) + U('t') + B32(H('scope')) + U('queued')
-vectors['D31-queue'] = R('HX-EV-PIN-CAPACITY-QUEUE-3', 8, U('deployment'), N(1), N(1), B(qrow), N(0), N(0), B32(z), Q(t))
-vectors['D36-policy'] = R('HX-EV-SUBSCRIPTION-DELIVERY-POLICY-2', 9, U('pubsub'), U('orders'), U('sub-a'), U('dead-letter-capture'), O(U('orders-dlq')), N(8), B32(H('subscription-config')), U('dapr-configuration'), Q(t))
+vectors['D31-queue'] = R('HX-EV-PIN-CAPACITY-QUEUE-4', 11, U('deployment-a'), U('deployment'), N(1), N(1), B(qrow), N(0), N(0), N(50000), N(42), B32(z), Q(t))
+vectors['D36-policy'] = R('HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3', 13, U('deployment-a'), U('pubsub'), U('orders'), U('sub-a'), N(1), B32(z), U('active'), U('dead-letter-capture'), O(U('orders-dlq')), N(8), B32(H('subscription-config')), U('dapr-configuration'), Q(t))
 carrier = b'exact-carrier-and-headers'
-vectors['D36-held'] = R('HX-EV-HELD-DELIVERY-3', 18, U('tenant'), O(U('t')), O(U('event-1')), U('sub-a'), U('pubsub'), U('orders'), U('captured'), U('handler-capability-hold'), N(len(carrier)), B32(sha256(carrier).digest()), O(U('archive-a')), O(U('objects/held-1')), O(B32(H('object-readback'))), O(B32(H('handoff'))), Q(t), N(2), N(1), Q(t+600000000))
+vectors['D36-held'] = R('HX-EV-HELD-DELIVERY-4', 22, U('tenant'), U('deployment-a'), O(U('t')), O(U('event-1')), U('pubsub'), U('orders'), U('sub-a'), B32(H('policy')), U('captured'), U('handler-capability-hold'), N(len(carrier)), B32(sha256(carrier).digest()), O(U('archive-a')), O(U('objects/held-1')), O(B32(H('object-readback'))), O(B32(H('handoff'))), Q(t), N(2), N(1), O(None), Q(t+600000000), N(2))
 body = b'quarantined-body'
 manifest = pack('>I', 1) + U('x-header') + N(4) + B32(sha256(b'value').digest())
 vectors['D36-quarantine'] = R('HX-EV-CARRIER-QUARANTINE-2', 14, U('deployment'), O(None), U('sub-a'), U('invalid-header-value'), N(len(body)), B32(sha256(body).digest()), B(manifest), U('archive-a'), U('objects/quarantine-1'), B32(H('provider-proof')), O(U('event-1')), Q(t), U('terminal-quarantine'), B32(H('delivery-receipt')))
@@ -449,46 +448,113 @@ vectors['D37-index'] = R('HX-EV-HOLD-INDEX-2', 8, U('tenant'), U('t'), N(1), N(1
 actor = U('tenant:' + sha256(U('t')).hexdigest())
 vectors['D37-directory'] = R('HX-EV-HOLD-DIRECTORY-1', 7, N(7), N(1), N(1), B(actor), B32(z), Q(t), N(0))
 vectors['D37-key'] = U('tenant') + U('t') + U('PublicationPinCapacityHold') + U('scope:abc')
-request = R('HX-EV-PUBLICATION-RESUME-2', 14, U('admin'), U('t'), U('op'), B32(H('scope')), U('retry-exhausted'), B32(H('hold')), B32(H('head')), N(2), B32(H('audit-prev')), U('hxrsm1-handle'), U('operator'), U('retry after broker repair'), Q(t), Q(t+9000000000))
+request_carrier = R('HX-EV-PUBLICATION-RESUME-CARRIER-1', 5, U('t'), U('hxrsm1-handle'), B32(H('hold')), U('retry-0001'), U('retry after broker repair'))
+request_identity = sha256(b'HX-EV-PUBLICATION-RESUME-IDENTITY-1\0\x01' + B(request_carrier)).digest()
+request = R('HX-EV-PUBLICATION-RESUME-3', 15, U('admin'), U('t'), U('op'), B32(H('scope')), U('retry-exhausted'), B32(H('hold')), B32(H('head')), N(2), B32(H('audit-prev')), U('hxrsm1-handle'), B32(request_identity), B32(sha256(request_carrier).digest()), U('operator'), Q(t), Q(t+9000000000))
 vectors['D45-request'] = request
 attempt_row = pack('>I', 1) + N(4) + B32(sha256(b'definitive-result').digest())
 attempt_root = sha256(b'HX-EV-WINDOW-ATTEMPTS-1\0\x01' + B(attempt_row)).digest()
 broker_auth = b'authenticated-broker-window-proof'
 closure = R('HX-EV-PUBLICATION-WINDOW-CLOSURE-3', 11, U('t'), B32(H('scope')), N(1), B(attempt_row), B32(sha256(b'broker-fence').digest()), B32(sha256(b'producer-disable').digest()), B32(sha256(b'empty-state').digest()), B32(attempt_root), U('SignedCarrier'), B32(z), Q(t))
 history = sha256(b'HX-EV-PUBLICATION-WINDOW-HISTORY-1\0\x01' + B32(z) + B(closure) + B(broker_auth)).digest()
-prior_state = R('HX-EV-PUBLICATION-RESUME-STATE-2', 13, U('t'), U('op'), B32(H('scope')), N(1), N(1), N(16), B32(H('hold-1')), B32(H('window-1')), B32(z), N(0), B32(z), B(pack('>I', 0)), Q(t-1))
-audit = R('HX-EV-PUBLICATION-RESUME-AUDIT-3', 9, U('t'), U('op'), N(2), B32(sha256(request).digest()), B32(sha256(prior_state).digest()), O(B32(sha256(closure).digest())), N(2), N(24), Q(t))
-retry_row = B32(sha256(request).digest()) + N(2) + B32(sha256(audit).digest()) + N(2) + N(24) + Q(t+9000000000)
-state = R('HX-EV-PUBLICATION-RESUME-STATE-2', 13, U('t'), U('op'), B32(H('scope')), N(2), N(2), N(24), B32(H('hold-2')), B32(H('window-2')), B32(history), N(1), B32(sha256(audit).digest()), B(pack('>I', 1)+retry_row), Q(t))
-vectors['D45-window'] = R('HX-EV-PUBLICATION-WINDOW-1', 12, U('t'), B32(H('scope')), U('operation'), N(2), B32(sha256(closure).digest()), B32(sha256(state).digest()), B32(H('members')), B32(H('policy')), N(16), U('admin'), Q(t), B32(H('capability')))
+prior_state = R('HX-EV-PUBLICATION-RESUME-STATE-3', 14, U('t'), U('op'), B32(H('scope')), N(1), N(1), N(16), B32(H('hold-1')), B32(H('window-1')), B32(z), N(0), B32(z), B(pack('>I', 0)), B(pack('>I', 0)), Q(t-1))
+window = R('HX-EV-PUBLICATION-WINDOW-2', 13, U('t'), B32(H('scope')), U('operation'), N(2), B32(sha256(closure).digest()), B32(sha256(prior_state).digest()), B32(request_identity), B32(H('members')), B32(H('policy')), N(16), U('admin'), Q(t), B32(H('capability')))
+audit = R('HX-EV-PUBLICATION-RESUME-AUDIT-4', 10, U('t'), U('op'), N(2), B32(request_identity), B32(sha256(request_carrier).digest()), B32(sha256(prior_state).digest()), O(B32(sha256(closure).digest())), N(2), N(24), Q(t))
+retry_row = B32(request_identity) + B32(sha256(request_carrier).digest()) + N(2) + B32(sha256(audit).digest()) + N(2) + N(24) + Q(t+9000000000)
+state = R('HX-EV-PUBLICATION-RESUME-STATE-3', 14, U('t'), U('op'), B32(H('scope')), N(2), N(2), N(24), B32(H('hold-2')), B32(sha256(window).digest()), B32(history), N(1), B32(sha256(audit).digest()), B(pack('>I', 1)+retry_row), B(pack('>I', 0)), Q(t))
+vectors['D45-window'] = window
 vectors['D45-closure'] = closure
 vectors['D45-state'] = state
 vectors['D45-audit'] = audit
 stored = b'canonical-stored-event'
-member = pack('>I', 1) + N(10) + U('event-1') + B32(sha256(stored).digest())
-event_root = sha256(b'HX-EV-LEGACY-RESUME-EVENTS-1\0\x01' + B(member)).digest()
-capsule = R('HX-EV-LEGACY-RESUME-CAPSULE-1', 16, U('t'), U('d'), U('a'), U('tracking'), O(U('op')), U('correlation'), U('increment'), U('success-events'), N(10), N(10), I(1), B32(event_root), B(member), U('drain-exhaustion'), B32(H('drain-source')), Q(t))
+member = N(10) + U('event-1') + B32(sha256(stored).digest())
+counted_members = pack('>I', 1) + member
+event_root = sha256(b'HX-EV-LEGACY-RESUME-EVENTS-2\0\x01' + B(counted_members)).digest()
+source_hash = H('drain-source')
+capsule_identity = sha256(b'HX-EV-LEGACY-RESUME-CAPSULE-IDENTITY-1\0\x01' + U('t') + U('d') + U('a') + U('tracking') + B32(source_hash)).digest()
+chunk_root = sha256(b'HX-EV-LEGACY-RESUME-CHUNK-ROWS-1\0\x01' + B(member)).digest()
+chunk = R('HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1', 5, B32(capsule_identity), N(0), N(1), B(member), B32(chunk_root))
+manifest_row = N(0) + N(10) + N(1) + B32(sha256(chunk).digest()) + N(len(chunk)) + U('legacy-resume/chunk-0')
+manifest = pack('>I', 1) + manifest_row
+capsule = R('HX-EV-LEGACY-RESUME-CAPSULE-2', 16, U('t'), U('d'), U('a'), U('tracking'), O(U('op')), U('correlation'), U('increment'), U('success-events'), N(10), N(10), I(1), B32(event_root), B(manifest), U('drain-exhaustion'), B32(source_hash), Q(t))
 vectors['D46-capsule'] = capsule
-vectors['D46-recovery'] = R('HX-EV-LEGACY-PUBLICATION-RECOVERY-2', 11, U('t'), B32(sha256(capsule).digest()), U('hxrsm1-handle'), N(2), U('legacy-resume'), U('claimed'), B32(H('drain-record')), O(B32(H('dead-letter'))), B32(H('recovery-prev')), O(None), Q(t))
+vectors['D46-recovery'] = R('HX-EV-LEGACY-PUBLICATION-RECOVERY-3', 13, U('t'), B32(sha256(capsule).digest()), U('hxrsm1-handle'), N(3), N(2), U('legacy-resume'), U('claimed'), B32(H('drain-record')), O(B32(H('dead-letter'))), B32(H('recovery-prev')), O(None), O(None), Q(t))
 
 keys = {
     'D06-key': K('HX-EV-FULL-REPLAY-ACTIVATION-KEY-1', U('d'), B32(H('registry')), N(1)),
     'D14-key': K('HX-EV-PUBLICATION-DRAIN-LIMIT-KEY-1', B32(H('scope')), N(2), N(16)),
     'D45-closure-key': K('HX-EV-PUBLICATION-WINDOW-CLOSURE-KEY-1', B32(H('scope')), N(1)),
-    'D45-audit-key': K('HX-EV-PUBLICATION-RESUME-AUDIT-KEY-1', U('t'), U('op'), N(2)),
-    'D46-capsule-key': K('HX-EV-LEGACY-RESUME-CAPSULE-KEY-1', U('t'), U('d'), U('a'), U('tracking')),
-    'D46-recovery-key': K('HX-EV-LEGACY-PUBLICATION-RECOVERY-KEY-1', B32(sha256(capsule).digest())),
+    'D45-audit-key': K('HX-EV-PUBLICATION-RESUME-AUDIT-KEY-2', U('t'), U('op'), B32(request_identity)),
+    'D46-capsule-key': K('HX-EV-LEGACY-RESUME-CAPSULE-KEY-2', B32(capsule_identity)),
+    'D46-recovery-key': K('HX-EV-LEGACY-PUBLICATION-RECOVERY-KEY-2', B32(sha256(capsule).digest())),
 }
 
 assert set(vectors) == set(answers)
+computed = {label:(len(value), sha256(value).hexdigest()) for label, value in vectors.items()}
+mismatches = {label:(computed[label], answers[label]) for label in vectors if computed[label] != answers[label]}
+assert not mismatches, mismatches
 for label, value in vectors.items():
-    actual = (len(value), sha256(value).hexdigest())
-    assert actual == answers[label], (label, actual, answers[label])
     mutant = value[:-1] + bytes([value[-1] ^ 1])
     assert sha256(mutant).hexdigest() != answers[label][1]
 assert keys == key_answers
 assert K('HX-EV-PUBLICATION-DRAIN-LIMIT-KEY-1', B32(H('scope')), N(1), N(23)) != K('HX-EV-PUBLICATION-DRAIN-LIMIT-KEY-1', B32(H('scope')), N(12), N(3))
-print(f'D12 codec verifier: {len(vectors)} answers, {len(vectors)} byte mutations rejected, {len(keys)} framed keys')
+
+def decode_record(raw, domain, schema):
+    prefix = domain.encode() + b'\0\x01'
+    assert raw.startswith(prefix)
+    offset = len(prefix)
+    count = int.from_bytes(raw[offset:offset+2], 'big'); offset += 2
+    assert count == len(schema)
+    def take(length):
+        nonlocal offset
+        assert 0 <= length <= len(raw)-offset
+        value = raw[offset:offset+length]; offset += length
+        return value
+    def field(kind):
+        nonlocal offset
+        if isinstance(kind, tuple) and kind[0] == 'O':
+            marker = take(1)
+            assert marker in {b'\x00', b'\x01'}
+            if marker == b'\x01': field(kind[1])
+        elif kind in {'U','B'}:
+            length = int.from_bytes(take(4), 'big')
+            assert length <= 1024*1024
+            take(length)
+        elif kind == 'B32': take(32)
+        elif kind == 'N': take(8)
+        elif kind == 'I': take(4)
+        elif kind == 'Q': take(8)
+        else: raise AssertionError(kind)
+    for expected_tag, kind in enumerate(schema, 1):
+        assert take(1) == bytes([expected_tag])
+        field(kind)
+    assert offset == len(raw)
+
+families = [
+    (request, 'HX-EV-PUBLICATION-RESUME-3', ['U','U','U','B32','U','B32','B32','N','B32','U','B32','B32','U','Q','Q']),
+    (capsule, 'HX-EV-LEGACY-RESUME-CAPSULE-2', ['U','U','U','U',('O','U'),'U','U','U','N','N','I','B32','B','U','B32','Q']),
+    (vectors['D31-queue'], 'HX-EV-PIN-CAPACITY-QUEUE-4', ['U','U','N','N','B','N','N','N','N','B32','Q']),
+]
+malformed_rejected = 0
+for value, domain, schema in families:
+    decode_record(value, domain, schema)
+    prefix_len = len(domain.encode()) + 1 + 1 + 2
+    mutations = [
+        value[:-1],                                      # missing/truncated
+        value[:prefix_len] + b'\x02' + value[prefix_len+1:], # duplicate tag 02
+        value[:prefix_len] + b'\x03' + value[prefix_len+1:], # reordered/unknown first tag
+        value[:prefix_len+1] + b'\xff\xff\xff\xff' + value[prefix_len+5:], # overflowing framed length
+        value + b'\x00',                               # trailing
+    ]
+    for malformed in mutations:
+        try:
+            decode_record(malformed, domain, schema)
+        except (AssertionError, UnicodeDecodeError):
+            malformed_rejected += 1
+        else:
+            raise AssertionError((domain, 'malformed accepted'))
+assert malformed_rejected == 15
+print(f'D12 codec verifier: {len(vectors)} answers, {len(vectors)} byte mutations rejected, {len(keys)} framed keys, {malformed_rejected} malformed records rejected')
 PY
 ```
 
@@ -515,12 +581,14 @@ def valid_amounts(amounts):
     return True
 
 def status(state, *, classification='success', conflict=False, evidence=True,
-           terminal=False, drain_active=False, failure_class=None,
+           prepared=True, terminal=False, drain_active=False, failure_classes=(),
            at_max=False, auto=False):
     if conflict:
         return ('CommandOutcomeHold', 'outcome_evidence_conflict', 30)
     if not evidence:
         return ('CommandOutcomeHold', 'outcome_evidence_hold', 30)
+    if not prepared:
+        return ('CommandOutcomeHold', 'response_preparation_hold', 30)
     if terminal:
         return ('PublishFailed', 'publication_terminal_failed', None)
     if state == 'published':
@@ -531,33 +599,43 @@ def status(state, *, classification='success', conflict=False, evidence=True,
         return ('Completed', None, None)
     if drain_active:
         return ('EventsStored', 'publication_drain_limit_hold', 60)
-    if state == 'failed' and failure_class in {'class-02', 'class-03'}:
+    classes = set(failure_classes)
+    if state == 'failed' and classes & {'class-02', 'class-03'}:
         return ('CommandOutcomeHold', 'terminal_evidence_hold', 30)
-    if state == 'failed' and at_max:
+    if state == 'failed' and classes and classes == {'class-01'} and at_max:
         return ('EventsStored', 'publication_retry_exhausted_hold', 60)
-    if state == 'failed' and auto:
+    if state == 'failed' and classes and classes == {'class-01'} and auto:
         return ('EventsStored', 'publication_retry_pending', 1)
     if state in {'pending', 'unknown'}:
         return ('EventsStored', None, 1)
-    return ('CommandOutcomeHold', 'outcome_evidence_hold', 30)
+    return ('CommandOutcomeHold', 'outcome_evidence_conflict', 30)
 
 status_cases = [
     (status('pending'), ('EventsStored', None, 1)),
     (status('unknown', at_max=True), ('EventsStored', None, 1)),
     (status('pending', drain_active=True), ('EventsStored', 'publication_drain_limit_hold', 60)),
-    (status('failed', at_max=True), ('EventsStored', 'publication_retry_exhausted_hold', 60)),
-    (status('failed', at_max=True, failure_class='class-02'), ('CommandOutcomeHold', 'terminal_evidence_hold', 30)),
-    (status('failed', failure_class='class-03'), ('CommandOutcomeHold', 'terminal_evidence_hold', 30)),
-    (status('failed', auto=True), ('EventsStored', 'publication_retry_pending', 1)),
+    (status('failed', at_max=True, failure_classes=('class-01',)), ('EventsStored', 'publication_retry_exhausted_hold', 60)),
+    (status('failed', at_max=True, failure_classes=('class-02',)), ('CommandOutcomeHold', 'terminal_evidence_hold', 30)),
+    (status('failed', failure_classes=('class-03',)), ('CommandOutcomeHold', 'terminal_evidence_hold', 30)),
+    (status('failed', auto=True, failure_classes=('class-01',)), ('EventsStored', 'publication_retry_pending', 1)),
     (status('failed', terminal=True), ('PublishFailed', 'publication_terminal_failed', None)),
     (status('pending', conflict=True), ('CommandOutcomeHold', 'outcome_evidence_conflict', 30)),
     (status('published'), ('Completed', None, None)),
     (status('published', classification='rejection'), ('Rejected', None, None)),
     (status('published', classification='unknown'), ('CommandOutcomeHold', 'outcome_evidence_conflict', 30)),
     (status('not-applicable'), ('Completed', None, None)),
-    (status('failed'), ('CommandOutcomeHold', 'outcome_evidence_hold', 30)),
+    (status('failed', at_max=True, failure_classes=('unknown',)), ('CommandOutcomeHold', 'outcome_evidence_conflict', 30)),
 ]
 assert all(actual == expected for actual, expected in status_cases)
+for kwargs in [
+    {'terminal':True}, {'state':'published'}, {'drain_active':True},
+    {'state':'failed', 'failure_classes':('class-01',), 'at_max':True},
+    {'state':'failed', 'failure_classes':('class-02',), 'at_max':True},
+]:
+    state = kwargs.pop('state', 'pending')
+    assert status(state, conflict=True, **kwargs)[1] == 'outcome_evidence_conflict'
+    assert status(state, evidence=False, **kwargs)[1] == 'outcome_evidence_hold'
+assert status('published', prepared=False)[1] == 'response_preparation_hold'
 
 class Ledger:
     def __init__(self):
@@ -596,11 +674,15 @@ class Ledger:
         self.deployment += total
         return True
     def refund(self, account_kind, account, amount):
-        assert 0 <= amount <= self.tenant[account]
+        before = (dict(self.tenant), self.tenant_pool, self.unidentified, self.deployment)
+        if account_kind not in {'tenant', 'capture-scope'} or not isinstance(amount, int) or not 0 <= amount <= self.tenant[account]:
+            assert before == (dict(self.tenant), self.tenant_pool, self.unidentified, self.deployment)
+            return False
         self.tenant[account] -= amount
         if account_kind == 'tenant': self.tenant_pool -= amount
         else: self.unidentified -= amount
         self.deployment -= amount
+        return True
 
 ledger = Ledger()
 assert ledger.reserve('tenant', 't1', [400*MiB, 300*MiB])
@@ -612,32 +694,88 @@ assert not ledger.reserve('capture-scope', 'scope-b', [1])  # exact unidentified
 assert not ledger.reserve('unknown', 'scope-c', [1])
 ledger.refund('capture-scope', 'scope-a', 512*MiB)
 assert ledger.unidentified == 0 and ledger.deployment == 700*MiB
+refund_snapshot = (dict(ledger.tenant), ledger.tenant_pool, ledger.unidentified, ledger.deployment)
+assert not ledger.refund('unknown', 't1', 1)
+assert refund_snapshot == (dict(ledger.tenant), ledger.tenant_pool, ledger.unidentified, ledger.deployment)
 invalid_snapshot = (dict(ledger.tenant), ledger.tenant_pool, ledger.unidentified, ledger.deployment)
 assert not ledger.reserve('tenant', 't1', [-1])
 assert invalid_snapshot == (dict(ledger.tenant), ledger.tenant_pool, ledger.unidentified, ledger.deployment)
 
+class ChargeSwap:
+    def __init__(self, old_amount, ceiling):
+        self.old = old_amount
+        self.staged = 0
+        self.active = old_amount
+        self.used = old_amount
+        self.ceiling = ceiling
+        self.owner = None
+        self.finalized = False
+    def stage(self, new_amount, owner):
+        before = vars(self).copy()
+        if (not isinstance(new_amount, int) or new_amount < 0
+                or new_amount > U64_MAX-self.used or self.used+new_amount > self.ceiling):
+            assert before == vars(self)
+            return False
+        self.staged = new_amount; self.used += new_amount; self.owner = owner
+        return True
+    def recover(self, owner, successor_read_back):
+        if owner != self.owner or self.staged == 0:
+            return False
+        if successor_read_back:
+            if not self.finalized:
+                self.used -= self.old
+                self.active = self.staged
+                self.old = 0
+                self.staged = 0
+                self.finalized = True
+        else:
+            self.used -= self.staged
+            self.staged = 0
+            self.owner = None
+        return True
+
+rolled_back_swap = ChargeSwap(600, 1000)
+assert rolled_back_swap.stage(400, b'request-a') and rolled_back_swap.used == 1000
+assert rolled_back_swap.active == 600
+assert rolled_back_swap.recover(b'request-a', False) and rolled_back_swap.used == rolled_back_swap.active == 600
+completed_swap = ChargeSwap(600, 1200)
+assert completed_swap.stage(500, b'request-b') and completed_swap.active == 600
+assert completed_swap.recover(b'request-b', True) and completed_swap.used == completed_swap.active == 500
+completed_state = vars(completed_swap).copy()
+assert not completed_swap.recover(b'request-b', True) and completed_state == vars(completed_swap)
+refused_swap = ChargeSwap(600, 1000)
+refused_state = vars(refused_swap).copy()
+assert not refused_swap.stage(401, b'request-c') and refused_state == vars(refused_swap)
+
 class Queues:
     def __init__(self, ceiling=50000):
         self.ceiling = ceiling
+        self.last_ticket = 0
         self.where = {}
         self.rows = defaultdict(list)
         self.reservations = defaultdict(set)
+    @staticmethod
+    def sort_key(row):
+        return (row[0], row[1].encode('utf-8'), sha256(row[2].encode()).digest())
     def _has_room(self, target):
         return len(self.rows[target]) + len(self.reservations[target]) < self.ceiling
     def reserve_pair(self, tenant, scope):
         targets = ('deployment', 'tenant:' + tenant)
-        if any(not self._has_room(target) for target in targets):
+        if (scope in self.where or any(scope in values for values in self.reservations.values())
+                or any(not self._has_room(target) for target in targets)):
             return False
         for target in targets:
             self.reservations[target].add(scope)
         return True
     def add(self, ticket, tenant, scope, state='queued'):
         target = 'deployment'
-        if not self.reserve_pair(tenant, scope):
+        if (not isinstance(ticket, int) or not self.last_ticket < ticket <= U64_MAX
+                or state not in {'queued','parked'} or not self.reserve_pair(tenant, scope)):
             return False
+        self.last_ticket = ticket
         self.reservations[target].remove(scope)
         row = [ticket, tenant, scope, state]
-        self.rows[target].append(row); self.rows[target].sort()
+        self.rows[target].append(row); self.rows[target].sort(key=self.sort_key)
         self.where[scope] = target
         assert scope in self.reservations['tenant:' + tenant]
         assert all(len(self.rows[name]) + len(self.reservations[name]) <= self.ceiling
@@ -655,7 +793,7 @@ class Queues:
             self.reservations[target].remove(head[2])
             self.rows['deployment'].remove(head)
             self.reservations['deployment'].add(head[2])
-            self.rows[target].append(head); self.rows[target].sort()
+            self.rows[target].append(head); self.rows[target].sort(key=self.sort_key)
             self.where[head[2]] = target
             return target
         return 'reserve'
@@ -669,18 +807,22 @@ class Queues:
         self.reservations['deployment'].remove(head[2])
         self.rows[target].remove(head)
         self.reservations[target].add(head[2])
-        self.rows['deployment'].append(head); self.rows['deployment'].sort()
+        self.rows['deployment'].append(head); self.rows['deployment'].sort(key=self.sort_key)
         self.where[head[2]] = 'deployment'
         return 'deployment'
 
-def decode_queue(rows, entry_count, parked_count, trailing=b''):
-    if trailing or len(rows) != entry_count:
+def decode_queue(rows, entry_count, parked_count, reserved_count=0, ceiling=50000,
+                 last_ticket=U64_MAX, trailing=b''):
+    if (trailing or len(rows) != entry_count or not 0 <= ceiling <= 50000
+            or reserved_count < 0 or entry_count + reserved_count > ceiling):
         return 'pin_capacity_queue_corruption_hold'
     if parked_count != sum(row[3] == 'parked' for row in rows):
         return 'pin_capacity_queue_corruption_hold'
     if len({row[0] for row in rows}) != len(rows) or len({row[2] for row in rows}) != len(rows):
         return 'pin_capacity_queue_corruption_hold'
-    if rows != sorted(rows):
+    if any(row[0] > last_ticket for row in rows):
+        return 'pin_capacity_queue_corruption_hold'
+    if rows != sorted(rows, key=Queues.sort_key):
         return 'pin_capacity_queue_corruption_hold'
     return 'valid'
 
@@ -693,7 +835,13 @@ def encode_queue_row(row):
             + sha256(scope.encode()).digest()
             + len(state_bytes).to_bytes(4, 'big') + state_bytes)
 
-def decode_queue_bytes(raw, entry_count, parked_count):
+def encode_queue_record(rows, reserved_count, ceiling, last_ticket):
+    return (b'Q4' + len(rows).to_bytes(8,'big')
+            + sum(row[3] == 'parked' for row in rows).to_bytes(8,'big')
+            + reserved_count.to_bytes(8,'big') + ceiling.to_bytes(8,'big')
+            + last_ticket.to_bytes(8,'big') + b''.join(encode_queue_row(row) for row in rows))
+
+def decode_queue_bytes(raw):
     offset = 0
     rows = []
     try:
@@ -707,6 +855,14 @@ def decode_queue_bytes(raw, entry_count, parked_count):
         def take_u():
             length = int.from_bytes(take(4), 'big')
             return take(length).decode('utf-8', errors='strict')
+        if take(2) != b'Q4': raise ValueError('domain')
+        entry_count = int.from_bytes(take(8), 'big')
+        parked_count = int.from_bytes(take(8), 'big')
+        reserved_count = int.from_bytes(take(8), 'big')
+        ceiling = int.from_bytes(take(8), 'big')
+        last_ticket = int.from_bytes(take(8), 'big')
+        if entry_count > 50000 or entry_count + reserved_count > ceiling or ceiling > 50000:
+            raise ValueError('ceiling')
         for _ in range(entry_count):
             ticket = int.from_bytes(take(8), 'big')
             tenant = take_u()
@@ -717,7 +873,7 @@ def decode_queue_bytes(raw, entry_count, parked_count):
             rows.append([ticket, tenant, scope_hash, state])
         if offset != len(raw):
             raise ValueError('trailing')
-        return decode_queue(rows, entry_count, parked_count)
+        return decode_queue(rows, entry_count, parked_count, reserved_count, ceiling, last_ticket)
     except (UnicodeDecodeError, ValueError):
         return 'pin_capacity_queue_corruption_hold'
 
@@ -734,6 +890,7 @@ assert 'a' in queues.reservations['tenant:t1'] and 'a' not in queues.reservation
 assert [row[2] for row in queues.rows['deployment']] == ['a', 'b']
 assert queues.add(3, 't3', 'c', 'parked')
 assert not queues.add(4, 't4', 'd')
+assert not queues.add(4, 't3', 'c')  # duplicate stable subject.
 assert len(queues.rows['deployment']) + len(queues.reservations['deployment']) == queues.ceiling
 assert queues.deployment_turn(lambda _: True, lambda _: True) == 'reserve'
 parked_only = Queues(2)
@@ -757,16 +914,19 @@ assert decode_queue(valid_rows, 1, 0) == 'valid'
 assert decode_queue(valid_rows, 0, 0) == 'pin_capacity_queue_corruption_hold'
 assert decode_queue(valid_rows, 2, 0) == 'pin_capacity_queue_corruption_hold'
 assert decode_queue(valid_rows, 1, 1) == 'pin_capacity_queue_corruption_hold'
-assert decode_queue(valid_rows, 1, 0, b'x') == 'pin_capacity_queue_corruption_hold'
-valid_raw = encode_queue_row(valid_rows[0])
-assert decode_queue_bytes(valid_raw, 1, 0) == 'valid'
-assert decode_queue_bytes(valid_raw[:-1], 1, 0) == 'pin_capacity_queue_corruption_hold'
-assert decode_queue_bytes(valid_raw, 2, 0) == 'pin_capacity_queue_corruption_hold'
-assert decode_queue_bytes(valid_raw, 0, 0) == 'pin_capacity_queue_corruption_hold'
-assert decode_queue_bytes(valid_raw, 1, 1) == 'pin_capacity_queue_corruption_hold'
-assert decode_queue_bytes(valid_raw+b'x', 1, 0) == 'pin_capacity_queue_corruption_hold'
-malformed = valid_raw[:8] + (2**32-1).to_bytes(4, 'big') + valid_raw[12:]
-assert decode_queue_bytes(malformed, 1, 0) == 'pin_capacity_queue_corruption_hold'
+assert decode_queue(valid_rows, 1, 0, trailing=b'x') == 'pin_capacity_queue_corruption_hold'
+assert decode_queue(valid_rows, 1, 0, reserved_count=3, ceiling=3) == 'pin_capacity_queue_corruption_hold'
+valid_raw = encode_queue_record(valid_rows, 1, 3, 1)
+assert decode_queue_bytes(valid_raw) == 'valid'
+assert decode_queue_bytes(valid_raw[:-1]) == 'pin_capacity_queue_corruption_hold'
+assert decode_queue_bytes(valid_raw+b'x') == 'pin_capacity_queue_corruption_hold'
+overflow_raw = encode_queue_record(valid_rows, 3, 3, 1)
+assert decode_queue_bytes(overflow_raw) == 'pin_capacity_queue_corruption_hold'
+malformed = valid_raw[:42] + (2**32-1).to_bytes(4, 'big') + valid_raw[46:]
+assert decode_queue_bytes(malformed) == 'pin_capacity_queue_corruption_hold'
+ticket_exhausted = Queues()
+ticket_exhausted.last_ticket = U64_MAX
+assert not ticket_exhausted.add(U64_MAX, 't', 'never-wraps')
 
 def membership_exit(trigger, zero_send, same_bytes):
     return 'ContinueSamePin' if trigger in {'configuration-revision', 'membership-revision'} and zero_send and same_bytes else 'FirstSendMembershipChangedHold'
@@ -785,11 +945,19 @@ assert legacy_resume(False, True, True) == 'legacy_resume_evidence_unavailable'
 assert legacy_resume(True, True, False) == 'legacy_resume_evidence_unavailable'
 assert legacy_resume(True, False, True) == 'resume_evidence_hold'
 
-def render_recovery(first, second, immutable):
-    if first not in {None, immutable+'-response'}: return 'response_preparation_hold'
-    if second not in {None, immutable+'-outcome'}: return 'response_preparation_hold'
-    return (first or immutable+'-response', second or immutable+'-outcome', 'prepared')
-assert render_recovery('x-response', None, 'x') == ('x-response', 'x-outcome', 'prepared')
+def render_recovery(first, second, first_receipt, second_receipt, immutable, generation):
+    if first != immutable+'-response' or second != immutable+'-outcome':
+        return 'response_preparation_hold'
+    expected = ('receipt', immutable, generation)
+    if first_receipt != expected or second_receipt != expected:
+        return 'response_preparation_hold'
+    return (first, second, 'prepared')
+receipt = ('receipt', 'x', 7)
+assert render_recovery('x-response', 'x-outcome', receipt, receipt, 'x', 7) == ('x-response', 'x-outcome', 'prepared')
+assert render_recovery('x-response', None, receipt, receipt, 'x', 7) == 'response_preparation_hold'
+assert render_recovery(None, 'x-outcome', receipt, receipt, 'x', 7) == 'response_preparation_hold'
+assert render_recovery('x-response', 'x-outcome', None, receipt, 'x', 7) == 'response_preparation_hold'
+assert render_recovery('x-response', 'x-outcome', receipt, ('receipt','x',6), 'x', 7) == 'response_preparation_hold'
 
 def resume_publication(committed, unresolved, accepted, hold, evidence):
     if evidence == 'stale':
