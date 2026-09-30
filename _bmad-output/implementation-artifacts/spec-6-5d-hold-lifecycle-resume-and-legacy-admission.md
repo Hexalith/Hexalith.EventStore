@@ -15,6 +15,8 @@ Specify bounded hold, wait, resume, capacity, and legacy-admission lifecycles as
 
 This documentation candidate is grounded at repository commit `6a2f25e39586692b54b655d3e6e8a5f6fa4d317e`. The loop-1 source is the byte-identical `spec-event-versioning-upcasting.md` at commit `288a6190` (SHA-256 `c474df76a687b2798757051efbdb382bb6b9650f7bd7a7637d0c67bfc5e7b715`). Stories 6.5a, 6.5b, and 6.5c remain unchanged section candidates. AD-13 remains `UNAPPROVED`, and this candidate alone grants no implementation authority.
 
+After concurrent commits and rebase captured earlier candidate work, the user authorized `01498ac721db7c44f18fcf9591ffbbf30ba245e2` as the resumed build's verification/review baseline. The execution record retains the initial baseline and review history; the protected source hashes below remain pinned.
+
 The draft's checked big-endian codecs are imported: `U` and `B` are `u32 length || bytes`, `B32` is exactly 32 bytes, `N` is a checked non-negative u64, `I` is signed i32, `Q` is signed i64 UTC ticks, and `O(X)` is `00` for absent or `01 || X` for present. Every record below is `ASCII domain separator including NUL || one-byte codec || u16 field count || fields in ascending tag order`. Length/count/arithmetic validation precedes allocation. A decoder rejects missing, duplicate, extra, reordered, negative, overflowing, or trailing data.
 
 The current source proves only the shipped starting point. `AggregateActor` deletes `UnpublishedEventsRecord` after drain exhaustion, `DeadLetterMessage` omits `IsRejection`, `ReplayController` is actually at `src/Hexalith.EventStore/Controllers/ReplayController.cs` and resubmits `PublishFailed` commands, Operations capture defaults to 1 MiB with a 10 MiB ceiling, and its current actor index is key-only. No proposed record or provider guarantee is claimed to exist today.
@@ -82,7 +84,7 @@ Status inspection authenticates the current scope, head, active hold pointers, a
 6. A failed set whose unresolved members are all definitive class-01 at their per-window maximum is `EventsStored`, `Retryable=false`, `RecoveryReasonCode=publication_retry_exhausted_hold`, and `Retry-After: 60`.
 7. A failed set whose unresolved members are all class-01 below maximum and have an admitted automatic attempt is `EventsStored`, `Retryable=true`, `RecoveryReasonCode=publication_retry_pending`, and `Retry-After: 1`.
 8. `pending` or `unknown` is ordinary nonterminal `EventsStored` with `Retry-After: 1`; exhaustion alone never holds it. Only row 4's active drain-limit record changes it to an operator hold.
-9. Any other failed or contradictory set is the closed `CommandOutcomeHold` reason below.
+9. Any other available failed set—including an unknown class, an empty class set, or contradictory class evidence—is `CommandOutcomeHold(outcome_evidence_conflict)`. It can never project retry exhaustion merely because an attempt counter is at maximum.
 
 An open D9 successor window returns to rows 7 or 8 for only its unresolved members. Accepted members, the first response, global pins, MessageIds, batch root, and committed result never change.
 
@@ -194,7 +196,7 @@ Publication resume re-arms only unresolved publication of already committed even
 
 Every eligible hold inventory item exposes an opaque stable `resumeHandle = "hxrsm1-" || lowercase-hex SHA256(U tenant || U execution identity || B32 hold-source hash)`. Authorized Operators can read `GET /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}/precondition`; the response is support-safe `{ resumeHandle, eligibility, expectedHoldSourceHash, headHash, nextResumeOrdinal, predecessorAuditHash, expiresAt }`. It comes from one authenticated current-head read and is never an execution capability. A deployment route does not stand in for a tenant.
 
-`POST /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}` takes `{ "expectedHoldSourceHash": "<64 lowercase hex>", "idempotencyKey": "<1..128 ASCII visible bytes>", "reason": "<1..512 UTF-8 bytes>" }`. Its canonical caller carrier is `HX-EV-PUBLICATION-RESUME-CARRIER-1\0 || 01 || 0005` over `01` U tenant, `02` U resume handle, `03` B32 expected hold-source hash, `04` U idempotency key, and `05` U reason. `stableRequestIdentity = SHA256("HX-EV-PUBLICATION-RESUME-IDENTITY-1\0" || 01 || B(exact carrier bytes))`; server time, ordinal, and provider observations are deliberately absent. The Admin server authenticates tenant and Operator policy, first resolves that stable identity through the current live row, orphan audit, or expiry tombstone, then rereads the precondition and signs purpose `2d` claim `HX-EV-PUBLICATION-RESUME-3\0 || 01 || 000f` (at most 4 KiB): `01` U operator-action issuer, `02` U tenant, `03` U execution identity, `04` B32 ScopeOpHash (zero for legacy), `05` U eligibility (`retry-exhausted`, `drain-limit`, or `legacy-publish-failed`), `06` B32 current hold source or D10 capsule hash, `07` B32 latest A8 head (zero for legacy), `08` N next ordinal, `09` B32 predecessor successful audit hash, `0a` U resume handle, `0b` B32 stable request identity, `0c` B32 exact caller-carrier hash, `0d` U operator subject, `0e` Q request UTC, and `0f` Q expiry UTC no more than 15 minutes later. The caller need not discover internal ScopeOpHash, ordinal, or audit key separately; the server supplies and signs them from the same read. Stale fields fail before mutation.
+`POST /api/v1/admin/publications/tenants/{tenantId}/{resumeHandle}` takes `{ "expectedHoldSourceHash": "<64 lowercase hex>", "idempotencyKey": "<1..128 ASCII visible bytes>", "reason": "<1..512 UTF-8 bytes>" }`. Its canonical caller carrier is `HX-EV-PUBLICATION-RESUME-CARRIER-1\0 || 01 || 0005` over `01` U tenant, `02` U resume handle, `03` B32 expected hold-source hash, `04` U idempotency key, and `05` U reason. `stableRequestIdentity = SHA256("HX-EV-PUBLICATION-RESUME-IDENTITY-1\0" || 01 || U tenant || U resumeHandle || U idempotencyKey)`; the exact carrier hash separately binds expected source and reason, so changed bytes under the same caller key conflict. Server time, ordinal, and provider observations are deliberately absent. The Admin server authenticates tenant and Operator policy, first resolves that stable identity through the current live row, orphan audit, or expiry tombstone, then rereads the precondition and signs purpose `2d` claim `HX-EV-PUBLICATION-RESUME-3\0 || 01 || 000f` (at most 4 KiB): `01` U operator-action issuer, `02` U tenant, `03` U execution identity, `04` B32 ScopeOpHash (zero for legacy), `05` U eligibility (`retry-exhausted`, `drain-limit`, or `legacy-publish-failed`), `06` B32 current hold source or D10 capsule hash, `07` B32 latest A8 head (zero for legacy), `08` N next ordinal, `09` B32 predecessor successful audit hash, `0a` U resume handle, `0b` B32 stable request identity, `0c` B32 exact caller-carrier hash, `0d` U operator subject, `0e` Q request UTC, and `0f` Q expiry UTC no more than 15 minutes later. The caller need not discover internal ScopeOpHash, ordinal, or audit key separately; the server supplies and signs them from the same read. Stale fields fail before mutation.
 
 The same stable identity with byte-identical carrier is one exact retry. A live result or orphan audit returns/completes that result without allocating an ordinal, window, charge, audit, or invocation. A retained expiry tombstone returns `resume_request_expired`. The same identity with different carrier bytes is `resume_request_conflict`, even after the live/audit body is reclaimed. A genuinely new request uses a new idempotency key and stable identity.
 
@@ -216,7 +218,7 @@ This explicitly amends C5: its terminal roster/attempt verifier consumes the cur
 
 ### D9.3 Bounded state, charge, and decision
 
-`HX-EV-PUBLICATION-RESUME-STATE-3\0 || 01 || 000e` (at most 32 KiB) is the single CAS head for an execution: `01` U tenant, `02` U execution identity, `03` B32 ScopeOpHash, `04` N successful resume ordinal, `05` N active window, `06` N active drain limit, `07` B32 current hold/source hash, `08` B32 active window-claim hash, `09` B32 window-history accumulator, `0a` N closed-window count, `0b` B32 last successful audit hash, `0c` B live-retry rows, `0d` B expiry-tombstone rows, and `0e` Q update UTC. Tag `0c` is `u32 count ||` rows sorted by ordinal, each `B32 stable request identity || B32 exact caller-carrier hash || N ordinal || B32 audit hash || N returned window || N returned drain limit || Q request expiry`. Tag `0d` is `u32 count ||` rows sorted by stable identity, each `B32 stable request identity || B32 exact caller-carrier hash || Q request expiry`. Live plus tombstone rows are at most 64. At expiry a live row moves, in the same state CAS, to a tombstone retained until execution obligation closure/erasure; audit and closure bodies may then be reclaimed. A 65th distinct success is `resume_capacity_hold` with no mutation. Exact live retries remain answerable, exact tombstone retries remain distinguishable as expired, and changed carrier bytes conflict while the execution exists.
+`HX-EV-PUBLICATION-RESUME-STATE-3\0 || 01 || 000e` (at most 32 KiB) is the single CAS head for an execution: `01` U tenant, `02` U execution identity, `03` B32 ScopeOpHash, `04` N successful resume ordinal, `05` N active window, `06` N active drain limit, `07` B32 current hold/source hash, `08` B32 active window-claim hash, `09` B32 window-history accumulator, `0a` N closed-window count, `0b` B32 last successful audit hash, `0c` B live-retry rows, `0d` B expiry-tombstone rows, and `0e` Q update UTC. Tag `0c` is `u32 count ||` rows sorted by ordinal, each `B32 stable request identity || B32 exact caller-carrier hash || N ordinal || B32 audit hash || N returned window || N returned drain limit || Q request expiry`. Tag `0d` is `u32 count ||` rows sorted by stable identity, each `B32 stable request identity || B32 exact caller-carrier hash || Q request expiry || Q delete-after UTC`. Live plus tombstone rows are at most 64. At request expiry a live row moves, in the same state CAS, to a tombstone whose delete-after is exactly 30 days later; audit and closure bodies may then be reclaimed. Hourly reconciliation deletes only an authenticated expired tombstone. A 65th distinct success is `resume_capacity_hold` with no mutation until the oldest tombstone's deterministic delete-after or operation erasure. Exact live retries remain answerable, exact retained-tombstone retries remain distinguishable as expired, and changed carrier bytes conflict throughout that bounded horizon. Callers must never reuse an idempotency key for the same resume handle; a genuinely new request always uses a new key.
 
 Before mutation, the ledger stages one new worst-case `resume-window` charge for every unresolved member's full next-window attempt evidence, new drain rows, the **next** drain-limit record and resolution, window claim/closure, state, audit, tombstone capacity, and hold/inventory evidence. It is at most 1 GiB and must fit tenant, tenant-pool, and deployment counters **in addition to** the unchanged old active charge. The staged charge binds the stable request identity and all three predecessor counters. The old charge remains authoritative until successor-state readback. Refusal writes no closure, audit, state, invocation, or partial counter and returns `resume_capacity_hold`.
 
@@ -249,7 +251,7 @@ The route and legacy eligibility activate in slice 3 alongside BC-02; evidence-r
 
 From slice 3, no legacy drain evidence for a terminal status-6 execution is removed until the actor creates and durably reads back a bounded chunk set and its `HX-EV-LEGACY-RESUME-CAPSULE-2\0 || 01 || 0010` manifest (at most 128 KiB): `01` U tenant, `02` U domain, `03` U aggregate ID, `04` U tracking identity, `05` O(U) execution MessageId, `06` U correlation ID, `07` U command type, `08` U rejection classification (`success-events` or `rejection-events`), `09` N start sequence, `0a` N end sequence, `0b` I positive event count, `0c` B32 ordered stored-event root, `0d` B chunk manifest, `0e` U cleanup source (`drain-exhaustion` or `operator-reconciliation`), `0f` B32 exact source-record hash, and `10` Q creation UTC.
 
-`capsuleIdentity = SHA256("HX-EV-LEGACY-RESUME-CAPSULE-IDENTITY-1\0" || 01 || U tenant || U domain || U aggregateId || U trackingIdentity || B32 sourceRecordHash)`. Each `HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1\0 || 01 || 0005` record (at most 64 KiB) has `01` B32 capsule identity, `02` N zero-based chunk ordinal, `03` N row count, `04` B concatenated rows, and `05` B32 chunk row root. Rows are ascending `N sequence || U stored MessageId || B32 StoredDigest`, with no nested count; tag `03` controls exact parsing. At the imported 1,024-byte MessageId maximum a row is 1,068 bytes and the fixed maximum-width chunk overhead is 132 bytes, so each chunk holds at most 61 rows. Every supported V1 range of at most 1,000 rows therefore uses at most 17 chunks.
+`capsuleIdentity = SHA256("HX-EV-LEGACY-RESUME-CAPSULE-IDENTITY-1\0" || 01 || U tenant || U domain || U aggregateId || U trackingIdentity || B32 sourceRecordHash)`. Each `HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1\0 || 01 || 0005` record (at most 64 KiB) has `01` B32 capsule identity, `02` N zero-based chunk ordinal, `03` N row count, `04` B concatenated rows, and `05` B32 chunk row root. Rows are ascending `N sequence || U stored MessageId || B32 StoredDigest`, with no nested count; tag `03` controls exact parsing. At the imported 1,024-byte MessageId maximum a row is 1,068 bytes and the fixed chunk overhead is 128 bytes, so each chunk holds at most 61 rows. Every supported V1 range of at most 1,000 rows therefore uses at most 17 chunks.
 
 Capsule tag `0d` is `u32 chunkCount ||` 1..17 rows sorted by ordinal, each `N ordinal || N firstSequence || N rowCount || B32 exact chunk hash || N encoded chunk length || U resolvable chunk object key`. The chunk key is `legacy-resume-capsule-chunk:` plus lowercase-hex SHA-256(`"HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-KEY-1\0" || 01 || B32 capsuleIdentity || N chunkOrdinal`); the capsule manifest key remains stable below. The ordered stored-event root is recomputed over `u32 totalRowCount ||` all exact member rows concatenated in chunk order: `SHA256("HX-EV-LEGACY-RESUME-EVENTS-2\0" || 01 || B(exact counted rows))`. Chunk lengths/counts/endpoints must exactly cover tags `09`..`0b`, with no gap, overlap, duplicate MessageId, missing chunk, or trailing bytes. The actor writes/reads all chunks first, then create-once writes/reads the manifest; any oversize or incomplete set fails cleanup and retains the drain record/reminder. A successful legacy drain needs no capsule and keeps its shipped cleanup.
 
@@ -271,7 +273,7 @@ A mismatch or unavailable read is `resume_evidence_hold`; missing/contradictory 
 
 ### D11.1 Capture is mandatory and bounded
 
-Every addressed-delivery subscription has a verified `HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3\0 || 01 || 000d` record (at most 16 KiB): `01` U deployment identity, `02` U component, `03` U topic, `04` U physical subscription ID, `05` N policy revision, `06` B32 predecessor policy hash (zero at revision 1), `07` U state (`active` or `superseded`), `08` U capture mode (`dead-letter-capture` or `direct-held-capture`), `09` O(U) dead-letter topic, `0a` N maximum live redeliveries `1..64`, `0b` B32 exact resolved subscription/resiliency configuration hash, `0c` U source (`dapr-configuration` or `broker-api`), and `0d` Q observation UTC. The create-once revision key and CAS head are specified in the address table below; only one contiguous `active` revision may be selected, and installing its successor first writes/read-backs the new revision, then CASes the head, then marks the predecessor superseded. A stale or rolled-back revision cannot authorize acknowledgement. An unbounded broker redelivery policy alone is not sufficient: after the bounded local attempts or 24 hours from first observation, whichever comes first, the consumer must durably capture/read back the exact carrier and held state before acknowledging that transport copy. A dead-letter topic's own subscription uses direct held capture and cannot dead-letter again.
+Every addressed-delivery subscription has a verified `HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3\0 || 01 || 000d` record (at most 16 KiB): `01` U deployment identity, `02` U component, `03` U topic, `04` U physical subscription ID, `05` N policy revision, `06` B32 predecessor policy hash (zero at revision 1), `07` U relation (`initial` or `successor`), `08` U capture mode (`dead-letter-capture` or `direct-held-capture`), `09` O(U) dead-letter topic, `0a` N maximum live redeliveries `1..64`, `0b` B32 exact resolved subscription/resiliency configuration hash, `0c` U source (`dapr-configuration` or `broker-api`), and `0d` Q observation UTC. The create-once revision key and CAS head are specified in the address table below; only the contiguous revision selected by the head is active. Installing its successor first writes/read-backs the immutable `successor` revision and then CASes the head; the predecessor remains immutable and is logically superseded by that head. A stale or rolled-back revision cannot authorize acknowledgement. An unbounded broker redelivery policy alone is not sufficient: after the bounded local attempts or 24 hours from first observation, whichever comes first, the consumer must durably capture/read back the exact carrier and held state before acknowledging that transport copy. A dead-letter topic's own subscription uses direct held capture and cannot dead-letter again.
 
 A first held observation creates/read-backs `HX-EV-HELD-DELIVERY-4\0 || 01 || 0016` (at most 32 KiB) **before** its attempt number or 24-hour clock is used: `01` U scope kind (`tenant` or `deployment`), `02` U deployment identity, `03` O(U) tenant, `04` O(U) MessageId, `05` U component, `06` U topic, `07` U physical subscription ID, `08` B32 active subscription-policy hash, `09` U state (`observed`, `captured`, `redriving`, `incident`, or `closed`), `0a` U reason, `0b` N observed carrier length, `0c` B32 exact carrier hash, `0d` O(U) retained backend ID, `0e` O(U) resolvable retained object key, `0f` O(B32) authenticated object readback receipt hash, `10` O(B32) committed handoff hash, `11` Q first-observed UTC, `12` N delivery-attempt count, `13` N redrive count, `14` O(B32) last redrive-error evidence hash, `15` Q next re-evaluation UTC, and `16` N entry revision. `scopeKind=tenant` requires tenant present; `scopeKind=deployment` requires tenant absent. Every other pairing is a decode/admission incident with no acknowledgement or charge mutation.
 
@@ -345,7 +347,7 @@ D29-counter 134 eca227f547122e041a159affbac58bf7b57375bf91d78876d88cd73f418d1fc8
 D29-pin-batch 330 82e7a4965c94f3be0092cbcb8adb20b8ea560ef13419c88a036f5dc2d62c4517
 D31-wait 238 7dca50b2d1f448628a84ee423ab3aa364600a320ed10886711cc9c128bc4f3b8
 D31-queue 218 1c3c2b7655f178df7ddd09d33f4c64c66b5220ab0b6831abc088e5371b978584
-D36-policy 256 2b60c1df10f1968c8c6e5afbd50cf8dab7b2c7c1b7f067ce8a8157496a26e983
+D36-policy 257 9989075b380937e91cf9e98b27670f195b58aaeb326f9e90e54c8fe6158f6a88
 D36-held 371 812399ecf7f18d8ca0c39efeff73d6d6a52b682416c5a14174334a96c62a1675
 D36-quarantine 336 5dcce10f015b54bb853a3beb633b865b87889685771beeeb603d351559536257
 D36-redrive 119 1a552c0f005efc61b9d74682a5f707925c0b47b5e31d559bdb0b43da43f8b49f
@@ -353,22 +355,22 @@ D37-entry 219 30ca7e011c4e0cbe3d2bdc4e1e66f598d44879f54f38629c3a3e50e4e7d9716f
 D37-index 196 a14e6b24af414ad169f98ba8829f971635724de0acc686a901024ebeec6967fc
 D37-directory 184 d36d068c6a1cea553949c29cafc628cbde9881e712a190d26033211f26b19569
 D37-key 58 eabf14e49beb9484895f4233927107604705ea58aac8d049e34db91ce7152978
-D45-request 329 207bfdb0cfe95b3eb41158eb38e77a5c40d0d089ad08ce34ec0bd757cddd22b0
-D45-window 318 e530b0097f279d297c79160eb166cf44d06f5855058837088e773c4a2b7b7e7b
+D45-request 329 17cef46646c6320df270e39b85a6ab05cf568d798de842b5f5f64bf83caa9e50
+D45-window 318 cc7c65876efb2084c8a9a84642beb26d56466f16ce444ec0a5c683560a75bf93
 D45-closure 327 9aa8f4c113926a097669a37f76876c4836b7f1113d65a5389b809cbfb9ab3976
-D45-state 405 20533a3edc199970c7c0108d2fccd4c07c6dd0f87610aa32c54a122c6acf8a0a
-D45-audit 218 a24a2940f578339336cd45a15f9a6a26090ba9baebad18285026d6886429cc20
-D46-capsule 338 4f8b6f1fdb402ac61d457571811506f28b612897bd2738e0e7091da0fa8e7d8c
-D46-recovery 257 0ed58bb5acb8f735b937768a593da7ac2deb9385b2868af33e5fe2e947e14944
+D45-state 405 e80c436690c0c2884bf6e3a8d44b7d4b5c4aa993d4daa54661979f88167ef067
+D45-audit 218 25da0ad001d0f19b0dbb7577b2cef4654220fde8637788e0d70644cbdcbfec29
+D46-capsule 409 272a728d7d53a0bdfe3c97556e9f17561bab352c3ae230e637bbe12de2eae9e0
+D46-recovery 257 e76a4ee829e526bccffa0dbe47baa807d79626832da20d3e989cbea3cefc8e56
 ```
 
 ```text
 D06-key 0f91a1983b2d87cad832582071c4c14b82fb4120da3f20615531f3d085bc132a
 D14-key 3d6106bf9476e5106018bc78cc6bc4bf771144175f662f3ca5e1c631af3e23df
 D45-closure-key 58b1b024adae4973e90e4e491aa8713593c439d51b5eb3941eaf66950e0b73b9
-D45-audit-key 1f05e253de2946318746839a6153cd8d1fbed21ad163610269f9d98e10c3198d
+D45-audit-key 9d7734f4f8ccb48cce924620e859cf4ba886f3c82a2948729320e57a99877104
 D46-capsule-key bdd34978ca55de1163ea7224dd6cae35ee041002ab6d4cbe655090b4e544291a
-D46-recovery-key c217ad1a103ef00f16682630cb53fd7a6a26d93262d1d7a06115839c7fa27985
+D46-recovery-key c3b5c20b7bb59e35990d5f13bd7ec52ade5f62c9be460380ed27307f2b5e9c06
 ```
 
 This verifier independently reconstructs all 30 records and checks both byte length and SHA-256. Changing a domain separator, codec, field count/order/framing, fixture, length, or answer fails.
@@ -435,7 +437,7 @@ vectors['D29-pin-batch'] = R('HX-EV-PIN-BATCH-RESERVATION-2', 13, U('t'), B32(H(
 vectors['D31-wait'] = R('HX-EV-PIN-CAPACITY-WAIT-2', 12, U('t'), B32(H('scope')), B32(H('batch')), N(11*MiB), U('deployment'), N(42), Q(t), N(0), U('queued'), B32(H('capability')), B32(H('outbox-plan')), Q(t))
 qrow = N(42) + U('t') + B32(H('scope')) + U('queued')
 vectors['D31-queue'] = R('HX-EV-PIN-CAPACITY-QUEUE-4', 11, U('deployment-a'), U('deployment'), N(1), N(1), B(qrow), N(0), N(0), N(50000), N(42), B32(z), Q(t))
-vectors['D36-policy'] = R('HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3', 13, U('deployment-a'), U('pubsub'), U('orders'), U('sub-a'), N(1), B32(z), U('active'), U('dead-letter-capture'), O(U('orders-dlq')), N(8), B32(H('subscription-config')), U('dapr-configuration'), Q(t))
+vectors['D36-policy'] = R('HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3', 13, U('deployment-a'), U('pubsub'), U('orders'), U('sub-a'), N(1), B32(z), U('initial'), U('dead-letter-capture'), O(U('orders-dlq')), N(8), B32(H('subscription-config')), U('dapr-configuration'), Q(t))
 carrier = b'exact-carrier-and-headers'
 vectors['D36-held'] = R('HX-EV-HELD-DELIVERY-4', 22, U('tenant'), U('deployment-a'), O(U('t')), O(U('event-1')), U('pubsub'), U('orders'), U('sub-a'), B32(H('policy')), U('captured'), U('handler-capability-hold'), N(len(carrier)), B32(sha256(carrier).digest()), O(U('archive-a')), O(U('objects/held-1')), O(B32(H('object-readback'))), O(B32(H('handoff'))), Q(t), N(2), N(1), O(None), Q(t+600000000), N(2))
 body = b'quarantined-body'
@@ -449,7 +451,7 @@ actor = U('tenant:' + sha256(U('t')).hexdigest())
 vectors['D37-directory'] = R('HX-EV-HOLD-DIRECTORY-1', 7, N(7), N(1), N(1), B(actor), B32(z), Q(t), N(0))
 vectors['D37-key'] = U('tenant') + U('t') + U('PublicationPinCapacityHold') + U('scope:abc')
 request_carrier = R('HX-EV-PUBLICATION-RESUME-CARRIER-1', 5, U('t'), U('hxrsm1-handle'), B32(H('hold')), U('retry-0001'), U('retry after broker repair'))
-request_identity = sha256(b'HX-EV-PUBLICATION-RESUME-IDENTITY-1\0\x01' + B(request_carrier)).digest()
+request_identity = sha256(b'HX-EV-PUBLICATION-RESUME-IDENTITY-1\0\x01' + U('t') + U('hxrsm1-handle') + U('retry-0001')).digest()
 request = R('HX-EV-PUBLICATION-RESUME-3', 15, U('admin'), U('t'), U('op'), B32(H('scope')), U('retry-exhausted'), B32(H('hold')), B32(H('head')), N(2), B32(H('audit-prev')), U('hxrsm1-handle'), B32(request_identity), B32(sha256(request_carrier).digest()), U('operator'), Q(t), Q(t+9000000000))
 vectors['D45-request'] = request
 attempt_row = pack('>I', 1) + N(4) + B32(sha256(b'definitive-result').digest())
@@ -474,7 +476,9 @@ source_hash = H('drain-source')
 capsule_identity = sha256(b'HX-EV-LEGACY-RESUME-CAPSULE-IDENTITY-1\0\x01' + U('t') + U('d') + U('a') + U('tracking') + B32(source_hash)).digest()
 chunk_root = sha256(b'HX-EV-LEGACY-RESUME-CHUNK-ROWS-1\0\x01' + B(member)).digest()
 chunk = R('HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1', 5, B32(capsule_identity), N(0), N(1), B(member), B32(chunk_root))
-manifest_row = N(0) + N(10) + N(1) + B32(sha256(chunk).digest()) + N(len(chunk)) + U('legacy-resume/chunk-0')
+assert len(chunk) == 179 and sha256(chunk).hexdigest() == 'b283d4e7b0025e99a6258569483c2d2b8555332de17f355491e3c4da404d4cd8'
+chunk_key = 'legacy-resume-capsule-chunk:' + K('HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-KEY-1', B32(capsule_identity), N(0))
+manifest_row = N(0) + N(10) + N(1) + B32(sha256(chunk).digest()) + N(len(chunk)) + U(chunk_key)
 manifest = pack('>I', 1) + manifest_row
 capsule = R('HX-EV-LEGACY-RESUME-CAPSULE-2', 16, U('t'), U('d'), U('a'), U('tracking'), O(U('op')), U('correlation'), U('increment'), U('success-events'), N(10), N(10), I(1), B32(event_root), B(manifest), U('drain-exhaustion'), B32(source_hash), Q(t))
 vectors['D46-capsule'] = capsule
@@ -515,35 +519,137 @@ def decode_record(raw, domain, schema):
         if isinstance(kind, tuple) and kind[0] == 'O':
             marker = take(1)
             assert marker in {b'\x00', b'\x01'}
-            if marker == b'\x01': field(kind[1])
+            return field(kind[1]) if marker == b'\x01' else None
         elif kind in {'U','B'}:
             length = int.from_bytes(take(4), 'big')
             assert length <= 1024*1024
-            take(length)
-        elif kind == 'B32': take(32)
-        elif kind == 'N': take(8)
-        elif kind == 'I': take(4)
-        elif kind == 'Q': take(8)
+            value = take(length)
+            if kind == 'U':
+                assert 1 <= length <= 4096
+                value = value.decode('utf-8', errors='strict')
+                assert value.strip() and '\x00' not in value
+            return value
+        elif kind == 'B32': return take(32)
+        elif kind == 'N': return int.from_bytes(take(8), 'big')
+        elif kind == 'I': return int.from_bytes(take(4), 'big', signed=True)
+        elif kind == 'Q': return int.from_bytes(take(8), 'big', signed=True)
         else: raise AssertionError(kind)
+    values = []
     for expected_tag, kind in enumerate(schema, 1):
         assert take(1) == bytes([expected_tag])
-        field(kind)
+        values.append(field(kind))
     assert offset == len(raw)
+    wide_keys = {'HX-EV-HELD-DELIVERY-4':{13},'HX-EV-CARRIER-QUARANTINE-2':{8},
+                 'HX-EV-HOLD-ENTRY-2':{3}}
+    assert all(not isinstance(value,str) or len(value.encode()) <=
+               (4096 if index in wide_keys.get(domain,set()) else 1024)
+               for index,value in enumerate(values))
+    if domain == 'HX-EV-LEGACY-RESUME-CAPSULE-2':
+        assert 1 <= values[10] <= 1000 and values[9] >= values[8]
+        assert values[9] - values[8] + 1 == values[10]
+        assert values[7] in {'success-events','rejection-events'}
+        assert values[13] in {'drain-exhaustion','operator-reconciliation'}
+        assert all(len(values[i].encode()) <= 1024 for i in (0,1,2,3,5,6))
+    elif domain == 'HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1':
+        assert 1 <= values[2] <= 61 and values[1] < 17 and len(raw) <= 65536
+    elif domain == 'HX-EV-HELD-DELIVERY-4':
+        assert values[0] in {'tenant','deployment'}
+        assert (values[0] == 'tenant') == (values[2] is not None)
+        assert values[8] in {'observed','captured','redriving','incident','closed'}
+        assert values[9] in {'handler-capability-hold','raw-source-unavailable',
+            'delivery-carrier-limit-hold','invalid-header-value','invalid-carrier',
+            'oversize-carrier','delivery_above_advertised_max'}
+        retained = values[8] in {'captured','redriving','closed'}
+        assert all((values[i] is not None) == retained for i in (12,13,14,15))
+        assert values[17] > 0 and values[21] > 0
+    elif domain == 'HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3':
+        assert values[4] > 0 and (values[4] == 1) == (values[5] == bytes(32))
+        assert values[6] == ('initial' if values[4] == 1 else 'successor')
+        assert values[7] in {'dead-letter-capture','direct-held-capture'}
+        assert (values[7] == 'dead-letter-capture') == (values[8] is not None)
+        assert 1 <= values[9] <= 64 and values[11] in {'dapr-configuration','broker-api'}
+    elif domain == 'HX-EV-PUBLICATION-CHARGE-2':
+        assert values[1] in {'tenant','capture-scope'}
+        assert values[4] in {'pin-batch','side-record','retained-object','oversize-quarantine','resume-window'}
+        assert values[5] + values[6] <= (1 << 64)-1 and values[7] == values[5] + values[6]
+        assert values[10] in {'staged','active','released'} and values[9] > 0
+        assert values[10] != 'staged' or values[12] is not None
+    elif domain == 'HX-EV-LEGACY-PUBLICATION-RECOVERY-3':
+        assert values[3] > 0 and values[4] > 0
+        assert values[5] in {'legacy-resume','dead-letter-admin'}
+        assert values[6] in {'claimed','draining','completed','failed'}
+        assert (values[6] == 'failed') == (values[10] is not None)
+        assert values[10] is None or values[10] in {'transport-retryable','evidence-unavailable','evidence-contradictory'}
+        assert values[11] is None or values[6] == 'claimed'
+    elif domain == 'HX-EV-PIN-CAPACITY-QUEUE-4':
+        assert 1 <= values[7] <= 50000 and values[3]+values[6] <= values[7]
+        assert values[5] <= values[3]
+    elif domain == 'HX-EV-PIN-CAPACITY-WAIT-2':
+        assert values[4] in {'tenant','deployment'} and values[5] > 0
+        assert values[8] in {'queued','parked'}
+    elif domain == 'HX-EV-PUBLICATION-COUNTER-1':
+        assert values[1] in {'tenant','tenant-pool','deployment','unidentified'} and values[5] > 0
+    elif domain == 'HX-EV-PUBLICATION-RESUME-3':
+        assert values[4] in {'retry-exhausted','drain-limit','legacy-publish-failed'} and values[7] > 0
+        assert values[14] > values[13] and values[14]-values[13] <= 9000000000
+    elif domain == 'HX-EV-PUBLICATION-DRAIN-LIMIT-2':
+        assert values[8] in {'pending','unknown','failed'}
+    elif domain == 'HX-EV-PUBLICATION-DRAIN-LIMIT-RESOLUTION-1':
+        assert values[3] in {'resumed','head-advanced','terminal'} and values[5] > 0
+    return tuple(values)
 
-families = [
-    (request, 'HX-EV-PUBLICATION-RESUME-3', ['U','U','U','B32','U','B32','B32','N','B32','U','B32','B32','U','Q','Q']),
-    (capsule, 'HX-EV-LEGACY-RESUME-CAPSULE-2', ['U','U','U','U',('O','U'),'U','U','U','N','N','I','B32','B','U','B32','Q']),
-    (vectors['D31-queue'], 'HX-EV-PIN-CAPACITY-QUEUE-4', ['U','U','N','N','B','N','N','N','N','B32','Q']),
-]
+def encode_typed(kind, value):
+    if isinstance(kind, tuple): return O(None if value is None else encode_typed(kind[1], value))
+    return {'U':U,'B':B,'B32':B32,'N':N,'I':I,'Q':Q}[kind](value)
+
+schemas = {
+ 'D06-activation':['U','U','B32','N','B32','B','Q','U','Q'],
+ 'D12-legacy-claim':['U','U','U','U','U','B32','Q','Q','N','B32'],
+ 'D12-cutover':['U','U','N','Q','Q','N','B32','B32'],
+ 'D12-usage':['U','N','N','N','N','N','B32'],
+ 'D12-tombstone':['U','U','B32','B32','B32','Q','Q','N'],
+ 'D14-drain-limit':['U','B32','U','N','N','B32','B32','N','U','Q'],
+ 'D14-drain-resolution':['U','B32','B32','U','B32','N','U','Q'],
+ 'D16-membership-resolution':['U','B32','N','U','B32','N','B32','B32','B32','U','U','Q'],
+ 'D29-capability':['U','N','B','N','N','N','N','N','N','B32','Q','N','N','N','N'],
+ 'D29-charge':['U','U','U','B32','U','N','N','N','N','N','U','B32',('O','B32'),'Q'],
+ 'D29-counter':['U','U','U','N','N','N','B32','Q'],
+ 'D29-pin-batch':['U','B32','B32','N','B','N','N','B32','B32','B32','U','N','Q'],
+ 'D31-wait':['U','B32','B32','N','U','N','Q','N','U','B32','B32','Q'],
+ 'D31-queue':['U','U','N','N','B','N','N','N','N','B32','Q'],
+ 'D36-policy':['U','U','U','U','N','B32','U','U',('O','U'),'N','B32','U','Q'],
+ 'D36-held':['U','U',('O','U'),('O','U'),'U','U','U','B32','U','U','N','B32',('O','U'),('O','U'),('O','B32'),('O','B32'),'Q','N','N',('O','B32'),'Q','N'],
+ 'D36-quarantine':['U',('O','U'),'U','U','N','B32','B','U','U','B32',('O','U'),'Q','U','B32'],
+ 'D36-redrive':['U','U',('O','U'),'B32','N','U','Q'],
+ 'D37-entry':['U','U','U','U',('O','U'),'U','N','B32','Q','Q','N','U','Q'],
+ 'D37-index':['U','U','N','N','B','N','B32','Q'],
+ 'D37-directory':['N','N','N','B','B32','Q','N'],
+ 'D45-request':['U','U','U','B32','U','B32','B32','N','B32','U','B32','B32','U','Q','Q'],
+ 'D45-window':['U','B32','U','N','B32','B32','B32','B32','B32','N','U','Q','B32'],
+ 'D45-closure':['U','B32','N','B','B32','B32','B32','B32','U','B32','Q'],
+ 'D45-state':['U','U','B32','N','N','N','B32','B32','B32','N','B32','B','B','Q'],
+ 'D45-audit':['U','U','N','B32','B32','B32',('O','B32'),'N','N','Q'],
+ 'D46-capsule':['U','U','U','U',('O','U'),'U','U','U','N','N','I','B32','B','U','B32','Q'],
+ 'D46-recovery':['U','B32','U','N','N','U','U','B32',('O','B32'),'B32',('O','U'),('O','B32'),'Q'],
+}
+families = [(vectors[label],vectors[label].split(b'\0',1)[0].decode(),schema)
+            for label,schema in schemas.items()]
+families.append((chunk,'HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1',['B32','N','N','B','B32']))
+assert len(families) == 29
 malformed_rejected = 0
 for value, domain, schema in families:
-    decode_record(value, domain, schema)
+    decoded = decode_record(value, domain, schema)
+    segments = [bytes([index])+encode_typed(kind,field) for index,(kind,field) in enumerate(zip(schema,decoded),1)]
     prefix_len = len(domain.encode()) + 1 + 1 + 2
+    framed_index = next(i for i,kind in enumerate(schema) if kind in ('U','B'))
+    overflow_segments = list(segments)
+    overflow_segments[framed_index] = (segments[framed_index][:1]+b'\xff\xff\xff\xff'
+                                       +segments[framed_index][5:])
     mutations = [
         value[:-1],                                      # missing/truncated
         value[:prefix_len] + b'\x02' + value[prefix_len+1:], # duplicate tag 02
-        value[:prefix_len] + b'\x03' + value[prefix_len+1:], # reordered/unknown first tag
-        value[:prefix_len+1] + b'\xff\xff\xff\xff' + value[prefix_len+5:], # overflowing framed length
+        value[:prefix_len]+segments[1]+segments[0]+b''.join(segments[2:]), # reordered fields
+        value[:prefix_len]+b''.join(overflow_segments),     # overflowing framed length
         value + b'\x00',                               # trailing
     ]
     for malformed in mutations:
@@ -553,8 +659,37 @@ for value, domain, schema in families:
             malformed_rejected += 1
         else:
             raise AssertionError((domain, 'malformed accepted'))
-assert malformed_rejected == 15
-print(f'D12 codec verifier: {len(vectors)} answers, {len(vectors)} byte mutations rejected, {len(keys)} framed keys, {malformed_rejected} malformed records rejected')
+assert malformed_rejected == 145
+semantic_rejected = 0
+capsule_domain = 'HX-EV-LEGACY-RESUME-CAPSULE-2'
+capsule_schema = schemas['D46-capsule']
+capsule_fields = list(decode_record(capsule,capsule_domain,capsule_schema))
+held_schema = ['U','U',('O','U'),('O','U'),'U','U','U','B32','U','U','N','B32',
+               ('O','U'),('O','U'),('O','B32'),('O','B32'),'Q','N','N',('O','B32'),'Q','N']
+held_fields = list(decode_record(vectors['D36-held'], 'HX-EV-HELD-DELIVERY-4', held_schema))
+for field_index, bad in [(10,-1),(10,0),(10,1001),(9,11),(7,'unknown')]:
+    changed = list(capsule_fields); changed[field_index] = bad
+    raw = R(capsule_domain, len(changed), *(encode_typed(k,v) for k,v in zip(capsule_schema,changed)))
+    try: decode_record(raw,capsule_domain,capsule_schema)
+    except AssertionError: semantic_rejected += 1
+    else: raise AssertionError('bad signed/range/classification accepted')
+for field_index, bad in [(2,None),(0,'deployment'),(12,None),(8,'unknown')]:
+    changed = list(held_fields); changed[field_index] = bad
+    raw = R('HX-EV-HELD-DELIVERY-4', len(changed), *(encode_typed(k,v) for k,v in zip(held_schema,changed)))
+    try: decode_record(raw, 'HX-EV-HELD-DELIVERY-4', held_schema)
+    except AssertionError: semantic_rejected += 1
+    else: raise AssertionError('bad optional/scope/state accepted')
+# Mutate a real optional marker, preserving every following byte.
+optional_offset = len(capsule_domain.encode()) + 4
+for kind,value in zip(capsule_schema[:4],capsule_fields[:4]):
+    optional_offset += 1 + len(encode_typed(kind,value))
+optional_offset += 1
+bad_marker = capsule[:optional_offset] + b'\x02' + capsule[optional_offset+1:]
+try: decode_record(bad_marker,capsule_domain,capsule_schema)
+except AssertionError: semantic_rejected += 1
+else: raise AssertionError('bad optional marker accepted')
+assert semantic_rejected == 10
+print(f'D12 codec verifier: {len(vectors)} answers, {len(vectors)} byte mutations rejected, {len(keys)} framed keys, {malformed_rejected} malformed records rejected, {semantic_rejected} semantic defects rejected')
 PY
 ```
 
@@ -563,12 +698,22 @@ The lifecycle verifier covers every approved matrix row, all status precedence b
 ```bash
 python3 - <<'PY'
 from collections import defaultdict
+from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
+from contextlib import redirect_stdout
+from io import StringIO
 import re
 
 MiB = 1024 * 1024
 U64_MAX = (1 << 64) - 1
+candidate_text = Path('_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md').read_text()
+codec_source = candidate_text.split("python3 - <<'PY'\n",1)[1].split('\nPY\n```',1)[0]
+codec = {}
+with redirect_stdout(StringIO()):
+    exec(codec_source, codec)
+U, B, N, O, R, I, Q = (codec[name] for name in ('U','B','N','O','R','I','Q'))
+decode_record = codec['decode_record']
 
 def valid_amounts(amounts):
     if not amounts or any(type(value) is not int or value < 0 or value > U64_MAX for value in amounts):
@@ -647,6 +792,28 @@ class Ledger:
         self.deployment_ceiling = 2048 * MiB
         self.reserve_bytes = 256 * MiB
         self.unidentified_ceiling = 512 * MiB
+        self.generations = defaultdict(int)
+        self.charges = {}
+        self.reservations = {}
+    def predecessors(self, account):
+        used = {'tenant':self.tenant.get(account,0), 'tenant-pool':self.tenant_pool,
+                'deployment':self.deployment}
+        return {kind:sha256(U(kind) + U(account if kind == 'tenant' else kind)
+                    + N(value) + N(self.generations.get((kind,account if kind == 'tenant' else kind),0))).digest()
+                for kind,value in used.items()}
+    def reserve_pin_batch(self, account, amounts, predecessors, batch_id):
+        before = deepcopy(vars(self))
+        if predecessors != self.predecessors(account) or not valid_amounts(amounts):
+            assert vars(self) == before
+            return False
+        if batch_id in self.reservations:
+            return self.reservations[batch_id]['amounts'] == tuple(amounts)
+        if not self.reserve('tenant', account, amounts):
+            assert vars(self) == before
+            return False
+        self.charges[batch_id] = tuple(amounts)
+        self.reservations[batch_id] = {'amounts':tuple(amounts), 'predecessors':dict(predecessors), 'state':'reserved'}
+        return True
     def reserve(self, account_kind, account, amounts):
         before = (dict(self.tenant), self.tenant_pool, self.unidentified, self.deployment)
         if account_kind not in {'tenant', 'capture-scope'}:
@@ -672,6 +839,9 @@ class Ledger:
         if account_kind == 'tenant': self.tenant_pool += total
         else: self.unidentified += total
         self.deployment += total
+        for kind, identity in [('tenant',account),('tenant-pool' if account_kind == 'tenant' else 'unidentified',
+                               'tenant-pool' if account_kind == 'tenant' else 'unidentified'),('deployment','deployment')]:
+            self.generations[(kind,identity)] += 1
         return True
     def refund(self, account_kind, account, amount):
         before = (dict(self.tenant), self.tenant_pool, self.unidentified, self.deployment)
@@ -752,13 +922,31 @@ class Queues:
         self.ceiling = ceiling
         self.last_ticket = 0
         self.where = {}
+        self.tickets = {}
+        self.pending = {}
+        self.receipts = {}
+        self.charges = {}
         self.rows = defaultdict(list)
         self.reservations = defaultdict(set)
     @staticmethod
     def sort_key(row):
-        return (row[0], row[1].encode('utf-8'), sha256(row[2].encode()).digest())
+        scope_hash = row[2] if isinstance(row[2],bytes) else sha256(row[2].encode()).digest()
+        return (row[0], row[1].encode('utf-8'), scope_hash)
     def _has_room(self, target):
         return len(self.rows[target]) + len(self.reservations[target]) < self.ceiling
+    def allocate_ticket(self, scope, tenant, state='queued', charge_available=True):
+        carrier = (tenant, state)
+        if scope in self.tickets:
+            known = self.pending.get(scope, self.receipts.get(scope))
+            return self.tickets[scope] if known['carrier'] == carrier else None
+        if (self.last_ticket == U64_MAX or state not in {'queued','parked'}
+                or not charge_available or not self.reserve_pair(tenant, scope)):
+            return None
+        self.last_ticket += 1
+        self.tickets[scope] = self.last_ticket
+        self.pending[scope] = {'carrier':carrier, 'ticket':self.last_ticket}
+        self.charges[scope] = 4096 + 2*(8+4+1024+32+4+6)
+        return self.last_ticket
     def reserve_pair(self, tenant, scope):
         targets = ('deployment', 'tenant:' + tenant)
         if (scope in self.where or any(scope in values for values in self.reservations.values())
@@ -769,14 +957,28 @@ class Queues:
         return True
     def add(self, ticket, tenant, scope, state='queued'):
         target = 'deployment'
-        if (not isinstance(ticket, int) or not self.last_ticket < ticket <= U64_MAX
-                or state not in {'queued','parked'} or not self.reserve_pair(tenant, scope)):
+        carrier = (tenant, state)
+        if scope in self.receipts:
+            return self.receipts[scope] == {'carrier':carrier, 'ticket':ticket}
+        if scope not in self.pending:
+            # Compatibility callers still traverse allocation and reservation.
+            if type(ticket) is not int or ticket != self.last_ticket+1:
+                return False
+            if self.allocate_ticket(scope, tenant, state) != ticket:
+                return False
+        claim = self.pending[scope]
+        if (type(ticket) is not int or not 0 < ticket <= self.last_ticket
+                or claim != {'carrier':carrier, 'ticket':ticket}):
+            # Refused admission rolls back its reservations/charge; tickets are
+            # monotonic and are never reused after a valid allocator CAS.
+            for values in self.reservations.values(): values.discard(scope)
+            self.pending.pop(scope); self.tickets.pop(scope); self.charges.pop(scope)
             return False
-        self.last_ticket = ticket
         self.reservations[target].remove(scope)
         row = [ticket, tenant, scope, state]
         self.rows[target].append(row); self.rows[target].sort(key=self.sort_key)
         self.where[scope] = target
+        self.receipts[scope] = self.pending.pop(scope)
         assert scope in self.reservations['tenant:' + tenant]
         assert all(len(self.rows[name]) + len(self.reservations[name]) <= self.ceiling
                    for name in (target, 'tenant:' + tenant))
@@ -813,14 +1015,14 @@ class Queues:
 
 def decode_queue(rows, entry_count, parked_count, reserved_count=0, ceiling=50000,
                  last_ticket=U64_MAX, trailing=b''):
-    if (trailing or len(rows) != entry_count or not 0 <= ceiling <= 50000
+    if (trailing or len(rows) != entry_count or not 1 <= ceiling <= 50000
             or reserved_count < 0 or entry_count + reserved_count > ceiling):
         return 'pin_capacity_queue_corruption_hold'
     if parked_count != sum(row[3] == 'parked' for row in rows):
         return 'pin_capacity_queue_corruption_hold'
     if len({row[0] for row in rows}) != len(rows) or len({row[2] for row in rows}) != len(rows):
         return 'pin_capacity_queue_corruption_hold'
-    if any(row[0] > last_ticket for row in rows):
+    if any(not 0 < row[0] <= last_ticket or row[3] not in {'queued','parked'} for row in rows):
         return 'pin_capacity_queue_corruption_hold'
     if rows != sorted(rows, key=Queues.sort_key):
         return 'pin_capacity_queue_corruption_hold'
@@ -836,15 +1038,18 @@ def encode_queue_row(row):
             + len(state_bytes).to_bytes(4, 'big') + state_bytes)
 
 def encode_queue_record(rows, reserved_count, ceiling, last_ticket):
-    return (b'Q4' + len(rows).to_bytes(8,'big')
-            + sum(row[3] == 'parked' for row in rows).to_bytes(8,'big')
-            + reserved_count.to_bytes(8,'big') + ceiling.to_bytes(8,'big')
-            + last_ticket.to_bytes(8,'big') + b''.join(encode_queue_row(row) for row in rows))
+    return R('HX-EV-PIN-CAPACITY-QUEUE-4',11,U('deployment-a'),U('deployment'),N(1),
+        N(len(rows)),B(b''.join(encode_queue_row(row) for row in rows)),
+        N(sum(row[3] == 'parked' for row in rows)),N(reserved_count),N(ceiling),N(last_ticket),bytes(32),Q(codec['t']))
 
-def decode_queue_bytes(raw):
+def decode_queue_bytes(raw, authenticated_ceiling=3):
     offset = 0
     rows = []
     try:
+        fields = decode_record(raw,'HX-EV-PIN-CAPACITY-QUEUE-4',codec['schemas']['D31-queue'])
+        entry_count,parked_count,reserved_count,ceiling,last_ticket = (fields[i] for i in (3,5,6,7,8))
+        if ceiling != authenticated_ceiling: raise ValueError('capability mismatch')
+        raw = fields[4]
         def take(length):
             nonlocal offset
             if length < 0 or offset + length > len(raw):
@@ -854,19 +1059,14 @@ def decode_queue_bytes(raw):
             return value
         def take_u():
             length = int.from_bytes(take(4), 'big')
+            if not 1 <= length <= 1024: raise ValueError('identifier bounds')
             return take(length).decode('utf-8', errors='strict')
-        if take(2) != b'Q4': raise ValueError('domain')
-        entry_count = int.from_bytes(take(8), 'big')
-        parked_count = int.from_bytes(take(8), 'big')
-        reserved_count = int.from_bytes(take(8), 'big')
-        ceiling = int.from_bytes(take(8), 'big')
-        last_ticket = int.from_bytes(take(8), 'big')
         if entry_count > 50000 or entry_count + reserved_count > ceiling or ceiling > 50000:
             raise ValueError('ceiling')
         for _ in range(entry_count):
             ticket = int.from_bytes(take(8), 'big')
             tenant = take_u()
-            scope_hash = take(32).hex()
+            scope_hash = take(32)
             state = take_u()
             if state not in {'queued', 'parked'}:
                 raise ValueError('state')
@@ -874,7 +1074,7 @@ def decode_queue_bytes(raw):
         if offset != len(raw):
             raise ValueError('trailing')
         return decode_queue(rows, entry_count, parked_count, reserved_count, ceiling, last_ticket)
-    except (UnicodeDecodeError, ValueError):
+    except (AssertionError,UnicodeDecodeError, ValueError):
         return 'pin_capacity_queue_corruption_hold'
 
 queues = Queues(3)
@@ -918,15 +1118,50 @@ assert decode_queue(valid_rows, 1, 0, trailing=b'x') == 'pin_capacity_queue_corr
 assert decode_queue(valid_rows, 1, 0, reserved_count=3, ceiling=3) == 'pin_capacity_queue_corruption_hold'
 valid_raw = encode_queue_record(valid_rows, 1, 3, 1)
 assert decode_queue_bytes(valid_raw) == 'valid'
+assert decode_queue_bytes(valid_raw,authenticated_ceiling=4) == 'pin_capacity_queue_corruption_hold'
 assert decode_queue_bytes(valid_raw[:-1]) == 'pin_capacity_queue_corruption_hold'
 assert decode_queue_bytes(valid_raw+b'x') == 'pin_capacity_queue_corruption_hold'
 overflow_raw = encode_queue_record(valid_rows, 3, 3, 1)
 assert decode_queue_bytes(overflow_raw) == 'pin_capacity_queue_corruption_hold'
-malformed = valid_raw[:42] + (2**32-1).to_bytes(4, 'big') + valid_raw[46:]
+valid_fields = list(decode_record(valid_raw,'HX-EV-PIN-CAPACITY-QUEUE-4',codec['schemas']['D31-queue']))
+bad_row = valid_fields[4][:8] + b'\xff\xff\xff\xff' + valid_fields[4][12:]
+malformed_fields = list(valid_fields); malformed_fields[4] = bad_row
+malformed = R('HX-EV-PIN-CAPACITY-QUEUE-4',11,*(codec['encode_typed'](kind,value)
+              for kind,value in zip(codec['schemas']['D31-queue'],malformed_fields)))
 assert decode_queue_bytes(malformed) == 'pin_capacity_queue_corruption_hold'
+for field_index,bad in [(3,0),(3,2),(5,1),(4,valid_fields[4]+valid_fields[4]),(4,valid_fields[4][:-1])]:
+    corrupted = list(valid_fields); corrupted[field_index] = bad
+    malformed = R('HX-EV-PIN-CAPACITY-QUEUE-4',11,*(codec['encode_typed'](kind,value)
+        for kind,value in zip(codec['schemas']['D31-queue'],corrupted)))
+    assert decode_queue_bytes(malformed) == 'pin_capacity_queue_corruption_hold'
+assert decode_queue_bytes(codec['vectors']['D31-queue'],authenticated_ceiling=50000) == 'valid'
 ticket_exhausted = Queues()
 ticket_exhausted.last_ticket = U64_MAX
 assert not ticket_exhausted.add(U64_MAX, 't', 'never-wraps')
+allocator = Queues()
+ticket = allocator.allocate_ticket('stable-subject', 't')
+assert ticket == 1 and allocator.allocate_ticket('stable-subject', 't') == ticket
+assert allocator.add(ticket, 't', 'stable-subject')
+admitted_snapshot = deepcopy(vars(allocator))
+assert allocator.add(ticket, 't', 'stable-subject')
+assert vars(allocator) == admitted_snapshot  # successful admission lost-ack retry
+assert allocator.allocate_ticket('stable-subject', 'other') is None
+assert vars(allocator) == admitted_snapshot
+assert len(allocator.rows['deployment']) == 1 and not allocator.pending
+assert 'stable-subject' in allocator.reservations['tenant:t']
+refused = Queues(1)
+assert refused.add(1, 't', 'first')
+refused_snapshot = deepcopy(vars(refused))
+assert refused.allocate_ticket('full', 't') is None
+assert vars(refused) == refused_snapshot
+assert refused.allocate_ticket('uncharged', 'other', charge_available=False) is None
+assert vars(refused) == refused_snapshot
+assert refused.allocate_ticket('invalid', 'other', 'invalid') is None
+assert vars(refused) == refused_snapshot
+allocator.last_ticket = U64_MAX
+exhausted_snapshot = deepcopy(vars(allocator))
+assert allocator.allocate_ticket('new-subject', 't') is None
+assert vars(allocator) == exhausted_snapshot
 
 def membership_exit(trigger, zero_send, same_bytes):
     return 'ContinueSamePin' if trigger in {'configuration-revision', 'membership-revision'} and zero_send and same_bytes else 'FirstSendMembershipChangedHold'
@@ -959,76 +1194,241 @@ assert render_recovery(None, 'x-outcome', receipt, receipt, 'x', 7) == 'response
 assert render_recovery('x-response', 'x-outcome', None, receipt, 'x', 7) == 'response_preparation_hold'
 assert render_recovery('x-response', 'x-outcome', receipt, ('receipt','x',6), 'x', 7) == 'response_preparation_hold'
 
-def resume_publication(committed, unresolved, accepted, hold, evidence):
+def checked_add(left, right, *, positive=False):
+    if (type(left) is not int or type(right) is not int or left < 0 or right < 0
+            or (positive and right == 0) or left > U64_MAX-right):
+        return None
+    return left + right
+
+def request(identity_key, reason=b'retry after repair', source=bytes(32)):
+    carrier = R('HX-EV-PUBLICATION-RESUME-CARRIER-1',5,U('t'),U('h'),source,U(identity_key),U(reason))
+    identity = sha256(b'HX-EV-PUBLICATION-RESUME-IDENTITY-1\0\x01'+U('t')+U('h')+U(identity_key)).digest()
+    return identity, carrier
+
+def state_hash(state):
+    return sha256(repr(state).encode()).digest()
+
+def resume_publication(state, request_identity, carrier, hold, evidence, drain_increment=8,
+                       now=1000, expires_at=1900, crash_after_audit=False):
+    before = deepcopy(state)
+    carrier_hash = sha256(carrier).digest()
+    for collection, outcome in [('live','exact-retry'), ('orphans','orphan-audit-retry')]:
+        if request_identity in state[collection]:
+            row = state[collection][request_identity]
+            if row['carrier_hash'] != carrier_hash:
+                return {'outcome':'resume_request_conflict','state':before,'command_executions':0}
+            if collection == 'live':
+                if now >= row['expires_at']:
+                    return {'outcome':'resume_request_expired','state':reconcile_tombstones(state,now),
+                            'command_executions':0}
+                return {'outcome':outcome,'state':before,'response':row['response'],'command_executions':0}
+            # An authenticated audit is a partially committed success. Its exact
+            # successor and staged charge complete before any recorded invocation arms.
+            immutable = {key:value for key,value in row.items() if key != 'receipt'}
+            if row['receipt'] != state_hash(immutable) or row['owner'] != request_identity:
+                return {'outcome':'resume_evidence_hold','state':before,'command_executions':0}
+            if any(state[key] != row['prior'][key] for key in
+                   ('ordinal','window','closed','limit','roster','accepted','unresolved','window_claim','active_charge')):
+                return {'outcome':'resume_hold_changed','state':before,'command_executions':0}
+            recovered = deepcopy(row['successor'])
+            assert recovered['ordinal'] == row['result']['ordinal']
+            assert recovered['active_charge'] == row['staged_charge']
+            return {'outcome':outcome,'state':recovered,'response':row['response'],
+                    'command_executions':0}
+    if request_identity in state['tombstones']:
+        row = state['tombstones'][request_identity]
+        result = 'resume_request_expired' if row['carrier_hash'] == carrier_hash else 'resume_request_conflict'
+        return {'outcome':result, 'state':before, 'command_executions':0}
     if evidence == 'stale':
-        return {'outcome':'resume_hold_changed', 'rearmed':(), 'command_executions':0}
+        return {'outcome':'resume_hold_changed', 'state':before, 'command_executions':0}
     if evidence == 'unavailable':
-        return {'outcome':'resume_evidence_hold', 'rearmed':(), 'command_executions':0}
+        return {'outcome':'resume_evidence_hold', 'state':before, 'command_executions':0}
+    if not now < expires_at <= now+900:
+        return {'outcome':'resume_request_expired','state':before,'command_executions':0}
     if hold not in {'publication_retry_exhausted_hold', 'publication_drain_limit_hold'}:
-        return {'outcome':'resume_not_eligible', 'rearmed':(), 'command_executions':0}
-    committed_positions = [row[0] for row in committed]
-    committed_ids = [row[1] for row in committed]
-    if len(set(committed_positions)) != len(committed) or len(set(committed_ids)) != len(committed):
-        return {'outcome':'resume_evidence_hold', 'rearmed':(), 'command_executions':0}
-    committed_by_position = {row[0]: row for row in committed}
+        return {'outcome':'resume_not_eligible', 'state':before, 'command_executions':0}
+    committed = state['roster']; unresolved = state['unresolved']; accepted = state['accepted']
+    positions = [row[0] for row in committed]; message_ids = [row[1] for row in committed]
     selected = tuple(unresolved) + tuple(accepted)
-    if (len(set(unresolved)) != len(unresolved) or len(set(accepted)) != len(accepted)
-            or set(unresolved) & set(accepted)
-            or set(selected) != set(committed_positions)
+    if (len(set(positions)) != len(committed) or len(set(message_ids)) != len(committed)
+            or len(set(unresolved)) != len(unresolved) or len(set(accepted)) != len(accepted)
+            or set(unresolved) & set(accepted) or set(selected) != set(committed)
             or len(selected) != len(committed)):
-        return {'outcome':'resume_evidence_hold', 'rearmed':(), 'command_executions':0}
+        return {'outcome':'resume_evidence_hold', 'state':before, 'command_executions':0}
+    if len(state['live']) + len(state['tombstones']) >= 64:
+        return {'outcome':'resume_capacity_hold', 'state':before, 'command_executions':0}
+    ordinal = checked_add(state['ordinal'], 1)
+    window = checked_add(state['window'], 1) if hold == 'publication_retry_exhausted_hold' else state['window']
+    closed = checked_add(state['closed'], 1) if hold == 'publication_retry_exhausted_hold' else state['closed']
+    limit = (checked_add(state['limit'], drain_increment, positive=True)
+             if hold == 'publication_drain_limit_hold' else state['limit'])
+    new_charge = state['next_charge']
+    overlap = checked_add(state['active_charge'], new_charge)
+    if None in {ordinal, window, closed, limit, overlap}:
+        return {'outcome':'resume_arithmetic_exhausted', 'state':before, 'command_executions':0}
+    if overlap > state['charge_ceiling']:
+        return {'outcome':'resume_capacity_hold', 'state':before, 'command_executions':0}
+    prior_hash = state_hash(before)
+    window_intent = sha256(b'window-intent:' + prior_hash + request_identity).digest()
+    window_claim = (sha256(b'window-claim:' + window_intent + carrier_hash).digest()
+                    if hold == 'publication_retry_exhausted_hold' else state['window_claim'])
+    invocation = sha256(b'invocation:' + window_claim + repr(unresolved).encode()).digest()
+    result = {
+        'ordinal':ordinal, 'window':window, 'limit':limit,
+        'audit_hash':sha256(b'audit:' + prior_hash + request_identity + carrier_hash).digest(),
+    }
+    response = R('HX-EV-RESUME-RESPONSE-MODEL-1',4,N(ordinal),N(window),N(limit),result['audit_hash'])
+    successor = deepcopy(state)
+    successor.update(ordinal=ordinal, window=window, closed=closed, limit=limit,
+                     active_charge=new_charge, window_claim=window_claim)
+    successor['audits'] += 1
+    successor['invocations'] = tuple(state['invocations']) + (invocation,)
+    successor['live'][request_identity] = {'carrier_hash':carrier_hash, 'result':result,
+                                          'response':response,'expires_at':expires_at}
+    resolution = None
+    if hold == 'publication_drain_limit_hold':
+        resolution = (state['hold_source'], window_intent, invocation, state['limit'], limit)
+    if crash_after_audit:
+        row = {'carrier_hash':carrier_hash,'result':result,'response':response,
+               'expires_at':expires_at,'prior':before,'successor':successor,
+               'staged_charge':new_charge,'owner':request_identity}
+        row['receipt'] = state_hash(row)
+        crashed = deepcopy(before)
+        crashed['orphans'][request_identity] = row
+        crashed['audits'] += 1
+        crashed['used_charge'] = overlap
+        # Invocation authority is recorded, but publication remains unarmed.
+        return {'outcome':'orphaned-success','state':crashed,'response':response,'command_executions':0}
     return {
-        'outcome':'resumed',
-        'rearmed':tuple((committed_by_position[position][1], committed_by_position[position][2]) for position in unresolved),
-        'accepted_unchanged':tuple(accepted),
+        'outcome':'resumed', 'state':successor,
+        'response':response,
+        'rearmed':tuple((row[1], row[2]) for row in unresolved),
+        'accepted_unchanged':accepted, 'resolution':resolution,
+        'window_intent_inputs':(prior_hash, request_identity),
         'command_executions':0,
     }
+
+def reconcile_tombstones(state, now, authenticated=True):
+    successor = deepcopy(state)
+    if not authenticated:
+        return successor
+    for identity,row in list(successor['live'].items()):
+        if now >= row['expires_at']:
+            expiry = row['expires_at']
+            successor['tombstones'][identity] = {'carrier_hash':row['carrier_hash'],
+                'expires_at':expiry,'delete_after':expiry+30*86400}
+            del successor['live'][identity]
+    successor['tombstones'] = {
+        identity:row for identity,row in successor['tombstones'].items()
+        if row['delete_after'] > now}
+    return successor
 
 def verify_eligible_resume_matrix():
     committed = ((1, 'message-1', b'accepted'), (2, 'message-2', b'unresolved-a'),
                  (3, 'message-3', b'unresolved-b'))
     expected = (('message-2', b'unresolved-a'), ('message-3', b'unresolved-b'))
-    exhausted = resume_publication(
-        committed, (2, 3), (1,),
-        'publication_retry_exhausted_hold', 'current')
-    drained = resume_publication(
-        committed, (2, 3), (1,),
-        'publication_drain_limit_hold', 'current')
-    assert exhausted == {
-        'outcome':'resumed', 'rearmed':expected,
-        'accepted_unchanged':(1,), 'command_executions':0}
+    base = {'roster':committed, 'accepted':(committed[0],), 'unresolved':committed[1:],
+            'ordinal':1, 'window':7, 'closed':2, 'limit':16,
+            'hold_source':b'limit-hash', 'active_charge':300, 'next_charge':400,
+            'charge_ceiling':1000, 'live':{}, 'tombstones':{}, 'orphans':{},
+            'audits':0, 'invocations':(), 'window_claim':bytes(32)}
+    request_id, carrier = request(b'request-1')
+    exhausted = resume_publication(base, request_id, carrier,
+                                   'publication_retry_exhausted_hold', 'current')
+    drained = resume_publication(base, request_id, carrier,
+                                 'publication_drain_limit_hold', 'current')
+    assert exhausted['outcome'] == 'resumed' and exhausted['rearmed'] == expected
+    assert exhausted['accepted_unchanged'] == (committed[0],) and exhausted['command_executions'] == 0
+    assert exhausted['state']['window'] == 8 and exhausted['state']['closed'] == 3
     assert drained['rearmed'] == expected and drained['command_executions'] == 0
-    assert resume_publication(committed, (2, 3), (1,),
-                              'publication_retry_exhausted_hold', 'stale') == {
-        'outcome':'resume_hold_changed', 'rearmed':(), 'command_executions':0}
-    assert resume_publication(committed, (2, 3), (1,),
-                              'publication_retry_exhausted_hold', 'unavailable') == {
-        'outcome':'resume_evidence_hold', 'rearmed':(), 'command_executions':0}
-    assert resume_publication(committed, (2,), (1,), 'publication_retry_exhausted_hold', 'current')['outcome'] == 'resume_evidence_hold'
-    assert resume_publication(committed, (2, 2), (1, 3), 'publication_retry_exhausted_hold', 'current')['outcome'] == 'resume_evidence_hold'
-    assert resume_publication(committed, (2, 3), (1, 2), 'publication_retry_exhausted_hold', 'current')['outcome'] == 'resume_evidence_hold'
-    corrupt = committed + ((4, 'message-3', b'contradictory'),)
-    assert resume_publication(corrupt, (2, 3, 4), (1,), 'publication_retry_exhausted_hold', 'current')['outcome'] == 'resume_evidence_hold'
-    drain_before = {'window':7, 'accepted':(1,), 'unresolved':(2,3), 'limit':16,
-                    'source':'limit-hash', 'members':committed}
-    increment = 8
-    drain_after = dict(drain_before, limit=drain_before['limit'] + increment,
-                       resolution=('limit-hash', 'successor-state'),
-                       invocation=('rearm', 2, 3))
-    assert drain_after['window'] == drain_before['window']
-    assert drain_after['accepted'] == drain_before['accepted']
-    assert drain_after['unresolved'] == drain_before['unresolved']
-    assert drain_after['members'] == drain_before['members']
-    assert drain_after['limit'] == 24 and drain_after['resolution'][0] == drain_before['source']
-    assert drain_after['invocation'] == ('rearm', 2, 3)
-    def checked_add(left, right):
-        return None if left < 0 or right <= 0 or left > U64_MAX-right else left+right
-    assert checked_add(16, 8) == 24
-    assert checked_add(U64_MAX, 1) is None and checked_add(1, 0) is None
-    live_retry_rows = list(range(64))
-    assert len(live_retry_rows) == 64
-    assert 0 in live_retry_rows  # an old exact live retry remains addressable.
-    assert len(live_retry_rows) + 1 > 64  # the 65th is held, never evicted silently.
+    assert drained['state']['window'] == base['window'] and drained['state']['limit'] == 24
+    assert drained['state']['closed'] == base['closed']
+    assert drained['state']['window_claim'] == base['window_claim']
+    assert drained['state']['roster'] == base['roster'] and drained['state']['accepted'] == base['accepted']
+    assert drained['state']['unresolved'] == base['unresolved']
+    assert drained['resolution'][0] == base['hold_source']
+    assert drained['resolution'][1] == sha256(b'window-intent:' + b''.join(drained['window_intent_inputs'])).digest()
+    assert drained['resolution'][2] == drained['state']['invocations'][-1]
+    assert drained['resolution'][3:] == (16,24)
+    assert drained['state']['invocations'][-1] == sha256(b'invocation:' + base['window_claim'] + repr(base['unresolved']).encode()).digest()
+    for evidence, expected_outcome in [('stale','resume_hold_changed'), ('unavailable','resume_evidence_hold')]:
+        result = resume_publication(base, request_id, carrier,
+                                    'publication_retry_exhausted_hold', evidence)
+        assert result['outcome'] == expected_outcome and result['state'] == base
+    for accepted, unresolved in [
+        ((committed[0],), (committed[1],)),
+        ((committed[0],committed[2]), (committed[1],committed[1])),
+        ((committed[0],committed[1]), (committed[1],committed[2])),
+        ((committed[0],), ((2,'message-3',b'unresolved-a'), committed[2])),
+    ]:
+        corrupt = deepcopy(base); corrupt['accepted'] = accepted; corrupt['unresolved'] = unresolved
+        assert resume_publication(corrupt, request_id, carrier,
+                                  'publication_retry_exhausted_hold', 'current')['outcome'] == 'resume_evidence_hold'
+    live_retry = exhausted['state']
+    live_snapshot = deepcopy(live_retry)
+    retry = resume_publication(live_retry, request_id, carrier,
+                               'publication_retry_exhausted_hold', 'current')
+    assert retry['outcome'] == 'exact-retry' and retry['response'] == exhausted['response']
+    assert retry['state'] == live_retry
+    assert live_retry == live_snapshot
+    for changed_id,changed_carrier in [request(b'request-1',reason=b'changed'),
+                                      request(b'request-1',source=sha256(b'changed-source').digest())]:
+        assert changed_id == request_id and changed_carrier != carrier
+        conflict_result = resume_publication(live_retry, changed_id, changed_carrier,
+                                            'publication_retry_exhausted_hold','current')
+        assert conflict_result['outcome'] == 'resume_request_conflict' and conflict_result['state'] == live_retry
+    crashed = resume_publication(base, request_id, carrier,
+                                 'publication_retry_exhausted_hold','current',crash_after_audit=True)
+    orphan = crashed['state']; orphan_snapshot = deepcopy(orphan)
+    assert orphan['ordinal'] == 1 and orphan['used_charge'] == 700 and orphan['audits'] == 1
+    assert orphan['invocations'] == ()
+    recovered = resume_publication(orphan,request_id,carrier,'publication_retry_exhausted_hold','current')
+    assert recovered['outcome'] == 'orphan-audit-retry' and recovered['response'] == exhausted['response']
+    assert recovered['state'] == exhausted['state'] and recovered['state']['ordinal'] == 2
+    assert recovered['state']['active_charge'] == 400 and recovered['state']['audits'] == 1
+    assert len(recovered['state']['invocations']) == 1 and orphan == orphan_snapshot
+    changed_id,changed_carrier = request(b'request-1',reason=b'changed')
+    assert resume_publication(orphan,changed_id,changed_carrier,
+                              'publication_retry_exhausted_hold','current')['state'] == orphan
+    assert resume_publication(orphan,changed_id,changed_carrier,
+                              'publication_retry_exhausted_hold','current')['outcome'] == 'resume_request_conflict'
+    assert request_id in reconcile_tombstones(live_retry,1899)['live']
+    tombstone = reconcile_tombstones(live_retry,1900)
+    assert request_id not in tombstone['live']
+    delete_after = 1900+30*86400
+    assert tombstone['tombstones'][request_id]['delete_after'] == delete_after
+    for now in (1900,1901):
+        assert resume_publication(live_retry,request_id,carrier,
+            'publication_retry_exhausted_hold','current',now=now)['outcome'] == 'resume_request_expired'
+    assert request_id in reconcile_tombstones(tombstone,delete_after-1)['tombstones']
+    assert request_id not in reconcile_tombstones(tombstone,delete_after)['tombstones']
+    assert request_id not in reconcile_tombstones(tombstone,delete_after+1)['tombstones']
+    assert reconcile_tombstones(tombstone,delete_after,authenticated=False) == tombstone
+    for field, hold in [('ordinal','publication_drain_limit_hold'), ('limit','publication_drain_limit_hold'),
+                        ('window','publication_retry_exhausted_hold'), ('closed','publication_retry_exhausted_hold')]:
+        overflow = deepcopy(base); overflow[field] = U64_MAX; snapshot = deepcopy(overflow)
+        assert resume_publication(overflow, request_id, carrier, hold, 'current')['outcome'] == 'resume_arithmetic_exhausted'
+        assert overflow == snapshot
+    zero_increment = deepcopy(base)
+    assert resume_publication(zero_increment, request_id, carrier,
+                              'publication_drain_limit_hold', 'current', 0)['outcome'] == 'resume_arithmetic_exhausted'
+    charge_overflow = deepcopy(base); charge_overflow['active_charge'] = U64_MAX; charge_overflow['next_charge'] = 1
+    charge_snapshot = deepcopy(charge_overflow)
+    assert resume_publication(charge_overflow, request_id, carrier,
+                              'publication_drain_limit_hold', 'current')['outcome'] == 'resume_arithmetic_exhausted'
+    assert charge_overflow == charge_snapshot
+    capacity = deepcopy(base); capacity['charge_ceiling'] = 699
+    assert resume_publication(capacity, request_id, carrier,
+                              'publication_drain_limit_hold', 'current')['outcome'] == 'resume_capacity_hold'
+    full_retry_index = deepcopy(base)
+    full_retry_index['live'] = {sha256(str(i).encode()).digest():{'carrier_hash':bytes(32),
+                                                              'expires_at':1900} for i in range(64)}
+    assert resume_publication(full_retry_index, request_id, carrier,
+                              'publication_drain_limit_hold', 'current')['outcome'] == 'resume_capacity_hold'
+    recovered_capacity = reconcile_tombstones(full_retry_index,delete_after)
+    assert not recovered_capacity['live'] and not recovered_capacity['tombstones']
+    assert resume_publication(recovered_capacity,request_id,carrier,
+        'publication_drain_limit_hold','current',now=delete_after,expires_at=delete_after+900)['outcome'] == 'resumed'
     return 'eligible-resume'
 
 def exact_legacy_rows(rows):
@@ -1055,8 +1455,130 @@ def exact_legacy_root(rows):
     encoded = exact_legacy_rows(rows)
     if encoded is None:
         return None
-    return sha256(b'HX-EV-LEGACY-RESUME-EVENTS-1\0\x01'
+    return sha256(b'HX-EV-LEGACY-RESUME-EVENTS-2\0\x01'
                   + len(encoded).to_bytes(4, 'big') + encoded).digest()
+
+def capsule_chunks(rows, classification='success-events'):
+    if not 1 <= len(rows) <= 1000 or exact_legacy_rows(rows) is None:
+        return None
+    if any(len(row[1].encode()) > 1024 for row in rows):
+        return None
+    identity = codec['capsule_identity']
+    chunks, objects, manifest_rows = [], {}, b''
+    for ordinal,index in enumerate(range(0,len(rows),61)):
+        part = rows[index:index+61]
+        raw_rows = exact_legacy_rows(part)[4:]
+        root = sha256(b'HX-EV-LEGACY-RESUME-CHUNK-ROWS-1\0\x01' + B(raw_rows)).digest()
+        raw = R('HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1',5,identity,N(ordinal),N(len(part)),B(raw_rows),root)
+        key = 'legacy-resume-capsule-chunk:' + codec['K']('HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-KEY-1',identity,N(ordinal))
+        assert len(raw) <= 64*1024
+        objects[key] = raw
+        chunks.append((ordinal,part[0][0],len(part),root))
+        manifest_rows += N(ordinal)+N(part[0][0])+N(len(part))+sha256(raw).digest()+N(len(raw))+U(key)
+    manifest_rows = len(chunks).to_bytes(4,'big') + manifest_rows
+    manifest = R('HX-EV-LEGACY-RESUME-CAPSULE-2',16,U('t'),U('d'),U('a'),U('tracking'),O(U('op')),
+        U('correlation'),U('increment'),U(classification),N(rows[0][0]),N(rows[-1][0]),I(len(rows)),
+        exact_legacy_root(rows),B(manifest_rows),U('drain-exhaustion'),codec['source_hash'],Q(codec['t']))
+    assert len(manifest) <= 128*1024
+    return {'manifest':manifest,'objects':objects,'chunks':tuple(chunks)}
+
+class Cursor:
+    def __init__(self, raw): self.raw, self.offset = raw, 0
+    def take(self, length):
+        assert 0 <= length <= len(self.raw)-self.offset
+        value = self.raw[self.offset:self.offset+length]; self.offset += length
+        return value
+    def number(self, width=8): return int.from_bytes(self.take(width),'big')
+    def string(self):
+        size = self.number(4)
+        assert 1 <= size <= 1024
+        return self.take(size).decode('utf-8',errors='strict')
+    def complete(self): assert self.offset == len(self.raw)
+
+def validate_capsule(bundle):
+    try:
+        raw = bundle['manifest']
+        assert len(raw) <= 128*1024
+        fields = decode_record(raw,'HX-EV-LEGACY-RESUME-CAPSULE-2',codec['schemas']['D46-capsule'])
+        identity = sha256(b'HX-EV-LEGACY-RESUME-CAPSULE-IDENTITY-1\0\x01'+
+                          b''.join(U(fields[i]) for i in (0,1,2,3))+fields[14]).digest()
+        manifest = Cursor(fields[12]); count = manifest.number(4)
+        assert 1 <= count <= 17
+        rows, seen_keys = [], set()
+        for expected_ordinal in range(count):
+            ordinal, first, row_count = (manifest.number() for _ in range(3))
+            digest, length, key = manifest.take(32), manifest.number(), manifest.string()
+            assert ordinal == expected_ordinal and 1 <= row_count <= 61
+            expected_key = 'legacy-resume-capsule-chunk:' + codec['K']('HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-KEY-1',identity,N(ordinal))
+            assert key == expected_key and key not in seen_keys
+            seen_keys.add(key)
+            chunk = bundle['objects'][key]
+            assert len(chunk) == length and length <= 64*1024 and sha256(chunk).digest() == digest
+            c = decode_record(chunk,'HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-1',['B32','N','N','B','B32'])
+            assert c[:3] == (identity,ordinal,row_count)
+            assert c[4] == sha256(b'HX-EV-LEGACY-RESUME-CHUNK-ROWS-1\0\x01'+B(c[3])).digest()
+            reader = Cursor(c[3]); part = []
+            for _ in range(row_count):
+                part.append((reader.number(),reader.string(),reader.take(32)))
+            reader.complete()
+            assert part[0][0] == first
+            rows.extend(part)
+        manifest.complete()
+        assert set(bundle['objects']) == seen_keys
+        assert len(rows) == fields[10] and (rows[0][0],rows[-1][0]) == (fields[8],fields[9])
+        assert exact_legacy_root(rows) == fields[11]
+        return {'rows':tuple(rows),'classification':fields[7],'root':fields[11],
+                'hash':sha256(raw).digest(),'correlation':fields[5],'command_type':fields[6]}
+    except (AssertionError,KeyError,TypeError,UnicodeDecodeError):
+        return None
+
+def recovery_hash(record):
+    return state_hash(record) if record is not None else bytes(32)
+
+def repair_receipt(record, bundle):
+    verified = validate_capsule(bundle)
+    if not verified or verified['hash'] != record['capsule']:
+        return None
+    return sha256(b'authoritative-repaired-evidence:' + recovery_hash(record) +
+                  verified['hash'] + exact_legacy_rows(verified['rows'])).digest()
+
+def recovery_transition(record, target, ordinal, *, owner, expected_generation,
+                        expected_predecessor, failure=None, repair=None, bundle=None, capsule):
+    before = deepcopy(record)
+    if (owner not in {'legacy-resume','dead-letter-admin'} or type(ordinal) is not int
+            or not 1 <= ordinal <= U64_MAX or type(expected_generation) is not int
+            or not 1 <= expected_generation <= U64_MAX
+            or expected_predecessor != recovery_hash(record)):
+        return None
+    if record is None:
+        return ({'generation':1, 'state':'claimed', 'ordinal':ordinal,
+                 'failure':None, 'capsule':capsule,'owner':owner,
+                 'predecessor':bytes(32),'repair':None}
+                if target == 'claimed' and expected_generation == 1 and repair is None else None)
+    next_generation = checked_add(record['generation'],1)
+    if (capsule != record['capsule'] or ordinal < record['ordinal']
+            or owner != record['owner'] or next_generation is None
+            or expected_generation != next_generation):
+        return None
+    state = record['state']
+    allowed = ((state == 'claimed' and target == 'draining' and ordinal == record['ordinal'])
+               or (state == 'draining' and target == 'completed' and ordinal == record['ordinal'])
+               or (state == 'draining' and target == 'failed' and ordinal == record['ordinal']
+                   and failure in {'transport-retryable','evidence-unavailable','evidence-contradictory'})
+               or (state == 'failed' and target == 'claimed' and ordinal > record['ordinal']
+                   and (record['failure'] == 'transport-retryable'
+                        or (repair is not None and repair == repair_receipt(record,bundle)))))
+    if target != 'failed' and failure is not None:
+        allowed = False
+    if repair is not None and not (state == 'failed' and target == 'claimed'
+                                  and record['failure'] != 'transport-retryable'):
+        allowed = False
+    if not allowed:
+        assert before == record
+        return None
+    return {'generation':next_generation, 'state':target, 'ordinal':ordinal,
+            'failure':failure if target == 'failed' else None, 'capsule':capsule,
+            'owner':owner,'predecessor':recovery_hash(record),'repair':repair}
 
 def recover_legacy_range(capsule, stored_rows, evidence):
     if not isinstance(capsule, dict) or evidence == 'contradictory-authority':
@@ -1066,8 +1588,13 @@ def recover_legacy_range(capsule, stored_rows, evidence):
             or not {'correlation', 'command_type', 'classification'} <= set(source)):
         return {'outcome':'legacy_resume_evidence_unavailable', 'rearmed':(), 'command_executions':0}
     root = exact_legacy_root(stored_rows)
+    verified_bundle = validate_capsule(capsule.get('bundle'))
     try:
-        contradicts = (evidence == 'unavailable-read' or root is None
+        contradicts = (evidence == 'unavailable-read' or root is None or not verified_bundle
+            or verified_bundle['rows'] != tuple(stored_rows)
+            or verified_bundle['classification'] != capsule['classification']
+            or verified_bundle['correlation'] != capsule['correlation']
+            or verified_bundle['command_type'] != capsule['command_type']
             or tuple(stored_rows) != tuple(capsule['rows'])
             or root != capsule['root']
             or not isinstance(capsule['range'], tuple)
@@ -1100,13 +1627,14 @@ def verify_legacy_resume_matrix():
     source = {'correlation':'correlation', 'command_type':'increment',
               'classification':'success-events'}
     capsule = {'range':(41, 42), 'rows':rows, 'root':root, 'correlation':'correlation',
-               'command_type':'increment', 'classification':'success-events', 'source':source}
+               'command_type':'increment', 'classification':'success-events', 'source':source,
+               'bundle':capsule_chunks(rows)}
     resumed = recover_legacy_range(capsule, rows, 'verified')
     assert resumed == {
         'outcome':'resumed', 'stored_range':(41, 42), 'rearmed':rows,
         'terminal_status':'Completed', 'command_executions':0}
     rejection = dict(capsule, classification='rejection-events',
-                     source=dict(source, classification='rejection-events'))
+                     source=dict(source, classification='rejection-events'),bundle=capsule_chunks(rows,'rejection-events'))
     assert recover_legacy_range(rejection, rows, 'verified')['terminal_status'] == 'Rejected'
     inverted = dict(capsule, classification='unknown')
     assert recover_legacy_range(inverted, rows, 'verified')['outcome'] == 'resume_evidence_hold'
@@ -1136,6 +1664,69 @@ def verify_legacy_resume_matrix():
         assert recover_legacy_range(malformed_capsule, rows, 'verified')['outcome'] == 'resume_evidence_hold'
     missing_source = dict(capsule); missing_source.pop('source')
     assert recover_legacy_range(missing_source, rows, 'verified')['outcome'] == 'legacy_resume_evidence_unavailable'
+    maximum_rows = tuple((index+1, str(index).zfill(4)+'m'*1020, sha256(str(index).encode()).digest()) for index in range(1000))
+    chunks = capsule_chunks(maximum_rows)
+    assert len(chunks['chunks']) == 17 and chunks['chunks'][0][2] == 61 and chunks['chunks'][-1][2] == 24
+    assert validate_capsule(chunks)['rows'] == maximum_rows
+    assert all(len(raw) <= 65536 for raw in chunks['objects'].values())
+    assert len(chunks['manifest']) <= 128*1024
+    fixture_rows = ((10,'event-1',sha256(codec['stored']).digest()),)
+    fixture = capsule_chunks(fixture_rows)
+    assert fixture['manifest'] == codec['capsule']
+    assert tuple(fixture['objects'].values()) == (codec['chunk'],)
+    assert fixture['chunks'][0][3] == codec['chunk_root']
+    object_keys = tuple(chunks['objects'])
+    for mutation in ('missing','swapped','changed','root'):
+        corrupted = deepcopy(chunks)
+        if mutation == 'missing': del corrupted['objects'][object_keys[0]]
+        elif mutation == 'swapped':
+            corrupted['objects'][object_keys[0]],corrupted['objects'][object_keys[1]] = (
+                corrupted['objects'][object_keys[1]],corrupted['objects'][object_keys[0]])
+        elif mutation == 'changed':
+            corrupted['objects'][object_keys[0]] += b'changed'
+        else:
+            corrupted['manifest'] = corrupted['manifest'].replace(exact_legacy_root(maximum_rows),bytes(32),1)
+        assert validate_capsule(corrupted) is None
+    assert capsule_chunks(maximum_rows + ((1001, 'x', sha256(b'x').digest()),)) is None
+    binding = validate_capsule(capsule['bundle'])['hash']
+    def move(record,target,ordinal,**kwargs):
+        args = {'owner':'legacy-resume','expected_generation':1 if record is None else record['generation']+1,
+                'expected_predecessor':recovery_hash(record),'capsule':binding}
+        args.update(kwargs)
+        snapshot = deepcopy(record)
+        result = recovery_transition(record,target,ordinal,**args)
+        assert record == snapshot
+        return result
+    claimed = move(None,'claimed',1)
+    draining = move(claimed,'draining',1)
+    completed = move(draining,'completed',1)
+    assert completed['state'] == 'completed' and move(completed,'claimed',2) is None
+    transport_failed = move(draining,'failed',1,failure='transport-retryable')
+    reclaimed = move(transport_failed,'claimed',2)
+    assert reclaimed['generation'] == transport_failed['generation']+1 and reclaimed['capsule'] == transport_failed['capsule']
+    for failure in ('evidence-unavailable','evidence-contradictory'):
+        evidence_failed = move(draining,'failed',1,failure=failure)
+        assert move(evidence_failed,'claimed',2) is None
+        repair = repair_receipt(evidence_failed,capsule['bundle'])
+        assert repair is not None
+        assert move(evidence_failed,'claimed',2,repair=bytes(32),bundle=capsule['bundle']) is None
+        assert move(evidence_failed,'claimed',2,repair=repair,bundle=None) is None
+        assert move(evidence_failed,'claimed',2,repair=repair,bundle=capsule['bundle'])['state'] == 'claimed'
+    assert move(transport_failed,'draining',2) is None
+    assert move(transport_failed,'claimed',1) is None
+    assert move(transport_failed,'claimed',2,capsule=b'changed') is None
+    for record,target,ordinal in [(claimed,'draining',1),(draining,'failed',1),(transport_failed,'claimed',2)]:
+        assert move(record,target,ordinal,owner='dead-letter-admin') is None
+        assert move(record,target,ordinal,expected_predecessor=bytes(32)) is None
+        assert move(record,target,ordinal,expected_generation=record['generation']+2) is None
+    assert move(None,'claimed',0) is None and move(None,'claimed',U64_MAX+1) is None
+    overflow = dict(transport_failed,generation=U64_MAX)
+    assert move(overflow,'claimed',2) is None
+    assert move(draining,'failed',1,failure='unknown') is None
+    assert move(claimed,'completed',1) is None
+    second_exhaustion = move(reclaimed,'draining',2)
+    second_exhaustion = move(second_exhaustion,'failed',2,failure='transport-retryable')
+    assert second_exhaustion['capsule'] == claimed['capsule'] and second_exhaustion['generation'] > transport_failed['generation']
     return 'legacy-resume'
 
 def capacity_admit(ledger, account, amounts, evidence=True):
@@ -1146,7 +1737,26 @@ def capacity_admit(ledger, account, amounts, evidence=True):
     admitted = ledger.reserve('tenant', account, amounts)
     return ('admitted' if admitted else 'capacity-wait', before)
 
+def capability_ready(scope_retention_ceiling):
+    return scope_retention_ceiling >= 64*MiB
+
 def verify_capacity_wait_matrix():
+    assert not capability_ready(64*MiB-1) and capability_ready(64*MiB) and capability_ready(64*MiB+1)
+    authenticated = Ledger()
+    predecessors = authenticated.predecessors('tenant-a')
+    predecessor_snapshot = deepcopy(vars(authenticated))
+    for kind in ('tenant','tenant-pool','deployment'):
+        forged = dict(predecessors); forged[kind] = bytes(32)
+        assert not authenticated.reserve_pin_batch('tenant-a',[10,20],forged,b'batch')
+        assert vars(authenticated) == predecessor_snapshot
+    assert not authenticated.reserve_pin_batch('tenant-a',[10,20],{'tenant':predecessors['tenant']},b'batch')
+    assert vars(authenticated) == predecessor_snapshot
+    assert authenticated.reserve_pin_batch('tenant-a',[10,20],predecessors,b'batch')
+    assert authenticated.tenant['tenant-a'] == authenticated.tenant_pool == authenticated.deployment == 30
+    assert authenticated.charges == {b'batch':(10,20)}
+    stale_snapshot = deepcopy(vars(authenticated))
+    assert not authenticated.reserve_pin_batch('tenant-a',[1],predecessors,b'other-batch')
+    assert vars(authenticated) == stale_snapshot
     capacity = Ledger()
     assert capacity.reserve('tenant', 'tenant-a', [300*MiB])
     batch = [400*MiB, 400*MiB]
@@ -1190,23 +1800,79 @@ def observe_delivery(previous, observed_at):
     state['delivery_attempt_count'] += 1
     return state
 
-def held_delivery(retained, cause_cleared=False, routes_terminal=False):
-    state = {
-        'state':'captured', 'charged_bytes':32*1024,
-        'indexed':True, 'operator_visible':True, 'transport_copy_acked':True,
-        'route_success':False, 'closed':False, 'redrive_bytes':None,
-        'retained_backend_id':'held-delivery-store',
-        'retained_object_key':'held/exact-carrier-1',
-        'readback_authority':sha256(b'authenticated-readback:' + retained).digest(),
-        'next_recheck_seconds':60,
-    }
-    if cause_cleared:
+def held_key(scope_kind, deployment, tenant, component, topic, subscription, carrier):
+    if (scope_kind == 'tenant') != (tenant is not None) or scope_kind not in {'tenant','deployment'}:
+        return None
+    material = (U(scope_kind)+U(deployment)+O(None if tenant is None else U(tenant))+
+                U(component)+U(topic)+U(subscription)+sha256(carrier).digest())
+    return sha256(b'HX-EV-HELD-DELIVERY-KEY-2\0\x01' + material).digest()
+
+def policy_revision(previous, revision, expected_head, config=None):
+    predecessor = bytes(32) if previous is None else previous['hash']
+    expected_revision = 1 if previous is None else checked_add(previous['revision'],1)
+    if (type(revision) is not int or revision != expected_revision
+            or not 1 <= revision <= U64_MAX or expected_head != predecessor
+            or (previous is not None and not policy_selected(previous,expected_head))):
+        return None
+    config = codec['H']('subscription-config') if config is None else config
+    raw = R('HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3',13,U('deployment-a'),U('pubsub'),U('orders'),
+        U('sub-a'),N(revision),predecessor,U('initial' if revision == 1 else 'successor'),
+        U('dead-letter-capture'),O(U('orders-dlq')),N(8),config,U('dapr-configuration'),Q(codec['t']))
+    return {'revision':revision,'predecessor':predecessor,'raw':raw,'hash':sha256(raw).digest()}
+
+def policy_selected(record, head):
+    try:
+        fields = decode_record(record['raw'],'HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3',
+            ['U','U','U','U','N','B32','U','U',('O','U'),'N','B32','U','Q'])
+        return (record['hash'] == head == sha256(record['raw']).digest()
+                and fields[4] == record['revision'] and fields[5] == record['predecessor'])
+    except (AssertionError,KeyError,TypeError): return False
+
+def object_receipt(backend, key, retained):
+    return sha256(b'authenticated-object-readback:'+U(backend)+U(key)+B(retained)).digest()
+
+def capture_delivery(previous, retained, ledger, readback, policy, current_head):
+    state = deepcopy(previous)
+    state.update(state='observed',transport_copy_acked=False,route_success=False,closed=False)
+    if not policy_selected(policy,current_head):
+        return state
+    if not ledger.reserve('tenant','t',[len(retained)]):
+        return state
+    backend, key = 'held-delivery-store','held/exact-carrier-1'
+    expected = {'backend':backend,'key':key,'bytes':retained,
+                'receipt':object_receipt(backend,key,retained)}
+    if readback != expected:
+        assert ledger.refund('tenant','t',len(retained))
+        return state
+    ledger.charges[key] = len(retained)
+    state.update(state='captured',charged_bytes=previous['charged_bytes']+len(retained),
+        transport_copy_acked=True,retained_bytes=retained,redrive_bytes=None,redrive_count=0,
+        last_redrive_error=None,error_history=(),retained_backend_id=backend,
+        retained_object_key=key,readback_authority=expected['receipt'],
+        next_recheck_seconds=60,policy_hash=policy['hash'],current_head=current_head)
+    return state
+
+def held_delivery(previous, cause_cleared=False, routes_terminal=False, redrive_failed=False):
+    state = deepcopy(previous)
+    if state['state'] == 'closed': return state
+    if cause_cleared and state['state'] == 'captured':
         state['state'] = 'redriving'
-        state['redrive_bytes'] = retained
+        next_count = checked_add(state['redrive_count'],1)
+        if next_count is None: return deepcopy(previous)
+        state['redrive_count'] = next_count
+        state['redrive_bytes'] = state['retained_bytes']
         state['closed'] = routes_terminal
         state['route_success'] = routes_terminal
         if routes_terminal:
             state['state'] = 'closed'
+    if state['state'] == 'redriving':
+        if routes_terminal:
+            state.update(state='closed',closed=True,route_success=True)
+        elif redrive_failed:
+            state['state'] = 'captured'
+            state['last_redrive_error'] = sha256(b'typed-redrive-error'+N(state['redrive_count'])).digest()
+            state['error_history'] = (state['error_history'] + (state['last_redrive_error'],))[-64:]
+            state['next_recheck_seconds'] = min(900,60*(2**min(state['redrive_count'],4)))
     return state
 
 def above_max_delivery(observed_length):
@@ -1234,6 +1900,16 @@ def full_replay_exit(event_count, readable_bytes, accounting_bytes, incremental_
 def hard_bound_exceeded(event_count, readable_bytes, accounting_bytes):
     return (event_count > 100000, readable_bytes > 64*MiB, accounting_bytes > 256*MiB)
 
+def retention_readiness(horizon_seconds):
+    return {'ready':horizon_seconds <= 315576000,
+            'reason':None if horizon_seconds <= 315576000 else 'scope_retention_horizon_unsupported',
+            'slice4_active':horizon_seconds <= 315576000}
+
+def post_activation_growth(event_count, readable_bytes, accounting_bytes):
+    exceeded = hard_bound_exceeded(event_count, readable_bytes, accounting_bytes)
+    return {'dispatch':not any(exceeded), 'hold':'LegacyArrayLimit' if any(exceeded) else None,
+            'applied_events':0 if any(exceeded) else event_count, 'exceeded':exceeded}
+
 def verify_held_delivery_and_long_stream_matrix():
     carrier = b'exact-retained-carrier-and-headers'
     first = observe_delivery(None, 638712864000000000)
@@ -1241,22 +1917,61 @@ def verify_held_delivery_and_long_stream_matrix():
     assert first['first_observed'] == restarted['first_observed'] == 638712864000000000
     assert first['delivery_attempt_count'] == 1 and restarted['delivery_attempt_count'] == 2
     assert restarted['charged_bytes'] == 32*1024 and restarted['indexed'] and restarted['operator_visible']
-    held = held_delivery(carrier)
-    assert held == {
-        'state':'captured', 'charged_bytes':32*1024,
-        'indexed':True, 'operator_visible':True, 'transport_copy_acked':True,
-        'route_success':False, 'closed':False, 'redrive_bytes':None,
-        'retained_backend_id':'held-delivery-store',
-        'retained_object_key':'held/exact-carrier-1',
-        'readback_authority':sha256(b'authenticated-readback:' + carrier).digest(),
-        'next_recheck_seconds':60}
+    capture_ledger = Ledger()
+    assert capture_ledger.reserve('tenant','t',[32*1024])
+    readback = {'backend':'held-delivery-store','key':'held/exact-carrier-1','bytes':carrier,
+                'receipt':object_receipt('held-delivery-store','held/exact-carrier-1',carrier)}
+    policy = policy_revision(None,1,bytes(32))
+    held = capture_delivery(restarted,carrier,capture_ledger,readback,policy,policy['hash'])
+    assert held['state'] == 'captured' and held['retained_bytes'] == carrier
+    assert held['charged_bytes'] == capture_ledger.tenant['t'] == 32*1024+len(carrier)
+    assert capture_ledger.tenant_pool == capture_ledger.deployment == held['charged_bytes']
     assert (held['transport_copy_acked'] and held['retained_backend_id']
             and held['retained_object_key'] and held['readback_authority']
             and not held['route_success'])
-    redriven = held_delivery(carrier, cause_cleared=True, routes_terminal=False)
+    redriven = held_delivery(held, cause_cleared=True, routes_terminal=False)
     assert redriven['redrive_bytes'] == carrier and not redriven['closed'] and not redriven['route_success']
-    completed = held_delivery(carrier, cause_cleared=True, routes_terminal=True)
+    failed_redrive = held_delivery(redriven, redrive_failed=True)
+    assert (failed_redrive['state'] == 'captured' and failed_redrive['redrive_count'] == 1
+            and failed_redrive['last_redrive_error'] and failed_redrive['next_recheck_seconds'] == 120)
+    restarted_redrive = deepcopy(failed_redrive)
+    second_failure = held_delivery(restarted_redrive,cause_cleared=True,redrive_failed=True)
+    assert second_failure['redrive_count'] == 2 and second_failure['next_recheck_seconds'] == 240
+    assert second_failure['last_redrive_error'] != failed_redrive['last_redrive_error']
+    assert second_failure['error_history'] == (failed_redrive['last_redrive_error'],second_failure['last_redrive_error'])
+    for field in ('charged_bytes','retained_bytes','retained_backend_id','retained_object_key','readback_authority','first_observed','delivery_attempt_count'):
+        assert second_failure[field] == held[field]
+    bounded = deepcopy(second_failure)
+    for _ in range(70): bounded = held_delivery(bounded,cause_cleared=True,redrive_failed=True)
+    assert bounded['redrive_count'] == 72 and len(bounded['error_history']) == 64
+    assert bounded['next_recheck_seconds'] == 900
+    completed = held_delivery(second_failure,cause_cleared=True,routes_terminal=True)
     assert completed['redrive_bytes'] == carrier and completed['closed'] and completed['route_success']
+    key = held_key('tenant', 'deployment-a', 't', 'pubsub', 'orders', 'sub-a', carrier)
+    assert key and key != held_key('tenant', 'deployment-b', 't', 'pubsub', 'orders', 'sub-a', carrier)
+    assert key != held_key('tenant', 'deployment-a', 't', 'pubsub', 'other', 'sub-a', carrier)
+    for fields in [('tenant','deployment-a','other-tenant','pubsub','orders','sub-a',carrier),
+                   ('tenant','deployment-a','t','other-component','orders','sub-a',carrier),
+                   ('tenant','deployment-a','t','pubsub','orders','other-subscription',carrier),
+                   ('tenant','deployment-a','t','pubsub','orders','sub-a',carrier+b'other'),
+                   ('deployment','deployment-a',None,'pubsub','orders','sub-a',carrier)]:
+        assert held_key(*fields) != key
+    assert held_key('tenant', 'deployment-a', None, 'pubsub', 'orders', 'sub-a', carrier) is None
+    assert held_key('deployment', 'deployment-a', 't', 'pubsub', 'orders', 'sub-a', carrier) is None
+    for bad_readback in [None,dict(readback,bytes=b'changed'),dict(readback,receipt=bytes(32)),
+                         dict(readback,backend='other'),dict(readback,key='other')]:
+        failed_ledger = Ledger()
+        assert failed_ledger.reserve('tenant','t',[32*1024])
+        rejected_capture = capture_delivery(restarted,carrier,failed_ledger,bad_readback,policy,policy['hash'])
+        assert not rejected_capture['transport_copy_acked'] and rejected_capture['state'] == 'observed'
+        assert failed_ledger.tenant['t'] == failed_ledger.tenant_pool == failed_ledger.deployment == 32*1024
+        assert not failed_ledger.charges
+    refused_ledger = Ledger(); refused_ledger.tenant_ceiling = 0
+    snapshot = deepcopy(vars(refused_ledger))
+    assert not capture_delivery(restarted,carrier,refused_ledger,readback,policy,policy['hash'])['transport_copy_acked']
+    assert vars(refused_ledger) == snapshot
+    unavailable = capture_delivery(restarted,carrier,Ledger(),readback,policy,bytes(32))
+    assert not unavailable['transport_copy_acked']
     over_bound = full_replay_exit(100001, 64*MiB, 256*MiB, False)
     assert over_bound == {
         'outcome':'LegacyArrayLimit', 'indexed':True, 'applied_events':0,
@@ -1302,6 +2017,13 @@ def verify_held_delivery_and_long_stream_matrix():
             override = full_replay_exit(*values, True)
             assert override['outcome'] == 'incremental-scheduled' and override['applied_events'] == 0
         assert full_replay_exit(*above_values, False)['applied_events'] == 0
+        growth = post_activation_growth(*above_values)
+        assert not growth['dispatch'] and growth['hold'] == 'LegacyArrayLimit'
+        assert growth['applied_events'] == 0 and growth['exceeded'][index]
+    assert retention_readiness(315576000-1) == {'ready':True, 'reason':None, 'slice4_active':True}
+    assert retention_readiness(315576000) == {'ready':True, 'reason':None, 'slice4_active':True}
+    assert retention_readiness(315576000+1) == {
+        'ready':False, 'reason':'scope_retention_horizon_unsupported', 'slice4_active':False}
     return 'held-delivery-or-long-stream'
 
 matrix_cases = [
@@ -1316,11 +2038,10 @@ assert matrix_cases == [
 
 # Exact construction bounds and acyclic/retry invariants.
 assert 2455 + 943*1109 <= MiB and 2455 + 944*1109 > MiB
-assert 1258 + 59*1080 <= 64*1024 and 1258 + 60*1080 > 64*1024
-request_hash = b'request-hash'
-retry_cache = {request_hash: {'window':2, 'limit':24, 'expiry':100}}
-assert retry_cache[request_hash] == {'window':2, 'limit':24, 'expiry':100}
-assert request_hash not in {}  # expired rows have one closed unavailable outcome, not fabricated replay.
+assert 1291 + 59*1080 <= 64*1024 and 1291 + 60*1080 > 64*1024
+assert 128 + 61*1068 <= 64*1024 and 128 + 62*1068 > 64*1024
+counter_predecessors = Ledger().predecessors('t')
+assert set(counter_predecessors) == {'tenant','tenant-pool','deployment'}
 
 closure_bytes = b'closure-without-successor'
 successor_accumulator = sha256(b'predecessor' + closure_bytes + b'broker-auth').digest()
@@ -1330,36 +2051,58 @@ audit_bytes = b'audit' + prior_state_hash
 audit_hash = sha256(audit_bytes).digest()
 successor_state_bytes = b'state' + successor_accumulator + audit_hash
 assert sha256(successor_state_bytes).digest() not in audit_bytes and audit_hash in successor_state_bytes
+stable_request_identity = sha256(b'caller-stable').digest()
+window_bytes = b'window' + prior_state_hash + stable_request_identity
+window_hash = sha256(window_bytes).digest()
+successor_with_window = b'state' + window_hash + audit_hash
+assert sha256(successor_with_window).digest() not in window_bytes and window_hash in successor_with_window
+
+policy1 = policy_revision(None,1,bytes(32))
+assert policy1['raw'] == codec['vectors']['D36-policy']
+policy2 = policy_revision(policy1,2,policy1['hash'])
+assert policy2 and policy_revision(None,2,bytes(32)) is None
+assert policy_revision(policy1,3,policy1['hash']) is None
+assert policy_revision(policy1,2,bytes(32)) is None
+assert policy_revision(policy2,2,policy2['hash']) is None
+assert policy_selected(policy2,policy2['hash']) and not policy_selected(policy1,policy2['hash'])
+other_policy1 = policy_revision(None,1,bytes(32),config=sha256(b'other-config').digest())
+other_policy2 = policy_revision(other_policy1,2,other_policy1['hash'])
+assert policy1['hash'] != bytes(32) != other_policy1['hash']
+assert policy2['hash'] != other_policy2['hash']
+expected_policy2 = R('HX-EV-SUBSCRIPTION-DELIVERY-POLICY-3',13,U('deployment-a'),U('pubsub'),U('orders'),
+    U('sub-a'),N(2),policy1['hash'],U('successor'),U('dead-letter-capture'),O(U('orders-dlq')),
+    N(8),codec['H']('subscription-config'),U('dapr-configuration'),Q(codec['t']))
+assert policy2['hash'] == sha256(expected_policy2).digest() and policy2['raw'] == expected_policy2
 
 # Mutation killers: each expression describes an acceptance-breaking mutant and must be rejected.
 mutants_rejected = [
-    status('unknown', at_max=True)[1] is None,                         # no exhaustion hold for unknown
+    status('failed', failure_classes=('unknown',), at_max=True)[1] == 'outcome_evidence_conflict',
     not ledger.reserve('capture-scope', 'scope-c', [513*MiB]),        # unidentified ceiling retained
     not ledger.reserve('unknown', 'scope-c', [1]),                    # closed account kind
+    not ledger.refund('unknown', 't1', 1),                            # closed refund kind
     capacity_admit(ledger, 't1', [-1])[0] == 'publication_pin_capacity_hold', # stable arithmetic hold
-    ledger.tenant['t1'] == 700*MiB and ledger.tenant_pool == 700*MiB and ledger.deployment == 700*MiB,
+    set(counter_predecessors) == {'tenant','tenant-pool','deployment'},
     queues.where['a'] == 'deployment',                                # cross-counter return exists
     queues.where['b'] == 'deployment',                                # deployment head refused by own tenant does not block t2
+    not queues.add(4, 't3', 'c'),                                     # duplicate stable subject rejected
+    not ticket_exhausted.add(U64_MAX, 't', 'never-wraps'),
+    decode_queue(valid_rows, 1, 0, reserved_count=3, ceiling=3) == 'pin_capacity_queue_corruption_hold',
     membership_exit('manual', True, True) != 'ContinueSamePin',
     membership_exit('membership-revision', True, True) == 'ContinueSamePin',
-    legacy_resume(False, True, True) != 'rearm-stored-range',
     status('pending', drain_active=False)[1] != 'publication_drain_limit_hold',
-    status('failed', failure_class='class-02', at_max=True)[1] == 'terminal_evidence_hold',
-    status('failed', failure_class='class-03')[1] == 'terminal_evidence_hold',
+    status('failed', failure_classes=('class-02',), at_max=True)[1] == 'terminal_evidence_hold',
+    status('failed', failure_classes=('class-03',))[1] == 'terminal_evidence_hold',
     status('published', classification='rejection')[0] == 'Rejected',
     status('published', classification='unknown')[1] == 'outcome_evidence_conflict',
-    legacy_resume(True, True, False) == 'legacy_resume_evidence_unavailable',
-    render_recovery('bad', None, 'x') == 'response_preparation_hold',
+    render_recovery('x-response', None, receipt, receipt, 'x', 7) == 'response_preparation_hold',
+    render_recovery('x-response', 'x-outcome', receipt, ('receipt','x',6), 'x', 7) == 'response_preparation_hold',
     len(queues.rows['deployment']) + len(queues.reservations['deployment']) <= queues.ceiling,
-    decode_queue(valid_rows, 1, 1) == 'pin_capacity_queue_corruption_hold',
     parked_only.deployment_turn(lambda _: True, lambda _: True) == 'noop',
-    ledger.unidentified <= ledger.unidentified_ceiling,
     full_replay_exit(75000, 1, 1, False)['outcome'] == 'LegacyArrayLimit',
     full_replay_exit(100001, 1, 1, False)['applied_events'] == 0,
-    2455 + 944*1109 > MiB,
-    1258 + 60*1080 > 64*1024,
-    successor_accumulator not in closure_bytes,
-    sha256(successor_state_bytes).digest() not in audit_bytes,
+    not post_activation_growth(100001, 1, 1)['dispatch'],
+    1291 + 60*1080 > 64*1024,
+    sha256(successor_with_window).digest() not in window_bytes,
 ]
 assert all(mutants_rejected), mutants_rejected
 
@@ -1388,12 +2131,12 @@ Story 6.5 imports this candidate as one change. It does not retain the loop-1 te
 | `[I-10]`, `[I-14]`, `[I-15]`, `[I-16]` | Replace with D3's precedence, drain epochs/resolution, polling values, complete drain-reason classification, preparation recovery, closed `CommandOutcomeHold` set, and Admin current-hold join. |
 | `[I-12]` | Replace with D4's slice-2 claim, cutover/sunset, 256-shard accounting, tombstone reconciliation/expiry, status 410, availability outcome, erasure, and codecs. |
 | `[I-17]` | Replace with D6. |
-| `[I-29]`, `[I-30]` | Replace with D7's capability, exact charge/counter codecs, unidentified ceiling, two-phase atomic batch reservation, quarantine kind, checked arithmetic, stable fail-closed `publication_pin_capacity_hold`, zero partial mutation, refunds, and activation. `[I-26]` and `[I-28]` cite these codecs and maxima rather than defining another charge. |
-| `[I-31]` | Replace with D8's inventory-only invalid-candidate state, checked transition into the single-residence fair queue, cross-counter moves, parked discovery, exact count framing, rerender rule, storage, activation, and exits. |
-| `[I-36]` | Replace with D11.1, including mandatory bounded capture for formerly unbounded redelivery, terminal/oversize quarantine, unambiguous routes, refund, erasure, and activation. |
+| `[I-29]`, `[I-30]` | Replace with D7's capability, exact charge/counter codecs, scope-ceiling readiness, all-three-counter predecessor authentication, staged charge transfer, atomic batch reservation, quarantine kind, checked arithmetic, stable fail-closed `publication_pin_capacity_hold`, zero partial mutation, closed reservation/refund kinds, and activation. `[I-26]` and `[I-28]` cite these codecs and maxima rather than defining another charge. |
+| `[I-31]` | Replace with D8's inventory-only invalid-candidate state, durable global ticket allocator/exhaustion, duplicate-subject rejection, canonical order, authenticated ceiling/reserved-slot decode, single-residence fair queue, cross-counter moves, parked discovery, exact count framing, rerender rule, storage, activation, and exits. |
+| `[I-36]` | Replace with D11.1, including versioned subscription policy, scope-complete held identity, ordinary retained-object charging before captured-copy acknowledgement, mandatory bounded capture for formerly unbounded redelivery, failed-redrive recovery, terminal/oversize quarantine, unambiguous routes, refund, erasure, and activation. |
 | `[I-37]` | Replace with D11.2's scope-discriminated IDs/routes, versioned reason, ordered index, bounded directory, zero-overflow readiness, reconciler lease, metrics, Admin join, storage, activation, and erasure. |
-| `[I-45]` | Replace with D9. Purpose `2d`'s assignment becomes: D2 activation, D9 resume/window claims, and D11 redrive only. Request discovery, bounded rolling state, capacity swap, success-only audit, drain-limit resolution, and replies are inseparable. |
-| `[I-46]` | Replace with D10's pre-cleanup capsule and exclusive recovery. No reconstruction from source-less historical status/dead letter is permitted. |
+| `[I-45]` | Replace with D9. Purpose `2d`'s assignment becomes: D2 activation, D9 resume/window claims, and D11 redrive only. Caller-stable request identity, exact-carrier conflict, live/orphan/tombstone retry evidence, acyclic prior-state window construction, staged charge swap, success-only audit, drain-limit resolution, and replies are inseparable. |
+| `[I-46]` | Replace with D10's pre-cleanup chunk/manifest capsule and generation/ordinal-fenced exclusive recovery. No reconstruction from source-less historical status/dead letter is permitted, and repeated exhaustion reuses the immutable capsule. |
 | 6.5c C1 | Replace “pin charge atomically at pin CAS” with D7's ledger batch reservation plus reservation-bound pin installation. Preserve exact global pins, ceilings, and no-send-before-readback. Add `oversize-quarantine` only for invalid carriers under D11. |
 | 6.5c C2 | Amend the first-send outcome in place with D5's versioned resolution. Add D9's window namespace/binding to new resumed sends; the whole-operation terminal fence still precedes duplicates. |
 | 6.5c C4 | Amend acknowledgement in place with D11's authenticated captured-copy terminal handoff: it may acknowledge that physical copy while explicitly leaving every logical route/effect obligation open; it is not a successful route decision and cannot satisfy C4's ordinary success proof. |
@@ -1441,7 +2184,7 @@ All new routes and record fields are otherwise additive under §10.3. Provider/c
 
 ### D13.4 §11.5 and §11.6
 
-Replace the loop-1 disposition rows for the owned rules with the pass-1 and pass-2 tables below. In §11.6, remove the old owned `I06`, `I12`, `I14`, `I17`, `I29`, `I31`, `I36`, `I37`, `I45`, and `I46` known answers and import all 30 `D*` answers, six framed-key answers, and both D12 verifier blocks. Retain unowned A/B/C and integration answers unchanged. Verification must assert 30 codec answers, 30 codec mutations, six keys, 14 status cases, 4 matrix rows, 27 lifecycle mutants, and 54 unique pass-2 dispositions.
+Replace the loop-1 disposition rows for the owned rules with the pass-1 and pass-2 tables below. In §11.6, remove the old owned `I06`, `I12`, `I14`, `I17`, `I29`, `I31`, `I36`, `I37`, `I45`, and `I46` known answers and import all 30 `D*` answers, six framed-key answers, and both D12 verifier blocks. Retain unowned A/B/C and integration answers unchanged. Verification must assert 30 codec answers, 30 codec mutations, six keys, 15 decoder-malformation rejections, 14 status cases, 4 matrix rows, 27 lifecycle mutants, and 54 unique pass-2 dispositions.
 
 ## Disposition register
 
@@ -1577,6 +2320,39 @@ Every routed finding appears once. No row defers a contract decision to Story 6.
 | EC-22 | D12 expands executable mutations to the repaired status, bound, queue, hash, classification, and account invariants. |
 | EC-23 | D8 gives queue corruption a charged inventory record, owner, triggers, reconstruction proof, and deterministic exit. |
 
+### Review-loop-2 repair register
+
+| Finding | Verified repair |
+| --- | --- |
+| BHR2-01 / VGR2-O1 / ECR2-04 | D9 window v2 binds the prior state and caller-stable identity; only the later state binds the window hash. D12 constructs that dependency and rejects a successor-state back-edge. |
+| BHR2-02 / BHR2-03 / VGR2-05 / ECR2-03 | D9 separates caller-stable identity from exact carrier bytes, indexes live/orphan/tombstone evidence by that identity, returns byte-identical retries without new effects, conflicts changed bytes, and retains bounded tombstones through execution closure. |
+| BHR2-04 | D7 reservation v2 carries tenant, tenant-pool, and deployment predecessor hashes; D12 requires the complete authenticated set. |
+| BHR2-05 / ECR2-02 | D8 queue v4 owns a monotonic durable deployment allocator, lost-ack readback, canonical ordering, and fail-closed u64 exhaustion. |
+| BHR2-06 | D8 fixes the sort tuple as unsigned ticket, raw canonical tenant UTF-8, then raw ScopeOpHash. |
+| BHR2-07 | D7 readiness restores `scopeRetentionCeiling >= 64 MiB`; D12 exercises below/at/above. |
+| BHR2-08 / ECR2-01 | D11.3 gives every replacement-owned revision, head, counter, reservation, wait, policy, quarantine, index, and directory an exact framed address and mutation rule. |
+| BHR2-09 / ECR2-05 | D10 uses at most 17 independently addressed 61-row chunks plus a bounded manifest for all 1,000 maximum-width V1 members; D12 constructs that maximum. |
+| BHR2-10 | D11 held keys bind scope, deployment, tenant presence, component, topic, physical subscription, and carrier hash; D12 proves cross-identity separation. |
+| BHR2-11 | D11 requires tenant exactly for tenant scope and forbids it for deployment scope; D12 rejects both invalid pairings. |
+| BHR2-12 | D11 activates the ordinary retained-object charge before physical-copy acknowledgement and keeps it until logical closure/deletion readback. |
+| BHR2-13 | D11 policy v3 has a framed revision key, CAS head, predecessor chain, and explicit supersession; D12 rejects a revision-2 genesis. |
+| BHR2-14 / ECR2-08 | D3 maps only a nonempty all-class-01 set to exhaustion; unknown/empty/contradictory classes map to evidence conflict even at maximum. |
+| BHR2-15 / VGR2-01 / ECR2-11 | D3 requires both pre-existing outputs and generation receipts. D12 never synthesizes either and exercises each missing/mismatched case. |
+| BHR2-16 / ECR2-12 | D9/D12 partition exact `(position, MessageId, bytes)` tuples and reject a position/MessageId swap. |
+| BHR2-17 | D12's generic record decoder rejects missing, duplicate, reordered, overflowing-length, and trailing-field mutations across resume, legacy optional/signed, and queue byte families. |
+| BHR2-18 | D7/D9 define staged overlap, old/new ownership, every crash side, single release, and no transient ceiling bypass; D12 executes rollback, finalize, refusal, and repeated recovery. |
+| VGR2-02 | D12 exercises conflict/unavailable precedence pairwise over terminal, published, drain, class-01, and class-02 states. |
+| VGR2-03 | The drain-only matrix consumes `resume_publication` output and proves unchanged roster/window, exact source-to-intent resolution, checked limit, and recorded invocation. |
+| VGR2-04 | D12 drives ordinal, window, closed-window count, drain-limit, zero increment, and charge-sum failures through the transition with identical pre/post state. |
+| VGR2-06 | D8/D12 decode the persisted reserved-slot count and authenticated ceiling before any move, rejecting combined overflow. |
+| VGR2-07 | D4/D12 exercise below/at/above ten years and prove slice 4 stays inactive above the maximum. |
+| VGR2-08 | D10/D12 exercise every allowed recovery edge, transport/evidence repair, generation/ordinal advance, and forbidden skip/change. |
+| VGR2-09 | D2/D12 separately cross each post-activation count/readable/accounting hard bound with zero partial dispatch. |
+| ECR2-06 | D10 reuses the immutable chunks/manifest on second exhaustion and advances only recovery generation/ordinal. |
+| ECR2-07 | D11 makes failed redrive return durably to `captured` with incremented count, typed error hash, retained charge/object, and bounded next retry. |
+| ECR2-09 | D7/D12 validate closed account kind on both reservation and refund with unchanged counters. |
+| ECR2-10 | D8 rejects a stable capacity subject already resident or reserved before ticket/slot/charge mutation. |
+
 ## Protected-path and source-integrity verification
 
 This block proves that the unapproved parent/children and protected implementation paths remain unchanged while this story edits only its candidate and bookkeeping artifacts.
@@ -1608,7 +2384,7 @@ allowed = {
     '_bmad-output/implementation-artifacts/deferred-work.md',
     '_bmad-output/implementation-artifacts/sprint-status.yaml',
 }
-changed = set(subprocess.check_output(['git','diff','--name-only','6a2f25e39586692b54b655d3e6e8a5f6fa4d317e']).decode().splitlines())
+changed = set(subprocess.check_output(['git','diff','--name-only','01498ac721db7c44f18fcf9591ffbbf30ba245e2']).decode().splitlines())
 untracked = {line[3:] for line in subprocess.check_output(['git','status','--porcelain']).decode().splitlines() if line.startswith('?? ')}
 assert changed | untracked <= allowed, sorted((changed | untracked) - allowed)
 print(f'protected-path verifier: {len(pins)} hashes, AD-13 UNAPPROVED, {len(changed | untracked)} allowed paths')
@@ -1617,4 +2393,4 @@ PY
 
 ## Verification expectations
 
-Run all three fenced `bash` blocks verbatim. Expected output is 30 codec answers, 30 byte mutations rejected, and six framed keys; 14 status cases, 4 approved matrix rows, 27 lifecycle mutants, and 54 dispositions passed; then four protected hashes with AD-13 still `UNAPPROVED`. Run `python3 scripts/check-deferred-work.py` and `git diff --check`. Story 6.5 integration must rerun these blocks after splicing and before recomputing its own §12 digest.
+Run all three fenced `bash` blocks verbatim. Expected output is 30 codec answers, 30 byte mutations rejected, six framed keys, and 15 malformed records rejected; 14 status cases, 4 approved matrix rows, 27 lifecycle mutants, and 54 dispositions passed; then four protected hashes with AD-13 still `UNAPPROVED`. Run `python3 scripts/check-deferred-work.py` and `git diff --check`. Story 6.5 integration must rerun these blocks after splicing and before recomputing its own §12 digest.
