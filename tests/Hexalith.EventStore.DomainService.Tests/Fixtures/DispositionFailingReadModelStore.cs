@@ -9,6 +9,9 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     /// <summary>Gets or sets a value indicating whether writes to <c>:disposition:</c> keys throw.</summary>
     public bool FailDispositionWrites { get; set; }
 
+    /// <summary>Gets or sets a predicate that rejects selected conditional writes.</summary>
+    public Func<string, bool>? RejectTrySave { get; set; }
+
     /// <inheritdoc/>
     public Task<ReadModelEntry<TValue>> GetAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
         where TValue : class
@@ -24,7 +27,9 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     /// <inheritdoc/>
     public Task<bool> TrySaveAsync<TValue>(string storeName, string key, TValue value, string etag, CancellationToken cancellationToken = default)
         where TValue : class
-        => inner.TrySaveAsync(storeName, key, value, etag, cancellationToken);
+        => RejectTrySave?.Invoke(key) == true
+            ? Task.FromResult(false)
+            : inner.TrySaveAsync(storeName, key, value, etag, cancellationToken);
 
     /// <inheritdoc/>
     public Task<bool> TryEraseAsync(string storeName, string key, string etag, CancellationToken cancellationToken = default)

@@ -64,11 +64,10 @@ public static class EventStoreReminderServiceCollectionExtensions
         _ = services.AddSingleton<IPostConfigureOptions<EventStoreReminderOptions>>(serviceProvider =>
             new PostConfigureOptions<EventStoreReminderOptions>(Options.DefaultName, options =>
             {
-                if (string.IsNullOrWhiteSpace(options.Workload))
-                {
-                    options.Workload = Environment.GetEnvironmentVariable("DAPR_APP_ID")
-                        ?? serviceProvider.GetService<IHostEnvironment>()?.ApplicationName;
-                }
+                options.Workload = ResolveWorkload(
+                    options.Workload,
+                    Environment.GetEnvironmentVariable("DAPR_APP_ID"),
+                    serviceProvider.GetService<IHostEnvironment>()?.ApplicationName);
             }));
 
         _ = services.AddEventStoreReadModelStore();
@@ -118,4 +117,18 @@ public static class EventStoreReminderServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>Resolves the configured workload, ignoring blank environment values before using the host name.</summary>
+    /// <param name="configuredWorkload">The explicitly configured workload.</param>
+    /// <param name="daprApplicationId">The <c>DAPR_APP_ID</c> environment value.</param>
+    /// <param name="applicationName">The host application name.</param>
+    /// <returns>The first non-blank workload candidate, or <see langword="null"/>.</returns>
+    internal static string? ResolveWorkload(string? configuredWorkload, string? daprApplicationId, string? applicationName)
+        => !string.IsNullOrWhiteSpace(configuredWorkload)
+            ? configuredWorkload
+            : !string.IsNullOrWhiteSpace(daprApplicationId)
+                ? daprApplicationId
+                : !string.IsNullOrWhiteSpace(applicationName)
+                    ? applicationName
+                    : null;
 }

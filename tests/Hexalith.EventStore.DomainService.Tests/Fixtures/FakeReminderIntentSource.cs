@@ -14,8 +14,13 @@ internal sealed class FakeReminderIntentSource : IReminderIntentSource
     /// <summary>Gets or sets an optional translator override.</summary>
     public Func<ReminderIntent, ReminderCommand>? Translator { get; set; }
 
+    private int _reads;
+
+    /// <summary>Gets or sets an observer invoked after each stream re-fold starts.</summary>
+    public Action<int>? OnRead { get; set; }
+
     /// <summary>Gets the number of stream re-folds.</summary>
-    public int Reads { get; private set; }
+    public int Reads => Volatile.Read(ref _reads);
 
     /// <summary>Replaces the target's current intents.</summary>
     /// <param name="target">The target.</param>
@@ -25,7 +30,8 @@ internal sealed class FakeReminderIntentSource : IReminderIntentSource
     /// <inheritdoc/>
     public Task<IReadOnlyList<ReminderIntent>> GetCurrentIntentsAsync(ReminderTarget target, CancellationToken cancellationToken = default)
     {
-        Reads++;
+        int reads = Interlocked.Increment(ref _reads);
+        OnRead?.Invoke(reads);
         if (Failing.Contains(target))
         {
             throw new InvalidOperationException("Synthetic stream read failure.");

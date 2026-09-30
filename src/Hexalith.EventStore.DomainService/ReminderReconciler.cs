@@ -71,14 +71,29 @@ internal sealed class ReminderReconciler(
                 continue;
             }
 
-            foreach (ReminderCandidate candidate in tenantCandidates)
+            foreach (ReminderCandidate? candidate in tenantCandidates)
             {
                 candidates++;
-                observed.Add(candidate.ActorId);
                 try
                 {
+                    if (candidate is null)
+                    {
+                        ReminderLog.ScanFailed(_logger, "tenant-candidate", "candidate-missing");
+                        incomplete++;
+                        continue;
+                    }
+
+                    var target = new ReminderTarget(tenant, candidate.Domain, candidate.Aggregate);
+                    if (!string.Equals(ReminderCoordinator.ComputeActorId(target), candidate.ActorId, StringComparison.Ordinal))
+                    {
+                        ReminderLog.CandidateFailed(_logger, candidate.ActorId, "actor-id-mismatch");
+                        incomplete++;
+                        continue;
+                    }
+
+                    observed.Add(candidate.ActorId);
                     ReminderConvergenceResult result = await _registrar
-                        .ConvergeAsync(new ReminderTarget(tenant, candidate.Domain, candidate.Aggregate), cancellationToken)
+                        .ConvergeAsync(target, cancellationToken)
                         .ConfigureAwait(false);
                     armed += result.Armed;
                     submitted += result.Submitted;
@@ -88,7 +103,7 @@ internal sealed class ReminderReconciler(
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
-                    ReminderLog.CandidateFailed(_logger, candidate.ActorId, exception.GetType().Name);
+                    ReminderLog.CandidateFailed(_logger, candidate?.ActorId ?? "candidate-missing", exception.GetType().Name);
                     incomplete++;
                 }
             }

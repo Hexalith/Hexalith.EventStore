@@ -143,14 +143,15 @@ internal sealed class ReminderTestHarness
 
     /// <summary>Creates a reconciler for one host.</summary>
     /// <param name="status">The host-local readiness view; defaults to <see cref="Status"/>.</param>
+    /// <param name="timeProvider">The timer provider; defaults to the controllable test clock.</param>
     /// <returns>The reconciler.</returns>
-    public ReminderReconciler CreateReconciler(ReminderRuntimeStatus? status = null)
+    public ReminderReconciler CreateReconciler(ReminderRuntimeStatus? status = null, TimeProvider? timeProvider = null)
         => new(
             CreateIndex(),
             CreateRegistrar(status),
             status ?? Status,
             Microsoft.Extensions.Options.Options.Create(Options),
-            Time,
+            timeProvider ?? Time,
             NullLogger<ReminderReconciler>.Instance);
 
     /// <summary>Delivers a scheduler callback inside the actor's serialized turn.</summary>

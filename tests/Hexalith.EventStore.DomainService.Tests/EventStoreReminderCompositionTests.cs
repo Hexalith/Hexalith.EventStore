@@ -78,6 +78,24 @@ public sealed class EventStoreReminderCompositionTests
         provider.GetRequiredService<IOptions<EventStoreReminderOptions>>().Value.RetryInitialDelay.ShouldBe(TimeSpan.FromSeconds(5));
     }
 
+    /// <summary>A blank Dapr application identifier does not suppress the host application-name fallback.</summary>
+    [Fact]
+    public void BlankDaprApplicationIdUsesHostApplicationName()
+    {
+        string? previous = Environment.GetEnvironmentVariable("DAPR_APP_ID");
+        try
+        {
+            Environment.SetEnvironmentVariable("DAPR_APP_ID", " \t");
+            using ServiceProvider provider = CreateServices().BuildServiceProvider();
+
+            provider.GetRequiredService<IOptions<EventStoreReminderOptions>>().Value.Workload.ShouldBe("widget-host");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_APP_ID", previous);
+        }
+    }
+
     /// <summary>Invalid options fail validation instead of producing unscoped or unsafe keys.</summary>
     [Theory]
     [InlineData("ActorTypeName", "")]

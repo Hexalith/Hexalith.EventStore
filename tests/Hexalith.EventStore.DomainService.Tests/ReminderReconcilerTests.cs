@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Client.Reminders;
 using Hexalith.EventStore.Contracts.Reminders;
 using Hexalith.EventStore.DomainService.Tests.Fixtures;
 
@@ -120,6 +121,42 @@ public sealed class ReminderReconcilerTests
         harness.Source.Reads.ShouldBe(1);
     }
 
+    /// <summary>Null and actor-mismatched candidates are skipped independently without invoking their registrar.</summary>
+    [Fact]
+    public async Task CorruptCandidatesDoNotInvokeRegistrarAndPassContinues()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        harness.Store.SeedRaw(
+            harness.Options.StateStoreName,
+            ReminderStateKeys.TenantRegistry(harness.Options.ActorTypeName),
+            new ReminderTenantRegistry([ReminderTestHarness.Tenant]));
+        harness.Store.SeedRaw(
+            harness.Options.StateStoreName,
+            ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, ReminderTestHarness.Tenant),
+            new ReminderTenantCandidates(ReminderTestHarness.Tenant, [
+                null!,
+                new ReminderCandidate(Item.Domain, Item.Aggregate, "wra-MISMATCH"),
+                new ReminderCandidate(Item.Domain, Item.Aggregate, actorId),
+            ]));
+        IReminderRegistrar registrar = Substitute.For<IReminderRegistrar>();
+        registrar.ConvergeAsync(Item, Arg.Any<CancellationToken>())
+            .Returns(new ReminderConvergenceResult(1, 0, 0, 0, 0));
+        using var reconciler = new ReminderReconciler(
+            harness.CreateIndex(),
+            registrar,
+            harness.Status,
+            Options.Create(harness.Options),
+            harness.Time,
+            NullLogger<ReminderReconciler>.Instance);
+
+        ReminderReconciliationPass pass = await reconciler.RunPassAsync(CancellationToken.None);
+
+        pass.ShouldBe(new ReminderReconciliationPass(1, 3, 1, 0, 0, 0, 0, 2));
+        _ = registrar.Received(1).ConvergeAsync(Item, Arg.Any<CancellationToken>());
+        registrar.ReceivedCalls().Count().ShouldBe(1);
+    }
+
     /// <summary>After a restart readiness stays Degraded until the first pass rebuilds it from durable state.</summary>
     [Fact]
     public async Task RestartRebuildsReadinessFromDurableState()
@@ -225,6 +262,36 @@ public sealed class ReminderReconcilerTests
         await reconciler.StopAsync(CancellationToken.None);
 
         harness.Status.Snapshot().PassCompleted.ShouldBeTrue();
+    }
+
+    /// <summary>An incomplete hosted pass retries on the short retry cadence instead of the normal interval.</summary>
+    [Fact]
+    public async Task IncompleteHostedPassUsesRetryCadence()
+    {
+        var harness = new ReminderTestHarness();
+        harness.Options.RetryInitialDelay = TimeSpan.FromMilliseconds(20);
+        harness.Options.ReconciliationInterval = TimeSpan.FromHours(1);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Failing.Add(Item);
+        int expectedReads = harness.Source.Reads + 2;
+        var retried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Source.OnRead = reads =>
+        {
+            if (reads >= expectedReads)
+            {
+                _ = retried.TrySetResult();
+            }
+        };
+        using ReminderReconciler reconciler = harness.CreateReconciler(timeProvider: TimeProvider.System);
+
+        await reconciler.StartAsync(CancellationToken.None);
+        await retried.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await reconciler.StopAsync(CancellationToken.None);
+
+        harness.Source.Reads.ShouldBeGreaterThanOrEqualTo(expectedReads);
+        harness.Status.Snapshot().IncompleteScans.ShouldBe(1);
     }
 
     private static Task<HealthCheckResult> CheckAsync(

@@ -93,6 +93,67 @@ public sealed class ReminderCoordinatorTests
         harness.Disposition(actorId, ReminderTestHarness.Name(first)).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Cancelled);
     }
 
+    /// <summary>An obsolete witness stays durable and scheduled until its cancellation audit can be written.</summary>
+    [Fact]
+    public async Task ObsoleteWitnessIsRetainedWhenAuditFails()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Set(Item);
+        harness.CoordinatorStore.FailDispositionWrites = true;
+
+        ReminderConvergenceResult retained = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        retained.Cancelled.ShouldBe(0);
+        retained.Unresolved.ShouldBe(1);
+        ReminderEntry entry = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        entry.ReminderName.ShouldBe(name);
+        entry.LastReasonCode.ShouldBe("audit-unavailable");
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(name);
+        harness.SchedulerFor(actorId).Cancelled.ShouldBeEmpty();
+        harness.Candidates().ShouldHaveSingleItem();
+
+        harness.CoordinatorStore.FailDispositionWrites = false;
+        ReminderConvergenceResult released = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        released.Cancelled.ShouldBe(1);
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Candidates().ShouldBeEmpty();
+    }
+
+    /// <summary>An obsolete witness stays durable while Scheduler cancellation is unavailable.</summary>
+    [Fact]
+    public async Task ObsoleteWitnessIsRetainedWhenCancellationFails()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Set(Item);
+        harness.SchedulerFor(actorId).CancelFailure = new InvalidOperationException("Synthetic Scheduler outage.");
+
+        ReminderConvergenceResult retained = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        retained.Cancelled.ShouldBe(0);
+        ReminderEntry entry = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        entry.LastReasonCode.ShouldBe("cancel-failed");
+        harness.Candidates().ShouldHaveSingleItem();
+
+        harness.SchedulerFor(actorId).CancelFailure = null;
+        ReminderConvergenceResult released = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        released.Cancelled.ShouldBe(1);
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.Candidates().ShouldBeEmpty();
+    }
+
     /// <summary>A scheduler outage leaves the persisted, indexed witness pending and the item unresolved until re-armed.</summary>
     [Fact]
     public async Task PendingStateSurvivesSchedulerFailure()
@@ -117,6 +178,37 @@ public sealed class ReminderCoordinatorTests
         recovered.ShouldBe(new ReminderConvergenceResult(1, 0, 0, 0, 0));
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Armed);
         harness.Status.Snapshot().Unresolved.ShouldBe(0);
+    }
+
+    /// <summary>An armed reminder whose registration audit failed stays pending until that audit can be retried.</summary>
+    [Fact]
+    public async Task RegisteredAuditFailureKeepsArmedWitnessUnresolved()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        harness.CoordinatorStore.FailDispositionWrites = true;
+
+        ReminderConvergenceResult retained = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        retained.Armed.ShouldBe(1);
+        retained.Unresolved.ShouldBe(1);
+        ReminderEntry pending = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        pending.Status.ShouldBe(ReminderEntryStatus.Pending);
+        pending.LastReasonCode.ShouldBe("audit-unavailable");
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(name);
+        harness.Disposition(actorId, name).ShouldBeNull();
+        harness.Candidates().ShouldHaveSingleItem();
+
+        harness.CoordinatorStore.FailDispositionWrites = false;
+        ReminderConvergenceResult recovered = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        recovered.Armed.ShouldBe(1);
+        recovered.Unresolved.ShouldBe(0);
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Armed);
+        harness.Disposition(actorId, name).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Registered);
     }
 
     /// <summary>When the stream no longer holds an intent, the state is released, the reminder cancelled, and the index entry removed last.</summary>
@@ -233,6 +325,73 @@ public sealed class ReminderCoordinatorTests
         harness.Candidates().ShouldBeEmpty();
     }
 
+    /// <summary>A callback keeps a submitted receipt unresolved until its Scheduler reminder is cancelled.</summary>
+    [Fact]
+    public async Task SubmittedCallbackWaitsForCancellationBeforeRelease()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Time.Advance(TimeSpan.FromHours(1));
+        harness.SchedulerFor(actorId).CancelFailure = new InvalidOperationException("Synthetic Scheduler outage.");
+
+        ReminderDisposition? retained = await harness.FireAsync(actorId, name);
+
+        retained.ShouldBe(ReminderDisposition.Retrying);
+        harness.Submitter.Receipts.Count.ShouldBe(1);
+        ReminderEntry retrying = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retrying.Status.ShouldBe(ReminderEntryStatus.Retrying);
+        retrying.LastReasonCode.ShouldBe("cancel-failed");
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(name);
+        harness.Candidates().ShouldHaveSingleItem();
+        harness.Status.Snapshot().Unresolved.ShouldBe(1);
+
+        harness.SchedulerFor(actorId).CancelFailure = null;
+        harness.Time.Advance(TimeSpan.FromSeconds(31));
+        ReminderDisposition? released = await harness.FireAsync(actorId, name);
+
+        released.ShouldBe(ReminderDisposition.Submitted);
+        harness.Disposition(actorId, name).ShouldNotBeNull().Replayed.ShouldBeTrue();
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Candidates().ShouldBeEmpty();
+        harness.Status.Snapshot().Unresolved.ShouldBe(0);
+    }
+
+    /// <summary>Convergence also retains a submitted receipt until Scheduler cancellation recovers.</summary>
+    [Fact]
+    public async Task SubmittedConvergenceWaitsForCancellationBeforeRelease()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddMinutes(-1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        harness.SchedulerFor(actorId).CancelFailure = new InvalidOperationException("Synthetic Scheduler outage.");
+
+        ReminderConvergenceResult retained = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        retained.Submitted.ShouldBe(0);
+        retained.Unresolved.ShouldBe(1);
+        harness.Submitter.Receipts.Count.ShouldBe(1);
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("cancel-failed");
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(name);
+        harness.Candidates().ShouldHaveSingleItem();
+
+        harness.SchedulerFor(actorId).CancelFailure = null;
+        harness.Time.Advance(TimeSpan.FromSeconds(31));
+        ReminderConvergenceResult released = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        released.Submitted.ShouldBe(1);
+        harness.Disposition(actorId, name).ShouldNotBeNull().Replayed.ShouldBeTrue();
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.Candidates().ShouldBeEmpty();
+    }
+
     /// <summary>An uncertain receipt keeps the witness, re-arms a backoff reminder, and is never acknowledged by throwing.</summary>
     [Fact]
     public async Task UncertainReceiptIsRetriedWithoutAcknowledgement()
@@ -259,11 +418,21 @@ public sealed class ReminderCoordinatorTests
         harness.Candidates().ShouldHaveSingleItem();
         harness.Status.Snapshot().Unresolved.ShouldBe(1);
 
+        ReminderDisposition? duplicate = await harness.FireAsync(actorId, name);
+
+        duplicate.ShouldBe(ReminderDisposition.Retrying);
+        harness.Submitter.Calls.Count.ShouldBe(1);
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Attempts.ShouldBe(1);
+        harness.SchedulerFor(actorId).Armed[name].DueTime.ShouldBe(TimeSpan.FromSeconds(30));
+
+        harness.Time.Advance(TimeSpan.FromSeconds(31));
         _ = await harness.FireAsync(actorId, name);
         harness.SchedulerFor(actorId).Armed[name].DueTime.ShouldBe(TimeSpan.FromSeconds(60));
+        harness.Time.Advance(TimeSpan.FromSeconds(61));
         _ = await harness.FireAsync(actorId, name);
         harness.SchedulerFor(actorId).Armed[name].DueTime.ShouldBe(TimeSpan.FromSeconds(120));
 
+        harness.Time.Advance(TimeSpan.FromSeconds(121));
         ReminderDisposition? settled = await harness.FireAsync(actorId, name);
 
         settled.ShouldBe(ReminderDisposition.Submitted);
@@ -415,6 +584,36 @@ public sealed class ReminderCoordinatorTests
         harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
     }
 
+    /// <summary>A quarantine audit outage retains the original witness and does not cancel its Scheduler reminder.</summary>
+    [Fact]
+    public async Task QuarantineAuditFailureRetainsOriginalWitness()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent original = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2), sequence: 3);
+        string name = ReminderTestHarness.Name(original);
+        harness.Source.Set(Item, original);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Set(Item, original with { SourceSequence = 9 });
+        harness.CoordinatorStore.FailDispositionWrites = true;
+
+        ReminderConvergenceResult retained = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        retained.Unresolved.ShouldBe(1);
+        ReminderEntry entry = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        entry.Status.ShouldBe(ReminderEntryStatus.Retrying);
+        entry.LastReasonCode.ShouldBe("audit-unavailable");
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(name);
+        harness.SchedulerFor(actorId).Cancelled.ShouldBeEmpty();
+
+        harness.CoordinatorStore.FailDispositionWrites = false;
+        ReminderConvergenceResult quarantined = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        quarantined.Quarantined.ShouldBe(2);
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Quarantined);
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+    }
+
     /// <summary>Due retained work waits out its backoff window on every pass, then is resubmitted after it.</summary>
     [Fact]
     public async Task RetryingWorkWaitsOutBackoffAcrossPasses()
@@ -444,6 +643,29 @@ public sealed class ReminderCoordinatorTests
         harness.ItemState(actorId).ShouldBeNull();
     }
 
+    /// <summary>A retrying witness whose backoff reminder was lost is re-armed without an early submission.</summary>
+    [Fact]
+    public async Task LostRetryReminderIsRearmedDuringBackoff()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddMinutes(-1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        harness.Submitter.FailuresRemaining = 1;
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.SchedulerFor(actorId).Lose(name);
+        harness.Time.Advance(TimeSpan.FromSeconds(10));
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Submitted.ShouldBe(0);
+        result.Armed.ShouldBe(1);
+        harness.Submitter.Calls.Count.ShouldBe(1);
+        harness.SchedulerFor(actorId).Armed[name].DueTime.ShouldBe(TimeSpan.FromSeconds(20));
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Retrying);
+    }
+
     /// <summary>An armed reminder the scheduler still holds is not re-registered by a later convergence.</summary>
     [Fact]
     public async Task HeldArmedReminderIsNotRearmed()
@@ -457,6 +679,39 @@ public sealed class ReminderCoordinatorTests
 
         again.Armed.ShouldBe(0);
         harness.SchedulerFor(actorId).ArmCalls.ShouldBe(1);
+    }
+
+    /// <summary>An inconclusive Scheduler lookup re-registers the deterministic reminder name.</summary>
+    [Fact]
+    public async Task SchedulerLookupFailureRearmsFutureWitness()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.SchedulerFor(actorId).LookupFailure = new HttpRequestException("Synthetic lookup outage.");
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Armed.ShouldBe(1);
+        harness.SchedulerFor(actorId).ArmCalls.ShouldBe(2);
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(ReminderTestHarness.Name(intent));
+    }
+
+    /// <summary>The Scheduler due time is calculated from a fresh clock after the authoritative stream fold.</summary>
+    [Fact]
+    public async Task FutureIntentUsesFreshClockWhenArmed()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        harness.Source.Set(Item, intent);
+        harness.Source.OnRead = _ => harness.Time.Advance(TimeSpan.FromHours(1));
+
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        harness.SchedulerFor(actorId).Armed[ReminderTestHarness.Name(intent)].DueTime.ShouldBe(TimeSpan.FromHours(1));
     }
 
     /// <summary>Item state that holds work but lost its index entry, as after an older index restore, is re-indexed.</summary>
@@ -476,6 +731,148 @@ public sealed class ReminderCoordinatorTests
         _ = await harness.CreateRegistrar().ConvergeAsync(Item);
 
         harness.Candidates().ShouldBe([new ReminderCandidate(Item.Domain, Item.Aggregate, actorId)]);
+    }
+
+    /// <summary>The fail-closed catch retries discovery for existing unindexed state before acknowledging it.</summary>
+    [Fact]
+    public async Task FailClosedCatchRestoresDiscoveryAfterIndexConflict()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Store.SeedRaw(
+            harness.Options.StateStoreName,
+            ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, ReminderTestHarness.Tenant),
+            new ReminderTenantCandidates(ReminderTestHarness.Tenant, []));
+        harness.Options.IndexWriteAttempts = 1;
+        bool conflicted = false;
+        harness.Store.ConcurrentWriteBeforeTrySave = () =>
+        {
+            if (conflicted)
+            {
+                return;
+            }
+
+            conflicted = true;
+            harness.Store.ConcurrentWriteBeforeTrySave = null;
+            harness.Store.SeedRaw(
+                harness.Options.StateStoreName,
+                ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, ReminderTestHarness.Tenant),
+                new ReminderTenantCandidates(ReminderTestHarness.Tenant, []));
+        };
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        conflicted.ShouldBeTrue();
+        result.Unresolved.ShouldBe(1);
+        harness.Candidates().ShouldBe([new ReminderCandidate(Item.Domain, Item.Aggregate, actorId)]);
+        harness.ItemState(actorId).ShouldNotBeNull();
+        harness.SchedulerFor(actorId).ArmCalls.ShouldBe(1);
+    }
+
+    /// <summary>An actor collision re-indexes the restored state under its stored target, not the colliding caller.</summary>
+    [Fact]
+    public async Task ActorCollisionRestoresStoredTargetIndex()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        var foreign = new ReminderItemState(Item.Tenant, "other-domain", Item.Aggregate, 3, [], []);
+        harness.SeedItemState(actorId, foreign);
+        harness.Source.Set(Item, ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2)));
+
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        harness.Candidates().ShouldBe([new ReminderCandidate("other-domain", Item.Aggregate, actorId)]);
+    }
+
+    /// <summary>Malformed persisted collection elements become durable quarantine instead of terminating convergence.</summary>
+    [Fact]
+    public async Task MalformedPersistedCollectionElementsAreQuarantined()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        harness.SeedItemState(actorId, new ReminderItemState(
+            Item.Tenant,
+            Item.Domain,
+            Item.Aggregate,
+            3,
+            [null!],
+            [null!]));
+        harness.Source.Set(Item, intent);
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Armed.ShouldBe(1);
+        result.Quarantined.ShouldBe(2);
+        ReminderItemState state = harness.ItemState(actorId).ShouldNotBeNull();
+        state.Entries.ShouldHaveSingleItem().ReminderName.ShouldBe(ReminderTestHarness.Name(intent));
+        state.Quarantine.Select(static record => record.ReasonCode).Order().ShouldBe([
+            "stored-entry-invalid",
+            "stored-quarantine-invalid",
+        ]);
+        state.Quarantine.ShouldAllBe(record => harness.Disposition(actorId, record.EvidenceDigest) != null);
+        harness.Candidates().ShouldHaveSingleItem();
+    }
+
+    /// <summary>Duplicate persisted reminder identities become audited quarantine before any execution.</summary>
+    [Fact]
+    public async Task DuplicatePersistedReminderIdentitiesAreQuarantined()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        ReminderItemState stored = harness.ItemState(actorId).ShouldNotBeNull();
+        ReminderEntry entry = stored.Entries.ShouldHaveSingleItem();
+        harness.SeedItemState(actorId, stored with { Entries = [entry, entry] });
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Armed.ShouldBe(0);
+        result.Submitted.ShouldBe(0);
+        result.Quarantined.ShouldBe(2);
+        ReminderItemState quarantined = harness.ItemState(actorId).ShouldNotBeNull();
+        quarantined.Entries.ShouldBeEmpty();
+        quarantined.Quarantine.Count.ShouldBe(2);
+        quarantined.Quarantine.ShouldAllBe(record => record.ReasonCode == "stored-entry-duplicate" && record.ReminderName == name);
+        quarantined.Quarantine.ShouldAllBe(record =>
+            harness.Disposition(actorId, record.EvidenceDigest) != null
+            && harness.Disposition(actorId, record.EvidenceDigest)!.Disposition == ReminderDisposition.Quarantined);
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.SchedulerFor(actorId).Armed.ShouldNotContainKey(name);
+        harness.Candidates().ShouldHaveSingleItem();
+    }
+
+    /// <summary>A fail-closed error after a durable write reports the reloaded state rather than the turn's stale snapshot.</summary>
+    [Fact]
+    public async Task ExistingStateFailClosedUsesReloadedSnapshot()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent colliding = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1), sequence: 3);
+        ReminderIntent due = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2), revision: 2, sequence: 4);
+        harness.Source.Set(Item, colliding, due);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Set(Item, colliding with { SourceSequence = 9 }, due);
+        harness.Time.Advance(TimeSpan.FromHours(3));
+        string itemKey = ReminderStateKeys.Item(harness.Options.ActorTypeName, actorId);
+        int itemWrites = 0;
+        harness.CoordinatorStore.RejectTrySave = key => string.Equals(key, itemKey, StringComparison.Ordinal)
+            && ++itemWrites == 2;
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Unresolved.ShouldBe(1);
+        result.Quarantined.ShouldBe(2);
+        ReminderItemState state = harness.ItemState(actorId).ShouldNotBeNull();
+        state.Entries.Count(static entry => entry.Status != ReminderEntryStatus.Quarantined).ShouldBe(1);
+        state.Entries.Count(static entry => entry.Status == ReminderEntryStatus.Quarantined).ShouldBe(1);
+        state.Quarantine.ShouldHaveSingleItem();
     }
 
     /// <summary>Without a durable audit record a durable receipt does not release the witness; it is retried after backoff.</summary>

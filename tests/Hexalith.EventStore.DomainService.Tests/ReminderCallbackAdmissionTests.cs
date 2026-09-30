@@ -103,6 +103,39 @@ public sealed class ReminderCallbackAdmissionTests
         harness.SchedulerFor(actorId).Cancelled.ShouldNotContain(ReminderTestHarness.Name(stale));
     }
 
+    /// <summary>A stale witness stays retrying until Scheduler cancellation succeeds on a later callback.</summary>
+    [Fact]
+    public async Task StaleWitnessIsRetainedUntilCancellationRecovers()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent stale = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1), revision: 1);
+        ReminderIntent current = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(8), revision: 2, sequence: 6);
+        string staleName = ReminderTestHarness.Name(stale);
+        harness.Source.Set(Item, stale);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Set(Item, current);
+        harness.Time.Advance(TimeSpan.FromHours(1));
+        harness.SchedulerFor(actorId).CancelFailure = new InvalidOperationException("Synthetic Scheduler outage.");
+
+        ReminderDisposition? retained = await harness.FireAsync(actorId, staleName);
+
+        retained.ShouldBe(ReminderDisposition.Retrying);
+        ReminderEntry retrying = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retrying.Status.ShouldBe(ReminderEntryStatus.Retrying);
+        retrying.LastReasonCode.ShouldBe("cancel-failed");
+        harness.SchedulerFor(actorId).Armed.ShouldContainKey(staleName);
+        harness.Candidates().ShouldHaveSingleItem();
+
+        harness.SchedulerFor(actorId).CancelFailure = null;
+        ReminderDisposition? recovered = await harness.FireAsync(actorId, staleName);
+
+        recovered.ShouldBe(ReminderDisposition.Stale);
+        harness.SchedulerFor(actorId).Cancelled.ShouldContain(staleName);
+        harness.SchedulerFor(actorId).Armed.Keys.ShouldBe([ReminderTestHarness.Name(current)]);
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().ReminderName.ShouldBe(ReminderTestHarness.Name(current));
+    }
+
     /// <summary>A stream that cannot be re-folded during a callback retains the witness and counts the attempt.</summary>
     [Fact]
     public async Task UnreadableStreamDuringCallbackIsRetained()
@@ -184,10 +217,12 @@ public sealed class ReminderCallbackAdmissionTests
 
         disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.Submitter.Calls.ShouldBeEmpty();
-        ReminderEntry quarantined = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
-        quarantined.Status.ShouldBe(ReminderEntryStatus.Quarantined);
-        quarantined.LastReasonCode.ShouldBe("tuple-mismatch");
-        harness.Disposition(actorId, name).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        ReminderItemState quarantined = harness.ItemState(actorId).ShouldNotBeNull();
+        quarantined.Entries.ShouldBeEmpty();
+        ReminderQuarantineRecord evidence = quarantined.Quarantine.ShouldHaveSingleItem();
+        evidence.ReasonCode.ShouldBe("stored-entry-invalid");
+        evidence.ReminderName.ShouldBe(name);
+        harness.Disposition(actorId, evidence.EvidenceDigest).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.SchedulerFor(actorId).Armed.ShouldNotContainKey(name);
         harness.Candidates().ShouldHaveSingleItem();
         harness.Status.Snapshot().Quarantined.ShouldBe(1);
@@ -195,7 +230,7 @@ public sealed class ReminderCallbackAdmissionTests
         // Quarantine is retained across later firings and convergence until an operator disposes of it.
         (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Quarantined);
         _ = await harness.CreateRegistrar().ConvergeAsync(Item);
-        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Quarantined);
+        harness.ItemState(actorId).ShouldNotBeNull().Quarantine.ShouldHaveSingleItem();
         harness.Submitter.Calls.ShouldBeEmpty();
     }
 

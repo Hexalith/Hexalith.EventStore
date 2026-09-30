@@ -267,8 +267,8 @@ pass after a restart.
 `Retrying` witnesses carry their last reason code. The codes are
 `submission-uncertain`, `receipt-mismatch`, `submitter-unavailable`,
 `delegation-unavailable`, `delegation-failed`, `purpose-unconfigured`,
-`workload-unconfigured`, `source-unavailable`, and `audit-unavailable`. Fix the
-cause; the next firing or pass resubmits under the same effect identifier. A
+`workload-unconfigured`, `source-unavailable`, `audit-unavailable`, and
+`cancel-failed`. Fix the cause; the next firing or pass resubmits under the same effect identifier. A
 target that already holds the receipt replays it, so retries never create a
 second logical effect.
 
@@ -278,7 +278,9 @@ Quarantine reason codes are `tuple-mismatch`, `witness-collision`,
 `effect-collision`, `actor-collision`, `translation-failed`, `translation-invalid`,
 `effect-identity-invalid`, and the malformed-intent codes `intent-missing`,
 `target-mismatch`, `kind-unsupported`, `due-not-utc`, `revision-invalid`,
-`source-sequence-invalid`, `payload-invalid`, and `identity-invalid`.
+`source-sequence-invalid`, `payload-invalid`, and `identity-invalid`. Malformed
+or duplicate restored state uses `stored-entry-invalid`,
+`stored-entry-duplicate`, or `stored-quarantine-invalid`.
 
 1. Find the item from the `200207` log, which carries the `wra-` actor
    identifier and the subject. The subject is the reminder name or a 52-character
