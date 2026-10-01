@@ -71,6 +71,14 @@ internal sealed class ReminderReconciler(
                 continue;
             }
 
+            if (tenantCandidates.Count >= _options.MaxCandidatesPerTenant)
+            {
+                // A full index cannot discover first registrations that failed before persisting item state.
+                // Keep readiness Degraded while still converging every candidate already in the document.
+                ReminderLog.ScanFailed(_logger, "tenant-candidates", "index-capacity");
+                incomplete++;
+            }
+
             foreach (ReminderCandidate? candidate in tenantCandidates)
             {
                 candidates++;

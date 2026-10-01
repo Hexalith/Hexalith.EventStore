@@ -16,8 +16,9 @@ namespace Hexalith.EventStore.DomainService;
 
 /// <summary>
 /// Converges and fires one tenant item's typed reminders. Every method runs inside the item's serialized
-/// reminder actor turn. Streams are authoritative: the domain intent source is re-folded before anything is
-/// armed, submitted, or cancelled, and persisted state holds identifiers and digests only.
+/// reminder actor turn. Streams are authoritative for current intents and submissions. Orphaned,
+/// quarantined, or structurally invalid callbacks can cancel reminders without a stream fold.
+/// Persisted state holds identifiers and digests only.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -36,7 +37,8 @@ namespace Hexalith.EventStore.DomainService;
 internal sealed class ReminderCoordinator
 {
     private const string MalformedName = "malformed";
-    private const int MaxBackoffExponent = 20;
+    // One tick doubled 63 times exceeds TimeSpan.MaxValue, covering every positive delay ratio.
+    private const int MaxBackoffExponent = 63;
 
     private readonly IReminderIntentSource _source;
     private readonly ReminderIntentIndex _index;
@@ -1035,7 +1037,8 @@ internal sealed class ReminderCoordinator
                 .ConfigureAwait(false);
         }
 
-        // Step 2: the stored full tuple must re-derive both the actor identifier and the reminder name.
+        // Step 2 is defense in depth: LoadAsync already validates and re-derives the stored full tuple,
+        // quarantining a mismatch as stored-entry-invalid before it can reach this branch.
         if (!ReminderIdentityCodec.Rederives(state.Tenant, state.Aggregate, entry.Kind, entry.DueUtc, entry.ScheduleRevision, actorId, reminderName)
             || !reminderName.EndsWith(entry.ScheduleToken, StringComparison.Ordinal))
         {

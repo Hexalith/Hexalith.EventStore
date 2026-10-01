@@ -6,9 +6,11 @@ arms and cancels Dapr actor reminders, and submits due reminders through the
 trusted-effect receipt path described in [Trusted effect submission](trusted-effects.md).
 Platform owns the production Scheduler, its availability, and its backup policy.
 
-Streams are authoritative. The discovery index only finds candidates. Every
-decision to arm, submit, or cancel re-folds the target stream through the
-domain's intent source first.
+Streams are authoritative for current intents and submissions. The discovery
+index only finds candidates. Registration and current-witness callbacks
+re-fold the target stream through the domain's intent source. Orphaned,
+already-quarantined, repaired-quarantine, and structurally invalid callbacks
+can cancel reminders from persisted evidence without a stream fold.
 
 ## Public contract
 
@@ -44,8 +46,8 @@ The contract also binds its callers:
 - The intent source must stop reporting an intent once its target has handled
   the submitted command. Otherwise every convergence resubmits it and replays
   the receipt.
-- `(source sequence, kind, target)` must be unique among a target's current
-  intents. Intents that share it share one effect identity, and both are
+- `(source domain, source aggregate, source sequence, kind, target)` must be
+  unique among a target's current intents. Intents that share it share one effect identity, and both are
   quarantined as `effect-collision`.
 - Aggregate identifiers must be unique across every domain that shares one
   reminder actor type, because the AD-11 actor tuple omits the domain. A second
@@ -98,16 +100,20 @@ corrupted evidence. It is quarantined and never executed.
    before anything is scheduled. This runs whenever the item holds work, so an
    index restored from an older backup regains its candidates; it writes
    nothing when the candidate is present.
-5. Persist the item's witnesses by compare-and-swap. A lost race fails closed:
+5. Audit obsolete and newly quarantined witnesses, then cancel their Scheduler
+   reminders before persisting the updated witnesses. An obsolete witness stays
+   until its audit and cancellation both succeed. A failed quarantine audit
+   retains the executable witness for retry.
+6. Persist the item's witnesses by compare-and-swap. A lost race fails closed:
    nothing is scheduled and the work is reported unresolved. If the item had no
    persisted state yet, for example when the index is full or its update budget
    is exhausted, convergence throws instead, so the caller retries.
-6. Cancel obsolete reminders and submit due ones through the callback path. A
-   `Retrying` witness inside its backoff window is left to its armed backoff
+7. Submit due witnesses through the callback path. A `Retrying` witness inside
+   its backoff window is left to its armed backoff
    reminder. Arm a future witness as a periodic reminder only when it is not
    yet `Armed` or the Scheduler no longer holds its reminder.
-7. When the item holds nothing more, erase its state and remove its index entry
-   last.
+8. When the item holds nothing more, erase its state and re-fold the stream.
+   Remove its index entry last only when the fold reports no current intents.
 
 Duplicate registration is idempotent. A new schedule revision or due instant
 produces a new name, and the obsolete reminder is cancelled. A Scheduler
@@ -125,7 +131,9 @@ Callback admission runs in this order:
    path base cannot hide it. That covers method calls and reminder callbacks. A
    denial returns an empty `401` and logs a reason code only.
 2. **Stored identity.** The stored full tuple must re-derive the actor
-   identifier and the reminder name. A mismatch is quarantined.
+   identifier and the reminder name. Loading the item validates this first and
+   quarantines a mismatch as `stored-entry-invalid`. The callback repeats the
+   check as defense in depth.
 3. **Purpose.** The name prefix already matched the stored kind. That kind also
    needs a configured purpose. Without one, the callback is `Denied`, the work
    is retained, and a backoff reminder is re-armed.
@@ -181,6 +189,10 @@ from its stream. A lost firing is reissued when due. A deleted Scheduler
 reminder is re-armed when still in the future. One unreadable tenant or stream
 never blocks the others; the pass is recorded as incomplete. A candidate
 document stored under one tenant's key that names another tenant is refused.
+A candidate document holding `MaxCandidatesPerTenant` entries also makes the
+pass incomplete and readiness `Degraded`: a rejected first registration may
+have no durable item state for the pass to discover. Existing candidates still
+converge, and a later pass clears the condition once the index has capacity.
 
 ## Host composition
 
@@ -223,7 +235,7 @@ on its own.
 | `ReconciliationInterval` | `00:05:00` | Interval between complete passes |
 | `RetryInitialDelay` | `00:00:30` | First retry delay, and the delay after an incomplete pass |
 | `RetryMaxDelay` | `00:15:00` | Longest retry delay, and the period of every armed reminder. It and the two other delays must not exceed 4294967294 milliseconds |
-| `MaxCandidatesPerTenant` | `10000` | A full tenant index fails registration closed |
+| `MaxCandidatesPerTenant` | `10000` | A full tenant index fails registration closed and degrades readiness |
 | `IndexWriteAttempts` | `8` | Compare-and-swap budget for one index update |
 
 The host must also configure `APP_API_TOKEN` outside Development, and its
@@ -268,7 +280,7 @@ It is `Degraded` in any of these cases:
 | Description | Cause | Action |
 | --- | --- | --- |
 | No reconciliation pass has completed yet | The host just started, or reconciliation is disabled | Wait one pass, or enable reconciliation |
-| The last pass was incomplete | A tenant index, candidate, or stream could not be read | Check the `200211` and `200212` logs; the next pass retries after `RetryInitialDelay` |
+| The last pass was incomplete | A tenant index is full, or a tenant index, candidate, or stream could not be read | Check the `200211` and `200212` logs; the next pass retries after `RetryInitialDelay` |
 | Quarantined evidence awaits disposition | A collision, a tampered tuple, malformed evidence, or a failed translation | Follow the quarantine steps below |
 | Work is retained without a durable outcome | Arming failed, or submission was uncertain, denied, or unavailable | Check the last reason code on the witness; the work retries automatically |
 
@@ -277,23 +289,39 @@ pass after a restart.
 
 ### Retained and denied work
 
+`Pending` witnesses use `arm-failed` when the Scheduler could not arm them.
+Fix the Scheduler; the next convergence retries arming.
+
 `Retrying` witnesses carry their last reason code. The codes are
 `submission-uncertain`, `receipt-mismatch`, `submitter-unavailable`,
 `delegation-unavailable`, `delegation-failed`, `purpose-unconfigured`,
 `workload-unconfigured`, `source-unavailable`, `audit-unavailable`,
-`cancel-failed`, `domain-invalid`, and `arm-failed`. Fix the cause; the next firing or pass resubmits under the same effect identifier. A
-target that already holds the receipt replays it, so retries never create a
-second logical effect.
+`cancel-failed`.
+
+Submission retries re-fold the stream and use the same effect identifier while
+the intent remains current. A target that already holds the receipt replays it,
+so these retries never create a second logical effect. Retained work can also
+await an audit write, cancellation of an obsolete or stale reminder, or a
+quarantine transition. Obsolete and stale witnesses retry retirement without
+submitting their commands; quarantine transitions retry their audit and
+quarantine. A witness with a durable target receipt may resubmit the same effect
+to replay that receipt while retrying its audit or cancellation cleanup.
+Quarantined witnesses are never submitted. Check the stored witness and its
+disposition to identify the pending operation, then fix its dependency; the next
+firing or convergence retries that operation.
 
 ### Quarantine
 
-Quarantine reason codes are `tuple-mismatch`, `witness-collision`,
+Quarantine reason codes are `witness-collision`,
 `effect-collision`, `actor-collision`, `translation-failed`, `translation-invalid`,
-`effect-identity-invalid`, `domain-invalid`, `arm-failed`, and the malformed-intent codes `intent-missing`,
-`target-mismatch`, `kind-unsupported`, `due-not-utc`, `revision-invalid`,
+`effect-identity-invalid`, `domain-invalid`, and the malformed-intent codes
+`intent-missing`, `target-mismatch`, `kind-unsupported`, `due-not-utc`, `revision-invalid`,
 `source-sequence-invalid`, `payload-invalid`, and `identity-invalid`. Malformed
 or duplicate restored state uses `stored-entry-invalid`,
 `stored-entry-duplicate`, or `stored-quarantine-invalid`.
+The callback's `tuple-mismatch` branch is defense in depth after load-time
+validation. A failed `domain-invalid` quarantine audit retains the witness as
+`Retrying` with reason `audit-unavailable` until its audit can be written.
 
 1. Find the item from the `200207` log, which carries the `wra-` actor
    identifier and the subject. The subject is the reminder name or a 52-character

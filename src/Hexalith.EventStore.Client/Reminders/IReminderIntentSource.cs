@@ -14,8 +14,9 @@ namespace Hexalith.EventStore.Client.Reminders;
 /// <list type="bullet">
 /// <item><description>Stop reporting an intent once its target has handled the submitted command; otherwise every
 /// convergence resubmits it and replays the receipt.</description></item>
-/// <item><description>Keep <c>(source sequence, kind, target)</c> unique among current intents. Intents that share
-/// it share one effect identity and are quarantined as <c>effect-collision</c>.</description></item>
+/// <item><description>Keep <c>(source domain, source aggregate, source sequence, kind, target)</c> unique among
+/// current intents. Intents that share it share one effect identity and are quarantined as
+/// <c>effect-collision</c>.</description></item>
 /// <item><description>Keep aggregate identifiers unique across every domain that shares one reminder actor type:
 /// the AD-11 actor tuple omits the domain, so a second domain with the same aggregate identifier is
 /// quarantined as <c>actor-collision</c>.</description></item>
