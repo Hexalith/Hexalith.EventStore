@@ -59,6 +59,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private string _componentsDirectory = string.Empty;
     private string _postgresConnectionString = string.Empty;
     private string _postgresContainerName = string.Empty;
+    private string _postgresContainerId = string.Empty;
+    private Oq8QualificationOverrides _overrides = new();
     private string _repositoryRoot = string.Empty;
     private string _runtimeDirectory = string.Empty;
     private IPEndPoint? _placementHostEndpoint;
@@ -85,6 +87,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     {
         try
         {
+            _overrides = Oq8QualificationOverrides.Read(Environment.GetEnvironmentVariable);
             _repositoryRoot = FindRepositoryRoot();
             RegisterSensitive(_repositoryRoot);
             RegisterSensitiveTestMaterial();
@@ -609,15 +612,10 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
     private async Task StartPostgresAsync()
     {
-        int postgresPort = GetAvailablePorts(1)[0];
         _postgresContainerName = $"eventstore-oq8-{Guid.NewGuid():N}";
         string password = $"oq8-{Guid.NewGuid():N}";
         RegisterSensitive(_postgresContainerName);
         RegisterSensitive(password);
-        _postgresConnectionString =
-            $"host=127.0.0.1 port={postgresPort} user=postgres password={password} dbname=eventstore sslmode=disable connect_timeout=10";
-        RegisterSensitive(_postgresConnectionString);
-
         string containerId = await RunProcessAsync(
             "docker",
             [
@@ -625,13 +623,19 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
                 "--name", _postgresContainerName,
                 "-e", $"POSTGRES_PASSWORD={password}",
                 "-e", "POSTGRES_DB=eventstore",
-                "-p", $"127.0.0.1:{postgresPort}:5432",
+                "-p", "127.0.0.1::5432",
                 PostgresImage,
             ]).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(containerId))
         {
             throw new InvalidOperationException("The OQ8 PostgreSQL container did not return an identity.");
         }
+
+        _postgresContainerId = containerId.Trim();
+        IPEndPoint postgresEndpoint = await ResolveDockerPublishedHostEndpointAsync(_postgresContainerId, 5432).ConfigureAwait(false);
+        _postgresConnectionString =
+            $"host=127.0.0.1 port={postgresEndpoint.Port} user=postgres password={password} dbname=eventstore sslmode=disable connect_timeout=10";
+        RegisterSensitive(_postgresConnectionString);
 
         Exception? lastError = null;
         for (int attempt = 0; attempt < 60; attempt++)
@@ -640,7 +644,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             {
                 _ = await RunProcessAsync(
                     "docker",
-                    ["exec", _postgresContainerName, "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "postgres", "-d", "eventstore"])
+                    ["exec", _postgresContainerId, "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "postgres", "-d", "eventstore"])
                     .ConfigureAwait(false);
                 return;
             }
@@ -672,7 +676,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             Path.Combine(_componentsDirectory, "resiliency.yaml"));
         File.WriteAllText(
             Path.Combine(_componentsDirectory, "pubsub.yaml"),
-            """
+            $$"""
             apiVersion: dapr.io/v1alpha1
             kind: Component
             metadata:
@@ -682,7 +686,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
               version: v1
               metadata:
                 - name: redisHost
-                  value: "localhost:6379"
+                  value: "{{_overrides.RedisEndpoint}}"
                 - name: redisPassword
                   value: ""
             scopes:
@@ -697,14 +701,14 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             "src",
             "Hexalith.EventStore",
             "bin",
-            "Release",
+            _overrides.Configuration,
             "net10.0");
         string sampleOutput = Path.Combine(
             _repositoryRoot,
             "samples",
             "Hexalith.EventStore.Sample",
             "bin",
-            "Release",
+            _overrides.Configuration,
             "net10.0");
         string eventStoreShadow = Path.Combine(_runtimeDirectory, "eventstore");
         string sampleShadow = Path.Combine(_runtimeDirectory, "sample");
@@ -727,7 +731,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     {
         if (!Directory.Exists(source))
         {
-            throw new InvalidOperationException("A required Release application output is absent; build the OQ8 test project first.");
+            throw new InvalidOperationException("A required application output for the selected configuration is absent; build the OQ8 test project first.");
         }
 
         _ = Directory.CreateDirectory(destination);
@@ -1145,7 +1149,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private async Task<string> RunPostgresQueryAsync(string query)
         => await RunProcessAsync(
             "docker",
-            ["exec", _postgresContainerName, "psql", "-U", "postgres", "-d", "eventstore", "-At", "-F", "|", "-c", query])
+            ["exec", _postgresContainerId, "psql", "-U", "postgres", "-d", "eventstore", "-At", "-F", "|", "-c", query])
             .ConfigureAwait(false);
 
     private static string BuildActorId(string tenant, string digestVersion, string rawKey)
@@ -1250,7 +1254,9 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         var document = new
         {
             schemaVersion = 1,
-            captureKind = "release-entry-binaries-test-seams-sidecar-postgresql",
+            captureKind = _overrides.Configuration == "Release"
+                ? "release-entry-binaries-test-seams-sidecar-postgresql"
+                : "debug-entry-binaries-test-seams-sidecar-postgresql",
             capturedOn = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             topology = new
             {
@@ -1276,7 +1282,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             },
             executionConfiguration = new
             {
-                shippedReleaseEntryAssemblies = true,
+                shippedReleaseEntryAssemblies = _overrides.Configuration == "Release",
                 shadowCopiedBeforeLaunch = true,
                 environmentName = "Testing",
                 testOnlyHostingStartup = true,
@@ -1446,11 +1452,11 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(_postgresContainerName))
+        if (!string.IsNullOrWhiteSpace(_postgresContainerId))
         {
             try
             {
-                _ = await RunProcessAsync("docker", ["rm", "-f", _postgresContainerName]).ConfigureAwait(false);
+                _ = await RunProcessAsync("docker", ["rm", "-f", _postgresContainerId]).ConfigureAwait(false);
             }
             catch
             {
@@ -1458,6 +1464,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             }
 
             _postgresContainerName = string.Empty;
+            _postgresContainerId = string.Empty;
         }
 
         if (!string.IsNullOrWhiteSpace(_runtimeDirectory) && Directory.Exists(_runtimeDirectory))
@@ -1532,10 +1539,10 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private async Task VerifyPrerequisitesAsync()
     {
         _placementHostEndpoint = await ResolveDockerPublishedHostEndpointAsync(
-            "dapr_placement",
+            _overrides.PlacementContainer,
             PlacementContainerPort).ConfigureAwait(false);
         _schedulerHostEndpoint = await ResolveDockerPublishedHostEndpointAsync(
-            "dapr_scheduler",
+            _overrides.SchedulerContainer,
             SchedulerContainerPort).ConfigureAwait(false);
 
         foreach ((IPEndPoint Endpoint, string Name) prerequisite in new[]
@@ -1629,8 +1636,13 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
                 + $"stderrSha256={HashUtf8(error.Trim())}.");
     }
 
-    private static string ResolveDaprdPath()
+    private string ResolveDaprdPath()
     {
+        if (_overrides.DaprdPath is not null)
+        {
+            return _overrides.DaprdPath;
+        }
+
         string candidate = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".dapr",
