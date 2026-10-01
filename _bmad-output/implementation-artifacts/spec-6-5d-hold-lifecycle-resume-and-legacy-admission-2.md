@@ -62,7 +62,7 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md` -- re-derive the candidate under all recorded review-loop requirements; verify and disposition every routed finding; specify the owned mechanisms, exact codecs/keys/charges/exits/slices, independently recomputed known answers, mutation-killing verifier blocks, and complete integration handoff.
+- [ ] `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md` -- re-derive the candidate under all recorded review-loop requirements; verify and disposition every routed finding; specify the owned mechanisms, exact codecs/keys/charges/exits/slices, independently recomputed known answers, mutation-killing verifier blocks, and complete integration handoff.
 - [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- leave D-SPLIT open during implementation and review; the parent closes it only after a review pass has no surviving defect.
 - [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- advance only `6-5d-hold-lifecycle-resume-and-legacy-admission-spec` through the workflow states.
 
