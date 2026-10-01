@@ -4915,7 +4915,7 @@ All new routes and record fields are otherwise additive under §10.3. Provider/c
 
 ### D13.4 §11.5 and §11.6
 
-Replace the loop-1 disposition rows for owned rules with the pass-1/pass-2 tables below. In §11.6 remove the old owned `I06`, `I12`, `I14`, `I17`, `I29`, `I31`, `I36`, `I37`, `I45`, `I46` answers and import 30 original plus twelve supplementary `D*` answers, six framed keys and both D12 blocks. Retain unowned A/B/C and integration answers unchanged. Assert 42 exact answers/digest probes, six keys, 200 distinct framed-malformation rejections, 70 semantic rejections, 14 status cases, four matrix rows, 27 invariant checks, 87 rejected source mutations, ten actual-transition codec matches with 50 repeated malformed rejections, 46 persisted-only restart boundaries, four cleanup boundaries, 70 durable-evidence refusals, three current-time completions, 54 unique pass-2 dispositions all 21 loop-3, 20 loop-4, 21 loop-5 and 19 loop-6 repair IDs exactly once, plus 64 later-UTC/restart combinations, four observed-after-partial-capture completions, 32 independent continued-authority refusals, 23 signed-request authority refusals, six request transaction/restart boundaries, six terminal-erasure authority refusals, four repair-cleanup boundaries and 141 failed redrives with bounded persisted rows/bytes and exact terminal erasure. Run the protected block with four specification hashes, 21 exact external paths and AD-13 `UNAPPROVED`; integration recomputes only its own content-bound digest after splicing and verification.
+Replace the loop-1 disposition rows for owned rules with the pass-1/pass-2 tables below. In §11.6 remove the old owned `I06`, `I12`, `I14`, `I17`, `I29`, `I31`, `I36`, `I37`, `I45`, `I46` answers and import 30 original plus twelve supplementary `D*` answers, six framed keys and both D12 blocks. Retain unowned A/B/C and integration answers unchanged. Assert 42 exact answers/digest probes, six keys, 200 distinct framed-malformation rejections, 70 semantic rejections, 14 status cases, four matrix rows, 27 invariant checks, 87 rejected source mutations, ten actual-transition codec matches with 50 repeated malformed rejections, 46 persisted-only restart boundaries, four cleanup boundaries, 70 durable-evidence refusals, three current-time completions, 54 unique pass-2 dispositions all 21 loop-3, 20 loop-4, 21 loop-5 and 19 loop-6 repair IDs exactly once, plus 64 later-UTC/restart combinations, four observed-after-partial-capture completions, 32 independent continued-authority refusals, 23 signed-request authority refusals, six request transaction/restart boundaries, six terminal-erasure authority refusals, four repair-cleanup boundaries and 141 failed redrives with bounded persisted rows/bytes and exact terminal erasure. Run the protected block with four specification hashes, 26 exact external paths and AD-13 `UNAPPROVED`; integration recomputes only its own content-bound digest after splicing and verification.
 
 ## Disposition register
 
@@ -5190,7 +5190,14 @@ Each of the 19 routed findings has one disposition. Executed evidence is the 64 
 ## Protected-path and source-integrity verification
 
 This block proves that the unapproved parent/children remain unchanged and that this story edits only its candidate and bookkeeping artifacts, with unrelated concurrent changes pinned to the checkpoint below.
-The approved review baseline stays `01498ac7`. The user approved the external-workspace checkpoint update to `6dededdecd62dd6dc6d1f15810108d860ec70c8f` on 2026-10-01. Concurrent commits changed 15 reminder paths and two submodule pointers while capturing part of this candidate. Those exact 17 committed paths remain pinned below. The user separately approved the exact current Builds, FrontComposer and Tenants revisions, adding FrontComposer for 18 external paths, then approved only the exact staged `.gitmodules` blob `c62b48798894bb3576f02fdf4ebb8c552756e35b` and clean root gitlinks McpCli `29cf33a8927b12ef1232f25663d9daf5c1ad8369` and Platform `7c2f0f89f29c79f5d7ab4b731155e2cb07fc690f`. This is 21 distinct external paths, not a blanket exception. Both index and worktree must authenticate the full `.gitmodules` blob; the two added index entries must be mode 160000 at their exact pins, with exact root registrations/URLs and clean worktree HEADs. Only the five pinned gitlinks and pinned registration image may differ from the committed checkpoint. Every other committed external file remains byte-identical; any new path/content/pin/worktree drift fails. No external path, index, dependency or Git history is modified; the four specification hashes and approval checks remain pinned.
+The approved review baseline stays `01498ac7`. On 2026-10-01 the user first approved checkpoint `6dededdecd62dd6dc6d1f15810108d860ec70c8f`, then exact pins and the `.gitmodules` registration image. After review pass 7 they approved the current external state at commit `d9504aa0c72ba578f9bd1f2bf1396d3018b77dc7` as the external-workspace checkpoint. That checkpoint accounts for exactly 26 external paths, not a blanket exception:
+
+- 16 reminder documentation, source and test paths, including the new `src/Hexalith.EventStore.Client/Reminders/IReminderIntentSource.cs`;
+- the three committed `review-6-5d-loop6-*-standalone.md` review-prompt copies;
+- the `.gitmodules` blob `c62b48798894bb3576f02fdf4ebb8c552756e35b`;
+- six gitlinks: Builds `21ce044ab465ccb2adab58b3d66e394ffbecf3c2`, Commons `c13dc6679aa91144b6d541078f3f20019d79c2eb`, FrontComposer `b6a4536fc12b64927ad6dfbc46a5f45c8b7f229e`, McpCli `7e3226ba612a3e7fb3a8969c4197a8f1e4c0c2ed`, Platform `7c2f0f89f29c79f5d7ab4b731155e2cb07fc690f` and Tenants `3d7c07363d7a06a24cbba0d777899b2071b02f06`.
+
+Each gitlink must match the checkpoint tree entry, the root index entry and the clean checkout HEAD. The checkpoint, index and worktree must all authenticate the full `.gitmodules` blob, and the McpCli and Platform registrations and URLs must be exact. Every other committed external file must remain byte-identical to the checkpoint. Any new path, content, pin or worktree drift fails. No external path, index, dependency or Git history is modified, and the four specification hashes and approval checks remain pinned.
 
 ```bash
 python3 - <<'PY'
@@ -5221,11 +5228,13 @@ allowed = {
 }
 changed = set(subprocess.check_output(['git','diff','--name-only','01498ac721db7c44f18fcf9591ffbbf30ba245e2']).decode().splitlines())
 untracked = {line[3:] for line in subprocess.check_output(['git','status','--porcelain']).decode().splitlines() if line.startswith('?? ')}
-checkpoint = '6dededdecd62dd6dc6d1f15810108d860ec70c8f'
+checkpoint = 'd9504aa0c72ba578f9bd1f2bf1396d3018b77dc7'
 checkpoint_paths = {
+    '_bmad-output/implementation-artifacts/review-6-5d-loop6-blind-hunter-standalone.md',
+    '_bmad-output/implementation-artifacts/review-6-5d-loop6-edge-case-hunter-standalone.md',
+    '_bmad-output/implementation-artifacts/review-6-5d-loop6-verification-gap-standalone.md',
     'docs/guides/typed-reminders.md',
-    'references/Hexalith.Builds',
-    'references/Hexalith.Tenants',
+    'src/Hexalith.EventStore.Client/Reminders/IReminderIntentSource.cs',
     'src/Hexalith.EventStore.DomainService/EventStoreReminderServiceCollectionExtensions.cs',
     'src/Hexalith.EventStore.DomainService/ReminderActor.cs',
     'src/Hexalith.EventStore.DomainService/ReminderCoordinator.cs',
@@ -5243,51 +5252,51 @@ checkpoint_paths = {
 }
 submodule_pins = {
     'references/Hexalith.Builds': '21ce044ab465ccb2adab58b3d66e394ffbecf3c2',
-    'references/Hexalith.FrontComposer': 'e01aea27df39fd22aa3677900290027c603af543',
-    'references/Hexalith.McpCli': '29cf33a8927b12ef1232f25663d9daf5c1ad8369',
+    'references/Hexalith.Commons': 'c13dc6679aa91144b6d541078f3f20019d79c2eb',
+    'references/Hexalith.FrontComposer': 'b6a4536fc12b64927ad6dfbc46a5f45c8b7f229e',
+    'references/Hexalith.McpCli': '7e3226ba612a3e7fb3a8969c4197a8f1e4c0c2ed',
     'references/Hexalith.Platform': '7c2f0f89f29c79f5d7ab4b731155e2cb07fc690f',
-    'references/Hexalith.Tenants': 'a4a1ce13873128607e4e43abd3f038674e9dabf0',
+    'references/Hexalith.Tenants': '3d7c07363d7a06a24cbba0d777899b2071b02f06',
 }
 registration_paths = {'.gitmodules'}
 gitmodules_blob = 'c62b48798894bb3576f02fdf4ebb8c552756e35b'
-assert subprocess.check_output(['git','ls-files','--stage','--','.gitmodules']).decode().split() == ['100644',gitmodules_blob,'0','.gitmodules']
-assert subprocess.check_output(['git','hash-object','--no-filters','.gitmodules']).decode().strip() == gitmodules_blob
-assert (root/'.gitmodules').read_bytes() == subprocess.check_output(['git','show',gitmodules_blob])
+assert subprocess.check_output(['git','rev-parse',f'{checkpoint}:.gitmodules']).decode().strip() == gitmodules_blob, 'checkpoint .gitmodules blob'
+assert subprocess.check_output(['git','ls-files','--stage','--','.gitmodules']).decode().split() == ['100644',gitmodules_blob,'0','.gitmodules'], 'staged .gitmodules blob'
+assert subprocess.check_output(['git','hash-object','--no-filters','.gitmodules']).decode().strip() == gitmodules_blob, 'worktree .gitmodules blob'
+assert (root/'.gitmodules').read_bytes() == subprocess.check_output(['git','show',gitmodules_blob]), '.gitmodules bytes'
 added_registrations = {
     'references/Hexalith.McpCli': ('Hexalith.McpCli','https://github.com/Hexalith/Hexalith.McpCli.git'),
     'references/Hexalith.Platform': ('Hexalith.Platform','https://github.com/Hexalith/Hexalith.Platform.git'),
 }
 for name,(section,url) in added_registrations.items():
-    assert subprocess.check_output(['git','config','--file','.gitmodules','--get',f'submodule.{section}.path']).decode().strip() == name
-    assert subprocess.check_output(['git','config','--file','.gitmodules','--get',f'submodule.{section}.url']).decode().strip() == url
-    assert subprocess.check_output(['git','ls-files','--stage','--',name]).decode().split() == ['160000',submodule_pins[name],'0',name]
+    assert subprocess.check_output(['git','config','--file','.gitmodules','--get',f'submodule.{section}.path']).decode().strip() == name, ('registration path',section)
+    assert subprocess.check_output(['git','config','--file','.gitmodules','--get',f'submodule.{section}.url']).decode().strip() == url, ('registration url',section)
 declared_rows = subprocess.check_output([
     'git','config','--file','.gitmodules','--get-regexp',r'^submodule\..*\.path$'
 ]).decode().splitlines()
 declared_paths = {row.split(None,1)[1] for row in declared_rows}
-assert set(submodule_pins) <= declared_paths
+assert set(submodule_pins) <= declared_paths, sorted(set(submodule_pins) - declared_paths)
 external_paths = checkpoint_paths | set(submodule_pins) | registration_paths
-assert len(external_paths) == 21
+assert len(external_paths) == 26, len(external_paths)
 subprocess.check_call(['git','merge-base','--is-ancestor',
                        '01498ac721db7c44f18fcf9591ffbbf30ba245e2',checkpoint])
 checkpoint_changes = set(subprocess.check_output([
     'git','diff','--name-only','01498ac721db7c44f18fcf9591ffbbf30ba245e2',checkpoint
 ]).decode().splitlines())
-assert checkpoint_changes - allowed == checkpoint_paths
+assert checkpoint_changes - allowed == external_paths, sorted((checkpoint_changes - allowed) ^ external_paths)
 for name in sorted(external_paths):
     if name.startswith('references/'):
-        if name in added_registrations:
-            entry = ['160000','commit',submodule_pins[name]]
-        else:
-            entry = subprocess.check_output(['git','ls-tree',checkpoint,'--',name]).decode().split()
-            assert entry[:2] == ['160000','commit'], name
+        entry = subprocess.check_output(['git','ls-tree',checkpoint,'--',name]).decode().split()
+        expected = submodule_pins[name]
+        assert entry == ['160000','commit',expected,name], ('checkpoint gitlink',name,entry,expected)
         actual = subprocess.check_output(['git','-C',name,'rev-parse','HEAD']).decode().strip()
-        expected = submodule_pins.get(name,entry[2])
-        assert actual == expected, (name,actual,expected)
-        assert not subprocess.check_output(['git','-C',name,'status','--porcelain']), name
+        assert actual == expected, ('checkout',name,actual,expected)
+        staged = subprocess.check_output(['git','ls-files','--stage','--',name]).decode().split()
+        assert staged == ['160000',expected,'0',name], ('root gitlink',name,staged,expected)
+        assert not subprocess.check_output(['git','-C',name,'status','--porcelain']), ('dirty submodule',name)
     elif name not in registration_paths:
         expected = subprocess.check_output(['git','show',f'{checkpoint}:{name}'])
-        assert (root/name).read_bytes() == expected, name
+        assert (root/name).read_bytes() == expected, ('checkpoint content',name)
 external_drift = set(subprocess.check_output([
     'git','diff','--name-only',checkpoint,'--',*sorted(external_paths - set(submodule_pins) - registration_paths)
 ]).decode().splitlines())
@@ -5300,4 +5309,4 @@ PY
 
 ## Verification expectations
 
-Run all three fenced `bash` blocks verbatim. Expect 30 original/twelve supplementary answers, 42 digest probes, six keys, 200 malformed and 70 semantic rejections; 14 statuses, four approved matrix rows, 27 invariants, 87 rejected source mutations, 54 dispositions, ten actual-transition codec matches/50 repeated malformed rejections, 46 persisted-only restart boundaries, four cleanup boundaries, 70 durable-evidence refusals, three current-time completions and all 21 loop-3, 20 loop-4, 21 loop-5 and 19 loop-6 repair IDs exactly once. Iteration 6 additionally executes 64 later-UTC/restart combinations, four partial-capture completions after legitimate observations, 32 continued-authority refusals, 23 signed-request authority refusals, six request transaction/restart boundaries, six terminal-erasure authority refusals, four repair-cleanup restart boundaries, 141 genuine failed redrives with one bounded signed request and one typed attempt, bounded deletion receipts, and terminal erasure, plus both unaudited capture-refund sides. The protected gate requires four exact hashes, the authorized 21 external paths and AD-13 `UNAPPROVED`; any new concurrent external path remains a failed gate until explicit checkpoint authority. A separate Node encoder at `/tmp/verify-6-5d-loop6-independent.mjs`, fed by `python3 /tmp/export-6-5d-loop5-codec-fixtures.py`, passes all 42 lengths/hashes, six keys, affected semantic dependency graphs and ten independently constructed durable answers (nine added families plus the existing request family). These results prove local bytes and transitions, not provider atomicity. Run `python3 scripts/check-deferred-work.py`, frozen-intent comparison and `git diff --check`. Integration reruns the blocks before recomputing its content-bound digest. D-SPLIT stays open, sprint stays in-progress and iteration stays 6 for parent audit and all three reviews.
+Run all three fenced `bash` blocks verbatim. Expect 30 original/twelve supplementary answers, 42 digest probes, six keys, 200 malformed and 70 semantic rejections; 14 statuses, four approved matrix rows, 27 invariants, 87 rejected source mutations, 54 dispositions, ten actual-transition codec matches/50 repeated malformed rejections, 46 persisted-only restart boundaries, four cleanup boundaries, 70 durable-evidence refusals, three current-time completions and all 21 loop-3, 20 loop-4, 21 loop-5 and 19 loop-6 repair IDs exactly once. Iteration 6 additionally executes 64 later-UTC/restart combinations, four partial-capture completions after legitimate observations, 32 continued-authority refusals, 23 signed-request authority refusals, six request transaction/restart boundaries, six terminal-erasure authority refusals, four repair-cleanup restart boundaries, 141 genuine failed redrives with one bounded signed request and one typed attempt, bounded deletion receipts, and terminal erasure, plus both unaudited capture-refund sides. The protected gate requires four exact hashes, the authorized 26 external paths and AD-13 `UNAPPROVED`; any new concurrent external path remains a failed gate until explicit checkpoint authority. A separate Node encoder at `/tmp/verify-6-5d-loop6-independent.mjs` (SHA-256 `529d8cfc772a58b5dcad2e28908d3961ae1351fa8d697db84fd5a6b504186527`), fed by `python3 /tmp/export-6-5d-loop5-codec-fixtures.py` (SHA-256 `b54a811e9fe64777d90473c353a438fc46e5c2fd5c79393b140d554a1c53f865`), passed all 42 lengths/hashes, six keys, affected semantic dependency graphs and ten independently constructed durable answers (nine added families plus the existing request family). Those two files are session-local build evidence: they are not committed, do not survive a host restart and are not a required verifier. Integration and later review rely only on the three fenced blocks. These results prove local bytes and transitions, not provider atomicity. Run `python3 scripts/check-deferred-work.py`, frozen-intent comparison and `git diff --check`. Integration reruns the blocks before recomputing its content-bound digest. D-SPLIT stays open, sprint stays in-progress and iteration stays 6 for parent audit and all three reviews.
