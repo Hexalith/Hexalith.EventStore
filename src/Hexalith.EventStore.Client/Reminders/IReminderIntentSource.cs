@@ -14,8 +14,9 @@ namespace Hexalith.EventStore.Client.Reminders;
 /// <list type="bullet">
 /// <item><description>Stop reporting an intent once its target has handled the submitted command; otherwise every
 /// convergence resubmits it and replays the receipt.</description></item>
-/// <item><description>Keep <c>(source sequence, kind, target)</c> unique among current intents. Intents that share
-/// it share one effect identity and are quarantined as <c>effect-collision</c>.</description></item>
+/// <item><description>Keep <c>(source domain, source aggregate, source sequence, kind, target)</c> unique among
+/// current intents. Intents that share it share one effect identity and are quarantined as
+/// <c>effect-collision</c>.</description></item>
 /// <item><description>Keep aggregate identifiers unique across every domain that shares one reminder actor type:
 /// the AD-11 actor tuple omits the domain, so a second domain with the same aggregate identifier is
 /// quarantined as <c>actor-collision</c>.</description></item>
@@ -26,7 +27,10 @@ public interface IReminderIntentSource
     /// <summary>Re-folds the target stream and returns every reminder intent it currently holds.</summary>
     /// <param name="target">The target stream.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>The current intents; an empty list when the stream holds none.</returns>
+    /// <returns>
+    /// The current intents. An empty list means the stream holds none. A null result is not an empty stream
+    /// and must not be used to cancel stored reminders.
+    /// </returns>
     Task<IReadOnlyList<ReminderIntent>> GetCurrentIntentsAsync(
         ReminderTarget target,
         CancellationToken cancellationToken = default);

@@ -100,6 +100,11 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
                 ReminderStateKeys.TenantRegistry(_options.ActorTypeName),
                 cancellationToken)
             .ConfigureAwait(false);
+        if (entry.Value is not null && entry.Value.Tenants is null)
+        {
+            throw new ReminderFailClosedException("index-registry-invalid");
+        }
+
         return entry.Value?.Tenants ?? [];
     }
 
@@ -120,6 +125,11 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
         {
             // A document under one tenant's key that names another tenant is corrupt; never cross tenants.
             throw new ReminderFailClosedException("index-tenant-mismatch");
+        }
+
+        if (entry.Value is not null && entry.Value.Candidates is null)
+        {
+            throw new ReminderFailClosedException("index-candidates-invalid");
         }
 
         return entry.Value?.Candidates ?? [];

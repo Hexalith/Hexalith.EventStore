@@ -100,10 +100,16 @@ public sealed class EventStoreReminderCompositionTests
     [Theory]
     [InlineData("ActorTypeName", "")]
     [InlineData("ActorTypeName", "bad actor:type")]
+    [InlineData("StateStoreName", " ")]
+    [InlineData("ReconciliationInterval", "00:00:00")]
     [InlineData("ReconciliationInterval", "50.00:00:00")]
     [InlineData("RetryMaxDelay", "60.00:00:00")]
     [InlineData("RetryInitialDelay", "01:00:00")]
+    [InlineData("RetryInitialDelay", "00:00:00")]
     [InlineData("MaxCandidatesPerTenant", "0")]
+    [InlineData("IndexWriteAttempts", "0")]
+    [InlineData("IndexWriteAttempts", "101")]
+    [InlineData("Purposes:works.date-resume.v1", " ")]
     [InlineData("Purposes:works.cascade-cancel.v1", "synthetic")]
     public void InvalidOptionsFailValidation(string key, string value)
     {

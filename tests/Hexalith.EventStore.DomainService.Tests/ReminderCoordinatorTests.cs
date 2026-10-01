@@ -17,6 +17,30 @@ public sealed class ReminderCoordinatorTests
 {
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>A mismatched actor and target are rejected before any read, state write, indexing, or scheduling.</summary>
+    [Fact]
+    public async Task ConvergeRejectsTargetThatDoesNotDeriveActor()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderTarget other = ReminderTestHarness.Target("item-2");
+        string otherActorId = ReminderTestHarness.ActorId(other);
+        harness.Source.Set(other, ReminderTestHarness.Intent(other, harness.Time.Now.AddHours(1)));
+
+        _ = await Should.ThrowAsync<ArgumentException>(() => harness.CreateCoordinator().ConvergeAsync(
+            actorId, other, harness.SchedulerFor(actorId), CancellationToken.None));
+
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.ItemState(otherActorId).ShouldBeNull();
+        harness.Store.Count.ShouldBe(0);
+        harness.Tenants().ShouldBeEmpty();
+        harness.Candidates().ShouldBeEmpty();
+        harness.SchedulerFor(actorId).ArmCalls.ShouldBe(0);
+        harness.SchedulerFor(otherActorId).ArmCalls.ShouldBe(0);
+        harness.Source.Reads.ShouldBe(0);
+        harness.Submitter.Calls.ShouldBeEmpty();
+    }
+
     /// <summary>A registration persists the witness and the index before the scheduler sees the reminder.</summary>
     [Fact]
     public async Task RegistrationPersistsWitnessAndIndexBeforeArming()
@@ -681,6 +705,51 @@ public sealed class ReminderCoordinatorTests
         harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
     }
 
+    /// <summary>Equal sequence, kind, and target coordinates remain distinct effects when their source aggregates differ.</summary>
+    [Fact]
+    public async Task DistinctSourceAggregatesProduceDistinctReminderReceipts()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent first = ReminderTestHarness.Intent(Item, harness.Time.Now.AddMinutes(-2), revision: 1)
+            with { SourceAggregate = "source-one" };
+        ReminderIntent second = ReminderTestHarness.Intent(Item, harness.Time.Now.AddMinutes(-1), revision: 2)
+            with { SourceAggregate = "source-two" };
+        string firstName = ReminderTestHarness.Name(first);
+        string secondName = ReminderTestHarness.Name(second);
+        firstName.ShouldNotBe(secondName);
+        var expected = new Dictionary<string, EffectIdentity>
+        {
+            [firstName] = new(ReminderTestHarness.Tenant, Item.Domain, "source-one", 3,
+                EffectKindCatalog.DateResume, Item.Domain, Item.Aggregate, 0),
+            [secondName] = new(ReminderTestHarness.Tenant, Item.Domain, "source-two", 3,
+                EffectKindCatalog.DateResume, Item.Domain, Item.Aggregate, 0),
+        };
+        harness.Source.Set(Item, first, second);
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.ShouldBe(new ReminderConvergenceResult(0, 2, 0, 0, 0));
+        harness.Submitter.Receipts.Keys.ShouldBe(expected.Values.Select(EffectIdentityCodec.ComputeEffectId), ignoreOrder: true);
+        foreach ((string name, EffectIdentity identity) in expected)
+        {
+            string effectId = EffectIdentityCodec.ComputeEffectId(identity);
+            harness.Submitter.Calls.Single(call => call.Context.CausationId == name).Submission.Identity.ShouldBe(identity);
+            TrustedEffectResult receipt = harness.Submitter.Receipts[effectId];
+            receipt.EffectId.ShouldBe(effectId);
+            receipt.Disposition.ShouldBe(TrustedEffectDisposition.Success);
+            receipt.Replayed.ShouldBeFalse();
+            ReminderDispositionRecord audit = harness.Disposition(actorId, name).ShouldNotBeNull();
+            audit.Disposition.ShouldBe(ReminderDisposition.Submitted);
+            audit.EffectId.ShouldBe(effectId);
+            audit.TargetDisposition.ShouldBe(TrustedEffectDisposition.Success);
+        }
+
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.Status.Snapshot().Quarantined.ShouldBe(0);
+        harness.Status.Snapshot().Unresolved.ShouldBe(0);
+    }
+
     /// <summary>A quarantine audit outage retains the original witness and does not cancel its Scheduler reminder.</summary>
     [Fact]
     public async Task QuarantineAuditFailureRetainsOriginalWitness()
@@ -738,6 +807,47 @@ public sealed class ReminderCoordinatorTests
         after.Submitted.ShouldBe(1);
         harness.Submitter.Calls.Count.ShouldBe(2);
         harness.ItemState(actorId).ShouldBeNull();
+    }
+
+    /// <summary>Repeated uncertain submissions retain one witness and receipt while retry delays stop at the maximum.</summary>
+    [Theory]
+    [InlineData(30_000, 900_000, 7)]
+    [InlineData(1, 3_600_000, 24)]
+    public async Task RetryBackoffStopsAtMaximumDelay(int initialMilliseconds, int maximumMilliseconds, int attempts)
+    {
+        var harness = new ReminderTestHarness();
+        harness.Options.RetryInitialDelay = TimeSpan.FromMilliseconds(initialMilliseconds);
+        harness.Options.RetryMaxDelay = TimeSpan.FromMilliseconds(maximumMilliseconds);
+        harness.Options.Validate().ShouldBeEmpty();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent intent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        string name = ReminderTestHarness.Name(intent);
+        harness.Source.Set(Item, intent);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Time.Advance(TimeSpan.FromHours(1));
+        harness.Submitter.FailuresRemaining = attempts;
+        harness.Submitter.PersistBeforeFailure = true;
+        TimeSpan expectedDelay = harness.Options.RetryInitialDelay;
+
+        for (int attempt = 1; attempt <= attempts; attempt++)
+        {
+            (await harness.FireAsync(actorId, name)).ShouldBe(ReminderDisposition.Retrying);
+
+            harness.SchedulerFor(actorId).Armed[name].ShouldBe((expectedDelay, harness.Options.RetryMaxDelay));
+            ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+            retained.Status.ShouldBe(ReminderEntryStatus.Retrying);
+            retained.Attempts.ShouldBe(attempt);
+            retained.LastReasonCode.ShouldBe("submission-uncertain");
+            harness.Time.Advance(expectedDelay);
+            expectedDelay = TimeSpan.FromTicks(Math.Min(expectedDelay.Ticks * 2, harness.Options.RetryMaxDelay.Ticks));
+        }
+
+        harness.SchedulerFor(actorId).Armed[name].DueTime.ShouldBe(harness.Options.RetryMaxDelay);
+        harness.Submitter.Calls.Count.ShouldBe(attempts);
+        harness.Submitter.Receipts.Count.ShouldBe(1);
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.Disposition(actorId, name).ShouldNotBeNull().Attempts.ShouldBe(attempts);
+        harness.Status.Snapshot().Unresolved.ShouldBe(1);
     }
 
     /// <summary>A retrying witness whose backoff reminder was lost is re-armed without an early submission.</summary>
