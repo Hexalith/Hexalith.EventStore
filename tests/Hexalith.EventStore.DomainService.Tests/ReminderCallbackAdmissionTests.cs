@@ -311,6 +311,7 @@ public sealed class ReminderCallbackAdmissionTests
     [InlineData("source-sequence-invalid")]
     [InlineData("payload-invalid")]
     [InlineData("identity-invalid")]
+    [InlineData("intent-missing")]
     public async Task MalformedIntentIsQuarantinedNotDropped(string reasonCode)
     {
         var harness = new ReminderTestHarness();
@@ -324,6 +325,7 @@ public sealed class ReminderCallbackAdmissionTests
             "revision-invalid" => valid with { ScheduleRevision = -1 },
             "source-sequence-invalid" => valid with { SourceSequence = 0 },
             "payload-invalid" => valid with { Payload = null! },
+            "intent-missing" => null!,
             _ => valid with { SourceDomain = "Not-Canonical" },
         };
         harness.Source.Set(Item, malformed);
@@ -359,6 +361,13 @@ public sealed class ReminderCallbackAdmissionTests
         disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.Submitter.Calls.ShouldBeEmpty();
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("translation-failed");
+
+        harness.Source.Translator = _ => new ReminderCommand("ResumeWidget", [.. intent.Payload]);
+        ReminderDisposition? repeated = await harness.FireAsync(actorId, ReminderTestHarness.Name(intent));
+
+        repeated.ShouldBe(ReminderDisposition.Quarantined);
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Quarantined);
     }
 
     /// <summary>A null or blank translation is quarantined and is not submitted.</summary>

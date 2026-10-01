@@ -188,7 +188,12 @@ document stored under one tenant's key that names another tenant is refused.
 var builder = WebApplication.CreateBuilder(args);
 builder.AddEventStoreDomainService();
 // ActorTypeName is required and must be unique to this application; it can also come from configuration.
-builder.Services.AddEventStoreReminders<MyReminderIntentSource>(options => options.ActorTypeName = "OrderReminderActor");
+// Purposes has no default: bind one for every kind this host submits, or every callback is denied.
+builder.Services.AddEventStoreReminders<MyReminderIntentSource>(options =>
+{
+    options.ActorTypeName = "OrderReminderActor";
+    options.Purposes["works.date-resume.v1"] = "order-date-resume";
+});
 builder.Services.AddSingleton<IReminderDelegationTokenProvider, PlatformDelegationProvider>();
 // The base address is this app's own Dapr sidecar; the invocation handler targets the gateway app ID.
 builder.Services.AddHttpClient<ITrustedEffectSubmitter, HttpTrustedEffectSubmitter>(
@@ -275,8 +280,8 @@ pass after a restart.
 `Retrying` witnesses carry their last reason code. The codes are
 `submission-uncertain`, `receipt-mismatch`, `submitter-unavailable`,
 `delegation-unavailable`, `delegation-failed`, `purpose-unconfigured`,
-`workload-unconfigured`, `source-unavailable`, `audit-unavailable`, and
-`cancel-failed`. Fix the cause; the next firing or pass resubmits under the same effect identifier. A
+`workload-unconfigured`, `source-unavailable`, `audit-unavailable`,
+`cancel-failed`, `domain-invalid`, and `arm-failed`. Fix the cause; the next firing or pass resubmits under the same effect identifier. A
 target that already holds the receipt replays it, so retries never create a
 second logical effect.
 
@@ -284,7 +289,7 @@ second logical effect.
 
 Quarantine reason codes are `tuple-mismatch`, `witness-collision`,
 `effect-collision`, `actor-collision`, `translation-failed`, `translation-invalid`,
-`effect-identity-invalid`, and the malformed-intent codes `intent-missing`,
+`effect-identity-invalid`, `domain-invalid`, `arm-failed`, and the malformed-intent codes `intent-missing`,
 `target-mismatch`, `kind-unsupported`, `due-not-utc`, `revision-invalid`,
 `source-sequence-invalid`, `payload-invalid`, and `identity-invalid`. Malformed
 or duplicate restored state uses `stored-entry-invalid`,

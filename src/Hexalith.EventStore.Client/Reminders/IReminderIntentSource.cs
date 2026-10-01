@@ -26,7 +26,10 @@ public interface IReminderIntentSource
     /// <summary>Re-folds the target stream and returns every reminder intent it currently holds.</summary>
     /// <param name="target">The target stream.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
-    /// <returns>The current intents; an empty list when the stream holds none.</returns>
+    /// <returns>
+    /// The current intents. An empty list means the stream holds none. A null result is not an empty stream
+    /// and must not be used to cancel stored reminders.
+    /// </returns>
     Task<IReadOnlyList<ReminderIntent>> GetCurrentIntentsAsync(
         ReminderTarget target,
         CancellationToken cancellationToken = default);
