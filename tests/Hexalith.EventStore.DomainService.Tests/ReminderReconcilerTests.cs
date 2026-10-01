@@ -25,6 +25,56 @@ public sealed class ReminderReconcilerTests
 {
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
+    /// <summary>A completed scan keeps unresolved work registered after its discovery snapshot while pruning old records.</summary>
+    [Fact]
+    public async Task CompletedPassRetainsWorkRecordedDuringDiscoverySnapshot()
+    {
+        var harness = new ReminderTestHarness();
+        ReminderIntent existing = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1));
+        harness.Source.Set(Item, existing);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Status.RecordItem("wra-no-longer-discovered", 1, 0);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        IReminderRegistrar registrar = Substitute.For<IReminderRegistrar>();
+        registrar.ConvergeAsync(Item, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            entered.SetResult();
+            await resume.Task.WaitAsync(call.Arg<CancellationToken>());
+            return await harness.CreateRegistrar().ConvergeAsync(Item, call.Arg<CancellationToken>());
+        });
+        using var reconciler = new ReminderReconciler(harness.CreateIndex(), registrar, harness.Status,
+            Options.Create(harness.Options), harness.Time, NullLogger<ReminderReconciler>.Instance);
+        Task<ReminderReconciliationPass> running = reconciler.RunPassAsync(TestContext.Current.CancellationToken);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        ReminderTarget added = ReminderTestHarness.Target("item-added");
+        string actorId = ReminderTestHarness.ActorId(added);
+        ReminderIntent pending = ReminderTestHarness.Intent(added, harness.Time.Now.AddHours(2));
+        harness.Source.Set(added, pending);
+        harness.SchedulerFor(actorId).ArmFailure = new InvalidOperationException("Synthetic Scheduler outage.");
+        try
+        {
+            (await harness.CreateRegistrar().ConvergeAsync(added)).Unresolved.ShouldBe(1);
+        }
+        finally
+        {
+            resume.SetResult();
+        }
+
+        ReminderReconciliationPass pass = await running;
+
+        pass.Incomplete.ShouldBe(0);
+        pass.Candidates.ShouldBe(1);
+        ReminderEntry witness = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        witness.ReminderName.ShouldBe(ReminderTestHarness.Name(pending));
+        witness.Status.ShouldBe(ReminderEntryStatus.Pending);
+        harness.Candidates().Count.ShouldBe(2);
+        harness.Candidates().ShouldContain(new ReminderCandidate(added.Domain, added.Aggregate, actorId));
+        harness.Status.Snapshot().UnresolvedItems.ShouldBe(1);
+        harness.Status.Snapshot().Unresolved.ShouldBe(1);
+        (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Degraded);
+    }
+
     /// <summary>A full or over-capacity restored index keeps scanning and lets caller redelivery recover rejected work.</summary>
     [Theory]
     [InlineData(2)]
@@ -53,7 +103,7 @@ public sealed class ReminderReconcilerTests
         ReminderTarget rejected = ReminderTestHarness.Target("item-rejected");
         string rejectedActorId = ReminderTestHarness.ActorId(rejected);
         harness.Source.Set(rejected, ReminderTestHarness.Intent(rejected, harness.Time.Now.AddHours(1)));
-        harness.Status.CompletePass(harness.Time.Now, 0, retained.Select(ReminderTestHarness.ActorId).ToArray());
+        harness.Status.CompletePass(harness.Time.Now, 0, retained.Select(ReminderTestHarness.ActorId).ToArray(), harness.Status.BeginPass());
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
         ReminderFailClosedException failure = await Should.ThrowAsync<ReminderFailClosedException>(
             () => harness.CreateRegistrar().ConvergeAsync(rejected));
@@ -61,7 +111,7 @@ public sealed class ReminderReconcilerTests
 
         ReminderReconciliationPass pass = await harness.CreateReconciler().RunPassAsync(CancellationToken.None);
 
-        pass.ShouldBe(new ReminderReconciliationPass(1, retainedCount, retainedCount, 0, 0, 0, 0, 1));
+        pass.ShouldBe(new ReminderReconciliationPass(1, retainedCount, retainedCount, 0, 0, 0, 0, 1, 1));
         harness.ItemState(rejectedActorId).ShouldBeNull();
         harness.SchedulerFor(rejectedActorId).ArmCalls.ShouldBe(0);
         harness.Candidates().Count.ShouldBe(retainedCount);
@@ -126,14 +176,27 @@ public sealed class ReminderReconcilerTests
                 new ReminderTenantCandidates(ReminderTestHarness.Tenant, null!));
         }
 
+        string malformedKey = registry
+            ? ReminderStateKeys.TenantRegistry(harness.Options.ActorTypeName)
+            : ReminderStateKeys.TenantCandidates(harness.Options.ActorTypeName, ReminderTestHarness.Tenant);
+        (bool Present, string Etag) before = await harness.Store.TryReadEtagAsync(harness.Options.StateStoreName, malformedKey);
+        ReminderTarget another = ReminderTestHarness.Target("item-2", registry ? "tenant-b" : ReminderTestHarness.Tenant);
+        harness.Source.Set(another, ReminderTestHarness.Intent(another, harness.Time.Now.AddHours(1)));
+        ReminderFailClosedException failure = await Should.ThrowAsync<ReminderFailClosedException>(
+            () => harness.CreateRegistrar().ConvergeAsync(another));
+        failure.ReasonCode.ShouldBe(registry ? "index-registry-invalid" : "index-candidates-invalid");
+        harness.ItemState(ReminderTestHarness.ActorId(another)).ShouldBeNull();
+        harness.SchedulerFor(ReminderTestHarness.ActorId(another)).ArmCalls.ShouldBe(0);
+
         ReminderReconciliationPass pass = await harness.CreateReconciler().RunPassAsync(CancellationToken.None);
 
         pass.ShouldBe(new ReminderReconciliationPass(registry ? 0 : 1, 0, 0, 0, 0, 0, 0, 1));
+        (await harness.Store.TryReadEtagAsync(harness.Options.StateStoreName, malformedKey)).ShouldBe(before);
         harness.Status.Snapshot().UnresolvedItems.ShouldBe(1);
         harness.Status.Snapshot().Unresolved.ShouldBe(1);
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Pending);
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Degraded);
-        harness.Source.Reads.ShouldBe(1);
+        harness.Source.Reads.ShouldBe(2);
         if (registry)
         {
             harness.Store.Snapshot<ReminderTenantRegistry>(harness.Options.StateStoreName,
@@ -228,7 +291,7 @@ public sealed class ReminderReconcilerTests
         string name = ReminderTestHarness.Name(intent);
         harness.Source.Set(Item, intent);
         _ = await harness.CreateRegistrar().ConvergeAsync(Item);
-        harness.Status.CompletePass(harness.Time.Now, 0, [actorId]);
+        harness.Status.CompletePass(harness.Time.Now, 0, [actorId], harness.Status.BeginPass());
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
         harness.Time.Advance(TimeSpan.FromHours(1));
         if (operation == "stale-callback")
@@ -471,6 +534,9 @@ public sealed class ReminderReconcilerTests
         entry.Status.ShouldBe(ReminderEntryStatus.Quarantined);
         entry.LastReasonCode.ShouldBe("witness-collision");
         state.Quarantine.ShouldHaveSingleItem().ReasonCode.ShouldBe("witness-collision");
+        ReminderDispositionRecord audit = harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("witness-collision");
     }
 
     /// <summary>With reconciliation disabled the hosted service never completes a pass, so readiness stays Degraded.</summary>
@@ -482,11 +548,26 @@ public sealed class ReminderReconcilerTests
         using ReminderReconciler reconciler = harness.CreateReconciler();
 
         await reconciler.StartAsync(CancellationToken.None);
-        await Task.Delay(200, TestContext.Current.CancellationToken);
+        await reconciler.ExecuteTask.ShouldNotBeNull().WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         await reconciler.StopAsync(CancellationToken.None);
 
         harness.Status.Snapshot().PassCompleted.ShouldBeFalse();
+        harness.Source.Reads.ShouldBe(0);
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Degraded);
+    }
+
+    /// <summary>Absent discovery documents are an empty complete scan that makes a fresh host ready.</summary>
+    [Fact]
+    public async Task EmptyDiscoveryIndexCompletesPass()
+    {
+        var harness = new ReminderTestHarness();
+
+        ReminderReconciliationPass pass = await harness.CreateReconciler().RunPassAsync(CancellationToken.None);
+
+        pass.ShouldBe(new ReminderReconciliationPass(0, 0, 0, 0, 0, 0, 0, 0));
+        (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
+        harness.Store.Count.ShouldBe(0);
+        harness.Source.Reads.ShouldBe(0);
     }
 
     /// <summary>The hosted reconciler runs its first pass at startup without waiting for the interval.</summary>
@@ -508,16 +589,35 @@ public sealed class ReminderReconcilerTests
         harness.Status.Snapshot().PassCompleted.ShouldBeTrue();
     }
 
-    /// <summary>A complete hosted pass waits for the normal interval rather than using the short retry cadence.</summary>
-    [Fact]
-    public async Task CompleteHostedPassWaitsForReconciliationInterval()
+    /// <summary>Scan failures use the effective minimum delay; capacity and retained null folds keep the normal cadence.</summary>
+    [Theory]
+    [InlineData(false, false, false, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(false, false, true, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, false, true)]
+    public async Task HostedPassUsesEffectiveReconciliationDelay(bool fullIndex, bool sourceUnavailable, bool nullFold, bool longerRetryDelay)
     {
         var harness = new ReminderTestHarness();
-        harness.Options.RetryInitialDelay = TimeSpan.FromMilliseconds(20);
+        harness.Options.RetryInitialDelay = longerRetryDelay ? TimeSpan.FromHours(2) : TimeSpan.FromMilliseconds(20);
+        harness.Options.RetryMaxDelay = longerRetryDelay ? TimeSpan.FromHours(3) : harness.Options.RetryMaxDelay;
         harness.Options.ReconciliationInterval = TimeSpan.FromHours(1);
+        harness.Options.MaxCandidatesPerTenant = fullIndex ? 1 : 10_000;
+        harness.Options.Validate().ShouldBeEmpty();
         harness.Source.Set(Item, ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(4)));
         _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        if (sourceUnavailable)
+        {
+            harness.Source.Failing.Add(Item);
+        }
+
+        harness.Source.ReturnNull = nullFold;
         int expectedReads = harness.Source.Reads + 1;
+        int expectedIncomplete = (fullIndex ? 1 : 0) + (sourceUnavailable ? 1 : 0);
+        int expectedUnresolved = nullFold ? 1 : 0;
+        HealthStatus expectedHealth = expectedIncomplete > 0 || nullFold ? HealthStatus.Degraded : HealthStatus.Healthy;
+        TimeSpan expectedDelay = sourceUnavailable && !longerRetryDelay ? harness.Options.RetryInitialDelay : harness.Options.ReconciliationInterval;
         var timers = Channel.CreateUnbounded<(TimeSpan DueTime, TimeSpan Period, Action Fire)>();
         TimeProvider time = Substitute.For<TimeProvider>();
         time.GetUtcNow().Returns(_ => harness.Time.Now);
@@ -535,20 +635,30 @@ public sealed class ReminderReconcilerTests
         try
         {
             var first = await timers.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(2));
-            first.DueTime.ShouldBe(harness.Options.ReconciliationInterval);
+            first.DueTime.ShouldBe(expectedDelay);
             first.Period.ShouldBe(Timeout.InfiniteTimeSpan);
             harness.Status.Snapshot().PassCompleted.ShouldBeTrue();
-            harness.Status.Snapshot().IncompleteScans.ShouldBe(0);
+            harness.Status.Snapshot().IncompleteScans.ShouldBe(expectedIncomplete);
+            harness.Status.Snapshot().Unresolved.ShouldBe(expectedUnresolved);
+            (await CheckAsync(harness)).Status.ShouldBe(expectedHealth);
             harness.Source.Reads.ShouldBe(expectedReads);
             timers.Reader.TryRead(out _).ShouldBeFalse();
 
             harness.Time.Advance(first.DueTime);
             first.Fire();
             var second = await timers.Reader.ReadAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(2));
-            second.DueTime.ShouldBe(harness.Options.ReconciliationInterval);
+            second.DueTime.ShouldBe(expectedDelay);
             harness.Source.Reads.ShouldBe(expectedReads + 1);
             harness.Status.Snapshot().LastPassAt.ShouldBe(harness.Time.Now);
-            harness.Status.Snapshot().IncompleteScans.ShouldBe(0);
+            harness.Status.Snapshot().IncompleteScans.ShouldBe(expectedIncomplete);
+            harness.Status.Snapshot().Unresolved.ShouldBe(expectedUnresolved);
+            (await CheckAsync(harness)).Status.ShouldBe(expectedHealth);
+            if (nullFold)
+            {
+                harness.ItemState(ReminderTestHarness.ActorId(Item)).ShouldNotBeNull().Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Armed);
+                harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(ReminderTestHarness.ActorId(Item));
+                harness.Submitter.Calls.ShouldBeEmpty();
+            }
         }
         finally
         {

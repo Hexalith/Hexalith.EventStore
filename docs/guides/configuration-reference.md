@@ -371,11 +371,26 @@ Configuration section: `EventStore:Reminders`
 | `Workload` | string? | `DAPR_APP_ID`, then the application name | Workload named in trusted-effect submissions |
 | `Purposes:{kind}` | string | none | Named delegated purpose for `works.date-resume.v1` or `works.expiry.v1`. A kind without a purpose is denied at callback admission |
 | `ReconciliationEnabled` | bool | `true` | Runs the periodic reconciler |
-| `ReconciliationInterval` | TimeSpan | `00:05:00` | Interval between complete reconciliation passes |
-| `RetryInitialDelay` | TimeSpan | `00:00:30` | First retry delay, and the delay before retrying an incomplete pass |
+| `ReconciliationInterval` | TimeSpan | `00:05:00` | Normal interval, including capacity-only incompleteness and retained unresolved outcomes |
+| `RetryInitialDelay` | TimeSpan | `00:00:30` | First submission retry delay; incomplete scans or failed candidate convergence wait the minimum of this and `ReconciliationInterval` |
 | `RetryMaxDelay` | TimeSpan | `00:15:00` | Longest retry delay, and the period of every armed reminder. It and the two delays above must not exceed 4294967294 milliseconds |
-| `MaxCandidatesPerTenant` | int | `10000` | A full tenant index fails registration closed |
+| `MaxCandidatesPerTenant` | int | `10000` | A full tenant index fails registration closed and degrades readiness while scans keep the normal interval |
 | `IndexWriteAttempts` | int | `8` | Compare-and-swap budget for one index update |
+
+Validation requires `ActorTypeName` to match `[A-Za-z][A-Za-z0-9_-]{0,63}` and
+`StateStoreName` to be non-blank. `IndexWriteAttempts` must be 1–100 and
+`MaxCandidatesPerTenant` at least 1. `ReconciliationInterval` and
+`RetryInitialDelay` must be positive; `RetryInitialDelay` must not exceed
+`RetryMaxDelay`. All three delays are bounded to 4294967294 milliseconds.
+Every configured purpose must be non-blank and belong to one of the two
+reminder kinds above.
+
+Incomplete scans or candidate convergence that throws shorten the next pass
+delay to the minimum of `RetryInitialDelay` and `ReconciliationInterval`.
+Capacity alone keeps the normal interval. Retained `Unresolved` or
+`Quarantined` convergence outcomes degrade readiness without making the scan
+incomplete; a null stream fold with durable work retains its witnesses and
+discovery and keeps the normal interval.
 
 ### OpenAPI
 

@@ -14,7 +14,7 @@ internal sealed class FakeReminderIntentSource : IReminderIntentSource
     /// <summary>Gets or sets an optional translator override.</summary>
     public Func<ReminderIntent, ReminderCommand>? Translator { get; set; }
 
-    /// <summary>Gets or sets a value indicating whether the next fold returns null instead of a list.</summary>
+    /// <summary>Gets or sets a value indicating whether every fold returns null instead of a list until reset.</summary>
     public bool ReturnNull { get; set; }
 
     private int _reads;

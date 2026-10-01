@@ -117,6 +117,10 @@ public class ReminderIdentityCodecTests
     [InlineData("date-wrs-short")]
     [InlineData("date-wra-AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
     [InlineData("date-wrs-aed0kv4p0sf4raqgxrj8azjej1ne6tvf5gwfhd0z3hrmvrsqa8d0")]
+    [InlineData("date-wrs-IED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
+    [InlineData("date-wrs-LED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
+    [InlineData("date-wrs-OED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
+    [InlineData("date-wrs-UED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
     [InlineData("DATE-wrs-AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
     public void MalformedReminderNamesDoNotParse(string? name)
         => ReminderIdentityCodec.TryParseReminderName(name, out _, out _).ShouldBeFalse();
@@ -130,6 +134,16 @@ public class ReminderIdentityCodecTests
         Should.Throw<ArgumentException>(() => ReminderIdentityCodec.ComputeActorId("tenant-a", " "));
         Should.Throw<ArgumentOutOfRangeException>(() => ReminderIdentityCodec.ComputeScheduleToken("tenant-a", "item-1", Due, -1));
         Should.Throw<ArgumentException>(() => ReminderIdentityCodec.ComputeReminderName(EffectKindCatalog.DateResume, "wrs-too-short"));
+    }
+
+    /// <summary>Decomposed Unicode identity text is refused rather than normalized into a reminder tuple.</summary>
+    [Fact]
+    public void DecomposedIdentityTextIsRejected()
+    {
+        const string item = "item-e\u0301";
+
+        Should.Throw<ArgumentException>(() => ReminderIdentityCodec.ComputeActorId("tenant-a", item));
+        Should.Throw<ArgumentException>(() => ReminderIdentityCodec.ComputeScheduleToken("tenant-a", item, Due, 1));
     }
 
     /// <summary>The reminder codec leaves the frozen AD-26 effect codec and its golden vectors unchanged.</summary>

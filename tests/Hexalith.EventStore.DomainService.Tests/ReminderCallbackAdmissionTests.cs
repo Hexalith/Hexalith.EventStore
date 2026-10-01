@@ -50,6 +50,42 @@ public sealed class ReminderCallbackAdmissionTests
         harness.Candidates().ShouldHaveSingleItem();
     }
 
+    /// <summary>A later schedule for the same logical submission replaces a stale witness without quarantining its effect identity.</summary>
+    [Fact]
+    public async Task StaleWitnessWithSameSourceCoordinatesArmsReplacement()
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        ReminderIntent stale = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(1), revision: 1, sequence: 3);
+        ReminderIntent current = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(8), revision: 2, sequence: 3);
+        string staleName = ReminderTestHarness.Name(stale);
+        string currentName = ReminderTestHarness.Name(current);
+        harness.Source.Set(Item, stale);
+        _ = await harness.CreateRegistrar().ConvergeAsync(Item);
+        harness.Source.Set(Item, current);
+        harness.Time.Advance(TimeSpan.FromHours(1));
+
+        ReminderDisposition? disposition = await harness.FireAsync(actorId, staleName);
+
+        disposition.ShouldBe(ReminderDisposition.Stale);
+        ReminderItemState state = harness.ItemState(actorId).ShouldNotBeNull();
+        state.Entries.ShouldHaveSingleItem().ReminderName.ShouldBe(currentName);
+        state.Quarantine.ShouldBeEmpty();
+        harness.SchedulerFor(actorId).Armed.Keys.ShouldBe([currentName]);
+        harness.SchedulerFor(actorId).Cancelled.ShouldContain(staleName);
+        harness.Submitter.Calls.ShouldBeEmpty();
+
+        harness.Time.Advance(TimeSpan.FromHours(7));
+        (await harness.FireAsync(actorId, currentName)).ShouldBe(ReminderDisposition.Submitted);
+        harness.Submitter.Calls.ShouldHaveSingleItem();
+        string effectId = EffectIdentityCodec.ComputeEffectId(new EffectIdentity(
+            Item.Tenant, Item.Domain, Item.Aggregate, 3, EffectKindCatalog.DateResume, Item.Domain, Item.Aggregate, 0));
+        harness.Submitter.Receipts.ShouldHaveSingleItem().Value.EffectId.ShouldBe(effectId);
+        harness.Disposition(actorId, currentName).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Submitted);
+        harness.ItemState(actorId).ShouldBeNull();
+        harness.Status.Snapshot().Quarantined.ShouldBe(0);
+    }
+
     /// <summary>A callback delivered to another item's actor finds no witness: no submission, no write, no disclosure.</summary>
     [Fact]
     public async Task WrongIdentityCallbackMutatesNothing()
@@ -100,7 +136,13 @@ public sealed class ReminderCallbackAdmissionTests
 
         disposition.ShouldBe(ReminderDisposition.Retrying);
         harness.Submitter.Calls.ShouldBeEmpty();
-        harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().ReminderName.ShouldBe(ReminderTestHarness.Name(stale));
+        ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        retained.ReminderName.ShouldBe(ReminderTestHarness.Name(stale));
+        retained.Status.ShouldBe(ReminderEntryStatus.Retrying);
+        retained.LastReasonCode.ShouldBe("audit-unavailable");
+        retained.Attempts.ShouldBe(1);
+        harness.Status.Snapshot().UnresolvedItems.ShouldBe(1);
+        harness.Status.Snapshot().Unresolved.ShouldBe(1);
         harness.SchedulerFor(actorId).Cancelled.ShouldNotContain(ReminderTestHarness.Name(stale));
     }
 
@@ -180,6 +222,9 @@ public sealed class ReminderCallbackAdmissionTests
         disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.Submitter.Calls.ShouldBeEmpty();
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("witness-collision");
+        ReminderDispositionRecord audit = harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("witness-collision");
     }
 
     /// <summary>A current intent under another name that shares the fired witness's effect identity quarantines it.</summary>
@@ -199,6 +244,9 @@ public sealed class ReminderCallbackAdmissionTests
         disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.Submitter.Calls.ShouldBeEmpty();
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("effect-collision");
+        ReminderDispositionRecord audit = harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("effect-collision");
     }
 
     /// <summary>A stored tuple that no longer re-derives its actor and name is quarantined and retained, never submitted.</summary>
@@ -225,7 +273,9 @@ public sealed class ReminderCallbackAdmissionTests
         ReminderQuarantineRecord evidence = quarantined.Quarantine.ShouldHaveSingleItem();
         evidence.ReasonCode.ShouldBe("stored-entry-invalid");
         evidence.ReminderName.ShouldBe(name);
-        harness.Disposition(actorId, evidence.EvidenceDigest).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        ReminderDispositionRecord audit = harness.Disposition(actorId, evidence.EvidenceDigest).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("stored-entry-invalid");
         harness.SchedulerFor(actorId).Armed.ShouldNotContainKey(name);
         harness.Candidates().ShouldHaveSingleItem();
         harness.Status.Snapshot().Quarantined.ShouldBe(1);
@@ -280,6 +330,9 @@ public sealed class ReminderCallbackAdmissionTests
         disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.Submitter.Calls.ShouldBeEmpty();
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("witness-collision");
+        ReminderDispositionRecord audit = harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("witness-collision");
     }
 
     /// <summary>Two current intents that map to one reminder name with different evidence are both quarantined at registration.</summary>
@@ -344,9 +397,11 @@ public sealed class ReminderCallbackAdmissionTests
         harness.Status.Snapshot().Quarantined.ShouldBe(1);
     }
 
-    /// <summary>A translation failure of a current due intent is malformed evidence: quarantined, never retried hot.</summary>
-    [Fact]
-    public async Task TranslationFailureIsQuarantined()
+    /// <summary>A translation failure quarantines only after a durable audit; an audit outage retains the armed witness.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TranslationFailureIsQuarantined(bool auditUnavailable)
     {
         var harness = new ReminderTestHarness();
         string actorId = ReminderTestHarness.ActorId(Item);
@@ -355,12 +410,35 @@ public sealed class ReminderCallbackAdmissionTests
         harness.Source.Translator = _ => throw new FormatException("synthetic undecodable payload");
         _ = await harness.CreateRegistrar().ConvergeAsync(Item);
         harness.Time.Advance(TimeSpan.FromHours(1));
+        harness.CoordinatorStore.FailDispositionWrites = auditUnavailable;
 
         ReminderDisposition? disposition = await harness.FireAsync(actorId, ReminderTestHarness.Name(intent));
+
+        if (auditUnavailable)
+        {
+            disposition.ShouldBe(ReminderDisposition.Retrying);
+            ReminderEntry retained = harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+            retained.Status.ShouldBe(ReminderEntryStatus.Retrying);
+            retained.LastReasonCode.ShouldBe("audit-unavailable");
+            retained.Attempts.ShouldBe(1);
+            harness.Submitter.Calls.ShouldBeEmpty();
+            harness.SchedulerFor(actorId).Armed.ShouldContainKey(ReminderTestHarness.Name(intent));
+            harness.SchedulerFor(actorId).Cancelled.ShouldNotContain(ReminderTestHarness.Name(intent));
+            harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull().Disposition.ShouldBe(ReminderDisposition.Registered);
+            harness.Status.Snapshot().Unresolved.ShouldBe(1);
+
+            harness.CoordinatorStore.FailDispositionWrites = false;
+            harness.Time.Advance(harness.Options.RetryInitialDelay);
+            disposition = await harness.FireAsync(actorId, ReminderTestHarness.Name(intent));
+        }
 
         disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.Submitter.Calls.ShouldBeEmpty();
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("translation-failed");
+        ReminderDispositionRecord audit = harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("translation-failed");
+        harness.SchedulerFor(actorId).Armed.ShouldNotContainKey(ReminderTestHarness.Name(intent));
 
         harness.Source.Translator = _ => new ReminderCommand("ResumeWidget", [.. intent.Payload]);
         ReminderDisposition? repeated = await harness.FireAsync(actorId, ReminderTestHarness.Name(intent));
@@ -391,6 +469,9 @@ public sealed class ReminderCallbackAdmissionTests
         disposition.ShouldBe(ReminderDisposition.Quarantined);
         harness.Submitter.Calls.ShouldBeEmpty();
         harness.ItemState(actorId).ShouldNotBeNull().Entries.ShouldHaveSingleItem().LastReasonCode.ShouldBe("translation-invalid");
+        ReminderDispositionRecord audit = harness.Disposition(actorId, ReminderTestHarness.Name(intent)).ShouldNotBeNull();
+        audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+        audit.ReasonCode.ShouldBe("translation-invalid");
     }
 
     /// <summary>

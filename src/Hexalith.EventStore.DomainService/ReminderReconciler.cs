@@ -10,7 +10,8 @@ namespace Hexalith.EventStore.DomainService;
 /// <summary>
 /// Periodic reminder reconciliation. The first pass starts with the host; later passes follow
 /// <see cref="EventStoreReminderOptions.ReconciliationInterval"/>, or the shorter retry delay after an
-/// incomplete pass. Each pass walks the discovery index and converges every candidate from its stream, so a
+/// incomplete pass caused by unreadable work. Capacity alone keeps the normal cadence while degrading readiness.
+/// Each pass walks the discovery index and converges every candidate from its stream, so a
 /// lost firing is reissued when due and a deleted scheduler reminder is re-armed when still in the future.
 /// </summary>
 internal sealed class ReminderReconciler(
@@ -33,6 +34,7 @@ internal sealed class ReminderReconciler(
     /// <returns>The pass counts.</returns>
     public async Task<ReminderReconciliationPass> RunPassAsync(CancellationToken cancellationToken)
     {
+        long passVersion = _status.BeginPass();
         var observed = new List<string>();
         int tenants = 0;
         int candidates = 0;
@@ -42,6 +44,7 @@ internal sealed class ReminderReconciler(
         int unresolved = 0;
         int quarantined = 0;
         int incomplete = 0;
+        int capacityLimitedTenants = 0;
 
         IReadOnlyList<string> tenantList;
         try
@@ -50,8 +53,8 @@ internal sealed class ReminderReconciler(
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            ReminderLog.ScanFailed(_logger, "tenant-registry", exception.GetType().Name);
-            _status.CompletePass(_time.GetUtcNow(), 1, observed);
+            ReminderLog.ScanFailed(_logger, "tenant-registry", FailureReason(exception), exception.GetType().Name);
+            _status.CompletePass(_time.GetUtcNow(), 1, observed, passVersion);
             return new ReminderReconciliationPass(0, 0, 0, 0, 0, 0, 0, 1);
         }
 
@@ -66,7 +69,7 @@ internal sealed class ReminderReconciler(
             catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 // One unreadable tenant index never blocks the others; the pass stays incomplete.
-                ReminderLog.ScanFailed(_logger, "tenant-candidates", exception.GetType().Name);
+                ReminderLog.ScanFailed(_logger, "tenant-candidates", FailureReason(exception), exception.GetType().Name);
                 incomplete++;
                 continue;
             }
@@ -75,7 +78,8 @@ internal sealed class ReminderReconciler(
             {
                 // A full index cannot discover first registrations that failed before persisting item state.
                 // Keep readiness Degraded while still converging every candidate already in the document.
-                ReminderLog.ScanFailed(_logger, "tenant-candidates", "index-capacity");
+                ReminderLog.ScanFailed(_logger, "tenant-candidates", "index-capacity", string.Empty);
+                capacityLimitedTenants++;
                 incomplete++;
             }
 
@@ -86,7 +90,7 @@ internal sealed class ReminderReconciler(
                 {
                     if (candidate is null)
                     {
-                        ReminderLog.ScanFailed(_logger, "tenant-candidate", "candidate-missing");
+                        ReminderLog.ScanFailed(_logger, "tenant-candidate", "candidate-missing", string.Empty);
                         incomplete++;
                         continue;
                     }
@@ -94,7 +98,7 @@ internal sealed class ReminderReconciler(
                     var target = new ReminderTarget(tenant, candidate.Domain, candidate.Aggregate);
                     if (!string.Equals(ReminderCoordinator.ComputeActorId(target), candidate.ActorId, StringComparison.Ordinal))
                     {
-                        ReminderLog.CandidateFailed(_logger, candidate.ActorId, "actor-id-mismatch");
+                        ReminderLog.CandidateFailed(_logger, candidate.ActorId, "actor-id-mismatch", string.Empty);
                         incomplete++;
                         continue;
                     }
@@ -111,16 +115,19 @@ internal sealed class ReminderReconciler(
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
-                    ReminderLog.CandidateFailed(_logger, candidate?.ActorId ?? "candidate-missing", exception.GetType().Name);
+                    ReminderLog.CandidateFailed(_logger, candidate?.ActorId ?? "candidate-missing", FailureReason(exception), exception.GetType().Name);
                     incomplete++;
                 }
             }
         }
 
-        _status.CompletePass(_time.GetUtcNow(), incomplete, observed);
+        _status.CompletePass(_time.GetUtcNow(), incomplete, observed, passVersion);
         ReminderLog.PassCompleted(_logger, tenants, candidates, armed, submitted, cancelled, unresolved, quarantined, incomplete);
-        return new ReminderReconciliationPass(tenants, candidates, armed, submitted, cancelled, unresolved, quarantined, incomplete);
+        return new ReminderReconciliationPass(tenants, candidates, armed, submitted, cancelled, unresolved, quarantined, incomplete, capacityLimitedTenants);
     }
+
+    private static string FailureReason(Exception exception)
+        => exception is ReminderFailClosedException failure ? failure.ReasonCode : string.Empty;
 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -143,7 +150,7 @@ internal sealed class ReminderReconciler(
                 return;
             }
 
-            TimeSpan delay = pass.Incomplete > 0 && _options.RetryInitialDelay < _options.ReconciliationInterval
+            TimeSpan delay = pass.Incomplete > pass.CapacityLimitedTenants && _options.RetryInitialDelay < _options.ReconciliationInterval
                 ? _options.RetryInitialDelay
                 : _options.ReconciliationInterval;
             try

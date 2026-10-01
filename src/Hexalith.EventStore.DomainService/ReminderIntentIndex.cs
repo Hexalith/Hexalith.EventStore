@@ -21,7 +21,7 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
     /// <param name="actorId">The target's <c>wra-</c> actor identifier.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>A task that completes when both documents hold the entries.</returns>
-    /// <exception cref="ReminderFailClosedException">The CAS budget is exhausted or the tenant index is full.</exception>
+    /// <exception cref="ReminderFailClosedException">A discovery collection is malformed, the CAS budget is exhausted, or the tenant index is full.</exception>
     public async Task EnsureCandidateAsync(ReminderTarget target, string actorId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(target);
@@ -31,6 +31,11 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
             ReminderStateKeys.TenantRegistry(_options.ActorTypeName),
             current =>
             {
+                if (current is not null && current.Tenants is null)
+                {
+                    throw new ReminderFailClosedException("index-registry-invalid");
+                }
+
                 IReadOnlyList<string> tenants = current?.Tenants ?? [];
                 return tenants.Contains(target.Tenant, StringComparer.Ordinal)
                     ? null
@@ -43,6 +48,11 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
             ReminderStateKeys.TenantCandidates(_options.ActorTypeName, target.Tenant),
             current =>
             {
+                if (current is not null && current.Candidates is null)
+                {
+                    throw new ReminderFailClosedException("index-candidates-invalid");
+                }
+
                 IReadOnlyList<ReminderCandidate> candidates = current?.Candidates ?? [];
                 if (candidates.Contains(candidate))
                 {

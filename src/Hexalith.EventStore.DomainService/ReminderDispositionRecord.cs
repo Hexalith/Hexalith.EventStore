@@ -17,7 +17,7 @@ namespace Hexalith.EventStore.DomainService;
 /// <param name="EffectId">The deterministic effect identifier, when a submission was built.</param>
 /// <param name="TargetDisposition">The target receipt disposition, when one was returned.</param>
 /// <param name="Replayed">Whether the target returned a prior receipt.</param>
-/// <param name="Attempts">The number of uncertain submission attempts.</param>
+/// <param name="Attempts">The retry count for unresolved submission, admission, audit, or cancellation work at the time of this disposition.</param>
 /// <param name="RecordedAt">When the disposition was recorded.</param>
 internal sealed record ReminderDispositionRecord(
     string Tenant,

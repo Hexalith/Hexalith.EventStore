@@ -53,20 +53,20 @@ internal static partial class ReminderLog
     public static partial void PassCompleted(ILogger logger, int tenants, int candidates, int armed, int submitted, int cancelled, int unresolved, int quarantined, int incomplete);
 
     [LoggerMessage(EventId = 200211, Level = LogLevel.Warning,
-        Message = "Reminder reconciliation could not converge a candidate: ActorId={ActorId}, ExceptionType={ExceptionType}")]
-    public static partial void CandidateFailed(ILogger logger, string actorId, string exceptionType);
+        Message = "Reminder reconciliation could not converge a candidate: ActorId={ActorId}, ReasonCode={ReasonCode}, ExceptionType={ExceptionType}")]
+    public static partial void CandidateFailed(ILogger logger, string actorId, string reasonCode, string exceptionType);
 
     [LoggerMessage(EventId = 200212, Level = LogLevel.Warning,
-        Message = "Reminder reconciliation scan is incomplete: Scope={Scope}, ExceptionType={ExceptionType}")]
-    public static partial void ScanFailed(ILogger logger, string scope, string exceptionType);
+        Message = "Reminder reconciliation scan is incomplete: Scope={Scope}, ReasonCode={ReasonCode}, ExceptionType={ExceptionType}")]
+    public static partial void ScanFailed(ILogger logger, string scope, string reasonCode, string exceptionType);
 
     [LoggerMessage(EventId = 200213, Level = LogLevel.Warning,
         Message = "Reminder reconciliation is disabled; readiness stays degraded")]
     public static partial void ReconciliationDisabled(ILogger logger);
 
     [LoggerMessage(EventId = 200214, Level = LogLevel.Warning,
-        Message = "Reminder state change failed closed: ActorId={ActorId}, ReasonCode={ReasonCode}")]
-    public static partial void FailedClosed(ILogger logger, string actorId, string reasonCode);
+        Message = "Reminder state change failed closed: ActorId={ActorId}, ReasonCode={ReasonCode}, ExceptionType={ExceptionType}")]
+    public static partial void FailedClosed(ILogger logger, string actorId, string reasonCode, string exceptionType);
 
     [LoggerMessage(EventId = 200215, Level = LogLevel.Warning,
         Message = "Reminder cancellation failed; a later callback will cancel it again: ActorId={ActorId}, ReminderName={ReminderName}, ExceptionType={ExceptionType}")]

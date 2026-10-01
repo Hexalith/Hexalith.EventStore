@@ -22,6 +22,7 @@ using Shouldly;
 namespace Hexalith.EventStore.DomainService.Tests;
 
 /// <summary>Composition of the typed-reminder runtime through the presence-keyed SDK registration.</summary>
+[Collection("Reminder environment")]
 public sealed class EventStoreReminderCompositionTests
 {
     private const string ReminderRoute = "actors/{actorTypeName}/{actorId}/method/remind/{reminderName}";
@@ -42,7 +43,8 @@ public sealed class EventStoreReminderCompositionTests
         options.ActorTypeName.ShouldBe("WidgetReminderActor");
         options.Purposes[EffectKindCatalog.DateResume].ShouldBe("synthetic-date-resume");
         options.ReconciliationInterval.ShouldBe(TimeSpan.FromMinutes(2));
-        options.Workload.ShouldBe(Environment.GetEnvironmentVariable("DAPR_APP_ID") ?? "widget-host");
+        string? appId = Environment.GetEnvironmentVariable("DAPR_APP_ID");
+        options.Workload.ShouldBe(string.IsNullOrWhiteSpace(appId) ? "widget-host" : appId);
 
         ActorRegistration registration = provider.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value.Actors
             .Single(r => r.Type.ActorTypeName == "WidgetReminderActor");
@@ -100,6 +102,7 @@ public sealed class EventStoreReminderCompositionTests
     [Theory]
     [InlineData("ActorTypeName", "")]
     [InlineData("ActorTypeName", "bad actor:type")]
+    [InlineData("ActorTypeName", "WidgetReminderActor\n")]
     [InlineData("StateStoreName", " ")]
     [InlineData("ReconciliationInterval", "00:00:00")]
     [InlineData("ReconciliationInterval", "50.00:00:00")]

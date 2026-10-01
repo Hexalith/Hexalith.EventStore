@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Reminders;
@@ -7,6 +8,7 @@ using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Reminders;
 using Hexalith.EventStore.DomainService;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -91,8 +93,26 @@ public sealed class ReminderRecoveryLiveSidecarTests(DaprTestContainerFixture fi
         replay.Replayed.ShouldBeTrue();
         (await ReadAsync<ReminderItemState>(ItemKey(actorId), cancellationToken)).ShouldBeNull();
 
-        // 5. A Scheduler reminder deleted behind the runtime's back is re-armed by the reconciler.
-        ReminderIntent rescheduled = Intent(item, DateTimeOffset.UtcNow.AddHours(2), revision: 2, sequence: 2);
+        // 5. A new schedule witness for the same logical effect replays the real target receipt.
+        ReminderIntent sameSource = intent with { DueUtc = DateTimeOffset.UtcNow.AddHours(2), ScheduleRevision = 2 };
+        string sameSourceName = ReminderIdentityCodec.ComputeReminderName(sameSource);
+        sameSourceName.ShouldNotBe(name);
+        fixture.ReminderIntents.Set(target, sameSource);
+        (await ConvergeAsync(target, cancellationToken)).Armed.ShouldBe(1);
+        (await InvokeCallbackAsync(actorId, sameSourceName, fixture.AppApiToken, cancellationToken)).ShouldBe(HttpStatusCode.OK);
+        ReminderDispositionRecord rescheduleReplay = (await ReadAsync<ReminderDispositionRecord>(
+            DispositionKey(actorId, sameSourceName), cancellationToken)).ShouldNotBeNull();
+        rescheduleReplay.Disposition.ShouldBe(ReminderDisposition.Submitted);
+        rescheduleReplay.EffectId.ShouldBe(expectedEffectId);
+        rescheduleReplay.Replayed.ShouldBeTrue();
+        string receiptJson = await fixture.GetActorStateJsonAsync(
+            fixture.AggregateActorTypeName, targetActorId, "effect_receipt_" + expectedEffectId);
+        JsonSerializer.Deserialize<EffectReceipt>(receiptJson, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .ShouldNotBeNull().CausationId.ShouldBe("wrk-" + expectedEffectId);
+        (await ReadAsync<ReminderItemState>(ItemKey(actorId), cancellationToken)).ShouldBeNull();
+
+        // 6. A Scheduler reminder deleted behind the runtime's back is re-armed by the reconciler.
+        ReminderIntent rescheduled = Intent(item, DateTimeOffset.UtcNow.AddHours(2), revision: 3, sequence: 2);
         string rescheduledName = ReminderIdentityCodec.ComputeReminderName(rescheduled);
         fixture.ReminderIntents.Set(target, rescheduled);
         (await ConvergeAsync(target, cancellationToken)).Armed.ShouldBe(1);

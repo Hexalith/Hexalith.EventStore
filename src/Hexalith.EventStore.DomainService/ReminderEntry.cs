@@ -17,7 +17,7 @@ namespace Hexalith.EventStore.DomainService;
 /// <param name="PayloadType">The domain payload type name.</param>
 /// <param name="PayloadDigest">The Crockford Base32 SHA-256 digest of the payload bytes.</param>
 /// <param name="Status">The persisted lifecycle status.</param>
-/// <param name="Attempts">The number of uncertain submission attempts.</param>
+/// <param name="Attempts">The retry count for unresolved submission, admission, audit, or cancellation work; it determines backoff.</param>
 /// <param name="LastReasonCode">The bounded reason code of the last non-durable outcome.</param>
 /// <param name="UpdatedAt">When the witness last changed.</param>
 internal sealed record ReminderEntry(

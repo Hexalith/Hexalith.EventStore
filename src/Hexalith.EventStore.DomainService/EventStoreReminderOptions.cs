@@ -43,10 +43,17 @@ public sealed partial class EventStoreReminderOptions
     /// <summary>Gets or sets a value indicating whether the periodic reconciler runs.</summary>
     public bool ReconciliationEnabled { get; set; } = true;
 
-    /// <summary>Gets or sets the interval between complete reconciliation passes. The first pass starts at startup.</summary>
+    /// <summary>
+    /// Gets or sets the interval between reconciliation passes that are complete or incomplete only because
+    /// of capacity. Retained unresolved outcomes also keep this cadence. The first pass starts at startup.
+    /// </summary>
     public TimeSpan ReconciliationInterval { get; set; } = TimeSpan.FromMinutes(5);
 
-    /// <summary>Gets or sets the first retry delay after an uncertain submission, and the delay before retrying an incomplete pass.</summary>
+    /// <summary>
+    /// Gets or sets the first retry delay after an uncertain submission. A pass with incomplete scans or
+    /// failed candidate convergence waits the minimum of this delay and <see cref="ReconciliationInterval"/>;
+    /// capacity alone and retained unresolved outcomes keep the normal interval.
+    /// </summary>
     public TimeSpan RetryInitialDelay { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>Gets or sets the longest retry delay, which is also the scheduler period of every armed reminder.</summary>
@@ -116,6 +123,6 @@ public sealed partial class EventStoreReminderOptions
         return errors;
     }
 
-    [GeneratedRegex("^[A-Za-z][A-Za-z0-9_-]{0,63}$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("^[A-Za-z][A-Za-z0-9_-]{0,63}\\z", RegexOptions.CultureInvariant)]
     private static partial Regex ActorTypeNamePattern();
 }

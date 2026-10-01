@@ -8,7 +8,8 @@ namespace Hexalith.EventStore.DomainService;
 /// <param name="Cancelled">Obsolete reminders cancelled.</param>
 /// <param name="Unresolved">Retained reminders without a durable outcome.</param>
 /// <param name="Quarantined">Retained quarantine evidence.</param>
-/// <param name="Incomplete">Scans or candidates that could not be processed.</param>
+/// <param name="Incomplete">Unreadable scans or candidates plus capacity-limited tenants that degrade readiness.</param>
+/// <param name="CapacityLimitedTenants">Full or over-capacity tenant indexes; these alone do not shorten the hosted cadence.</param>
 internal sealed record ReminderReconciliationPass(
     int Tenants,
     int Candidates,
@@ -17,4 +18,5 @@ internal sealed record ReminderReconciliationPass(
     int Cancelled,
     int Unresolved,
     int Quarantined,
-    int Incomplete);
+    int Incomplete,
+    int CapacityLimitedTenants = 0);

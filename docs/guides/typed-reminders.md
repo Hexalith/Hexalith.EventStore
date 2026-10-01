@@ -47,8 +47,19 @@ The contract also binds its callers:
   the submitted command. Otherwise every convergence resubmits it and replays
   the receipt.
 - `(source domain, source aggregate, source sequence, kind, target)` must be
-  unique among a target's current intents. Intents that share it share one effect identity, and both are
-  quarantined as `effect-collision`.
+  unique among a target's current intents. Intents that share it share one
+  effect identity, and both are quarantined as `effect-collision`.
+- Retain the source coordinates when retrying the same logical submission.
+  For the same kind and target, a distinct logical submission needs distinct
+  committed source-event coordinates throughout the lifetime of the stream.
+  Changing only the due instant or schedule revision retains the previous
+  effect identity and replays its receipt or conflicts with changed command
+  semantics.
+- Distinct current witnesses must derive distinct reminder names. The name
+  binds the tenant, target aggregate, kind, due instant, and schedule revision.
+  Change the schedule witness when an existing intent's source coordinates,
+  payload type, or payload change; different evidence under the same name
+  is quarantined as `witness-collision`.
 - Aggregate identifiers must be unique across every domain that shares one
   reminder actor type, because the AD-11 actor tuple omits the domain. A second
   domain with the same aggregate identifier is quarantined as `actor-collision`.
@@ -105,7 +116,10 @@ corrupted evidence. It is quarantined and never executed.
    until its audit and cancellation both succeed. A failed quarantine audit
    retains the executable witness for retry.
 6. Persist the item's witnesses by compare-and-swap. A lost race fails closed:
-   nothing is scheduled and the work is reported unresolved. If the item had no
+   the refused write leaves durable state unchanged and the work is reported
+   unresolved. Earlier Scheduler cancellations may already have succeeded;
+   recovery converges the retained work again with the same effect identity.
+   If the item had no
    persisted state yet, for example when the index is full or its update budget
    is exhausted, convergence throws instead, so the caller retries.
 7. Submit due witnesses through the callback path. A `Retrying` witness inside
@@ -146,13 +160,19 @@ Callback admission runs in this order:
    another current intent shares the effect identity, the witness is
    quarantined before any submission.
 
-A callback without a persisted witness mutates and discloses nothing. The
-scheduler is asked to cancel it.
+A callback without a persisted witness writes no callback disposition and
+discloses nothing. Loading the item may first persist the deterministic
+quarantine of corrupt stored entries. The Scheduler is asked to cancel the
+orphaned reminder.
 
 Submission builds `EffectIdentity(tenant, source domain, source aggregate,
 source sequence, kind, target domain, target aggregate, 0)`. Both `MessageId`
-and `IdempotencyKey` are `wrk-<EffectId>`. The causation identifier is the
-reminder name. The workload comes from `EventStoreReminderOptions.Workload`.
+and `IdempotencyKey` are `wrk-<EffectId>`. Delegation and submission use that
+same stable logical-effect identifier as causation, so a same-source reschedule
+can replay a receipt committed before an uncertain response. The reminder name
+remains the schedule witness for registration and callback admission. Changed
+command semantics under the same effect identity still conflict with its receipt.
+The workload comes from `EventStoreReminderOptions.Workload`.
 A translation failure is quarantined, not retried.
 
 A durable receipt (`Success`, `Rejection`, or `NoOp`) releases the witness in
@@ -182,17 +202,25 @@ it does not re-check the due instant.
 ## Reconciliation
 
 `ReminderReconciler` is a hosted service. Its first pass starts with the host,
-and later passes run every `ReconciliationInterval`. After an incomplete pass,
-the next one runs after `RetryInitialDelay`. Each pass reads the tenant
-registry and every tenant candidate document, then converges every candidate
+and later passes normally run every `ReconciliationInterval`. A pass with an
+incomplete scan or a candidate convergence that throws waits the minimum of
+`RetryInitialDelay` and `ReconciliationInterval` before the next pass.
+Each pass reads the tenant registry and every tenant candidate document,
+then converges every candidate
 from its stream. A lost firing is reissued when due. A deleted Scheduler
-reminder is re-armed when still in the future. One unreadable tenant or stream
-never blocks the others; the pass is recorded as incomplete. A candidate
+reminder is re-armed when still in the future. One unreadable tenant or failed
+candidate never blocks the others; these failures make the pass incomplete.
+Convergence can instead return retained `Unresolved` or `Quarantined` outcomes,
+which degrade readiness without making the scan incomplete. For example, a
+null stream fold with durable work retains its witnesses and discovery,
+returns `Unresolved`, and keeps the normal interval. A candidate
 document stored under one tenant's key that names another tenant is refused.
 A candidate document holding `MaxCandidatesPerTenant` entries also makes the
 pass incomplete and readiness `Degraded`: a rejected first registration may
 have no durable item state for the pass to discover. Existing candidates still
 converge, and a later pass clears the condition once the index has capacity.
+Capacity alone keeps the normal `ReconciliationInterval`; it does not put the
+host on the shorter retry cadence.
 
 ## Host composition
 
@@ -232,11 +260,19 @@ on its own.
 | `Workload` | `DAPR_APP_ID`, then the application name | Workload named in the trusted-effect context |
 | `Purposes:<kind>` | none | Named delegated purpose per kind. A kind without one is denied |
 | `ReconciliationEnabled` | `true` | Runs the periodic reconciler |
-| `ReconciliationInterval` | `00:05:00` | Interval between complete passes |
-| `RetryInitialDelay` | `00:00:30` | First retry delay, and the delay after an incomplete pass |
+| `ReconciliationInterval` | `00:05:00` | Normal interval, including capacity-only incompleteness and retained unresolved outcomes |
+| `RetryInitialDelay` | `00:00:30` | First submission retry delay; incomplete scans or failed candidate convergence wait the minimum of this and `ReconciliationInterval` |
 | `RetryMaxDelay` | `00:15:00` | Longest retry delay, and the period of every armed reminder. It and the two other delays must not exceed 4294967294 milliseconds |
-| `MaxCandidatesPerTenant` | `10000` | A full tenant index fails registration closed and degrades readiness |
+| `MaxCandidatesPerTenant` | `10000` | A full tenant index fails registration closed and degrades readiness while keeping the normal scan interval |
 | `IndexWriteAttempts` | `8` | Compare-and-swap budget for one index update |
+
+Options validation requires a non-blank `StateStoreName` and an `ActorTypeName`
+matching `[A-Za-z][A-Za-z0-9_-]{0,63}`. `IndexWriteAttempts` must be 1–100 and
+`MaxCandidatesPerTenant` at least 1. `ReconciliationInterval` and
+`RetryInitialDelay` must be positive, and `RetryInitialDelay` must not exceed
+`RetryMaxDelay`. All three delays must stay within 4294967294 milliseconds.
+`Purposes` accepts only `works.date-resume.v1` and `works.expiry.v1`, each with
+a non-blank value; a purpose for any other kind fails startup validation.
 
 The host must also configure `APP_API_TOKEN` outside Development, and its
 sidecar must present the same token. On Azure Container Apps the platform
@@ -280,12 +316,42 @@ It is `Degraded` in any of these cases:
 | Description | Cause | Action |
 | --- | --- | --- |
 | No reconciliation pass has completed yet | The host just started, or reconciliation is disabled | Wait one pass, or enable reconciliation |
-| The last pass was incomplete | A tenant index is full, or a tenant index, candidate, or stream could not be read | Check the `200211` and `200212` logs; the next pass retries after `RetryInitialDelay` |
+| A tenant index is full or over capacity | A refused first registration may have no durable item state to discover | Free capacity and redeliver refused registrations; existing candidates still converge at `ReconciliationInterval` |
+| The last pass had an incomplete scan or a candidate convergence threw | An index or candidate could not be read or validated, or convergence failed | Check the `200211` and `200212` reason codes; the next pass waits the minimum of `RetryInitialDelay` and `ReconciliationInterval` |
 | Quarantined evidence awaits disposition | A collision, a tampered tuple, malformed evidence, or a failed translation | Follow the quarantine steps below |
-| Work is retained without a durable outcome | Arming failed, or submission was uncertain, denied, or unavailable | Check the last reason code on the witness; the work retries automatically |
+| Work is retained without a durable outcome | Arming failed, submission was uncertain, denied, or unavailable, or a null stream fold retained durable work | Check the witness's `LastReasonCode` where present, or event `200214` and retained discovery; retained outcomes keep the normal reconciliation interval |
 
 The view is per host. Each host rebuilds it from durable state on its first
 pass after a restart.
+
+### Fail-closed registration and discovery
+
+Events `200214` (state change), `200211` (candidate), and `200212` (scan)
+carry the bounded `ReasonCode` separately from `ExceptionType`. The index is
+only a discovery aid; preserve malformed evidence while comparing it with the
+authoritative streams.
+
+| Reason code | Action |
+| --- | --- |
+| `state-conflict` | Retry convergence against the winning durable state. Investigate repeated competing writes; target receipts retain the same effect identity |
+| `index-conflict` | Restore state-store availability or resolve CAS contention, then redeliver any refused first registration |
+| `index-capacity` | Free candidate capacity or review the configured limit, then redeliver refused registrations. Readiness stays Degraded and capacity-only scans keep the normal interval |
+| `index-registry-invalid` | Preserve the present registry with its null tenant collection and repair it through the audited operator path |
+| `index-candidates-invalid` | Preserve the present tenant document with its null candidate collection and repair it through the audited operator path |
+| `index-tenant-mismatch` | Compare the candidate document's stored tenant with its key and repair the mismatch; scanning never crosses tenants |
+| `candidate-missing` | Preserve the malformed candidate row and recover its coordinates from the stream and retained evidence |
+| `actor-id-mismatch` | Compare the candidate's tenant and aggregate with its derived actor identifier before operator repair; do not discard the only stored coordinates |
+
+Story 4.16 supplies the audited production repair path. Direct repair is
+limited to synthetic environments until that gate is satisfied. A malformed
+discovery document keeps the pass incomplete; registration also refuses to
+overwrite its null collection.
+
+A `Stale` disposition with reason `witness-not-current` records that the
+stream no longer reports the fired witness. It is an audited no-op for that
+witness; replacement convergence proceeds before the obsolete reminder is
+cancelled. Compare the current stream and replacement witness when checking
+this expected reschedule outcome.
 
 ### Retained and denied work
 
@@ -297,6 +363,15 @@ Fix the Scheduler; the next convergence retries arming.
 `delegation-unavailable`, `delegation-failed`, `purpose-unconfigured`,
 `workload-unconfigured`, `source-unavailable`, `audit-unavailable`,
 `cancel-failed`.
+
+A null fold during convergence can retain an unchanged witness without
+setting its `LastReasonCode`; inspect event `200214` for `source-unavailable`.
+Cleanup can also retain only the discovery candidate after the target receipt,
+audit, Scheduler cancellation, and witness release succeeded. In that case
+there is no witness `LastReasonCode` to inspect. Correlate event `200214` with
+the retained candidate, disposition, and target receipt, restore stream-read
+availability, and converge the candidate again. A successful empty fold then
+releases discovery; preserve the candidate until that check succeeds.
 
 Submission retries re-fold the stream and use the same effect identifier while
 the intent remains current. A target that already holds the receipt replays it,
@@ -348,8 +423,11 @@ AD-28 requires. Before any real data is admitted:
 - The trusted-effect authority rules must name each reminder workload, purpose,
   target domain, and command type.
 - The Platform append-only audit backend must receive reminder dispositions.
-- The mTLS and ACL caller path must be attested. Only the Scheduler, through the
-  sidecar, may invoke the reminder actor type.
+- The mTLS and ACL caller paths must be attested. Only the Scheduler, through
+  the sidecar, may invoke reminder callbacks. Trusted domain committed-event
+  handlers and the reconciler must be admitted to `ConvergeAsync` through the
+  authorized actor invocation path. Story 4.16 owns the production policy proof
+  for both paths.
 - The accountable data owner must approve the reminder state as a durable type.
 - A restore drill must prove the order of stream, index, item state,
   dispositions, and target receipts, with Scheduler backup owned by Platform.

@@ -161,7 +161,7 @@ internal sealed class ReminderCoordinator
         }
         catch (ReminderFailClosedException exception)
         {
-            ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode);
+            ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode, exception.GetType().Name);
             (ReminderItemState? current, _) = await LoadAsync(key, actorId, cancellationToken).ConfigureAwait(false);
             if (current is null || !HasWork(current))
             {
@@ -213,7 +213,7 @@ internal sealed class ReminderCoordinator
         }
         catch (ReminderFailClosedException exception)
         {
-            ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode);
+            ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode, exception.GetType().Name);
             return ReminderDisposition.Retrying;
         }
         catch (Exception exception)
@@ -447,10 +447,8 @@ internal sealed class ReminderCoordinator
     private static bool TryValidatePersistedEntry(
         ReminderItemState state,
         string actorId,
-        ReminderEntry? entry,
-        out string effectId)
+        ReminderEntry? entry)
     {
-        effectId = string.Empty;
         if (entry is null
             || !Enum.IsDefined(entry.Status)
             || entry.DueUtc.Offset != TimeSpan.Zero
@@ -483,11 +481,10 @@ internal sealed class ReminderCoordinator
             {
                 // Effect identity cannot be derived. Leave the entry in place so the callback
                 // quarantines it as domain-invalid instead of repairing it into a nameless drop.
-                effectId = string.Empty;
                 return true;
             }
 
-            effectId = EffectIdentityCodec.ComputeEffectId(new EffectIdentity(
+            _ = EffectIdentityCodec.Encode(new EffectIdentity(
                 state.Tenant,
                 entry.SourceDomain,
                 entry.SourceAggregate,
@@ -1127,8 +1124,8 @@ internal sealed class ReminderCoordinator
         IReminderScheduler scheduler,
         CancellationToken cancellationToken)
     {
-        // An audited no-op: nothing is submitted. Without a durable audit record the witness is kept, so a
-        // later firing repeats the decision rather than silently dropping it.
+        // The stale witness is an audited no-op. Replacement convergence may submit other current witnesses
+        // that are due. Without a durable audit record this witness stays for a later firing to retry retirement.
         if (!await TryWriteDispositionAsync(state, actorId, entry.ReminderName, ReminderDisposition.Stale, "witness-not-current", null, null, entry.Attempts, now, cancellationToken)
             .ConfigureAwait(false))
         {
@@ -1371,6 +1368,8 @@ internal sealed class ReminderCoordinator
         }
 
         string messageId = "wrk-" + effectId;
+        // Causation follows the logical effect, not its replaceable schedule witness, so a committed
+        // receipt still matches after a same-source reschedule or an uncertain response.
         var submission = new TrustedEffectSubmission(identity, command.CommandType, command.Payload, messageId, messageId);
         string? delegation = null;
         if (_delegationTokenProvider is not null)
@@ -1379,7 +1378,7 @@ internal sealed class ReminderCoordinator
             {
                 delegation = await _delegationTokenProvider
                     .GetDelegationTokenAsync(
-                        new ReminderDelegationRequest(submission, _options.Workload, purpose, entry.ReminderName),
+                        new ReminderDelegationRequest(submission, _options.Workload, purpose, messageId),
                         cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -1398,7 +1397,7 @@ internal sealed class ReminderCoordinator
         try
         {
             receipt = await _submitter
-                .SubmitAsync(submission, new TrustedEffectContext(_options.Workload, purpose, entry.ReminderName, delegation), cancellationToken)
+                .SubmitAsync(submission, new TrustedEffectContext(_options.Workload, purpose, messageId, delegation), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -1449,7 +1448,7 @@ internal sealed class ReminderCoordinator
         }
         catch (Exception exception)
         {
-            ReminderLog.CallbackFailed(_logger, actorId, MalformedName, exception.GetType().Name);
+            ReminderLog.FailedClosed(_logger, actorId, "source-unavailable", exception.GetType().Name);
             return 1;
         }
 
@@ -1461,7 +1460,7 @@ internal sealed class ReminderCoordinator
             }
             catch (ReminderFailClosedException exception)
             {
-                ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode);
+                ReminderLog.FailedClosed(_logger, actorId, exception.ReasonCode, exception.GetType().Name);
                 return 1;
             }
 
@@ -1487,16 +1486,16 @@ internal sealed class ReminderCoordinator
 
         ReminderItemState loaded = entry.Value;
         DateTimeOffset now = _time.GetUtcNow();
-        var candidateEntries = new List<(ReminderEntry Entry, int Ordinal, string EffectId)>();
+        var candidateEntries = new List<(ReminderEntry Entry, int Ordinal)>();
         var validQuarantine = new List<ReminderQuarantineRecord>();
         bool repaired = loaded.Entries is null || loaded.Quarantine is null;
 
         int ordinal = 0;
         foreach (ReminderEntry? candidate in loaded.Entries ?? [])
         {
-            if (TryValidatePersistedEntry(loaded, actorId, candidate, out string effectId))
+            if (TryValidatePersistedEntry(loaded, actorId, candidate))
             {
-                candidateEntries.Add((candidate!, ordinal, effectId));
+                candidateEntries.Add((candidate!, ordinal));
             }
             else
             {
@@ -1518,13 +1517,9 @@ internal sealed class ReminderCoordinator
             .GroupBy(static candidate => candidate.Entry.ReminderName, StringComparer.Ordinal)
             .Where(static group => group.Count() > 1)
             .SelectMany(static group => group.Select(static candidate => candidate.Ordinal)));
-        duplicateOrdinals.UnionWith(candidateEntries
-            .GroupBy(static candidate => candidate.EffectId, StringComparer.Ordinal)
-            .Where(static group => group.Count() > 1)
-            .SelectMany(static group => group.Select(static candidate => candidate.Ordinal)));
 
         var validEntries = new List<ReminderEntry>();
-        foreach ((ReminderEntry candidate, int candidateOrdinal, _) in candidateEntries)
+        foreach ((ReminderEntry candidate, int candidateOrdinal) in candidateEntries)
         {
             if (!duplicateOrdinals.Contains(candidateOrdinal))
             {

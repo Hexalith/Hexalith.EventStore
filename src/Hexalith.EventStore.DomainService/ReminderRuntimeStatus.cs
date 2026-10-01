@@ -2,13 +2,15 @@ namespace Hexalith.EventStore.DomainService;
 
 /// <summary>
 /// Host-local view of reminder work that feeds readiness. Convergence and callbacks record per-item totals;
-/// each completed reconciliation pass records its scan completeness and prunes items it no longer discovers.
+/// each completed reconciliation pass records its scan completeness and prunes older items it no longer discovers.
+/// Records updated after the pass began remain until a later pass can discover them.
 /// Durable truth stays in the persisted item state; this view is rebuilt by the first pass after a restart.
 /// </summary>
 internal sealed class ReminderRuntimeStatus
 {
     private readonly Lock _gate = new();
-    private readonly Dictionary<string, (int Unresolved, int Quarantined)> _items = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (int Unresolved, int Quarantined, long Version)> _items = new(StringComparer.Ordinal);
+    private long _version;
     private bool _passCompleted;
     private DateTimeOffset? _lastPassAt;
     private int _incompleteScans;
@@ -22,22 +24,34 @@ internal sealed class ReminderRuntimeStatus
         ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
         lock (_gate)
         {
+            long version = ++_version;
             if (unresolved <= 0 && quarantined <= 0)
             {
                 _ = _items.Remove(actorId);
             }
             else
             {
-                _items[actorId] = (Math.Max(unresolved, 0), Math.Max(quarantined, 0));
+                _items[actorId] = (Math.Max(unresolved, 0), Math.Max(quarantined, 0), version);
             }
+        }
+    }
+
+    /// <summary>Captures the record boundary before a reconciliation pass reads discovery.</summary>
+    /// <returns>The last recorded version, used to preserve updates made during the pass.</returns>
+    public long BeginPass()
+    {
+        lock (_gate)
+        {
+            return _version;
         }
     }
 
     /// <summary>Records a completed reconciliation pass.</summary>
     /// <param name="completedAt">When the pass completed.</param>
     /// <param name="incompleteScans">Scans or candidates the pass could not process.</param>
-    /// <param name="observedActorIds">Actor identifiers the pass discovered; others are pruned after a complete pass.</param>
-    public void CompletePass(DateTimeOffset completedAt, int incompleteScans, IReadOnlyCollection<string> observedActorIds)
+    /// <param name="observedActorIds">Actor identifiers the pass discovered; older records for others are pruned after a complete pass.</param>
+    /// <param name="passVersion">The record boundary returned by <see cref="BeginPass"/> before discovery started.</param>
+    public void CompletePass(DateTimeOffset completedAt, int incompleteScans, IReadOnlyCollection<string> observedActorIds, long passVersion)
     {
         ArgumentNullException.ThrowIfNull(observedActorIds);
         lock (_gate)
@@ -48,7 +62,8 @@ internal sealed class ReminderRuntimeStatus
             if (_incompleteScans == 0)
             {
                 var observed = new HashSet<string>(observedActorIds, StringComparer.Ordinal);
-                foreach (string actorId in _items.Keys.Where(actorId => !observed.Contains(actorId)).ToList())
+                foreach (string actorId in _items.Where(item => item.Value.Version <= passVersion && !observed.Contains(item.Key))
+                    .Select(static item => item.Key).ToList())
                 {
                     _ = _items.Remove(actorId);
                 }
