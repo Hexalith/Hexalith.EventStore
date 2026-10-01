@@ -61,6 +61,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private string _postgresContainerName = string.Empty;
     private string _postgresContainerId = string.Empty;
     private Oq8QualificationOverrides _overrides = new();
+    private readonly List<object> _sidecarNamespaceObservations = [];
     private string _repositoryRoot = string.Empty;
     private string _runtimeDirectory = string.Empty;
     private IPEndPoint? _placementHostEndpoint;
@@ -897,7 +898,19 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         }
 
         startInfo.Environment["POSTGRES_CONNECTION_STRING"] = _postgresConnectionString;
+        if (_overrides.Namespace is not null)
+        {
+            startInfo.Environment["NAMESPACE"] = _overrides.Namespace;
+        }
+
         node.Sidecar = StartCapturedProcess(startInfo, node.SidecarOutput, node.SidecarError);
+        _sidecarNamespaceObservations.Add(new
+        {
+            node = node.Name,
+            appId = node.AppId,
+            processId = node.Sidecar.Id,
+            daprNamespace = startInfo.Environment.TryGetValue("NAMESPACE", out string? selectedNamespace) ? selectedNamespace : null,
+        });
     }
 
     private static ProcessStartInfo CreateRedirectedProcessStartInfo(string fileName)
@@ -1317,6 +1330,19 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             return;
         }
 
+        string? diagnosticsPath = Environment.GetEnvironmentVariable("HEXALITH_OQ8_DIAGNOSTICS_PATH");
+        if (diagnosticsPath is not null && Path.IsPathFullyQualified(diagnosticsPath))
+        {
+            string diagnosticProjection = JsonSerializer.Serialize(AllNodes().Select(node => new
+            {
+                node = node.Name,
+                application = Sanitize(node.ApplicationOutput + "\n" + node.ApplicationError),
+                sidecar = Sanitize(node.SidecarOutput + "\n" + node.SidecarError),
+            }), _jsonOptions);
+            EnsureSanitized(diagnosticProjection);
+            await File.WriteAllTextAsync(diagnosticsPath, diagnosticProjection).ConfigureAwait(false);
+        }
+
         string json = await BuildEvidenceJsonAsync().ConfigureAwait(false);
         EnsureSanitized(json);
         _ = Directory.CreateDirectory(evidenceDirectory);
@@ -1440,6 +1466,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
     private async Task DisposeResourcesAsync()
     {
+        string postgresIdentity = _postgresContainerId;
         foreach (Oq8ProcessNode node in AllNodes())
         {
             try
@@ -1465,6 +1492,18 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
 
             _postgresContainerName = string.Empty;
             _postgresContainerId = string.Empty;
+        }
+
+        string? cleanupPath = Environment.GetEnvironmentVariable("HEXALITH_OQ8_CLEANUP_PATH");
+        if (cleanupPath is not null && Path.IsPathFullyQualified(cleanupPath) && !string.IsNullOrWhiteSpace(postgresIdentity))
+        {
+            File.WriteAllText(cleanupPath, JsonSerializer.Serialize(new
+            {
+                postgresContainerId = postgresIdentity,
+                processesStopped = AllNodes().All(static node => node.Application is null && node.Sidecar is null),
+                daprNamespace = _overrides.Namespace,
+                sidecarNamespaceObservations = _sidecarNamespaceObservations,
+            }));
         }
 
         if (!string.IsNullOrWhiteSpace(_runtimeDirectory) && Directory.Exists(_runtimeDirectory))

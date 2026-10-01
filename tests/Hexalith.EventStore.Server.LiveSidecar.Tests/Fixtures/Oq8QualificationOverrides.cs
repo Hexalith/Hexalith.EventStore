@@ -21,12 +21,15 @@ internal sealed class Oq8QualificationOverrides
     /// <summary>Gets the loopback Redis endpoint.</summary>
     internal string RedisEndpoint { get; private init; } = "127.0.0.1:6379";
 
+    /// <summary>Gets the private self-hosted discovery namespace.</summary>
+    internal string? Namespace { get; private init; }
+
     /// <summary>Reads and validates the complete override group.</summary>
     /// <param name="read">The environment variable reader.</param>
     /// <returns>The validated execution inputs.</returns>
     internal static Oq8QualificationOverrides Read(Func<string, string?> read)
     {
-        string[] names = ["DAPRD_PATH", "CONFIGURATION", "PLACEMENT_CONTAINER", "SCHEDULER_CONTAINER", "REDIS_ENDPOINT"];
+        string[] names = ["DAPRD_PATH", "CONFIGURATION", "PLACEMENT_CONTAINER", "SCHEDULER_CONTAINER", "REDIS_ENDPOINT", "NAMESPACE"];
         string?[] values = names.Select(name => read("HEXALITH_OQ8_" + name)).ToArray();
         if (values.All(static value => value is null))
         {
@@ -35,7 +38,7 @@ internal sealed class Oq8QualificationOverrides
 
         if (values.Any(static value => string.IsNullOrWhiteSpace(value)))
         {
-            throw new InvalidOperationException("Isolated OQ8 overrides must supply the complete five-variable group.");
+            throw new InvalidOperationException("Isolated OQ8 overrides must supply the complete six-variable group.");
         }
 
         string binary = values[0]!;
@@ -70,8 +73,14 @@ internal sealed class Oq8QualificationOverrides
             throw new InvalidOperationException("The OQ8 Redis override must be one numeric loopback endpoint with a positive port.");
         }
 
+        if (!Regex.IsMatch(values[5]!, "^g6-oq8-[a-z0-9][a-z0-9-]{0,48}$", RegexOptions.CultureInvariant))
+        {
+            throw new InvalidOperationException("An isolated OQ8 namespace must use a bounded g6-oq8- DNS label.");
+        }
+
         return new()
         {
+            Namespace = values[5],
             DaprdPath = binary,
             Configuration = configuration,
             PlacementContainer = values[2]!,

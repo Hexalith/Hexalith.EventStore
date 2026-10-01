@@ -24,6 +24,8 @@ public sealed class Oq8QualificationOverridesTests
     /// <param name="field">The substituted variable suffix.</param>
     /// <param name="value">The unsafe value.</param>
     [Theory]
+    [InlineData("NAMESPACE", "default")]
+    [InlineData("NAMESPACE", "g6-oq8-unsafe.namespace")]
     [InlineData("CONFIGURATION", "debug")]
     [InlineData("DAPRD_PATH", "daprd")]
     [InlineData("PLACEMENT_CONTAINER", "dapr_placement")]
@@ -47,6 +49,7 @@ public sealed class Oq8QualificationOverridesTests
         result.Configuration.ShouldBe("Debug");
         result.RedisEndpoint.ShouldBe("127.0.0.1:16379");
         result.PlacementContainer.ShouldBe("g6-oq8-placement");
+        result.Namespace.ShouldBe("g6-oq8-test-discovery");
     }
 
     private static Dictionary<string, string> Inputs() => new()
@@ -55,6 +58,7 @@ public sealed class Oq8QualificationOverridesTests
         ["HEXALITH_OQ8_CONFIGURATION"] = "Debug",
         ["HEXALITH_OQ8_PLACEMENT_CONTAINER"] = "g6-oq8-placement",
         ["HEXALITH_OQ8_SCHEDULER_CONTAINER"] = "g6-oq8-scheduler",
+        ["HEXALITH_OQ8_NAMESPACE"] = "g6-oq8-test-discovery",
         ["HEXALITH_OQ8_REDIS_ENDPOINT"] = "127.0.0.1:16379",
     };
 }
