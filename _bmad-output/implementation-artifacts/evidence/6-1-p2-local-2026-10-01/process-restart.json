@@ -1,0 +1,29 @@
+{
+  "name": "process-restart",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessRestartTests",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/process-restart.ctrf.json",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/process-restart.xml"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:14:46.094956+00:00",
+  "finishedAtUtc": "2026-10-01T04:14:52.084864+00:00",
+  "output": "process-restart.log",
+  "testSummary": {
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828086408,
+    "stop": 1790828092048,
+    "duration": 5640
+  }
+}

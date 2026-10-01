@@ -1,0 +1,11 @@
+{
+  "name": "diff-check",
+  "command": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "exitCode": 0,
+  "output": "diff-check.log",
+  "finishedAtUtc": "2026-10-01T04:26:09.698209+00:00"
+}

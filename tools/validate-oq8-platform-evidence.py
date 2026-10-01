@@ -1373,6 +1373,7 @@ def validate_observations(
     expected_postgres_image: str,
     profile_identity_revision: str | None = None,
     historical: bool = False,
+    expected_configuration: str = "Release",
 ) -> dict[str, Any]:
     require(
         re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", expected_dapr_runtime_version) is not None,
@@ -1393,7 +1394,8 @@ def validate_observations(
         "Observation",
     )
     require_exact_integer(document.get("schemaVersion"), 1, "Observation schemaVersion")
-    require(document.get("captureKind") == "release-entry-binaries-test-seams-sidecar-postgresql", "Observation capture kind drift")
+    require(expected_configuration in {"Debug", "Release"}, "Unsupported capture configuration")
+    require(document.get("captureKind") == f"{expected_configuration.lower()}-entry-binaries-test-seams-sidecar-postgresql", "Observation capture kind drift")
     captured_on_text = document.get("capturedOn")
     require(isinstance(captured_on_text, str), "Capture date missing")
     require(
@@ -1463,7 +1465,7 @@ def validate_observations(
     execution_configuration = document.get("executionConfiguration", {})
     require(
         execution_configuration == {
-            "shippedReleaseEntryAssemblies": True,
+            "shippedReleaseEntryAssemblies": expected_configuration == "Release",
             "shadowCopiedBeforeLaunch": True,
             "environmentName": "Testing",
             "testOnlyHostingStartup": True,
@@ -1612,7 +1614,7 @@ def validate_observations(
     return document
 
 
-def sanitize_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
+def sanitize_ctrf(ctrf_path: Path, destination: Path, expected_command: str = FOCUSED_CURRENT_COMMAND) -> dict[str, Any]:
     ctrf = load_json_bytes(read_bounded_raw_input(ctrf_path, "Raw focused CTRF"), "raw focused CTRF")
     require(isinstance(ctrf, dict), "Focused CTRF must be an object")
     results = ctrf.get("results")
@@ -1633,7 +1635,7 @@ def sanitize_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
     portable = {
         "schemaVersion": 1,
         "runner": "xUnit.net v3",
-        "command": FOCUSED_CURRENT_COMMAND,
+        "command": expected_command,
         "summary": {
             "tests": 1,
             "passed": 1,
@@ -1647,7 +1649,7 @@ def sanitize_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
             "traits": {name: [value] for name, value in test.get("labels", {}).items()},
         },
     }
-    validate_focused_document(portable, FOCUSED_CURRENT_COMMAND)
+    validate_focused_document(portable, expected_command)
     write_json(destination, portable)
     scan_support_safe(destination)
     return portable
@@ -1732,7 +1734,7 @@ def validate_support_document(document: Any, expected_command: str = SUPPORT_LEG
     return document
 
 
-def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
+def sanitize_support_ctrf(ctrf_path: Path, destination: Path, expected_command: str = SUPPORT_CURRENT_COMMAND) -> dict[str, Any]:
     ctrf = load_json_bytes(read_bounded_raw_input(ctrf_path, "Raw support CTRF"), "raw support CTRF")
     require(isinstance(ctrf, dict), "Deterministic support CTRF must be an object")
     results = ctrf.get("results")
@@ -1769,7 +1771,7 @@ def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
     portable = {
         "schemaVersion": 1,
         "runner": "xUnit.net v3",
-        "command": SUPPORT_CURRENT_COMMAND,
+        "command": expected_command,
         "selectors": list(EXPECTED_SUPPORT_METHOD_CASES),
         "summary": {
             "tests": SUPPORT_CASE_TOTAL,
@@ -1788,7 +1790,7 @@ def sanitize_support_ctrf(ctrf_path: Path, destination: Path) -> dict[str, Any]:
         ],
         "classifications": expected_support_classifications(),
     }
-    validate_support_document(portable, SUPPORT_CURRENT_COMMAND)
+    validate_support_document(portable, expected_command)
     write_json(destination, portable)
     scan_support_safe(destination)
     return portable
@@ -1799,6 +1801,7 @@ def validate_capture(
     ctrf_path: Path,
     support_ctrf_path: Path,
     expected_dapr_runtime_version: str,
+    expected_configuration: str = "Release",
 ) -> None:
     require(capture_directory.is_dir(), "Capture directory is missing")
     require(not ctrf_path.is_relative_to(capture_directory), "Raw focused CTRF must remain outside the capture directory")
@@ -1809,9 +1812,9 @@ def validate_capture(
     )
     observations_path = capture_directory / "observations.json"
     require(observations_path.is_file(), "Capture observations.json is missing")
-    validate_observations(observations_path, expected_dapr_runtime_version, POSTGRES_IMAGE)
-    sanitize_ctrf(ctrf_path, capture_directory / "test-results.json")
-    sanitize_support_ctrf(support_ctrf_path, capture_directory / "deterministic-support.json")
+    validate_observations(observations_path, expected_dapr_runtime_version, POSTGRES_IMAGE, expected_configuration=expected_configuration)
+    sanitize_ctrf(ctrf_path, capture_directory / "test-results.json", FOCUSED_CURRENT_COMMAND.replace("/Release/", f"/{expected_configuration}/"))
+    sanitize_support_ctrf(support_ctrf_path, capture_directory / "deterministic-support.json", SUPPORT_CURRENT_COMMAND.replace("/Release/", f"/{expected_configuration}/"))
     receipt = {
         "schemaVersion": 1,
         "validation": "passed",
@@ -5197,6 +5200,7 @@ def parse_args() -> argparse.Namespace:
         choices=("final", "closed"),
         help="Validate one exact lifecycle/document gate in isolation without approving evidence",
     )
+    parser.add_argument("--expected-configuration", choices=("Debug", "Release"), default="Release", help="Fresh capture configuration; historical validation always uses Release")
     parser.add_argument("--capture-directory", type=Path, help="Validate one fresh opt-in OQ8 capture")
     parser.add_argument("--ctrf", type=Path, help="Raw CTRF input to sanitize for capture upload")
     parser.add_argument("--support-ctrf", type=Path, help="Raw deterministic-support CTRF input to validate and sanitize")
@@ -5332,6 +5336,7 @@ def main() -> int:
                 args.ctrf.resolve(),
                 args.support_ctrf.resolve(),
                 args.expected_runtime_version[0],
+                args.expected_configuration,
             )
             print("OQ8 capture validation passed.")
         elif args.support_ctrf is not None or args.support_output is not None:

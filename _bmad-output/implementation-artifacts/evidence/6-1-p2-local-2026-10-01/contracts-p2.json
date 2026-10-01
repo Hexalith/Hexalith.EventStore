@@ -1,0 +1,36 @@
+{
+  "name": "contracts-p2",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Contracts.Tests.Projections.ProjectionContractTests",
+    "-class",
+    "Hexalith.EventStore.Contracts.Tests.Queries.ProjectionAdapterContractTests",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/contracts-p2.ctrf.json",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/contracts-p2.xml"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:14:52.085599+00:00",
+  "finishedAtUtc": "2026-10-01T04:14:52.700497+00:00",
+  "output": "contracts-p2.log",
+  "testSummary": {
+    "tests": 119,
+    "passed": 119,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828092327,
+    "stop": 1790828092651,
+    "duration": 324
+  },
+  "archivedTestResults": {
+    "file": "contracts-p2.ctrf.json.gz",
+    "encoding": "gzip",
+    "originalFile": "contracts-p2.ctrf.json"
+  }
+}

@@ -11,6 +11,7 @@ public class ReminderIdentityCodecTests
     /// <summary>The actor identifier digests the length-prefixed tuple (reminder-actor, tenant, item).</summary>
     [Theory]
     [InlineData("tenant-a", "item-1", "wra-HZT1ANXRJ95M9MPNEVPJYRE4QS912QRKTCMEZWE0EBFQK015G1WG")]
+    [InlineData("tenant-a", "Item-1", "wra-750NNZXCE0515AR0KPZV9Y1ZWYEYKXFT0ERPXMXV6B9W0V27MFPG")]
     [InlineData("tenant-b", "item-1", "wra-GMY7NNDVYYZYFJY27HQQHR157F3DWVQAK5TPVTJY6HP5TA1P55EG")]
     public void ActorIdGoldenVectors(string tenant, string item, string expected)
     {
@@ -28,12 +29,13 @@ public class ReminderIdentityCodecTests
 
     /// <summary>The schedule token digests (schedule, tenant, item, due UTC ticks, revision).</summary>
     [Theory]
-    [InlineData(0L, "wrs-DH9MMM0QHN2MWP2XDVTVGDQ8PMVMN8KDNFAPWMAJQNA7T0E6PB20")]
-    [InlineData(1L, "wrs-AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
-    public void ScheduleTokenGoldenVectors(long revision, string expected)
+    [InlineData("item-1", 0L, "wrs-DH9MMM0QHN2MWP2XDVTVGDQ8PMVMN8KDNFAPWMAJQNA7T0E6PB20")]
+    [InlineData("item-1", 1L, "wrs-AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0")]
+    [InlineData("Item-1", 1L, "wrs-6P3J38VYKVQCKFH8WGX4ZP2KCD7QJVT8MN0D74K352JFEMV75NYG")]
+    public void ScheduleTokenGoldenVectors(string item, long revision, string expected)
     {
         Due.UtcTicks.ShouldBe(639264438000000000);
-        ReminderIdentityCodec.ComputeScheduleToken("tenant-a", "item-1", Due, revision).ShouldBe(expected);
+        ReminderIdentityCodec.ComputeScheduleToken("tenant-a", item, Due, revision).ShouldBe(expected);
     }
 
     /// <summary>The closed kind map names date-resume and expiry reminders from the schedule token.</summary>

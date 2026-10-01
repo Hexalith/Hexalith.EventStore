@@ -1,0 +1,19 @@
+{
+  "name": "contracts-build",
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-restore",
+    "-m:1",
+    "/nr:false",
+    "-p:UseSharedCompilation=false",
+    "-v:q"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:14:37.113490+00:00",
+  "finishedAtUtc": "2026-10-01T04:14:46.094300+00:00",
+  "output": "contracts-build.log"
+}

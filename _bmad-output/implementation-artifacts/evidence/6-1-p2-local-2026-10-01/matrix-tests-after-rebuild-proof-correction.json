@@ -1,0 +1,592 @@
+{
+  "scope": "local-source-evidence-only",
+  "rows": [
+    {
+      "scenario": "legacy",
+      "tests": [
+        {
+          "lane": "contracts-p2",
+          "name": "Hexalith.EventStore.Contracts.Tests.Queries.ProjectionAdapterContractTests.QueryEnvelope_LegacyDataContractPayload_DefaultsIdentityEvidenceToUnknown",
+          "status": "passed"
+        },
+        {
+          "lane": "contracts-p2",
+          "name": "Hexalith.EventStore.Contracts.Tests.Projections.ProjectionContractTests.ProjectionEventDto_LegacyJsonWithoutGlobalPosition_UsesUnknownDefault",
+          "status": "passed"
+        },
+        {
+          "lane": "contracts-p2",
+          "name": "Hexalith.EventStore.Contracts.Tests.Queries.ProjectionAdapterContractTests.QueryEnvelope_LegacyJsonPayload_DefaultsIdentityEvidenceToUnknown",
+          "status": "passed"
+        }
+      ],
+      "allSelectedTestsPassed": true
+    },
+    {
+      "scenario": "delegated-query",
+      "tests": [
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(actClaim: \"{\\\"sub\\\":\\\"one\\\",\\\"sub\\\":\\\"two\\\"}\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(actClaim: \"{\\\"sub\\\":42}\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(actClaim: \"[]\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(actClaim: \"not-json\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_OversizedActSubject_LeavesDelegationIdUnknownInsteadOfTruncating",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.QueryRouterTests.RouteQueryAsync_ForwardsDualPrincipalFieldsToQueryEnvelope",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(actClaim: \"{}\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MultipleActClaims_LeavesDelegationIdUnknown",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(actClaim: \"{\\\"sub\\\":null}\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests.Extract_MalformedOrAmbiguousActSubject_LeavesDelegationIdUnknown(actClaim: \"{\\\"sub\\\":\\\"   \\\"}\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Controllers.QueriesControllerTests.Submit_ValidActSubject_SetsDelegationIdSeparatelyFromActorAndWorkload",
+          "status": "passed"
+        },
+        {
+          "lane": "query-routing",
+          "name": "Hexalith.EventStore.QueryRouting.Tests.HandlerAwareQueryRouterTests.RouteQueryAsync_HandlerBased_ForwardsDualPrincipalFieldsToQueryEnvelope",
+          "status": "passed"
+        }
+      ],
+      "allSelectedTestsPassed": true
+    },
+    {
+      "scenario": "projection-delivery",
+      "tests": [
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionEventWireBuilderTests.BuildAsync_PreservesExactGappedPersistedGlobalPositionsAcrossReplay",
+          "status": "passed"
+        },
+        {
+          "lane": "projection-rebuild",
+          "name": "Hexalith.EventStore.IntegrationTests.ContractTests.ProjectionWatermarkRebuildIntegrationTests.MixedUnknownAndPositivePositions_PersistsHighestPositiveWhileAllUnknownRemainsZero",
+          "status": "passed"
+        }
+      ],
+      "allSelectedTestsPassed": true
+    },
+    {
+      "scenario": "cursor-replay",
+      "tests": [
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Add_rejects_missing_key(key: \"   \")",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.Constructor_rejects_missing_purpose(purpose: null)",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_rejects_cursor_after_data_protection_key_rotation_equivalent",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.AddProjectionWatermark_RejectsUnknownOrNonPositiveValues(watermark: null)",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Build_renders_null_value_and_null_instant_as_empty_segments",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.Encode_does_not_expose_raw_query_scope_or_position",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_returns_position_for_matching_query_and_scope",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.AddProjectionWatermark_RejectsUnknownOrNonPositiveValues(watermark: -1)",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.Constructor_rejects_missing_purpose(purpose: \"\")",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Build_joins_multiple_fields_with_pipe_separator",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.Cursors_are_isolated_across_purposes",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Add_rejects_missing_key(key: \"\")",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_rejects_wrong_scope",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_RejectsCursorBoundToStaleProjectionWatermarkAsWrongScope",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.AddProjectionWatermark_BindsCanonicalPositiveInvariantDecimalSegment",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Build_reproduces_simple_single_field_scope",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_rejects_malformed_cursor",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_rejects_tampered_cursor",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_rejects_wrong_query_type",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.AddProjectionWatermark_RejectsUnknownOrNonPositiveValues(watermark: 0)",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Build_escapes_user_controlled_values_once_to_prevent_scope_collisions",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_ReturnsPositionForIdenticalProjectionWatermarkScope",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.Constructor_rejects_missing_purpose(purpose: \"   \")",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_rejects_cursor_above_length_cap",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Add_rejects_missing_key(key: null)",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorCodecTests.TryDecode_returns_true_with_null_failure_reason_for_empty_cursor",
+          "status": "passed"
+        },
+        {
+          "lane": "client",
+          "name": "Hexalith.EventStore.Client.Tests.Queries.QueryCursorScopeTests.Build_formats_instant_fields_as_round_trip_utc_and_renders_nulls_as_empty",
+          "status": "passed"
+        },
+        {
+          "lane": "projection-rebuild",
+          "name": "Hexalith.EventStore.IntegrationTests.ContractTests.ProjectionWatermarkRebuildIntegrationTests.CursorIssuedFromPersistedReadModelWatermark_RejectsReplayAfterProjectionAdvances",
+          "status": "passed"
+        }
+      ],
+      "allSelectedTestsPassed": true
+    },
+    {
+      "scenario": "denied-or-absent",
+      "tests": [
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_CrossTenantForbidden_OptedInRoute_UnifiesWithoutLeakingTenantOrExistenceDetails",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_BlankDomainOrQueryType_DoesNotThrow_PassesThroughUnchanged(domain: \"\", queryType: \"list-orders\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_GenuineNotFoundResult_OptedInRoute_PassesThroughUnchanged",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_SuccessfulResult_OptedInRoute_PassesThroughUnchanged",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_DifferentlyCasedForbiddenSentinel_OptedInRoute_IsNotUnified(differentlyCasedErrorMessage: \"forbidden\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_DifferentlyCasedMissingProjectionStateSentinel_OptedInRoute_IsNotUnified(differentlyCasedErrorMessage: \"No projection state available for this aggregate \")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_BlankDomainOrQueryType_DoesNotThrow_PassesThroughUnchanged(domain: \"orders\", queryType: \"\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_MissingProjectionStateResult_OptedInRoute_UnifiesToNotFoundShape",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_ForbiddenResult_NonOptedInRoute_PassesThroughUnchanged",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_DifferentlyCasedMissingProjectionStateSentinel_OptedInRoute_IsNotUnified(differentlyCasedErrorMessage: \"no projection state available for this aggregate\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_NonForbiddenFailure_OptedInRoute_PassesThroughUnchanged",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_BlankDomainOrQueryType_DoesNotThrow_PassesThroughUnchanged(domain: \"orders\", queryType: null)",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_BlankDomainOrQueryType_DoesNotThrow_PassesThroughUnchanged(domain: null, queryType: \"list-orders\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_DifferentlyCasedForbiddenSentinel_OptedInRoute_IsNotUnified(differentlyCasedErrorMessage: \"Forbidden \")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_ForbiddenResult_NoOptedInRoutesAtAll_PassesThroughUnchanged",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_ForbiddenAndGenuineNotFound_OptedInRoute_ProduceIdenticalShape",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_ForbiddenNonOptedInRoute_ThenSubmitQueryHandler_StillThrows403",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_NullQuery_ThrowsArgumentNullException",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_BlankDomainOrQueryType_DoesNotThrow_PassesThroughUnchanged(domain: \"   \", queryType: \"list-orders\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_ForbiddenOptedInRoute_ThenSubmitQueryHandler_ThrowsSameExceptionTypeAsGenuineNotFound",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_ForbiddenResult_OptedInRoute_UnifiesToNotFoundShape",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_DifferentlyCasedMissingProjectionStateSentinel_OptedInRoute_IsNotUnified(differentlyCasedErrorMessage: \"NO PROJECTION STATE AVAILABLE FOR THIS AGGREGATE\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_BlankDomainOrQueryType_DoesNotThrow_PassesThroughUnchanged(domain: \"orders\", queryType: \"   \")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_DirtyNotFoundResult_OptedInRoute_IsCanonicalizedToCleanShape",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_DifferentlyCasedForbiddenSentinel_OptedInRoute_IsNotUnified(differentlyCasedErrorMessage: \"FORBIDDEN\")",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_MissingProjectionStateResult_NonOptedInRoute_PassesThroughUnchanged",
+          "status": "passed"
+        },
+        {
+          "lane": "server-p2",
+          "name": "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests.RouteQueryAsync_MissingProjectionStateAndForbidden_OptedInRoute_ProduceIdenticalShape",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_HttpInternalServerErrorProblemDetails_ThrowsTenantQueryFailedAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_FailedEnvelopeForbidden_ThrowsHttpRequestForbiddenAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"1\", expected: Disabled)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"\\\"Disabled\\\"\", expected: Disabled)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_FailedEnvelopeUnrecognized_ThrowsTenantQueryFailedAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_DeserializesTenantRole_ForBothStringAndNumericPayloads(roleJson: \"1\", expectedRole: \"TenantContributor\")",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_ReturnsNull_WhenQueryReturnsNotFound",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_FailedEnvelopeUnrecognized_ThrowsTenantQueryFailedAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"0\", expected: Active)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"\\\"Active\\\"\", expected: Active)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_PropagatesCancellation",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_FailedEnvelopeTenantNotFound_ThrowsHttpRequestNotFoundAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_DeserializesTenantRole_ForBothStringAndNumericPayloads(roleJson: \"\\\"TenantOwner\\\"\", expectedRole: \"TenantOwner\")",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"1\", expected: Disabled)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_DeserializesTenantRole_ForBothStringAndNumericPayloads(roleJson: \"\\\"TenantReader\\\"\", expectedRole: \"TenantReader\")",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_DeserializesTenantRole_ForBothStringAndNumericPayloads(roleJson: \"2\", expectedRole: \"TenantReader\")",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"\\\"Active\\\"\", expected: Active)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_HttpForbidden_ThrowsHttpRequestForbiddenAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_FollowsPaginationUntilAllPagesReturned",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_FollowsPaginationUntilAllPagesReturned",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_DeserializesTenantRole_ForBothStringAndNumericPayloads(roleJson: \"0\", expectedRole: \"TenantOwner\")",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_FailedEnvelopeUnrecognized_ThrowsTenantQueryFailedAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_ThrowsTimeoutException_WhenQueryTimesOut",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_FailedEnvelopeWithMalformedPayload_ClassifiesFromErrorMessageWithoutDeserializingAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_Throws_WhenQueryResponseBodyIsNull",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_SuccessfulEnvelopeWithMalformedPayload_ThrowsJsonExceptionAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_FailedEnvelopeTenantNotFound_ThrowsTenantQueryFailedAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"\\\"Disabled\\\"\", expected: Disabled)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_DeserializesTenantRole_ForBothStringAndNumericPayloads(roleJson: \"\\\"TenantContributor\\\"\", expectedRole: \"TenantContributor\")",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_ReturnsTenants_WhenServiceAvailable",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_FailedEnvelopeTenantNotFound_ReturnsNullAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantUsersAsync_HttpNotFound_ThrowsHttpRequestNotFoundAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_Throws_WhenServiceUnavailable",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.ListTenantsAsync_FailedEnvelopeForbidden_ThrowsHttpRequestForbiddenAsync",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_DeserializesTenantStatus_ForBothStringAndNumericPayloads(statusJson: \"0\", expected: Active)",
+          "status": "passed"
+        },
+        {
+          "lane": "admin-denial",
+          "name": "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests.GetTenantDetailAsync_FailedEnvelopeForbidden_ThrowsHttpRequestForbiddenAsync",
+          "status": "passed"
+        }
+      ],
+      "allSelectedTestsPassed": true
+    },
+    {
+      "scenario": "restart-rebuild",
+      "tests": [
+        {
+          "lane": "rebuild-proof-process-restart-rerun",
+          "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessRestartTests.PersistedEventHistory_RebuildInNewProcess_ConvergesReadModelAndWatermark",
+          "status": "passed"
+        },
+        {
+          "lane": "projection-rebuild",
+          "name": "Hexalith.EventStore.IntegrationTests.ContractTests.ProjectionWatermarkRebuildIntegrationTests.GappedPositions_DuplicateDeliveryAndFullRebuild_ConvergeStateAndWatermark",
+          "status": "passed"
+        }
+      ],
+      "allSelectedTestsPassed": true
+    }
+  ],
+  "sourceEvidence": "Follow-up process evidence uses final test bytes; all other matrix lanes retain earlier command results."
+}

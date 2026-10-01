@@ -671,6 +671,59 @@ public class ProjectionAdapterContractTests {
     }
 
     [Fact]
+    public void QueryEnvelope_LegacyJsonPayload_DefaultsIdentityEvidenceToUnknown() {
+        const string json = """
+            {
+              "TenantId": "tenant-a",
+              "Domain": "parties",
+              "AggregateId": "party",
+              "QueryType": "get-party",
+              "Payload": "AQID",
+              "CorrelationId": "corr-1",
+              "UserId": "user-1"
+            }
+            """;
+
+        QueryEnvelope restored = JsonSerializer.Deserialize<QueryEnvelope>(json).ShouldNotBeNull();
+
+        restored.TenantId.ShouldBe("tenant-a");
+        restored.Payload.ShouldBe([1, 2, 3]);
+        restored.UserId.ShouldBe("user-1");
+        restored.OriginalActorId.ShouldBeNull();
+        restored.AuthenticatedWorkloadId.ShouldBeNull();
+        restored.IsDelegated.ShouldBeFalse();
+        restored.Scopes.ShouldBeNull();
+        restored.Audience.ShouldBeNull();
+        restored.DelegationId.ShouldBeNull();
+    }
+
+    [Fact]
+    public void QueryEnvelope_LegacyDataContractPayload_DefaultsIdentityEvidenceToUnknown() {
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, CreateEnvelopeWithDualPrincipal(
+            isDelegated: true, scopes: ["parties.read"], audience: ["eventstore-api"], delegationId: "delegate-service"));
+        var document = XDocument.Parse(Encoding.UTF8.GetString(stream.ToArray()));
+        string[] addedMembers = ["OriginalActorId", "AuthenticatedWorkloadId", "IsDelegated", "Scopes", "Audience", "DelegationId"];
+        document.Root.ShouldNotBeNull().Elements()
+            .Where(element => addedMembers.Contains(element.Name.LocalName, StringComparer.Ordinal))
+            .Remove();
+        using var legacyStream = new MemoryStream(Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting)));
+
+        var restored = ((QueryEnvelope?)serializer.ReadObject(legacyStream)).ShouldNotBeNull();
+
+        restored.TenantId.ShouldBe("tenant-a");
+        restored.EntityId.ShouldBe("party-42");
+        JsonSerializer.Deserialize<JsonElement>(restored.Payload).GetProperty("id").GetString().ShouldBe("party-42");
+        restored.OriginalActorId.ShouldBeNull();
+        restored.AuthenticatedWorkloadId.ShouldBeNull();
+        restored.IsDelegated.ShouldBeFalse();
+        restored.Scopes.ShouldBeNull();
+        restored.Audience.ShouldBeNull();
+        restored.DelegationId.ShouldBeNull();
+    }
+
+    [Fact]
     public void QueryAdapterFailureReason_SafeDenialForbidden_IsInternalOnlyMarkerDistinctFromForbidden() {
         QueryAdapterFailureReason.SafeDenialForbidden.ShouldBe("safe-denial-forbidden");
         QueryAdapterFailureReason.SafeDenialForbidden.ShouldNotBe(QueryAdapterFailureReason.Forbidden);

@@ -73,6 +73,48 @@ public sealed class ReminderCoordinatorTests
         entry.PayloadDigest.Length.ShouldBe(52);
     }
 
+    /// <summary>Aggregates differing only by case retain separate indexed state and independently armed reminders.</summary>
+    [Fact]
+    public async Task CaseDistinctAggregatesArmIndependently()
+    {
+        var harness = new ReminderTestHarness();
+        ReminderTarget upperCase = ReminderTestHarness.Target("Item-1");
+        ReminderIntent lowerIntent = ReminderTestHarness.Intent(Item, harness.Time.Now.AddHours(2));
+        ReminderIntent upperIntent = ReminderTestHarness.Intent(upperCase, harness.Time.Now.AddHours(2));
+        harness.Source.Set(Item, lowerIntent);
+        harness.Source.Set(upperCase, upperIntent);
+        ReminderRegistrar registrar = harness.CreateRegistrar();
+
+        ReminderConvergenceResult lowerResult = await registrar.ConvergeAsync(Item);
+        ReminderConvergenceResult upperResult = await registrar.ConvergeAsync(upperCase);
+
+        lowerResult.ShouldBe(new ReminderConvergenceResult(1, 0, 0, 0, 0));
+        upperResult.ShouldBe(new ReminderConvergenceResult(1, 0, 0, 0, 0));
+        string lowerActorId = ReminderTestHarness.ActorId(Item);
+        string upperActorId = ReminderTestHarness.ActorId(upperCase);
+        lowerActorId.ShouldNotBe(upperActorId);
+        ReminderItemState lowerState = harness.ItemState(lowerActorId).ShouldNotBeNull();
+        ReminderItemState upperState = harness.ItemState(upperActorId).ShouldNotBeNull();
+        lowerState.Aggregate.ShouldBe(Item.Aggregate);
+        upperState.Aggregate.ShouldBe(upperCase.Aggregate);
+        lowerState.Quarantine.ShouldBeEmpty();
+        upperState.Quarantine.ShouldBeEmpty();
+        ReminderEntry lowerEntry = lowerState.Entries.ShouldHaveSingleItem();
+        ReminderEntry upperEntry = upperState.Entries.ShouldHaveSingleItem();
+        lowerEntry.Status.ShouldBe(ReminderEntryStatus.Armed);
+        upperEntry.Status.ShouldBe(ReminderEntryStatus.Armed);
+        lowerEntry.ReminderName.ShouldBe(ReminderTestHarness.Name(lowerIntent));
+        upperEntry.ReminderName.ShouldBe(ReminderTestHarness.Name(upperIntent));
+        lowerEntry.ReminderName.ShouldNotBe(upperEntry.ReminderName);
+        harness.SchedulerFor(lowerActorId).Armed.Keys.ShouldBe([lowerEntry.ReminderName]);
+        harness.SchedulerFor(upperActorId).Armed.Keys.ShouldBe([upperEntry.ReminderName]);
+        harness.Candidates().ShouldBe(
+            [new ReminderCandidate(Item.Domain, Item.Aggregate, lowerActorId),
+                new ReminderCandidate(upperCase.Domain, upperCase.Aggregate, upperActorId)],
+            ignoreOrder: true);
+        harness.Submitter.Calls.ShouldBeEmpty();
+    }
+
     /// <summary>Duplicate intents and repeated registration keep one witness, one reminder, and one candidate.</summary>
     [Fact]
     public async Task DuplicateRegistrationKeepsOneReminder()

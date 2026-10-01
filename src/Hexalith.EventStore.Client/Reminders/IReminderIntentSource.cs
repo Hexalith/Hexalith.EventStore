@@ -17,6 +17,14 @@ namespace Hexalith.EventStore.Client.Reminders;
 /// <item><description>Keep <c>(source domain, source aggregate, source sequence, kind, target)</c> unique among
 /// current intents. Intents that share it share one effect identity and are quarantined as
 /// <c>effect-collision</c>.</description></item>
+/// <item><description>Retain the source coordinates when retrying the same logical submission. For the same kind
+/// and target, a distinct logical submission needs distinct committed source-event coordinates: changing only
+/// the due instant or schedule revision retains the previous effect identity and replays its receipt or
+/// conflicts with changed command semantics.</description></item>
+/// <item><description>Distinct current witnesses must derive distinct reminder names. The name binds the tenant,
+/// target aggregate, kind, due instant, and schedule revision. Persist a new schedule revision when the source
+/// coordinates, payload type, or payload change; different evidence under the same name is quarantined as
+/// <c>witness-collision</c>.</description></item>
 /// <item><description>Keep aggregate identifiers unique across every domain that shares one reminder actor type:
 /// the AD-11 actor tuple omits the domain, so a second domain with the same aggregate identifier is
 /// quarantined as <c>actor-collision</c>.</description></item>

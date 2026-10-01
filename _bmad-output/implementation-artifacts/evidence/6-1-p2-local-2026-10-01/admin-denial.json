@@ -1,0 +1,27 @@
+{
+  "name": "admin-denial",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Admin.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Admin.Server.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Admin.Server.Tests.Services.DaprTenantQueryServiceTests",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/admin-denial.ctrf.json"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:15:37.978236+00:00",
+  "finishedAtUtc": "2026-10-01T04:15:38.687506+00:00",
+  "output": "admin-denial.log",
+  "testSummary": {
+    "tests": 36,
+    "passed": 36,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828138205,
+    "stop": 1790828138654,
+    "duration": 449
+  }
+}

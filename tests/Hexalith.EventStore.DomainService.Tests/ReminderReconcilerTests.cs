@@ -590,7 +590,7 @@ public sealed class ReminderReconcilerTests
         ReminderTestHarness harness,
         ReminderRuntimeStatus? status = null,
         string environmentName = "Production",
-        string? token = "app-token")
+        string? token = "__HEXALITH_REMINDER_CALLBACK_TOKEN__")
     {
         IHostEnvironment environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(environmentName);

@@ -1,0 +1,19 @@
+{
+  "name": "reminder-fixture-build",
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-restore",
+    "-m:1",
+    "/nr:false",
+    "-p:UseSharedCompilation=false",
+    "-v:q"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:20:08.946208+00:00",
+  "finishedAtUtc": "2026-10-01T04:20:28.600606+00:00",
+  "output": "reminder-fixture-build.log"
+}

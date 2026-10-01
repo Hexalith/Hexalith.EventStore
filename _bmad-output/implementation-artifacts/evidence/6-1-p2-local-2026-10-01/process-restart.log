@@ -1,0 +1,31 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:41029
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:b09528ebfb2946ca942ac2bee5f99e75. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:b09528ebfb2946ca942ac2bee5f99e75. New ETag prefix: d2FybXVw
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '4907ac0a7ea57d902c3fdf7014774d049d0380387bd99dff01eda67f26187d7f')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 5.641s

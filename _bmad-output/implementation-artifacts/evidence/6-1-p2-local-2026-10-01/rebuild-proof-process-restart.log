@@ -1,0 +1,42 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:46551
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:7dd942590c96477797983f93587020dc. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:7dd942590c96477797983f93587020dc. New ETag prefix: d2FybXVw
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessRestartTests.PersistedEventHistory_RebuildInNewProcess_ConvergesReadModelAndWatermark [FAIL]
+      Dapr.DaprException : State operation failed: the Dapr endpoint indicated a failure. See InnerException for details.
+      ---- Grpc.Core.RpcException : Status(StatusCode="Internal", Detail="failed saving state in state store statestore: failed to set key eventstore-live-57c2f264421f49eea1db1394e8e6ed10||p2-8ada461c1b6445c396ce6b10282510eb:widget:widget-8ada461c1b6445c396ce6b10282510eb:watermark: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-57c2f264421f49eea1db1394e8e6ed10||p2-8ada461c1b6445c396ce6b10282510eb:widget:widget-8ada461c1b6445c396ce6b10282510eb:watermark")
+      Stack Trace:
+           at Dapr.Client.DaprClientGrpc.MakeSaveStateCallAsync[TValue](String storeName, String key, TValue value, String etag, StateOptions stateOptions, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+           at Dapr.Client.DaprClientGrpc.SaveStateAsync[TValue](String storeName, String key, TValue value, StateOptions stateOptions, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs(144,0): at Hexalith.EventStore.Client.Projections.DaprReadModelStore.SaveAsync[TValue](String storeName, String key, TValue value, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionWatermarkProcessRestartTests.cs(68,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessRestartTests.PersistedEventHistory_RebuildInNewProcess_ConvergesReadModelAndWatermark()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+           at Dapr.Client.DaprClientGrpc.MakeSaveStateCallAsync[TValue](String storeName, String key, TValue value, String etag, StateOptions stateOptions, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '4907ac0a7ea57d902c3fdf7014774d049d0380387bd99dff01eda67f26187d7f')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 5.049s

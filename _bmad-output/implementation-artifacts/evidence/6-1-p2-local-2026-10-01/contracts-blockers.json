@@ -1,0 +1,139 @@
+{
+  "failedCount": 31,
+  "failedClasses": {
+    "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests": 14,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests": 12,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.PackageOwnershipGovernanceTests": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.CommitMessagePolicyTests": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests": 1
+  },
+  "failedTests": [
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.MutableTagOnlyIdentityFailsClosed",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.OciGraphRejectsPlatformSetMutations(mutation: \"duplicate-platform\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"full-server-tests\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"checkout-env-shallow-depth\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.CompleteDerivedLineagePassesAndMissingChecksOrBlockersFail",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"missing-legacy-fallback\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.UnlistedEvidenceDirectoryFileFailsClosed(strayFileName: \"acceptances/other-subject/unbound.json\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.PackageOwnershipGovernanceTests.TenantsGatewayAndDomainServiceUseComplementaryModeEdges",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.PackageOwnershipGovernanceTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.UnlistedEvidenceDirectoryFileFailsClosed(strayFileName: \"smoke-linux-amd64.log.bak\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"misplaced-shallow-depth\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.OciGraphRejectsPlatformSetMutations(mutation: \"third-child\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseCallerPinsSharedExecutionAndSelectedSourceMappingWithoutPublicationAuthorityInputs",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.UnlistedEvidenceDirectoryFileFailsClosed(strayFileName: \"nested/stray-evidence.json\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.OciGraphRejectsPlatformSetMutations(mutation: \"nested-index\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"category-filter\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests.PublicationAuthorityFixturesPassWithoutSkippedCases",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.CorrectiveOciProvenanceReleaseTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.SharedBuildsToolIdentityIsRehashedFromPinnedGitBytes",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"release-coupling-workflow\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"missing-runtime-tag\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"release-coupling-project\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.OciGraphRejectsPlatformSetMutations(mutation: \"unknown-platform\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"full-history-checkout\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.UnlistedEvidenceDirectoryFileFailsClosed(strayFileName: \"stray-evidence.json\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.OciProvenanceRejectsSensitiveConfigRawValues",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"missing-cli-tag\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.OciGraphRejectsConfigArchitectureMismatch",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.CommitMessagePolicyTests.CopilotInstructionsDelegateCommitlintContractToSharedInstructions",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.CommitMessagePolicyTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_targets_live_project_outside_release_gate",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests.Live_sidecar_workflow_guardrail_rejects_forbidden_mutations(mutation: \"runtime-uses-cli-pin\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.ReleasePackageManifestTests"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests.UnlistedEvidenceDirectoryFileFailsClosed(strayFileName: \".hidden-note\")",
+      "class": "Hexalith.EventStore.Contracts.Tests.Packaging.DeployedRuntimeParityClosureTests"
+    }
+  ],
+  "repairScope": "outside P2; no nested modules initialized"
+}

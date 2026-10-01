@@ -1,0 +1,149 @@
+{
+  "finishedAtUtc": "2026-10-01T04:18:53.540625+00:00",
+  "queries": [
+    {
+      "type": "QueryEnvelope",
+      "member": ".ctor",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "QueryEnvelope",
+        "--library",
+        "src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "-m",
+        ".ctor",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    },
+    {
+      "type": "ProjectionEventDto",
+      "member": ".ctor",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "ProjectionEventDto",
+        "--library",
+        "src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "-m",
+        ".ctor",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    },
+    {
+      "type": "ProjectionEventDto",
+      "member": "Deconstruct",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "ProjectionEventDto",
+        "--library",
+        "src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+        "-m",
+        "Deconstruct",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    },
+    {
+      "type": "SubmitQuery",
+      "member": ".ctor",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "SubmitQuery",
+        "--library",
+        "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "-m",
+        ".ctor",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    },
+    {
+      "type": "SubmitQuery",
+      "member": "Deconstruct",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "SubmitQuery",
+        "--library",
+        "src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll",
+        "-m",
+        "Deconstruct",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    },
+    {
+      "type": "DualPrincipalIdentity",
+      "member": ".ctor",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "DualPrincipalIdentity",
+        "--library",
+        "src/Hexalith.EventStore.Gateway/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+        "-m",
+        ".ctor",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    },
+    {
+      "type": "DualPrincipalIdentity",
+      "member": "Deconstruct",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "DualPrincipalIdentity",
+        "--library",
+        "src/Hexalith.EventStore.Gateway/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+        "-m",
+        "Deconstruct",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    },
+    {
+      "type": "QueryCursorScope",
+      "member": "AddProjectionWatermark",
+      "command": [
+        "dnx",
+        "dotnet-inspect",
+        "-y",
+        "--",
+        "member",
+        "QueryCursorScope",
+        "--library",
+        "src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll",
+        "-m",
+        "AddProjectionWatermark",
+        "--plaintext"
+      ],
+      "exitCode": 0
+    }
+  ]
+}

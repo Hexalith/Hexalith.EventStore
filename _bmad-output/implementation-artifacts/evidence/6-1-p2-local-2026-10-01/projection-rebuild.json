@@ -1,0 +1,29 @@
+{
+  "name": "projection-rebuild",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.IntegrationTests/bin/Release/net10.0/Hexalith.EventStore.IntegrationTests.dll",
+    "-class",
+    "Hexalith.EventStore.IntegrationTests.ContractTests.ProjectionWatermarkRebuildIntegrationTests",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/projection-rebuild.ctrf.json",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/projection-rebuild.xml"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:14:57.741780+00:00",
+  "finishedAtUtc": "2026-10-01T04:14:58.297464+00:00",
+  "output": "projection-rebuild.log",
+  "testSummary": {
+    "tests": 3,
+    "passed": 3,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828098000,
+    "stop": 1790828098259,
+    "duration": 259
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "server-full",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/server-full.ctrf.json"
+  ],
+  "exitCode": 1,
+  "startedAtUtc": "2026-10-01T04:15:38.688238+00:00",
+  "finishedAtUtc": "2026-10-01T04:16:21.719923+00:00",
+  "output": "server-full.log",
+  "testSummary": {
+    "tests": 3483,
+    "passed": 3457,
+    "failed": 1,
+    "pending": 0,
+    "skipped": 25,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828139030,
+    "stop": 1790828181458,
+    "duration": 42428
+  },
+  "archivedTestResults": {
+    "file": "server-full.ctrf.json.gz",
+    "encoding": "gzip",
+    "originalFile": "server-full.ctrf.json"
+  }
+}

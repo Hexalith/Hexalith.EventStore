@@ -1,0 +1,9 @@
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Contracts.Tests/Queries/ProjectionAdapterContractTests.cs(717,18): error CS1061: 'QueryEnvelope' does not contain a definition for 'GetPayload' and no accessible extension method 'GetPayload' accepting a first argument of type 'QueryEnvelope' could be found (are you missing a using directive or an assembly reference?) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj]
+
+Build FAILED.
+
+/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Contracts.Tests/Queries/ProjectionAdapterContractTests.cs(717,18): error CS1061: 'QueryEnvelope' does not contain a definition for 'GetPayload' and no accessible extension method 'GetPayload' accepting a first argument of type 'QueryEnvelope' could be found (are you missing a using directive or an assembly reference?) [/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:05.28

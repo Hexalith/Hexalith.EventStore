@@ -1,0 +1,114 @@
+{
+  "name": "rebuild-proof-build-rerun",
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+    "--configuration",
+    "Release",
+    "--no-restore",
+    "-m:1",
+    "/nr:false",
+    "-p:UseSharedCompilation=false",
+    "-v:q"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:33:49.900810+00:00",
+  "finishedAtUtc": "2026-10-01T04:33:55.062304+00:00",
+  "output": "rebuild-proof-build-rerun.log",
+  "sourceSnapshot": "after-rebuild-proof-correction",
+  "sourceHashes": [
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Queries/QueryEnvelope.cs",
+      "sha256": "d40c6becd7b0b764517e469bc14a7b40d98fb4a19896a732c8c77379755d4341"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs",
+      "sha256": "891e81edf3e38ea6440c9f065f985138efcd65c3e28cff0da161d61f89026950"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Authorization/DualPrincipalIdentity.cs",
+      "sha256": "a245c7f8ca793e62859a21c3f0de5fe45a2fb64757759d021718bc7a648bdc79"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Authorization/DualPrincipalClaimsHelper.cs",
+      "sha256": "f56f6fabe3b678645d8a4cd0d24af3a6f06627e3ec62df2d2153f8dbbf0589ad"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Controllers/QueriesController.cs",
+      "sha256": "9b968d2fc18f5e92dc6bb463f331692aa3c9392d342a75ba4ae4e61090546c7c"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Queries/QueryRouter.cs",
+      "sha256": "1ab266e91d2a011846bfaba074d37fe8bc7f2d392daaa2ac66bace2a2a2b0848"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Queries/HandlerAwareQueryRouter.cs",
+      "sha256": "69315411f3d66967c83b56f0b9f46f7893e6c85b23c328b9ee80b73020dbea15"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Queries/SafeDenialQueryRouter.cs",
+      "sha256": "d7c50c767fc7b8b1a035928794647854385f012a181e2a295769db39ef616efd"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Projections/ProjectionEventDto.cs",
+      "sha256": "2412a4296cc6a5a38707ff6d6cecdab04558691196ebb7d4456552184fb38285"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Projections/ProjectionEventWireBuilder.cs",
+      "sha256": "2e2eb9d66eb7f512900b88d045bb6dddd15e84a709d74f47cf9c5341537379ea"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Queries/QueryCursorScope.cs",
+      "sha256": "cab4df74c8ad07e0f0904c0f70a43bb257f8592fa9581d37bcf695e68e46d024"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainProjectionDispatcher.cs",
+      "sha256": "04101fa06d0ad9e005df62c9266f1bca07947cefbe3220320845fcb8e5b38355"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs",
+      "sha256": "31f2d332dc82eb5bb75f79cbb1537a1ce4f41dcb952d29e9063420dca11435b9"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Queries/ProjectionAdapterContractTests.cs",
+      "sha256": "a1c1515fa54533fe09fdf4d2c146103f06a068005a77f55f9dad0d48d6f09495"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/ReminderReconcilerTests.cs",
+      "sha256": "eb9d9c8111a5b97f4b2c067f3332157007b9906ac11f5a5a43385ba061eb3273"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionWatermarkProcessHandler.cs",
+      "sha256": "5c21e4dfe49b151179e38e0077204ff4e0d892d9685326a60c9f738c2bf05cb5"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionWatermarkProcessRestartTests.cs",
+      "sha256": "65034ceccc3d065eb916975c43a9eb59a6278ede6a3ce92c9560af3f1e6e814a"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionWatermarkProcessWorkerTests.cs",
+      "sha256": "d39752db097ef9567931b08ab59ef91a75fb08238a5b0c2454472e70d61c8a0b"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.IntegrationTests/ContractTests/ProjectionWatermarkRebuildIntegrationTests.cs",
+      "sha256": "43340dc8058f4a8d386fa3c43ada8065a7cf93c3bbb6402482156531e0b10f69"
+    },
+    {
+      "path": "global.json",
+      "sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654"
+    },
+    {
+      "path": "Directory.Build.props",
+      "sha256": "66b2d5f9b4b60ef17fff045881badc565fcca6e4dfb51919aee760feebb6f477"
+    },
+    {
+      "path": "Directory.Build.targets",
+      "sha256": "c20dc10cd6c9ff0e76e5145a21be2fc64feddc1128aca1db97e1390b1c424fa8"
+    },
+    {
+      "path": "Directory.Packages.props",
+      "sha256": "4fe25096ceefd11e8ffffe1ab6a1854e18ac36c853a6805fa72285433b03b638"
+    }
+  ]
+}

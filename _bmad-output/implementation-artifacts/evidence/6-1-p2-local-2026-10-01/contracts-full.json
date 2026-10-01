@@ -1,0 +1,30 @@
+{
+  "name": "contracts-full",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/contracts-full.ctrf.json"
+  ],
+  "exitCode": 1,
+  "startedAtUtc": "2026-10-01T04:16:21.740549+00:00",
+  "finishedAtUtc": "2026-10-01T04:19:35.817701+00:00",
+  "output": "contracts-full.log",
+  "testSummary": {
+    "tests": 2170,
+    "passed": 2137,
+    "failed": 31,
+    "pending": 0,
+    "skipped": 2,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828181965,
+    "stop": 1790828375633,
+    "duration": 193668
+  },
+  "archivedTestResults": {
+    "file": "contracts-full.ctrf.json.gz",
+    "encoding": "gzip",
+    "originalFile": "contracts-full.ctrf.json"
+  }
+}

@@ -1,0 +1,7 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.QueryRouting.Tests
+  Discovered:  Hexalith.EventStore.QueryRouting.Tests
+  Starting:    Hexalith.EventStore.QueryRouting.Tests
+  Finished:    Hexalith.EventStore.QueryRouting.Tests (ID = '38caa80dbd5cbe7d2f3ba408bab5105d9e64ac297d02ede7bd1c8a5521cf29de')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.QueryRouting.Tests  Total: 19, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.321s
