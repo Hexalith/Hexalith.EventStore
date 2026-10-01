@@ -1,0 +1,32 @@
+{
+  "name": "client",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/client.ctrf.json",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/client.xml"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:14:52.701731+00:00",
+  "finishedAtUtc": "2026-10-01T04:14:57.109460+00:00",
+  "output": "client.log",
+  "testSummary": {
+    "tests": 838,
+    "passed": 838,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828092974,
+    "stop": 1790828096984,
+    "duration": 4010
+  },
+  "archivedTestResults": {
+    "file": "client.ctrf.json.gz",
+    "encoding": "gzip",
+    "originalFile": "client.ctrf.json"
+  }
+}

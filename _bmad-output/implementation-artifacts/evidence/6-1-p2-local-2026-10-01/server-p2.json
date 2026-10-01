@@ -1,0 +1,50 @@
+{
+  "name": "server-p2",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Authorization.DualPrincipalClaimsHelperTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Controllers.QueriesControllerTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRouterTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Queries.SafeDenialQueryRoutingServiceCollectionExtensionsTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Queries.QueryRouterTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Pipeline.Queries.SubmitQueryTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Pipeline.Queries.SubmitQueryHandlerTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionEventWireBuilderTests",
+    "-class",
+    "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryFingerprintTests",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/server-p2.ctrf.json",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/server-p2.xml"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:14:58.298144+00:00",
+  "finishedAtUtc": "2026-10-01T04:14:59.601627+00:00",
+  "output": "server-p2.log",
+  "testSummary": {
+    "tests": 263,
+    "passed": 263,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828098707,
+    "stop": 1790828099532,
+    "duration": 825
+  },
+  "archivedTestResults": {
+    "file": "server-p2.ctrf.json.gz",
+    "encoding": "gzip",
+    "originalFile": "server-p2.ctrf.json"
+  }
+}

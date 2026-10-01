@@ -1,0 +1,27 @@
+{
+  "name": "query-routing",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.QueryRouting.Tests/bin/Release/net10.0/Hexalith.EventStore.QueryRouting.Tests.dll",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/query-routing.ctrf.json",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/query-routing.xml"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:14:57.114270+00:00",
+  "finishedAtUtc": "2026-10-01T04:14:57.741106+00:00",
+  "output": "query-routing.log",
+  "testSummary": {
+    "tests": 19,
+    "passed": 19,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828097381,
+    "stop": 1790828097702,
+    "duration": 321
+  }
+}

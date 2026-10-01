@@ -3,8 +3,11 @@ using Dapr.Client;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
@@ -20,7 +23,7 @@ public sealed class ProjectionWatermarkProcessWorkerTests {
             return;
         }
 
-        phase.ShouldBeOneOf("initial", "rebuild");
+        phase.ShouldBeOneOf("initial", "duplicate", "rebuild");
         string endpoint = RequiredEnvironment("P2_WATERMARK_DAPR_ENDPOINT");
         string historyKey = RequiredEnvironment("P2_WATERMARK_HISTORY_KEY");
         string stateKey = RequiredEnvironment("P2_WATERMARK_STATE_KEY");
@@ -35,11 +38,13 @@ public sealed class ProjectionWatermarkProcessWorkerTests {
         history.Select(static value => value.GlobalPosition).ShouldBe([101L, 104L, 109L]);
 
         var store = new DaprReadModelStore(client);
-        if (phase == "rebuild") {
+        if (phase != "initial") {
             ReadModelEntry<ProjectionWatermarkProcessState> before = await store
                 .GetAsync<ProjectionWatermarkProcessState>("statestore", stateKey, TestContext.Current.CancellationToken)
                 .ConfigureAwait(true);
-            before.Value.ShouldBe(new ProjectionWatermarkProcessState(3, 109));
+            before.Value.ShouldBe(phase == "rebuild"
+                ? new ProjectionWatermarkProcessState(AppliedEventCount: 1, Watermark: 101)
+                : new ProjectionWatermarkProcessState(AppliedEventCount: 3, Watermark: 109));
         }
 
         ProjectionEventReadabilityResult wire = await ProjectionEventWireBuilder.BuildAsync(
@@ -48,23 +53,37 @@ public sealed class ProjectionWatermarkProcessWorkerTests {
             history,
             TestContext.Current.CancellationToken).ConfigureAwait(true);
         ProjectionEventDto[] events = wire.Events.ShouldNotBeNull();
-        long watermark = events
-            .Where(static value => value.GlobalPosition > 0)
-            .Select(static value => value.GlobalPosition)
-            .Max();
-        var state = new ProjectionWatermarkProcessState(events.Length, watermark);
-        var batch = new ReadModelBatch(
-            new ReadModelBatchScope(
-                "statestore", tenantId, "widget", aggregateId, "widget-watermark", $"p2-{phase}-{aggregateId}"),
-            [ReadModelBatchOperation.Write(stateKey, state, ReadModelBatchConcurrency.LastWrite)]);
-        ReadModelBatchResult result = await store.ExecuteAsync(batch, TestContext.Current.CancellationToken)
-            .ConfigureAwait(true);
-        result.Status.ShouldBe(ReadModelBatchStatus.Completed);
+        events.Select(static value => value.GlobalPosition).ShouldBe([101L, 104L, 109L]);
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IReadModelBatchStore>(store);
+        _ = services.AddScoped<IAsyncDomainProjectionHandler>(provider =>
+            new ProjectionWatermarkProcessHandler(provider.GetRequiredService<IReadModelBatchStore>(), stateKey));
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        var identity = new DomainProjectionIdentityOptions { AppId = "p2-watermark-worker", ServiceVersion = "v1" };
+        ProjectionDispatchRoute[] routes = [new("widget", "widget-watermark")];
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion, routes);
+        var catalog = new DomainProjectionCatalogRegistry();
+        catalog.Register(fingerprint, routes);
+        var request = new ProjectionDispatchRequest(
+            new ProjectionRequest(tenantId, "widget", aggregateId, events),
+            ["widget-watermark"],
+            $"p2-{(phase == "rebuild" ? "rebuild" : "initial")}-{aggregateId}",
+            fingerprint);
+        ProjectionDispatchResponse result = phase == "rebuild"
+            ? await DomainProjectionDispatcher.RebuildAsync(
+                provider, request, new ProjectionDispatchOptions(), identity, TestContext.Current.CancellationToken)
+                .ConfigureAwait(true)
+            : await DomainProjectionDispatcher.DispatchAsync(
+                provider, request, new ProjectionDispatchOptions(), catalog, TestContext.Current.CancellationToken)
+                .ConfigureAwait(true);
+        result.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(phase == "duplicate"
+            ? ProjectionDispatchStatus.AlreadyCompleted
+            : ProjectionDispatchStatus.Completed);
 
         ReadModelEntry<ProjectionWatermarkProcessState> persisted = await store
             .GetAsync<ProjectionWatermarkProcessState>("statestore", stateKey, TestContext.Current.CancellationToken)
             .ConfigureAwait(true);
-        persisted.Value.ShouldBe(state);
+        persisted.Value.ShouldBe(new ProjectionWatermarkProcessState(3, 109));
     }
 
     private static string RequiredEnvironment(string name)

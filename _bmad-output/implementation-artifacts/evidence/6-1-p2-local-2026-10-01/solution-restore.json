@@ -1,0 +1,13 @@
+{
+  "name": "solution-restore",
+  "command": [
+    "dotnet",
+    "restore",
+    "Hexalith.EventStore.slnx",
+    "-m:1",
+    "/nr:false"
+  ],
+  "exitCode": 0,
+  "finishedAtUtc": "2026-10-01T04:09:46.132879+00:00",
+  "output": "solution-restore.log"
+}

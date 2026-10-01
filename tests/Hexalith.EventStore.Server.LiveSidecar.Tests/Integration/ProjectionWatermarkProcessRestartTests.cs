@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -55,18 +56,41 @@ public sealed class ProjectionWatermarkProcessRestartTests(DaprTestContainerFixt
             .Build();
         string cursor = codec.Encode("list-widgets", scope, aggregateId);
 
+        int duplicatePid = await RunWorkerAsync(
+            "duplicate", fixture.DaprGrpcEndpoint, historyKey, stateKey, tenantId, aggregateId).ConfigureAwait(true);
+        duplicatePid.ShouldNotBe(firstPid);
+        (await store.GetAsync<ProjectionWatermarkProcessState>(
+            "statestore", stateKey, TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .Value.ShouldBe(beforeRestart);
+
+        // Replace only this proof's isolated read model, so a no-op rebuild cannot pass convergence.
+        var staleState = new ProjectionWatermarkProcessState(AppliedEventCount: 1, Watermark: 101);
+        var staleBatch = new ReadModelBatch(
+            new ReadModelBatchScope(
+                "statestore", tenantId, "widget", aggregateId, "widget-watermark", $"p2-stale-{aggregateId}"),
+            [ReadModelBatchOperation.Write(stateKey, staleState, ReadModelBatchConcurrency.LastWrite)]);
+        ReadModelBatchResult staleResult = await store.ExecuteAsync(staleBatch, TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+        staleResult.Status.ShouldBe(ReadModelBatchStatus.Completed);
+        ProjectionWatermarkProcessState persistedStaleState = (await store
+            .GetAsync<ProjectionWatermarkProcessState>("statestore", stateKey, TestContext.Current.CancellationToken)
+            .ConfigureAwait(true)).Value.ShouldNotBeNull();
+        persistedStaleState.ShouldBe(staleState);
+        persistedStaleState.ShouldNotBe(beforeRestart);
+
         int rebuiltPid = await RunWorkerAsync(
             "rebuild", fixture.DaprGrpcEndpoint, historyKey, stateKey, tenantId, aggregateId).ConfigureAwait(true);
         rebuiltPid.ShouldNotBe(firstPid);
+        rebuiltPid.ShouldNotBe(duplicatePid);
         ProjectionWatermarkProcessState afterRestart = (await store
             .GetAsync<ProjectionWatermarkProcessState>("statestore", stateKey, TestContext.Current.CancellationToken)
             .ConfigureAwait(true)).Value.ShouldNotBeNull();
         afterRestart.ShouldBe(beforeRestart);
-        (await client.GetStateAsync<EventEnvelope[]>(
+        EventEnvelope[] persistedHistory = (await client.GetStateAsync<EventEnvelope[]>(
             "statestore", historyKey, cancellationToken: TestContext.Current.CancellationToken).ConfigureAwait(true))
-            .ShouldNotBeNull()
-            .Select(static value => value.GlobalPosition)
-            .ShouldBe([101L, 104L, 109L]);
+            .ShouldNotBeNull();
+        persistedHistory.Select(static value => value.GlobalPosition).ShouldBe([101L, 104L, 109L]);
+        JsonSerializer.Serialize(persistedHistory).ShouldBe(JsonSerializer.Serialize(history));
 
         codec.TryDecode(cursor, "list-widgets", scope, out string? position, out string? failure)
             .ShouldBeTrue();

@@ -1,0 +1,31 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 0 domains
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+warn: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      UseEventStore() has already been called. Skipping duplicate activation.
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+info: Hexalith.EventStore.Client.Registration.EventStoreHostExtensions[0]
+      EventStore activated: 2 domains (smoke-test [Aggregate: SmokeTestAggregate], smoke-test [Projection: SmokeTestProjection])
+  Finished:    Hexalith.EventStore.Client.Tests (ID = '9dbc4f05034b3592cfbb2ccbc7d54691b5a0a9772b5bda4393ca5ff96f2d794a')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 838, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 4.011s

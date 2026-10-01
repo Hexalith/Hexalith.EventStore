@@ -1,0 +1,113 @@
+Command: dnx dotnet-inspect -y -- member QueryEnvelope --library src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll -m .ctor --plaintext
+Exit: 0
+Hexalith.EventStore.Contracts.Queries.QueryEnvelope
+
+Immutable envelope carrying a query request to a projection actor.
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll | Source: Library
+
+Constructors
+
+Name   Digest      Signature                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Description
+-----  ----------  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  ------------------------------------------------------------------------------------------------
+.ctor  1ba6a25cc7  public QueryEnvelope(string tenantId, string domain, string aggregateId, string queryType, byte[] payload, string correlationId, string userId, string? entityId = null, bool isGlobalAdmin = false)                                                                                                                                                                                                                                                                                    Initializes a new instance of the QueryEnvelope record.
+.ctor  5852450e30  public QueryEnvelope(string tenantId, string domain, string aggregateId, string queryType, byte[] payload, string correlationId, string userId, string? entityId, bool isGlobalAdmin, Hexalith.EventStore.Contracts.Queries.QueryPagingOptions? paging)                                                                                                                                                                                                                                 Initializes a new instance of the QueryEnvelope record.
+.ctor  f4b58e6b87  public QueryEnvelope(string tenantId, string domain, string aggregateId, string queryType, byte[] payload, string correlationId, string userId, string? entityId, bool isGlobalAdmin, Hexalith.EventStore.Contracts.Queries.QueryPagingOptions? paging, string? originalActorId, string? authenticatedWorkloadId, bool isDelegated, System.Collections.Generic.IReadOnlyList<string>? scopes, System.Collections.Generic.IReadOnlyList<string>? audience)                               Initializes the prior fifteen-member dual-principal query shape without a delegation identifier.
+.ctor  77bf5496bc  public QueryEnvelope(string tenantId, string domain, string aggregateId, string queryType, byte[] payload, string correlationId, string userId, string? entityId, bool isGlobalAdmin, Hexalith.EventStore.Contracts.Queries.QueryPagingOptions? paging, string? originalActorId, string? authenticatedWorkloadId, bool isDelegated, System.Collections.Generic.IReadOnlyList<string>? scopes, System.Collections.Generic.IReadOnlyList<string>? audience, string? delegationId = null)  Initializes a new instance of the QueryEnvelope record.
+
+Command: dnx dotnet-inspect -y -- member ProjectionEventDto --library src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll -m .ctor --plaintext
+Exit: 0
+Hexalith.EventStore.Contracts.Projections.ProjectionEventDto
+
+Wire-format event DTO sent to domain services for projection building. Deliberately excludes Server-internal fields (CausationId, DomainServiceVersion, MetadataVersion, Extensions, AggregateId/Type/TenantId/Domain) to maintain the security boundary.
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll | Source: Library
+
+Constructors
+
+Name   Digest      Signature                                                                                                                                                                                                                                          Description
+-----  ----------  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  ----------------------------------------------------------------------------
+.ctor  4ff426cf0c  public ProjectionEventDto(string EventTypeName, byte[] Payload, string SerializationFormat, long SequenceNumber, System.DateTimeOffset Timestamp, string CorrelationId, string? MessageId = null, string? UserId = null)                           Initializes the legacy eight-member projection event shape.
+.ctor  b9433ac17d  public ProjectionEventDto(string EventTypeName, byte[] Payload, string SerializationFormat, long SequenceNumber, System.DateTimeOffset Timestamp, string CorrelationId, string? MessageId = null, string? UserId = null, long GlobalPosition = 0)  Initializes a projection event carrying its exact persisted global position.
+
+Command: dnx dotnet-inspect -y -- member ProjectionEventDto --library src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll -m Deconstruct --plaintext
+Exit: 0
+Hexalith.EventStore.Contracts.Projections.ProjectionEventDto
+
+Wire-format event DTO sent to domain services for projection building. Deliberately excludes Server-internal fields (CausationId, DomainServiceVersion, MetadataVersion, Extensions, AggregateId/Type/TenantId/Domain) to maintain the security boundary.
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll | Source: Library
+
+Methods
+
+Name         Digest      Signature                                                                                                                                                                                                                                                          Description
+-----------  ----------  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  --------------------------------------------------------------------------------
+Deconstruct  9f70ebf4d7  public void Deconstruct(out string EventTypeName, out byte[] Payload, out string SerializationFormat, out long SequenceNumber, out System.DateTimeOffset Timestamp, out string CorrelationId, out string? MessageId, out string? UserId)                           Deconstructs the legacy eight-member projection event shape.
+Deconstruct  6236d83451  public void Deconstruct(out string EventTypeName, out byte[] Payload, out string SerializationFormat, out long SequenceNumber, out System.DateTimeOffset Timestamp, out string CorrelationId, out string? MessageId, out string? UserId, out long GlobalPosition)  Deconstructs the projection event shape including its persisted global position.
+
+Command: dnx dotnet-inspect -y -- member SubmitQuery --library src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll -m .ctor --plaintext
+Exit: 0
+Hexalith.EventStore.Server.Pipeline.Queries.SubmitQuery
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll | Source: Library
+
+Constructors
+
+Name   Digest      Signature
+-----  ----------  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+.ctor  0fbbdd0e29  public SubmitQuery(string Tenant, string Domain, string AggregateId, string QueryType, byte[] Payload, string CorrelationId, string UserId, string? EntityId = null, string? ProjectionType = null, string? ProjectionActorType = null, bool IsGlobalAdmin = false, Hexalith.EventStore.Contracts.Queries.QueryPagingOptions? Paging = null, string? OriginalActorId = null, string? AuthenticatedWorkloadId = null, bool IsDelegated = false, System.Collections.Generic.IReadOnlyList<string>? Scopes = null, System.Collections.Generic.IReadOnlyList<string>? Audience = null)
+.ctor  ce0b6ba5ef  public SubmitQuery(string Tenant, string Domain, string AggregateId, string QueryType, byte[] Payload, string CorrelationId, string UserId, string? EntityId = null, string? ProjectionType = null, string? ProjectionActorType = null, bool IsGlobalAdmin = false, Hexalith.EventStore.Contracts.Queries.QueryPagingOptions? Paging = null, string? OriginalActorId = null, string? AuthenticatedWorkloadId = null, bool IsDelegated = false, System.Collections.Generic.IReadOnlyList<string>? Scopes = null, System.Collections.Generic.IReadOnlyList<string>? Audience = null, string? DelegationId = null)
+.ctor  bb884fd4f7  public SubmitQuery(string tenant, string domain, string aggregateId, string queryType, byte[] payload, string correlationId, string userId, string? entityId, string? projectionType, string? projectionActorType, bool isGlobalAdmin)
+
+Command: dnx dotnet-inspect -y -- member SubmitQuery --library src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll -m Deconstruct --plaintext
+Exit: 0
+Hexalith.EventStore.Server.Pipeline.Queries.SubmitQuery
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Release/net10.0/Hexalith.EventStore.Server.dll | Source: Library
+
+Methods
+
+Name         Digest      Signature
+-----------  ----------  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Deconstruct  9083f16c38  public void Deconstruct(out string Tenant, out string Domain, out string AggregateId, out string QueryType, out byte[] Payload, out string CorrelationId, out string UserId, out string? EntityId, out string? ProjectionType, out string? ProjectionActorType, out bool IsGlobalAdmin, out Hexalith.EventStore.Contracts.Queries.QueryPagingOptions? Paging, out string? OriginalActorId, out string? AuthenticatedWorkloadId, out bool IsDelegated, out System.Collections.Generic.IReadOnlyList<string>? Scopes, out System.Collections.Generic.IReadOnlyList<string>? Audience)
+Deconstruct  a0fac26534  public void Deconstruct(out string Tenant, out string Domain, out string AggregateId, out string QueryType, out byte[] Payload, out string CorrelationId, out string UserId, out string? EntityId, out string? ProjectionType, out string? ProjectionActorType, out bool IsGlobalAdmin, out Hexalith.EventStore.Contracts.Queries.QueryPagingOptions? Paging, out string? OriginalActorId, out string? AuthenticatedWorkloadId, out bool IsDelegated, out System.Collections.Generic.IReadOnlyList<string>? Scopes, out System.Collections.Generic.IReadOnlyList<string>? Audience, out string? DelegationId)
+
+Command: dnx dotnet-inspect -y -- member DualPrincipalIdentity --library src/Hexalith.EventStore.Gateway/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll -m .ctor --plaintext
+Exit: 0
+Hexalith.EventStore.Authorization.DualPrincipalIdentity
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll | Source: Library
+
+Constructors
+
+Name   Digest      Signature
+-----  ----------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+.ctor  643b32fd30  public DualPrincipalIdentity(string OriginalActorId, string? AuthenticatedWorkloadId, bool IsDelegated, System.Collections.Generic.IReadOnlyList<string>? Scopes, System.Collections.Generic.IReadOnlyList<string>? Audience)
+.ctor  56fa3f2587  public DualPrincipalIdentity(string OriginalActorId, string? AuthenticatedWorkloadId, bool IsDelegated, System.Collections.Generic.IReadOnlyList<string>? Scopes, System.Collections.Generic.IReadOnlyList<string>? Audience, string? DelegationId = null)
+
+Command: dnx dotnet-inspect -y -- member DualPrincipalIdentity --library src/Hexalith.EventStore.Gateway/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll -m Deconstruct --plaintext
+Exit: 0
+Hexalith.EventStore.Authorization.DualPrincipalIdentity
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll | Source: Library
+
+Methods
+
+Name         Digest      Signature
+-----------  ----------  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Deconstruct  61ef89158b  public void Deconstruct(out string OriginalActorId, out string? AuthenticatedWorkloadId, out bool IsDelegated, out System.Collections.Generic.IReadOnlyList<string>? Scopes, out System.Collections.Generic.IReadOnlyList<string>? Audience)
+Deconstruct  74dc77d768  public void Deconstruct(out string OriginalActorId, out string? AuthenticatedWorkloadId, out bool IsDelegated, out System.Collections.Generic.IReadOnlyList<string>? Scopes, out System.Collections.Generic.IReadOnlyList<string>? Audience, out string? DelegationId)
+
+Command: dnx dotnet-inspect -y -- member QueryCursorScope --library src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll -m AddProjectionWatermark --plaintext
+Exit: 0
+Hexalith.EventStore.Client.Queries.QueryCursorScope
+
+Builds a stable, collision-safe scope string for use with IQueryCursorCodec.
+
+Library: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Release/net10.0/Hexalith.EventStore.Client.dll | Source: Library
+
+Methods
+
+Name                    Digest      Signature                                                                                                           Description
+----------------------  ----------  ------------------------------------------------------------------------------------------------------------------  ----------------------------------------------------------------------------------------------------------------------------
+AddProjectionWatermark  444083cb32  public Hexalith.EventStore.Client.Queries.QueryCursorScope AddProjectionWatermark(System.Nullable<long> watermark)  Appends the authoritative persisted projection watermark using the canonical watermark key and invariant decimal formatting.

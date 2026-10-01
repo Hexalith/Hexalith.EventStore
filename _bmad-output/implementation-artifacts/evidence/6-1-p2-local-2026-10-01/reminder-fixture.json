@@ -1,0 +1,27 @@
+{
+  "name": "reminder-fixture",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.DomainService.Tests.ReminderReconcilerTests",
+    "-result-ctrf",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p2-local-2026-10-01/reminder-fixture.ctrf.json"
+  ],
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-01T04:20:28.601320+00:00",
+  "finishedAtUtc": "2026-10-01T04:20:29.490349+00:00",
+  "output": "reminder-fixture.log",
+  "testSummary": {
+    "tests": 17,
+    "passed": 17,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "other": 0,
+    "suites": 1,
+    "start": 1790828428841,
+    "stop": 1790828429466,
+    "duration": 625
+  }
+}
