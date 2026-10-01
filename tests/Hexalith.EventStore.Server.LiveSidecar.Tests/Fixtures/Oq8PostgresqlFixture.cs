@@ -57,6 +57,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private string _bearerToken = string.Empty;
     private string _clockFile = string.Empty;
     private string _componentsDirectory = string.Empty;
+    private string _discoveryConfigurationFile = string.Empty;
+    private string _discoveryRegistryFile = string.Empty;
     private string _postgresConnectionString = string.Empty;
     private string _postgresContainerName = string.Empty;
     private string _postgresContainerId = string.Empty;
@@ -93,13 +95,19 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             RegisterSensitive(_repositoryRoot);
             RegisterSensitiveTestMaterial();
             await VerifyPrerequisitesAsync().ConfigureAwait(false);
-            await StartPostgresAsync().ConfigureAwait(false);
             _runtimeDirectory = Path.Combine(Path.GetTempPath(), $"eventstore-oq8-runtime-{Guid.NewGuid():N}");
             _componentsDirectory = Path.Combine(_runtimeDirectory, "components");
             _clockFile = Path.Combine(_runtimeDirectory, "clock.txt");
             _ = Directory.CreateDirectory(_componentsDirectory);
             RegisterSensitive(_runtimeDirectory);
+            await StartPostgresAsync().ConfigureAwait(false);
             CreateProductionProfileResources();
+            if (_overrides.Namespace is not null)
+            {
+                _discoveryRegistryFile = Path.Combine(_runtimeDirectory, "discovery.sqlite");
+                _discoveryConfigurationFile = Path.Combine(_runtimeDirectory, "discovery.yaml");
+                File.WriteAllText(_discoveryConfigurationFile, Oq8DiscoveryConfiguration.Create(_discoveryRegistryFile));
+            }
             SetClock(new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero));
             PrepareShadowApplications();
             AllocatePortsAndCounters();
@@ -617,16 +625,17 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         string password = $"oq8-{Guid.NewGuid():N}";
         RegisterSensitive(_postgresContainerName);
         RegisterSensitive(password);
-        string containerId = await RunProcessAsync(
+        string identityFile = Path.Combine(_runtimeDirectory, "postgresql.cid");
+        string containerId = await Oq8OwnedContainerLaunch.RunAsync(identityFile, () => RunProcessAsync(
             "docker",
             [
-                "run", "--rm", "-d",
+                "run", "--rm", "-d", "--cidfile", identityFile,
                 "--name", _postgresContainerName,
                 "-e", $"POSTGRES_PASSWORD={password}",
                 "-e", "POSTGRES_DB=eventstore",
                 "-p", "127.0.0.1::5432",
                 PostgresImage,
-            ]).ConfigureAwait(false);
+            ]), identity => _postgresContainerId = identity).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(containerId))
         {
             throw new InvalidOperationException("The OQ8 PostgreSQL container did not return an identity.");
@@ -794,6 +803,18 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         {
             await WaitForActorRuntimeReadinessAsync(node, deadline).ConfigureAwait(false);
         }
+
+        _sidecarNamespaceObservations.Add(new
+        {
+            node = node.Name,
+            appId = node.AppId,
+            processId = node.Sidecar!.Id,
+            daprNamespace = _overrides.Namespace,
+            nameResolver = _overrides.Namespace is null ? "mdns" : "sqlite",
+            discoveryRegistryIdentitySha256 = _overrides.Namespace is null ? null : HashUtf8(_discoveryRegistryFile),
+            discoveryConfigurationSha256 = _overrides.Namespace is null ? null : HashFile(_discoveryConfigurationFile),
+            privateDiscoveryRegistryObserved = _overrides.Namespace is not null && File.Exists(_discoveryRegistryFile),
+        });
     }
 
     private void StartApplication(Oq8ProcessNode node)
@@ -901,16 +922,11 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         if (_overrides.Namespace is not null)
         {
             startInfo.Environment["NAMESPACE"] = _overrides.Namespace;
+            startInfo.ArgumentList.Add("--config");
+            startInfo.ArgumentList.Add(_discoveryConfigurationFile);
         }
 
         node.Sidecar = StartCapturedProcess(startInfo, node.SidecarOutput, node.SidecarError);
-        _sidecarNamespaceObservations.Add(new
-        {
-            node = node.Name,
-            appId = node.AppId,
-            processId = node.Sidecar.Id,
-            daprNamespace = startInfo.Environment.TryGetValue("NAMESPACE", out string? selectedNamespace) ? selectedNamespace : null,
-        });
     }
 
     private static ProcessStartInfo CreateRedirectedProcessStartInfo(string fileName)
@@ -1494,18 +1510,6 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             _postgresContainerId = string.Empty;
         }
 
-        string? cleanupPath = Environment.GetEnvironmentVariable("HEXALITH_OQ8_CLEANUP_PATH");
-        if (cleanupPath is not null && Path.IsPathFullyQualified(cleanupPath) && !string.IsNullOrWhiteSpace(postgresIdentity))
-        {
-            File.WriteAllText(cleanupPath, JsonSerializer.Serialize(new
-            {
-                postgresContainerId = postgresIdentity,
-                processesStopped = AllNodes().All(static node => node.Application is null && node.Sidecar is null),
-                daprNamespace = _overrides.Namespace,
-                sidecarNamespaceObservations = _sidecarNamespaceObservations,
-            }));
-        }
-
         if (!string.IsNullOrWhiteSpace(_runtimeDirectory) && Directory.Exists(_runtimeDirectory))
         {
             try
@@ -1516,6 +1520,19 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             {
                 // Runtime scratch cleanup is best effort after all owned processes are stopped.
             }
+        }
+
+        string? cleanupPath = Environment.GetEnvironmentVariable("HEXALITH_OQ8_CLEANUP_PATH");
+        if (cleanupPath is not null && Path.IsPathFullyQualified(cleanupPath) && !string.IsNullOrWhiteSpace(postgresIdentity))
+        {
+            File.WriteAllText(cleanupPath, JsonSerializer.Serialize(new
+            {
+                postgresContainerId = postgresIdentity,
+                runtimeScratchRemoved = !Directory.Exists(_runtimeDirectory),
+                processesStopped = AllNodes().All(static node => node.Application is null && node.Sidecar is null),
+                daprNamespace = _overrides.Namespace,
+                sidecarNamespaceObservations = _sidecarNamespaceObservations,
+            }));
         }
     }
 

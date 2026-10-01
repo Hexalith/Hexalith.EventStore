@@ -28,6 +28,12 @@ public sealed class Oq8HostingStartup : IHostingStartup
                 ServiceDescriptor.Singleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>());
             services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IStartupFilter, Oq8BoundaryCounterStartupFilter>());
+            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HEXALITH_OQ8_DIAGNOSTICS_PATH")))
+            {
+                services.TryAddTransient<Oq8InvocationDiagnosticHandler>();
+                _ = services.AddHttpClient("domain-service-invocation")
+                    .AddHttpMessageHandler<Oq8InvocationDiagnosticHandler>();
+            }
         });
     }
 }

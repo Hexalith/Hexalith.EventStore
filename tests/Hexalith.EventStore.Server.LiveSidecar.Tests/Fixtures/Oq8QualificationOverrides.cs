@@ -21,7 +21,7 @@ internal sealed class Oq8QualificationOverrides
     /// <summary>Gets the loopback Redis endpoint.</summary>
     internal string RedisEndpoint { get; private init; } = "127.0.0.1:6379";
 
-    /// <summary>Gets the private self-hosted discovery namespace.</summary>
+    /// <summary>Gets the private actor/scheduler namespace; the fixture-private SQLite registry isolates discovery.</summary>
     internal string? Namespace { get; private init; }
 
     /// <summary>Reads and validates the complete override group.</summary>
