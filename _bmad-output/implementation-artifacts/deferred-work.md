@@ -5244,3 +5244,10 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md`
   summary: No test checks that a quarantine-evidence or actor-collision audit that failed during an outage is written as `Quarantined` once writes recover.
   evidence: Review pass 7 (VGR7-03), pre-verified regression gap. `QuarantineAuditFailureRetainsOriginalWitness` (`ReminderCoordinatorTests.cs:755`) never reads the record's disposition after recovery, and `ActorCollisionIsQuarantined` (:1214) never reads the actor-collision disposition. Going back to auditing only new records keeps every test green.
+
+## Deferred from: code review of spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md (2026-10-01, pass 8)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md`
+  summary: Two verified reminder-runtime defects were rejected in review passes 5 and 7 rather than deferred, so no ledger entry tracks them. One is an unchecked `Attempts` increment (ECR5-07/ECR7-10). The other is a corrupt-state quarantine that never restores a lost discovery index (ECR5-08).
+  evidence: Review pass 8. ECR7-10 is medium. `ReminderCoordinator.cs` still increments `Attempts` unchecked at :720, :745, :881, :1141, :1180, :1297 and :1317 (`entry.Attempts + 1`). A value at `int.MaxValue` wraps negative, and the next load rejects it. ECR5-08 was high at the pass-5 checkpoint: the callback normalizes corrupt state to retained quarantine, then audits or cancels its last reminder without restoring a lost discovery index. The reminder code changed after that checkpoint, so re-verify ECR5-08 at HEAD before acting on it. Both are pre-existing, and the frozen 6.5d intent excludes runtime edits.
+  status: open
