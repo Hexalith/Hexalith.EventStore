@@ -289,6 +289,10 @@ public record QueryEnvelope {
     [DataMember]
     public bool IsDelegated { get; init; }
 
+    /// <summary>Gets gateway-owned exact-operation identity evidence; absent for ordinary queries.</summary>
+    [DataMember]
+    public string? IdentityAdmissionProof { get; init; }
+
     private readonly string[]? _scopes;
     private readonly string[]? _audience;
 
@@ -373,7 +377,8 @@ public record QueryEnvelope {
             && IsDelegated == other.IsDelegated
             && StringSequenceEquals(Scopes, other.Scopes)
             && StringSequenceEquals(Audience, other.Audience)
-            && DelegationId == other.DelegationId;
+            && DelegationId == other.DelegationId
+            && IdentityAdmissionProof == other.IdentityAdmissionProof;
     }
 
     /// <inheritdoc/>
@@ -396,6 +401,7 @@ public record QueryEnvelope {
         AddStringSequenceHash(ref hash, Scopes);
         AddStringSequenceHash(ref hash, Audience);
         hash.Add(DelegationId);
+        hash.Add(IdentityAdmissionProof);
         return hash.ToHashCode();
     }
 

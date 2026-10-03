@@ -4,6 +4,9 @@ using System.Text.Json;
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Client.Security;
+using Hexalith.EventStore.Server.Identity;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -25,7 +28,9 @@ public class CommandsController(
     IMediator mediator,
     ExtensionMetadataSanitizer extensionSanitizer,
     ILogger<CommandsController> logger,
-    IEnumerable<ITrustedCommandExtensionPolicy>? trustedExtensionPolicies = null) : ControllerBase {
+    IEnumerable<ITrustedCommandExtensionPolicy>? trustedExtensionPolicies = null,
+    IIdentityGatewayAdmission? identityAdmission = null,
+    IIdentityAdmissionProof? identityVerifier = null) : ControllerBase {
     private const string GlobalAdminExtensionKey = "actor:globalAdmin";
 
     // ES-1 DoS guard for the optional domain-service result payload.
@@ -68,6 +73,11 @@ public class CommandsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
     public async Task<IActionResult> Submit([FromBody] SubmitCommandRequest request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (request.Extensions?.Keys.Any(key => key.StartsWith("identity:", StringComparison.OrdinalIgnoreCase)) == true)
+        {
+            return BadRequest("Gateway identity evidence is reserved.");
+        }
 
         string messageId = request.MessageId ?? string.Empty;
         if (messageId.StartsWith("wrk-", StringComparison.Ordinal)
@@ -137,6 +147,31 @@ public class CommandsController(
             var trustResponse = new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status400BadRequest };
             trustResponse.ContentTypes.Add("application/problem+json");
             return trustResponse;
+        }
+
+        if (IdentityOperationCatalog.RequiresAdmission(request.CommandType)
+            || identityAdmission?.RequiresAdmission(request.Domain, request.CommandType) == true)
+        {
+            if (identityAdmission is null)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            byte[] admittedPayload = JsonSerializer.SerializeToUtf8Bytes(request.Payload);
+            string logicalId = request.Payload.TryGetProperty("logicalId", out JsonElement logical)
+                && logical.ValueKind == JsonValueKind.String ? logical.GetString()! : string.Empty;
+            var scope = new IdentityAdmissionScope(request.Tenant, request.Domain, request.AggregateId,
+                request.CommandType, messageId, logicalId, IdentityAdmissionProof.Digest(admittedPayload));
+            string? proof = await identityAdmission.AdmitAsync(User, scope, admittedPayload, cancellationToken).ConfigureAwait(false);
+            IdentityAdmissionEvidence? admitted = identityVerifier?.Verify(proof, scope);
+            if (proof is null || admitted is null)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            userId = admitted.OperatorActorId ?? admitted.SourceId;
+            extensions ??= new Dictionary<string, string>(StringComparer.Ordinal);
+            extensions[IdentityAdmissionProof.ExtensionKey] = proof;
         }
 
         var command = new SubmitCommand(

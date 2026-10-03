@@ -109,7 +109,7 @@ public partial class QueryRouter : IQueryRouter {
             query.IsDelegated,
             query.Scopes,
             query.Audience,
-            query.DelegationId);
+            query.DelegationId) { IdentityAdmissionProof = query.IdentityAdmissionProof };
 
         try {
             string lifecycleProjectionType = routingQueryType;

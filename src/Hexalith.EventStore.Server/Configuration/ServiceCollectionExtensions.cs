@@ -226,6 +226,7 @@ public static class EventStoreServerServiceCollectionExtensions {
             options.Actors.RegisterActor<IdempotencyAdmissionDirectoryActor>(IdempotencyAdmissionDirectoryActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyTenantLifecycleActor>(IdempotencyTenantLifecycleActor.ActorTypeName);
             options.Actors.RegisterActor<IdempotencyLegacyInventoryActor>(IdempotencyLegacyInventoryActor.ActorTypeName);
+            options.Actors.RegisterActor<IdentityActorRegistryActor>(IdentityActorRegistryActor.ActorTypeName);
             options.Actors.RegisterActor<ETagActor>();
             options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
             options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);

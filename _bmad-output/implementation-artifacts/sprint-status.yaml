@@ -56,7 +56,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '2026-10-01'
+last_updated: '2026-10-03'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -233,7 +233,7 @@ development_status:
   6-5a-event-contract-writer-and-migration-evidence-spec: done
   6-5b-verified-read-replay-and-projection-spec: done
   6-5c-publication-subscription-and-rollout-spec: done
-  6-5d-hold-lifecycle-resume-and-legacy-admission-spec: in-progress
+  6-5d-hold-lifecycle-resume-and-legacy-admission-spec: review
   6-6-event-versioning-and-upcasting-implementation: backlog
   epic-6-retrospective: optional
 

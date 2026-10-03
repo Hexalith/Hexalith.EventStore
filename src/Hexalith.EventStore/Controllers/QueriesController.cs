@@ -3,6 +3,9 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Client.Security;
+using Hexalith.EventStore.Server.Identity;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Pipeline;
@@ -26,7 +29,8 @@ public partial class QueriesController(
     IETagService eTagService,
     ITenantValidator tenantValidator,
     IRbacValidator rbacValidator,
-    ILogger<QueriesController> logger) : ControllerBase {
+    ILogger<QueriesController> logger,
+    IIdentityGatewayAdmission? identityAdmission = null) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
 
     private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
@@ -81,6 +85,26 @@ public partial class QueriesController(
             ? request.AggregateId
             : request.EntityId;
 
+        string? identityProof = null;
+        if (IdentityOperationCatalog.RequiresAdmission(request.QueryType)
+            || identityAdmission?.RequiresAdmission(request.Domain, request.QueryType) == true)
+        {
+            if (identityAdmission is null || !string.IsNullOrWhiteSpace(request.EntityId) && request.EntityId != request.AggregateId)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            var scope = new IdentityAdmissionScope(request.Tenant, request.Domain, request.AggregateId,
+                request.QueryType, correlationId, correlationId, IdentityAdmissionProof.Digest(payloadBytes));
+            identityProof = await identityAdmission.AdmitAsync(User, scope, payloadBytes, cancellationToken).ConfigureAwait(false);
+            if (identityProof is null)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            Response.Headers.CacheControl = "no-store";
+        }
+
         var query = new SubmitQuery(
             Tenant: request.Tenant,
             Domain: request.Domain,
@@ -101,7 +125,7 @@ public partial class QueriesController(
             IsDelegated: dualPrincipal.IsDelegated,
             Scopes: dualPrincipal.Scopes,
             Audience: dualPrincipal.Audience,
-            DelegationId: dualPrincipal.DelegationId);
+            DelegationId: dualPrincipal.DelegationId) { IdentityAdmissionProof = identityProof };
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 

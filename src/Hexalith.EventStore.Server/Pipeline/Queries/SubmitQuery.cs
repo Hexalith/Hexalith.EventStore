@@ -102,6 +102,9 @@ public record SubmitQuery(
             Paging: null) {
     }
 
+    /// <summary>Gets gateway-owned exact-operation identity evidence.</summary>
+    public string? IdentityAdmissionProof { get; init; }
+
     private readonly string[]? _scopes = Scopes?.ToArray();
     private readonly string[]? _audience = Audience?.ToArray();
 
@@ -172,7 +175,8 @@ public record SubmitQuery(
             && IsDelegated == other.IsDelegated
             && StringSequenceEquals(Scopes, other.Scopes)
             && StringSequenceEquals(Audience, other.Audience)
-            && DelegationId == other.DelegationId;
+            && DelegationId == other.DelegationId
+            && IdentityAdmissionProof == other.IdentityAdmissionProof;
     }
 
     /// <inheritdoc/>
@@ -197,6 +201,7 @@ public record SubmitQuery(
         AddStringSequenceHash(ref hash, Scopes);
         AddStringSequenceHash(ref hash, Audience);
         hash.Add(DelegationId);
+        hash.Add(IdentityAdmissionProof);
         return hash.ToHashCode();
     }
 

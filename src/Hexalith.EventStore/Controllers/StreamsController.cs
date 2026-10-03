@@ -153,6 +153,14 @@ public sealed partial class StreamsController(
                     StreamReplayReasonCodes.MissingStream);
             }
 
+            if (pageEvents.Any(item => item.TenantId != identity.TenantId
+                || item.Domain != identity.Domain || item.AggregateId != identity.AggregateId))
+            {
+                return ProblemWithReason(StatusCodes.Status503ServiceUnavailable,
+                    ProblemTypeUris.ServiceUnavailable, "Unavailable", "Stream evidence is unavailable.",
+                    StreamReplayReasonCodes.CorruptEvent);
+            }
+
             IReadOnlyList<ServerEventEnvelope> readEvents = [.. pageEvents.OrderBy(e => e.SequenceNumber)];
             IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. readEvents.Take(request.PageSize)];
 
@@ -201,7 +209,7 @@ public sealed partial class StreamsController(
             // P-D3: Continuation tokens are not yet implemented (token request-binding deferred).
             // The validator at ValidateRequest line ~211 unconditionally rejects non-null tokens.
             // Emitting a random token would break paging, so we always return null and require
-            // callers to paginate by setting FromSequence = lastSequenceReturned + 1.
+            // callers to paginate by setting FromSequence = lastSequenceReturned (exclusive).
             return Ok(new StreamReadPage(
                 identity.TenantId,
                 identity.Domain,

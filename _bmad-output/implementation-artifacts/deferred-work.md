@@ -5194,7 +5194,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-5-event-versioning-and-upcasting-spec.md`
   summary: Create and run Story 6.5d. It is a focused child spec that designs, under the children's routing bar, the mechanisms Story 6.5 integration had to invent: D-RESUME publication resume and legacy status-6 resume, hold inventory and redrive, pin-capacity wait queues, legacy execution-scope claims, and the long-stream activation record, together with the exits, reason codes and capacity rules they need.
   evidence: Owner decision D-SPLIT (2026-09-30). Story 6.5 review pass 1 routed 9 bad_spec groups and 1 intent gap on integration-authored rules. After the loop-1 re-derivation, review pass 2 still found about 66 raw findings on the same mechanisms (see story-6-5-review-pass-2-findings.md). E2-34 is confirmed: `[I-45]` contradicts C5's operation-namespace closure fence. Story 6.5 is blocked until 6.5d is done; the epics and sprint entries need a correct-course.
-  status: open
+  status: resolved (2026-10-03): user-authorized simplified 6.5d candidate completed, independently verified and reviewed; all focused findings corrected. Story 6.5 integration and exact-content AD-13 human approval remain pending; AD-13 is UNAPPROVED and Story 6.6 is not authorized.
 
 ## Deferred from: code review of spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md (2026-10-01, pass 7)
 
