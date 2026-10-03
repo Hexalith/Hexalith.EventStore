@@ -118,9 +118,31 @@ public class StreamsControllerTests {
         page.Metadata.LatestSequence.ShouldBe(4);
         page.Metadata.IsTruncated.ShouldBeTrue();
         // P-D3: continuation tokens are deferred until request-binding is implemented.
-        // Server returns null and callers paginate via FromSequence = lastSequenceReturned + 1.
+        // Server returns null and callers paginate via FromSequence = lastSequenceReturned.
         page.Metadata.NextContinuationToken.ShouldBeNull();
         _ = await actor.Received(1).ReadEventsRangeAsync(1, null, 3);
+    }
+
+    [Theory]
+    [InlineData("foreign-tenant", Domain, AggregateId)]
+    [InlineData(Tenant, "foreign-domain", AggregateId)]
+    [InlineData(Tenant, Domain, "foreign-party")]
+    public async Task AuthorizedLocalMetadataWithForeignEnvelope_DeniesBeforePayloadUnprotect(string tenant, string domain, string aggregate)
+    {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 1));
+        actor.ReadEventsRangeAsync(0, null, 101).Returns([BuildEnvelope(1) with
+            { TenantId = tenant, Domain = domain, AggregateId = aggregate, Payload = "foreign-secret"u8.ToArray() }]);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        (StreamsController controller, _, _, _) = CreateController(actor, protection);
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
+        ProblemDetails problem = AssertProblem(result, StatusCodes.Status503ServiceUnavailable);
+        string json = JsonSerializer.Serialize(problem);
+        json.ShouldNotContain("foreign-secret");
+        if (tenant != Tenant) { json.ShouldNotContain(tenant); }
+        if (domain != Domain) { json.ShouldNotContain(domain); }
+        if (aggregate != AggregateId) { json.ShouldNotContain(aggregate); }
+        await protection.DidNotReceiveWithAnyArgs().TryUnprotectEventPayloadAsync(default!, default!, default!, default!, default!, default);
     }
 
     [Fact]

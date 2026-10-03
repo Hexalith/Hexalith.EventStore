@@ -5284,3 +5284,14 @@ status: open
   summary: Two verified reminder-runtime defects were rejected in review passes 5 and 7 rather than deferred, so no ledger entry tracks them. One is an unchecked `Attempts` increment (ECR5-07/ECR7-10). The other is a corrupt-state quarantine that never restores a lost discovery index (ECR5-08).
   evidence: Review pass 8. ECR7-10 is medium. `ReminderCoordinator.cs` still increments `Attempts` unchecked at :720, :745, :881, :1141, :1180, :1297 and :1317 (`entry.Attempts + 1`). A value at `int.MaxValue` wraps negative, and the next load rejects it. ECR5-08 was high at the pass-5 checkpoint: the callback normalizes corrupt state to retained quarantine, then audits or cancels its last reminder without restoring a lost discovery index. The reminder code changed after that checkpoint, so re-verify ECR5-08 at HEAD before acting on it. Both are pre-existing, and the frozen 6.5d intent excludes runtime edits.
   status: open
+
+## Deferred from: code review of spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md (2026-10-03, focused post-simplification pass)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md`
+  summary: The 6.5d executable specification `6-5d-simplification/verify.py` is not run by any automatic CI or test path, so edits to it, `known-answers.json`, `obligations.md` or the imported candidate can break it unnoticed (FW1).
+  evidence: Focused review 2026-10-03 (Verification Gap layer). A search for `6-5d-simplification`, `verify.py` and `6-5d-hold` across `.github/`, `tests/`, `.props`, `.targets`, `.ps1`, `.sh`, `.py` and `.json` matched only the `sprint-status.yaml` row. 6.5d forbids test and CI edits. Story 6.5 integration must wire the verifier in or carry an explicit re-run gate.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md`
+  summary: A drain-limit resume may re-arm members that already have definitive class-02/03 failures, because status precedence row (4), active drain-limit, shadows row (5), terminal_evidence_hold, and drain-only resume invokes every current unresolved member (FW2). Maybe-false; medium if true.
+  evidence: Focused review 2026-10-03 (Blind Hunter). Candidate D3/D4 (:48, :58, :70). The ordering is pre-existing in archive D3.1. To settle it, check whether 6.5c C2/C5 lets an active drain-limit record coexist with a definitive class-02/03 member, and whether drain-only resume must exclude such members.
+  status: open
