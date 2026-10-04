@@ -7,6 +7,7 @@ import base64
 import datetime as dt
 import hashlib
 import functools
+import contextlib
 import io
 import json
 import os
@@ -168,6 +169,24 @@ def write(path, value):
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+
+@contextlib.contextmanager
+def defer_cancellation():
+    """Register a new child before delivering cancellation to its owner."""
+    pending = []
+    handlers = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGALRM) if callable(signal.getsignal(s))}
+    try:
+        for signum in handlers:
+            signal.signal(signum, lambda s, frame: pending.append((s, frame)))
+        yield
+    finally:
+        for signum, handler in handlers.items():
+            signal.signal(signum, handler)
+        if pending:
+            signum, frame = pending[0]
+            handlers[signum](signum, frame)
+
+
 def safe(value):
     rendered = value if isinstance(value, str) else json.dumps(value)
     require(not SECRET.search(rendered) and not BEARER.search(rendered), "Secret-bearing receipt rejected")
@@ -254,6 +273,13 @@ def wire_fixture(kind, shape):
     return value
 
 
+def common_wire_fields(value):
+    fields = {k[0].upper()+k[1:]: v for k, v in value.items() if k not in {"originalActorId", "authenticatedWorkloadId", "isDelegated", "scopes", "audience", "delegationId", "globalPosition"}}
+    if "Timestamp" in fields:
+        fields["Timestamp"] = fields["Timestamp"].replace("Z", "+00:00")
+    return fields
+
+
 def written_fixture_hash(value):
     return sha((json.dumps(value, indent=2, sort_keys=True) + "\n").encode())
 
@@ -325,6 +351,8 @@ def validate_operations(directory, commands, rows, inventories, current, closure
         for command in result:
             receipt_json(command)
         return result
+    def alive(launch, request):
+        return launch["exit_code"] == 0 and launch["started_utc"] <= request["started_utc"] <= request["finished_utc"] <= launch["finished_utc"]
     def host_proof(receipts, lane, kind="host"):
         configuration = "Debug" if lane == "current" else "Release"
         assembly = "Host.dll" if kind == "host" else "Domain.dll"
@@ -335,7 +363,7 @@ def validate_operations(directory, commands, rows, inventories, current, closure
         for command in receipts:
             if command["argv"][:2] == ["HTTP", "GET"] and command["argv"][2].endswith(suffix) and command["exit_code"] == 200:
                 endpoint = command["argv"][2].removesuffix(suffix)
-                launches = [c for c in receipts if c["argv"][:1] == ["dotnet"] and pathlib.Path(c["argv"][1]).parts[-6:] == (lane, kind, "bin", configuration, "net10.0", assembly) and c.get("node_environment", {}).get("ASPNETCORE_URLS") == endpoint]
+                launches = [c for c in receipts if c["argv"][:1] == ["dotnet"] and pathlib.Path(c["argv"][1]).parts[-6:] == (lane, kind, "bin", configuration, "net10.0", assembly) and c.get("node_environment", {}).get("ASPNETCORE_URLS") == endpoint and alive(c, command)]
                 if not launches:
                     continue
                 observed = receipt_json(command)
@@ -344,23 +372,29 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                     valid.append(command)
         require(valid, "Case lacks the actual running lane identity response")
         return valid
-    def sidecar_proof(receipts, lane, endpoint, kind="host"):
+    def application_request(receipts, lane, command, suffix, kind="host"):
+        identities = host_proof(receipts, lane, kind)
+        endpoint = command["argv"][2].removesuffix(suffix)
+        require(any(c["argv"][2].removesuffix("/identity" if kind == "host" else "/ready") == endpoint for c in identities), "Request endpoint differs from its actual lane identity")
+        require(any(c["argv"][:1] == ["dotnet"] and str(c["argv"][1]).endswith("/"+kind.capitalize()+".dll") and c.get("node_environment", {}).get("ASPNETCORE_URLS") == endpoint and alive(c, command) for c in receipts), "Application lifetime does not cover its request")
+    def sidecar_proof(receipts, lane, command, kind="host"):
+        endpoint = command["argv"][3]
         configuration = "Debug" if lane == "current" else "Release"
         application = kind.capitalize() + ".dll"
         port = endpoint.rsplit(":", 1)[1]
-        launches = [c for c in receipts if c["argv"][:1] == ["dotnet"] and pathlib.Path(c["argv"][1]).parts[-6:] == (lane, kind, "bin", configuration, "net10.0", application) and c.get("node_environment", {}).get("DAPR_HTTP_PORT") == port]
+        launches = [c for c in receipts if c["argv"][:1] == ["dotnet"] and pathlib.Path(c["argv"][1]).parts[-6:] == (lane, kind, "bin", configuration, "net10.0", application) and c.get("node_environment", {}).get("DAPR_HTTP_PORT") == port and alive(c, command)]
         require(launches, "Request endpoint lacks its actual lane application")
-        require(any("--dapr-http-port" in c["argv"] and c["argv"][c["argv"].index("--dapr-http-port")+1] == port and "--app-id" in c["argv"] and c["argv"][c["argv"].index("--app-id")+1] == ("eventstore" if kind == "host" else "counter") and "--app-port" in c["argv"] and any(c["argv"][c["argv"].index("--app-port")+1] == a["node_environment"]["ASPNETCORE_URLS"].rsplit(":",1)[1] for a in launches) for c in receipts), "Request lacks its actual owned sidecar/application port")
+        require(any(alive(c, command) and "--dapr-http-port" in c["argv"] and c["argv"][c["argv"].index("--dapr-http-port")+1] == port and "--app-id" in c["argv"] and c["argv"][c["argv"].index("--app-id")+1] == ("eventstore" if kind == "host" else "counter") and "--app-port" in c["argv"] and any(c["argv"][c["argv"].index("--app-port")+1] == a["node_environment"]["ASPNETCORE_URLS"].rsplit(":",1)[1] for a in launches) for c in receipts), "Request lacks its actual owned sidecar/application port")
     def actor(receipts, lane, tenant, kind, count):
         calls = [c for c in probes(receipts, lane, "actor") if c["argv"][4:6] == [tenant, "fixture"] and c["argv"][7:] == [kind, str(count)]]
         require(calls, "Missing required typed actor invocation")
         for command in calls:
             endpoint = command["argv"][3]
             # A mixed client consumes the host lane selected by its node binding.
-            hosts = [a for a in receipts if a["argv"][:1] == ["dotnet"] and str(a["argv"][1]).endswith("/Host.dll") and a.get("node_environment", {}).get("DAPR_HTTP_PORT") == endpoint.rsplit(":",1)[1]]
+            hosts = [a for a in receipts if a["argv"][:1] == ["dotnet"] and str(a["argv"][1]).endswith("/Host.dll") and a.get("node_environment", {}).get("DAPR_HTTP_PORT") == endpoint.rsplit(":",1)[1] and alive(a, command)]
             require(hosts, "Actor request lacks its actual owned application")
             host_lane = pathlib.Path(hosts[-1]["argv"][1]).parts[-6]
-            sidecar_proof(receipts, host_lane, endpoint)
+            sidecar_proof(receipts, host_lane, command)
         return calls[-1], receipt_json(calls[-1])
     def seeds(receipts, lane):
         for tenant,count in (("tenant-a",12),("tenant-b",3)):
@@ -451,7 +485,11 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 require(case["fixture_input"]==value and observed[0]["inputSha256"]==written_fixture_hash(value) and observed[1]["inputSha256"]==observed[0]["outputSha256"] and observed[2]["inputSha256"]==observed[1]["outputSha256"] and case["wire_hashes"]==[r["outputSha256"] for r in observed],"Wire bytes do not form this fixture's actual round trip")
                 require([case[k] for k in ("first_fields","middle_fields","final_fields")]==[r["fields"] for r in observed],"Wire fields differ from typed operations")
                 expected={"OriginalActorId":"fixture-human","AuthenticatedWorkloadId":"fixture-workload","IsDelegated":True,"DelegationId":"fixture-delegation","Scopes":value["scopes"],"Audience":value["audience"]} if shape=="dual" else {"GlobalPosition":987} if kind=="projection" else {"UserId":"fixture-user"}
-                preserved=all(r["fields"].get(k)==v for r in observed[1:] for k,v in expected.items())
+                common=common_wire_fields(value)
+                require(all(k in observed[0]["fields"] and observed[0]["fields"][k] == v for k,v in common.items()), "Initial typed writer lost common wire fields")
+                require(all(all(k in r["fields"] and r["fields"][k] == v for k,v in common.items()) for r in observed[1:]), "Common wire fields changed across versions")
+                expected.update(common)
+                preserved=all(k in r["fields"] and r["fields"][k]==v for r in observed[1:] for k,v in expected.items())
                 if direction[0] in {VERSIONS[0],"current"}: require(all(observed[0]["fields"].get(k)==v for k,v in expected.items()),"Initial typed writer lost supplied fixture fields")
                 require(case["preserved"]==preserved and all(r["fields"].get("UserId")=="fixture-user" for r in observed),"Wire preservation label contradicts observations")
                 if shape=="legacy": require(all(all(r["fields"].get(k) is None for k in ("OriginalActorId","AuthenticatedWorkloadId","DelegationId","Scopes","Audience")) and r["fields"].get("IsDelegated",False) is False for r in observed),"Legacy delegated defaults changed")
@@ -496,6 +534,9 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 dumps=[c for c in receipts if "pg_dump" in c["argv"] and c["exit_code"]==0 and c["output_sha256"]==case["backup_sha256"] and c.get("output_bytes")==case["backup_bytes"]]
                 restores=[c for c in receipts if "pg_restore" in c["argv"] and c["exit_code"]==0 and c.get("input_sha256")==case["backup_sha256"] and c.get("input_bytes")==case["backup_bytes"]]
                 require(len(dumps)==len(restores)==1 and dumps[0]["id"]<restores[0]["id"],"Dump/restore must consume this case's actual command receipts")
+                for barrier in (dumps[0], restores[0]):
+                    writers=[c for c in receipts if c["argv"][:1]==["dotnet"] and str(c["argv"][1]).endswith(("/Host.dll", "/Domain.dll")) and c["id"] < barrier["id"]]
+                    require(writers and all(c["exit_code"] == 0 and c["finished_utc"] <= barrier["started_utc"] for c in writers), "Writers were not quiesced before backup/restore")
                 replay_ids=[c["id"] for c in probes(receipts,VERSIONS[1],"actor") if c["id"]>restores[0]["id"]]
                 require(replay_ids and before["query_command_id"]<dumps[0]["id"]<restores[0]["id"]<restored["query_command_id"]<min(replay_ids)<=max(replay_ids)<after["query_command_id"], "Restore observations do not bracket backup, restore and replay")
                 require(sha(dumps[0]["argv"][-1].encode())==before["database_identity_sha256"] and sha(restores[0]["argv"][restores[0]["argv"].index("-d")+1].encode())==restored["database_identity_sha256"],"Backup command database differs from retained inventories")
@@ -516,12 +557,22 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                     posts=[c for c in receipts if c["argv"][:2]==["HTTP","POST"] and c["argv"][2].endswith("/status/tenant-a/fixture-status")]
                     gets=[c for c in receipts if c["argv"][:2]==["HTTP","GET"] and c["argv"][2].endswith("/status/tenant-a/fixture-status")]
                     require(len(posts)==1 and len(gets)==2 and posts[0]["request_observation"]["retryable"] is True and posts[0]["request_observation"]["recoveryReasonCode"]=="fixture-recovery" and posts[0]["request_observation"]["drainAttemptCount"]==2,"Missing actual status write/read directions")
+                    application_request(receipts,VERSIONS[0],posts[0],"/status/tenant-a/fixture-status")
+                    for lane, request in zip(VERSIONS, gets):
+                        application_request(receipts,lane,request,"/status/tenant-a/fixture-status")
                     selected,old=map(receipt_json,gets);require(selected["retryable"] is True and case["selected_keys"]==sorted(selected) and case["old_keys"]==sorted(old),"Status keys differ from typed store receipts")
                     lost=any(k not in old for k in ("retryable","recoveryReasonCode","drainAttemptCount"));require(case["handling"]==("lost-recovery-tristate" if lost else "preserved"),"Status handling claim differs");disposition="incompatible" if lost else "compatible"
                 elif identity in {"cursor-downgrade","cursor-upgrade"}:
                     host_proof(receipts,case["mint"],"domain");host_proof(receipts,case["consume"],"domain")
                     minted=[c for c in receipts if c["argv"][:2]==["HTTP","GET"] and c["argv"][2].endswith("/cursor-mint")];queries=[c for c in receipts if c["argv"][:2]==["HTTP","POST"] and c["argv"][2].endswith("/query")]
                     require(len(minted)==1 and len(queries)==2 and minted[0]["confidential_observations"]["cursor_sha256"]==case["cursor_sha256"] and queries[0]["request_observation"]["paging"]["cursor"]["sha256"]==case["cursor_sha256"],"Cursor consumption does not bind the minted token")
+                    application_request(receipts,case["mint"],minted[0],"/cursor-mint","domain")
+                    for query in queries:
+                        application_request(receipts,case["consume"],query,"/query","domain")
+                        observed = query["request_observation"]
+                        require({k:v for k,v in observed.items() if k != "paging"} == {"tenantId":"tenant-a","domain":"counter","aggregateId":"fixture","queryType":"fixture","payload":"e30=","correlationId":"fixture-correlation","userId":"fixture-user"}, "Cursor request fixture scope differs")
+                        require(query["request_observation_sha256"] == sha(canonical(observed)), "Cursor request observation commitment differs")
+                    require(case["scope"] == "tenant-a|watermark:987", "Cursor case scope differs")
                     values=[json.loads(base64.b64decode(receipt_json(c)["payloadBytes"])) for c in queries]
                     require(values[0]==case["decode_outcome"] and values[0]["decoded"] and values[0]["position"]=="position-3" and values[1]["decoded"] is False and case["tamper_rejected"] is True and case["key_material_retained"] is False,"Cursor success/tamper observations differ");disposition="compatible"
                 elif identity.endswith("cursor-scope"):
@@ -531,7 +582,7 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                     disposition="incompatible" if outcome["handling"]=="unsupported-client-method" else "compatible"
                 else:
                     host=VERSIONS[1] if identity.startswith("old") else VERSIONS[0];host_proof(receipts,host);method=case["method"];calls=[c for c in probes(receipts,VERSIONS[0],"capability") if c["argv"][-1]==method];require(len(calls)==1,"Missing real selected-only actor call");outcome=receipt_json(calls[0]);detail=outcome.get("detail","")
-                    sidecar_proof(receipts,host,calls[0]["argv"][3])
+                    sidecar_proof(receipts,host,calls[0])
                     require(case["outcome"]==outcome["outcome"] and case["detail_sha256"]==sha(detail.encode()),"Actor capability result differs from actual dispatch")
                     unsupported=outcome["outcome"]=="rejected" and (method+"ReqBody" in detail and "deserializer has no knowledge" in detail or bool(re.search(r"(?i)(method.*(?:not found|not supported|does not exist|not implemented)|(?:missing|unknown).*method|MissingMethodException|KeyNotFoundException)",detail)))
                     if host==VERSIONS[1]: require(unsupported and case["handling"]=="unsupported-old-actor-contract","Malformed rejection cannot prove unsupported old dispatcher")
@@ -597,6 +648,12 @@ def validate(directory):
         require(command["started_utc"] <= command["finished_utc"], "Invalid command timestamps")
         require(type(command["exit_code"]) is int, "Missing command exit status")
         require(re.fullmatch(r"[0-9a-f]{64}", command["output_sha256"]) is not None, "Missing command output hash")
+        if "request_observation" in command:
+            observed = command["request_observation"]
+            require(command["request_observation_sha256"] == sha(canonical(observed)), "Request observation commitment differs")
+            opaque = isinstance(observed.get("paging"), dict) and isinstance(observed["paging"].get("cursor"), dict)
+            if not opaque:
+                require(command["argv"][-1] == "request-sha256="+sha(canonical(observed)), "Request observation differs from literal request hash")
     for row in rows:
         require(row["execution"] in {"passed", "failed", "unavailable"}, "Unknown execution result")
         require(row["compatibility"] in {"compatible", "incompatible", "unverified"}, "Unknown compatibility")
@@ -622,6 +679,17 @@ def validate(directory):
         if command["argv"][:2] == ["docker", "exec"] and any(x in command["argv"] for x in ("psql", "createdb", "pg_dump", "pg_restore")):
             target = command["argv"][3] if command["argv"][2] == "-i" else command["argv"][2]
             require(pg is not None and target == pg, "PostgreSQL operation targets an unowned container")
+    creations = {}
+    for command in commands:
+        if command["argv"][:2] == ["docker", "exec"] and "createdb" in command["argv"]:
+            database=command["argv"][-1]
+            require(command["exit_code"] == 0 and database not in creations and re.fullmatch(r"p1r_[a-z0-9_]+", database), "Database lacks unique successful fresh creation")
+            creations[database] = command
+    for command in commands:
+        argv=command["argv"]
+        if argv[:2] == ["docker", "exec"] and any(x in argv for x in ("psql", "pg_dump", "pg_restore")):
+            database=argv[argv.index("-d")+1] if "-d" in argv else argv[-1]
+            require(database in creations and creations[database]["id"] < command["id"], "Database used before successful fresh creation")
     for path in (directory / "inventories").glob("*.json") if (directory / "inventories").exists() else ():
         observed = json.loads(path.read_text())
         require(observed["sha256"] == sha(canonical(observed["rows"])), "Persisted inventory hash mismatch")
@@ -652,6 +720,7 @@ def validate(directory):
         for assembly in assemblies:
             require(assembly["version"] == version and assembly["sha256"] == hashes[assembly["name"]], "Loaded identity differs from verified DLL")
     if provenance["execution"] == "passed":
+        require(any(len(c["argv"]) == 2 and c["argv"][1] == str(HERE.parent / "verify_public_packages.py") and c["exit_code"] == 0 for c in commands), "Missing successful public-package preflight")
         published = {p["id"]: p["nuget_sha256"] for p in json.loads((HERE.parent / "public-packages.json").read_text())["packages"]}
         for lane in VERSIONS:
             identity = json.loads((directory / "artifacts" / (lane + "-identity.json")).read_text())
@@ -763,7 +832,20 @@ def validate(directory):
                 require({c["id"] for c in case["cases"]} == expected, "Missing shared current-source case")
                 require(all(c.get("assertions", 0) > 0 and "before_sha256" in c and "after_sha256" in c for c in case["cases"]), "Missing shared current-source persisted bindings")
     cleanup = json.loads((directory / "cleanup.json").read_text())
-    require(cleanup["owned_processes_stopped"] and cleanup["owned_containers_removed"] and cleanup["scratch_removed"], "Failed cleanup")
+    require(cleanup["owned_processes_stopped"] and cleanup["owned_containers_removed"] and cleanup["scratch_removed"] and not cleanup.get("errors"), "Failed cleanup")
+    owned=cleanup.get("owned_containers", [])
+    if owned:
+        discovery=[c for c in commands if c["argv"] == ["docker", "ps", "-aq", "--no-trunc", "--filter", "label=hexalith.p1r.invocation="+cleanup["invocation"]]]
+        require(discovery and discovery[-1]["exit_code"] == 0 and not discovery[-1]["diagnostic"].strip() and discovery[-1]["output_sha256"] == sha(discovery[-1]["diagnostic"].encode()), "Cleanup lacks successful final owned-resource discovery")
+        for identity in owned:
+            inspections=[c for c in commands if c["argv"] == ["docker", "inspect", "--format", OWNERSHIP_INSPECT_FORMAT, identity]]
+            require(inspections, "Cleanup lacks owned-resource inspection")
+            inspection=inspections[-1]
+            if inspection["exit_code"] != 0:
+                require(re.search(r"(?i)no such (?:object|container)", inspection["diagnostic"]), "Cleanup inspection failed")
+            else:
+                require(receipt_json(inspection) == {"id": identity, "invocation":cleanup["invocation"]}, "Cleanup ownership differs")
+                require(any(c["argv"] == ["docker", "rm", "-f", identity] and c["exit_code"] == 0 and inspection["id"] < c["id"] < discovery[-1]["id"] for c in commands), "Cleanup lacks successful owned-resource removal")
     require(cleanup.get("shared_discovery_complete") is True and isinstance(cleanup["shared_before"], dict) and isinstance(cleanup["shared_after"], dict), "Unknown shared-resource preservation")
     require(cleanup["shared_before"] == cleanup["shared_after"], "Shared resource drift")
     require(results["exit_code"] == (0 if all(r["execution"] == "passed" and r["compatibility"] == "compatible" for r in rows) and not cleanup.get("errors") else 1), "Invocation exit status contradicts executed dispositions")
@@ -788,7 +870,7 @@ class Runner:
         self.logs = []
         self.secret_values = []
         self.rows = []
-        self.env = dict(os.environ, DOTNET_CLI_HOME=str(self.scratch / "dotnet-home"), NUGET_SCRATCH=str(self.scratch / "nuget-scratch"), MSBUILDDISABLENODEREUSE="1", DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1")
+        self.env = dict(os.environ, TMPDIR=str(self.scratch), DOTNET_CLI_HOME=str(self.scratch / "dotnet-home"), NUGET_SCRATCH=str(self.scratch / "nuget-scratch"), MSBUILDDISABLENODEREUSE="1", DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1")
         self.env.pop("DOTNET_ADDITIONAL_DEPS", None)
         self.env.pop("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES", None)
         self.before = None
@@ -825,35 +907,62 @@ class Runner:
 
     def run(self, argv, cwd=HERE, env=None, timeout=180, check=True, binary=False, input_bytes=None):
         started = utc()
+        process = None
+        def record_output(code, stdout, stderr):
+            receipt = self.record(argv, started, code, stderr if binary else stdout + stderr, cwd)
+            if binary:
+                receipt.update(output_sha256=sha(stdout), output_bytes=len(stdout), binary_output_retained=False)
+            if input_bytes is not None:
+                receipt.update(input_sha256=sha(input_bytes), input_bytes=len(input_bytes))
+            write(self.output / "commands.json", self.commands)
+            return receipt
         try:
-            process = subprocess.Popen([str(a) for a in argv], cwd=cwd, env=env or self.env, stdin=subprocess.PIPE if input_bytes is not None else subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
-        except OSError as error:
-            self.record(argv, started, 127, str(error).encode(), cwd)
+            with defer_cancellation():
+                process = subprocess.Popen([str(a) for a in argv], cwd=cwd, env=env or self.env, stdin=subprocess.PIPE if input_bytes is not None else subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+                self.processes.append(process)
+        except (Exception, KeyboardInterrupt) as error:
+            record_output(130 if isinstance(error, KeyboardInterrupt) else 127, b"", str(error).encode())
+            if process is not None:
+                try:
+                    self.stop(process)
+                except (Exception, KeyboardInterrupt) as failure:
+                    self.cleanup_errors.append(type(failure).__name__)
+                finally:
+                    for stream in (process.stdin, process.stdout, process.stderr):
+                        if stream is not None:
+                            stream.close()
             raise
-        self.processes.append(process)
         try:
             stdout, stderr = process.communicate(input=input_bytes, timeout=timeout)
-        except subprocess.TimeoutExpired:
-            self.stop(process)
-            stdout, stderr = process.communicate()
-            self.record(argv, started, 124, stdout + stderr, cwd)
-            raise TimeoutError("Owned command timed out")
-        except KeyboardInterrupt:
-            self.stop(process)
-            stdout, stderr = process.communicate()
-            self.record(argv, started, 130, stdout + stderr, cwd)
+        except (subprocess.TimeoutExpired, KeyboardInterrupt) as error:
+            code = 130 if isinstance(error, KeyboardInterrupt) else 124
+            stdout, stderr = getattr(error, "output", None) or b"", getattr(error, "stderr", None) or b""
+            receipt = record_output(code, stdout, stderr)
+            interrupted = False
+            try:
+                self.stop(process)
+                stdout, stderr = process.communicate(timeout=8)
+                diagnostic = stderr if binary else stdout + stderr
+                receipt.update(diagnostic=self.redact(diagnostic.decode(errors="replace"))[-10000:], output_sha256=sha(stdout if binary else diagnostic))
+                if binary:
+                    receipt.update(output_bytes=len(stdout), binary_output_retained=False)
+            except (Exception, KeyboardInterrupt) as failure:
+                receipt["termination_failure"] = type(failure).__name__
+                interrupted = isinstance(failure, KeyboardInterrupt)
+                if interrupted:
+                    receipt["exit_code"] = 130
+            safe(receipt)
+            write(self.output / "commands.json", self.commands)
+            if interrupted:
+                raise KeyboardInterrupt("Owned command cleanup interrupted") from error
+            if code == 124:
+                raise TimeoutError("Owned command timed out") from error
             raise
         finally:
             for stream in (process.stdin, process.stdout, process.stderr):
                 if stream is not None:
                     stream.close()
-        # Dumps remain only in scratch: retain their byte hash, never their bytes.
-        receipt = self.record(argv, started, process.returncode, stderr if binary else stdout + stderr, cwd)
-        if binary:
-            receipt.update(output_sha256=sha(stdout), output_bytes=len(stdout), binary_output_retained=False)
-        if input_bytes is not None:
-            receipt.update(input_sha256=sha(input_bytes), input_bytes=len(input_bytes))
-        write(self.output / "commands.json", self.commands)
+        record_output(process.returncode, stdout, stderr)
         if check:
             require(process.returncode == 0, f"Command {self.commands[-1]['id']} exited {process.returncode}")
         return stdout if binary else stdout.decode(errors="replace")
@@ -861,15 +970,23 @@ class Runner:
     def start(self, argv, env=None):
         started = utc()
         file = tempfile.TemporaryFile(dir=self.scratch)
+        process = None
         try:
-            process = subprocess.Popen([str(a) for a in argv], cwd=self.scratch, env=env or self.env, stdin=subprocess.DEVNULL, stdout=file, stderr=file, start_new_session=True)
-        except OSError as error:
-            file.close()
-            self.record(argv, started, 127, str(error).encode(), self.scratch)
+            with defer_cancellation():
+                process = subprocess.Popen([str(a) for a in argv], cwd=self.scratch, env=env or self.env, stdin=subprocess.DEVNULL, stdout=file, stderr=file, start_new_session=True)
+                self.processes.append(process)
+                node_environment = {k: v for k, v in (env or {}).items() if k in {"ASPNETCORE_URLS", "DAPR_HTTP_PORT", "DAPR_GRPC_PORT"}}
+                self.logs.append((process, file, list(argv), started, node_environment))
+        except (Exception, KeyboardInterrupt) as error:
+            self.record(argv, started, 130 if isinstance(error, KeyboardInterrupt) else 127, str(error).encode(), self.scratch)
+            if process is None:
+                file.close()
+            else:
+                try:
+                    self.stop(process)
+                except (Exception, KeyboardInterrupt) as failure:
+                    self.cleanup_errors.append(type(failure).__name__)
             raise
-        self.processes.append(process)
-        node_environment = {k: v for k, v in (env or {}).items() if k in {"ASPNETCORE_URLS", "DAPR_HTTP_PORT", "DAPR_GRPC_PORT"}}
-        self.logs.append((process, file, list(argv), started, node_environment))
         return process
 
     def stop(self, process):
@@ -1223,7 +1340,11 @@ class Runner:
                         final = self.probe(direction[0], "wire", kind, "xml" if format == "xml" else "json", second, third)
                         self.assertion(first.is_file() and second.is_file() and third.is_file(), "Missing cross-version round trip")
                         expected = {"OriginalActorId": "fixture-human", "AuthenticatedWorkloadId": "fixture-workload", "IsDelegated": True, "DelegationId": "fixture-delegation", "Scopes": value["scopes"], "Audience": value["audience"]} if shape == "dual" else {"GlobalPosition": 987} if kind == "projection" else {"UserId": "fixture-user"}
-                        preserved = all(final["fields"].get(k) == v and middle["fields"].get(k) == v for k, v in expected.items())
+                        common = common_wire_fields(value)
+                        self.assertion(all(k in initial["fields"] and initial["fields"][k] == v for k,v in common.items()), "Initial typed writer lost common wire fields")
+                        self.assertion(all(all(k in observed["fields"] and observed["fields"][k] == v for k,v in common.items()) for observed in (middle, final)), "Common wire fields changed across versions")
+                        expected.update(common)
+                        preserved = all(k in observed["fields"] and observed["fields"][k] == v for observed in (middle, final) for k,v in expected.items())
                         incompatible |= not preserved
                         self.assertion(final["fields"].get("UserId") == "fixture-user", "Common wire user changed")
                         if shape == "legacy":
@@ -1235,9 +1356,17 @@ class Runner:
 
     @staticmethod
     def port():
-        with socket.socket() as connection:
-            connection.bind(("127.0.0.1", 0))
-            return connection.getsockname()[1]
+        return Runner.ports(1)[0]
+
+    @staticmethod
+    def ports(count):
+        with contextlib.ExitStack() as sockets:
+            ports = []
+            for _ in range(count):
+                connection = sockets.enter_context(socket.socket())
+                connection.bind(("127.0.0.1", 0))
+                ports.append(connection.getsockname()[1])
+            return ports
 
     def topology(self):
         password = uuid.uuid4().hex
@@ -1297,7 +1426,7 @@ class Runner:
         config.write_text(f'apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: p1r-private\nspec:\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: "{self.scratch / "discovery.sqlite"}"\n')
         self.active = []
         for kind, appid in (("domain", "counter"), ("host", "eventstore")):
-            app, http, grpc, internal, metrics, profile = [self.port() for _ in range(6)]
+            app, http, grpc, internal, metrics, profile = self.ports(6)
             environment = dict(self.env, ASPNETCORE_ENVIRONMENT="Development", ASPNETCORE_URLS=f"http://127.0.0.1:{app}", DAPR_HTTP_PORT=str(http), DAPR_GRPC_PORT=str(grpc), NAMESPACE="p1r-" + self.invocation,
                 P1R_KEYS_PATH=str(self.scratch / "cursor-keys"), EventStore__Actors__AggregateActorTypeName="AggregateActor", EventStore__Snapshots__DefaultInterval=str(interval), EventStore__DomainServices__Registrations__counter__AppId="counter")
             registration = "EventStore__DomainServices__Registrations__*|counter|v1__"
@@ -1357,10 +1486,12 @@ class Runner:
         started = utc()
         try:
             request = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                output, code = response.read(), response.status
-        except urllib.error.HTTPError as error:
-            output, code = error.read(), error.code
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
+                    output, code = response.read(), response.status
+            except urllib.error.HTTPError as error:
+                with error:
+                    output, code = error.read(), error.code
         except (Exception, KeyboardInterrupt) as error:
             code = 130 if isinstance(error, KeyboardInterrupt) else 124 if isinstance(error, (TimeoutError, socket.timeout)) else 0
             receipt = self.record(["HTTP", method, url, "request-sha256=" + sha(data or b"")], started, code, (type(error).__name__ + ": " + self.redact(str(error))).encode(), HERE)
@@ -1374,6 +1505,7 @@ class Runner:
                 observed["paging"]["cursor"] = {"sha256": sha(observed["paging"]["cursor"].encode())}
             safe(observed)
             receipt["request_observation"] = observed
+            receipt["request_observation_sha256"] = sha(canonical(observed))
         if confidential:
             receipt["output_sha256"] = sha(output)
             decoded = json.loads(output)
@@ -1559,6 +1691,7 @@ class Runner:
                 self.persist_inventory("mixed-" + client + "-" + host + "-after", after)
                 return {"client": client, "host": host, "calls": ["ProcessCommandAsync", "AssertCounter"], "before_sha256": before["sha256"], "after_sha256": after["sha256"], "inventory_commands": {"before_sha256": before["query_command_id"], "after_sha256": after["query_command_id"]}}
             cases.append(self.case(client + "-client-" + host + "-host", execute))
+        status_command_start = len(self.commands)
         database = self.database()
         self.start_nodes(VERSIONS[0], database)
         status_value = {"status": 5, "timestamp": "2026-01-01T00:00:00Z", "aggregateId": "fixture", "eventCount": 0, "rejectionEventType": None, "failureReason": None, "timeoutDuration": None, "messageId": "fixture-status", "correlationId": "fixture-correlation", "retryable": True, "recoveryReasonCode": "fixture-recovery", "drainAttemptCount": 2}
@@ -1575,6 +1708,7 @@ class Runner:
             return {"handling": "lost-recovery-tristate", "selected_keys": sorted(selected_status), "old_keys": sorted(old_status), "prerequisite_command_ids": [status_write_id, selected_status_id]}
         cases.append(self.case("status-downgrade", status_control))
         self.stop_nodes()
+        cases[-1]["prerequisite_command_ids"] = [c["id"] for c in self.commands[status_command_start:]]
         for mint, consume, identity in ((VERSIONS[0], VERSIONS[1], "cursor-downgrade"), (VERSIONS[1], VERSIONS[0], "cursor-upgrade")):
             def cursor_control(mint=mint, consume=consume):
                 self.start_nodes(mint, database)

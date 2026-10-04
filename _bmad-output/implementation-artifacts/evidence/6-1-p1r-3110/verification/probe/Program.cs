@@ -133,7 +133,7 @@ else if (args[0] == "wire")
         using var output = File.Create(args[4]);
         serializer.WriteObject(output, value);
     }
-    Console.WriteLine(JsonSerializer.Serialize(new { assertions = 1, type = type.FullName, inputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[3]))), outputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[4]))), fields = type.GetProperties().Where(p => p.Name is "OriginalActorId" or "AuthenticatedWorkloadId" or "IsDelegated" or "DelegationId" or "Scopes" or "Audience" or "GlobalPosition" or "SequenceNumber" or "UserId").ToDictionary(p => p.Name, p => p.GetValue(value)) }));
+    Console.WriteLine(JsonSerializer.Serialize(new { assertions = 1, type = type.FullName, inputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[3]))), outputSha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(args[4]))), fields = type.GetProperties().Where(p => p.Name is "OriginalActorId" or "AuthenticatedWorkloadId" or "IsDelegated" or "DelegationId" or "Scopes" or "Audience" or "GlobalPosition" or "SequenceNumber" or "UserId" or "TenantId" or "Domain" or "AggregateId" or "QueryType" or "Payload" or "CorrelationId" or "EntityId" or "IsGlobalAdmin" or "Paging" or "EventTypeName" or "SerializationFormat" or "Timestamp" or "MessageId").ToDictionary(p => p.Name, p => p.GetValue(value)) }));
 }
 else
 {

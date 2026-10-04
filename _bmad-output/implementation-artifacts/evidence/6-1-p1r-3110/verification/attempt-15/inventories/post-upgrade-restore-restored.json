@@ -1,0 +1,535 @@
+{
+  "database_identity_sha256": "6e9eb6763d18b9a6f23aae5b0730d4b3b036fd7b76b8a8f7d45c71438e578e7e",
+  "domain_rows": [
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:1",
+      "sequence": null,
+      "sha256": "45380b41fd48bc0e3cfc65971cae15badd2a4fb449d8b4760c9c1d39e546cbc7",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:10",
+      "sequence": null,
+      "sha256": "154932dc990da39562a864e684bf6f2fa9b39e40571ab8d88f7c7b989ca5d8ac",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:11",
+      "sequence": null,
+      "sha256": "5f6c19fcd276cd5331f4001789e43259287831c29b1e751175d8af13c86d05e8",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:12",
+      "sequence": null,
+      "sha256": "b97620fa7e411de7e60905b91701571c24f72263300141cb18ef1795b5e59987",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:2",
+      "sequence": null,
+      "sha256": "9f6c94d9dfa2e829e97c1b69c11fe862c3f250e29eb548ae3bbb81319a78b8a7",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:3",
+      "sequence": null,
+      "sha256": "35660ffce48603926823005bf5c86eca58c1326fbc68edc56bbf47bc704a3035",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:4",
+      "sequence": null,
+      "sha256": "969ad7a73ae197c0e65d637c5816ddbfe20b6602a115c60b4dd73e248ab2a4b3",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:5",
+      "sequence": null,
+      "sha256": "74b28611bc06fa64a7f5fb82250867006a10605fa2942cda20f7b98d67156c6d",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:6",
+      "sequence": null,
+      "sha256": "6096daed948defb8334bc91e914770f2254c020141a7b991686af43f55951e92",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:7",
+      "sequence": null,
+      "sha256": "a220f797e39d2a0e41b7bf7575bf0619b53031691148afc845cf1cd987624c62",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:8",
+      "sequence": null,
+      "sha256": "a0b972842684f02dba346785960b93d3cf25d99bc609a839e73c3fd9fda0a780",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:9",
+      "sequence": null,
+      "sha256": "b2689727c5cbebf1e601fce3cab85e18ac8ca4abf4671af00f92580b654498f9",
+      "snapshotSequence": null
+    },
+    {
+      "floor": "1",
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:metadata",
+      "sequence": "12",
+      "sha256": "31cfb77aec633bf301fb8bc18adf204b42f2e7f23b5de2edf9028c6887bb6326",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:snapshot",
+      "sequence": null,
+      "sha256": "ea9311acefb1935c331a494591e721ea0a3916137b678d9462f93325856a16d1",
+      "snapshotSequence": "9"
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:1",
+      "sequence": null,
+      "sha256": "42c9c9ef41f495741afee16585390702699165a6008cf92f45f5ef6a0a4b2e29",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:2",
+      "sequence": null,
+      "sha256": "1cabb9a659a715288179f65e5c8d2727cc4c84dda7be225d7e4472a02c9783e8",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:3",
+      "sequence": null,
+      "sha256": "24d573762d3ba85d8d88842c5c99768413445f6cee4ecf7a37729d221c411ab3",
+      "snapshotSequence": null
+    },
+    {
+      "floor": "1",
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:metadata",
+      "sequence": "3",
+      "sha256": "b38381bbc29c5421cf4f7e1aee6267d80531ce127db7f27834efad12140b19bf",
+      "snapshotSequence": null
+    }
+  ],
+  "query_command_id": 2038,
+  "query_output": "[{\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BVXFY0TMZABQARYHKDCB\", \"sha256\" : \"d7609ebf5d98dc9ed7c4c67f9a2b42561b18403172d535e134dc64b39b917bf8\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWCW1DQNR5VTY7VK5JAD\", \"sha256\" : \"ed5fe12210d1e1963085ae61263070bbc0c581c05cd43cf7b1cf44aee712e669\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWF1DR7S0TWH102V6ZRE\", \"sha256\" : \"b3ae02b0aef82403747983c07398da879dc8002b3504e47bc3a82a94d4370cf6\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWGF3C1CJA6YJ08B5540\", \"sha256\" : \"712a74a271468accd0a090a0a4defd99b1a7949cb24c0be79d70372783f891ad\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWHVWDCS2JYERGE1N3S3\", \"sha256\" : \"b6329aeebd85078ec023d3903152011c4e2114f0de8747334d23e7f703cb60c0\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWK8A2WSXSGVYXMFXN31\", \"sha256\" : \"d2a53aa5845d5db05a6d0578697e678fd755b300aae56efe7b12ed6ce3f2fb80\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWMTVJCXNEDF345V9V02\", \"sha256\" : \"6b4388a509a3f44e86ae3cb82802570a48adf8ea6901e8be8d70e083f1def4c8\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWPMRA839REE1FG4BPHQ\", \"sha256\" : \"8c854e94538d0ad0960ea3628f0f69eddfcfa5ad8d0ab89ef1ea9226136014a2\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWR7XFF4TSYB56DYVEQC\", \"sha256\" : \"4ac963a3205abd327da2e1524240ead17bc144d9b956c58972dad4dd07e4e66f\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWSPHQKEJN4CNN5NM588\", \"sha256\" : \"6bd5a8500a235820382ae61c46130281ad6d93de0ebd38a1b8fdd9a2aa6f5e78\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWVYQHKCN95VW8WYE5WT\", \"sha256\" : \"d2a86fbe7df5fb01245cbdeda4c7e51b2b214a2ef31de0aef5477abdf15ffc48\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWXJJTZBF303G9MKW83C\", \"sha256\" : \"251e59cfb77970727b46b2d3fdb37c612d860b329544752df629783798913ebd\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWZ97KQS0T6KSD3N0QCC\", \"sha256\" : \"1ebbb29b66e5cbe0e3daa5adb17d9fd29963ed59fe877e997e1a1151f92ff79a\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||pending_command_count\", \"sha256\" : \"5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||publication-index\", \"sha256\" : \"e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:1\", \"sha256\" : \"45380b41fd48bc0e3cfc65971cae15badd2a4fb449d8b4760c9c1d39e546cbc7\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:10\", \"sha256\" : \"154932dc990da39562a864e684bf6f2fa9b39e40571ab8d88f7c7b989ca5d8ac\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:11\", \"sha256\" : \"5f6c19fcd276cd5331f4001789e43259287831c29b1e751175d8af13c86d05e8\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:12\", \"sha256\" : \"b97620fa7e411de7e60905b91701571c24f72263300141cb18ef1795b5e59987\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:2\", \"sha256\" : \"9f6c94d9dfa2e829e97c1b69c11fe862c3f250e29eb548ae3bbb81319a78b8a7\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:3\", \"sha256\" : \"35660ffce48603926823005bf5c86eca58c1326fbc68edc56bbf47bc704a3035\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:4\", \"sha256\" : \"969ad7a73ae197c0e65d637c5816ddbfe20b6602a115c60b4dd73e248ab2a4b3\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:5\", \"sha256\" : \"74b28611bc06fa64a7f5fb82250867006a10605fa2942cda20f7b98d67156c6d\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:6\", \"sha256\" : \"6096daed948defb8334bc91e914770f2254c020141a7b991686af43f55951e92\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:7\", \"sha256\" : \"a220f797e39d2a0e41b7bf7575bf0619b53031691148afc845cf1cd987624c62\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:8\", \"sha256\" : \"a0b972842684f02dba346785960b93d3cf25d99bc609a839e73c3fd9fda0a780\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:9\", \"sha256\" : \"b2689727c5cbebf1e601fce3cab85e18ac8ca4abf4671af00f92580b654498f9\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:metadata\", \"sha256\" : \"31cfb77aec633bf301fb8bc18adf204b42f2e7f23b5de2edf9028c6887bb6326\", \"sequence\" : \"12\", \"floor\" : \"1\", \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:snapshot\", \"sha256\" : \"ea9311acefb1935c331a494591e721ea0a3916137b678d9462f93325856a16d1\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : \"9\"}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BX4QC7T2CA6S3WFX4TWD\", \"sha256\" : \"214f193dd897e4b3a15615790d040521e0265b1bcae4200b8aa1033d0281deed\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BX931QZZ86A8WVEK9E6N\", \"sha256\" : \"49b4c9b125f22d367b1b120d8252a9416a2e4f1f131188c673441476c2be68bd\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BXAD6ZK0GXH44N7QBGPM\", \"sha256\" : \"b9eac45c4206f77f6758f8c1deaed6efee6a77ce05da453a81291b57ac82a64d\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BXBVA377Q1XYBD8A103D\", \"sha256\" : \"b154de1e39a3179c4c37ede1d5d48ef3d449e5907a768b1828941ef113c0fee3\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||pending_command_count\", \"sha256\" : \"5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||publication-index\", \"sha256\" : \"e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:1\", \"sha256\" : \"42c9c9ef41f495741afee16585390702699165a6008cf92f45f5ef6a0a4b2e29\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:2\", \"sha256\" : \"1cabb9a659a715288179f65e5c8d2727cc4c84dda7be225d7e4472a02c9783e8\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:3\", \"sha256\" : \"24d573762d3ba85d8d88842c5c99768413445f6cee4ecf7a37729d221c411ab3\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:metadata\", \"sha256\" : \"b38381bbc29c5421cf4f7e1aee6267d80531ce127db7f27834efad12140b19bf\", \"sequence\" : \"3\", \"floor\" : \"1\", \"snapshotSequence\" : null}, {\"key\" : \"eventstore||GlobalPositionActor||global||current-global-position\", \"sha256\" : \"e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BVXFY0TMZABQARYHKDCB:status\", \"sha256\" : \"c15cab7b9ecfdd0130c2d119474311c274567f74ac76e889e2f843ab7c64ff23\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWCW1DQNR5VTY7VK5JAD:status\", \"sha256\" : \"250991370e1c7e63c5bc650478552228ef3c053410c5b22f98aeb1616fc7755f\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWF1DR7S0TWH102V6ZRE:status\", \"sha256\" : \"4c5c3a21e0f3329c8c8d9e7281bcf6849def9d6615e30c0e985b4e7e8f03a3db\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWGF3C1CJA6YJ08B5540:status\", \"sha256\" : \"4fea1bd88a6cb12492743ec76a58947a844ea24cd18dc9ead83d30d951044f58\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWHVWDCS2JYERGE1N3S3:status\", \"sha256\" : \"8bae5419347db452fc830814f07922bd8ef50c40c8f8d901514dc63365cf9c50\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWK8A2WSXSGVYXMFXN31:status\", \"sha256\" : \"e84c30f4fd231de7bf6c01ae866fa62a954055a923fcda71eeebdf9f541c963b\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWMTVJCXNEDF345V9V02:status\", \"sha256\" : \"917e7061d7108037c88a4cf517d964d8e263f02540c4a0fc45861ce5d1ce234e\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWPMRA839REE1FG4BPHQ:status\", \"sha256\" : \"adfe986d94ea91e6eb2c0cb9b5b15e79b2d2250f4f449a79252603ca4923fbef\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWR7XFF4TSYB56DYVEQC:status\", \"sha256\" : \"2ac9c79424f36d871471c29ba57f34ecda2835fce5adbb7c0099ff91d362dfbe\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWSPHQKEJN4CNN5NM588:status\", \"sha256\" : \"ebb441bd02ff276b6ea00a14721717a56e6295e573fd89f61e7efda8b9a422b5\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWVYQHKCN95VW8WYE5WT:status\", \"sha256\" : \"c6afc0abe2bb941bca1b45d650b06cfae174590121e6edd22a841bd18fe9bc15\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWXJJTZBF303G9MKW83C:status\", \"sha256\" : \"6506f7e83862e6c05a5f6696d51ccab4ca8c0ece34d7fce044fcf47cce585e10\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-a:01M438BWZ97KQS0T6KSD3N0QCC:status\", \"sha256\" : \"920f1f636774e448fb9a4dad64f947ec46a81c45614b11be327213bdd8715f00\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-b:01M438BX4QC7T2CA6S3WFX4TWD:status\", \"sha256\" : \"cd0c23884adc57f0e29ebc8a15f3e322e72b88acd8950c2ba84d3611a6dbbb87\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-b:01M438BX931QZZ86A8WVEK9E6N:status\", \"sha256\" : \"135ab08ee2b513fbfdb34b90cbbbaa44e76a290373b0942e1938118557059936\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-b:01M438BXAD6ZK0GXH44N7QBGPM:status\", \"sha256\" : \"cd39d96f70f532c187af84da8d441523b3d5952c5fd85e82d6d6b1ce02c2bb4d\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}, {\"key\" : \"eventstore||tenant-b:01M438BXBVA377Q1XYBD8A103D:status\", \"sha256\" : \"f433966c96fb86d8af0ecf4a308984cb9e760820c18398d3ef29b08396a291eb\", \"sequence\" : null, \"floor\" : null, \"snapshotSequence\" : null}]\n",
+  "rows": [
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BVXFY0TMZABQARYHKDCB",
+      "sequence": null,
+      "sha256": "d7609ebf5d98dc9ed7c4c67f9a2b42561b18403172d535e134dc64b39b917bf8",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWCW1DQNR5VTY7VK5JAD",
+      "sequence": null,
+      "sha256": "ed5fe12210d1e1963085ae61263070bbc0c581c05cd43cf7b1cf44aee712e669",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWF1DR7S0TWH102V6ZRE",
+      "sequence": null,
+      "sha256": "b3ae02b0aef82403747983c07398da879dc8002b3504e47bc3a82a94d4370cf6",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWGF3C1CJA6YJ08B5540",
+      "sequence": null,
+      "sha256": "712a74a271468accd0a090a0a4defd99b1a7949cb24c0be79d70372783f891ad",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWHVWDCS2JYERGE1N3S3",
+      "sequence": null,
+      "sha256": "b6329aeebd85078ec023d3903152011c4e2114f0de8747334d23e7f703cb60c0",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWK8A2WSXSGVYXMFXN31",
+      "sequence": null,
+      "sha256": "d2a53aa5845d5db05a6d0578697e678fd755b300aae56efe7b12ed6ce3f2fb80",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWMTVJCXNEDF345V9V02",
+      "sequence": null,
+      "sha256": "6b4388a509a3f44e86ae3cb82802570a48adf8ea6901e8be8d70e083f1def4c8",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWPMRA839REE1FG4BPHQ",
+      "sequence": null,
+      "sha256": "8c854e94538d0ad0960ea3628f0f69eddfcfa5ad8d0ab89ef1ea9226136014a2",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWR7XFF4TSYB56DYVEQC",
+      "sequence": null,
+      "sha256": "4ac963a3205abd327da2e1524240ead17bc144d9b956c58972dad4dd07e4e66f",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWSPHQKEJN4CNN5NM588",
+      "sequence": null,
+      "sha256": "6bd5a8500a235820382ae61c46130281ad6d93de0ebd38a1b8fdd9a2aa6f5e78",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWVYQHKCN95VW8WYE5WT",
+      "sequence": null,
+      "sha256": "d2a86fbe7df5fb01245cbdeda4c7e51b2b214a2ef31de0aef5477abdf15ffc48",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWXJJTZBF303G9MKW83C",
+      "sequence": null,
+      "sha256": "251e59cfb77970727b46b2d3fdb37c612d860b329544752df629783798913ebd",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||idempotency:01M438BWZ97KQS0T6KSD3N0QCC",
+      "sequence": null,
+      "sha256": "1ebbb29b66e5cbe0e3daa5adb17d9fd29963ed59fe877e997e1a1151f92ff79a",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||pending_command_count",
+      "sequence": null,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||publication-index",
+      "sequence": null,
+      "sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:1",
+      "sequence": null,
+      "sha256": "45380b41fd48bc0e3cfc65971cae15badd2a4fb449d8b4760c9c1d39e546cbc7",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:10",
+      "sequence": null,
+      "sha256": "154932dc990da39562a864e684bf6f2fa9b39e40571ab8d88f7c7b989ca5d8ac",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:11",
+      "sequence": null,
+      "sha256": "5f6c19fcd276cd5331f4001789e43259287831c29b1e751175d8af13c86d05e8",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:12",
+      "sequence": null,
+      "sha256": "b97620fa7e411de7e60905b91701571c24f72263300141cb18ef1795b5e59987",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:2",
+      "sequence": null,
+      "sha256": "9f6c94d9dfa2e829e97c1b69c11fe862c3f250e29eb548ae3bbb81319a78b8a7",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:3",
+      "sequence": null,
+      "sha256": "35660ffce48603926823005bf5c86eca58c1326fbc68edc56bbf47bc704a3035",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:4",
+      "sequence": null,
+      "sha256": "969ad7a73ae197c0e65d637c5816ddbfe20b6602a115c60b4dd73e248ab2a4b3",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:5",
+      "sequence": null,
+      "sha256": "74b28611bc06fa64a7f5fb82250867006a10605fa2942cda20f7b98d67156c6d",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:6",
+      "sequence": null,
+      "sha256": "6096daed948defb8334bc91e914770f2254c020141a7b991686af43f55951e92",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:7",
+      "sequence": null,
+      "sha256": "a220f797e39d2a0e41b7bf7575bf0619b53031691148afc845cf1cd987624c62",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:8",
+      "sequence": null,
+      "sha256": "a0b972842684f02dba346785960b93d3cf25d99bc609a839e73c3fd9fda0a780",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:9",
+      "sequence": null,
+      "sha256": "b2689727c5cbebf1e601fce3cab85e18ac8ca4abf4671af00f92580b654498f9",
+      "snapshotSequence": null
+    },
+    {
+      "floor": "1",
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:metadata",
+      "sequence": "12",
+      "sha256": "31cfb77aec633bf301fb8bc18adf204b42f2e7f23b5de2edf9028c6887bb6326",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:snapshot",
+      "sequence": null,
+      "sha256": "ea9311acefb1935c331a494591e721ea0a3916137b678d9462f93325856a16d1",
+      "snapshotSequence": "9"
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BX4QC7T2CA6S3WFX4TWD",
+      "sequence": null,
+      "sha256": "214f193dd897e4b3a15615790d040521e0265b1bcae4200b8aa1033d0281deed",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BX931QZZ86A8WVEK9E6N",
+      "sequence": null,
+      "sha256": "49b4c9b125f22d367b1b120d8252a9416a2e4f1f131188c673441476c2be68bd",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BXAD6ZK0GXH44N7QBGPM",
+      "sequence": null,
+      "sha256": "b9eac45c4206f77f6758f8c1deaed6efee6a77ce05da453a81291b57ac82a64d",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||idempotency:01M438BXBVA377Q1XYBD8A103D",
+      "sequence": null,
+      "sha256": "b154de1e39a3179c4c37ede1d5d48ef3d449e5907a768b1828941ef113c0fee3",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||pending_command_count",
+      "sequence": null,
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||publication-index",
+      "sequence": null,
+      "sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:1",
+      "sequence": null,
+      "sha256": "42c9c9ef41f495741afee16585390702699165a6008cf92f45f5ef6a0a4b2e29",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:2",
+      "sequence": null,
+      "sha256": "1cabb9a659a715288179f65e5c8d2727cc4c84dda7be225d7e4472a02c9783e8",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:events:3",
+      "sequence": null,
+      "sha256": "24d573762d3ba85d8d88842c5c99768413445f6cee4ecf7a37729d221c411ab3",
+      "snapshotSequence": null
+    },
+    {
+      "floor": "1",
+      "key": "eventstore||AggregateActor||tenant-b:counter:fixture||tenant-b:counter:fixture:metadata",
+      "sequence": "3",
+      "sha256": "b38381bbc29c5421cf4f7e1aee6267d80531ce127db7f27834efad12140b19bf",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||GlobalPositionActor||global||current-global-position",
+      "sequence": null,
+      "sha256": "e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BVXFY0TMZABQARYHKDCB:status",
+      "sequence": null,
+      "sha256": "c15cab7b9ecfdd0130c2d119474311c274567f74ac76e889e2f843ab7c64ff23",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWCW1DQNR5VTY7VK5JAD:status",
+      "sequence": null,
+      "sha256": "250991370e1c7e63c5bc650478552228ef3c053410c5b22f98aeb1616fc7755f",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWF1DR7S0TWH102V6ZRE:status",
+      "sequence": null,
+      "sha256": "4c5c3a21e0f3329c8c8d9e7281bcf6849def9d6615e30c0e985b4e7e8f03a3db",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWGF3C1CJA6YJ08B5540:status",
+      "sequence": null,
+      "sha256": "4fea1bd88a6cb12492743ec76a58947a844ea24cd18dc9ead83d30d951044f58",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWHVWDCS2JYERGE1N3S3:status",
+      "sequence": null,
+      "sha256": "8bae5419347db452fc830814f07922bd8ef50c40c8f8d901514dc63365cf9c50",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWK8A2WSXSGVYXMFXN31:status",
+      "sequence": null,
+      "sha256": "e84c30f4fd231de7bf6c01ae866fa62a954055a923fcda71eeebdf9f541c963b",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWMTVJCXNEDF345V9V02:status",
+      "sequence": null,
+      "sha256": "917e7061d7108037c88a4cf517d964d8e263f02540c4a0fc45861ce5d1ce234e",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWPMRA839REE1FG4BPHQ:status",
+      "sequence": null,
+      "sha256": "adfe986d94ea91e6eb2c0cb9b5b15e79b2d2250f4f449a79252603ca4923fbef",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWR7XFF4TSYB56DYVEQC:status",
+      "sequence": null,
+      "sha256": "2ac9c79424f36d871471c29ba57f34ecda2835fce5adbb7c0099ff91d362dfbe",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWSPHQKEJN4CNN5NM588:status",
+      "sequence": null,
+      "sha256": "ebb441bd02ff276b6ea00a14721717a56e6295e573fd89f61e7efda8b9a422b5",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWVYQHKCN95VW8WYE5WT:status",
+      "sequence": null,
+      "sha256": "c6afc0abe2bb941bca1b45d650b06cfae174590121e6edd22a841bd18fe9bc15",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWXJJTZBF303G9MKW83C:status",
+      "sequence": null,
+      "sha256": "6506f7e83862e6c05a5f6696d51ccab4ca8c0ece34d7fce044fcf47cce585e10",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-a:01M438BWZ97KQS0T6KSD3N0QCC:status",
+      "sequence": null,
+      "sha256": "920f1f636774e448fb9a4dad64f947ec46a81c45614b11be327213bdd8715f00",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-b:01M438BX4QC7T2CA6S3WFX4TWD:status",
+      "sequence": null,
+      "sha256": "cd0c23884adc57f0e29ebc8a15f3e322e72b88acd8950c2ba84d3611a6dbbb87",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-b:01M438BX931QZZ86A8WVEK9E6N:status",
+      "sequence": null,
+      "sha256": "135ab08ee2b513fbfdb34b90cbbbaa44e76a290373b0942e1938118557059936",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-b:01M438BXAD6ZK0GXH44N7QBGPM:status",
+      "sequence": null,
+      "sha256": "cd39d96f70f532c187af84da8d441523b3d5952c5fd85e82d6d6b1ce02c2bb4d",
+      "snapshotSequence": null
+    },
+    {
+      "floor": null,
+      "key": "eventstore||tenant-b:01M438BXBVA377Q1XYBD8A103D:status",
+      "sequence": null,
+      "sha256": "f433966c96fb86d8af0ecf4a308984cb9e760820c18398d3ef29b08396a291eb",
+      "snapshotSequence": null
+    }
+  ],
+  "sha256": "d1c6b084f6dd72f4c2ba33734d1f1050aede32a30dd592e5e9122f254d07465f"
+}

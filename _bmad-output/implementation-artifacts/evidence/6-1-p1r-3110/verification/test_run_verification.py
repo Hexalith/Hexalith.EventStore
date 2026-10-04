@@ -1,5 +1,7 @@
 """Evidence mutation and owned lifecycle controls; no shared resources are touched."""
 import copy
+import contextlib
+import io
 import json
 import os
 import pathlib
@@ -29,6 +31,16 @@ class EvidenceTests(unittest.TestCase):
         self.temp.cleanup()
 
     def save(self):
+        self.finish_nodes()
+        if self.cleanup.get("owned_containers") and not any(c.get("fixture_cleanup") for c in self.commands):
+            self.saving_cleanup = True
+            try:
+                for identity in self.cleanup["owned_containers"]:
+                    self.add_command(["docker","inspect","--format",verifier.OWNERSHIP_INSPECT_FORMAT,identity], {"id":identity,"invocation":self.cleanup["invocation"]}, fixture_cleanup=True)
+                    self.add_command(["docker","rm","-f",identity], fixture_cleanup=True)
+                self.add_command(["docker","ps","-aq","--no-trunc","--filter","label=hexalith.p1r.invocation="+self.cleanup["invocation"]], fixture_cleanup=True)
+            finally:
+                self.saving_cleanup = False
         def bind(cases):
             for case in cases:
                 case.setdefault("command_ids", [1])
@@ -178,6 +190,13 @@ class EvidenceTests(unittest.TestCase):
             self.reject()
 
     def add_command(self, argv, data=None, output=None, code=0, **extra):
+        if not getattr(self, "saving_cleanup", False):
+            while self.commands and self.commands[-1].get("fixture_cleanup"):
+                self.commands.pop()
+        if "request_observation" in extra:
+            extra["request_observation_sha256"] = verifier.sha(verifier.canonical(extra["request_observation"]))
+            if not any(str(a).startswith("request-sha256=") for a in argv):
+                argv = [*argv, "request-sha256="+verifier.sha(verifier.canonical(extra["request_observation"]))]
         if argv[:1] == ["HTTP"] and code == 0:
             code = 200
         rendered = output if output is not None else json.dumps(data, sort_keys=True) + "\n" if data is not None else ""
@@ -224,12 +243,22 @@ class EvidenceTests(unittest.TestCase):
         self.add_command([sys.executable,"-c",verifier.ARTIFACT_INVENTORY_SCRIPT,assets,locked_path,"hash-restored-graphs"],{assets:verifier.sha(verifier.canonical(graph)),locked_path:verifier.sha(verifier.canonical(lock))})
         self.add_command([sys.executable,"-c",verifier.ASSEMBLY_INVENTORY_SCRIPT,"/fixture/"+lane+"/"+project.lower()+"/bin/"+("Debug" if lane=="current" else "Release")+"/net10.0","hash-built-assemblies"],{name:hashes[name] for name in names})
 
+    def finish_nodes(self):
+        instant = verifier.dt.datetime(2026,10,4,1,tzinfo=verifier.dt.timezone.utc) + verifier.dt.timedelta(seconds=2*len(self.commands))
+        for command in getattr(self, "fixture_nodes", []):
+            command["finished_utc"] = instant.isoformat()
+        self.fixture_nodes = []
+
     def nodes(self,lane,hashes=None):
+        self.finish_nodes()
         hashes=hashes or verifier.PUBLISHED_DLL_HASHES[lane]
         for kind,required in (("host",verifier.HOST_REQUIRED),("domain",verifier.DOMAIN_REQUIRED)):
             configuration="Debug" if lane=="current" else "Release"
-            self.add_command(["dotnet","/fixture/"+lane+"/"+kind+"/bin/"+configuration+"/net10.0/"+kind.capitalize()+".dll"],node_environment={"ASPNETCORE_URLS":"http://127.0.0.1:12345","DAPR_HTTP_PORT":"12345"})
-            self.add_command(["/fixture/daprd","--app-id","eventstore" if kind=="host" else "counter","--dapr-http-port","12345","--app-port","12345"])
+            application = self.add_command(["dotnet","/fixture/"+lane+"/"+kind+"/bin/"+configuration+"/net10.0/"+kind.capitalize()+".dll"],node_environment={"ASPNETCORE_URLS":"http://127.0.0.1:12345","DAPR_HTTP_PORT":"12345"})
+            sidecar = self.add_command(["/fixture/daprd","--app-id","eventstore" if kind=="host" else "counter","--dapr-http-port","12345","--app-port","12345"])
+            for command in (application, sidecar):
+                command["finished_utc"] = "2099-01-01T00:00:00+00:00"
+                self.fixture_nodes.append(command)
             identities=[{"name":name,"version":(verifier.VERSIONS[0] if lane=="current" else lane)+".0","sha256":hashes[name]} for name in sorted(required)]
             self.add_command(["HTTP","GET","http://127.0.0.1:12345"+("/identity" if kind=="host" else "/ready")],identities if kind=="host" else {"ready":True,"assemblies":identities})
             verifier.write(self.directory / "artifacts" / (lane+"-"+kind+"-loaded.json"),identities)
@@ -256,6 +285,9 @@ class EvidenceTests(unittest.TestCase):
         return sorted(rows,key=lambda r:r["key"])
 
     def inventory_evidence(self,database,rows,name):
+        self.finish_nodes()
+        if not any("createdb" in c["argv"] and c["argv"][-1] == database for c in self.commands):
+            self.add_command(["docker","exec","a"*64,"createdb","-U","postgres",database])
         output=json.dumps(rows)+"\n"
         command=self.add_command(["docker","exec","a"*64,"psql","-U","postgres","-d",database,"-At","-v","ON_ERROR_STOP=1","-c",verifier.INVENTORY_SQL],output=output)
         value={"rows":rows,"domain_rows":rows,"sha256":verifier.sha(verifier.canonical(rows)),"query_command_id":command["id"],"query_output":output,"database_identity_sha256":verifier.sha(database.encode())}
@@ -315,6 +347,8 @@ class EvidenceTests(unittest.TestCase):
         if scenario=="pre-upgrade-restore":
             self.nodes(verifier.VERSIONS[0]);self.actor_evidence(verifier.VERSIONS[0],"tenant-a",0,"IncrementCounter")
             self.add_command(["dotnet","/fixture/3.110.0/host/bin/Release/net10.0/Host.dll"])
+        self.finish_nodes()
+        self.add_command(["docker","exec","a"*64,"createdb","-U","postgres","p1r_restored"])
         self.add_command(["docker","exec","-i","a"*64,"pg_restore","-U","postgres","-d","p1r_restored","--exit-on-error"],input_sha256="b"*64,input_bytes=10)
         copied=self.inventory_evidence("p1r_restored",self.state_rows(),"restore-copied")
         self.nodes(verifier.VERSIONS[1])
@@ -335,6 +369,7 @@ class EvidenceTests(unittest.TestCase):
 
     def provenance_pass(self):
         start=len(self.commands);cases=[]
+        self.add_command([sys.executable,str(verifier.HERE.parent / "verify_public_packages.py")])
         for lane in verifier.VERSIONS:
             case_start=len(self.commands)
             loaded=json.loads((verifier.HERE / "attempt-10/artifacts" / (lane+"-identity.json")).read_text())["loaded"]
@@ -584,6 +619,7 @@ class EvidenceTests(unittest.TestCase):
             first,middle,form,shape=identity.split("-");direction=[first,middle]
             value=verifier.wire_fixture(kind,shape);case_start=len(self.commands)
             fields={"UserId":"fixture-user","SequenceNumber":3} if kind=="projection" else {"UserId":"fixture-user","OriginalActorId":None,"AuthenticatedWorkloadId":None,"IsDelegated":False,"DelegationId":None,"Scopes":None,"Audience":None}
+            fields.update(verifier.common_wire_fields(value))
             if kind=="projection": fields["GlobalPosition"]=987
             if shape=="dual": fields.update(OriginalActorId="fixture-human",AuthenticatedWorkloadId="fixture-workload",IsDelegated=True,DelegationId="fixture-delegation",Scopes=value["scopes"],Audience=value["audience"])
             observations=[];input_hash=verifier.written_fixture_hash(value)
@@ -618,6 +654,188 @@ class EvidenceTests(unittest.TestCase):
                     self.save()
 
 
+    def test_cleanup_requires_successful_owned_removal_receipts(self):
+        self.persisted_pass()
+        for command in self.commands:
+            if command["argv"][:3] == ["docker","rm","-f"]:
+                command["exit_code"] = 1
+        self.save()
+        with self.assertRaisesRegex(ValueError, "successful owned-resource removal"):
+            verifier.validate(self.directory)
+
+    def test_database_creation_must_succeed_before_restore(self):
+        self.restore_pass()
+        for command in self.commands:
+            if "createdb" in command["argv"]:
+                command["exit_code"] = 1
+        self.save()
+        with self.assertRaisesRegex(ValueError, "successful fresh creation"):
+            verifier.validate(self.directory)
+
+    def test_failed_application_launch_cannot_prove_live_requests(self):
+        self.persisted_pass()
+        for command in self.commands:
+            if command["argv"][:1] == ["dotnet"] and command["argv"][1].endswith(("/Host.dll","/Domain.dll")):
+                command["exit_code"] = 127
+        self.save()
+        with self.assertRaisesRegex(ValueError, "actual running lane identity"):
+            verifier.validate(self.directory)
+
+    def test_application_lifetime_must_cover_requests(self):
+        self.persisted_pass()
+        for command in self.commands:
+            if command["argv"][:1] == ["dotnet"] and command["argv"][1].endswith(("/Host.dll","/Domain.dll")):
+                command["finished_utc"] = command["started_utc"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "actual running lane identity"):
+            verifier.validate(self.directory)
+
+    def test_writers_must_stop_before_backup(self):
+        row,_ = self.restore_pass()
+        writer = next(c for c in self.commands if c["id"] in row["command_ids"] and c.get("node_environment"))
+        writer["finished_utc"] = "2099-01-01T00:00:00+00:00"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "Writers were not quiesced"):
+            verifier.validate(self.directory)
+
+    def test_provenance_requires_successful_archive_preflight(self):
+        self.provenance_pass()
+        next(c for c in self.commands if c["argv"][-1].endswith("/verify_public_packages.py"))["exit_code"] = 1
+        self.save()
+        with self.assertRaisesRegex(ValueError, "successful public-package preflight"):
+            verifier.validate(self.directory)
+
+    def changed_restore_inventory(self, scenario, observation):
+        row,_ = self.restore_pass(scenario)
+        case = row["cases"][0]
+        filename,field = ("restore-copied.json","restored_inventory_sha256") if observation == "restored" else ("restore-after.json","restored_replay_sha256")
+        path = self.directory / "inventories" / filename
+        value = json.loads(path.read_text())
+        next(r for r in value["rows"] if ":events:" in r["key"])["sha256"] = "f"*64
+        value["domain_rows"] = copy.deepcopy(value["rows"])
+        value["sha256"] = verifier.sha(verifier.canonical(value["rows"]))
+        value["query_output"] = json.dumps(value["rows"])+"\n"
+        receipt = self.commands[value["query_command_id"]-1]
+        receipt.update(diagnostic=value["query_output"],output_sha256=verifier.sha(value["query_output"].encode()))
+        case[field] = value["sha256"]
+        verifier.write(path,value)
+        self.save()
+        with self.assertRaisesRegex(ValueError, "Restoration inventory/invariants differ"):
+            verifier.validate(self.directory)
+
+    def test_post_upgrade_restore_rejects_changed_restored_event(self):
+        self.changed_restore_inventory("post-upgrade-restore","restored")
+
+    def test_post_upgrade_restore_rejects_changed_replayed_event(self):
+        self.changed_restore_inventory("post-upgrade-restore","replayed")
+
+    def test_pre_upgrade_restore_rejects_changed_restored_event(self):
+        self.changed_restore_inventory("pre-upgrade-restore","restored")
+
+    def test_pre_upgrade_restore_rejects_changed_replayed_event(self):
+        self.changed_restore_inventory("pre-upgrade-restore","replayed")
+
+    def test_initial_common_query_and_projection_fields_are_required(self):
+        for kind in ("query","projection"):
+            with self.subTest(kind=kind):
+                row = self.wire_pass(kind)
+                case = row["cases"][0]
+                command = next(c for c in self.commands if c["id"] in case["command_ids"] and c["argv"][2:3] == ["wire"])
+                observation = json.loads(command["diagnostic"])
+                del observation["fields"]["Payload"]
+                case["first_fields"] = observation["fields"]
+                command["diagnostic"] = json.dumps(observation)+"\n"
+                command["output_sha256"] = verifier.sha(command["diagnostic"].encode())
+                self.save()
+                with self.assertRaisesRegex(ValueError, "Initial typed writer lost common"):
+                    verifier.validate(self.directory)
+                row.update(execution="unavailable",compatibility="unverified",assertions=0,cases=[{"id":"blocked","assertions":0,"command_ids":[1]}])
+                self.save()
+
+    def test_common_wire_fields_cannot_change_during_round_trip(self):
+        for kind in ("query","projection"):
+            with self.subTest(kind=kind):
+                row=self.wire_pass(kind);case=row["cases"][0]
+                calls=[c for c in self.commands if c["id"] in case["command_ids"] and c["argv"][2:3]==["wire"]]
+                observation=json.loads(calls[1]["diagnostic"])
+                observation["fields"]["Payload"]="changed"
+                case["middle_fields"]=observation["fields"]
+                calls[1]["diagnostic"]=json.dumps(observation)+"\n"
+                calls[1]["output_sha256"]=verifier.sha(calls[1]["diagnostic"].encode())
+                self.save()
+                with self.assertRaisesRegex(ValueError,"Common wire fields changed"):
+                    verifier.validate(self.directory)
+                row.update(execution="unavailable",compatibility="unverified",assertions=0,cases=[{"id":"blocked","assertions":0,"command_ids":[1]}])
+                self.save()
+
+    def private_mixed_case(self, kind):
+        start=len(self.commands)
+        if kind == "status":
+            self.nodes(verifier.VERSIONS[0])
+            value={"retryable":True,"recoveryReasonCode":"fixture-recovery","drainAttemptCount":2}
+            self.add_command(["HTTP","POST","http://127.0.0.1:12345/status/tenant-a/fixture-status"],request_observation=value)
+            self.add_command(["HTTP","GET","http://127.0.0.1:12345/status/tenant-a/fixture-status"],value)
+            self.nodes(verifier.VERSIONS[1])
+            self.add_command(["HTTP","GET","http://127.0.0.1:12345/status/tenant-a/fixture-status"],{})
+            case={"id":"status-downgrade","selected_keys":sorted(value),"old_keys":[],"handling":"lost-recovery-tristate"}
+            compatibility="incompatible"
+        else:
+            digest=verifier.sha(b"opaque-fixture")
+            self.nodes(verifier.VERSIONS[0])
+            self.add_command(["HTTP","GET","http://127.0.0.1:12345/cursor-mint"],confidential_observations={"cursor_sha256":digest})
+            self.nodes(verifier.VERSIONS[1])
+            value={"tenantId":"tenant-a","domain":"counter","aggregateId":"fixture","queryType":"fixture","payload":"e30=","correlationId":"fixture-correlation","userId":"fixture-user","paging":{"cursor":{"sha256":digest}}}
+            decoded={"decoded":True,"position":"position-3"}
+            for result in (decoded,{"decoded":False}):
+                payload=verifier.base64.b64encode(json.dumps(result).encode()).decode()
+                self.add_command(["HTTP","POST","http://127.0.0.1:12345/query"],{"payloadBytes":payload},request_observation=value)
+            case={"id":"cursor-downgrade","mint":verifier.VERSIONS[0],"consume":verifier.VERSIONS[1],"cursor_sha256":digest,"scope":"tenant-a|watermark:987","decode_outcome":decoded,"tamper_rejected":True,"key_material_retained":False}
+            compatibility="compatible"
+        self.finish_nodes()
+        case.update(assertions=1,command_ids=[c["id"] for c in self.commands[start:]])
+        if kind == "status":
+            case["prerequisite_command_ids"] = list(case["command_ids"])
+            case["command_ids"] = [case["command_ids"][-1]]
+        row={"id":"mixed-api","execution":"passed","compatibility":compatibility,"cases":[case],"command_ids":[c["id"] for c in self.commands[start:]]}
+        verifier.validate_operations(self.directory,self.commands,[row],{},None,None)
+        return row
+
+    def test_status_and_cursor_requests_require_the_claimed_application(self):
+        for kind,suffix in (("status","/status/tenant-a/fixture-status"),("cursor","/query")):
+            with self.subTest(kind=kind):
+                row=self.private_mixed_case(kind)
+                for command in self.commands:
+                    if command["id"] in row["command_ids"] and command["argv"][:1]==["HTTP"] and command["argv"][2].endswith(suffix):
+                        command["argv"][2]="http://unrelated.invalid"+suffix
+                with self.assertRaisesRegex(ValueError,"Request endpoint differs"):
+                    verifier.validate_operations(self.directory,self.commands,[row],{},None,None)
+
+    def test_status_case_requires_both_versions_setup_receipts(self):
+        row=self.private_mixed_case("status")
+        case=row["cases"][0]
+        case["prerequisite_command_ids"]=[c["id"] for c in self.commands if c["id"] in case["prerequisite_command_ids"] and c["argv"][:1]==["HTTP"]]
+        with self.assertRaisesRegex(ValueError,"Missing executed lane application"):
+            verifier.validate_operations(self.directory,self.commands,[row],{},None,None)
+
+    def test_cursor_request_scope_cannot_be_rebound(self):
+        row=self.private_mixed_case("cursor")
+        command=next(c for c in self.commands if c["argv"][:2]==["HTTP","POST"])
+        command["request_observation"]["tenantId"]="unrelated-tenant"
+        command["request_observation_sha256"]=verifier.sha(verifier.canonical(command["request_observation"]))
+        with self.assertRaisesRegex(ValueError,"Cursor request fixture scope differs"):
+            verifier.validate_operations(self.directory,self.commands,[row],{},None,None)
+
+    def test_request_observation_requires_its_literal_hash(self):
+        value={"value":"fixture"}
+        command=self.add_command(["HTTP","POST","http://127.0.0.1:12345/fixture"],request_observation=value)
+        self.save();verifier.validate(self.directory)
+        command["request_observation"]={"value":"changed"}
+        command["request_observation_sha256"]=verifier.sha(verifier.canonical(command["request_observation"]))
+        self.save()
+        with self.assertRaisesRegex(ValueError,"literal request hash"):
+            verifier.validate(self.directory)
+
+
 class LifecycleTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -635,6 +853,101 @@ class LifecycleTests(unittest.TestCase):
             self.runner.stop(process)
         self.runner.flush_logs()
         self.temp.cleanup()
+
+    def test_interrupted_binary_commands_retain_only_hash_and_length(self):
+        marker="PGDMP-fixture-raw-database-contents"
+        command=[sys.executable,"-c","import sys,time;sys.stdout.write("+repr(marker)+");sys.stdout.flush();time.sleep(30)"]
+        for cancellation in (False,True):
+            with self.subTest(cancellation=cancellation):
+                old=signal.getsignal(signal.SIGALRM)
+                try:
+                    if cancellation:
+                        def cancel(signum,frame): raise KeyboardInterrupt()
+                        signal.signal(signal.SIGALRM,cancel);signal.setitimer(signal.ITIMER_REAL,.3)
+                    with self.assertRaises(KeyboardInterrupt if cancellation else TimeoutError):
+                        self.runner.run(command,timeout=.3 if not cancellation else 5,binary=True)
+                finally:
+                    signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,old)
+                receipt=self.runner.commands[-1]
+                self.assertNotIn(marker,receipt["diagnostic"])
+                self.assertEqual(receipt["output_bytes"],len(marker))
+                self.assertFalse(receipt["binary_output_retained"])
+
+    def test_launch_cancellation_registers_and_stops_each_child(self):
+        original=verifier.subprocess.Popen
+        spawned=[]
+        def create(*args,**kwargs):
+            process=original(*args,**kwargs);spawned.append(process)
+            signal.raise_signal(signal.SIGINT)
+            return process
+        command=[sys.executable,"-c","import time;time.sleep(30)"]
+        try:
+            for method in (self.runner.run,self.runner.start):
+                with self.subTest(method=method.__name__),mock.patch.object(verifier.subprocess,"Popen",side_effect=create):
+                    with self.assertRaises(KeyboardInterrupt): method(command)
+                    self.assertIn(spawned[-1],self.runner.processes)
+                    self.assertIsNotNone(spawned[-1].poll())
+                    self.assertEqual(self.runner.commands[-1]["exit_code"],130)
+        finally:
+            for process in spawned:
+                self.runner.stop(process)
+
+    def test_termination_failure_keeps_timeout_and_cancellation_receipts(self):
+        command=[sys.executable,"-c","import time;time.sleep(30)"]
+        for cancellation in (False,True):
+            with self.subTest(cancellation=cancellation):
+                communicate=mock.patch.object(verifier.subprocess.Popen,"communicate",side_effect=KeyboardInterrupt()) if cancellation else contextlib.nullcontext()
+                with communicate,mock.patch.object(self.runner,"stop",side_effect=RuntimeError("termination failed")):
+                    with self.assertRaises(KeyboardInterrupt if cancellation else TimeoutError):
+                        self.runner.run(command,timeout=.05)
+                receipt=self.runner.commands[-1]
+                self.assertEqual(receipt["exit_code"],130 if cancellation else 124)
+                self.assertEqual(receipt["termination_failure"],"RuntimeError")
+                self.runner.stop(self.runner.processes[-1])
+
+    def test_cancellation_during_timeout_cleanup_remains_cancellation(self):
+        command=[sys.executable,"-c","import time;time.sleep(30)"]
+        with mock.patch.object(self.runner,"stop",side_effect=KeyboardInterrupt()):
+            with self.assertRaises(KeyboardInterrupt): self.runner.run(command,timeout=.05)
+        self.assertEqual(self.runner.commands[-1]["exit_code"],130)
+        self.assertEqual(self.runner.commands[-1]["termination_failure"],"KeyboardInterrupt")
+        self.runner.stop(self.runner.processes[-1])
+
+    def test_child_temporary_directories_remain_inside_owned_scratch(self):
+        command=[sys.executable,"-c","import tempfile,time;print(tempfile.mkdtemp(),flush=True);time.sleep(30)"]
+        with self.assertRaises(TimeoutError): self.runner.run(command,timeout=.3)
+        path=pathlib.Path(self.runner.commands[-1]["diagnostic"].strip())
+        self.assertTrue(path.is_relative_to(self.runner.scratch))
+        self.assertTrue(path.exists())
+        with mock.patch.object(self.runner,"shared",return_value={}):
+            self.assertTrue(self.runner.cleanup()["scratch_removed"])
+        self.assertFalse(path.exists())
+
+    def test_six_ports_are_reserved_concurrently_and_released(self):
+        occupied=set()
+        def make_socket():
+            connection=mock.MagicMock();chosen=[]
+            connection.__enter__.return_value=connection
+            def bind(address):
+                port=next(p for p in range(10000,10010) if p not in occupied)
+                chosen.append(port);occupied.add(port)
+            connection.bind.side_effect=bind
+            connection.getsockname.side_effect=lambda:("127.0.0.1",chosen[0])
+            connection.__exit__.side_effect=lambda *args:occupied.remove(chosen[0])
+            return connection
+        with mock.patch.object(verifier.socket,"socket",side_effect=make_socket):
+            self.assertEqual(len(set(self.runner.ports(6))),6)
+        self.assertFalse(occupied)
+
+    def test_http_error_body_failure_keeps_attempted_request(self):
+        for failure,code in ((TimeoutError("body timed out"),124),(KeyboardInterrupt(),130)):
+            body=io.BytesIO()
+            error=verifier.urllib.error.HTTPError("http://127.0.0.1:12345/fixture",500,"failed",{},body)
+            with self.subTest(code=code),mock.patch.object(verifier.urllib.request,"urlopen",side_effect=error),mock.patch.object(error,"read",side_effect=failure):
+                with self.assertRaises(type(failure)):
+                    self.runner.http("POST",error.url,{"value":"fixture"})
+                self.assertEqual(self.runner.commands[-1]["exit_code"],code)
+                self.assertEqual(self.runner.commands[-1]["argv"][-1],"request-sha256="+verifier.sha(verifier.canonical({"value":"fixture"})))
 
     def test_timeout_kills_owned_group_and_retains_receipt(self):
         with self.assertRaises(TimeoutError):
