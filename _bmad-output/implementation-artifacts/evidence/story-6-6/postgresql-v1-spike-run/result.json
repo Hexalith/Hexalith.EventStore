@@ -1,0 +1,36 @@
+{
+  "scope": "local provider diagnostic; no production authority",
+  "dapr_image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+  "postgres_image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+  "caller_lost_acknowledgment": true,
+  "captured_at_utc": "2026-10-04T21:08:03Z",
+  "repository_head": "2d88f1fbabc0d876b94820590e8432c71fc0d8fb",
+  "probe_sha256": "6da31cd8f4f66fc4df0812446f5e1a08b3a8e5514d1856ba0ab821d8873bff88",
+  "runtime_version": "1.18.2",
+  "dapr_image_id": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+  "dapr_repo_digests": [
+    "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
+  ],
+  "postgres_version": "postgres (PostgreSQL) 18.4 (Debian 18.4-1.pgdg13+1)",
+  "exact_envelope_bytes_preserved": false,
+  "embedded_payload_bytes_preserved": true,
+  "submitted_sha256": "5dbd0273119c3a2bcdaa6624db745d906988f0a08efc4fadc62902466085f353",
+  "readback_sha256": "2fab02ab517682fae621f8c087b2876e3db3361563c4a7aa8b4616c04b7ff058",
+  "actor_read_etag": null,
+  "post_ack_loss_current_generation_recovered": 2,
+  "after_later_write_current_generation": 3,
+  "earlier_event_retained": true,
+  "historical_head_images_in_current_provider_rows": false,
+  "generation_labels": "test-authored application labels; not provider receipts",
+  "committed_generation_receipt": "not supplied by stock component; see source/API audit",
+  "conclusion": "NO-GO for stock component as exact-byte historical committed-generation authority",
+  "artifact_sha256": {
+    "provider-after-generation-2.txt": "619b477c5cda63cf437736b0a49b69c0e3c89243c448a783146c58f416980515",
+    "provider-after-generation-3.txt": "d1c52d53fb24905cbbd4da134a79ede8aa44ada107516169135e4a9596069c9c",
+    "provider-schema.txt": "c9c018653a7355b8a41163f784db611378b43c9920e6d446c70d0767a079b4e7",
+    "readback-event-1.json": "2fab02ab517682fae621f8c087b2876e3db3361563c4a7aa8b4616c04b7ff058",
+    "readback-head-1.json": "1cce33d06b15b07a1400a4972228d123ef21b02bc0f20ffea264a05155eaa8a9",
+    "submitted-event-1.json": "5dbd0273119c3a2bcdaa6624db745d906988f0a08efc4fadc62902466085f353"
+  },
+  "owned_containers_remaining": ""
+}

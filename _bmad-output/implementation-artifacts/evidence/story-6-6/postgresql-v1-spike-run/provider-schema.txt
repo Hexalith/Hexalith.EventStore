@@ -1,0 +1,9 @@
+dapr_metadata|key|text
+dapr_metadata|value|text
+state|key|text
+state|value|jsonb
+state|isbinary|boolean
+state|insertdate|timestamp with time zone
+state|updatedate|timestamp with time zone
+state|expiredate|timestamp with time zone
+state|row_id|bigint

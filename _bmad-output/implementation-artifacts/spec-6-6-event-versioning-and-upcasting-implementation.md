@@ -131,6 +131,18 @@ The workflow instruction to revert code before re-derivation cannot safely apply
 
 ## Design Notes
 
+The user authorized the recommended PostgreSQL v1 feasibility probe on 2026-10-04.
+The executable probe and retained observations are recorded in
+[the feasibility report](evidence/story-6-6/postgresql-v1-feasibility.md).
+The stock provider preserves embedded payload bytes but normalizes envelope JSON
+and supplies no retained committed-generation lookup. Current-state recovery
+after controlled post-commit acknowledgment loss succeeds; retrieving a complete
+earlier committed image after head advancement is unsupported by the audited
+stock contract. This is a negative provider feasibility result, not production
+authorization or completed M2 qualification. Review a PostgreSQL transaction
+capture extension before expanding integration; frozen intent and M1–M8
+acceptance requirements remain unchanged.
+
 One cohesive feature uses the existing four-slice policy. Slice 1 activates no breaking behavior; slice 2 establishes shared prerequisites; slice 3 integrates consumers and safety routes; slice 4 requires full migration/fleet/provider/major compatibility evidence before V2. Dormant preparation cannot claim activation.
 
 ## Verification

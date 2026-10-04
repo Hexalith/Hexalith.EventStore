@@ -1,0 +1,4 @@
+eventstore||ProbeActor||probe||event-1|{"type": "Probe", "payload": "eyAieiI6IDEsICJhIjogIlx1MDA2MSIgfQ==", "generation": 1}|767
+eventstore||ProbeActor||probe||event-2|{"type": "Probe", "payload": "eyAieiI6IDEsICJhIjogIlx1MDA2MSIgfQ==", "generation": 2}|768
+eventstore||ProbeActor||probe||event-3|{"type": "Probe", "payload": "eyAieiI6IDEsICJhIjogIlx1MDA2MSIgfQ==", "generation": 3}|769
+eventstore||ProbeActor||probe||head|{"generation": 3, "lastSequence": 3}|769
