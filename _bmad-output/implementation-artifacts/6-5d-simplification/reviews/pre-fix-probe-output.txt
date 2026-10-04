@@ -1,0 +1,18 @@
+Parent rerun before focused corrections, 2026-10-03. Both commands exited 0; refusals are captured observations, not passing recovery claims.
+
+python3 /tmp/6-5d-verification-owner-and-cleanup-probes.py
+redrive original refused: redrive-claim-owner ; unchanged = True
+redrive mutant accepted; persisted state changed = True
+redrive mutant complete suite exit 0
+legacy original refused: legacy-owner ; unchanged = True
+legacy mutant accepted; persisted state changed = True
+legacy mutant complete suite exit 0
+Both mutant suites reported the pre-fix counts: refusals=301, persistedResumeRestarts=82, all four matrix groups passed.
+cleanup interruption: persisted phase: cleanup ; intent: cleanup ; drain still present: True
+cleanup recovery refused: drain-deletion-readback ; persisted phase: cleanup
+
+python3 /tmp/6-5d-parent-restore-probe.py
+restore interruption: cleanup invoke claimed exact source present: True
+restore retry 1 : legacy-live-drain unchanged: True
+restore retry 2 : legacy-live-drain unchanged: True
+fresh resume: resume_capacity_hold

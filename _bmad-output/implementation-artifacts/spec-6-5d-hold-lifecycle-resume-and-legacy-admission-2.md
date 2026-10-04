@@ -2,7 +2,7 @@
 title: 'Story 6.5d: Hold Lifecycle, Resume, and Legacy Admission'
 type: 'feature'
 created: '2026-09-30'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 12
 baseline_commit: '01498ac721db7c44f18fcf9591ffbbf30ba245e2'
@@ -120,6 +120,8 @@ The archived files `6-5d-simplification/previous-candidate.md` and `6-5d-simplif
 
 - 2026-10-03 user-authorized simplification: replace independently synchronized origin/reconstruction/progress/repair/index private coordination families with one owner state machine per execution/delivery and one ledger queue; move verification/history to supporting artifacts. KEEP externally required signed bytes, immutable evidence, same committed events/MessageIds, authorization, quota accounting, bounded crash recovery and four approved scenarios. Preserve old review/change logs in previous-execution.md rather than making obsolete mechanisms binding. Known bad state avoided: another additive loop whose new records create new recovery boundaries. User-approved review permits zero findings and focuses on owned changes.
 
+- 2026-10-03 focused recovery correction: RB1/RV3 and RB2/RE1 exposed pending cleanup before drain deletion and pending restore after external write. Clarified D3 to consume the existing authenticated intent from either side of the effect and advance the same owner/ordinal once; added bounded wrong-owner/foreign-identity unchanged refusals for RV1/RV2. KEEP exact original capsule/range/MessageIds/classification, externally signed codecs, quota/discovery and fail-closed contradictions. Known bad states avoided: permanently stranded authentic cleanup/restore and a suite accepting removal of required owner fences. Parent checks and original-reviewer crash reproductions passed; no frozen intent or review-loop counter change.
+
 ## Review Triage Log
 
 Prior fourteen review passes and their evidence are preserved in [previous-execution.md](6-5d-simplification/previous-execution.md). New focused findings will be verified against the simplified contract and logged individually here.
@@ -144,6 +146,21 @@ Prior fourteen review passes and their evidence are preserved in [previous-execu
 
 All fourteen findings were adjudicated individually before grouping. Eleven correction groups remain (SB-1/SE-4, SB-2/SE-8 and SE-3/SV-O1 share their respective roots). No intent change or new coordination family is required; every correction enforces existing D1/D3/D6/D7 or exact wire limits. User-authorized simplification permits this single focused correction instead of full re-derivation. No new work is deferred.
 
+
+### Recovery focused review — 2026-10-03
+
+Three context-free layers reviewed the same [focused diff](6-5d-simplification/review-input.json), launched together and collected before triage. [Full findings and parent reproductions](6-5d-simplification/reviews/focused-review.md) retain individual evidence. These six claims differ from previously resolved findings; none is carried without verification.
+
+| Finding | Verdict / evidence | Route |
+| --- | --- | --- |
+| RB1 | high: byte-only restart after cleanup intent and before original drain deletion retains authentic capsule/control/source; capsule_make repeatedly refuses drain-deletion-readback and remains cleanup. | bad_spec — focused owner repair authorized — resolved |
+| RB2 | high: restart after exact live-drain restore and before owner advancement leaves cleanup/invoke/claimed; same-ordinal retries refuse legacy-live-drain, fresh resume refuses resume_capacity_hold. | bad_spec — focused owner repair authorized — resolved |
+| RE1 | high: separately verified same reachable lost-ack restore boundary as RB2; current claimed owner cannot advance or complete. | bad_spec — same root as RB2 — resolved |
+| RV1 | medium: pre-verified request-binding gap confirmed by parent; correctly signed foreign held identity refuses unchanged in original, sends with identity guard removed, and mutant full suite passes. | patch — bounded owner refusal added, resolved |
+| RV2 | medium: pre-verified owner-fence gap confirmed by parent; wrong legacy owner refuses unchanged in original, claims with owner equality removed, and mutant full suite passes. | patch — bounded owner refusal added, resolved |
+| RV3 | high: separately verified before-delete cleanup boundary as RB1; existing hook covers only after-delete and does not settle this reachable state. | bad_spec — same root as RB1 — resolved |
+
+Four correction groups remained after individual verdicts; all are now resolved. The existing owners must finish authenticated pending actions before/after external writes; the two approved PD1 bounded guard cases must observe unchanged refusals. Existing simplification authorization permits focused correction instead of additive re-derivation; frozen intent, archived files and review_loop_iteration=12 remain unchanged. No new intent decision or deferral is required. Post-fix results and original-reviewer closure are retained in the linked review evidence.
 
 ### Review Findings — 2026-10-03 focused post-simplification pass (bmad-code-review)
 
@@ -233,18 +250,18 @@ All fourteen findings were adjudicated individually before grouping. Eleven corr
   - **Recommended:** (b).
 
 **Patch:**
-- [ ] [Review][Patch] PD1 (high, from FD1 option a) — Add owning behavioral cases for the bounded list in FD1, and correct the Completion and summary coverage claim. Do not add a per-guard mutation sweep. [`6-5d-simplification/verify.py`]
-- [ ] [Review][Patch] PD2 (medium, from FD2 option a) — Make registry entries addressed per-row entries (≤64 KiB, each with its own generation) under a per-shard count header. Define the registry key derivation and a gateway-owned `RegistryCapacityHold` with readiness pre-rejection and deletion or capability-increase exits. Charge each row to its scope's tenant or deployment account. Update the model and add cases. [Candidate D8 :124-126; `verify.py:300-324`]
-- [ ] [Review][Patch] PD3 (medium, from FD3 option a) — Keep the old window charge until authenticated deletion and readback of exactly the superseded window claim, attempt set, drain-limit source/resolution, closure and effect records at `deleteAfter`. C5 terminal proof uses the control's `history`/`closedCount` accumulator. Make `reclaim` delete exactly that set. [Candidate D3 :52/:60; `verify.py:534`, `verify.py:557-565`]
-- [ ] [Review][Patch] PD4 (medium, from FD4 option b) — Keep the application-owned metadata adapter. Define the `owner_fence` mint/advance/fencing semantics and the epoch lease record (address, schema, bound, duration, renewal, takeover, erasure). Make `publicationRetentionBackend` name the same declared backend. Record the AD/AD-26 amendment (DDL, migration ownership, credentials) as a required Story 6.5/architecture handoff in D9, without editing any AD. [Candidate D1 :20, D6 :94, D8 :128, D9]
-- [ ] [Review][Patch] PD5 (medium, from FD5 option b) — Bind the hold cursor generation to the registry generation only, and return each row's owner revision and stale flag. Order stays registry `firstUtc`; a registry change still returns `hold_inventory_generation_changed`. Update `inventory_page` and add continuation cases. [Candidate D8 :130; `verify.py:725-744`]
-- [ ] [Review][Patch] FP1 (high) — The legacy resume path is never bound to the capsule. [`verify.py:443-538`, `verify.py:813-826`; candidate :64-66]
+- [x] [Review][Patch] PD1 (high, from FD1 option a) — Add owning behavioral cases for the bounded list in FD1, and correct the Completion and summary coverage claim. Do not add a per-guard mutation sweep. [`6-5d-simplification/verify.py`]
+- [x] [Review][Patch] PD2 (medium, from FD2 option a) — Make registry entries addressed per-row entries (≤64 KiB, each with its own generation) under a per-shard count header. Define the registry key derivation and a gateway-owned `RegistryCapacityHold` with readiness pre-rejection and deletion or capability-increase exits. Charge each row to its scope's tenant or deployment account. Update the model and add cases. [Candidate D8 :124-126; `verify.py:300-324`]
+- [x] [Review][Patch] PD3 (medium, from FD3 option a) — Keep the old window charge until authenticated deletion and readback of exactly the superseded window claim, attempt set, drain-limit source/resolution, closure and effect records at `deleteAfter`. C5 terminal proof uses the control's `history`/`closedCount` accumulator. Make `reclaim` delete exactly that set. [Candidate D3 :52/:60; `verify.py:534`, `verify.py:557-565`]
+- [x] [Review][Patch] PD4 (medium, from FD4 option b) — Keep the application-owned metadata adapter. Define the `owner_fence` mint/advance/fencing semantics and the epoch lease record (address, schema, bound, duration, renewal, takeover, erasure). Make `publicationRetentionBackend` name the same declared backend. Record the AD/AD-26 amendment (DDL, migration ownership, credentials) as a required Story 6.5/architecture handoff in D9, without editing any AD. [Candidate D1 :20, D6 :94, D8 :128, D9]
+- [x] [Review][Patch] PD5 (medium, from FD5 option b) — Bind the hold cursor generation to the registry generation only, and return each row's owner revision and stale flag. Order stays registry `firstUtc`; a registry change still returns `hold_inventory_generation_changed`. Update `inventory_page` and add continuation cases. [Candidate D8 :130; `verify.py:725-744`]
+- [x] [Review][Patch] FP1 (high) — The legacy resume path is never bound to the capsule. [`verify.py:443-538`, `verify.py:813-826`; candidate :64-66]
   - `begin_resume` and `resume_step` never read or verify the capsule. Reproduced: a legacy execution with no capsule and no drain completes resume (ordinal 1, outcome and audit written).
   - The invoke re-arms roster positions `[2,3]` rather than the capsule's exact MessageIds and range.
   - `claimed→draining` neither calls `capsule_restore` nor checks for the absence of a live drain.
   - `failed→claimed` never checks that the capsule is unchanged.
   - This violates AC3/AC5 and matrix row 2.
-- [ ] [Review][Patch] FP2 (high) — `legacy_transition` ordinal, repair and failure authority; the SB-1/SE-4 fix is incomplete. [`verify.py:813-826`]
+- [x] [Review][Patch] FP2 (high) — `legacy_transition` ordinal, repair and failure authority; the SB-1/SE-4 fix is incomplete. [`verify.py:813-826`]
   - Non-`failed` edges store the caller's ordinal. Reproduced: draining/failed with ordinal 0 lets `failed→claimed` reuse ordinal 1 after one success.
   - `repair` is an unauthenticated boolean.
   - `failure` is always `transport-retryable`, so the evidence-failure branch is unreachable.
@@ -252,18 +269,18 @@ All fourteen findings were adjudicated individually before grouping. Eleven corr
     - Require `ordinal==legacy.ordinal` on non-failed edges.
     - Use the closed failure set `transport-retryable|evidence-unavailable|evidence-contradictory`.
     - An evidence reclaim reads back a repaired-range record bound to the capsule.
-- [ ] [Review][Patch] FP3 (high) — Resume recovery recomputes the intent payload from the mutable partition and wedges after an irreversible effect. [`verify.py:514`, `verify.py:522`]
+- [x] [Review][Patch] FP3 (high) — Resume recovery recomputes the intent payload from the mutable partition and wedges after an irreversible effect. [`verify.py:514`, `verify.py:522`]
   - Reproduced: the crash leaves the persisted `reject` intent; a member is accepted (D3 expects this); then `finish_resume` fails `intent-binding` every time and `cancel_resume` fails `irreversible`. There is no exit, against AC2 and D1.
   - **Fix:** the persisted intent (address, hash, payload) is the recovery authority; never recompute it.
-- [ ] [Review][Patch] FP4 (medium) — A legacy recovery that fails after a successful resume cannot re-arm. [`verify.py:529`, `verify.py:509-511`, `verify.py:824-825`; candidate :66]
+- [x] [Review][Patch] FP4 (medium) — A legacy recovery that fails after a successful resume cannot re-arm. [`verify.py:529`, `verify.py:509-511`, `verify.py:824-825`; candidate :66]
   - The successor sets `source=ZERO` and idle clears `reason`, so a later `draining→failed` has no eligible source.
   - "A later exhaustion reuses the same capsule" has no transition.
   - **Fix:** `draining→failed` atomically reinstalls `source=capsule hash` and `reason=legacy-publish-failed` in the same CAS.
-- [ ] [Review][Patch] FP5 (medium) — `capsule_make` charges and writes chunks with no owner, discovery or intent. [`verify.py:763-792`, `verify.py:1038-1042`]
+- [x] [Review][Patch] FP5 (medium) — `capsule_make` charges and writes chunks with no owner, discovery or intent. [`verify.py:763-792`, `verify.py:1038-1042`]
   - Reproduced: a refusal on a later chunk leaves the earlier chunks charged with zero registry rows.
   - The scenario also deletes the drain before any execution control or discovery exists, against D3 "control/discovery before cleanup" and D1.
   - **Fix:** discover and persist the legacy-recovery owner and its capsule intent before the first charge; delete the drain only after control and discovery read back.
-- [ ] [Review][Patch] FP6 (medium) — The control decoder does not enforce D2/D7 exact schemas or closed sets. [`verify.py:148-232`]
+- [x] [Review][Patch] FP6 (medium) — The control decoder does not enforce D2/D7 exact schemas or closed sets. [`verify.py:148-232`]
   - Accepted by probes:
     - an arbitrary `legacy` object;
     - a non-closed held `reason`;
@@ -274,13 +291,13 @@ All fourteen findings were adjudicated individually before grouping. Eleven corr
     - a boolean registry `shard`, and a registry `owner` outside D8's owner kinds.
   - The rule "fields not used by a phase are null" is unchecked.
   - Add the validation, plus one refusal case per rule: roster/queue/registry order, request horizon, `deleteAfter`, held scope/tenant, retained locator, count/UTC/identity regressions, intent binding, and destination metadata count/total.
-- [ ] [Review][Patch] FP7 (medium) — Retained key families lost their literal known answers; the self-test is vacuous; `maxBytes` is unpinned. [`known-answers.json` keys; `verify.py:863-882`; `obligations.md`]
+- [x] [Review][Patch] FP7 (medium) — Retained key families lost their literal known answers; the self-test is vacuous; `maxBytes` is unpinned. [`known-answers.json` keys; `verify.py:863-882`; `obligations.md`]
   - Only 9 key answers remain. About 20 retained families (capacity-subject … publication-invocation, command-execution-scope) had archive literals and no obsolete row.
   - The model uses improvised addresses (`action:`, `object:`, raw `scope-usage:` concatenation) instead.
   - The `:879-882` self-test never runs `verify_answers`.
   - Raising `maxBytes` still passes.
   - **Fix:** restore independently recomputed literals, use the retained derivations in the model, make the self-test run the real check on a mutated deep copy, and pin `maxBytes` to the obligations caps.
-- [ ] [Review][Patch] FP8 (medium) — Closed public and hold literals were compressed out of the active contract. [Candidate :62, :72, :116, :132-149]
+- [x] [Review][Patch] FP8 (medium) — Closed public and hold literals were compressed out of the active contract. [Candidate :62, :72, :116, :132-149]
   - The archive's closed hold→reason mapping is absent from the candidate. Missing literals: `legacy_array_limit`, `full_replay_inventory_capacity`, `scope_retention_capacity_hold`, `pin_capacity_queue_corruption_hold`, and `ResumeAttemptCollectionHold→resume_evidence_hold`.
   - The D8 table owner literals (`quota`, `aggregate`) differ from the closed set (`quota-coordinator`, `actor`).
   - These are named nowhere:
@@ -291,69 +308,69 @@ All fourteen findings were adjudicated individually before grouping. Eleven corr
     - D1 CAS-exhaustion, ceiling and u64-exhaustion holds;
     - D5's per-stream hold.
   - **Fix:** restore these into the candidate, with `RedriveEvidenceRepairHold` mapped as retired to the HeldDelivery repair view (AC2/AC7).
-- [ ] [Review][Patch] FP9 (medium) — `resumeHandle` is no longer discoverable. [Candidate :50, :130]
+- [x] [Review][Patch] FP9 (medium) — `resumeHandle` is no longer discoverable. [Candidate :50, :130]
   - The archive's rule "every eligible hold inventory item exposes resumeHandle" was dropped. The inventory view returns no handle, and handle→execution resolution is undefined.
   - **Fix:** restore exposure, and state resolution by recomputation over the tenant's registered execution owners.
   - The missing domain tag and placeholder answer `hxrsm1-handle` are pre-existing (archive :239/:850).
-- [ ] [Review][Patch] FP10 (medium) — Capability bounds admit configurations where kind maxima can never fit. [Candidate :96, :100]
+- [x] [Review][Patch] FP10 (medium) — Capability bounds admit configurations where kind maxima can never fit. [Candidate :96, :100]
   - `quarantineMax` can be 256 MiB with `unidentifiedCeiling` 195 MiB, so a deployment-scope oversize capture never fits.
   - At minimum capability, the eight ≤100 MiB queue envelopes (account unspecified) leave about 410 MiB of deployment, under the 449 MiB maximum pin.
   - The row→queue-shard assignment is unspecified.
   - **Fix:** capability validation requires every kind maximum plus overhead to fit its account after fixed precharges; name the envelope account and the shard selector.
-- [ ] [Review][Patch] FP11 (medium) — Queue turn head-of-line starvation. [`verify.py:405-424`, `verify.py:373`, `verify.py:397-403`]
+- [x] [Review][Patch] FP11 (medium) — Queue turn head-of-line starvation. [`verify.py:405-424`, `verify.py:373`, `verify.py:397-403`]
   - The fit check uses the stale materialized amount, while `batch` re-renders with the current overhead. Reproduced at the ceiling: every turn refuses `capacity` and the younger tenant's ticket 2 never proceeds.
   - Invalid materialized rows (60 pins, duplicate MessageIds, cleanup state) block the queue the same way.
   - **Fix:** re-render under owner CAS and park above-ceiling rows before the fit; validate in materialize; a chosen-row refusal parks or holds that row instead of aborting the turn.
-- [ ] [Review][Patch] FP12 (medium) — Transactions decide on a stale read but CAS against a fresh re-read. [`verify.py:471-475`, `verify.py:419-423`, `verify.py:598-599`]
+- [x] [Review][Patch] FP12 (medium) — Transactions decide on a stale read but CAS against a fresh re-read. [`verify.py:471-475`, `verify.py:419-423`, `verify.py:598-599`]
   - Affected: the `begin_resume` request and `priorHash`, the `queue_turn` chosen row, and the `capture` final phase, which can overwrite `cleanup` with `captured`.
   - **Fix:** compare the decision's predecessor inside the transaction (D1).
-- [ ] [Review][Patch] FP13 (medium) — Delivered cleanup persists no pending action, and `erase_held` doubles as delivered cleanup. [`verify.py:640-680`, `verify.py:924-929`]
+- [x] [Review][Patch] FP13 (medium) — Delivered cleanup persists no pending action, and `erase_held` doubles as delivered cleanup. [`verify.py:640-680`, `verify.py:924-929`]
   - Reproduced: terminal reconcile → `cleanup` with intent `None` → a partial `erase_held` leaves no pending action, so delivered and erased cannot be told apart.
   - **Fix:** a distinct delivered-cleanup intent and function (D7).
-- [ ] [Review][Patch] FP14 (medium) — The held `observed` phase has no exit, and some phases have no transitions. [Candidate :44, :110-120]
+- [x] [Review][Patch] FP14 (medium) — The held `observed` phase has no exit, and some phases have no transitions. [Candidate :44, :110-120]
   - A held record created at its first nonterminal response (136 KiB charge plus registry row) has no exit when a later local attempt succeeds before capture.
   - Execution `cleanup`/`incident` and held `quarantined`/`incident`/`closed` appear only in the enumerations.
   - **Fix:** define `observed→cleanup` on authenticated original-route terminal success; define or remove `closed` (AC2).
-- [ ] [Review][Patch] FP15 (medium) — Disposition evidence cites verification that does not exist; capture-scope accounting is unmodeled. [`obligations.md` dispositions; `verify.py:339-347`, `verify.py:581-591`]
+- [x] [Review][Patch] FP15 (medium) — Disposition evidence cites verification that does not exist; capture-scope accounting is unmodeled. [`obligations.md` dispositions; `verify.py:339-347`, `verify.py:581-591`]
   - These rows cite functions that do not cover them: VG2-2, E2-8/9, BH2-9, E2-18/19, BH2-19/E2-21, E2-32 and BH2-2/E2-10/11. Also, `admission_evidence_hold` is never emitted.
   - The model has no capture-scope or unidentified account. Reproduced: a deployment-scope held delivery raises `TypeError`.
   - **Fix:** add the capture-scope path, and make every row cite only real verification or the D9 runtime gate (AC1).
-- [ ] [Review][Patch] FP16 (medium) — An expired prepared request starts the irreversible producer-disable. [`verify.py:501-506`]
+- [x] [Review][Patch] FP16 (medium) — An expired prepared request starts the irreversible producer-disable. [`verify.py:501-506`]
   - `resume_step` ignores expiry in `prepared`, so a crash plus a delayed recovery acts on expired operator authority.
   - **Fix:** in `prepared` with no irreversible readback and `now ≥ expiry`, take the authenticated-absence cancel path. This is the corollary of D8's rule that "expiry never cancels irreversible work".
-- [ ] [Review][Patch] FP17 (medium) — Inventory: one unavailable owner fails the whole page, and the cursor envelope is unspecified. [`verify.py:725-744`; candidate :130]
+- [x] [Review][Patch] FP17 (medium) — Inventory: one unavailable owner fails the whole page, and the cursor envelope is unspecified. [`verify.py:725-744`; candidate :130]
   - **Fix:** return a per-row explicit evidence-incident view.
   - **Also specify:**
     - the cursor authentication envelope and its 16 KiB cap;
     - the HTTP statuses for invalid, expired and cross-scope cursors.
-- [ ] [Review][Patch] FP18 (medium) — Authority and absence are caller booleans. [`verify.py:360`, `verify.py:320-324`, `verify.py:547-550`, `verify.py:664-665`, `verify.py:843-859`]
+- [x] [Review][Patch] FP18 (medium) — Authority and absence are caller booleans. [`verify.py:360`, `verify.py:320-324`, `verify.py:547-550`, `verify.py:664-665`, `verify.py:843-859`]
   - Affected: `refund(deleted=True)`, `reconcile_placeholder(absence)`, `cancel_resume(absence)`, `erase_held(authority)` and the scope `closed` flags. This is the same class as SE-2.
   - **Fix:** use readback of the modeled artifacts, and represent external obligation and erasure authority as stored fixture authority records.
-- [ ] [Review][Patch] FP19 (medium) — Trackers were closed before this focused review, and the evidence is ephemeral. [`deferred-work.md:5197`, `sprint-status.yaml:236`, this record :5 and :160-164]
+- [x] [Review][Patch] FP19 (medium) — Trackers were closed before this focused review, and the evidence is ephemeral. [`deferred-work.md:5197`, `sprint-status.yaml:236`, this record :5 and :160-164]
   - D-SPLIT reads "resolved … independently verified and reviewed" and Story 6.5 is unblocked, while the `-2` status is `done` and the sprint row is `review`.
   - The Verification section is stale (47,916 B / 995 lines).
   - The proposal, parent acceptance and protected-gate artifacts live only in `/tmp`.
   - **Fix:** reopen D-SPLIT and align the statuses; refresh the Verification section; copy the `/tmp` evidence into `6-5d-simplification/` with hashes; drop "independently" (sole maintainer).
-- [ ] [Review][Patch] FP20 (low) — The replay count-dimension claim is false. [Candidate :88]
+- [x] [Review][Patch] FP20 (low) — The replay count-dimension claim is false. [Candidate :88]
   - Accounting (count × 8,192 ≤ 256 MiB) binds at 32,768 events, so the 100,000-event bound and its 75% case are unreachable.
   - **Fix:** state that the accounting dimension supersedes count.
-- [ ] [Review][Patch] FP21 (low) — `reclaim` can delete the records of a still-pending request's identity. [`verify.py:557-565`]
+- [x] [Review][Patch] FP21 (low) — `reclaim` can delete the records of a still-pending request's identity. [`verify.py:557-565`]
   - A request stalled for more than 30 days between `successor` and `idle` loses its `invoke` record, which a retry re-creates.
   - **Fix:** skip the pending identity.
-- [ ] [Review][Patch] FP22 (low) — `decode` and `typed` raise non-`Refusal` exceptions. [`verify.py:53-59`, `verify.py:174-196`]
+- [x] [Review][Patch] FP22 (low) — `decode` and `typed` raise non-`Refusal` exceptions. [`verify.py:53-59`, `verify.py:174-196`]
   - NaN, Infinity, `1e400`, lone surrogates and non-hex strings escape as `ValueError` or `UnicodeError`.
   - A non-hex corrupt held request never reaches the repair path.
   - **Fix:** wrap these in `Refusal`.
-- [ ] [Review][Patch] FP23 (low) — The verifier summary hard-codes its counts. [`verify.py:1131`]
+- [x] [Review][Patch] FP23 (low) — The verifier summary hard-codes its counts. [`verify.py:1131`]
   - "16 status cases; four matrix rows; 67 lifetime resumes; 131 bounded redrives" are fixed text, yet Completion quotes them as results.
   - **Fix:** compute them.
-- [ ] [Review][Patch] FP24 (low) — `scope_expire` uses unchecked subtraction. [`verify.py:857`]
+- [x] [Review][Patch] FP24 (low) — `scope_expire` uses unchecked subtraction. [`verify.py:857`]
   - A corrupt usage row persists a negative value, against D1's checked-arithmetic rule.
   - **Fix:** use checked subtraction.
 
 **Defer:**
 - [x] [Review][Defer] FW1 — `verify.py` runs in no automatic CI path. [`6-5d-simplification/verify.py`] — deferred: 6.5d forbids test and CI edits. Story 6.5 integration must wire it in or carry an explicit re-run gate.
-- [x] [Review][Defer] FW2 — A drain-limit resume may re-arm members with definitive class-02/03 failures. [Candidate :48, :58, :70] — deferred, maybe-false (medium if true). The precedence (4)-before-(5) is pre-existing (archive D3.1). To settle it, check whether 6.5c C2/C5 lets an active drain-limit record coexist with a definitive class-02/03 member, and whether drain-only resume must exclude such members.
+- [x] [Review][Defer] FW2 — A drain-limit resume may re-arm members with definitive class-02/03 failures. [Candidate :48, :58, :70] — deferred, maybe-false (medium if true). The precedence (4)-before-(5) is pre-existing (archive D3.1). To settle it, check whether 6.5c C2/C5 lets an active drain-limit record coexist with a definitive class-02/03 member, and whether drain-only resume must exclude such members. Current resolution (2026-10-03): D9 explicitly retains C2 class-02/03 and accepted-member permanent fences; C2 successor checks admit only definitive class-01 retryable rejection. Drain-limit status cannot authorize a forbidden send. The original deferral is retained as history; ledger FW2 is resolved with production qualification still pending.
 
 **Rejected (9):**
 - ECH-25: false. D4 row (9), "other … failed classes", covers class-01 below maximum without an automatic attempt, and archive D3.1 row 9 states it explicitly.
@@ -366,7 +383,7 @@ All fourteen findings were adjudicated individually before grouping. Eleven corr
 - ECH-22: low. The model never produces an `incident` execution with an eligible reason; the fix would add a guard.
 - ECH-26: low. The byte-compare CAS is fixture-only, controls carry revisions, and the fix would change the Store API.
 
-## Completion — 2026-10-03
+## Historical completion claim — superseded by focused review
 
 The three fresh focused reviews produced fourteen individually adjudicated findings, grouped into eleven correction roots. All are resolved in the existing controls/queue with owning regression assertions; no intent change, new coordination family or new deferred entry was introduced. Corrections cover earned legacy resume authority, exact audit bytes, atomic held metadata/capture charging, unchanged quota refusal, fresh bound route reconciliation, complete provider-source erasure, authentic capsule sources, field-specific UTF-8 bounds, remaining owner/provider generations and net queue grant/refund accounting. The original terminal-guard mutation now fails its owning assertion.
 
@@ -378,8 +395,26 @@ Final full verifier passes 24 wire/JSON literals, nine framed keys, five control
 
 Only the 6.5d sprint row and D-SPLIT completion status are finalized by the parent. AD-13 and its receipt remain UNAPPROVED, integration/human approval remain pending, no Story 6.6 work is authorized, and no Git history mutation is performed.
 
-## Verification
+## Historical verification — superseded by focused review
 
 Parent acceptance on 2026-10-03: compact candidate 172 lines/47,916 bytes; verifier 995 lines/68,226 bytes. Direct verifier and independent Node reconstruction passed (24 retained wire/JSON answers, nine keys, five control literals). Independent frozen/archive hashes and exact original 54-ID comparison passed. Six temporary-copy mutations failed their owning checks. Protected gate passed four hashes, AD-13 UNAPPROVED, nine allowed paths and 156 external pins. Acceptance detail: `/tmp/6-5d-simplification-parent-acceptance.md`. Three fresh focused reviews follow; provider behavior remains unproved.
 
 Run `python3 _bmad-output/implementation-artifacts/6-5d-simplification/verify.py` and the narrow independent known-answer reconstruction written by the parent. Audit the exact frozen-intent hash, archived hashes, protected source paths, all 54 dispositions, and `git diff --check`. Runtime provider tests remain an explicit implementation gate, not evidence claimed by the local verifier.
+
+## Current recovery run — 2026-10-03
+
+Resumed the owner-approved PD1–PD5 and FP1–FP24 corrections from clean HEAD `ab11c86a991a6aa8349041e73312a9655a0aa1bf`. The original source baseline and frozen intent remain unchanged. At recovery start, tasks and D-SPLIT were reopened pending corrected acceptance and focused review, with the sprint row in-progress. Current completion below records the final state. Earlier completion/verification sections above are historical claims, not current evidence.
+
+FP19 historical evidence is retained byte-for-byte in [prior-evidence](6-5d-simplification/prior-evidence/README.md), with exact original paths, lengths and SHA-256 values in [manifest.json](6-5d-simplification/prior-evidence/manifest.json). The strict historical protected gate remains unchanged; current scope preservation compares against the full recovery-run HEAD separately. Current acceptance and review evidence are retained durably below. No runtime, test-project, architecture, dependency, submodule or Git history changes are authorized by this story.
+
+## Current Verification
+
+Parent acceptance passed for the corrected candidate/supporting delta against recovery HEAD `ab11c86a991a6aa8349041e73312a9655a0aa1bf`. [Current verifier output](6-5d-simplification/current-verification.json), [preservation and independent byte construction](6-5d-simplification/current-acceptance.json), and [six bounded corruptions](6-5d-simplification/current-mutations.json) retain actual results. [Recovery instructions](6-5d-simplification/RECOVERY-EVIDENCE.md) document the scope checkpoint and byte-identical earlier evidence. All PD1–PD5 and FP1–FP24 corrections and four focused recovery groups are implemented and verified. [Three-layer review and targeted closure](6-5d-simplification/reviews/focused-review.md) records six individual verdicts before grouping, both crash reproductions now passing, and [two owning guard-regression failures](6-5d-simplification/reviews/current-focused-regressions.json). No demonstrated blocker remains and no new work is deferred; all three main tasks are complete. Historical review_loop_iteration=12 remains unchanged under the active simplification authorization.
+
+Run `python3 _bmad-output/implementation-artifacts/6-5d-simplification/verify.py`, `python3 _bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py`, `python3 _bmad-output/implementation-artifacts/6-5d-simplification/mutations.py`, `python3 _bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py`, and `git diff --check`. Each command exited 0; the six corruptions and two targeted guard removals each failed their owning checks. These checks establish specification evidence only; no provider, architecture or AD-13 approval is inferred.
+
+## Current Completion — 2026-10-03
+
+The corrected 6.5d candidate is complete and reviewed, with execution status done and only its sprint row set to review. D-SPLIT is resolved for this child-specification prerequisite; Story 6.5 must still import the candidate and obtain exact integrated AD-13 human approval. AD-13 and its receipt remain UNAPPROVED; Story 6.6 remains backlog and is not authorized. Existing FW1 automatic CI wiring is explicitly assigned to Story 6.5 integration; FW2 is settled by the retained C2 permanent member fences, with provider qualification still pending.
+
+[Parent acceptance](6-5d-simplification/parent-acceptance.md) accounts for all seven criteria, three tasks and four executed matrix groups, actual artifact sizes and the bounded verification evidence. The preservation gate confirms all 8,251 outside-scope recovery inputs, original frozen/archive/protected hashes and nine root submodule revisions remain unchanged. Source baseline 01498ac721db7c44f18fcf9591ffbbf30ba245e2 and review loop iteration 12 are preserved. No runtime, test-project, architecture, dependency, submodule or Git history mutation was made, and no provider proof or self-approval is claimed.

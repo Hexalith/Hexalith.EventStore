@@ -1,0 +1,103 @@
+{
+  "activeArtifactSha256": {
+    "known-answers.json": "b0a4bd1e608b5f3c345d7ffcd5236250292bbc0e4808cb95a867033b79e26804",
+    "obligations.md": "3ad39e6c83896bb03c8e6e04655189e89698e59456d93c0e040cfa5308d9ac89",
+    "spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md": "d779479795c5ebb8e90961e5c9b3987c5815c85a3c1c5a1e19a1d1f306fd86d4",
+    "verify.py": "b5bab7e6acff9b102b483a7c97ffe79f241172bde84a76bbd0ed2cdd9e463d77"
+  },
+  "archives": {
+    "previous-candidate.md": "fb0c7bec739df1752bc4bc47bd8aa223f74f709fbb6e4926d4be1992c8bc6954",
+    "previous-execution.md": "a2556eea423ac546aca15e7405f2cf64012a544966fec80464de27e905f87386"
+  },
+  "frozenIntentSha256": "9234f13ebb6aef6634fff07a239be0b32c948d4fe9ddca2e49a6a77d8eec10d9",
+  "historicalEvidenceFiles": 8,
+  "independentSharedKeyCheck": "independent shared-key construction: 1 unframed command scope key",
+  "independentWireCheck": "independent Node construction: 24 wire/JSON answers, 32 addressed keys, 8 internal controls",
+  "protectedSourceHashes": {
+    "spec-6-5a-event-contract-writer-and-migration-evidence.md": "31f63fc0ea54043e7b821f311b28d3e856667789eac9eca8f79807f6d2e74444",
+    "spec-6-5b-verified-read-replay-and-projection.md": "b889951bc248a7a4d19067a84d197bbe8dd1bc14457d56ed5665cc9c72347152",
+    "spec-6-5c-publication-subscription-and-rollout.md": "f24116aaf4dc3cd041034f40a1d858e114f9f8a4219b1ca0cc40bdea80385ca9",
+    "spec-event-versioning-upcasting.md": "c474df76a687b2798757051efbdb382bb6b9650f7bd7a7637d0c67bfc5e7b715"
+  },
+  "recoveryCheckpointProtectedPaths": 8251,
+  "recoveryCheckpointSha256": "056f93c90fb3a7e7cc049793794fa654209083d8ca0b661d6e745ef5510bdc03",
+  "result": "passed",
+  "routedDispositions": 54,
+  "runHead": "ab11c86a991a6aa8349041e73312a9655a0aa1bf",
+  "scopeChangedPaths": [
+    "_bmad-output/implementation-artifacts/6-5d-simplification/RECOVERY-EVIDENCE.md",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/current-acceptance.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/current-mutations.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/current-verification.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/final-review-input.diff.gz",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/final-review-input.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/independent-shared-keys.mjs",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/known-answers.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/mutations.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/obligations.md",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/parent-acceptance.md",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-authority-check.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-concurrent-runtime.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-independent-input.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-parent-acceptance.md",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-parent-audit.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-protected.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/README.md",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/bmad-6-5d-simplification-proposal.md",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/manifest.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/verify-6-5d-simplified-independent.mjs",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/recovery-checkpoint.json.gz",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/review-input.diff.gz",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/review-input.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/current-focused-regressions.json",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-review.md",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/owner-and-cleanup-probes.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/pre-fix-probe-output.txt",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/restore-probe.py",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/verify.py",
+    "_bmad-output/implementation-artifacts/deferred-work.md",
+    "_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md",
+    "_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml"
+  ],
+  "submodules": [
+    {
+      "path": "references/Hexalith.AI.Tools",
+      "revision": "3f194e17174994d308ec84af9ee2b5aa68674d0d"
+    },
+    {
+      "path": "references/Hexalith.Builds",
+      "revision": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2"
+    },
+    {
+      "path": "references/Hexalith.Commons",
+      "revision": "c13dc6679aa91144b6d541078f3f20019d79c2eb"
+    },
+    {
+      "path": "references/Hexalith.FrontComposer",
+      "revision": "b6a4536fc12b64927ad6dfbc46a5f45c8b7f229e"
+    },
+    {
+      "path": "references/Hexalith.McpCli",
+      "revision": "7e3226ba612a3e7fb3a8969c4197a8f1e4c0c2ed"
+    },
+    {
+      "path": "references/Hexalith.Memories",
+      "revision": "289773387e0c6b665b669031616c1e84cc079297"
+    },
+    {
+      "path": "references/Hexalith.Platform",
+      "revision": "7c2f0f89f29c79f5d7ab4b731155e2cb07fc690f"
+    },
+    {
+      "path": "references/Hexalith.PolymorphicSerializations",
+      "revision": "7a2134eefa689d026a3fac814dd8732b22a43723"
+    },
+    {
+      "path": "references/Hexalith.Tenants",
+      "revision": "3d7c07363d7a06a24cbba0d777899b2071b02f06"
+    }
+  ]
+}

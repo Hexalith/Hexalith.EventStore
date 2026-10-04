@@ -1,0 +1,18 @@
+{
+  "sourceBaseline": "01498ac721db7c44f18fcf9591ffbbf30ba245e2",
+  "recoveryHead": "ab11c86a991a6aa8349041e73312a9655a0aa1bf",
+  "initialReviewManifest": "review-input.json",
+  "scope": "Final corrected active candidate, verification and parent-owned evidence/tracker delta. Byte-identical archives/prior evidence and unrelated committed work remain history and preservation context. No second broad review or provider/human approval is claimed.",
+  "finalDiffTempPath": "/tmp/6-5d-focused-review-dsuineh8.diff",
+  "finalDiffBytes": 367338,
+  "finalDiffSha256": "f24a456186b74a7c1a2f61c29742cb8d93d282b580b5040a205bd17d1627d4fc",
+  "compressedDiff": "final-review-input.diff.gz",
+  "compressedSha256": "11bc26f334f1c5440cc5d84afa631f31f55fa199c08d9338a2407336e3c0c79c",
+  "finalOwnedCoreSha256": {
+    "spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md": "d779479795c5ebb8e90961e5c9b3987c5815c85a3c1c5a1e19a1d1f306fd86d4",
+    "verify.py": "b5bab7e6acff9b102b483a7c97ffe79f241172bde84a76bbd0ed2cdd9e463d77",
+    "known-answers.json": "b0a4bd1e608b5f3c345d7ffcd5236250292bbc0e4808cb95a867033b79e26804",
+    "obligations.md": "3ad39e6c83896bb03c8e6e04655189e89698e59456d93c0e040cfa5308d9ac89"
+  },
+  "closure": "All six individual findings resolved through four focused corrections; full parent gates and targeted original-reviewer closure passed."
+}

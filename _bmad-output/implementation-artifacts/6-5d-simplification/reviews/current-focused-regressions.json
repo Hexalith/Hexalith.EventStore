@@ -1,0 +1,16 @@
+{
+  "result": "passed",
+  "rejectedRegressions": 2,
+  "cases": [
+    {
+      "case": "signed foreign held identity",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal"
+    },
+    {
+      "case": "legacy recovery owner",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal"
+    }
+  ]
+}

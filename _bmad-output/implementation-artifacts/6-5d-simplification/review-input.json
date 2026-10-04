@@ -1,0 +1,17 @@
+{
+  "sourceBaseline": "01498ac721db7c44f18fcf9591ffbbf30ba245e2",
+  "recoveryHead": "ab11c86a991a6aa8349041e73312a9655a0aa1bf",
+  "fullBaselineDiff": {
+    "path": "/tmp/6-5d-recovery-full-baseline-3a40e5t1.diff",
+    "bytes": 6049531,
+    "sha256": "f3ec958fff00b055c0205fb4bea55d97a1efe7a4a8ef2dbd9091f012a19754ef"
+  },
+  "focusedReviewDiff": {
+    "path": "/tmp/6-5d-focused-review-dsuineh8.diff",
+    "bytes": 339681,
+    "sha256": "55eb075109e42d7ee6933edb1948b099265a42f78b115a393d9da438473399db",
+    "retainedPath": "review-input.diff.gz",
+    "retainedSha256": "f7f548e5140f30dccc9ccf89a1adc582233f35342f5093f53e2b9e46456a5aaf"
+  },
+  "scope": "Owned recovery delta and current verification additions; unrelated committed baseline paths, immutable archives and byte-identical prior evidence are context under active simplification authorization."
+}

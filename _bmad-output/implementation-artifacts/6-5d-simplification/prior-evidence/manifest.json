@@ -1,0 +1,42 @@
+{
+  "6-5d-simplification-authority-check.py": {
+    "bytes": 20876,
+    "originalPath": "/tmp/6-5d-simplification-authority-check.py",
+    "sha256": "9b1a12a2c6f541d61267ccb6b8ab973eb00a0d548070dee5dc65edccacdc15a9"
+  },
+  "6-5d-simplification-concurrent-runtime.json": {
+    "bytes": 4901,
+    "originalPath": "/tmp/6-5d-simplification-concurrent-runtime.json",
+    "sha256": "d2f460b9e2389ae5024d6742948e16cc1ad843f16e3a0f16eafd7d324cdb7160"
+  },
+  "6-5d-simplification-independent-input.json": {
+    "bytes": 43449,
+    "originalPath": "/tmp/6-5d-simplification-independent-input.json",
+    "sha256": "6fc2185093f4585159457d7f012828f0dc03258ad74b4afe380c5b301528b1b2"
+  },
+  "6-5d-simplification-parent-acceptance.md": {
+    "bytes": 5463,
+    "originalPath": "/tmp/6-5d-simplification-parent-acceptance.md",
+    "sha256": "7198f2c42211eab46c31ac986bb9d4b77dc74c621e5858e4f471087abfb65d76"
+  },
+  "6-5d-simplification-parent-audit.py": {
+    "bytes": 3175,
+    "originalPath": "/tmp/6-5d-simplification-parent-audit.py",
+    "sha256": "718f9b88eb32fed24cea6b9186d43d803d7a1a142696916d097c1590d2c1d871"
+  },
+  "6-5d-simplification-protected.py": {
+    "bytes": 21028,
+    "originalPath": "/tmp/6-5d-simplification-protected.py",
+    "sha256": "c4dcafd9190054274f4a577dd74610b7c8f78cda366883a4eae7361131ac40d4"
+  },
+  "bmad-6-5d-simplification-proposal.md": {
+    "bytes": 8052,
+    "originalPath": "/tmp/bmad-6-5d-simplification-proposal.md",
+    "sha256": "cf316be4733ec81d5b838443911e81fd01dfbc9250a449d938bc28fea4a9f1fe"
+  },
+  "verify-6-5d-simplified-independent.mjs": {
+    "bytes": 2740,
+    "originalPath": "/tmp/verify-6-5d-simplified-independent.mjs",
+    "sha256": "6e80cb1b3c4aa58806cdd038533631cd8ebd605b43cbdc2f4a308c89b91f1bdf"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "controlResult": "{\"authority\": \"fixture authorization and transactions only; D9 provider gate unproved\", \"behaviorEvidence\": {\"boundedRedrives\": 131, \"concurrentOutcomes\": 64, \"lifetimeResumes\": 67, \"matrixRows\": 4, \"owningCorruptions\": 1, \"persistedResumeRestarts\": 82, \"refusals\": 340, \"statusCases\": 24}, \"controlAnswers\": 8, \"keyAnswers\": 32, \"result\": \"passed\", \"routedDispositions\": 54, \"sharedKeyAnswers\": 1, \"wireAnswers\": 24}",
+  "rejectedCorruptions": 6,
+  "cases": [
+    {
+      "case": "framing",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: D06-activation"
+    },
+    {
+      "case": "bound",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: execution cap"
+    },
+    {
+      "case": "legacy ordinal transition",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal"
+    },
+    {
+      "case": "queue allocator invariant",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: expected owning refusal"
+    },
+    {
+      "case": "published model result",
+      "exitCode": 1,
+      "owningFailure": "AssertionError"
+    },
+    {
+      "case": "known answer",
+      "exitCode": 1,
+      "owningFailure": "AssertionError: D45-window"
+    }
+  ]
+}
