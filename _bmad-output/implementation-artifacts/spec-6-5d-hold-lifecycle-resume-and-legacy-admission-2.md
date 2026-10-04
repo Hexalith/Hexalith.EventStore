@@ -383,6 +383,220 @@ Four correction groups remained after individual verdicts; all are now resolved.
 - ECH-22: low. The model never produces an `incident` execution with an eligible reason; the fix would add a guard.
 - ECH-26: low. The byte-compare CAS is fixture-only, controls carry revisions, and the fix would change the Store API.
 
+### Review Findings — 2026-10-04 recovery-build review (bmad-code-review)
+
+**Scope and method:**
+- **Input:** `ab11c86a..bf11765c`, restricted to story-owned `_bmad-output/implementation-artifacts/` paths (23 files, +2,331/−582; 3,796 diff lines, 387,652 bytes). `bf11765c` was committed by a concurrent process under the subject "feat: add focused review artifacts…", which does not mention the bundled candidate, verifier and tracker changes.
+- **Excluded:** `prior-evidence/` (byte-identical `/tmp` copies bound by `manifest.json`), the `.gz` blobs, and the immutable archives.
+- **Reviewed SHA-256s:**
+  - candidate `d779479795c5ebb8e90961e5c9b3987c5815c85a3c1c5a1e19a1d1f306fd86d4` (171 lines, 63,623 B)
+  - `verify.py` `b5bab7e6acff9b102b483a7c97ffe79f241172bde84a76bbd0ed2cdd9e463d77` (1,672 lines, 124,312 B)
+  - `known-answers.json` `b0a4bd1e608b5f3c345d7ffcd5236250292bbc0e4808cb95a867033b79e26804`
+  - `obligations.md` `3ad39e6c83896bb03c8e6e04655189e89698e59456d93c0e040cfa5308d9ac89`
+- **Layers:** Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor all ran and reported. No layer failed.
+- **Baseline at `bf11765c`:**
+  - `verify.py`, `mutations.py` and `reviews/focused-regressions.py` exit 0; `git diff --check` is clean.
+  - `acceptance.py` **exits 1** (`AssertionError: Git history changed`). With only its HEAD-equality assertion relaxed in memory, it passes.
+- **Verification:**
+  - 84 raw findings: Blind Hunter 18, Acceptance Auditor 17, Verification Gap 19 (pre-verified, including 2 "Other"), Edge Case Hunter 30.
+  - Reproduced with `verify.py`'s own functions:
+    - cross-tenant cursor invalidation;
+    - the second resume refused with the private label `capacity`;
+    - a corrupt owner rendered `stale=False`, and a non-dict owner raising `AttributeError`;
+    - recovery without `now` performing producer-disable;
+    - `batch-conflict` aborting every queue turn;
+    - capsule re-entry resetting legacy `claimed/1/gen 2 → failed/0/gen 1`, and stranding a pending resume (`resume-transition`);
+    - 200 maximum-width MessageIds refused `intent-bound` at `claimed→draining`;
+    - a stale repaired-range record re-authorizing reclaim, and a `transport-retryable` label skipping repair;
+    - a re-signed repair claim wedging both redrive (`route-authority`) and reconcile (`reconcile-phase`);
+    - an erase racing capture, leaving the carrier object with no control, charge or registry row;
+    - a 1,024-quote scope id refused `control-byte-bound`.
+  - Six guard-removal mutants still pass the full suite: `route-terminal-readback`, `legacy-completion-readback`, send `terminal-no-send`, the `:777` accepted exclusion, the `:510` refund readback, and the `legacy-failure` closed set.
+- **Size:** the candidate and verifier exceed the design-pressure targets (50 KiB; 70 KiB/1,500 lines). The record's "bounds and necessary cases take precedence" note is the stated explanation.
+- **Result:** 4 decision-needed, 26 patch, 1 defer, 11 rejected.
+
+**Decision-needed:**
+- [ ] [Review][Decision] RD1 (medium) — Resume stage capacity: refusal reason and sizing.
+  - **What happens:** `begin_resume` (`verify.py:680`) refuses with the private label `capacity`, which is outside D3's closed 409/503 sets.
+  - **Why it is reached:** a resume holds the active window charge and the new staged charge at the same time. FD3(a) then keeps each superseded charge until `deleteAfter` (expiry + 30 days). D6 readiness guarantees only one 1 GiB window plus fixed charges.
+  - **Reproduced:** with a 6 MiB tenant ceiling, the first resume succeeds and the second is refused with `capacity`.
+  - **Options:**
+    - (a) Map stage and charge refusal to `resume_capacity_hold` (503, Retry-After 30). State in D3/D6 that a resume needs headroom for the staged window plus retained superseded charges; readiness is unchanged. **Recommended.**
+    - (b) Raise tenant readiness so that at least one resume always fits (old + staged + fixed).
+    - (c) Add a new closed reason.
+- [ ] [Review][Decision] RD2 (medium) — Repair authority: per failure, or per capsule?
+  - **What happens:** `provider_address('legacy-repaired-range', key, capsule)` (`verify.py:1196`) is keyed by capsule only and is never consumed.
+  - **Reproduced:** after one repaired evidence failure, a second evidence failure is reclaimed with the stale record.
+  - Candidate D3 :66 binds the record to "the unchanged capsule and every original range/classification field", not to a failure instance.
+  - **Options:**
+    - (a) Bind the record to the failed legacy generation, and delete/read it back when reclaim consumes it. **Recommended.**
+    - (b) Keep it per-capsule (the repair attests capsule content, so reuse is allowed) and document that.
+- [ ] [Review][Decision] RD3 (medium) — `owner_fence` "holder lease" is undefined for non-Operations owners.
+  - **What happens:** candidate D1 :20 requires "the backend-verified current holder lease" on every mutation, and a transfer that "authenticates the old holder/lease". Only the `operations-epoch` lease is defined; coordinator, gateway, actor and subscriber rows have no lease schema, address, duration, renewal or takeover. This violates PD4 and AC7.
+  - **Options:**
+    - (a) Non-Operations owners are fenced by `owner_fence` + generation CAS only; a takeover mints a fresh token and stale holders fail. "Holder lease" applies only to the Operations epoch. **Recommended**, as the simplest option.
+    - (b) Define a per-owner lease record.
+- [ ] [Review][Decision] RD4 (medium) — Queue storage shards (FP10) are prose-only.
+  - **What happens:**
+    - Candidate D6 :100 says eight addressed shards of at most 100 MiB, with ticket→shard `(ticket−1) mod 8` and a per-shard admission check.
+    - `obligations.md:142` calls the shards "optional". No shard or header address is defined.
+    - The model stores one queue value with `CAPS['queue']` = 800 MiB + 16 KiB, and `known-answers.json` pins `maxBytes` 838,877,184 for an object larger than the 193 MiB per-object cap.
+    - The spec does not say whether a ticket whose shard is full is consumed.
+  - **Options:**
+    - (a) Define the per-shard key derivation and the header address. A full shard refuses `AppendPreparationLimit` without consuming the ticket. Model the eight shard rows and literals. **Recommended.**
+    - (b) Drop sharding: one queue value, with the ceiling lowered to fit 193 MiB (about 12,000 rows), and amend the capability bounds.
+    - (c) Map a ticket to the first non-full shard, dropping the fixed `(ticket−1) mod 8` rule.
+
+**Patch:**
+- [ ] [Review][Patch] RP1 (high) — The legacy restore intent embeds the whole MessageId list, so a legal capsule with more than ~127 maximum-width IDs is stuck in `claimed`, which has no other exit. Bind the intent to capsule hash, `eventRoot`, range and classification, and add a maximum-width `draining` case. The 1,000-row case never reaches `draining`. [`6-5d-simplification/verify.py:1203`; candidate D3 :66]
+- [ ] [Review][Patch] RP2 (medium) — The build closed its own trackers before this review (FP19 unmet).
+  - The `-2` status is `done` while the sprint row is `review`.
+  - D-SPLIT is `resolved` with "Story 6.5 may import it", while its evidence line still says 6.5 is blocked until 6.5d is done.
+  - Reopen D-SPLIT until a review passes, and align the statuses.
+  - [`deferred-work.md:5197`; this record :5; `sprint-status.yaml:236`]
+- [ ] [Review][Patch] RP3 (medium) — `acceptance.py` hard-pins `HEAD == ab11c86a`, so it exits 1 at the commit that contains it.
+  - Everything after line 97 is unreachable: the scope audit, the submodule check, the prior-evidence manifest, and both independent Node constructions.
+  - The claims "Each command exited 0" (this record) and "Rerun the commands" (`RECOVERY-EVIDENCE.md`/`parent-acceptance.md`) do not reproduce.
+  - The checkpoint stores digests, not "exact initial bytes".
+  - Fix: use an ancestry check plus a `RUN_HEAD..HEAD` scope audit over the allowed paths, refresh `current-acceptance.json`, and correct the claims.
+  - [`6-5d-simplification/acceptance.py:97`]
+- [ ] [Review][Patch] RP4 (medium) — The registry is modeled as one deployment-global header plus a full scan, so PD2 and PD5 are incomplete:
+  - the cursor generation hashes the global header generation, so one tenant's discover returns `hold_inventory_generation_changed` to another tenant (reproduced);
+  - `shard_limit` is compared with the global `scopeCount`;
+  - the `registry-entry` known answer pins `shard: 0`, while D8 derives 132 for `tenant`/`t`;
+  - one unreadable entry fails every owner's discovery and every inventory page;
+  - no shard-header address is defined.
+
+  Fix: bind the generation to the scope header plus the scope's entries; add 256 addressed shard headers with shard-local limits; correct the literal. [`6-5d-simplification/verify.py:391-423`, `:1023`; candidate D8 :124/:128; `known-answers.json` `registry-entry`]
+- [ ] [Review][Patch] RP5 (medium) — `capsule_make` re-entry overwrites an advanced owner.
+  - Re-running it while the original drain remains resets legacy from `claimed`/ordinal 1/generation 2 to `failed`/0/1, a fence-generation regression.
+  - Running it during a pending resume leaves `cleanup` with a request, so the resume is wedged with `resume-transition`.
+  - Fix: return idempotently when the owner already binds this capsule; refuse while a request is pending.
+  - [`6-5d-simplification/verify.py:1079-1100`, `:1135`]
+- [ ] [Review][Patch] RP6 (medium) — The legacy failure class is asserted by the caller.
+  - Labelling an evidence failure `transport-retryable` lets reclaim skip the repaired-range requirement (reproduced).
+  - Removing the closed-set check survives the full suite.
+  - The live-drain delete runs before the CAS with no intent.
+  - Fix: derive the class from authenticated drain-failure evidence (FP18 pattern).
+  - [`6-5d-simplification/verify.py:1227-1230`; candidate D3 :66]
+- [ ] [Review][Patch] RP7 (medium) — The FP16 expiry gate runs only when the caller passes `now`.
+  - `finish_resume` never does, so recovery of an expired prepared request performs the irreversible producer-disable (reproduced).
+  - Make the clock mandatory.
+  - [`6-5d-simplification/verify.py:709-717`, `:762-767`]
+- [ ] [Review][Patch] RP8 (medium) — Inventory reads owners with `decode`, not `typed`.
+  - A corrupt `reason='fabricated-reason'` row renders as authoritative with `stale=False`, and a non-dict owner raises `AttributeError` and aborts the page.
+  - Both contradict D8's per-row evidence incident.
+  - [`6-5d-simplification/verify.py:1033-1040`]
+- [ ] [Review][Patch] RP9 (medium) — A refusal on the selected queue row is re-raised, so every turn aborts on the same oldest row and younger tenants are never granted (reproduced with `batch-conflict`).
+  - The FP11/D6 rule that such a row "parks/holds" is not implemented.
+  - [`6-5d-simplification/verify.py:592-593`]
+- [ ] [Review][Patch] RP10 (medium) — `queue_materialize` creates the operation-plan authority from the caller's pins (`db.external`), although its comment says the authority is read back.
+  - Rerender authority is therefore self-minted.
+  - Fix: read the authority created at admission, and refuse if it is absent or different.
+  - [`6-5d-simplification/verify.py:558-559`]
+- [ ] [Review][Patch] RP11 (medium) — `repair_held` accepts a re-signed, non-original claim.
+  - With a stale route record present, redrive then refuses `route-authority` and reconcile refuses `reconcile-phase`; only erasure exits (reproduced).
+  - D7 requires the exact original request: bind the repair to the retained route/attempt `requestHash`.
+  - [`6-5d-simplification/verify.py:922-927`; candidate D7 :120]
+- [ ] [Review][Patch] RP12 (medium) — `erase_held` racing an in-flight capture leaves the carrier object with no control, charge or registry row (reproduced).
+  - This breaks "no uncharged retained object".
+  - Fix: after the write, re-read the control and delete/read back the object if the control is absent or not `capturing`; state in D7 that erasure fences in-flight capture.
+  - [`6-5d-simplification/verify.py:834-836`; candidate D7 :112/:120]
+- [ ] [Review][Patch] RP13 (medium) — The `registry-scope` cap of 2 KiB contradicts D8's 1..1,024-byte identifiers.
+  - Two maximum ASCII identifiers or escaped characters exceed it, and the refusal is `control-byte-bound`, not `registry_capacity_hold` (reproduced).
+  - Size the cap to the escaped maxima and add a maximum-width case.
+  - [`6-5d-simplification/verify.py:17`; candidate D8 :124]
+- [ ] [Review][Patch] RP14 (medium) — The readiness constants exist only in the verifier.
+  - The candidate states neither the unidentified/reserve precharge (800 MiB + 16 KiB + 9×overhead) nor the tenant fixed charge (216 KiB + 3×overhead).
+  - The encoded floor `reserve ≥ 195 MiB` is unreachable; the effective minimum is ≈ 993 MiB.
+  - The tenant fixed charge omits the 2 KiB `registry-scope` header.
+  - Fix: state the formula in D6, include the header, and record that the codec floor is superseded (as FP20 did).
+  - [`6-5d-simplification/verify.py:481-488`; candidate D6 :96]
+- [ ] [Review][Patch] RP15 (medium) — The closed eligibility set (`retry-exhausted`, `drain-limit`, `drain-limit-and-retry-exhausted`, `legacy-publish-failed`) was dropped from the contract.
+  - It now appears only in `verify.py:31`, although it is a signed claim field and precondition output (an FP8-class regression).
+  - [candidate D3 :48-50; `obligations.md:109`]
+- [ ] [Review][Patch] RP16 (medium) — Restore the owning cases this diff deleted. Each guard below now survives removal:
+  - the signed foreign-scope resume claim (`resume-claim-owner`, plus a `resume-claim-request` variant);
+  - legacy reclaim with a stale ordinal or before any success (`legacy-reclaim`, `legacy-success-owner`);
+  - capsule events, classification, missing or unavailable drain (`legacy-drain-authority`, `legacy-original-range`);
+  - forged or unavailable route-terminal records (`route-authority`, plus `terminal-no-send` at send);
+  - held absent repair, the `metadata-charge` refund, and signed claims with tag 2 (tenant) or tag 4 (count) substituted;
+  - stage refund after both cancel paths;
+  - `resume_not_eligible` with nothing unresolved;
+  - maximum-width fit for the `registry-scope`/`registry-entry`/`epoch` caps.
+
+  Then correct the `obligations.md:195` coverage claims these contradict. [`6-5d-simplification/verify.py:1393-1653`]
+- [ ] [Review][Patch] RP17 (medium) — Add owning cases for guards behind named fixes or the FD1 list that never had one:
+  - observed `route-terminal-readback`, `legacy-completion-readback`, send `terminal-no-send`;
+  - accepted-member exclusion at dispatch (`:777`, AC3);
+  - drain-absent before restore (`:1201`), `legacy-success-audit` (`:1192`), refund delete-readback (`:510`), `placeholder-effect`/`owner-deletion-readback` (`:455`/`:437`), and resume claim time (`:694`);
+  - the PD3 reclaim artifact set: all retained artifacts deleted, the active window kept;
+  - `queue_turn` parking on a missing or mismatched plan;
+  - the PD2 deployment-scope registry account and a `shard_limit` hold;
+  - FD1's 193 MiB + 1 capture and 1,001-event bound, on the owning paths;
+  - FP12 predecessor CAS for `queue_turn`, `capture`, `reclaim` and `cancel`;
+  - FP1 capsule hash/source tamper;
+  - FP9 retained-handle resolution and the PD5 page revision.
+
+  [`6-5d-simplification/verify.py`]
+- [ ] [Review][Patch] RP18 (low) — The model's refusal labels differ from the candidate's closed public reasons:
+  - `redrive-count` vs `held_redrive_count_changed`;
+  - `cursor-invalid/expired/scope` vs `hold_inventory_cursor_*`;
+  - scope admission surfacing `owner`/`invalid-json`.
+
+  There is also no known answer for the cursor envelope or the held-redrive request/202. [`6-5d-simplification/verify.py:855`, `:1024-1028`, `:1244-1256`]
+- [ ] [Review][Patch] RP19 (low) — A falsy cursor (`{}`) is treated as "no cursor" and restarts paging; use `is not None`. [`6-5d-simplification/verify.py:1024`]
+- [ ] [Review][Patch] RP20 (low) — `RegistryCapacityHold` has prose (candidate :124) but no row in the D8 predicate/exit table. [candidate D8 :129-144]
+- [ ] [Review][Patch] RP21 (low) — FP7 is only partly done.
+  - The model's charges use improvised keys (`stage:`, `wait:`, `object:`, `metadata:`, `old-window:`) instead of the retained `publication-charge:` derivation.
+  - The format of the control `charge` field is unspecified.
+  - [`6-5d-simplification/verify.py:542`, `:601`, `:680`; `obligations.md:138`]
+- [ ] [Review][Patch] RP22 (low) — `mutations.py` and `focused-regressions.py` accept any `AssertionError`/`Refusal` and do not pin the expected owning label, so the claim "failed their owning checks" is not demonstrated. [`6-5d-simplification/mutations.py:25-30`]
+- [ ] [Review][Patch] RP23 (low) — FP23 is only partly done.
+  - `matrixRows = len((…4 functions…))` is a constant and omits the idle-replay row.
+  - `lifetimeResumes` and `boundedRedrives` are loop sizes.
+  - The same Acceptance Auditor finding's public-literal part is RP18. Its claimed D1/D3 `resume_arithmetic_exhausted` contradiction is refuted: D1 :24 itself says the preflight refuses unchanged with that reason.
+  - [`6-5d-simplification/verify.py:1657`]
+- [ ] [Review][Patch] RP24 (low) — The claim that "fixed maxBytes values are checked against the normative schema caps" is overstated.
+  - `RECORD_CAPS`/`CAPS` are a second hard-coded copy that is never parsed from `obligations.md`.
+  - `answer_mutations` mutates only `D45-window`.
+  - [`6-5d-simplification/verify.py:1285`, `:1312-1317`; `obligations.md:188`]
+- [ ] [Review][Patch] RP25 (low) — The retained probe evidence is not reproducible as claimed.
+  - The scripts use hard-coded absolute paths and run against the post-fix `verify.py`.
+  - `pre-fix-probe-output.txt` names other `/tmp` scripts, and no hash binds it to the pre-fix verifier.
+  - [`6-5d-simplification/reviews/focused-review.md:35`; `reviews/owner-and-cleanup-probes.py:8`]
+- [ ] [Review][Patch] RP26 (low) — `review-input.json` and `final-review-input.json` name the same overwritten `/tmp` diff with different digests. Drop the `/tmp` fields or mark them non-durable. [`6-5d-simplification/review-input.json`, `final-review-input.json`]
+
+**Defer:**
+- [x] [Review][Defer] RW1 — New invariants have no refusal case:
+  - `registry-count-readback`/`registry-scope-readback`;
+  - `cursor-envelope-bound`/`cursor-position`;
+  - `capsule-prior-chunk`;
+  - `execution-identity`/`execution-progress`/`predecessor-generation`;
+  - `intent-binding`/`intent-phase`.
+
+  [`6-5d-simplification/verify.py:346-357`, `:396-398`, `:1025-1031`, `:1111`] — deferred: owner decision FD1(a) declined per-guard coverage. The behavior is exercised end to end.
+
+**Rejected (11):**
+- BH "independently" (FP19 wording): false.
+  - The FP19 target was D-SPLIT's assurance claim ("independently verified and reviewed"), which is gone.
+  - The remaining uses describe separate implementations or agents (an independent Node construction), not an assurance control.
+- BH FW2 (status drain + class-02): false.
+  - Protected 6.5c C2 says "class-02 terminal rejection cannot mint a new ID" and admits successors only after class-01. D9 :167 retains that fence.
+  - Precedence (4) before (5) is the specified D4 order.
+- BH owner-registry/1 reshaped without a version bump: false. The schema never left the unapproved candidate and has no deployed reader or writer, and the prior literal is archived.
+- AA D3 receipts contradiction: false.
+  - The permanent closed-window fence is the broker's window-aware index (D3 :56 "Closed-window delayed IDs reject").
+  - C5 terminal proof uses the history accumulator.
+  - Reclaimed receipts are EventStore readback copies.
+- ECH `resolve_handle` refuses when a sibling is unreadable: false. Failing closed is correct, because a unique match cannot be authenticated without reading every candidate owner.
+- ECH same address under two scopes: low. Production addresses are derived from the scope (tenant + execution, held identity); only the model's literal keys collide. The fix would add a guard.
+- ECH `queue_materialize` StopIteration on an absent row: low. The case is unreachable, and the 2026-10-03 ECH-12 precedent applies.
+- ECH `redrive_reconcile` AttributeError on an absent control: low. This is a misuse-only path, and the fix would add a guard.
+- ECH `capsule_read` UnicodeDecodeError: low. It needs corrupt bytes that were authenticated anyway, and the fix would add a guard.
+- ECH `scope_status` after `scope_expire`: low. The 2026-10-03 ECH-20 precedent applies.
+- ECH commit subject misdescribes `bf11765c`: low. This is not an artifact defect. The commit is local (2 commits ahead of `origin/main`), so the owner may reword it before pushing.
+
 ## Historical completion claim — superseded by focused review
 
 The three fresh focused reviews produced fourteen individually adjudicated findings, grouped into eleven correction roots. All are resolved in the existing controls/queue with owning regression assertions; no intent change, new coordination family or new deferred entry was introduced. Corrections cover earned legacy resume authority, exact audit bytes, atomic held metadata/capture charging, unchanged quota refusal, fresh bound route reconciliation, complete provider-source erasure, authentic capsule sources, field-specific UTF-8 bounds, remaining owner/provider generations and net queue grant/refund accounting. The original terminal-guard mutation now fails its owning assertion.
