@@ -53,6 +53,66 @@ public sealed partial class SecretsProtectionTests
         FindViolations("samples/placeholder.json", line).ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies GitHub's fixed SSH transport username is not treated as a credential.
+    /// </summary>
+    /// <param name="path">The reusable text path containing the public repository URL.</param>
+    [Theory]
+    [InlineData("docs/git.md")]
+    [InlineData("tests/git.cs")]
+    [InlineData(".gitmodules")]
+    public void PublicGitHubSshUsername_IsAllowed(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        string url = "ssh://git@github.com/Hexalith/Hexalith.EventStore.git";
+        FindViolations(path, url).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies the public Git SSH exception does not admit passwords or other URI credentials.
+    /// </summary>
+    /// <param name="scheme">The URI scheme.</param>
+    /// <param name="host">The URI host.</param>
+    /// <param name="includePassword">Whether a runtime password is added to the user information.</param>
+    [Theory]
+    [InlineData("ssh", "github.com", true)]
+    [InlineData("https", "github.com", false)]
+    [InlineData("ssh", "github.com.example.test", false)]
+    public void GitSshException_StillRejectsUriCredentials(string scheme, string host, bool includePassword)
+    {
+        ArgumentNullException.ThrowIfNull(scheme);
+        ArgumentNullException.ThrowIfNull(host);
+        string userInfo = includePassword ? "git:" + Uri.EscapeDataString(RandomSecret()) : "git";
+        string url = scheme + "://" + userInfo + "@" + host + "/Hexalith/Hexalith.EventStore.git";
+        FindViolations("docs/git.md", url).ShouldBe(["docs/git.md:1"]);
+    }
+
+    /// <summary>
+    /// Verifies only the fixed Git transport username is exempt from URI credential detection.
+    /// </summary>
+    [Fact]
+    public void UnrecognizedGitHubSshUsername_IsRejected()
+    {
+        string userInfo = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+        string url = "ssh://" + userInfo + "@github.com/Hexalith/Hexalith.EventStore.git";
+        FindViolations("docs/git.md", url).ShouldBe(["docs/git.md:1"]);
+    }
+
+    /// <summary>
+    /// Verifies an allowed Git transport URL does not conceal another credential in the same document.
+    /// </summary>
+    /// <param name="sameLine">Whether the two URLs appear on the same line.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PublicGitHubSshUrl_DoesNotConcealOtherUriCredentials(bool sameLine)
+    {
+        string publicUrl = "ssh://git@github.com/Hexalith/Hexalith.EventStore.git";
+        string credentialUrl = "ssh://git:" + Uri.EscapeDataString(RandomSecret()) + "@github.com/Hexalith/private.git";
+        string content = publicUrl + (sameLine ? " " : "\n") + credentialUrl;
+        FindViolations("docs/git.md", content).ShouldBe([sameLine ? "docs/git.md:1" : "docs/git.md:2"]);
+    }
+
     [Fact]
     public void UsableLiteralAssignments_AreRejected()
     {
@@ -572,6 +632,7 @@ public sealed partial class SecretsProtectionTests
             string userInfo = match.Groups["userinfo"].Value;
             string effectivePath = GetEffectiveSourcePath(relativePath, content, match.Groups["userinfo"].Index);
             if (!IsInertUriUserInfo(userInfo)
+                && !IsPublicGitHubSshUsername(match.Value)
                 && !(effectivePath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
                     && ContainsRuntimeCSharpInterpolation(userInfo)))
             {
@@ -1344,6 +1405,15 @@ public sealed partial class SecretsProtectionTests
         string credential = separator >= 0 ? userInfo[(separator + 1)..] : userInfo;
         return IsInertPlaceholder(credential);
     }
+
+    /// <summary>
+    /// Identifies GitHub's password-free SSH transport identity, whose credentials are external keys.
+    /// </summary>
+    private static bool IsPublicGitHubSshUsername(string value)
+        => Uri.TryCreate(value, UriKind.Absolute, out Uri? uri)
+            && string.Equals(uri.Scheme, "ssh", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(uri.UserInfo, "git", StringComparison.Ordinal);
 
     private static bool IsCredentialFactoryExpression(string relativePath, string value)
     {
