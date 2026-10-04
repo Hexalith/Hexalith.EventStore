@@ -36,9 +36,11 @@ public record EventMetadata(
     int MetadataVersion,
     string SerializationFormat) {
     /// <summary>Gets the canonical event contract type for versioned events.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? EventContractType { get; init; }
 
     /// <summary>Gets the payload schema version for versioned events.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? PayloadVersion { get; init; }
 
     /// <summary>Gets the unique event message identifier (ULID, non-empty).</summary>

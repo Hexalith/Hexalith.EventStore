@@ -46,10 +46,12 @@ public record EventEnvelope(
     [property: DataMember] IDictionary<string, string>? Extensions) {
     /// <summary>Gets the canonical event contract type when available.</summary>
     [DataMember]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? EventContractType { get; init; }
 
     /// <summary>Gets the payload schema version when available.</summary>
     [DataMember]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? PayloadVersion { get; init; }
 
     /// <summary>Gets the aggregate identity derived from this event's tenant, domain, and aggregate ID.</summary>
