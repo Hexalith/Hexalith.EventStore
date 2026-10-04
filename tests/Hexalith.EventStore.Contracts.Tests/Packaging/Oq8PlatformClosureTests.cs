@@ -6411,6 +6411,7 @@ public sealed class Oq8PlatformClosureTests
             "docs/ci.md",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/Oq8PlatformClosureTests.cs",
             "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs",
+            "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
             "tools/validate-oq8-platform-evidence.py",
         })
         {

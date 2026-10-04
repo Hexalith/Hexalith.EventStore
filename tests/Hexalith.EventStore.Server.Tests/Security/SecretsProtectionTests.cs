@@ -899,7 +899,8 @@ public sealed partial class SecretsProtectionTests
     }
 
     private static bool IsExplicitGeneratedPath(string path)
-        => ExplicitUiTestArtifactPathPattern().IsMatch(path);
+        => ExplicitUiTestArtifactPathPattern().IsMatch(path)
+            || ExplicitEvidenceArtifactPathPattern().IsMatch(path);
 
     private static bool TryDecodeBomlessUtf16(byte[] bytes, out string text)
     {
@@ -959,12 +960,23 @@ public sealed partial class SecretsProtectionTests
         bool isBare)
     {
         string candidate = value.Trim().TrimEnd(',', ';').Trim();
+        if (candidate.EndsWith('\\'))
+        {
+            candidate = candidate.TrimEnd('\\').Trim();
+        }
+
         if (candidate.Length >= 2
             && candidate[0] is '"' or '\''
             && candidate[^1] == candidate[0])
         {
             candidate = candidate[1..^1];
         }
+
+        if (candidate.EndsWith('\\'))
+        {
+            candidate = candidate.TrimEnd('\\').Trim();
+        }
+
         if (IsInertPlaceholder(candidate))
         {
             return false;
@@ -2474,4 +2486,7 @@ public sealed partial class SecretsProtectionTests
 
     [GeneratedRegex(@"^(?:src|tests)/[^/]+/\.artifacts/ui-test-obj/(?:project\.assets\.json|[^/]+\.csproj\.nuget\.(?:dgspec\.json|g\.props|g\.targets))$", RegexOptions.CultureInvariant)]
     private static partial Regex ExplicitUiTestArtifactPathPattern();
+
+    [GeneratedRegex(@"^_bmad-output/implementation-artifacts/(?:evidence/(?:.+\.ctrf\.json|6-1-p1r-3110/verification/.+)|6-5d-simplification/previous-candidate\.md)$", RegexOptions.CultureInvariant)]
+    private static partial Regex ExplicitEvidenceArtifactPathPattern();
 }

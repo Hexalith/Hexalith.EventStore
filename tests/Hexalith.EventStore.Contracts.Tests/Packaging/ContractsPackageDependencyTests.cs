@@ -15,6 +15,16 @@ public sealed class ContractsPackageDependencyTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/consumer/Consumer.csproj",
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v3108/Probe.csproj",
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3108/rollback-probe/v370/Probe.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/consumer/Consumer.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v3109/Probe.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3109/rollback-probe/v370/Probe.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/consumer/Consumer.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.props",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Build.targets",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/Directory.Packages.props",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/domain/Domain.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/host/Host.csproj",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-3110/verification/probe/Probe.csproj",
     ];
 
     [Fact]
