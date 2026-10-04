@@ -1,0 +1,31 @@
+{
+  "baselineCommit": "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6",
+  "capture": "Full correction delta after fixes and completion records, including all then-untracked inputs. This final manifest/durable copy and later command-output records are created after capture; mutable JSON outputs are bound separately by correction-checks.json. Initial three-layer review is retained separately; targeted original-reviewer closure checked the final verifier hash.",
+  "currentHead": "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6",
+  "diffBytes": 375988,
+  "diffSha256": "2803127c1c3fbcd0b4e9727f429d82fc545136bf6d7ac0f58fcd24340f16c812",
+  "retainedDiff": "correction-final-review-input.diff.gz",
+  "retainedDiffSha256": "8f662f639d1425ff4ca01ff9fa147a1db4c83e1316e3f17567c0e9a9493b8cb2",
+  "sourceSha256": {
+    "_bmad-output/implementation-artifacts/6-5d-simplification/RECOVERY-EVIDENCE.md": "20a87346239573a86d8bd26ecc3065ea078d70034dc2556ce8a9f6e3d7e3abeb",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py": "c59d4f2738d391807c3fe9d0534c1d69ae9bddeb8d4904da7b2f04c510576dd1",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/independent-answers.mjs": "8eed7093e8de65fb72ec11ce6c78377756e0f865617f57e186077620229f5018",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/mutations.py": "ade8f0cda11be17555e1fe78e80a760a32c52cc440011c613cfd3a15166cf646",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/obligations.md": "4e9daf7b760a07b9e1cfa2f97de709d40a3a72322fa10e280f18a59752d5146e",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/parent-acceptance.md": "4dc9a95f97bad05b26d24383322f2ae4fcc2e65a4e4d3f17dc605efc08ad62f7",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/preservation-cases.py": "3b6ac44150b932bb48db7b7ad9a881923e02a85d0f1654aa9bc0b9b655908fa7",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-blind.md": "320b1ef1cc33246d07bd78b091d3fd10a288e39de5fd71fb4618c5662438972d",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-closure.md": "70f97f2a6b321538caddd49b06d15ae372d03466a4cd3b44f323a33d067156a2",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/correction-verification.md": "6ab720430e48316bd65cef7904323a7162d3276f493a4698e4e727b05ed6b3d5",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py": "46dee962873cf5d7d281ed96d098606605814bb948bec95c865f5d577df2ab52",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-review.md": "bf03ba2103e3befa0fd4d52f47458d09f5ed497694e792fc51b400e87d2b3d64",
+    "_bmad-output/implementation-artifacts/6-5d-simplification/verify.py": "0369d6eb950b64f947490cb3bab6124456ef39e3bb070de280e39bf4d929628d",
+    "_bmad-output/implementation-artifacts/deferred-work.md": "24f69b134fc871702bc12cb44ecf847a5acae606bec7c8a04a5b077c08bf4d2c",
+    "_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md": "9fd1f93d8c97e6e99c41b9d98a3783834c39946063b38d6005b2676044638e0b",
+    "_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-3.md": "65bf03761b1170b13062750c80f494fda3df9795cdaa833a3b453533ff4b11bb",
+    "_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md": "6d7e9326671572e07426329c6f57fb38879589e04c155290b04a82df184a1e98",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": "0f8300f97c4b14bccf51b5b25022092fe054d6d7e25d7811c4b43186afe3f998"
+  },
+  "temporaryDiffPath": "/tmp/6-5d-correction-final-4ni0o_b0.diff",
+  "temporaryPathIsNonDurable": true
+}

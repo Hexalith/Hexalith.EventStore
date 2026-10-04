@@ -14,5 +14,7 @@
     "known-answers.json": "b0a4bd1e608b5f3c345d7ffcd5236250292bbc0e4808cb95a867033b79e26804",
     "obligations.md": "3ad39e6c83896bb03c8e6e04655189e89698e59456d93c0e040cfa5308d9ac89"
   },
-  "closure": "All six individual findings resolved through four focused corrections; full parent gates and targeted original-reviewer closure passed."
+  "closure": "All six individual findings resolved through four focused corrections; full parent gates and targeted original-reviewer closure passed.",
+  "historicalTempPathsAreNonDurable": true,
+  "attribution": "Historical review only. /tmp locations are not retained inputs; use the bound compressed diff and revision-specific hashes. Original manifest bytes are preserved in pre-correction-evidence.tar.gz."
 }

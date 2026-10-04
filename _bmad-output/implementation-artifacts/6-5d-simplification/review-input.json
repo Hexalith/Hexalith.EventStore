@@ -13,5 +13,7 @@
     "retainedPath": "review-input.diff.gz",
     "retainedSha256": "f7f548e5140f30dccc9ccf89a1adc582233f35342f5093f53e2b9e46456a5aaf"
   },
-  "scope": "Owned recovery delta and current verification additions; unrelated committed baseline paths, immutable archives and byte-identical prior evidence are context under active simplification authorization."
+  "scope": "Owned recovery delta and current verification additions; unrelated committed baseline paths, immutable archives and byte-identical prior evidence are context under active simplification authorization.",
+  "historicalTempPathsAreNonDurable": true,
+  "attribution": "Historical review only. /tmp locations are not retained inputs; use the bound compressed diff and revision-specific hashes. Original manifest bytes are preserved in pre-correction-evidence.tar.gz."
 }

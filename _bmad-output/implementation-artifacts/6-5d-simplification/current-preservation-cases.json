@@ -1,0 +1,22 @@
+{
+  "result": "passed",
+  "gitReplies": "simulated; no commit or workspace mutation",
+  "cases": [
+    {
+      "case": "non-ancestor",
+      "owningFailure": "correction baseline is not an ancestor"
+    },
+    {
+      "case": "committed",
+      "owningFailure": "changes outside correction scope"
+    },
+    {
+      "case": "worktree",
+      "owningFailure": "changes outside correction scope"
+    },
+    {
+      "case": "untracked",
+      "owningFailure": "changes outside correction scope"
+    }
+  ]
+}

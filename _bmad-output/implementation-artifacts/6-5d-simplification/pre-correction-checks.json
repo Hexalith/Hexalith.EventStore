@@ -1,0 +1,19 @@
+{
+  "head": "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6",
+  "checks": {
+    "verify.py": {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5d-simplification/verify.py",
+      "sourceSha256": "b5bab7e6acff9b102b483a7c97ffe79f241172bde84a76bbd0ed2cdd9e463d77",
+      "exitCode": 0,
+      "stdout": "{\"authority\": \"fixture authorization and transactions only; D9 provider gate unproved\", \"behaviorEvidence\": {\"boundedRedrives\": 131, \"concurrentOutcomes\": 64, \"lifetimeResumes\": 67, \"matrixRows\": 4, \"owningCorruptions\": 1, \"persistedResumeRestarts\": 82, \"refusals\": 340, \"statusCases\": 24}, \"controlAnswers\": 8, \"keyAnswers\": 32, \"result\": \"passed\", \"routedDispositions\": 54, \"sharedKeyAnswers\": 1, \"wireAnswers\": 24}\n",
+      "stderr": ""
+    },
+    "acceptance.py": {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py",
+      "sourceSha256": "7ec723e0ef50019c0d52db7dae5ba6e692c9b930b83495c3697090e77ac980c5",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py\", line 149, in <module>\n    main()\n    ~~~~^^\n  File \"/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py\", line 79, in main\n    assert sha((ROOT / name).read_bytes()) == row['sha256'], ('protected recovery input changed', name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ('protected recovery input changed', 'src/Hexalith.EventStore.Contracts/Commands/CommandStatusQueryResponse.cs')\n"
+    }
+  }
+}

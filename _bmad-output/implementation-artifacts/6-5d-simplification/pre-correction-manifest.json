@@ -1,0 +1,159 @@
+{
+  "archiveSha256": "e8b07ff82c7b9bec7ab1fc7ea1a65d6f9649e4f9a87c8e2230c93bb69a9431bc",
+  "checkpointSha256": "35855fdc2e0ce9a8f1662458bae2544db85f98bfd6c26b0397cc1ecc8a0bee01",
+  "files": {
+    "_bmad-output/implementation-artifacts/6-5d-simplification/RECOVERY-EVIDENCE.md": {
+      "bytes": 1912,
+      "sha256": "f2d7bb65213860336486b0807f69d5f14a1f07d9dd2ec33fa0e613b7a64d03ea"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py": {
+      "bytes": 8053,
+      "sha256": "7ec723e0ef50019c0d52db7dae5ba6e692c9b930b83495c3697090e77ac980c5"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/current-acceptance.json": {
+      "bytes": 6335,
+      "sha256": "0aab14057add889ecf3d78fc4340befbb19fb25cb0dd0e7d68a70305b54dffe4"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/current-mutations.json": {
+      "bytes": 1265,
+      "sha256": "9878fcf8c1d4f4e8b4d65d169c6c06870eff69b952267f5a3d4ac1e0b9c59f13"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/current-verification.json": {
+      "bytes": 418,
+      "sha256": "c7b9891376def394811d2630ee1cbabb4354086597591ebad130d76a7c80a931"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/final-review-input.diff.gz": {
+      "bytes": 87976,
+      "sha256": "11bc26f334f1c5440cc5d84afa631f31f55fa199c08d9338a2407336e3c0c79c"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/final-review-input.json": {
+      "bytes": 1356,
+      "sha256": "a056e1d72ad33a78755459a76a34c6f28f044700807679101efc6c850fb1323a"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/independent-shared-keys.mjs": {
+      "bytes": 968,
+      "sha256": "6103c676c838c4709d563f0c4b7ffffeadc998eb150aeddf16f8d94146be2a90"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/known-answers.json": {
+      "bytes": 72612,
+      "sha256": "b0a4bd1e608b5f3c345d7ffcd5236250292bbc0e4808cb95a867033b79e26804"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/mutations.py": {
+      "bytes": 2672,
+      "sha256": "de910f0d9ee1da12c5705d2355dddb4155b11124463de18c8826d48166349668"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/obligations.md": {
+      "bytes": 46119,
+      "sha256": "3ad39e6c83896bb03c8e6e04655189e89698e59456d93c0e040cfa5308d9ac89"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/parent-acceptance.md": {
+      "bytes": 4007,
+      "sha256": "3e0b7fad8e5b0fbdd5e918b7ea42aa9ea5aae1aef2d463eb0910daadccdd6933"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/previous-candidate.md": {
+      "bytes": 957247,
+      "sha256": "fb0c7bec739df1752bc4bc47bd8aa223f74f709fbb6e4926d4be1992c8bc6954"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/previous-execution.md": {
+      "bytes": 334579,
+      "sha256": "a2556eea423ac546aca15e7405f2cf64012a544966fec80464de27e905f87386"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-authority-check.py": {
+      "bytes": 20876,
+      "sha256": "9b1a12a2c6f541d61267ccb6b8ab973eb00a0d548070dee5dc65edccacdc15a9"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-concurrent-runtime.json": {
+      "bytes": 4901,
+      "sha256": "d2f460b9e2389ae5024d6742948e16cc1ad843f16e3a0f16eafd7d324cdb7160"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-independent-input.json": {
+      "bytes": 43449,
+      "sha256": "6fc2185093f4585159457d7f012828f0dc03258ad74b4afe380c5b301528b1b2"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-parent-acceptance.md": {
+      "bytes": 5463,
+      "sha256": "7198f2c42211eab46c31ac986bb9d4b77dc74c621e5858e4f471087abfb65d76"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-parent-audit.py": {
+      "bytes": 3175,
+      "sha256": "718f9b88eb32fed24cea6b9186d43d803d7a1a142696916d097c1590d2c1d871"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/6-5d-simplification-protected.py": {
+      "bytes": 21028,
+      "sha256": "c4dcafd9190054274f4a577dd74610b7c8f78cda366883a4eae7361131ac40d4"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/README.md": {
+      "bytes": 413,
+      "sha256": "327c9579d73eb6b1dc106d4498f093f5b44df7ce3557ac0007430e8622273b39"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/bmad-6-5d-simplification-proposal.md": {
+      "bytes": 8052,
+      "sha256": "cf316be4733ec81d5b838443911e81fd01dfbc9250a449d938bc28fea4a9f1fe"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/manifest.json": {
+      "bytes": 1750,
+      "sha256": "1ce510c3b90fb7f80db72236ee942ba7088827da2f1674857888da7127134078"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/prior-evidence/verify-6-5d-simplified-independent.mjs": {
+      "bytes": 2740,
+      "sha256": "6e80cb1b3c4aa58806cdd038533631cd8ebd605b43cbdc2f4a308c89b91f1bdf"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/recovery-checkpoint.json.gz": {
+      "bytes": 338698,
+      "sha256": "056f93c90fb3a7e7cc049793794fa654209083d8ca0b661d6e745ef5510bdc03"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/review-input.diff.gz": {
+      "bytes": 80604,
+      "sha256": "f7f548e5140f30dccc9ccf89a1adc582233f35342f5093f53e2b9e46456a5aaf"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/review-input.json": {
+      "bytes": 858,
+      "sha256": "0653831503a59e03f411116990ba16350a56bca18aa58e47a1b175dad443a4af"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/current-focused-regressions.json": {
+      "bytes": 353,
+      "sha256": "9cd8737b0432ea11cfebf89c231c44d14340f859962f2575af4f80eddba6d9b9"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py": {
+      "bytes": 1682,
+      "sha256": "6a907c1d4e64f939cb710fe1da7718b71657055af6db31a8765b240d18dbe9a5"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-review.md": {
+      "bytes": 6256,
+      "sha256": "a45dd54b00260eb30c5694127157680ff3825deed78de93460d1345872618296"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/owner-and-cleanup-probes.py": {
+      "bytes": 3850,
+      "sha256": "f2e0f613203bbf6ecf3f337bd81beadc5de37b9fbf91e9e5bea02a3b1f976ceb"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/pre-fix-probe-output.txt": {
+      "bytes": 1053,
+      "sha256": "4b099be12809f4bac354a6915fdfa8762d025aa53bf2f9aca58d047e94f29edc"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/reviews/restore-probe.py": {
+      "bytes": 1313,
+      "sha256": "037007cbff802be7a7bba99ca40a006a190720df51b76efff388afc23fda78c5"
+    },
+    "_bmad-output/implementation-artifacts/6-5d-simplification/verify.py": {
+      "bytes": 124312,
+      "sha256": "b5bab7e6acff9b102b483a7c97ffe79f241172bde84a76bbd0ed2cdd9e463d77"
+    },
+    "_bmad-output/implementation-artifacts/deferred-work.md": {
+      "bytes": 708493,
+      "sha256": "493a944e5575ede171223c6202ca169bdde0f1039ba6d29e9d84b123742102f4"
+    },
+    "_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission-2.md": {
+      "bytes": 81429,
+      "sha256": "a143324e7f0c942dba11b77b29bba6f752a03bb5347bfed72521a50f13765f60"
+    },
+    "_bmad-output/implementation-artifacts/spec-6-5d-hold-lifecycle-resume-and-legacy-admission.md": {
+      "bytes": 63623,
+      "sha256": "d779479795c5ebb8e90961e5c9b3987c5815c85a3c1c5a1e19a1d1f306fd86d4"
+    },
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": {
+      "bytes": 34528,
+      "sha256": "ba29bea222ff9da415fff0224fffca9517b02705cc4d3fde9e022d4239a8e597"
+    }
+  },
+  "head": "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6"
+}

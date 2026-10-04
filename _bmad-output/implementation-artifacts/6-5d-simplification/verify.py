@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import struct
+import secrets
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -13,12 +14,13 @@ MIB = 1024**2
 TICK = 10_000_000
 DAY = 86400 * TICK
 ZERO = '00' * 32
-CAPS = {'execution': 768*1024, 'held': 128*1024, 'queue': 800*MIB+16384,
-        'registry': 16384, 'registry-entry': 65536, 'registry-scope': 2048, 'epoch': 16384, 'cursor': 16384}
+CAPS = {'execution': 768*1024, 'held': 128*1024, 'queue': 16384, 'queue-shard': 100*MIB,
+        'registry': 16384, 'registry-entry': 65536, 'registry-scope': 16384, 'epoch': 16384, 'cursor': 16384}
 FIELDS = {
  'execution': 'schema tenant execution scope revision phase firstUtc updatedUtc source window windowClaim closedCount history ordinal limit drainBase roster accepted unresolved legacy request intent receipts outcomes reason nextUtc charge',
  'held': 'schema scopeKind scopeId deployment tenant component topic subscription policy revision phase reason firstUtc updatedUtc observations length carrier locator objectReceipt charge request attempt redrives nextUtc repair error intent receipts',
- 'queue': 'schema deployment generation lastTicket rows',
+ 'queue': 'schema deployment generation lastTicket count',
+ 'queue-shard': 'schema deployment shard generation rows',
  'registry': 'schema deployment shard generation entryCount scopeCount',
  'registry-entry': 'schema deployment shard generation scopeKind scopeId subject owner address firstUtc state',
  'registry-scope': 'schema deployment scopeKind scopeId generation count',
@@ -27,7 +29,7 @@ FIELDS = {
 }
 SCHEMAS = {k: 'hexalith.eventstore.'+v+'/1' for k,v in
            [('execution','execution-control'),('held','held-control'),
-            ('queue','capacity-queue'),('registry','owner-registry'),('registry-entry','owner-registry-entry'),('registry-scope','owner-registry-scope'),('epoch','operations-epoch'),('cursor','hold-cursor')]}
+            ('queue','capacity-queue'),('queue-shard','capacity-queue-shard'),('registry','owner-registry'),('registry-entry','owner-registry-entry'),('registry-scope','owner-registry-scope'),('epoch','operations-epoch'),('cursor','hold-cursor')]}
 ELIGIBILITY = ('retry-exhausted','drain-limit','drain-limit-and-retry-exhausted','legacy-publish-failed')
 OWNERS = ('actor','coordinator','gateway','subscriber','projection','operations','quota-coordinator')
 HELD_REASONS = ('handler-capability-hold','raw-source-unavailable','delivery-carrier-limit-hold','invalid-header-value','invalid-carrier','oversize-carrier','delivery_above_advertised_max')
@@ -173,6 +175,7 @@ def validate_control(kind,b):
     d=decode(b);exact(d,FIELDS[kind]);need(d['schema']==SCHEMAS[kind],'schema')
     if kind=='execution':
         for f in ('tenant','execution','charge'):textfield(d[f])
+        need(re.fullmatch('publication-charge:[0-9a-f]{64}',d['charge']) is not None,'charge-address')
         for f in ('scope','source','windowClaim','history'):digest(d[f])
         for f in ('revision','window','closedCount','ordinal','limit','drainBase'):integer(d[f])
         need(d['limit']>0 and d['drainBase']>0,'drain-limit')
@@ -192,13 +195,13 @@ def validate_control(kind,b):
             for f in ('identity','carrierHash','audit'):digest(r[f])
             for f in ('ordinal','window','limit'):integer(r[f])
             need(0<r['ordinal']<=d['ordinal'],'outcome-ordinal');utc(r['expiry']);utc(r['deleteAfter'])
-            need(r['deleteAfter']==r['expiry']+30*DAY,'fixed-horizon');response(r['result']);textfield(r['oldCharge']);need(type(r['artifacts']) is list and len(r['artifacts'])<=12 and len(set(r['artifacts']))==len(r['artifacts']),'outcome-artifacts')
+            need(r['deleteAfter']==r['expiry']+30*DAY,'fixed-horizon');response(r['result']);textfield(r['oldCharge']);need(re.fullmatch('publication-charge:[0-9a-f]{64}',r['oldCharge']) is not None,'charge-address');need(type(r['artifacts']) is list and len(r['artifacts'])<=12 and len(set(r['artifacts']))==len(r['artifacts']),'outcome-artifacts')
             for address in r['artifacts']:textfield(address,256)
         need(len({r['identity'] for r in d['outcomes']})==len(d['outcomes']),'outcome-identity')
         need([r['ordinal'] for r in d['outcomes']]==sorted({r['ordinal'] for r in d['outcomes']}),'outcome-order')
         if d['legacy'] is not None:
             l=d['legacy'];exact(l,'capsule identity owner state generation ordinal failure repaired')
-            digest(l['capsule']);digest(l['identity']);integer(l['generation']);integer(l['ordinal'])
+            digest(l['capsule']);digest(l['identity']);need(integer(l['generation'])>0,'legacy-generation');integer(l['ordinal'])
             need(l['owner'] in ('legacy-resume','dead-letter-admin') and l['state'] in ('claimed','draining','completed','failed'),'legacy-schema')
             need(l['failure'] in (None,'transport-retryable','evidence-unavailable','evidence-contradictory'),'legacy-failure')
             need((l['state']=='failed')==(l['failure'] is not None),'legacy-failure-phase')
@@ -217,6 +220,7 @@ def validate_control(kind,b):
     elif kind=='held':
         need(d['scopeKind'] in ('tenant','deployment') and (d['tenant'] is not None)==(d['scopeKind']=='tenant'),'held-scope')
         for f in ('scopeId','deployment','component','topic','subscription','charge'):textfield(d[f])
+        need(re.fullmatch('publication-charge:[0-9a-f]{64}',d['charge']) is not None,'charge-address')
         if d['tenant'] is not None:textfield(d['tenant']);need(d['scopeId']==d['tenant'],'held-tenant')
         else:need(d['scopeId']==d['deployment'],'held-deployment')
         for f in ('policy','carrier'):digest(d[f])
@@ -240,14 +244,17 @@ def validate_control(kind,b):
         if d['phase']=='cleanup':need(d['intent'] is not None and d['intent']['kind'] in ('delivered-cleanup','erase'),'cleanup-intent')
         if d['phase'] in ('captured','quarantined'):need(d['intent'] is None,'held-idle-intent')
         if d['phase']=='redriving':need(d['intent'] is not None and d['intent']['kind']=='send','send-intent')
-    elif kind=='queue':
-        textfield(d['deployment']);integer(d['generation']);integer(d['lastTicket']);need(type(d['rows']) is list and len(d['rows'])<=50000,'queue-count')
+    elif kind in ('queue','queue-shard'):
+        textfield(d['deployment']);integer(d['generation'])
+        if kind=='queue':
+            integer(d['lastTicket']);need(integer(d['count'])<=50000,'queue-count');return d
+        need(0<=integer(d['shard'])<8,'queue-shard');need(type(d['rows']) is list and len(d['rows'])<=6400,'queue-count')
         for r in d['rows']:
             exact(r,'subject tenant scope plan ticket firstUtc updatedUtc state candidate amount attempts charge owner')
             need(len(canonical(r))<=16384,'queue-row-bound')
             for f in ('subject','scope','plan'):digest(r[f])
             for f in ('tenant','owner','charge'):textfield(r[f])
-            integer(r['attempts']);need(0<integer(r['ticket'])<=d['lastTicket'],'ticket');utc(r['firstUtc']);utc(r['updatedUtc'])
+            integer(r['attempts']);need(0<integer(r['ticket']) and (r['ticket']-1)%8==d['shard'],'ticket');utc(r['firstUtc']);utc(r['updatedUtc'])
             need(r['state'] in ('reserved','queued','parked','cleanup'),'queue-state')
             need((r['candidate'] is None)==(r['amount'] is None),'queue-candidate')
             if r['amount'] is not None:digest(r['candidate']);need(integer(r['amount'])>0,'queue-amount')
@@ -273,7 +280,7 @@ def validate_control(kind,b):
         for f in ('acquiredUtc','expiresUtc','renewedUtc'):utc(d[f])
         need(d['acquiredUtc']<=d['renewedUtc']<d['expiresUtc'] and d['expiresUtc']==d['renewedUtc']+60*TICK,'epoch-clock')
     else:
-        need(d['scopeKind'] in ('tenant','deployment'),'cursor-scope');textfield(d['scopeId']);digest(d['generation']);utc(d['expiry'])
+        need(d['scopeKind'] in ('tenant','deployment'),'hold_inventory_cursor_scope_mismatch');textfield(d['scopeId']);digest(d['generation']);utc(d['expiry'])
         if d['last'] is not None:
             need(type(d['last']) is list and len(d['last'])==4,'cursor-position');utc(d['last'][0]);need(d['last'][1:3]==[d['scopeKind'],d['scopeId']],'cursor-position-scope');textfield(d['last'][3],1024)
     if kind in ('execution','held'):
@@ -292,6 +299,10 @@ def response(s):
     for f in ('resumeOrdinal','window','drainLimit'):integer(r[f])
     return r
 
+def mint_fence():
+    alphabet='0123456789ABCDEFGHJKMNPQRSTVWXYZ';value=secrets.randbits(128)
+    return ''.join(alphabet[(value>>(5*i))&31] for i in reversed(range(26)))
+
 def registry_sort(r):
     return (r['firstUtc'],r['scopeKind'].encode(),r['scopeId'].encode(),r['subject'].encode())
 
@@ -307,18 +318,24 @@ class Store:
         need(key not in self.unavailable,'evidence-unavailable')
         row=self.rows.get(key)
         if row is None:return None
-        exact(row,'body generation owner receipt')
-        need(row['receipt']==self.receipt(key,row['body'],row['generation'],row['owner']),'authenticated-readback')
+        exact(row,'body generation owner receipt fence index' if 'index' in row else 'body generation owner receipt fence')
+        need(row['receipt']==self.receipt(key,row['body'],row['generation'],row['owner'],row.get('index'),row['fence']),'authenticated-readback')
         if owner is not None:need(row['owner']==owner,'owner')
         return bytes.fromhex(row['body'])
     @staticmethod
-    def receipt(key,body,generation,owner):
-        return hashbytes(b'fixture-provider-only\0'+canonical([key,body,generation,owner]))
+    def receipt(key,body,generation,owner,index=None,fence=None):
+        return hashbytes(b'fixture-provider-only\0'+canonical([key,body,generation,owner]+([] if index is None else [index])+([] if fence is None else [fence])))
     def write(self,key,b,owner,expected):
         old=self.read(key,owner)
         need(old==expected,'cas')
         gen=add(self.rows[key]['generation'],1) if old is not None else 1
-        self.rows[key]={'body':b.hex(),'generation':gen,'owner':owner,'receipt':self.receipt(key,b.hex(),gen,owner)}
+        index=None
+        if key.startswith('owner-registry-entry:'):
+            d=typed('registry-entry',b);index={f:d[f] for f in ('deployment','shard','scopeKind','scopeId','subject','owner','address','firstUtc')}
+            if old is not None:need(index==self.rows[key]['index'],'registry-index-binding')
+        fence=self.rows[key]['fence'] if old is not None else mint_fence()
+        self.rows[key]={'body':b.hex(),'generation':gen,'owner':owner,'fence':fence,'receipt':self.receipt(key,b.hex(),gen,owner,index,fence)}
+        if index is not None:self.rows[key]['index']=index
     def external(self,key,b,owner):
         old=self.read(key,owner)
         need(old is None or old==b,'external-conflict')
@@ -328,10 +345,18 @@ class Store:
         self.read(key,owner)
         self.rows.pop(key,None)
     def transaction(self, fn):
+        expected=copy.deepcopy(self.rows)
         if self.before_transaction is not None:
             hook=self.before_transaction;self.before_transaction=None;hook(self)
         staged=self.restart();staged.unavailable=set(self.unavailable)
         result=fn(staged)
+        # The admitted generation/fence cannot be refreshed by rereading equal payloads.
+        # Check every changed participant against its pre-admission provider token.
+        for key in set(staged.rows)|set(self.rows):
+            if staged.rows.get(key)!=self.rows.get(key):
+                old=expected.get(key);current=self.rows.get(key)
+                token=lambda r:None if r is None else (r['generation'],r['fence'])
+                need(token(old)==token(current),'cas')
         self.rows=staged.rows
         return result
 
@@ -350,7 +375,9 @@ def savecontrol(db,key,kind,d):
         if kind=='execution':
             need(d['roster']==p['roster'] and set(p['accepted'])<=set(d['accepted']),'execution-progress')
             need(d['tenant']==p['tenant'] and d['execution']==p['execution'],'execution-identity')
-            if p['legacy'] is not None:need(d['legacy'] is not None and d['legacy']['capsule']==p['legacy']['capsule'] and d['legacy']['identity']==p['legacy']['identity'],'legacy-capsule-binding')
+            if p['legacy'] is not None:
+                need(d['legacy'] is not None and d['legacy']['capsule']==p['legacy']['capsule'] and d['legacy']['identity']==p['legacy']['identity'],'legacy-capsule-binding')
+                need(d['legacy']['generation']>=p['legacy']['generation'] and d['legacy']['ordinal']>=p['legacy']['ordinal'],'legacy-generation-regression')
         if kind in ('execution','held') and p['intent'] is not None and d['phase']==p['phase']:
             if d['intent'] is None:
                 artifact=db.read(p['intent']['address'],key);need(artifact is not None and hashbytes(artifact)==p['intent']['hash'],'intent-binding')
@@ -388,18 +415,30 @@ def registry_key(kind,scope,subject):
 def registry_scope_key(kind,scope):
     return keyed('HX-EV-OWNER-REGISTRY-SCOPE-KEY-1','owner-registry-scope:',[['U','dep'],['U',kind],['U',scope]])
 
-def registry(db):
-    header=getcontrol(db,'registry','registry');rows=[]
-    for address in sorted(db.rows):
-        if address.startswith('owner-registry-entry:'):
-            row=getcontrol(db,address,'registry-entry');rows.append(row)
-    need(header['entryCount']==len(rows) and header['scopeCount']==len({(r['scopeKind'],r['scopeId']) for r in rows}),'registry-count-readback')
-    for kind,scope in {(r['scopeKind'],r['scopeId']) for r in rows}:
-        h=getcontrol(db,registry_scope_key(kind,scope),'registry-scope');need(h['count']==sum((r['scopeKind'],r['scopeId'])==(kind,scope) for r in rows),'registry-scope-readback')
-    return {**header,'rows':sorted(rows,key=registry_sort)}
+def registry_shard_key(shard):
+    return keyed('HX-EV-OWNER-REGISTRY-SHARD-KEY-1','owner-registry-shard:',[['U','dep'],['N',shard]])
+
+def registry_shard(kind,scope):return hashlib.sha256(frame('U',kind)+frame('U',scope)).digest()[0]
+
+def registry_rows(db,kind=None,scope=None,incidents=False):
+    # Persisted provider index metadata selects addressed rows before owner readback.
+    result=[]
+    for address,row in sorted(db.rows.items()):
+        index=row.get('index')
+        if not address.startswith('owner-registry-entry:') or index is None:continue
+        if kind is not None and (index['scopeKind'],index['scopeId'])!=(kind,scope):continue
+        try:result.append(getcontrol(db,address,'registry-entry'))
+        except Refusal:
+            if incidents:result.append({**index,'generation':None,'state':'incident'})
+            else:raise
+    return sorted(result,key=registry_sort)
+
+def registry(db,kind=None,scope=None):
+    return {'rows':registry_rows(db,kind,scope,incidents=True)}
 
 def bootstrap(db):
-    install(db,'registry','registry',{'schema':SCHEMAS['registry'],'deployment':'dep','shard':0,'generation':1,'entryCount':0,'scopeCount':0})
+    for shard in range(256):
+        install(db,registry_shard_key(shard),'registry',{'schema':SCHEMAS['registry'],'deployment':'dep','shard':shard,'generation':1,'entryCount':0,'scopeCount':0})
 
 def discover(db,address,scope='t',kind='tenant',now=0,owner='coordinator',scope_limit=10000,shard_limit=50000):
     textfield(address,256);need(owner in OWNERS,'registry-owner')
@@ -407,46 +446,50 @@ def discover(db,address,scope='t',kind='tenant',now=0,owner='coordinator',scope_
     if old is not None:
         row=typed('registry-entry',old);need(row['address']==address and row['owner']==owner and row['firstUtc']==now,'reservation-conflict');return
     def tx(s):
-        view=registry(s);rows=view['rows'];same=[r for r in rows if (r['scopeKind'],r['scopeId'])==(kind,scope)]
-        need(len(same)<scope_limit and (same or view['scopeCount']<shard_limit),'registry_capacity_hold')
+        scope_key=registry_scope_key(kind,scope);raw=s.read(scope_key,scope_key)
+        sh=None if raw is None else typed('registry-scope',raw)
+        shard=registry_shard(kind,scope);header_key=registry_shard_key(shard);h=getcontrol(s,header_key,'registry')
+        need((0 if sh is None else sh['count'])<scope_limit and (sh is not None or h['scopeCount']<shard_limit),'registry_capacity_hold')
         charge_kind='tenant' if kind=='tenant' else 'capture-scope'
-        scope_key=registry_scope_key(kind,scope)
-        if not same:
-            reserve_charge(s,scope_key,charge_kind,scope,2048,objects=(scope_key,))
+        if sh is None:
+            reserve_charge(s,scope_key,charge_kind,scope,CAPS['registry-scope'],objects=(scope_key,))
             install(s,scope_key,'registry-scope',{'schema':SCHEMAS['registry-scope'],'deployment':'dep','scopeKind':kind,'scopeId':scope,'generation':1,'count':1})
         else:
-            sh=getcontrol(s,scope_key,'registry-scope');sh['count']=add(sh['count'],1);savecontrol(s,scope_key,'registry-scope',sh)
+            sh['count']=add(sh['count'],1);savecontrol(s,scope_key,'registry-scope',sh)
         reserve_charge(s,key,charge_kind,scope,65536,objects=(key,))
-        row={'schema':SCHEMAS['registry-entry'],'deployment':'dep','shard':hashlib.sha256(frame('U',kind)+frame('U',scope)).digest()[0],'generation':1,'scopeKind':kind,'scopeId':scope,'subject':address,'owner':owner,'address':address,'firstUtc':now,'state':'reserved'}
+        row={'schema':SCHEMAS['registry-entry'],'deployment':'dep','shard':shard,'generation':1,'scopeKind':kind,'scopeId':scope,'subject':address,'owner':owner,'address':address,'firstUtc':now,'state':'reserved'}
         install(s,key,'registry-entry',row)
-        h=getcontrol(s,'registry','registry');h['entryCount']=add(h['entryCount'],1);h['scopeCount']=add(h['scopeCount'],0 if same else 1);savecontrol(s,'registry','registry',h)
-    db.transaction(tx)
+        h['entryCount']=add(h['entryCount'],1);h['scopeCount']=add(h['scopeCount'],1 if sh is None else 0);savecontrol(s,header_key,'registry',h)
+    try:db.transaction(tx)
+    except Refusal as e:
+        if str(e)=='capacity':raise Refusal('registry_capacity_hold') from e
+        raise
+
+def registry_owner(db,address):
+    index=next((r['index'] for k,r in db.rows.items() if k.startswith('owner-registry-entry:') and r.get('index',{}).get('address')==address),None)
+    if index is None:return None
+    return getcontrol(db,registry_key(index['scopeKind'],index['scopeId'],index['subject']),'registry-entry')
 
 def registry_present(db,address):
-    row=next((r for r in registry(db)['rows'] if r['address']==address),None);need(row is not None,'discovery-before-owner')
+    row=registry_owner(db,address);need(row is not None,'discovery-before-owner')
     need(db.read(address,address) is not None,'owner-readback')
     if row['state']!='present':
         row['state']='present';savecontrol(db,registry_key(row['scopeKind'],row['scopeId'],row['subject']),'registry-entry',row)
 
-def owner_discovered(db,address):
-    need(any(r['address']==address for r in registry(db)['rows']),'undiscovered-owner')
+def owner_discovered(db,address):need(registry_owner(db,address) is not None,'undiscovered-owner')
 
 def registry_release(db,address):
-    row=next((r for r in registry(db)['rows'] if r['address']==address),None)
+    row=registry_owner(db,address)
     if row is None:return
     need(db.read(address,address) is None and not any(r['owner']==address for r in db.rows.values()),'owner-deletion-readback')
     def tx(s):
         k=registry_key(row['scopeKind'],row['scopeId'],row['subject']);s.delete(k,k);refund(s,k)
         scope_key=registry_scope_key(row['scopeKind'],row['scopeId']);sh=getcontrol(s,scope_key,'registry-scope');sh['count']=subtract(sh['count'],1)
-        if sh['count']==0:s.delete(scope_key,scope_key);refund(s,scope_key)
+        empty=sh['count']==0
+        if empty:s.delete(scope_key,scope_key);refund(s,scope_key)
         else:savecontrol(s,scope_key,'registry-scope',sh)
-        h=getcontrol(s,'registry','registry');h['entryCount']=subtract(h['entryCount'],1)
-        if not any((r['scopeKind'],r['scopeId'])==(row['scopeKind'],row['scopeId']) for r in registry_rows(s)):h['scopeCount']=subtract(h['scopeCount'],1)
-        savecontrol(s,'registry','registry',h)
+        hk=registry_shard_key(row['shard']);h=getcontrol(s,hk,'registry');h['entryCount']=subtract(h['entryCount'],1);h['scopeCount']=subtract(h['scopeCount'],1 if empty else 0);savecontrol(s,hk,'registry',h)
     db.transaction(tx)
-
-def registry_rows(db):
-    return [getcontrol(db,k,'registry-entry') for k in sorted(db.rows) if k.startswith('owner-registry-entry:')]
 
 def reconcile_placeholder(db,address):
     if db.read(address,address) is not None:registry_present(db,address)
@@ -459,8 +502,9 @@ def reconcile_placeholder(db,address):
 def ledger_init(db,tenant=100,deploy=250,reserve=50,unidentified=100,overhead=1):
     d={'generation':1,'tenantCeiling':tenant,'deploymentCeiling':deploy,'reserve':reserve,'unidentifiedCeiling':unidentified,'overhead':overhead,'used':{},'charges':{},'reservations':{}}
     db.write('ledger',canonical(d),'ledger',None)
-    q={'schema':SCHEMAS['queue'],'deployment':'dep','generation':1,'lastTicket':0,'rows':[]}
-    install(db,'queue','queue',q)
+    q={'schema':SCHEMAS['queue'],'deployment':'dep','generation':1,'lastTicket':0,'count':0}
+    install(db,queue_key(),'queue',q)
+    for shard in range(8):install(db,queue_shard_key(shard),'queue-shard',{'schema':SCHEMAS['queue-shard'],'deployment':'dep','shard':shard,'generation':1,'rows':[]})
 
 def ledger_get(db):
     b=db.read('ledger','ledger');need(b is not None,'ledger-absent');return decode(b)
@@ -481,8 +525,8 @@ def ledger_fit(d,kind,id,amount):
 def retention_capability(tenant,deploy,reserve,unidentified,overhead,quarantine):
     for n in (tenant,deploy,reserve,unidentified,overhead,quarantine):integer(n)
     need(overhead<=1114112 and 193*MIB<=quarantine<=256*MIB,'publication_retention_capability_invalid')
-    fixed=add(800*MIB+16384,9*overhead)
-    tenant_fixed=add(216*1024,3*overhead)
+    fixed=add(800*MIB+16384+256*CAPS['registry']+CAPS['epoch'],266*overhead)
+    tenant_fixed=add(216*1024+CAPS['registry-scope'],4*overhead)
     need(tenant>=add(add(1024*MIB,overhead),tenant_fixed) and add(tenant,reserve)<=deploy,'publication_retention_capability_invalid')
     need(195*MIB<=reserve<=unidentified<=deploy and add(fixed,add(quarantine,overhead))<=unidentified and reserve>=add(fixed,add(quarantine,overhead)),'publication_retention_capability_invalid')
     return fixed
@@ -493,19 +537,28 @@ def capture_interval(length,advertised=256*MIB,valid=False):
     need(not valid,'valid-carrier-oversize')
     return 'provider-quarantine' if length<=advertised else 'incident'
 
-def reserve_charge(db,key,kind,id,length,overhead=None,objects=()):
-    b=db.read('ledger','ledger');d=ledger_get(db);acct=account(kind,id);integer(length)
+def charge_address(kind,id,object_key):
+    if object_key.startswith('publication-charge:'):return object_key
+    return keyed('HX-EV-PUBLICATION-CHARGE-KEY-1','publication-charge:',[['U','dep'],['U',kind],['U',id],['B32',hashbytes(frame('B',object_key.encode().hex()))]])
+
+def resolve_charge(db,key):
+    if key.startswith('publication-charge:'):return key
+    rows=[k for k,c in ledger_get(db)['charges'].items() if c['objectKey']==hashbytes(frame('B',key.encode().hex()))]
+    need(len(rows)<=1,'charge-address-ambiguous');return rows[0] if rows else key
+
+def reserve_charge(db,key,kind,id,length,overhead=None,objects=(),locator=None):
+    b=db.read('ledger','ledger');d=ledger_get(db);acct=account(kind,id);integer(length);object_key=hashbytes(frame('B',(key if locator is None else locator).encode().hex()));derived=keyed('HX-EV-PUBLICATION-CHARGE-KEY-1','publication-charge:',[['U','dep'],['U',kind],['U',id],['B32',object_key]]);need(not key.startswith('publication-charge:') or key==derived,'charge-address');key=derived
     if key in d['charges']:
-        c=d['charges'][key];need((c['account'],c['length'],c['state'])==(acct,length,'active') and c['objects']==list(objects),'charge-conflict');return c['amount']
+        c=d['charges'][key];need((c['account'],c['length'],c['state'])==(acct,length,'active') and c['objectKey']==object_key and c['objects']==list(objects),'charge-conflict');return c['amount']
     o=d['overhead'] if overhead is None else overhead;amount=add(length,o)
     need(ledger_fit(d,kind,id,amount),'capacity')
-    c={'account':acct,'length':length,'overhead':o,'amount':amount,'state':'active','objects':list(objects)}
+    c={'objectKey':object_key,'account':acct,'length':length,'overhead':o,'amount':amount,'state':'active','objects':list(objects)}
     d['charges'][key]=c
     for a in (acct,'tenant-pool' if kind=='tenant' else 'unidentified','deployment'):d['used'][a]=add(d['used'].get(a,0),amount)
     ledger_save(db,d,b);return amount
 
 def refund(db,key):
-    b=db.read('ledger','ledger');d=ledger_get(db);c=d['charges'].get(key)
+    b=db.read('ledger','ledger');d=ledger_get(db);key=resolve_charge(db,key);c=d['charges'].get(key)
     if c is None:return
     for address in c['objects']:need(db.read(address) is None,'delete-readback')
     kind,id=c['account'].split(':',1);acct=account(kind,id)
@@ -533,16 +586,43 @@ def pin_admit(db,subject,tenant,pins):
     try:return batch(db,subject,tenant,pins)
     except Refusal as e:raise Refusal('publication_pin_capacity_hold') from e
 
-def queue_reserve(db,subject,tenant,plan,now,limit=50000):
+def queue_key():
+    return keyed('HX-EV-PIN-CAPACITY-QUEUE-KEY-1','pin-capacity-queue:',[['U','dep'],['U','deployment']])
+
+def queue_shard_key(shard):
+    return keyed('HX-EV-PIN-CAPACITY-QUEUE-SHARD-KEY-1','pin-capacity-queue-shard:',[['U','dep'],['N',shard]])
+
+def queue_view(db):
+    q=getcontrol(db,queue_key(),'queue');q['_shards']={};q['rows']=[]
+    for shard in range(8):
+        key=queue_shard_key(shard);raw=db.read(key,key);d=typed('queue-shard',raw)
+        q['_shards'][shard]=raw.hex();q['rows'].extend(d['rows'])
+    q['rows'].sort(key=lambda r:r['ticket'])
+    need(len(q['rows'])==q['count'] and len({r['subject'] for r in q['rows']})==q['count'],'queue-count-readback')
+    for r in q['rows']:need(r['ticket']<=q['lastTicket'],'ticket')
+    return q
+
+def queue_save(db,q):
+    hk=queue_key();header=getcontrol(db,hk,'queue');need(header['generation']==q['generation'],'cas')
+    for shard in range(8):
+        key=queue_shard_key(shard);old=db.read(key,key);need(old.hex()==q['_shards'][shard],'cas')
+        d=typed('queue-shard',old);rows=[r for r in q['rows'] if (r['ticket']-1)%8==shard]
+        if d['rows']!=rows:d['rows']=rows;savecontrol(db,key,'queue-shard',d)
+    header.update(lastTicket=q['lastTicket'],count=len(q['rows']));savecontrol(db,hk,'queue',header)
+
+def queue_reserve(db,subject,tenant,plan,now,limit=50000,shard_limit=6400):
     def tx(s):
-        q=getcontrol(s,'queue','queue')
-        old=next((r for r in q['rows'] if r['subject']==subject),None)
+        q=queue_view(s);old=next((r for r in q['rows'] if r['subject']==subject),None)
         if old:need((old['tenant'],old['plan'])==(tenant,plan),'queue-owner-conflict');return old['ticket']
-        need(len(q['rows'])<limit,'queue-full');ticket=add(q['lastTicket'],1)
-        reserve_charge(s,'wait:'+subject,'tenant',tenant,16384)
-        q['lastTicket']=ticket
-        q['rows'].append({'subject':subject,'tenant':tenant,'scope':hashbytes(b'scope'+tenant.encode()),'plan':plan,'ticket':ticket,'firstUtc':now,'updatedUtc':now,'state':'reserved','candidate':None,'amount':None,'attempts':0,'charge':'wait:'+subject,'owner':'owner:'+subject})
-        savecontrol(s,'queue','queue',q);return ticket
+        need(len(q['rows'])<limit,'AppendPreparationLimit')
+        need(q['lastTicket']<MAX,'AppendPreparationLimit');ticket=q['lastTicket']+1;shard=(ticket-1)%8
+        rows=[r for r in q['rows'] if (r['ticket']-1)%8==shard]
+        need(len(rows)<shard_limit,'AppendPreparationLimit')
+        charge=charge_address('tenant',tenant,'wait:'+subject)
+        row={'subject':subject,'tenant':tenant,'scope':hashbytes(b'scope'+tenant.encode()),'plan':plan,'ticket':ticket,'firstUtc':now,'updatedUtc':now,'state':'reserved','candidate':None,'amount':None,'attempts':0,'charge':charge,'owner':'owner:'+subject}
+        image=typed('queue-shard',hexbytes(q['_shards'][shard]));image['rows']=rows+[row]
+        need(len(canonical(image))<=CAPS['queue-shard'],'AppendPreparationLimit')
+        reserve_charge(s,charge,'tenant',tenant,16384,locator='wait:'+subject);q['lastTicket']=ticket;q['rows'].append(row);queue_save(s,q);return ticket
     return db.transaction(tx)
 
 def validate_pins(pins,overhead):
@@ -551,56 +631,71 @@ def validate_pins(pins,overhead):
         exact(p,'message length');textfield(p['message']);need(0<=integer(p['length'])<=449*MIB,'pin-length');total=add(total,add(p['length'],overhead))
     need(len({p['message'] for p in pins})==len(pins),'batch-duplicate');return total
 
+def operation_plan_fixture(db,subject,pins):
+    row=next(r for r in queue_view(db)['rows'] if r['subject']==subject)
+    db.external(provider_address('operation-plan',row['owner'],row['plan']),canonical(pins),'fixture-operation')
+
 def queue_materialize(db,subject,pins,now):
-    q=getcontrol(db,'queue','queue');r=next(x for x in q['rows'] if x['subject']==subject)
+    q=queue_view(db);r=next(x for x in q['rows'] if x['subject']==subject)
     need(r['state'] in ('reserved','queued','parked'),'queue-materialize-phase')
     total=validate_pins(pins,ledger_get(db)['overhead']);need(total>0 and now>=r['updatedUtc'],'queue-rerender')
-    # Existing immutable operation authority is read back before the queue CAS.
-    address=provider_address('operation-plan',r['owner'],r['plan']);db.external(address,canonical(pins),'fixture-operation')
+    address=provider_address('operation-plan',r['owner'],r['plan'])
+    need(db.read(address,'fixture-operation')==canonical(pins),'rerender-authority')
     r.update(candidate=hashbytes(canonical(pins)),amount=total,updatedUtc=now,state='queued')
-    savecontrol(db,'queue','queue',q)
+    db.transaction(lambda t:queue_save(t,q))
 
 def queue_turn(db,pin_sources):
-    prior=db.read('queue','queue');initial=getcontrol(db,'queue','queue')
+    initial=queue_view(db)
     def tx(s):
-        need(s.read('queue','queue')==prior,'cas');q=getcontrol(s,'queue','queue');d=ledger_get(s);changed=False;chosen=None
+        need(queue_view(s)==initial,'cas');q=queue_view(s);d=ledger_get(s);changed=False
         for r in q['rows']:
             if r['state'] not in ('queued','parked'):continue
             try:
                 pins=pin_sources[r['subject']]
                 need(s.read(provider_address('operation-plan',r['owner'],r['plan']),'fixture-operation')==canonical(pins),'rerender-authority')
-                amount=validate_pins(pins,d['overhead'])
-                candidate=hashbytes(canonical(pins))
+                amount=validate_pins(pins,d['overhead']);candidate=hashbytes(canonical(pins))
+                reservation=d['reservations'].get(r['subject'])
+                need(reservation is None or (reservation['tenant']==r['tenant'] and reservation['pins']==pins and reservation['binding']==hashbytes(canonical([r['subject'],r['tenant'],pins]))),'batch-conflict')
             except (Refusal,KeyError):
                 if r['state']!='parked' or r['amount'] is not None:r.update(state='parked',amount=None,candidate=None);changed=True
                 continue
             state='parked' if amount>d['tenantCeiling'] or amount>d['deploymentCeiling']-d['reserve'] else 'queued'
             if (r['candidate'],r['amount'],r['state'])!=(candidate,amount,state):r.update(candidate=candidate,amount=amount,state=state);changed=True
             if state=='parked':continue
-            c=d['charges'].get(r['charge']);need(c is not None and c['account']==account('tenant',r['tenant']) and c['length']==16384,'wait-charge')
-            net=copy.deepcopy(d)
-            for a in (c['account'],'tenant-pool','deployment'):net['used'][a]=subtract(net['used'][a],c['amount'])
-            if add(net['used'].get(c['account'],0),amount)>d['tenantCeiling']:continue
-            # A deployment-blocked oldest tenant-eligible row forbids bypass.
-            chosen=r
-            if not ledger_fit(net,'tenant',r['tenant'],amount):chosen=None
-            break
-        if chosen is None:
-            if changed:savecontrol(s,'queue','queue',q)
-            return None
-        q['rows'].remove(chosen);savecontrol(s,'queue','queue',q);refund(s,chosen['charge'])
-        try:batch(s,chosen['subject'],chosen['tenant'],pin_sources[chosen['subject']])
-        except Refusal:raise  # Same transaction discards deletion/refund; rerender already proved fit.
-        return chosen['ticket']
+            try:
+                c=d['charges'].get(r['charge']);need(c is not None and c['account']==account('tenant',r['tenant']) and c['length']==16384 and c['state']=='active' and c['amount']==add(c['length'],c['overhead']),'wait-charge')
+                net=copy.deepcopy(d)
+                for a in (c['account'],'tenant-pool','deployment'):net['used'][a]=subtract(net['used'][a],c['amount'])
+                if add(net['used'].get(c['account'],0),amount)>d['tenantCeiling']:continue
+                fits=ledger_fit(net,'tenant',r['tenant'],amount)
+            except Refusal:
+                r.update(state='parked',amount=None,candidate=None);changed=True;continue
+            if not fits:
+                if changed:queue_save(s,q)
+                return None
+            # Stage the complete grant on a disposable transaction image. Any selected-row
+            # refusal parks only this subject; no deletion, refund or partial grant survives.
+            grant=s.restart();grant.unavailable=set(s.unavailable);trial=queue_view(grant)
+            trial['rows']=[v for v in trial['rows'] if v['subject']!=r['subject']]
+            try:
+                queue_save(grant,trial);refund(grant,r['charge']);batch(grant,r['subject'],r['tenant'],pins)
+            except Refusal:
+                r.update(state='parked',amount=None,candidate=None);changed=True;continue
+            if changed:
+                # Include earlier parked/rerendered rows in the successful grant image.
+                updated=queue_view(grant);updated['rows']=[v for v in q['rows'] if v['subject']!=r['subject']];queue_save(grant,updated)
+            s.rows=grant.rows;return r['ticket']
+        if changed:queue_save(s,q)
+        return None
     return db.transaction(tx)
 
 def execution_init(db,key='execution',eligibility='retry-exhausted',accepted=None):
     discover(db,key)
     roster=[{'position':i,'message':'event-'+str(i),'digest':hashbytes(('stored-'+str(i)).encode())} for i in (1,2,3)]
     a=accepted if accepted is not None else [1]
-    d={'schema':SCHEMAS['execution'],'tenant':'t','execution':key,'scope':ZERO if eligibility=='legacy-publish-failed' else hashbytes(frame('U','t')+frame('U',key)),'revision':1,'phase':'idle','firstUtc':0,'updatedUtc':0,'source':hashbytes(b'exhaustion'),'window':0 if eligibility=='legacy-publish-failed' else 1,'windowClaim':hashbytes(b'original-window'),'closedCount':0,'history':ZERO,'ordinal':0,'limit':8,'drainBase':8,'roster':roster,'accepted':a,'unresolved':[r['position'] for r in roster if r['position'] not in a],'legacy':None,'request':None,'intent':None,'receipts':{},'outcomes':[],'reason':eligibility,'nextUtc':0,'charge':'old-window:'+key}
+    d={'schema':SCHEMAS['execution'],'tenant':'t','execution':key,'scope':ZERO if eligibility=='legacy-publish-failed' else hashbytes(frame('U','t')+frame('U',key)),'revision':1,'phase':'idle','firstUtc':0,'updatedUtc':0,'source':hashbytes(b'exhaustion'),'window':0 if eligibility=='legacy-publish-failed' else 1,'windowClaim':hashbytes(b'original-window'),'closedCount':0,'history':ZERO,'ordinal':0,'limit':8,'drainBase':8,'roster':roster,'accepted':a,'unresolved':[r['position'] for r in roster if r['position'] not in a],'legacy':None,'request':None,'intent':None,'receipts':{},'outcomes':[],'reason':eligibility,'nextUtc':0,'charge':charge_address('tenant','t','old-window:'+key)}
     def tx(t):
-        reserve_charge(t,d['charge'],'tenant','t',2*MIB);install(t,key,'execution',d);registry_present(t,key)
+        reserve_charge(t,d['charge'],'tenant','t',2*MIB,locator='old-window:'+key);install(t,key,'execution',d);registry_present(t,key)
     db.transaction(tx)
     if eligibility!='legacy-publish-failed':
         db.external(window_address(d),canonical({'tenant':d['tenant'],'scope':d['scope'],'window':d['window'],'admission':d['unresolved']}),key)
@@ -680,7 +775,10 @@ def begin_resume(db,idkey='r1',source=None,reason='repair',now=0,key='execution'
         reserve_charge(s,'stage:'+rid,'tenant',d['tenant'],3*MIB)
         x=getcontrol(s,key,'execution');need(canonical(x)==canonical(d),'cas');x.update(request=request,phase='prepared',updatedUtc=now,nextUtc=now,reason='publication_resume_preparation_hold')
         savecontrol(s,key,'execution',x)
-    db.transaction(tx)
+    try:db.transaction(tx)
+    except Refusal as e:
+        if str(e)=='capacity':raise Refusal('resume_capacity_hold') from e
+        raise
     return None
 
 
@@ -706,12 +804,13 @@ def held_claim_binding(d,key,request):
 
 NEXT={'prepared':'disable','disable':'reject','reject':'closure','closure':'window','window':'audit','audit':'successor','successor':'finalize','finalize':'invoke','invoke':'idle'}
 
-def resume_step(db,key='execution',crash=None,now=None):
+def resume_step(db,now,key='execution',crash=None):
+    utc(now)
     d=getcontrol(db,key,'execution');r=d['request'];need(r is not None,'resume-absent')
     resume_claim_binding(d,r);owner_discovered(db,key)
     if r['eligibility']=='legacy-publish-failed':legacy_authority(db,d,r['source'])
     phase=d['phase'];need(phase in NEXT,'resume-transition')
-    if phase=='prepared' and now is not None and now>=r['expiry']:
+    if phase=='prepared' and now>=r['expiry']:
         irreversible=any(db.read(action_address(d,r,a),key) is not None for a in ('disable','reject','audit','successor'))
         if not irreversible:cancel_resume(db,key);return None
     action='audit' if phase=='prepared' and r['eligibility'] in ('drain-limit','legacy-publish-failed') else NEXT[phase]
@@ -736,10 +835,12 @@ def resume_step(db,key='execution',crash=None,now=None):
         d['intent']={'kind':action,'address':address,'hash':hashbytes(external_bytes),'payload':{'bytes':external_bytes.hex()}}
         d=savecontrol(db,key,'execution',d)
         if crash=='intent':raise Crash(action)
+    admitted_token=(db.rows[key]['generation'],db.rows[key]['fence'])
     db.external(address,external_bytes,key)
     if crash=='effect':raise Crash(action)
     need(hashbytes(db.read(address,key))==d['intent']['hash'],'effect-readback')
     def advance(s):
+        need((s.rows[key]['generation'],s.rows[key]['fence'])==admitted_token,'cas')
         x=getcontrol(s,key,'execution');need(canonical(x)==canonical(d),'cas');x['receipts'][action]=address
         if action=='successor':
             oldwindow=window_address(x);oldcharge=x['charge']
@@ -750,7 +851,7 @@ def resume_step(db,key='execution',crash=None,now=None):
             if r['eligibility'] not in ('drain-limit','legacy-publish-failed'):retained.append(oldwindow)
             row={'identity':r['identity'],'carrierHash':hashbytes(hexbytes(r['carrier'])),'ordinal':x['ordinal'],'window':x['window'],'limit':x['limit'],'audit':result['auditRecordHash'],'expiry':r['expiry'],'deleteAfter':r['expiry']+30*DAY,'result':r['result'],'oldCharge':oldcharge,'artifacts':sorted(set(retained))}
             if not any(v['identity']==r['identity'] for v in x['outcomes']):x['outcomes'].append(row)
-        if action=='finalize':x['charge']='stage:'+r['identity']
+        if action=='finalize':x['charge']=charge_address('tenant',x['tenant'],'stage:'+r['identity'])
         if action=='invoke':
             row=next(v for v in x['outcomes'] if v['identity']==r['identity'])
             row['artifacts']=sorted(set(row['artifacts']+[address]+[v for a,v in x['receipts'].items() if a in ('successor','finalize')]))
@@ -759,11 +860,12 @@ def resume_step(db,key='execution',crash=None,now=None):
     if crash=='advance':raise Crash(action)
     return None
 
-def finish_resume(db,key='execution'):
+def finish_resume(db,now,key='execution'):
+    utc(now)
     for _ in range(12):
         d=getcontrol(db,key,'execution')
         if d['request'] is None:return
-        resume_step(db,key)
+        resume_step(db,now,key)
     raise AssertionError('bounded-resume-completion')
 
 def invocation_messages(db,d,payload):
@@ -803,7 +905,7 @@ def reclaim(db,now,key='execution'):
 
 def held_init(db,carrier=b'exact carrier',key='held',now=0,kind='tenant',scope='t'):
     discover(db,key,scope=scope,kind=kind,now=now,owner='operations')
-    d={'schema':SCHEMAS['held'],'scopeKind':kind,'scopeId':scope,'deployment':'dep' if kind=='tenant' else scope,'tenant':scope if kind=='tenant' else None,'component':'pubsub','topic':'orders','subscription':'sub','policy':hashbytes(b'policy'),'revision':1,'phase':'observed','reason':'handler-capability-hold','firstUtc':now,'updatedUtc':now,'observations':1,'length':len(carrier),'carrier':hashbytes(carrier),'locator':None,'objectReceipt':None,'charge':'object:'+key,'request':None,'attempt':None,'redrives':0,'nextUtc':now,'repair':'none','error':None,'intent':None,'receipts':{}}
+    d={'schema':SCHEMAS['held'],'scopeKind':kind,'scopeId':scope,'deployment':'dep' if kind=='tenant' else scope,'tenant':scope if kind=='tenant' else None,'component':'pubsub','topic':'orders','subscription':'sub','policy':hashbytes(b'policy'),'revision':1,'phase':'observed','reason':'handler-capability-hold','firstUtc':now,'updatedUtc':now,'observations':1,'length':len(carrier),'carrier':hashbytes(carrier),'locator':None,'objectReceipt':None,'charge':charge_address('tenant' if kind=='tenant' else 'capture-scope',scope,'object:'+key),'request':None,'attempt':None,'redrives':0,'nextUtc':now,'repair':'none','error':None,'intent':None,'receipts':{}}
     old=db.read(key,key)
     if old is not None:
         prior=getcontrol(db,key,'held');need(prior['carrier']==d['carrier'] and prior['length']==d['length'] and prior['firstUtc']==now,'held-init-conflict');metadata_charge(db,prior,key);return prior
@@ -816,24 +918,43 @@ def observe(db,now,key='held'):
     d=getcontrol(db,key,'held');need(now>=d['updatedUtc'],'observation-clock');d['observations']=add(d['observations'],1);d['updatedUtc']=now;savecontrol(db,key,'held',d)
 
 def metadata_charge(db,d,key):
-    c=ledger_get(db)['charges'].get('metadata:'+key)
+    c=ledger_get(db)['charges'].get(charge_address(*held_account(d),'metadata:'+key))
     need(c is not None and c['account']==account(*held_account(d)) and c['length']==136*1024 and c['state']=='active' and c['amount']==add(c['length'],c['overhead']),'metadata-charge')
 
 def capture(db,carrier,key='held',crash=None):
     d=getcontrol(db,key,'held');owner_discovered(db,key);metadata_charge(db,d,key)
-    need(hashbytes(carrier)==d['carrier'] and len(carrier)==d['length'] and capture_interval(len(carrier))=='ordinary','capture-carrier')
+    need(capture_interval(len(carrier))=='ordinary','capture-carrier')
+    need(hashbytes(carrier)==d['carrier'] and len(carrier)==d['length'],'capture-carrier')
     if d['phase']=='captured':verify_retained(db,d,key);return True
     need(d['phase'] in ('observed','capturing'),'capture-transition');address=held_object(d)
     def admit(s):
-        reserve_charge(s,d['charge'],*held_account(d),len(carrier),objects=(held_object(d),))
+        reserve_charge(s,d['charge'],*held_account(d),len(carrier),objects=(held_object(d),),locator='object:'+key)
         x=getcontrol(s,key,'held');need(canonical(x)==canonical(d),'cas')
         if d['phase']=='observed':
             x.update(phase='capturing',intent={'kind':'capture','address':address,'hash':d['carrier'],'payload':{'length':d['length'],'carrier':d['carrier']}});savecontrol(s,key,'held',x)
     db.transaction(admit)
+    admitted=db.read(key,key);fence=db.rows[key]['fence'];generation=db.rows[key]['generation']
     if crash=='charge':raise Crash('capture-charge')
     receipt=db.external(address,carrier,key)
     if crash=='object':raise Crash('capture-object')
-    prior=getcontrol(db,key,'held');need(prior['phase']=='capturing' and prior['intent']['address']==address and prior['carrier']==d['carrier'],'capture-predecessor')
+    current=db.read(key,key)
+    if current is None or current!=admitted or db.rows[key]['fence']!=fence or db.rows[key]['generation']!=generation:
+        replacement=None if current is None else typed('held',current)
+        owned=False
+        if replacement is not None and replacement['carrier']==d['carrier'] and replacement['length']==d['length']:
+            if replacement['locator'] is not None and replacement['locator']['key']==address:
+                verify_retained(db,replacement,key);owned=True
+                completed=typed('held',admitted)
+                completed.update(phase='captured',locator={'backend':'held-delivery-store','key':address},objectReceipt=receipt,intent=None,revision=add(completed['revision'],1))
+                if replacement['phase']=='captured' and db.rows[key]['fence']==fence and db.rows[key]['generation']==generation+1 and current==canonical(completed):return True
+            elif replacement['phase']=='capturing' and replacement['intent']['address']==address:
+                c=ledger_get(db)['charges'].get(replacement['charge'])
+                need(c is not None and c['account']==account(*held_account(replacement)) and c['length']==replacement['length'],'retained-charge')
+                owner_discovered(db,key);owned=True
+        if not owned:
+            db.delete(address,key);need(db.read(address,key) is None,'object-deletion-readback')
+        raise Refusal('capture-predecessor')
+    prior=typed('held',current);need(prior['phase']=='capturing' and prior['intent']['address']==address and prior['carrier']==d['carrier'],'capture-predecessor')
     prior.update(phase='captured',locator={'backend':'held-delivery-store','key':address},objectReceipt=receipt,intent=None)
     savecontrol(db,key,'held',prior)
     if crash=='control':raise Crash('capture-control')
@@ -852,7 +973,7 @@ def redrive(db,key='held',now=0,expected=None,crash=None):
     d=getcontrol(db,key,'held');verify_retained(db,d,key)
     need(d['phase']=='captured' and d['repair'] in ('none','repaired'),'redrive-phase')
     need(now>=d['firstUtc'] and now>=d['nextUtc'],'redrive-time')
-    count=d['redrives'] if expected is None else expected;need(count==d['redrives'],'redrive-count')
+    count=d['redrives'] if expected is None else expected;need(count==d['redrives'],'held_redrive_count_changed')
     claim=record('HX-EV-REDRIVE-REQUEST-2',[['U','admin'],['U',d['scopeKind']],['O:U',d['tenant']],['B32',held_identity(d)],['N',count],['U','operator'],['Q',now]])
     n=add(count,1)
     old_route=db.read(provider_address('route-terminal',key),key)
@@ -898,7 +1019,10 @@ def redrive_reconcile(db,key='held',now=0):
     raw=db.read(key,key);d=decode(raw);repair='none';disputed=canonical([d.get('request'),d.get('attempt')])
     try:typed('held',raw)
     except Refusal:
-        d.update(request=None,attempt=None,repair='corrupt');typed('held',canonical(d));repair='corrupt'
+        d.update(request=None,repair='corrupt')
+        try:typed('held',canonical(d))
+        except Refusal:d['attempt']=None;typed('held',canonical(d))
+        repair='corrupt'
     need(d['phase'] in ('observed','redriving'),'reconcile-phase')
     if d['phase']=='observed':
         a=db.read(provider_address('original-route',key),key)
@@ -924,6 +1048,9 @@ def repair_held(db,key='held',claim=None):
     need(claim is not None,'repair-authority')
     held_claim_binding(d,key,claim)
     need(claim['expectedCount']+1==d['redrives'],'repair-count')
+    raw=db.read(provider_address('route-terminal',key),key)
+    source=decode(raw) if raw is not None else d['attempt']
+    need(type(source) is dict and source.get('requestHash')==hashbytes(hexbytes(claim['claim'])) and source.get('count')==d['redrives'] and source.get('carrier')==d['carrier'],'repair-original-request')
     d['request']=claim;d['attempt']={'count':d['redrives'],'requestHash':hashbytes(bytes.fromhex(claim['claim'])),'carrier':d['carrier'],'utc':claim['utc'],'result':None};d['repair']='repaired';savecontrol(db,key,'held',d)
 
 def cleanup_held(db,key='held',crash=None):
@@ -1003,10 +1130,10 @@ def inventory_actor(kind,scope):
 
 def resolve_handle(db,tenant,handle):
     matches=[]
-    for row in registry(db)['rows']:
-        if row['scopeKind']=='tenant' and row['scopeId']==tenant:
+    for row in registry(db,'tenant',tenant)['rows']:
+        if row['state']!='incident':
             raw=db.read(row['address'],row['address'])
-            if raw is not None and decode(raw).get('schema')==SCHEMAS['execution']:
+            if raw is not None and type(decode(raw)) is dict and decode(raw).get('schema')==SCHEMAS['execution']:
                 d=typed('execution',raw)
                 sources={d['source']}|{read_record(hexbytes(d['request']['carrier']),ANSWERS['records']['D45-carrier'])[2][1]} if d['request'] else {d['source']}
                 # Retained retry responses keep previously exposed handles resolvable.
@@ -1018,31 +1145,38 @@ def cursor_sign(payload):
     return hashbytes(b'fixture-inventory-cursor-only\0'+canonical(payload))
 
 def inventory_page(db,kind,scope,size=50,cursor=None,now=0):
-    need(type(size) is int and 1<=size<=200,'page-size');need(kind in ('tenant','deployment'),'cursor-scope');textfield(scope)
-    registry_view=registry(db);rows=[r for r in registry_view['rows'] if (r['scopeKind'],r['scopeId'])==(kind,scope)]
-    generation=hashbytes(canonical([registry_view['generation'],[[r['subject'],r['generation']] for r in rows]]));start=0
-    if cursor:
-        need(len(canonical(cursor))<=16384,'cursor-envelope-bound');exact(cursor,'schema keyId payload signature')
-        need(cursor['schema']=='hexalith.eventstore.hold-cursor-envelope/1' and cursor['keyId']=='fixture','cursor-invalid')
-        d=typed('cursor',canonical(cursor['payload']));need(cursor['signature']==cursor_sign(d),'cursor-invalid')
-        need((d['scopeKind'],d['scopeId'])==(kind,scope),'cursor-scope');need(now<d['expiry'],'cursor-expired');need(d['generation']==generation,'hold_inventory_generation_changed')
+    need(type(size) is int and 1<=size<=200,'page-size');need(kind in ('tenant','deployment'),'hold_inventory_cursor_scope_mismatch');textfield(scope)
+    rows=registry(db,kind,scope)['rows'];header_key=registry_scope_key(kind,scope);raw=db.read(header_key,header_key)
+    header=None if raw is None else typed('registry-scope',raw)
+    generations=[[r['subject'],db.rows[registry_key(kind,scope,r['subject'])]['generation']] for r in rows]
+    generation=hashbytes(canonical([None if header is None else header['generation'],generations]));start=0
+    expiry=now+900*TICK
+    if cursor is not None:
+        try:
+            need(len(canonical(cursor))<=16384,'cursor-envelope-bound');exact(cursor,'schema keyId payload signature')
+            need(cursor['schema']=='hexalith.eventstore.hold-cursor-envelope/1' and cursor['keyId']=='fixture','hold_inventory_cursor_invalid')
+            d=typed('cursor',canonical(cursor['payload']));need(cursor['signature']==cursor_sign(d),'hold_inventory_cursor_invalid')
+        except Refusal as e:raise Refusal('hold_inventory_cursor_invalid') from e
+        need((d['scopeKind'],d['scopeId'])==(kind,scope),'hold_inventory_cursor_scope_mismatch');need(now<d['expiry'],'hold_inventory_cursor_expired');need(d['generation']==generation,'hold_inventory_generation_changed');expiry=d['expiry']
         if d['last'] is not None:
             positions=[i for i,r in enumerate(rows) if list(registry_sort(r)[:1])+[r['scopeKind'],r['scopeId'],r['subject']]==d['last']]
-            need(len(positions)==1,'cursor-position');start=positions[0]+1
+            need(len(positions)==1,'hold_inventory_cursor_invalid');start=positions[0]+1
     views=[]
     for r in rows[start:start+size]:
         view={'subject':r['subject'],'owner':r['owner'],'reason':'placeholder','phase':'reserved','firstUtc':r['firstUtc'],'revision':None,'stale':False,'resumeHandle':None}
         try:
-            raw=db.read(r['address'],r['address'])
+            need(r['state']!='incident','registry-entry-incident');raw=db.read(r['address'],r['address'])
             if raw is not None:
-                v=decode(raw);view.update(reason=v.get('reason'),phase=v.get('phase'),revision=v.get('revision'),updatedUtc=v.get('updatedUtc'),count=v.get('observations'))
-                if v.get('schema')==SCHEMAS['execution'] and v.get('reason') in ELIGIBILITY:view['resumeHandle']=resume_handle(v)
+                decoded=decode(raw);need(type(decoded) is dict,'control-shape')
+                owner_kind=next((k for k in ('execution','held') if decoded.get('schema')==SCHEMAS[k]),None);need(owner_kind is not None,'owner-schema')
+                v=typed(owner_kind,raw);view.update(reason=v['reason'],phase=v['phase'],revision=v['revision'],updatedUtc=v['updatedUtc'],count=v.get('observations'))
+                if owner_kind=='execution' and v['reason'] in ELIGIBILITY:view['resumeHandle']=resume_handle(v)
         except Refusal:view.update(reason='outcome_evidence_hold',phase='incident',stale=True)
         views.append(view)
     end=start+len(views);last=None if not views else [rows[end-1]['firstUtc'],kind,scope,rows[end-1]['subject']]
-    d={'schema':SCHEMAS['cursor'],'scopeKind':kind,'scopeId':scope,'generation':generation,'last':last,'expiry':now+900*TICK}
+    d={'schema':SCHEMAS['cursor'],'scopeKind':kind,'scopeId':scope,'generation':generation,'last':last,'expiry':expiry}
     envelope={'schema':'hexalith.eventstore.hold-cursor-envelope/1','keyId':'fixture','payload':d,'signature':cursor_sign(d)}
-    need(len(canonical(envelope))<=16384,'cursor-envelope-bound');return views,envelope if end<len(rows) else None
+    need(len(canonical(envelope))<=16384,'hold_inventory_cursor_invalid');return views,envelope if end<len(rows) else None
 
 # No provider or production crypto claim follows from these scenario assertions.
 def refused(fn, why=None):
@@ -1051,7 +1185,7 @@ def refused(fn, why=None):
         if why is not None:assert str(e)==why,(str(e),why)
         COUNTS['refusals']=COUNTS.get('refusals',0)+1
         return
-    raise AssertionError('expected owning refusal')
+    raise AssertionError('expected owning refusal: '+str(why))
 
 def unchanged(db,fn,why=None):
     b=db.snapshot();refused(fn,why);assert db.snapshot()==b,'refusal changed persisted state'
@@ -1080,6 +1214,11 @@ def capsule_make(db,events,classification='success-events',key='execution',clean
     existing=db.read(key,key)
     if existing is not None:
         d=typed('execution',existing)
+        need(d['request'] is None,'capsule-request-pending')
+        if d['legacy'] is not None:
+            f,original_events=legacy_authority(db,d)
+            need(original_events==events and f[7]==classification,'legacy-drain-authority')
+            if d['phase']!='cleanup':return db.read(keyed('HX-EV-LEGACY-RESUME-CAPSULE-KEY-2','legacy-resume-capsule:',[['B32',d['legacy']['identity']]]),'legacy')
         if d['phase']=='cleanup' and d['intent'] is not None and d['intent']['kind']=='cleanup':
             capsule_cleanup(db,key,crash)
             return db.read(keyed('HX-EV-LEGACY-RESUME-CAPSULE-KEY-2','legacy-resume-capsule:',[['B32',d['legacy']['identity']]]),'legacy')
@@ -1108,7 +1247,7 @@ def capsule_make(db,events,classification='success-events',key='execution',clean
         address='legacy-resume-capsule-chunk:'+hashbytes(b'HX-EV-LEGACY-RESUME-CAPSULE-CHUNK-KEY-1\0\x01'+bytes.fromhex(cid)+frame('N',ordinal))
         d=getcontrol(db,key,'execution')
         if d['intent'] is not None and d['intent']['address']!=address:
-            need(db.read(address,'legacy')==chunk and address in ledger_get(db)['charges'],'capsule-prior-chunk')
+            need(db.read(address,'legacy')==chunk and charge_address('tenant','t',address) in ledger_get(db)['charges'],'capsule-prior-chunk')
         else:
             if d['intent'] is None:
                 d['intent']={'kind':'capsule','address':address,'hash':hashbytes(chunk),'payload':{'sourceHash':source_hash,'capsule':cid,'ordinal':ordinal}};savecontrol(db,key,'execution',d)
@@ -1179,6 +1318,21 @@ def capsule_read(db,key):
     capsule_restore(db,events,key)
     return f,events
 
+def legacy_failure_address(key,legacy):
+    return provider_address('drain-failure',key,hashbytes(canonical([legacy['capsule'],legacy['generation'],legacy['ordinal']])))
+
+def legacy_failure_fixture(db,failure,key='execution'):
+    d=getcontrol(db,key,'execution');l=d['legacy'];f,_=legacy_authority(db,d)
+    reason={'transport-retryable':'drain_publish_failed','evidence-unavailable':'drain_missing_event','evidence-contradictory':'drain_event_count_mismatch'}.get(failure,failure)
+    payload={'capsule':l['capsule'],'generation':l['generation'],'ordinal':l['ordinal'],'eventRoot':f[11],'range':[f[8],f[9]],'classification':f[7],'reason':reason}
+    db.external(legacy_failure_address(key,l),canonical(payload),key)
+
+def legacy_repair_address(key,legacy):
+    return provider_address('legacy-repaired-range',key,hashbytes(canonical([legacy['capsule'],legacy['generation']])))
+
+def legacy_repair_payload(legacy,fields):
+    return {'capsule':legacy['capsule'],'failedGeneration':legacy['generation'],'eventRoot':fields[11],'range':[fields[8],fields[9]],'classification':fields[7]}
+
 def legacy_transition(db,key,edge,ordinal,owner='legacy-resume',failure=None,crash=None):
     d=getcontrol(db,key,'execution');legacy=d['legacy'];need(legacy is not None,'legacy-fence')
     need(legacy['owner']==owner,'legacy-owner');old=legacy['state']
@@ -1186,21 +1340,30 @@ def legacy_transition(db,key,edge,ordinal,owner='legacy-resume',failure=None,cra
     fields,events=legacy_authority(db,d)
     if old=='failed':
         need(ordinal>legacy['ordinal'] and ordinal==d['ordinal'],'legacy-reclaim')
-        need(d['phase']=='idle' and d['request'] is None,'legacy-success-authority')
+        need(d['phase'] in ('idle','cleanup') and d['request'] is None,'legacy-success-authority')
         row=next((r for r in d['outcomes'] if r['ordinal']==ordinal),None);need(row is not None,'legacy-success-authority')
         r={'result':row['result'],'identity':row['identity']};audit=db.read(action_address(d,r,'audit'),key)
         need(audit is not None and hashbytes(audit)==row['audit'],'legacy-success-audit')
         f=[v for _,v in read_record(audit,ANSWERS['records']['D45-audit'])]
         need(f[:3]==[d['tenant'],d['execution'],ordinal] and f[3]==row['identity'] and f[4]==row['carrierHash'],'legacy-success-owner')
         if legacy['failure']!='transport-retryable':
-            address=provider_address('legacy-repaired-range',key,legacy['capsule']);raw=db.read(address,'fixture-authority')
-            need(raw==canonical({'capsule':legacy['capsule'],'events':events,'classification':fields[7]}),'legacy-repair-readback');legacy['repaired']=hashbytes(raw)
+            address=legacy_repair_address(key,legacy);expected=canonical(legacy_repair_payload(legacy,fields))
+            intent={'kind':'cleanup','address':address,'hash':hashbytes(expected),'payload':{'action':'consume-legacy-repair','capsule':legacy['capsule'],'failedGeneration':legacy['generation'],'ordinal':ordinal}}
+            if d['phase']=='cleanup':need(d['intent']==intent,'legacy-repair-intent')
+            else:
+                need(db.read(address,'fixture-authority')==expected,'legacy-repair-readback')
+                d.update(phase='cleanup',intent=intent);d=savecontrol(db,key,'execution',d);legacy=d['legacy']
+            raw=db.read(address,'fixture-authority');need(raw in (None,expected),'legacy-repair-readback')
+            if crash=='intent':raise Crash('legacy-repair-intent')
+            db.delete(address,'fixture-authority');need(db.read(address,'fixture-authority') is None,'legacy-repair-deletion-readback')
+            if crash=='effect':raise Crash('legacy-repair-effect')
+            legacy['repaired']=hashbytes(expected);d.update(phase='idle',intent=None)
         legacy['failure']=None
     else:need(ordinal==legacy['ordinal'],'legacy-ordinal')
     if edge=='draining':
         need(db.read('drain','legacy') is None,'legacy-live-drain')
         # Existing actor restore is represented by its exact original range readback.
-        payload={'capsule':legacy['capsule'],'owner':owner,'ordinal':ordinal,'range':[fields[8],fields[9]],'messages':[r['message'] for r in events],'classification':fields[7]}
+        payload={'capsule':legacy['capsule'],'owner':owner,'ordinal':ordinal,'range':[fields[8],fields[9]],'eventRoot':fields[11],'classification':fields[7]}
         address=provider_address('live-drain',key);raw=canonical(payload)
         intent={'kind':'invoke','address':address,'hash':hashbytes(raw),'payload':payload}
         if old=='draining':
@@ -1214,24 +1377,40 @@ def legacy_transition(db,key,edge,ordinal,owner='legacy-resume',failure=None,cra
             need(db.read(address,key) is None,'legacy-live-drain')
             d.update(phase='cleanup',intent=intent);d=savecontrol(db,key,'execution',d)
         if crash=='intent':raise Crash('legacy-restore-intent')
+        admitted_token=(db.rows[key]['generation'],db.rows[key]['fence'])
         db.external(address,raw,key)
         if crash=='effect':raise Crash('legacy-restore-effect')
         need(db.read(address,key)==raw,'legacy-restore-readback')
         def advance(s):
+            need((s.rows[key]['generation'],s.rows[key]['fence'])==admitted_token,'cas')
             need(s.read(key,key)==canonical(d),'cas');x=copy.deepcopy(d)
             x.update(phase='idle',intent=None);x['legacy'].update(state=edge,generation=add(legacy['generation'],1),ordinal=ordinal)
             savecontrol(s,key,'execution',x)
         db.transaction(advance)
         if crash=='advance':raise Crash('legacy-restore-advance')
         return
-    if edge=='failed':
-        need(failure in ('transport-retryable','evidence-unavailable','evidence-contradictory'),'legacy-failure')
-        legacy['failure']=failure;legacy['repaired']=None;d.update(source=legacy['capsule'],reason='legacy-publish-failed')
-        db.delete(provider_address('live-drain',key),key)
-    if edge=='completed':
-        raw=db.read(provider_address('drain-completed',key),key)
-        need(raw==canonical({'capsule':legacy['capsule'],'outcome':'Rejected' if fields[7]=='rejection-events' else 'Completed'}),'legacy-completion-readback')
-        db.delete(provider_address('live-drain',key),key);legacy['repaired']=None
+    if edge in ('failed','completed'):
+        if edge=='failed':
+            raw=db.read(legacy_failure_address(key,legacy),key);need(raw is not None,'legacy-failure-readback')
+            evidence=decode(raw);exact(evidence,'capsule generation ordinal eventRoot range classification reason')
+            need({k:evidence[k] for k in ('capsule','generation','ordinal','eventRoot','range','classification')}=={'capsule':legacy['capsule'],'generation':legacy['generation'],'ordinal':legacy['ordinal'],'eventRoot':fields[11],'range':[fields[8],fields[9]],'classification':fields[7]},'legacy-failure-readback')
+            classes={'drain_publish_failed':'transport-retryable','drain_state_store_failure':'transport-retryable','drain_dapr_unavailable':'transport-retryable','drain_attempts_exhausted':'transport-retryable','drain_event_count_mismatch':'evidence-contradictory','drain_missing_event':'evidence-unavailable','unknown':'evidence-unavailable'}
+            need(evidence['reason'] in classes,'legacy-failure');derived=classes[evidence['reason']]
+            need(failure is None or failure==derived,'legacy-failure-class')
+        else:
+            raw=db.read(provider_address('drain-completed',key),key)
+            need(raw==canonical({'capsule':legacy['capsule'],'outcome':'Rejected' if fields[7]=='rejection-events' else 'Completed'}),'legacy-completion-readback');derived=None
+        address=provider_address('live-drain',key)
+        intent={'kind':'cleanup','address':address,'hash':hashbytes(raw),'payload':{'action':edge,'capsule':legacy['capsule'],'generation':legacy['generation'],'ordinal':ordinal,'failure':derived}}
+        if d['phase']=='cleanup':need(d['intent']==intent,'legacy-failure-intent')
+        else:
+            need(d['phase']=='idle' and d['intent'] is None and d['request'] is None,'legacy-failure-intent')
+            d.update(phase='cleanup',intent=intent);d=savecontrol(db,key,'execution',d);legacy=d['legacy']
+        if crash=='intent':raise Crash('legacy-end-intent')
+        db.delete(address,key);need(db.read(address,key) is None,'legacy-drain-deletion-readback')
+        if crash=='effect':raise Crash('legacy-end-effect')
+        d.update(phase='idle',intent=None);legacy['failure']=derived;legacy['repaired']=None
+        if edge=='failed':d.update(source=legacy['capsule'],reason='legacy-publish-failed')
     legacy.update(state=edge,generation=add(legacy['generation'],1),ordinal=ordinal)
     savecontrol(db,key,'execution',d)
 
@@ -1244,7 +1423,7 @@ def scope_admit(db,tenant,execution,input_hash,now=0):
     try:
         old=db.read(key,key)
         if old is not None:
-            d=decode(old);need(d['input']==input_hash,'CommandIdentityConflict');need(d['state']!='tombstone','idempotency-expired');return key
+            d=decode(old);exact(d,'tenant execution input state shard expiry');need(d['tenant']==tenant and d['execution']==execution and d['state'] in ('required','tombstone'),'scope-authority');need(d['input']==input_hash,'CommandIdentityConflict');need(d['state']!='tombstone','idempotency-expired');return key
         def tx(s):
             usagekey=scope_usage(tenant,shard);u=s.read(usagekey,usagekey);usage=0 if u is None else decode(u)['used']
             need(add(add(usage,4096),2048)<=262144,'scope_retention_capacity_hold')
@@ -1252,7 +1431,7 @@ def scope_admit(db,tenant,execution,input_hash,now=0):
             s.write(usagekey,canonical({'used':add(usage,4096),'shard':shard,'tenant':tenant}),usagekey,u)
         db.transaction(tx);return key
     except Refusal as e:
-        if str(e) in ('evidence-unavailable','authenticated-readback','cas'):raise Refusal('admission_evidence_hold') from e
+        if str(e) not in ('CommandIdentityConflict','idempotency-expired','scope_retention_capacity_hold'):raise Refusal('admission_evidence_hold') from e
         raise
 
 def scope_closed(db,key,d,create=False):
@@ -1284,7 +1463,24 @@ ANSWERS = json.loads((HERE/'known-answers.json').read_text())
 
 RECORD_CAPS = dict(zip(('D06-activation D12-legacy-claim D12-cutover D12-usage D12-tombstone D14-drain-limit D14-drain-resolution D16-membership-resolution D29-capability D29-charge D29-counter D29-pin-batch D36-policy D36-quarantine D36-redrive D45-carrier D45-request D45-attempt-set D45-closure D45-window D45-audit D46-chunk D46-capsule D17-destination-config').split(),(1048576,8192,4096,2048,4096,4096,4096,16384,65536,4096,4096,65536,16384,131072,3072,2048,4096,67108864,65536,16384,4096,65536,131072,65536)))
 
+def normative_caps():
+    rows=re.findall(r'^\| ((?:record|control|public)/[^ |]+) \| ([0-9]+) \|$',(HERE/'obligations.md').read_text(),re.M)
+    need(len(rows)==len({k for k,_ in rows}),'normative-cap-duplicate');return {k:int(v) for k,v in rows}
+
+def verify_public(name,raw):
+    d=decode(raw)
+    if name=='cursor-envelope':
+        exact(d,'schema keyId payload signature');need(d['schema']=='hexalith.eventstore.hold-cursor-envelope/1','cursor-envelope-schema');textfield(d['keyId']);typed('cursor',canonical(d['payload']));digest(d['signature']);need(d['signature']==cursor_sign(d['payload']),'cursor-envelope-signature')
+    elif name=='held-redrive-request':exact(d,'expectedRedriveCount');integer(d['expectedRedriveCount'])
+    else:
+        exact(d,'entryKey redriveCount state');digest(d['entryKey']);need(integer(d['redriveCount'])>0 and d['state']=='redriving','redrive-response')
+    return d
+
 def verify_answers(answers=None):
+    caps=normative_caps()
+    expected={**{'record/'+k:v for k,v in RECORD_CAPS.items()},**{'control/'+k:v for k,v in CAPS.items()},**{'public/'+k:v for k,v in {'cursor-envelope':16384,'held-redrive-request':4096,'held-redrive-202':4096}.items()}}
+    assert set(caps)==set(expected),'normative-cap-set'
+    for name,value in expected.items():assert caps[name]==value,'normative-cap:'+name
     answers=ANSWERS if answers is None else answers
     assert set(answers['records'])==set(RECORD_CAPS),'record-answer-set'
     for name,a in answers['records'].items():
@@ -1307,14 +1503,24 @@ def verify_answers(answers=None):
     assert set(answers['controls'])==set(CAPS),'control-answer-set'
     for kind,a in answers['controls'].items():
         assert a['maxBytes']==CAPS[kind],kind+' cap'
-        raw=bytes.fromhex(a['hex']);assert canonical(a['json'])==raw and len(raw)==a['length'] and hashbytes(raw)==a['sha256'];typed(kind,raw)
+        raw=bytes.fromhex(a['hex']);assert canonical(a['json'])==raw and len(raw)==a['length'] and hashbytes(raw)==a['sha256'],kind+' bytes';typed(kind,raw)
+    assert set(answers['public'])=={'cursor-envelope','held-redrive-request','held-redrive-202'},'public-answer-set'
+    for name,a in answers['public'].items():
+        assert a['maxBytes']==caps['public/'+name],name+' cap'
+        raw=hexbytes(a['hex']);assert canonical(a['json'])==raw and len(raw)==a['length']<=a['maxBytes'] and hashbytes(raw)==a['sha256'],name+' bytes';verify_public(name,raw)
+    entry=answers['controls']['registry-entry']['json'];assert entry['shard']==registry_shard(entry['scopeKind'],entry['scopeId']),'registry literal shard'
 
 def answer_mutations():
-    for field,value in (('sha256',ZERO),('maxBytes',16385)):
-        bad=copy.deepcopy(ANSWERS);bad['records']['D45-window'][field]=value
-        try:verify_answers(bad)
-        except AssertionError:pass
-        else:raise AssertionError('mutated answer did not fail')
+    for family in ('records','controls','public'):
+        for name in ANSWERS[family]:
+            bad=copy.deepcopy(ANSWERS);bad[family][name]['maxBytes']+=1
+            try:verify_answers(bad)
+            except AssertionError as e:assert str(e)==name+' cap',(name,str(e))
+            else:raise AssertionError('mutated cap did not fail: '+name)
+    bad=copy.deepcopy(ANSWERS);bad['records']['D45-window']['sha256']=ZERO
+    try:verify_answers(bad)
+    except AssertionError as e:assert str(e)=='D45-window'
+    else:raise AssertionError('mutated digest did not fail')
 
 def change_ledger(db,**values):
     prior=db.read('ledger','ledger');d=ledger_get(db);d.update(values);db.write('ledger',canonical(d),'ledger',prior)
@@ -1355,11 +1561,11 @@ def codec_cases():
     refused(lambda:typed('epoch',b'x'*(CAPS['epoch']+1)),'control-byte-bound')
     for kind,value in invalid:refused(lambda:typed(kind,canonical(value)))
     refused(lambda:typed('execution',b'x'*(CAPS['execution']+1)),'control-byte-bound')
-    q=copy.deepcopy(ANSWERS['controls']['queue']['json']);q['rows'][0]['ticket']=2;refused(lambda:typed('queue',canonical(q)),'ticket')
-    q=copy.deepcopy(ANSWERS['controls']['queue']['json']);q['rows']=q['rows']*2;refused(lambda:typed('queue',canonical(q)),'queue-order')
+    q=copy.deepcopy(ANSWERS['controls']['queue-shard']['json']);q['rows'][0]['ticket']=2;refused(lambda:typed('queue-shard',canonical(q)),'ticket')
+    q=copy.deepcopy(ANSWERS['controls']['queue-shard']['json']);q['rows']=q['rows']*2;refused(lambda:typed('queue-shard',canonical(q)),'queue-order')
     db=newdb();execution_init(db);begin_resume(db);pending=getcontrol(db,'execution','execution')
     bad=copy.deepcopy(pending);bad['request']['expiry']=bad['request']['utc']+901*TICK;refused(lambda:typed('execution',canonical(bad)),'request-horizon')
-    finish_resume(db);bad=getcontrol(db,'execution','execution');bad['outcomes'][0]['deleteAfter']+=1;refused(lambda:typed('execution',canonical(bad)),'fixed-horizon')
+    finish_resume(db,0);bad=getcontrol(db,'execution','execution');bad['outcomes'][0]['deleteAfter']+=1;refused(lambda:typed('execution',canonical(bad)),'fixed-horizon')
     raw=bytes.fromhex(ANSWERS['records']['D17-destination-config']['hex']);assert destination(raw,'pubsub','orders')['metadata']=={}
     refused(lambda:destination(raw+b' ','pubsub','orders'))
     for metadata in ({str(i):'' for i in range(65)},{'a':'v'*16384,'b':'v'}):
@@ -1371,13 +1577,13 @@ def status_replay_cases():
     expected=[({},('EventsStored',None,1)),({'state':'unknown','maximum':True},('EventsStored',None,1)),({'drain':True},('EventsStored','publication_drain_limit_hold',60)),({'state':'failed','classes':['class-01'],'maximum':True},('EventsStored','publication_retry_exhausted_hold',60)),({'state':'failed','classes':['class-02'],'maximum':True},('CommandOutcomeHold','terminal_evidence_hold',30)),({'state':'failed','classes':['class-03']},('CommandOutcomeHold','terminal_evidence_hold',30)),({'state':'failed','classes':['class-01'],'automatic':True},('EventsStored','publication_retry_pending',1)),({'state':'failed','terminal':True},('PublishFailed','publication_terminal_failed',None)),({'conflict':True},('CommandOutcomeHold','outcome_evidence_conflict',30)),({'state':'published'},('Completed',None,None)),({'state':'published','classification':'rejection'},('Rejected',None,None)),({'state':'published','classification':'unknown'},('CommandOutcomeHold','outcome_evidence_conflict',30)),({'state':'not-applicable'},('Completed',None,None)),({'state':'failed','classes':['unknown'],'maximum':True},('CommandOutcomeHold','outcome_evidence_conflict',30)),({'state':'failed','classes':['class-01','class-02'],'maximum':True},('CommandOutcomeHold','terminal_evidence_hold',30)),({'terminal':True,'unavailable':True},('CommandOutcomeHold','outcome_evidence_hold',30))]
     # Each adjacent precedence pair has a case with both predicates active.
     expected += [({'terminal':True,'state':'published'},('PublishFailed','publication_terminal_failed',None)),({'state':'published','drain':True},('Completed',None,None)),({'state':'not-applicable','drain':True},('Completed',None,None)),({'drain':True,'state':'failed','classes':['class-02']},('EventsStored','publication_drain_limit_hold',60)),({'state':'failed','classes':['class-01','class-03'],'maximum':True},('CommandOutcomeHold','terminal_evidence_hold',30)),({'state':'failed','classes':['class-01'],'maximum':True,'automatic':True},('EventsStored','publication_retry_exhausted_hold',60)),({'preparation':True,'terminal':True},('CommandOutcomeHold','response_preparation_hold',30)),({'state':'failed','classes':['class-01']},('CommandOutcomeHold','outcome_evidence_conflict',30))]
-    for args,out in expected:assert status(**args)==out
+    for args,out in expected:assert status(**args)==out,'status-precedence'
     COUNTS['statusCases']=len(expected)
     for n in (24575,24576,24577):assert replay(n,0)==('continue-full-replay' if n<24576 else 'hold')
     for n in (32767,32768,32769):assert replay(n,0,activation=False)==('full-replay' if n<=32768 else 'LegacyArrayLimit')
     assert [replay(1,n) for n in (48*MIB-1,48*MIB,48*MIB+1)]==['continue-full-replay','hold','hold']
     assert [replay(1,n,activation=False) for n in (64*MIB-1,64*MIB,64*MIB+1)]==['full-replay','full-replay','LegacyArrayLimit']
-    assert replay(0,0,incremental=True)=='incremental-bootstrap';refused(lambda:replay(MAX,0))
+    assert replay(0,0,incremental=True)=='incremental-bootstrap';COUNTS['matrixEvidence']['idle-replay']='incremental-bootstrap at zero events';refused(lambda:replay(MAX,0))
     assert membership(b'pin',b'pin','EmptyNamespace',True)=='ContinueSamePin'
     assert membership(b'pin',b'changed','InitialRowOnly',True)=='FirstSendMembershipChangedHold'
     refused(lambda:membership(b'pin',b'pin','EmptyNamespace',False));refused(lambda:membership(b'pin',b'pin','EmptyNamespace',True,True))
@@ -1399,10 +1605,10 @@ def resume_cases():
             begin_resume(db,source=source)
             for _ in range(10):
                 if getcontrol(db,'execution','execution')['request'] is None:break
-                try:resume_step(db,crash=crash)
+                try:resume_step(db,0,crash=crash)
                 except Crash:pass
                 db=db.restart();restarts+=1
-            finish_resume(db);d=getcontrol(db,'execution','execution')
+            finish_resume(db,0);d=getcontrol(db,'execution','execution')
             assert d['accepted']==[1] and d['unresolved']==[2,3] and d['roster']==original['roster'] and d['limit']==16 and d['ordinal']==1
             assert d['window']==(original['window'] if mode=='drain-limit' else original['window']+1)
             if mode=='drain-limit':assert d['windowClaim']==original['windowClaim'] and d['closedCount']==0
@@ -1412,21 +1618,21 @@ def resume_cases():
             assert original['charge'] in ledger_get(db)['charges']
             reclaim(db,900*TICK+30*DAY-1);assert getcontrol(db,'execution','execution')['outcomes']
             reclaim(db,900*TICK+30*DAY);assert not getcontrol(db,'execution','execution')['outcomes'] and original['charge'] not in ledger_get(db)['charges']
-    COUNTS['persistedResumeRestarts']=restarts
+    COUNTS['persistedResumeRestarts']=restarts;COUNTS['matrixEvidence']['eligible-resume']='serialized restart, stable roster and unresolved dispatch'
     db=newdb();execution_init(db);begin_resume(db);resume_step(db,now=900*TICK)
     assert getcontrol(db,'execution','execution')['request'] is None and getcontrol(db,'execution','execution')['ordinal']==0
     for crash in ('intent','effect'):
         db=newdb();execution_init(db);begin_resume(db)
-        try:resume_step(db,crash=crash)
+        try:resume_step(db,0,crash=crash)
         except Crash:pass
         if crash=='intent':cancel_resume(db);assert getcontrol(db,'execution','execution')['request'] is None
-        else:unchanged(db,lambda:cancel_resume(db),'irreversible');resume_step(db,now=901*TICK);finish_resume(db)
+        else:unchanged(db,lambda:cancel_resume(db),'irreversible');resume_step(db,now=901*TICK);finish_resume(db,0)
     # The pending reject bytes survive acceptance progress after producer-disable.
-    db=newdb();execution_init(db);begin_resume(db);resume_step(db)
-    try:resume_step(db,crash='intent')
+    db=newdb();execution_init(db);begin_resume(db);resume_step(db,0)
+    try:resume_step(db,0,crash='intent')
     except Crash:pass
     d=getcontrol(db,'execution','execution');frozen=copy.deepcopy(d['intent']);d.update(accepted=[1,2],unresolved=[3]);savecontrol(db,'execution','execution',d)
-    db=db.restart();assert getcontrol(db,'execution','execution')['intent']==frozen;finish_resume(db)
+    db=db.restart();assert getcontrol(db,'execution','execution')['intent']==frozen;finish_resume(db,0)
     invocations=[decode(bytes.fromhex(row['body'])) for address,row in db.rows.items() if address.startswith('publication-invocation:')]
     assert invocation_messages(db,getcontrol(db,'execution','execution'),invocations[0])==['event-3']
     for field in ('owner','provider'):
@@ -1434,19 +1640,19 @@ def resume_cases():
         if field=='owner':
             d=getcontrol(db,'execution','execution');d['revision']=MAX-2;db.write('execution',canonical(d),'execution',db.read('execution','execution'))
         else:
-            r=db.rows['execution'];r['generation']=MAX-2;r['receipt']=Store.receipt('execution',r['body'],r['generation'],r['owner'])
+            r=db.rows['execution'];r['generation']=MAX-2;r['receipt']=Store.receipt('execution',r['body'],r['generation'],r['owner'],r.get('index'),r['fence'])
         unchanged(db,lambda:begin_resume(db),'resume_arithmetic_exhausted')
     # Pending identities are never reclaimed, even after the retention deadline.
     db=newdb();execution_init(db);begin_resume(db)
-    while getcontrol(db,'execution','execution')['phase']!='successor':resume_step(db)
-    before=db.snapshot();reclaim(db,32*DAY);assert db.snapshot()==before;db=db.restart();finish_resume(db)
+    while getcontrol(db,'execution','execution')['phase']!='successor':resume_step(db,0)
+    before=db.snapshot();reclaim(db,32*DAY);assert db.snapshot()==before;db=db.restart();finish_resume(db,0)
     # 64 concurrent outcomes are bounded; refusal changes neither ordinal nor charge.
     db=newdb();change_ledger(db,tenantCeiling=1024*MIB,deploymentCeiling=3*1024*MIB)
     execution_init(db)
     for i in range(64):
         if i:
             d=getcontrol(db,'execution','execution');d.update(reason='retry-exhausted',source=hashbytes(str(i).encode()));savecontrol(db,'execution','execution',d)
-        begin_resume(db,'bounded'+str(i));finish_resume(db)
+        begin_resume(db,'bounded'+str(i));finish_resume(db,0)
     d=getcontrol(db,'execution','execution');d.update(reason='retry-exhausted',source=hashbytes(b'65'));savecontrol(db,'execution','execution',d)
     unchanged(db,lambda:begin_resume(db,'bounded65'),'resume_capacity_hold')
     COUNTS['concurrentOutcomes']=len(d['outcomes'])
@@ -1454,7 +1660,7 @@ def resume_cases():
     for i in range(67):
         if i:
             d=getcontrol(db,'execution','execution');d.update(source=hashbytes(str(i).encode()),reason='retry-exhausted',updatedUtc=now);savecontrol(db,'execution','execution',d)
-        begin_resume(db,'life'+str(i),now=now);finish_resume(db);successes+=1;now+=31*DAY;reclaim(db,now);db=db.restart()
+        begin_resume(db,'life'+str(i),now=now);finish_resume(db,now);successes=getcontrol(db,'execution','execution')['ordinal'];now+=31*DAY;reclaim(db,now);db=db.restart()
         assert not getcontrol(db,'execution','execution')['outcomes'] and len(ledger_get(db)['charges'])==3
     COUNTS['lifetimeResumes']=successes
 
@@ -1465,16 +1671,16 @@ def legacy_cases():
         db=newdb();db.external('drain',drain_fixture(events,classification),'legacy')
         capsule_make(db,events,classification,cleanup=True);db=db.restart();d=getcontrol(db,'execution','execution')
         fields,restored=legacy_authority(db,d);assert restored==events and fields[7]==classification and db.read('drain','legacy') is None
-        begin_resume(db,'legacy');finish_resume(db)
+        begin_resume(db,'legacy');finish_resume(db,0)
         unchanged(db,lambda:legacy_transition(db,'execution','claimed',1,owner='dead-letter-admin'),'legacy-owner')
         legacy_transition(db,'execution','claimed',1)
         unchanged(db,lambda:legacy_transition(db,'execution','draining',0),'legacy-ordinal')
         legacy_transition(db,'execution','draining',1);unchanged(db,lambda:legacy_transition(db,'execution','failed',0,failure='transport-retryable'),'legacy-ordinal')
-        legacy_transition(db,'execution','failed',1,failure='evidence-contradictory')
+        legacy_failure_fixture(db,'evidence-contradictory');legacy_transition(db,'execution','failed',1,failure='evidence-contradictory')
         assert getcontrol(db,'execution','execution')['reason']=='legacy-publish-failed'
-        begin_resume(db,'legacy2');finish_resume(db)
+        begin_resume(db,'legacy2');finish_resume(db,0)
         unchanged(db,lambda:legacy_transition(db,'execution','claimed',2),'legacy-repair-readback')
-        d=getcontrol(db,'execution','execution');db.external(provider_address('legacy-repaired-range','execution',d['legacy']['capsule']),canonical({'capsule':d['legacy']['capsule'],'events':events,'classification':classification}),'fixture-authority')
+        d=getcontrol(db,'execution','execution');db.external(legacy_repair_address('execution',d['legacy']),canonical(legacy_repair_payload(d['legacy'],legacy_authority(db,d)[0])),'fixture-authority')
         legacy_transition(db,'execution','claimed',2);legacy_transition(db,'execution','draining',2)
         db.external(provider_address('drain-completed','execution'),canonical({'capsule':d['legacy']['capsule'],'outcome':'Rejected' if classification=='rejection-events' else 'Completed'}),'execution')
         legacy_transition(db,'execution','completed',2);unchanged(db,lambda:legacy_transition(db,'execution','failed',2,failure='transport-retryable'),'legacy-edge')
@@ -1499,9 +1705,9 @@ def legacy_cases():
     for classification in ('success-events','rejection-events'):
         for point in ('intent','effect','advance'):
             db=newdb();db.external('drain',drain_fixture(events,classification),'legacy');capsule_make(db,events,classification,cleanup=True)
-            begin_resume(db,'restore');finish_resume(db);legacy_transition(db,'execution','claimed',1)
+            begin_resume(db,'restore');finish_resume(db,0);legacy_transition(db,'execution','claimed',1)
             claimed=getcontrol(db,'execution','execution');generation=claimed['legacy']['generation'];revision=claimed['revision']
-            address=provider_address('live-drain','execution');payload={'capsule':claimed['legacy']['capsule'],'owner':'legacy-resume','ordinal':1,'range':[10,74],'messages':[r['message'] for r in events],'classification':classification}
+            address=provider_address('live-drain','execution');payload={'capsule':claimed['legacy']['capsule'],'owner':'legacy-resume','ordinal':1,'range':[10,74],'eventRoot':legacy_authority(db,claimed)[0][11],'classification':classification}
             db.external(address,canonical({'unrelated':True}),'execution')
             unchanged(db,lambda:legacy_transition(db,'execution','draining',1),'legacy-live-drain');db.delete(address,'execution')
             try:legacy_transition(db,'execution','draining',1,crash=point)
@@ -1531,8 +1737,13 @@ def legacy_cases():
     db=newdb();too_many=events*16;db.external('drain',drain_fixture(too_many,'success-events'),'legacy')
     unchanged(db,lambda:capsule_make(db,too_many),'legacy-range-bound')
     db=newdb();maximum=[{'sequence':i+1,'message':str(i).zfill(4)+'x'*1020,'digest':ZERO} for i in range(1000)]
-    db.external('drain',drain_fixture(maximum,'success-events'),'legacy');capsule_make(db,maximum,cleanup=True);begin_resume(db);finish_resume(db)
-    d=getcontrol(db,'execution','execution');assert len(legacy_authority(db,d)[1])==1000 and len(canonical(d))<CAPS['execution']
+    db.external('drain',drain_fixture(maximum,'success-events'),'legacy');capsule_make(db,maximum,cleanup=True);begin_resume(db);finish_resume(db,0)
+    legacy_transition(db,'execution','claimed',1)
+    try:legacy_transition(db,'execution','draining',1,crash='effect')
+    except Crash:pass
+    db=db.restart();legacy_transition(db,'execution','draining',1);d=getcontrol(db,'execution','execution');assert d['legacy']['state']=='draining' and legacy_authority(db,d)[1]==maximum and len(canonical(d))<CAPS['execution']
+    invocation=next(decode(hexbytes(r['body'])) for k,r in db.rows.items() if k.startswith('publication-invocation:'));assert invocation_messages(db,d,invocation)==[r['message'] for r in maximum],'maximum-range-dispatch'
+    COUNTS['matrixEvidence']['legacy-resume']='maximum-width original range reaches draining after byte restart'
 
 def held_cases():
     for kind,scope in (('tenant','deployment'),('deployment','deployment')):
@@ -1546,7 +1757,7 @@ def held_cases():
             except Crash:pass
             db=db.restart();send_held(db);route_fixture(db,outcome='nonterminal');redrive_reconcile(db,now=20*TICK)
             d=getcontrol(db,'held','held');assert d['nextUtc']==80*TICK and d['redrives']==1
-            unchanged(db,lambda:redrive(db,now=79*TICK),'redrive-time');unchanged(db,lambda:redrive(db,now=80*TICK,expected=0),'redrive-count')
+            unchanged(db,lambda:redrive(db,now=79*TICK),'redrive-time');unchanged(db,lambda:redrive(db,now=80*TICK,expected=0),'held_redrive_count_changed')
             redrive(db,now=80*TICK);route_fixture(db);redrive_reconcile(db,now=80*TICK);assert getcontrol(db,'held','held')['intent']['kind']=='delivered-cleanup'
             try:delivered_cleanup(db,crash='source')
             except Crash:pass
@@ -1587,31 +1798,33 @@ def held_cases():
     for _ in range(131):
         d=getcontrol(db,'held','held');redrive(db,now=d['nextUtc']);attempts+=1;db=db.restart();redrive_reconcile(db,now=getcontrol(db,'held','held')['updatedUtc'])
         assert len(canonical(getcontrol(db,'held','held')))<CAPS['held'] and len(ledger_get(db)['charges'])==4
-    COUNTS['boundedRedrives']=attempts
+    COUNTS['matrixEvidence']['held-delivery']='capture restart, route outcome, exact charge and cleanup'
+    COUNTS['boundedRedrives']=getcontrol(db,'held','held')['redrives']
+    assert COUNTS['boundedRedrives']==attempts,'observed-redrive-count'
     assert [backoff(i) for i in range(1,8)]==[60,120,240,480,900,900,900]
 
 def queue_scope_inventory_cases():
     db=newdb();reserve_charge(db,'tenantblock','tenant','a',64*MIB-16385-6);sources={}
     for i,t in enumerate(('a','b','c'),1):
-        subject=hashbytes(str(i).encode());sources[subject]=[{'message':'p'+str(i),'length':20000 if i==1 else 10}];queue_reserve(db,subject,t,ZERO,0);queue_materialize(db,subject,sources[subject],0)
-    assert queue_turn(db,sources)==2;assert [r['ticket'] for r in getcontrol(db,'queue','queue')['rows']]==[1,3]
+        subject=hashbytes(str(i).encode());sources[subject]=[{'message':'p'+str(i),'length':20000 if i==1 else 10}];queue_reserve(db,subject,t,ZERO,0);operation_plan_fixture(db,subject,sources[subject]);queue_materialize(db,subject,sources[subject],0)
+    assert queue_turn(db,sources)==2;assert [r['ticket'] for r in queue_view(db)['rows']]==[1,3]
     refund(db,'tenantblock');assert queue_turn(db,sources)==1 and queue_turn(db,sources)==3
     # Rerender current overhead, park above-ceiling oldest rows, then grant younger tenant.
     db=newdb();sources={}
     for i,t in enumerate(('a','b'),1):
-        subject=hashbytes(('park'+str(i)).encode());sources[subject]=[{'message':'p','length':64*MIB-100 if i==1 else 1}];queue_reserve(db,subject,t,ZERO,0);queue_materialize(db,subject,sources[subject],0)
-    change_ledger(db,overhead=200);assert queue_turn(db,sources)==2;assert getcontrol(db,'queue','queue')['rows'][0]['state']=='parked'
+        subject=hashbytes(('park'+str(i)).encode());sources[subject]=[{'message':'p','length':64*MIB-100 if i==1 else 1}];queue_reserve(db,subject,t,ZERO,0);operation_plan_fixture(db,subject,sources[subject]);queue_materialize(db,subject,sources[subject],0)
+    change_ledger(db,overhead=200);assert queue_turn(db,sources)==2;assert queue_view(db)['rows'][0]['state']=='parked'
     # Oldest tenant-eligible deployment-blocked work cannot be bypassed.
     db=newdb();reserve_charge(db,'fill','capture-scope','dep',64*MIB-1);sources={}
     for i in (1,2):
-        subject=hashbytes(('deploy'+str(i)).encode());sources[subject]=[{'message':'p','length':64*MIB-1 if i==1 else 1}];queue_reserve(db,subject,str(i),ZERO,0);queue_materialize(db,subject,sources[subject],0)
+        subject=hashbytes(('deploy'+str(i)).encode());sources[subject]=[{'message':'p','length':64*MIB-1 if i==1 else 1}];queue_reserve(db,subject,str(i),ZERO,0);operation_plan_fixture(db,subject,sources[subject]);queue_materialize(db,subject,sources[subject],0)
     reserve_charge(db,'other','tenant','other',40*MIB);before=db.snapshot();assert queue_turn(db,sources) is None and db.snapshot()==before
     refund(db,'fill');assert queue_turn(db,sources)==1
     # Refused materialization cannot leave an invalid row blocking fairness.
     db=newdb();subject=hashbytes(b'invalid');queue_reserve(db,subject,'t',ZERO,0)
     for pins in ([{'message':'p','length':1}]*60,[{'message':'p','length':1}]*2):
         unchanged(db,lambda:queue_materialize(db,subject,pins,0))
-    q=getcontrol(db,'queue','queue');q['lastTicket']=MAX;savecontrol(db,'queue','queue',q);unchanged(db,lambda:queue_reserve(db,hashbytes(b'next'),'t',ZERO,0),'arithmetic')
+    q=queue_view(db);q['lastTicket']=MAX;queue_save(db,q);unchanged(db,lambda:queue_reserve(db,hashbytes(b'next'),'t',ZERO,0),'AppendPreparationLimit')
     for failure in ('negative','overflow','unavailable'):
         db=newdb();pins=[{'message':'p','length':-1 if failure=='negative' else 1}]
         if failure=='overflow':change_ledger(db,overhead=MAX)
@@ -1619,10 +1832,11 @@ def queue_scope_inventory_cases():
         unchanged(db,lambda:pin_admit(db,'invalid','t',pins),'publication_pin_capacity_hold')
     for delta in (0,1):
         db=newdb();change_ledger(db,tenantCeiling=1024*MIB,deploymentCeiling=3*1024*MIB)
-        subject=hashbytes(b'net');pins=[{'message':'p','length':449*MIB}];queue_reserve(db,subject,'t',ZERO,0);queue_materialize(db,subject,pins,0)
+        subject=hashbytes(b'net');pins=[{'message':'p','length':449*MIB}];queue_reserve(db,subject,'t',ZERO,0);operation_plan_fixture(db,subject,pins);queue_materialize(db,subject,pins,0)
         reserve_charge(db,'fill','tenant','t',1024*MIB-(449*MIB+1)-1+delta)
         before=db.snapshot();result=queue_turn(db,{subject:pins})
         assert result==1 if delta==0 else result is None and db.snapshot()==before
+    COUNTS['matrixEvidence']['capacity-wait']='fair grants, no bypass, parking and net refund'
     # Kind-qualified capture accounts obey the unidentified pool independently of tenants.
     db=newdb();reserve_charge(db,'tenant','tenant','same',1);reserve_charge(db,'capture','capture-scope','same',64*MIB-1)
     unchanged(db,lambda:reserve_charge(db,'plus','capture-scope','same',0),'capacity');refund(db,'capture');assert ledger_get(db)['used']['tenant:same']==2
@@ -1641,8 +1855,8 @@ def queue_scope_inventory_cases():
     discover(db,'slot');unchanged(db,lambda:discover(db,'too-many',scope_limit=1),'registry_capacity_hold');authority(db,'slot','no-commit-no-effect',create=True);reconcile_placeholder(db,'slot');discover(db,'too-many',scope_limit=1)
     # Owner churn permits cursor continuation; registry changes alone invalidate it.
     db=newdb();execution_init(db,'e1');execution_init(db,'e2');page,cursor=inventory_page(db,'tenant','t',1);assert page[0]['resumeHandle'] and resolve_handle(db,'t',page[0]['resumeHandle'])=='e1'
-    unchanged(db,lambda:inventory_page(db,'deployment','t',1,cursor),'cursor-scope');unchanged(db,lambda:inventory_page(db,'tenant','t',1,cursor,900*TICK),'cursor-expired')
-    bad=copy.deepcopy(cursor);bad['signature']=ZERO;unchanged(db,lambda:inventory_page(db,'tenant','t',1,bad),'cursor-invalid')
+    unchanged(db,lambda:inventory_page(db,'deployment','t',1,cursor),'hold_inventory_cursor_scope_mismatch');unchanged(db,lambda:inventory_page(db,'tenant','t',1,cursor,900*TICK),'hold_inventory_cursor_expired')
+    bad=copy.deepcopy(cursor);bad['signature']=ZERO;unchanged(db,lambda:inventory_page(db,'tenant','t',1,bad),'hold_inventory_cursor_invalid')
     d=getcontrol(db,'e1','execution');d['updatedUtc']=TICK;savecontrol(db,'e1','execution',d);page,end=inventory_page(db,'tenant','t',1,cursor);assert page[0]['subject']=='e2' and end is None
     db.unavailable.add('e1');page,_=inventory_page(db,'tenant','t');assert len(page)==2 and page[0]['stale'] and page[0]['phase']=='incident';db.unavailable.clear()
     discover(db,'e3');unchanged(db,lambda:inventory_page(db,'tenant','t',1,cursor),'hold_inventory_generation_changed')
@@ -1652,9 +1866,306 @@ def queue_scope_inventory_cases():
         d=getcontrol(t,'execution','execution');d['updatedUtc']=TICK;savecontrol(t,'execution','execution',d)
     db.before_transaction=concurrent;refused(lambda:begin_resume(db),'cas');assert getcontrol(db,'execution','execution')['request'] is None
 
+def capture_replacement_redrive_case():
+    db=newdb();held_init(db);authority(db,'held','erase',create=True);original_external=db.external;replacement={}
+    def raced(address,body,owner):
+        result=original_external(address,body,owner)
+        if address.startswith('held/'):
+            db.external=original_external;erase_held(db);held_init(db);capture(db,b'exact carrier')
+            try:redrive(db,crash='commit')
+            except Crash:pass
+            replacement['snapshot']=db.snapshot()
+        return result
+    db.external=raced;refused(lambda:capture(db,b'exact carrier'),'capture-predecessor')
+    assert db.snapshot()==replacement['snapshot'],'stale-capture-preserves-redriving-replacement'
+    db=db.restart();d=getcontrol(db,'held','held')
+    assert d['phase']=='redriving' and d['redrives']==1 and d['intent']['kind']=='send','replacement-redrive-commit'
+    assert verify_retained(db,d,'held')==b'exact carrier','redriving-replacement-object-preserved'
+
+def legacy_restore_token_cases():
+    for transfer_kind in ('generation','fence'):
+        db=newdb();events=[{'sequence':1,'message':'original','digest':ZERO}]
+        db.external('drain',drain_fixture(events,'success-events'),'legacy');capsule_make(db,events,cleanup=True)
+        begin_resume(db);finish_resume(db,0);legacy_transition(db,'execution','claimed',1)
+        capsule_rows={k:copy.deepcopy(r) for k,r in db.rows.items() if k.startswith('legacy-resume-capsule')}
+        original_external=db.external;address=provider_address('live-drain','execution');transferred={}
+        def transferred_effect(target,body,owner):
+            result=original_external(target,body,owner)
+            if target==address:
+                row=db.rows['execution']
+                if transfer_kind=='generation':row['generation']+=1
+                else:row['fence']=mint_fence()
+                row['receipt']=Store.receipt('execution',row['body'],row['generation'],row['owner'],row.get('index'),row['fence'])
+                transferred.update(snapshot=db.snapshot(),body=body,token=(row['generation'],row['fence']))
+            return result
+        db.external=transferred_effect;refused(lambda:legacy_transition(db,'execution','draining',1),'cas')
+        assert db.snapshot()==transferred['snapshot'],'stale-legacy-restore-preserves-transferred-owner'
+        pending=getcontrol(db,'execution','execution')
+        assert pending['phase']=='cleanup' and pending['legacy']['state']=='claimed' and pending['intent']['address']==address,'stale-legacy-restore-intent-retained'
+        assert db.read(address,'execution')==transferred['body'],'stale-legacy-restore-effect-retained'
+        db=db.restart();assert (db.rows['execution']['generation'],db.rows['execution']['fence'])==transferred['token'],'legacy-transfer-token-persisted'
+        legacy_transition(db,'execution','draining',1);done=getcontrol(db,'execution','execution')
+        assert done['phase']=='idle' and done['intent'] is None and done['legacy']['state']=='draining' and done['legacy']['generation']==pending['legacy']['generation']+1,'fresh-legacy-holder-completes'
+        assert db.read(address,'execution')==transferred['body'] and legacy_authority(db,done)[1]==events,'fresh-legacy-holder-original-readback'
+        assert {k:r for k,r in db.rows.items() if k.startswith('legacy-resume-capsule')}==capsule_rows,'legacy-restore-preserves-capsule'
+        db=db.restart();before=db.snapshot();legacy_transition(db,'execution','draining',1);assert db.snapshot()==before,'legacy-restore-completes-once'
+
+def inventory_continuation_expiry_case():
+    db=newdb()
+    for i in range(1,5):execution_init(db,'expiry-'+str(i))
+    cursor=None;expiry=900*TICK
+    for i,now in enumerate((0,300*TICK,899*TICK),1):
+        db=db.restart();before=db.snapshot();page,cursor=inventory_page(db,'tenant','t',1,cursor,now)
+        assert db.snapshot()==before and [v['subject'] for v in page]==['expiry-'+str(i)],'three-page-inventory-order'
+        assert cursor is not None and cursor['payload']['expiry']==expiry,'continuation-preserves-original-expiry'
+    unchanged(db,lambda:inventory_page(db,'tenant','t',1,cursor,expiry),'hold_inventory_cursor_expired')
+
+def queue_shard_placement_case():
+    db=newdb();sources={};subjects={}
+    for ticket in range(1,17):
+        subject=hashbytes(('shard-ticket-'+str(ticket)).encode());pins=[{'message':'pin-'+str(ticket),'length':1}]
+        sources[subject]=pins;subjects[ticket]=subject
+        assert queue_reserve(db,subject,'t',ZERO,0)==ticket,'sixteen-global-tickets'
+        operation_plan_fixture(db,subject,pins);queue_materialize(db,subject,pins,0);db=db.restart()
+    hk=queue_key();header=typed('queue',db.read(hk,hk))
+    assert header['lastTicket']==16 and header['count']==16,'persisted-queue-header'
+    shard_keys=[queue_shard_key(shard) for shard in range(8)];assert len(set(shard_keys))==8,'eight-addressed-shards'
+    for shard,key in enumerate(shard_keys):
+        image=typed('queue-shard',db.read(key,key));expected=[shard+1,shard+9]
+        assert image['deployment']==header['deployment'] and image['shard']==shard and [r['ticket'] for r in image['rows']]==expected,'persisted-addressed-shard-placement'
+        assert all(r['subject']==subjects[r['ticket']] and r['state']=='queued' for r in image['rows']),'persisted-shard-owner'
+    grants=[]
+    for ticket in range(1,17):
+        db=db.restart();grants.append(queue_turn(db,sources));header=typed('queue',db.read(hk,hk))
+        assert grants[-1]==ticket and header['lastTicket']==16 and header['count']==16-ticket,'global-grant-order-across-shards'
+        assert ledger_get(db)['reservations'][subjects[ticket]]['pins']==sources[subjects[ticket]],'persisted-global-grant'
+    assert grants==list(range(1,17)) and all(typed('queue-shard',db.read(key,key))['rows']==[] for key in shard_keys),'sixteen-grants-drain-eight-shards'
+
+def retention_readiness_boundary_cases():
+    # Independent literal precharge: eight 100 MiB shards, queue header, 256
+    # registry headers, epoch, and 266 recorded provider overheads.
+    overhead=37;quarantine=193*MIB
+    fixed=800*MIB+16384+256*16384+16384+266*overhead
+    tenant=1024*MIB+216*1024+16384+5*overhead
+    reserve=fixed+quarantine+overhead;deploy=tenant+reserve
+    assert retention_capability(tenant,deploy,reserve,reserve,overhead,quarantine)==fixed,'readiness-exact-bootstrap-precharge-fit'
+    for args in ((tenant-1,deploy,reserve,reserve),(tenant,deploy-1,reserve,reserve),(tenant,deploy,reserve-1,reserve),(tenant,deploy,reserve,reserve-1)):
+        refused(lambda:retention_capability(*args,overhead,quarantine),'publication_retention_capability_invalid')
+
+def correction_cases():
+    exercised=[]
+    def done(label):exercised.append(label)
+    def legacy_ready():
+        db=newdb();events=[{'sequence':1,'message':'original','digest':ZERO}]
+        db.external('drain',drain_fixture(events,'success-events'),'legacy');capsule_make(db,events,cleanup=True)
+        return db,events
+    def held_ready():
+        db=newdb();held_init(db);capture(db,b'exact carrier')
+        try:redrive(db,crash='commit')
+        except Crash:pass
+        return db
+    # Approved stage headroom choice and actual staged refunds on explicit/expiry cancel.
+    db=newdb();change_ledger(db,tenantCeiling=6*MIB);execution_init(db);begin_resume(db);finish_resume(db,0)
+    d=getcontrol(db,'execution','execution');d.update(source=hashbytes(b'second'),reason='retry-exhausted');savecontrol(db,'execution','execution',d)
+    unchanged(db,lambda:begin_resume(db,'second'),'resume_capacity_hold');done('RD1-stage-headroom')
+    for expiry in (False,True):
+        db=newdb();execution_init(db);begin_resume(db);rid=getcontrol(db,'execution','execution')['request']['identity'];stage=charge_address('tenant','t','stage:'+rid)
+        if expiry:finish_resume(db,901*TICK)
+        else:
+            try:resume_step(db,0,crash='intent')
+            except Crash:pass
+            cancel_resume(db)
+        assert stage not in ledger_get(db)['charges'] and getcontrol(db,'execution','execution')['ordinal']==0,'stage-refund'
+    done('RP7-expiry-and-RP16-stage-refunds')
+    # Signed foreign scope/request/time must fail their owning binding before any effect.
+    for tag,value,why in ((1,'foreign','resume-claim-owner'),(10,ZERO,'resume-claim-request'),(13,1,'resume-claim-time')):
+        db=newdb();execution_init(db);begin_resume(db);d=getcontrol(db,'execution','execution');f=read_record(hexbytes(d['request']['claim']),ANSWERS['records']['D45-request']);f[tag][1]=value
+        raw=record(ANSWERS['records']['D45-request']['domain'],f);d['request'].update(claim=raw.hex(),signature=fixture_sign(raw));savecontrol(db,'execution','execution',d)
+        unchanged(db,lambda:resume_step(db,0),why)
+    db=newdb();execution_init(db,accepted=[1,2,3]);unchanged(db,lambda:begin_resume(db),'resume_not_eligible');done('RP16-signed-resume-and-zero-unresolved')
+    # Dispatch excludes acceptance occurring after invocation admission; old handle resolves.
+    db=newdb();execution_init(db);oldhandle=resume_handle(getcontrol(db,'execution','execution'));begin_resume(db);finish_resume(db,0)
+    d=getcontrol(db,'execution','execution');inv=next(decode(hexbytes(row['body'])) for key,row in db.rows.items() if key.startswith('publication-invocation:'))
+    d.update(accepted=[1,2],unresolved=[3]);savecontrol(db,'execution','execution',d)
+    assert invocation_messages(db,d,inv)==['event-3'],'accepted-dispatch-exclusion'
+    assert resolve_handle(db,'t',oldhandle)=='execution','retained-handle-resolution'
+    outcome=d['outcomes'][0];retained=set(outcome['artifacts']);active=window_address(d)
+    assert retained=={a for a,r in db.rows.items() if r['owner']=='execution' and a!='execution'},'complete-retained-artifact-set'
+    reclaim(db,outcome['deleteAfter']);assert all(db.read(a,'execution') is None for a in retained if a!=active) and db.read(active,'execution') is not None,'retained-artifact-deletion'
+    done('RP17-dispatch-handle-artifact-reclamation')
+    # Capsule reentry cannot reset a claim and cannot disturb pending resume.
+    db,events=legacy_ready();begin_resume(db);finish_resume(db,0);legacy_transition(db,'execution','claimed',1)
+    db.external('drain',drain_fixture(events,'success-events'),'legacy');before=db.snapshot();capsule_make(db,events);assert db.snapshot()==before,'capsule-idempotent-owner'
+    db,events=legacy_ready();begin_resume(db);unchanged(db,lambda:capsule_make(db,events),'capsule-request-pending');done('RP5-capsule-reentry')
+    # Before-success/stale reclaim, forged success-audit, and owner-bound audit readback.
+    db,_=legacy_ready();unchanged(db,lambda:legacy_transition(db,'execution','claimed',1),'legacy-reclaim')
+    begin_resume(db);finish_resume(db,0);unchanged(db,lambda:legacy_transition(db,'execution','claimed',0),'legacy-reclaim')
+    d=getcontrol(db,'execution','execution');r=d['outcomes'][0];address=action_address(d,r,'audit');original=db.read(address,'execution')
+    db.delete(address,'execution');unchanged(db,lambda:legacy_transition(db,'execution','claimed',1),'legacy-success-audit')
+    f=read_record(original,ANSWERS['records']['D45-audit']);f[1][1]='foreign';forged=record(ANSWERS['records']['D45-audit']['domain'],f);db.external(address,forged,'execution');r['audit']=hashbytes(forged);d['outcomes'][0]=r;savecontrol(db,'execution','execution',d)
+    unchanged(db,lambda:legacy_transition(db,'execution','claimed',1),'legacy-success-owner');done('RP16-17-legacy-success-authority')
+    # Authenticated failure class overrides callers, and each failure consumes new repair proof.
+    db,events=legacy_ready();begin_resume(db);finish_resume(db,0);legacy_transition(db,'execution','claimed',1);legacy_transition(db,'execution','draining',1)
+    unchanged(db,lambda:legacy_transition(db,'execution','failed',1),'legacy-failure-readback')
+    legacy_failure_fixture(db,'evidence-contradictory');unchanged(db,lambda:legacy_transition(db,'execution','failed',1,failure='transport-retryable'),'legacy-failure-class')
+    try:legacy_transition(db,'execution','failed',1,crash='effect')
+    except Crash:pass
+    db=db.restart();legacy_transition(db,'execution','failed',1);begin_resume(db,'new');finish_resume(db,0)
+    d=getcontrol(db,'execution','execution');address=legacy_repair_address('execution',d['legacy']);proof=canonical(legacy_repair_payload(d['legacy'],legacy_authority(db,d)[0]));db.external(address,proof,'fixture-authority')
+    try:legacy_transition(db,'execution','claimed',2,crash='effect')
+    except Crash:pass
+    db=db.restart();legacy_transition(db,'execution','claimed',2);assert db.read(address,'fixture-authority') is None,'consumed-repair-proof'
+    legacy_transition(db,'execution','draining',2);legacy_failure_fixture(db,'evidence-unavailable');legacy_transition(db,'execution','failed',2);begin_resume(db,'third');finish_resume(db,0)
+    db.external(address,proof,'fixture-authority');unchanged(db,lambda:legacy_transition(db,'execution','claimed',3),'legacy-repair-readback');done('RD2-RP6-generation-repair-and-failure-intent')
+    # Unknown authenticated failure reason is closed; observed/completion readbacks own exits.
+    db,_=legacy_ready();begin_resume(db);finish_resume(db,0);legacy_transition(db,'execution','claimed',1);legacy_transition(db,'execution','draining',1)
+    legacy_failure_fixture(db,'fabricated');unchanged(db,lambda:legacy_transition(db,'execution','failed',1),'legacy-failure')
+    unchanged(db,lambda:legacy_transition(db,'execution','completed',1),'legacy-completion-readback')
+    db=newdb();held_init(db);unchanged(db,lambda:redrive_reconcile(db),'route-terminal-readback');done('RP17-closed-failure-and-terminal-readbacks')
+    # Original drain and capsule source tamper, unavailable authority, and bound 1001.
+    db=newdb();events=[{'sequence':1,'message':'a','digest':ZERO}];db.external('drain',drain_fixture(events,'success-events'),'legacy')
+    unchanged(db,lambda:capsule_make(db,events,'rejection-events'),'legacy-drain-authority')
+    changed=[{**events[0],'digest':hashbytes(b'changed')}];unchanged(db,lambda:capsule_make(db,changed),'legacy-drain-authority')
+    db.unavailable.add('drain');unchanged(db,lambda:capsule_make(db,events),'evidence-unavailable');db.unavailable.clear();db.delete('drain','legacy');unchanged(db,lambda:capsule_make(db,events),'legacy_resume_evidence_unavailable')
+    large=[{'sequence':i+1,'message':str(i),'digest':ZERO} for i in range(1001)];db.external('drain',drain_fixture(large,'success-events'),'legacy');unchanged(db,lambda:capsule_make(db,large),'legacy-range-bound')
+    db,stored_events=legacy_ready();d=getcontrol(db,'execution','execution');key=keyed('HX-EV-LEGACY-RESUME-CAPSULE-KEY-2','legacy-resume-capsule:',[['B32',d['legacy']['identity']]])
+    different=[{**stored_events[0],'digest':hashbytes(b'changed-stored-digest')}];unchanged(db,lambda:capsule_restore(db,different,key),'legacy-original-range')
+    raw=db.read(key,'legacy');f=read_record(raw,ANSWERS['records']['D46-capsule']);f[14][1]=hashbytes(b'tamper');db.write(key,record(ANSWERS['records']['D46-capsule']['domain'],f),'legacy',raw)
+    unchanged(db,lambda:begin_resume(db),'legacy-capsule-binding');done('RP16-17-legacy-source-and-1001-bound')
+    db,_=legacy_ready();begin_resume(db);finish_resume(db,0);legacy_transition(db,'execution','claimed',1)
+    db.external('drain',b'original still present','legacy');unchanged(db,lambda:legacy_transition(db,'execution','draining',1),'legacy-live-drain');done('RP17-drain-absence')
+    # Terminal/no-send and forged/unavailable route sources on actual send path.
+    db=held_ready();route_fixture(db);unchanged(db,lambda:send_held(db),'terminal-no-send')
+    address=provider_address('route-terminal','held');raw=db.read(address,'held');db.delete(address,'held');bad=decode(raw);bad['requestHash']=ZERO;db.external(address,canonical(bad),'held')
+    unchanged(db,lambda:send_held(db),'route-authority');db.unavailable.add(address);unchanged(db,lambda:send_held(db),'evidence-unavailable');done('RP16-17-terminal-send-authority')
+    # Absence repair retains original route hash; re-signing time cannot substitute it.
+    db=held_ready();route_fixture(db,outcome='nonterminal');d=getcontrol(db,'held','held');original=copy.deepcopy(d['request']);d.update(request=None,attempt=None);savecontrol(db,'held','held',d);redrive_reconcile(db)
+    assert getcontrol(db,'held','held')['repair']=='absent','absent-repair-state';repair_held(db,claim=original)
+    d=getcontrol(db,'held','held');d['repair']='required';savecontrol(db,'held','held',d);f=read_record(hexbytes(original['claim']),ANSWERS['records']['D36-redrive']);f[6][1]=1;raw=record(ANSWERS['records']['D36-redrive']['domain'],f);changed={**original,'claim':raw.hex(),'signature':fixture_sign(raw),'utc':1}
+    unchanged(db,lambda:repair_held(db,claim=changed),'repair-original-request');done('RP11-RP16-original-absent-repair')
+    for tag,value,why in ((2,'foreign','redrive-claim-owner'),(4,1,'redrive-claim-count')):
+        db=held_ready();d=getcontrol(db,'held','held');f=read_record(hexbytes(d['request']['claim']),ANSWERS['records']['D36-redrive']);f[tag][1]=value;raw=record(ANSWERS['records']['D36-redrive']['domain'],f);d['request'].update(claim=raw.hex(),signature=fixture_sign(raw));d['attempt']['requestHash']=hashbytes(raw);savecontrol(db,'held','held',d)
+        unchanged(db,lambda:send_held(db),why)
+    db=held_ready();d=getcontrol(db,'held','held');key=charge_address(*held_account(d),'metadata:held');b=db.read('ledger','ledger');ledger=ledger_get(db);ledger['charges'][key]['amount']+=1;db.write('ledger',canonical(ledger),'ledger',b)
+    unchanged(db,lambda:send_held(db),'metadata-charge');done('RP16-held-signed-tags-and-metadata-charge')
+    # Capture erase/recreation races: late orphan deleted, valid replacement preserved.
+    for replacement in (False,True):
+        db=newdb();held_init(db);authority(db,'held','erase',create=True);original_external=db.external
+        def raced(address,body,owner):
+            result=original_external(address,body,owner)
+            if address.startswith('held/'):
+                db.external=original_external;erase_held(db)
+                if replacement:held_init(db);capture(db,b'exact carrier')
+            return result
+        db.external=raced;refused(lambda:capture(db,b'exact carrier'),'capture-predecessor')
+        if replacement:assert verify_retained(db,getcontrol(db,'held','held'),'held')==b'exact carrier','replacement-capture-preserved'
+        else:assert not registry(db)['rows'] and not ledger_get(db)['charges'] and not any(k.startswith('held/') for k in db.rows),'late-capture-orphan'
+    for transfer_kind in ('generation','fence'):
+        db=newdb();held_init(db);original_external=db.external
+        def transferred_write(address,body,owner):
+            result=original_external(address,body,owner)
+            if address.startswith('held/'):
+                row=db.rows['held']
+                if transfer_kind=='generation':row['generation']+=1
+                else:row['fence']=mint_fence()
+                row['receipt']=Store.receipt('held',row['body'],row['generation'],row['owner'],row.get('index'),row['fence'])
+            return result
+        db.external=transferred_write;refused(lambda:capture(db,b'exact carrier'),'capture-predecessor')
+        d=getcontrol(db,'held','held');assert d['phase']=='capturing' and db.read(held_object(d),'held')==b'exact carrier','stale-capture-token-preserves-owner'
+        db.external=original_external;capture(db,b'exact carrier');assert verify_retained(db,getcontrol(db,'held','held'),'held')==b'exact carrier'
+    done('RP12-capture-erase-and-recreation')
+    # Refund cannot erase charges while an addressed object still exists.
+    db=newdb();db.external('charged-object',b'exact','object');reserve_charge(db,'object-charge','tenant','t',5,objects=('charged-object',));unchanged(db,lambda:refund(db,'object-charge'),'delete-readback')
+    db=newdb();discover(db,'placeholder');authority(db,'placeholder','no-commit-no-effect',create=True);db.external('effect',b'existing','placeholder')
+    unchanged(db,lambda:reconcile_placeholder(db,'placeholder'),'placeholder-effect');unchanged(db,lambda:registry_release(db,'placeholder'),'owner-deletion-readback');done('RP17-refund-and-placeholder-readbacks')
+    # Scope widths, shard-local capacity and independent deployment account.
+    for kind in ('registry-scope','registry-entry','epoch'):
+        d=copy.deepcopy(ANSWERS['controls'][kind]['json'])
+        for field in (('deployment','scopeId') if kind!='epoch' else ('deployment','holder')):d[field]='\x01'*1024
+        typed(kind,canonical(d));assert len(canonical(d))<=CAPS[kind],'escaped-width-cap'
+    db=newdb();discover(db,'first',scope='t');other=next('s'+str(i) for i in range(10000) if registry_shard('tenant','s'+str(i))==registry_shard('tenant','t'))
+    unchanged(db,lambda:discover(db,'second',scope=other,shard_limit=1),'registry_capacity_hold')
+    foreign=next('f'+str(i) for i in range(10000) if registry_shard('tenant','f'+str(i))!=registry_shard('tenant','t'));discover(db,'foreign',scope=foreign,shard_limit=1)
+    discover(db,'deployment-owner',kind='deployment',scope='dep');key=registry_key('deployment','dep','deployment-owner');assert ledger_get(db)['charges'][charge_address('capture-scope','dep',key)]['account']=='capture-scope:dep','deployment-registry-account'
+    limited=newdb();change_ledger(limited,tenantCeiling=1);unchanged(limited,lambda:discover(limited,'quota-full'),'registry_capacity_hold')
+    widest='\x01'*1024;discover(db,'max-width',scope=widest);assert typed('registry-scope',db.read(registry_scope_key('tenant',widest),registry_scope_key('tenant',widest)))['scopeId']==widest,'maximum-scope-discovery'
+    done('RP4-RP13-RP16-17-registry-bounds-and-accounts')
+    # Foreign unavailable entries cannot block discovery/paging; corrupt owner is per row.
+    db=newdb();execution_init(db,'one');execution_init(db,'two');_,cursor=inventory_page(db,'tenant','t',1);discover(db,'foreign',scope='other');foreignkey=registry_key('tenant','other','foreign');db.unavailable.add(foreignkey);discover(db,'another',scope='third')
+    page,_=inventory_page(db,'tenant','t',1,cursor);assert page[0]['subject']=='two','foreign-cursor-isolation'
+    d=getcontrol(db,'one','execution');d['reason']='fabricated-reason';db.write('one',canonical(d),'one',db.read('one','one'));db.write('two',canonical([]),'two',db.read('two','two'));page,_=inventory_page(db,'tenant','t');assert len(page)==2 and all(v['stale'] and v['phase']=='incident' for v in page),'typed-owner-incidents'
+    unchanged(db,lambda:inventory_page(db,'tenant','t',cursor={}),'hold_inventory_cursor_invalid');done('RP4-RP8-RP19-isolated-typed-inventory')
+    db=newdb();execution_init(db,'one');execution_init(db,'two');_,cursor=inventory_page(db,'tenant','t',1);d=getcontrol(db,'two','execution');d['updatedUtc']=1;savecontrol(db,'two','execution',d);page,_=inventory_page(db,'tenant','t',1,cursor);assert page[0]['revision']==d['revision']+1,'fresh-page-revision';done('RP17-page-revision')
+    # Full target shard refuses without consuming an allocator ticket or charge.
+    db=newdb();subject=hashbytes(b'full-shard');before=db.snapshot();unchanged(db,lambda:queue_reserve(db,subject,'t',ZERO,0,shard_limit=0),'AppendPreparationLimit');assert queue_view(db)['lastTicket']==0 and db.snapshot()==before,'refused-ticket-consumption'
+    # Missing/mismatched admitted plans and conflicting existing batches park only that subject.
+    for badplan in ('absent','mismatch','batch-conflict','wait-charge'):
+        db=newdb();sources={}
+        for i in (1,2):
+            subject=hashbytes((badplan+str(i)).encode());pins=[{'message':'p'+str(i),'length':1}];sources[subject]=pins;queue_reserve(db,subject,str(i),ZERO,0);operation_plan_fixture(db,subject,pins);queue_materialize(db,subject,pins,0)
+        first=queue_view(db)['rows'][0];address=provider_address('operation-plan',first['owner'],first['plan'])
+        if badplan=='absent':db.delete(address,'fixture-operation')
+        elif badplan=='mismatch':db.write(address,canonical([{'message':'foreign','length':1}]),'fixture-operation',db.read(address,'fixture-operation'))
+        elif badplan=='batch-conflict':batch(db,first['subject'],first['tenant'],[{'message':'foreign','length':1}])
+        else:
+            prior=db.read('ledger','ledger');ledger=ledger_get(db);ledger['charges'][first['charge']]['length']+=1;db.write('ledger',canonical(ledger),'ledger',prior)
+        assert queue_turn(db,sources)==2 and queue_view(db)['rows'][0]['state']=='parked','selected-refusal-parks'
+    db=newdb();subject=hashbytes(b'no-authority');queue_reserve(db,subject,'t',ZERO,0);unchanged(db,lambda:queue_materialize(db,subject,[{'message':'p','length':1}],0),'rerender-authority')
+    done('RD4-RP9-RP10-RP17-queue-shards-and-authority')
+    # Owning 193 MiB+1 capture refuses unchanged before an object allocation/write.
+    class OversizeCarrier:
+        def __len__(self):return 193*MIB+1
+    db=newdb();held_init(db);d=getcontrol(db,'held','held');d['length']=193*MIB+1;db.write('held',canonical(d),'held',db.read('held','held'))
+    unchanged(db,lambda:capture(db,OversizeCarrier()),'capture-carrier');unchanged(db,lambda:verify_retained(db,getcontrol(db,'held','held'),'held'),'retained-interval');done('RP17-retained-object-interval')
+    # Every transaction consumes its captured predecessor; concurrent updates survive CAS loss.
+    for path in ('capture','queue_turn','reclaim','cancel'):
+        db=newdb()
+        if path=='capture':held_init(db);key='held';kind='held';action=lambda:capture(db,b'exact carrier')
+        elif path=='queue_turn':
+            subject=hashbytes(b'casqueue');pins=[{'message':'p','length':1}];queue_reserve(db,subject,'t',ZERO,0);operation_plan_fixture(db,subject,pins);queue_materialize(db,subject,pins,0)
+            def advance(t):queue_save(t,queue_view(t))
+            db.before_transaction=advance;refused(lambda:queue_turn(db,{subject:pins}),'cas');assert queue_view(db)['rows'];continue
+        else:
+            execution_init(db);begin_resume(db);key='execution';kind='execution'
+            if path=='reclaim':finish_resume(db,0);action=lambda:reclaim(db,32*DAY)
+            else:action=lambda:cancel_resume(db)
+        def advance(t):
+            d=getcontrol(t,key,kind);d['updatedUtc']=1;savecontrol(t,key,kind,d)
+        db.before_transaction=advance;refused(action,'cas');assert getcontrol(db,key,kind)['updatedUtc']==1,'concurrent-predecessor-preserved'
+    done('RP17-all-predecessor-CAS')
+    # Malformed scope authority maps to the closed public admission hold.
+    for raw in (canonical([]),b'not-json'):
+        db=newdb();key=scope_admit(db,'t','e',ZERO);db.write(key,raw,key,db.read(key,key));unchanged(db,lambda:scope_admit(db,'t','e',ZERO),'admission_evidence_hold')
+    done('RP18-scope-public-reasons')
+    for transfer_kind in ('generation','fence','both'):
+        db=newdb();execution_init(db);transferred={}
+        def transfer(t):
+            row=t.rows['execution']
+            if transfer_kind!='fence':row['generation']+=1
+            if transfer_kind!='generation':row['fence']=mint_fence()
+            row['receipt']=Store.receipt('execution',row['body'],row['generation'],row['owner'],row.get('index'),row['fence']);transferred.update(snapshot=t.snapshot())
+        db.before_transaction=transfer;refused(lambda:begin_resume(db),'cas');assert db.snapshot()==transferred['snapshot'] and getcontrol(db,'execution','execution')['phase']=='idle','stale-fence-refusal'
+    for transfer_kind in ('generation','fence'):
+        db=newdb();execution_init(db);begin_resume(db);original_external=db.external
+        def transferred_effect(address,body,owner):
+            result=original_external(address,body,owner);row=db.rows['execution']
+            if transfer_kind=='generation':row['generation']+=1
+            else:row['fence']=mint_fence()
+            row['receipt']=Store.receipt('execution',row['body'],row['generation'],row['owner'],row.get('index'),row['fence']);return result
+        db.external=transferred_effect;refused(lambda:resume_step(db,0),'cas');d=getcontrol(db,'execution','execution')
+        assert d['phase']=='prepared' and d['intent']['kind']=='disable' and db.read(d['intent']['address'],'execution') is not None,'stale-resume-effect-retained'
+        db=db.restart();finish_resume(db,901*TICK);assert getcontrol(db,'execution','execution')['ordinal']==1,'fresh-holder-finishes-original-effect'
+    done('RD3-provider-generation-and-fence-CAS')
+    capture_replacement_redrive_case();done('RP12-redriving-replacement-retention')
+    legacy_restore_token_cases();done('RD3-legacy-restore-provider-token')
+    inventory_continuation_expiry_case();done('RP19-three-page-original-cursor-expiry')
+    queue_shard_placement_case();done('RD4-sixteen-ticket-eight-shard-placement')
+    retention_readiness_boundary_cases();done('RP16-bootstrap-precharge-boundaries')
+    COUNTS['correctionEvidence']=exercised
+
 def scenarios():
-    COUNTS.clear();codec_cases();status_replay_cases();resume_cases();legacy_cases();held_cases();queue_scope_inventory_cases()
-    COUNTS['matrixRows']=len((resume_cases,legacy_cases,held_cases,queue_scope_inventory_cases))
+    COUNTS.clear();COUNTS['matrixEvidence']={};codec_cases();status_replay_cases();resume_cases();legacy_cases();held_cases();queue_scope_inventory_cases()
+    correction_cases();COUNTS['matrixRows']=len(COUNTS['matrixEvidence'])
     return COUNTS
 
 def dispositions():

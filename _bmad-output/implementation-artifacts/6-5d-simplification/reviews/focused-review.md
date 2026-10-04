@@ -1,4 +1,6 @@
-# Recovery focused review — 2026-10-03
+# Historical recovery focused review — 2026-10-03
+
+This historical account and its completion claims are superseded by the 2026-10-04 correction run; consult RECOVERY-EVIDENCE.md and the correction review evidence.
 
 All three context-free reviewers were launched before any result was handled. They reviewed the same focused recovery diff preserved in ../review-input.diff.gz; its uncompressed digest is 55eb075109e42d7ee6933edb1948b099265a42f78b115a393d9da438473399db. The active simplification permits zero findings, excludes unrelated committed work and authorizes focused corrections without another additive re-derivation loop. No layer was skipped.
 
@@ -30,7 +32,7 @@ All three context-free reviewers were launched before any result was handled. Th
 
 Every finding received a verdict before grouping. Four groups remain: RB1/RV3, RB2/RE1, RV1, RV2. No frozen intent change, public surface, approval or separate coordination family is needed. The owner repair clarifies retained action idempotence and authenticates exact predecessor/readback; the two bounded guard cases add unchanged-state assertions. The user-authorized simplification overrides the default full-revert/loop-limit process for these focused corrections. Review loop iteration 12 remains historical. No new work is deferred.
 
-The copied probe scripts and pre-fix observed output preserve reproducible evidence of the reviewed failures; their historical assertions are not current acceptance gates. Current post-fix regression evidence is recorded separately after correction.
+The copied probe scripts and observed output are historical records with limits: the scripts contain absolute paths and target the subsequently corrected verifier, and the output is not hash-bound to a retained pre-fix verifier. They do not establish independently reproducible pre-fix failures. Their original bytes are preserved in pre-correction-evidence.tar.gz; current portable behavioral checks and exact reviewed source/diff hashes supply correction-run evidence separately.
 
 ## Post-fix parent checks
 
