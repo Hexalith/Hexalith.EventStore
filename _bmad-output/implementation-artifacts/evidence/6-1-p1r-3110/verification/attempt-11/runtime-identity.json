@@ -1,0 +1,23 @@
+{
+  "dapr_version": "1.18.2",
+  "daprd_sha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+  "images": {
+    "placement": {
+      "id": "bc4fd0bfea71221ffb0f9a2abf9767596ed5d775dae709f2f406a8f70ea99788",
+      "image_id": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
+    },
+    "postgresql": {
+      "id": "4f3bfad944c539a56747a03ead113dbbdd5440b88c89dbcc2f5db0710c24abe0",
+      "image_id": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+    },
+    "pubsub": {
+      "id": "30e04add844d3fb6dd11f4730ec03905faec3db8c6702fb98f51b2134599fcf8",
+      "image_id": "sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f"
+    },
+    "scheduler": {
+      "id": "c9a3f307833ac0742dce8f57999fd482b0c5c28081f469034adf57ea6ab5bbe2",
+      "image_id": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
+    }
+  },
+  "private_discovery": true
+}

@@ -136,6 +136,16 @@ AUTHORIZATION = re.compile(r"(?i)(?<![a-z0-9_.])authorization[\"\']?\s*[:=]\s*[\
 BEARER = re.compile(r"(?i)(?<![a-z0-9_.])bearer\s+[a-z0-9._~+/=-]+")
 
 
+def expected_cases(name, source=False):
+    if not source:
+        return EXPECTED_CASES[name]
+    if name == "metadata-write":
+        return {"3.110.0-to-current", "current-to-3.110.0"}
+    if name == "invalid-evidence":
+        return {"current-"+m for m in ("invalid-floor", "unreadable", "protected", "unknown-type", "unknown-version")}
+    return {c.replace("3.70.1", "current") for c in EXPECTED_CASES[name]}
+
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -214,7 +224,7 @@ def validate_graphs(directory, commands, lane):
     for project in ("Host", "Domain", "Probe"):
         graph = json.loads((directory / "artifacts" / lane / (project + "-assets.json")).read_text())
         lock = json.loads((directory / "artifacts" / lane / (project + "-lock.json")).read_text())
-        require(lock.get("version") == 1 and set(lock["dependencies"]) == {"net10.0"}, "Missing or substituted lock graph")
+        require(lock.get("version") in {1, 2} and set(lock["dependencies"]) == {"net10.0"}, "Missing or substituted lock graph")
         libraries = graph["libraries"]
         locked = lock["dependencies"]["net10.0"]
         require(locked and {name.lower() for name in locked} == {name.split("/")[0].lower() for name in libraries}, "Lock/assets coverage differs")
@@ -324,19 +334,33 @@ def validate_operations(directory, commands, rows, inventories, current, closure
         valid = []
         for command in receipts:
             if command["argv"][:2] == ["HTTP", "GET"] and command["argv"][2].endswith(suffix) and command["exit_code"] == 200:
+                endpoint = command["argv"][2].removesuffix(suffix)
+                launches = [c for c in receipts if c["argv"][:1] == ["dotnet"] and pathlib.Path(c["argv"][1]).parts[-6:] == (lane, kind, "bin", configuration, "net10.0", assembly) and c.get("node_environment", {}).get("ASPNETCORE_URLS") == endpoint]
+                if not launches:
+                    continue
                 observed = receipt_json(command)
                 assemblies = observed if kind == "host" else observed.get("assemblies", []) if isinstance(observed, dict) else []
                 if assemblies and all(a["sha256"] == hashes.get(a["name"]) for a in assemblies):
                     valid.append(command)
         require(valid, "Case lacks the actual running lane identity response")
         return valid
+    def sidecar_proof(receipts, lane, endpoint, kind="host"):
+        configuration = "Debug" if lane == "current" else "Release"
+        application = kind.capitalize() + ".dll"
+        port = endpoint.rsplit(":", 1)[1]
+        launches = [c for c in receipts if c["argv"][:1] == ["dotnet"] and pathlib.Path(c["argv"][1]).parts[-6:] == (lane, kind, "bin", configuration, "net10.0", application) and c.get("node_environment", {}).get("DAPR_HTTP_PORT") == port]
+        require(launches, "Request endpoint lacks its actual lane application")
+        require(any("--dapr-http-port" in c["argv"] and c["argv"][c["argv"].index("--dapr-http-port")+1] == port and "--app-id" in c["argv"] and c["argv"][c["argv"].index("--app-id")+1] == ("eventstore" if kind == "host" else "counter") and "--app-port" in c["argv"] and any(c["argv"][c["argv"].index("--app-port")+1] == a["node_environment"]["ASPNETCORE_URLS"].rsplit(":",1)[1] for a in launches) for c in receipts), "Request lacks its actual owned sidecar/application port")
     def actor(receipts, lane, tenant, kind, count):
         calls = [c for c in probes(receipts, lane, "actor") if c["argv"][4:6] == [tenant, "fixture"] and c["argv"][7:] == [kind, str(count)]]
         require(calls, "Missing required typed actor invocation")
         for command in calls:
             endpoint = command["argv"][3]
-            port = endpoint.rsplit(":", 1)[1]
-            require(any("--dapr-http-port" in c["argv"] and c["argv"][c["argv"].index("--dapr-http-port")+1] == port and "--app-id" in c["argv"] and c["argv"][c["argv"].index("--app-id")+1] == "eventstore" for c in receipts), "Actor request lacks its actual owned sidecar")
+            # A mixed client consumes the host lane selected by its node binding.
+            hosts = [a for a in receipts if a["argv"][:1] == ["dotnet"] and str(a["argv"][1]).endswith("/Host.dll") and a.get("node_environment", {}).get("DAPR_HTTP_PORT") == endpoint.rsplit(":",1)[1]]
+            require(hosts, "Actor request lacks its actual owned application")
+            host_lane = pathlib.Path(hosts[-1]["argv"][1]).parts[-6]
+            sidecar_proof(receipts, host_lane, endpoint)
         return calls[-1], receipt_json(calls[-1])
     def seeds(receipts, lane):
         for tenant,count in (("tenant-a",12),("tenant-b",3)):
@@ -350,6 +374,8 @@ def validate_operations(directory, commands, rows, inventories, current, closure
     def invariant(case, append=False):
         before,after = inventory(case,"before_sha256"),inventory(case,"after_sha256")
         require(before["database_identity_sha256"] == after["database_identity_sha256"], "Replay case changed databases")
+        actor_ids = [c["id"] for c in scoped(case,set(case["command_ids"])) if c["argv"][:1] == ["dotnet"] and len(c["argv"]) > 2 and c["argv"][2] == "actor"]
+        require(actor_ids and before["query_command_id"] < min(actor_ids) <= max(actor_ids) < after["query_command_id"], "Persisted observations must bracket distinct actual actor operations")
         if "database_identity_sha256" in case:
             require(case["database_identity_sha256"] == before["database_identity_sha256"], "Case database identity differs from queries")
         old,new = ({r["key"]:r for r in value["domain_rows"]} for value in (before,after))
@@ -363,8 +389,9 @@ def validate_operations(directory, commands, rows, inventories, current, closure
             metadata = next(v for k,v in new.items() if k.endswith("tenant-a:counter:fixture:metadata"))
             require(metadata["sequence"] == "13", "Append metadata sequence differs")
         return before,after
-    def sequence(receipts,tenant,count):
-        require(any(c["argv"][:2] == ["HTTP","GET"] and c["argv"][2].endswith("/sequence/"+tenant+"/fixture") and c["exit_code"] == 200 and receipt_json(c) == count for c in receipts), "Missing actual sequence observation")
+    def sequence(receipts,tenant,count,lane):
+        endpoints={c["argv"][2].removesuffix("/identity") for c in host_proof(receipts,lane)}
+        require(any(c["argv"][:2] == ["HTTP","GET"] and c["argv"][2] in {e+"/sequence/"+tenant+"/fixture" for e in endpoints} and c["exit_code"] == 200 and receipt_json(c) == count for c in receipts), "Missing actual sequence observation at the running host")
     def build(case,receipts,lane):
         identity = json.loads((directory/"artifacts"/(lane+"-identity.json")).read_text())
         outputs = probes(receipts,lane,"identity")
@@ -380,7 +407,8 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 if lane == "current":
                     require(all("-p:EventStoreSourceRoot="+closures["Hexalith.EventStore"]["repository"] in c["argv"] and "-p:HexalithCommonsRoot="+closures["Hexalith.Commons"]["repository"] in c["argv"] and "-p:UseCurrentSource=true" in c["argv"] for c in calls), "Current build did not consume the approved input closure")
             require(any(c["argv"][1:3] == ["-c",ARTIFACT_INVENTORY_SCRIPT] and c["argv"][-1] == "hash-restored-graphs" and pathlib.Path(c["argv"][3]).parts[-4:] == (lane,project,"obj","project.assets.json") for c in receipts), "Case lacks physical restored graph hashes")
-            require(any(c["argv"][1:3] == ["-c",ASSEMBLY_INVENTORY_SCRIPT] and pathlib.Path(c["argv"][3]).parts[-5:] == (lane,project,"bin","Debug" if lane=="current" else "Release","net10.0") for c in receipts), "Case lacks physical output assembly hashes")
+            hashes=current["built_assemblies"][project.capitalize()] if lane=="current" else {name:PUBLISHED_DLL_HASHES[lane][name] for name in graph_packages(lane,project.capitalize())}
+            require(any(c["argv"][1:3] == ["-c",ASSEMBLY_INVENTORY_SCRIPT] and pathlib.Path(c["argv"][3]).parts[-5:] == (lane,project,"bin","Debug" if lane=="current" else "Release","net10.0") and receipt_json(c)==hashes for c in receipts), "Physical output assembly hashes differ from verified lane DLLs")
         if lane != "current":
             for package in PACKAGE_IDS:
                 require(any(c["argv"][:4] == ["dotnet","nuget","verify","--all"] and pathlib.Path(c["argv"][4]).parts[-3:] == (package.lower(),lane,package.lower()+"."+lane+".nupkg") and c["exit_code"] == 0 and "Signature type: Repository" in c["diagnostic"] for c in receipts), "Case lacks exact signed-archive verification")
@@ -394,6 +422,8 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 if identity == "current-build":
                     disposition = build(case,receipts,"current")
                 else:
+                    nested=expected_cases(identity,True)
+                    require(len(case["cases"])==len(nested) and {c["id"] for c in case["cases"]}==nested and all(c["assertions"]>0 for c in case["cases"]), "Missing or duplicate nested comparison case")
                     disposition = check_group(identity,case["cases"],set(case["command_ids"]),True)
                     require(case["compatibility"] == disposition, "Current comparison label contradicts nested observations")
             elif name == "provenance":
@@ -432,14 +462,14 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 seeds(receipts,writer);host_proof(receipts,reader);host_proof(receipts,reader,"domain")
                 command,outcome=actor(receipts,reader,"tenant-a","AssertCounter",12)
                 require(case["actor_outcome"]==outcome and outcome["accepted"]==(name not in {"retained-uncovered","missing-event"}) and outcome["eventCount"]==0,"Replay actor outcome differs")
-                _,tenant=actor(receipts,reader,"tenant-b","AssertCounter",3);require(tenant["accepted"] and tenant["eventCount"]==0,"Tenant isolation control failed");sequence(receipts,"tenant-a",12)
+                _,tenant=actor(receipts,reader,"tenant-b","AssertCounter",3);require(tenant["accepted"] and tenant["eventCount"]==0,"Tenant isolation control failed");sequence(receipts,"tenant-a",12,reader)
                 before,after=invariant(case,name=="metadata-write")
                 expected_events=set(range(5,13)) if name in {"retained-covered","retained-uncovered","metadata-write"} else set(range(1,13))-{7 if variant=="interior" else 12} if name=="missing-event" else set(range(1,13))
                 require({int(r["key"].rsplit(":",1)[1]) for r in before["domain_rows"] if "tenant-a:counter:fixture:events:" in r["key"]}==expected_events and {int(r["key"].rsplit(":",1)[1]) for r in before["domain_rows"] if "tenant-b:counter:fixture:events:" in r["key"]}=={1,2,3},"Replay persisted fixture is incomplete/substituted")
                 metadata=next(r for r in before["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:metadata"))
                 require(metadata["sequence"]=="12" and metadata["floor"] in ({"5"} if name in {"retained-covered","retained-uncovered","metadata-write"} else {"1",None}),"Replay fixture metadata differs")
                 snapshots=[r for r in before["domain_rows"] if r["key"].endswith("tenant-a:counter:fixture:snapshot")]
-                if name in {"snapshot-tail","retained-covered","metadata-write"}: require(len(snapshots)==1 and snapshots[0]["snapshotSequence"]=="10","Missing actual covering snapshot fixture")
+                if name in {"snapshot-tail","retained-covered","metadata-write"}: require(len(snapshots)==1 and snapshots[0]["snapshotSequence"]=="9","Missing actual covering snapshot fixture")
                 if name=="retained-uncovered": require(not snapshots if variant=="absent" else len(snapshots)==1 and snapshots[0]["snapshotSequence"]=="2","Absent/non-covering snapshot observation differs")
                 if name in {"retained-covered","retained-uncovered","metadata-write"}: require(any("'{retainedFloor}','5'" in c["argv"][-1] and "delete from state" in c["argv"][-1] for c in receipts if "psql" in c["argv"]),"Missing executed retained-prefix fixture mutation")
                 if name=="missing-event": require(any(c["argv"][-1]=="delete from state where key like '%tenant-a:counter:fixture:events:"+str(7 if variant=="interior" else 12)+"';" for c in receipts if "psql" in c["argv"]),"Missing actual interior/tail mutation")
@@ -466,13 +496,15 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                 dumps=[c for c in receipts if "pg_dump" in c["argv"] and c["exit_code"]==0 and c["output_sha256"]==case["backup_sha256"] and c.get("output_bytes")==case["backup_bytes"]]
                 restores=[c for c in receipts if "pg_restore" in c["argv"] and c["exit_code"]==0 and c.get("input_sha256")==case["backup_sha256"] and c.get("input_bytes")==case["backup_bytes"]]
                 require(len(dumps)==len(restores)==1 and dumps[0]["id"]<restores[0]["id"],"Dump/restore must consume this case's actual command receipts")
+                replay_ids=[c["id"] for c in probes(receipts,VERSIONS[1],"actor") if c["id"]>restores[0]["id"]]
+                require(replay_ids and before["query_command_id"]<dumps[0]["id"]<restores[0]["id"]<restored["query_command_id"]<min(replay_ids)<=max(replay_ids)<after["query_command_id"], "Restore observations do not bracket backup, restore and replay")
                 require(sha(dumps[0]["argv"][-1].encode())==before["database_identity_sha256"] and sha(restores[0]["argv"][restores[0]["argv"].index("-d")+1].encode())==restored["database_identity_sha256"],"Backup command database differs from retained inventories")
                 require(case["containment_only"]==(name=="pre-upgrade-restore"),"Restore containment scope changed")
                 if name=="pre-upgrade-restore":
                     append,_=actor(receipts,VERSIONS[0],"tenant-a","IncrementCounter",0)
                     require(dumps[0]["id"]<append["id"]<restores[0]["id"] and any(c["argv"][:1]==["dotnet"] and str(c["argv"][1]).endswith("/3.110.0/host/bin/Release/net10.0/Host.dll") and c["finished_utc"]<=restores[0]["started_utc"] and c["id"]>append["id"] for c in receipts),"Pre-upgrade backup/write/stop/restore chronology differs")
                 for tenant,count in (("tenant-a",12),("tenant-b",3)):
-                    _,outcome=actor(receipts,VERSIONS[1],tenant,"AssertCounter",count);require(outcome["accepted"] and outcome["eventCount"]==0,"Restored actor control failed");sequence(receipts,tenant,count)
+                    _,outcome=actor(receipts,VERSIONS[1],tenant,"AssertCounter",count);require(outcome["accepted"] and outcome["eventCount"]==0,"Restored actor control failed");sequence(receipts,tenant,count,VERSIONS[1])
                 disposition="compatible"
             elif name=="mixed-api":
                 if "client-" in identity:
@@ -499,6 +531,7 @@ def validate_operations(directory, commands, rows, inventories, current, closure
                     disposition="incompatible" if outcome["handling"]=="unsupported-client-method" else "compatible"
                 else:
                     host=VERSIONS[1] if identity.startswith("old") else VERSIONS[0];host_proof(receipts,host);method=case["method"];calls=[c for c in probes(receipts,VERSIONS[0],"capability") if c["argv"][-1]==method];require(len(calls)==1,"Missing real selected-only actor call");outcome=receipt_json(calls[0]);detail=outcome.get("detail","")
+                    sidecar_proof(receipts,host,calls[0]["argv"][3])
                     require(case["outcome"]==outcome["outcome"] and case["detail_sha256"]==sha(detail.encode()),"Actor capability result differs from actual dispatch")
                     unsupported=outcome["outcome"]=="rejected" and (method+"ReqBody" in detail and "deserializer has no knowledge" in detail or bool(re.search(r"(?i)(method.*(?:not found|not supported|does not exist|not implemented)|(?:missing|unknown).*method|MissingMethodException|KeyNotFoundException)",detail)))
                     if host==VERSIONS[1]: require(unsupported and case["handling"]=="unsupported-old-actor-contract","Malformed rejection cannot prove unsupported old dispatcher")
@@ -583,12 +616,18 @@ def validate(directory):
                 require(all(re.fullmatch(r"[0-9a-f]{64}", c.get("backup_sha256", "")) and c.get("backup_bytes", 0) > 0 for c in row["cases"]), "Missing backup artifact binding")
                 require(all("source_inventory_sha256" in c and "restored_inventory_sha256" in c for c in row["cases"]), "Missing restored inventory bindings")
     persisted = {}
+    runtime_path = directory / "runtime-identity.json"
+    pg = json.loads(runtime_path.read_text())["images"]["postgresql"]["id"] if runtime_path.exists() else None
+    for command in commands:
+        if command["argv"][:2] == ["docker", "exec"] and any(x in command["argv"] for x in ("psql", "createdb", "pg_dump", "pg_restore")):
+            target = command["argv"][3] if command["argv"][2] == "-i" else command["argv"][2]
+            require(pg is not None and target == pg, "PostgreSQL operation targets an unowned container")
     for path in (directory / "inventories").glob("*.json") if (directory / "inventories").exists() else ():
         observed = json.loads(path.read_text())
         require(observed["sha256"] == sha(canonical(observed["rows"])), "Persisted inventory hash mismatch")
         require(observed["domain_rows"] == [r for r in observed["rows"] if ":events:" in r["key"] or r["key"].endswith(":snapshot") or r["key"].endswith(":metadata")], "Incorrect domain inventory projection")
         receipt = by_id[observed["query_command_id"]]
-        require(receipt["exit_code"] == 0 and receipt["argv"][-2:] == ["-c", INVENTORY_SQL] and "psql" in receipt["argv"] and json.loads(observed["query_output"]) == observed["rows"] and sha(observed["query_output"].encode()) == receipt["output_sha256"], "Inventory differs from its actual state-query receipt")
+        require(receipt["exit_code"] == 0 and receipt["argv"][-2:] == ["-c", INVENTORY_SQL] and "psql" in receipt["argv"] and observed["query_output"] == receipt["diagnostic"] and json.loads(observed["query_output"]) == observed["rows"] and sha(observed["query_output"].encode()) == receipt["output_sha256"], "Inventory differs from its actual state-query receipt")
         database = receipt["argv"][receipt["argv"].index("-d") + 1]
         require(observed["database_identity_sha256"] == sha(database.encode()), "Inventory database binding differs")
         persisted[observed["query_command_id"]] = observed
@@ -758,6 +797,7 @@ class Runner:
         self.node_stop_errors = []
         self.cleanup_errors = []
         self.current_assertions = 0
+        self.source_paths = None
 
     def initialize(self):
         try:
@@ -774,7 +814,8 @@ class Runner:
         return SECRET.sub("credential=[redacted]", value)
 
     def record(self, argv, started, code, output, cwd):
-        receipt = {"id": len(self.commands) + 1, "argv": [self.redact(str(a)) for a in argv], "cwd": str(cwd), "started_utc": started, "finished_utc": utc(), "exit_code": code, "output_sha256": sha(output), "diagnostic": self.redact(output.decode(errors="replace"))[-10000:]}
+        diagnostic = self.redact(output.decode(errors="replace"))
+        receipt = {"id": len(self.commands) + 1, "argv": [self.redact(str(a)) for a in argv], "cwd": str(cwd), "started_utc": started, "finished_utc": utc(), "exit_code": code, "output_sha256": sha(output), "diagnostic": diagnostic if str(argv[-1]) == INVENTORY_SQL else diagnostic[-10000:]}
         if any(str(a).endswith("/Host.dll") for a in argv):
             receipt["runtime_failures"] = [{"correlation_id": match[0], "category": "missing-event"} for match in re.findall(r"CorrelationId=([^,\s]+)[^\r\n]*ExceptionType=(MissingEventException)\b", output.decode(errors="replace"))]
         safe(receipt)
@@ -827,7 +868,8 @@ class Runner:
             self.record(argv, started, 127, str(error).encode(), self.scratch)
             raise
         self.processes.append(process)
-        self.logs.append((process, file, list(argv), started))
+        node_environment = {k: v for k, v in (env or {}).items() if k in {"ASPNETCORE_URLS", "DAPR_HTTP_PORT", "DAPR_GRPC_PORT"}}
+        self.logs.append((process, file, list(argv), started, node_environment))
         return process
 
     def stop(self, process):
@@ -851,9 +893,10 @@ class Runner:
             pass
 
     def flush_logs(self):
-        for process, file, argv, started in self.logs:
+        for process, file, argv, started, node_environment in self.logs:
             file.seek(0)
-            self.record(argv, started, process.returncode if process.returncode is not None else -1, file.read(), self.scratch)
+            receipt = self.record(argv, started, process.returncode if process.returncode is not None else -1, file.read(), self.scratch)
+            receipt["node_environment"] = node_environment
             file.close()
         self.logs.clear()
 
@@ -883,7 +926,7 @@ class Runner:
         return identity, int(endpoint.rsplit(":", 1)[1])
 
     def shared(self):
-        identities = self.run(["docker", "ps", "-aq"]).split()
+        identities = self.run(["docker", "ps", "-aq", "--no-trunc"]).split()
         resources = {}
         if identities:
             inspection = self.run(["docker", "inspect", "--format", RESOURCE_INSPECT_FORMAT, *identities])
@@ -953,24 +996,24 @@ class Runner:
         for process in reversed(self.processes):
             try:
                 self.stop(process)
-            except Exception as error:
+            except (Exception, KeyboardInterrupt) as error:
                 errors.append(type(error).__name__)
         try:
             self.flush_logs()
-        except Exception as error:
+        except (Exception, KeyboardInterrupt) as error:
             errors.append(type(error).__name__)
         # Recover cidfile launch races by selecting only the invocation label.
         found = []
         if self.container_launch_attempted or self.containers:
             try:
-                found = self.run(["docker", "ps", "-aq", "--filter", "label=hexalith.p1r.invocation=" + self.invocation]).split()
+                found = self.run(["docker", "ps", "-aq", "--no-trunc", "--filter", "label=hexalith.p1r.invocation=" + self.invocation]).split()
             except (Exception, KeyboardInterrupt) as error:
                 errors.append(type(error).__name__)
         for identity in sorted(set(found + self.containers)):
             try:
                 inspection = self.run(["docker", "inspect", "--format", OWNERSHIP_INSPECT_FORMAT, identity], check=False)
                 if not inspection.strip().startswith("{"):
-                    require(self.commands[-1]["exit_code"] != 0 and "No such" in self.commands[-1]["diagnostic"], "Owned container inspection failed")
+                    require(self.commands[-1]["exit_code"] != 0 and re.search(r"(?i)no such (?:object|container)", self.commands[-1]["diagnostic"]), "Owned container inspection failed")
                     continue
                 row = json.loads(inspection)
                 require(row["invocation"] == self.invocation and row["id"].startswith(identity), "Container ownership mismatch")
@@ -978,7 +1021,7 @@ class Runner:
             except (Exception, KeyboardInterrupt) as error:
                 errors.append(identity + ":" + type(error).__name__)
         try:
-            remaining = self.run(["docker", "ps", "-aq", "--filter", "label=hexalith.p1r.invocation=" + self.invocation]).strip() if self.container_launch_attempted or self.containers else ""
+            remaining = self.run(["docker", "ps", "-aq", "--no-trunc", "--filter", "label=hexalith.p1r.invocation=" + self.invocation]).strip() if self.container_launch_attempted or self.containers else ""
         except (Exception, KeyboardInterrupt) as error:
             errors.append(type(error).__name__)
             remaining = "unknown"
@@ -991,7 +1034,7 @@ class Runner:
         try:
             if scratch.exists():
                 shutil.rmtree(scratch, ignore_errors=False)
-        except OSError as error:
+        except (OSError, KeyboardInterrupt) as error:
             errors.append(type(error).__name__)
         self.cleanup_errors.extend(e for e in errors if e not in self.cleanup_errors)
         receipt = {"invocation": self.invocation, "owned_processes": [p.pid for p in self.processes], "owned_containers": self.containers, "owned_processes_stopped": all(p.poll() is not None for p in self.processes) and not errors, "owned_containers_removed": not remaining and not errors, "scratch_removed": not scratch.exists(), "shared_before": self.before, "shared_after": after, "shared_discovery_complete": isinstance(self.before, dict) and isinstance(after, dict) and not self.discovery_errors, "discovery_errors": self.discovery_errors, "errors": self.cleanup_errors + ["shared_" + e["phase"] + "_unavailable" for e in self.discovery_errors], "complete": not remaining and not scratch.exists() and all(p.poll() is not None for p in self.processes) and not errors and isinstance(after, dict)}
@@ -1012,9 +1055,17 @@ class Runner:
         return dict(self.env, NUGET_PACKAGES=str(self.scratch / lane / "packages"))
 
     def source_inputs(self):
+        if self.source_paths is None:
+            self.source_paths = {}
+            for name, coordinate in SOURCE_REPOSITORIES.items():
+                repository = self.scratch / "source/references" / name
+                # Local object sharing does not modify the active checkout or initialize submodules.
+                self.run(["git", "clone", "--shared", "--no-checkout", "--no-hardlinks", str(PROJECTS / "references" / name), str(repository)])
+                self.run(["git", "-c", "core.autocrlf=false", "checkout", "--detach", coordinate], repository)
+                self.source_paths[name] = repository
         closures = {}
         for name, coordinate in SOURCE_REPOSITORIES.items():
-            repository = PROJECTS / "references" / name
+            repository = self.source_paths[name]
             bound = self.run(["git", "ls-tree", SOURCES["projects_baseline"], "references/" + name], PROJECTS).split()
             self.assertion(len(bound) == 4 and bound[2] == coordinate, "Source dependency differs from approved Projects gitlink")
             output = self.run([sys.executable, "-c", SOURCE_CLOSURE_SCRIPT, repository, coordinate, "source-input-closure"], timeout=180)
@@ -1029,17 +1080,18 @@ class Runner:
         for lane in VERSIONS:
             def build(lane=lane):
                 if lane == "current":
-                    self.assertion(self.run(["git", "rev-parse", "HEAD"], ROOT).strip() == SOURCES["current"], "Current source coordinate changed")
-                    self.assertion(self.run(["git", "rev-parse", "HEAD"], PROJECTS / "references/Hexalith.Builds").strip() == SOURCES["current_builds"], "Current Builds coordinate changed")
                     self.source_inputs()
                 destination = self.scratch / lane
-                shutil.copytree(HERE, destination, ignore=shutil.ignore_patterns("attempt-*", "__pycache__", "manifest.json", "scenario-results.json", "SHA256SUMS", "README.md"))
+                for relative in sorted(FIXTURES):
+                    target = destination / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(HERE / relative, target)
                 props = [f"-p:EventStoreVersion={lane if lane != 'current' else VERSIONS[0]}", "-p:NuGetAudit=false"]
                 if lane == "current":
-                    props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:Configuration=Debug", f"-p:EventStoreSourceRoot={ROOT}", "-p:MinVerVersionOverride=3.110.0"]
-                    props += [f"-p:HexalithCommonsRoot={PROJECTS / 'references/Hexalith.Commons'}"]
+                    props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:Configuration=Debug", f"-p:EventStoreSourceRoot={self.source_paths['Hexalith.EventStore']}", "-p:MinVerVersionOverride=3.110.0"]
+                    props += [f"-p:HexalithCommonsRoot={self.source_paths['Hexalith.Commons']}"]
                     for name in ("HexalithBuildPackageVersions1", "HexalithBuildPackageVersions2", "HexalithBuildPackageVersions3", "Hexalith1BuildPackageProps", "Hexalith2BuildPackageProps", "Hexalith3BuildPackageProps", "Hexalith4BuildPackageProps"):
-                        props.append(f"-p:{name}={PROJECTS / 'references/Hexalith.Builds/Props/Directory.Packages.props'}")
+                        props.append(f"-p:{name}={self.source_paths['Hexalith.Builds'] / 'Props/Directory.Packages.props'}")
                 package_rows = {}
                 built_assemblies = {}
                 for project in ("host/Host", "domain/Domain", "probe/Probe"):
@@ -1051,7 +1103,7 @@ class Runner:
                         for row in assets["libraries"].values():
                             if row["type"] == "project":
                                 resolved = (csproj.parent / row["msbuildProject"]).resolve()
-                                self.assertion(any(resolved.is_relative_to(PROJECTS / "references" / name) for name in SOURCE_REPOSITORIES), "Unapproved resolved source dependency")
+                                self.assertion(any(resolved.is_relative_to(path) for path in self.source_paths.values()), "Unapproved resolved source dependency")
                         self.source_inputs()
                     write(self.output / "artifacts" / lane / (csproj.stem + "-assets.json"), assets)
                     write(self.output / "artifacts" / lane / (csproj.stem + "-lock.json"), json.loads((csproj.parent / "packages.lock.json").read_text()))
@@ -1391,7 +1443,7 @@ class Runner:
                     self.assertion(before["domain_rows"] == after["domain_rows"], "Replay mutated domain state")
                 else:
                     metadata = next(r for r in after["domain_rows"] if "tenant-a" in r["key"] and r["key"].endswith(":metadata"))
-                    incompatible = metadata["floor"] != "5"
+                    incompatible |= metadata["floor"] != "5"
                     self.assertion(metadata["sequence"] == "13", "Rollback append sequence wrong")
                 return {"writer": writer, "reader": reader, "variant": variant, "database_identity_sha256": sha(database.encode()), "before_sha256": before["sha256"], "after_sha256": after["sha256"], "inventory_commands": {"before_sha256": before["query_command_id"], "after_sha256": after["query_command_id"]}, "actor_outcome": outcome, "failure_category": "missing-event" if rejected else None, "failure_command_ids": [c["id"] for c in failure_receipts], "bookkeeping_rows_before": len(before["rows"]) - len(before["domain_rows"]), "bookkeeping_rows_after": len(after["rows"]) - len(after["domain_rows"])}
             cases.append(self.case(writer + "-to-" + reader + ("-" + variant if variant != "default" else ""), execute))
@@ -1540,7 +1592,10 @@ class Runner:
                 return {"mint": mint, "consume": consume, "cursor_sha256": sha(cursor.encode()), "scope": "tenant-a|watermark:987", "key_material_retained": False, "decode_outcome": decoded, "tamper_rejected": True}
             cases.append(self.case(identity, cursor_control))
         for host, label in ((VERSIONS[1], "old"), (VERSIONS[0], "selected")):
+            host_start = len(self.commands)
             self.start_nodes(host, database)
+            host_identity_ids = [c["id"] for c in self.commands[host_start:]]
+            case_start = len(cases)
             for method in ("ProcessFencedCommandAsync", "ProcessTrustedEffectAsync", "GetRetainedFloorAsync"):
                 def capability_control(method=method, host=host):
                     response = self.probe(VERSIONS[0], "capability", f"http://127.0.0.1:{self.sidecar_port}", method)
@@ -1558,6 +1613,9 @@ class Runner:
                     return {"method": method, "outcome": response["outcome"], "detail_sha256": sha(detail.encode()), "exception": response.get("exception"), "handling": "unsupported-old-actor-contract" if host == VERSIONS[1] else "selected-dispatcher-executed", "input": "null negative validation control" if method != "GetRetainedFloorAsync" else "no arguments"}
                 cases.append(self.case(label + "-dispatcher-" + method, capability_control))
             self.stop_nodes()
+            host_launch_ids = [c["id"] for c in self.commands[host_start:] if c["argv"][:1] == ["dotnet"] and str(c["argv"][1]).endswith(("/Host.dll", "/Domain.dll")) or c["argv"][:1] == [str(self.daprd)]]
+            for case in cases[case_start:]:
+                case["prerequisite_command_ids"] = host_identity_ids + host_launch_ids
         return cases, "incompatible"
 
 

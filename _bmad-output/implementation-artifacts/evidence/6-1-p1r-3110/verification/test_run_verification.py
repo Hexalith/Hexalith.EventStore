@@ -216,7 +216,7 @@ class EvidenceTests(unittest.TestCase):
                 libraries[name+"/"+lane]={"type":"package","sha512":content}
                 locked[name]={"type":"Direct","resolved":lane,"contentHash":content}
         graph={"libraries":libraries,"project":{"restore":{"projectPath":"/fixture/"+lane+"/"+project.lower()+"/"+project+".csproj"}}}
-        lock={"version":1,"dependencies":{"net10.0":locked}}
+        lock={"version":2,"dependencies":{"net10.0":locked}}
         verifier.write(self.directory / "artifacts" / lane / (project+"-assets.json"),graph)
         verifier.write(self.directory / "artifacts" / lane / (project+"-lock.json"),lock)
         assets="/fixture/"+lane+"/"+project.lower()+"/obj/project.assets.json"
@@ -228,8 +228,8 @@ class EvidenceTests(unittest.TestCase):
         hashes=hashes or verifier.PUBLISHED_DLL_HASHES[lane]
         for kind,required in (("host",verifier.HOST_REQUIRED),("domain",verifier.DOMAIN_REQUIRED)):
             configuration="Debug" if lane=="current" else "Release"
-            self.add_command(["dotnet","/fixture/"+lane+"/"+kind+"/bin/"+configuration+"/net10.0/"+kind.capitalize()+".dll"])
-            self.add_command(["/fixture/daprd","--app-id","eventstore" if kind=="host" else "counter","--dapr-http-port","12345"])
+            self.add_command(["dotnet","/fixture/"+lane+"/"+kind+"/bin/"+configuration+"/net10.0/"+kind.capitalize()+".dll"],node_environment={"ASPNETCORE_URLS":"http://127.0.0.1:12345","DAPR_HTTP_PORT":"12345"})
+            self.add_command(["/fixture/daprd","--app-id","eventstore" if kind=="host" else "counter","--dapr-http-port","12345","--app-port","12345"])
             identities=[{"name":name,"version":(verifier.VERSIONS[0] if lane=="current" else lane)+".0","sha256":hashes[name]} for name in sorted(required)]
             self.add_command(["HTTP","GET","http://127.0.0.1:12345"+("/identity" if kind=="host" else "/ready")],identities if kind=="host" else {"ready":True,"assemblies":identities})
             verifier.write(self.directory / "artifacts" / (lane+"-"+kind+"-loaded.json"),identities)
@@ -463,9 +463,10 @@ class EvidenceTests(unittest.TestCase):
         data = json.loads(self.directory.joinpath("artifacts/3.110.0-host-loaded.json").read_text())
         data[0]["sha256"] = "a" * 64
         diagnostic = json.dumps(data)
-        self.commands.append({**self.commands[0], "id": 2, "argv": ["HTTP", "GET", "http://127.0.0.1:12345/identity"], "exit_code": 200, "diagnostic": diagnostic, "output_sha256": verifier.sha(diagnostic.encode())})
+        self.add_command(["HTTP", "GET", "http://127.0.0.1:12345/identity"],output=diagnostic)
         self.save()
-        self.reject()
+        with self.assertRaisesRegex(ValueError, "Loaded identity differs from verified DLL"):
+            verifier.validate(self.directory)
 
     def test_no_command_receipt_is_rejected(self):
         self.results["scenarios"][0]["command_ids"] = []
@@ -477,6 +478,144 @@ class EvidenceTests(unittest.TestCase):
         row["cases"][0]["command_ids"] = []
         self.save()
         self.reject()
+
+    def test_same_query_cannot_satisfy_before_and_after(self):
+        row=self.persisted_pass();case=row["cases"][0]
+        case["inventory_commands"]["after_sha256"]=case["inventory_commands"]["before_sha256"]
+        case["after_sha256"]=case["before_sha256"]
+        self.save()
+        with self.assertRaisesRegex(ValueError,"observations must bracket"):
+            verifier.validate(self.directory)
+
+    def test_coordinated_inventory_mutation_must_match_literal_query(self):
+        row=self.persisted_pass()
+        for path in self.directory.joinpath("inventories").glob("*.json"):
+            value=json.loads(path.read_text());value["rows"][0]["sha256"]="f"*64
+            value["domain_rows"]=copy.deepcopy(value["rows"])
+            value["sha256"]=verifier.sha(verifier.canonical(value["rows"]))
+            value["query_output"]=json.dumps(value["rows"])+"\n"
+            self.commands[value["query_command_id"]-1]["output_sha256"]=verifier.sha(value["query_output"].encode())
+            for case in row["cases"]:
+                for field,identity in case["inventory_commands"].items():
+                    if identity==value["query_command_id"]: case[field]=value["sha256"]
+            verifier.write(path,value)
+        self.save()
+        with self.assertRaisesRegex(ValueError,"actual state-query receipt"):
+            verifier.validate(self.directory)
+
+    def test_inventory_queries_require_owned_postgresql(self):
+        self.persisted_pass()
+        for command in self.commands:
+            if "psql" in command["argv"]: command["argv"][2]="unowned-container"
+        self.save()
+        with self.assertRaisesRegex(ValueError,"unowned container"):
+            verifier.validate(self.directory)
+
+    def test_identity_endpoint_requires_actual_application_port(self):
+        self.persisted_pass()
+        for command in self.commands:
+            if command["argv"][:2]==["HTTP","GET"] and command["argv"][2].endswith("/identity"):
+                command["argv"][2]="http://127.0.0.1:54321/identity"
+        self.save()
+        with self.assertRaisesRegex(ValueError,"actual running lane identity"):
+            verifier.validate(self.directory)
+
+    def test_actor_endpoint_requires_its_application_sidecar(self):
+        self.persisted_pass()
+        for command in self.commands:
+            if command["argv"][:1]==["dotnet"] and command["argv"][2:3]==["actor"]:
+                command["argv"][3]="http://127.0.0.1:54321"
+        self.save()
+        with self.assertRaisesRegex(ValueError,"actual owned application"):
+            verifier.validate(self.directory)
+
+    def test_published_output_inventory_matches_signed_dlls(self):
+        self.provenance_pass()
+        command=next(c for c in self.commands if c["argv"][1:3]==["-c",verifier.ASSEMBLY_INVENTORY_SCRIPT])
+        value=json.loads(command["diagnostic"]);value["Hexalith.EventStore.Client"]="f"*64
+        command["diagnostic"]=json.dumps(value)+"\n";command["output_sha256"]=verifier.sha(command["diagnostic"].encode())
+        self.save()
+        with self.assertRaisesRegex(ValueError,"Physical output assembly hashes"):
+            verifier.validate(self.directory)
+
+    def test_empty_resealed_lock_graph_is_rejected(self):
+        self.provenance_pass()
+        verifier.write(self.directory/"artifacts/3.110.0/Host-lock.json",{})
+        verifier.seal(self.directory)
+        with self.assertRaisesRegex(ValueError,"Missing or substituted lock graph"):
+            verifier.validate(self.directory)
+
+    def test_unknown_lock_graph_version_is_rejected(self):
+        self.provenance_pass();path=self.directory/"artifacts/3.110.0/Host-lock.json"
+        value=json.loads(path.read_text());value["version"]=3;verifier.write(path,value);verifier.seal(self.directory)
+        with self.assertRaisesRegex(ValueError,"Missing or substituted lock graph"):
+            verifier.validate(self.directory)
+
+    def test_source_closure_rejects_dirty_or_omitted_committed_inputs(self):
+        self.current_identity();path=self.directory/"source-input-closure.json"
+        original=json.loads(path.read_text())
+        for mutation in ("dirty","omitted"):
+            with self.subTest(mutation=mutation):
+                value=copy.deepcopy(original);closure=value["Hexalith.EventStore"]
+                relative=next(iter(closure["files"]))
+                if mutation=="dirty": closure["files"][relative]["sha256"]="f"*64
+                else: del closure["files"][relative]
+                output=json.dumps({k:v for k,v in closure.items() if k not in {"command_id","output"}},sort_keys=True)+"\n"
+                closure["output"]=output
+                receipt=self.commands[closure["command_id"]-1];receipt["output_sha256"]=verifier.sha(output.encode());receipt["diagnostic"]=output
+                verifier.write(path,value);self.save()
+                with self.assertRaisesRegex(ValueError,"Source input differs|Source closure omitted"):
+                    verifier.validate(self.directory)
+
+    def test_compatible_replay_rejects_changed_after_event_bytes(self):
+        row=self.persisted_pass();case=row["cases"][0]
+        path=self.directory/"inventories/after0.json";value=json.loads(path.read_text())
+        value["rows"][0]["sha256"]="f"*64;value["domain_rows"]=copy.deepcopy(value["rows"])
+        value["sha256"]=verifier.sha(verifier.canonical(value["rows"]));value["query_output"]=json.dumps(value["rows"])+"\n"
+        receipt=self.commands[value["query_command_id"]-1];receipt["diagnostic"]=value["query_output"];receipt["output_sha256"]=verifier.sha(value["query_output"].encode())
+        case["after_sha256"]=value["sha256"];verifier.write(path,value);self.save()
+        with self.assertRaisesRegex(ValueError,"mutated committed domain state"):
+            verifier.validate(self.directory)
+
+    def wire_pass(self,kind):
+        self.provenance_pass();name="query-wire" if kind=="query" else "projection-wire"
+        cases=[];start=len(self.commands)
+        for identity in sorted(verifier.EXPECTED_CASES[name]):
+            first,middle,form,shape=identity.split("-");direction=[first,middle]
+            value=verifier.wire_fixture(kind,shape);case_start=len(self.commands)
+            fields={"UserId":"fixture-user","SequenceNumber":3} if kind=="projection" else {"UserId":"fixture-user","OriginalActorId":None,"AuthenticatedWorkloadId":None,"IsDelegated":False,"DelegationId":None,"Scopes":None,"Audience":None}
+            if kind=="projection": fields["GlobalPosition"]=987
+            if shape=="dual": fields.update(OriginalActorId="fixture-human",AuthenticatedWorkloadId="fixture-workload",IsDelegated=True,DelegationId="fixture-delegation",Scopes=value["scopes"],Audience=value["audience"])
+            observations=[];input_hash=verifier.written_fixture_hash(value)
+            for index,(lane,mode) in enumerate(((first,"to-xml" if form=="xml" else "json"),(middle,form),(first,form))):
+                observed=copy.deepcopy(fields)
+                if kind=="projection": observed["GlobalPosition"]=987 if lane==verifier.VERSIONS[0] and index==0 else 0
+                elif shape=="dual":
+                    if lane!=verifier.VERSIONS[0] or index>0:
+                        observed.update(OriginalActorId=None,AuthenticatedWorkloadId=None,IsDelegated=False,DelegationId=None,Scopes=None,Audience=None)
+                output_hash=verifier.sha((identity+str(index)).encode())
+                observation={"fields":observed,"inputSha256":input_hash,"outputSha256":output_hash,"assertions":1}
+                self.add_command(["dotnet","/fixture/"+lane+"/probe/bin/Release/net10.0/Probe.dll","wire",kind,mode,"/fixture/in","/fixture/out"],observation)
+                observations.append(observation);input_hash=output_hash
+            preserved=shape=="legacy"
+            cases.append({"id":identity,"direction":direction,"format":form,"shape":shape,"assertions":1,"command_ids":[c["id"] for c in self.commands[case_start:]],"fixture_input":value,"first_fields":observations[0]["fields"],"middle_fields":observations[1]["fields"],"final_fields":observations[2]["fields"],"wire_hashes":[o["outputSha256"] for o in observations],"preserved":preserved})
+        row=next(r for r in self.results["scenarios"] if r["id"]==name)
+        row.update(execution="passed",compatibility="incompatible",assertions=len(cases),cases=cases,command_ids=[c["id"] for c in self.commands[start:]])
+        self.save();verifier.validate(self.directory)
+        return row
+
+    def test_wire_controls_reject_substituted_fields_hashes_and_labels(self):
+        for kind in ("query","projection"):
+            for mutation in ("fields","hashes","disposition"):
+                with self.subTest(kind=kind,mutation=mutation):
+                    # Start with an independently validating positive fixture for every mutation.
+                    row=self.wire_pass(kind)
+                    if mutation=="fields": row["cases"][0]["middle_fields"]["UserId"]="substituted"
+                    elif mutation=="hashes": row["cases"][0]["wire_hashes"][0]="f"*64
+                    else: row["compatibility"]="compatible"
+                    self.save();self.reject()
+                    row.update(execution="unavailable",compatibility="unverified",assertions=0,cases=[{"id":"blocked","assertions":0,"command_ids":[1]}])
+                    self.save()
 
 
 class LifecycleTests(unittest.TestCase):
@@ -578,6 +717,107 @@ class LifecycleTests(unittest.TestCase):
         with mock.patch.object(verifier.os, "killpg", side_effect=ProcessLookupError):
             self.runner.stop(process)
         process.wait.assert_called_once_with(timeout=8)
+
+    def descendant_command(self):
+        marker=self.runner.scratch / "descendant.pid"
+        child="import os,pathlib,signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); pathlib.Path("+repr(str(marker))+").write_text(str(os.getpid())); time.sleep(30)"
+        parent="import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',"+repr(child)+"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); time.sleep(30)"
+        return marker,[sys.executable,"-c",parent]
+
+    def assert_descendant_stopped(self,marker):
+        self.assertTrue(marker.is_file(),"Owned descendant never started")
+        pid=int(marker.read_text());deadline=time.monotonic()+2
+        try:
+            while time.monotonic()<deadline:
+                proc=pathlib.Path("/proc")/str(pid)/"stat"
+                try:
+                    if proc.read_text().split()[2]=="Z": return
+                except (FileNotFoundError,ProcessLookupError):
+                    return
+                time.sleep(.02)
+            self.fail("SIGTERM-ignoring owned descendant survived cleanup")
+        finally:
+            try: os.kill(pid,signal.SIGKILL)
+            except ProcessLookupError: pass
+
+    def test_timeout_terminates_sigterm_ignoring_descendant(self):
+        marker,command=self.descendant_command()
+        with self.assertRaises(TimeoutError): self.runner.run(command,timeout=.8)
+        self.assert_descendant_stopped(marker)
+        self.assertEqual(self.runner.commands[-1]["exit_code"],124)
+
+    def test_cancellation_terminates_sigterm_ignoring_descendant(self):
+        marker,command=self.descendant_command();previous=signal.getsignal(signal.SIGALRM)
+        def cancel(signum,frame): raise KeyboardInterrupt()
+        signal.signal(signal.SIGALRM,cancel);signal.setitimer(signal.ITIMER_REAL,.8)
+        try:
+            with self.assertRaises(KeyboardInterrupt): self.runner.run(command)
+        finally:
+            signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,previous)
+        self.assert_descendant_stopped(marker)
+        self.assertEqual(self.runner.commands[-1]["exit_code"],130)
+
+    def test_repeated_cleanup_terminates_descendant_after_parent_exit(self):
+        marker,command=self.descendant_command();process=self.runner.start(command)
+        deadline=time.monotonic()+2
+        while not marker.exists() and time.monotonic()<deadline: time.sleep(.02)
+        preserved_marker=pathlib.Path(self.temp.name)/"captured-descendant.pid"
+        preserved_marker.write_text(marker.read_text())
+        os.kill(process.pid,signal.SIGTERM);process.wait(timeout=2)
+        with mock.patch.object(self.runner,"shared",return_value={}):
+            first=self.runner.cleanup();second=self.runner.cleanup()
+        self.assertEqual(first,second)
+        self.assertFalse(self.runner.scratch.exists())
+        self.assert_descendant_stopped(preserved_marker)
+
+    def test_cleanup_keyboard_interrupt_continues_independent_resources(self):
+        self.runner.processes=[mock.Mock(pid=111),mock.Mock(pid=222)]
+        for process in self.runner.processes: process.poll.return_value=0
+        with mock.patch.object(self.runner,"stop",side_effect=[KeyboardInterrupt(),None]) as stop, mock.patch.object(self.runner,"shared",return_value={}):
+            receipt=self.runner.cleanup()
+        self.assertEqual(stop.call_count,2)
+        self.assertTrue(receipt["scratch_removed"])
+        self.assertIn("KeyboardInterrupt",receipt["errors"])
+        self.runner.processes=[]
+
+    def test_container_cleanup_uses_full_ids_and_retries_independent_failures(self):
+        first,second="a"*64,"b"*64
+        self.runner.containers=[first,second];self.runner.container_launch_attempted=True
+        remaining={first,second};removed=[];fail_once=True
+        def docker(argv,*args,**kwargs):
+            nonlocal fail_once
+            if argv[:3]==["docker","ps","-aq"]:
+                self.assertIn("--no-trunc",argv)
+                return "\n".join(sorted(remaining))
+            identity=argv[-1]
+            if argv[1]=="inspect":
+                if identity not in remaining:
+                    self.runner.record(argv,verifier.utc(),1,b"error: no such object",self.runner.scratch)
+                    return "error: no such object"
+                return json.dumps({"id":identity,"invocation":self.runner.invocation})
+            if argv[1]=="rm":
+                if identity==first and fail_once:
+                    fail_once=False;raise RuntimeError("Owned removal failed once")
+                removed.append(identity);remaining.remove(identity);return identity
+            self.fail("Unexpected Docker operation")
+        with mock.patch.object(self.runner,"run",side_effect=docker),mock.patch.object(self.runner,"shared",return_value={}):
+            failed=self.runner.cleanup()
+            self.assertFalse(failed["owned_containers_removed"])
+            self.assertEqual(removed,[second])
+            retried=self.runner.cleanup()
+        self.assertEqual(removed,[second,first])
+        self.assertTrue(retried["owned_containers_removed"])
+        self.assertTrue(self.output.joinpath("cleanup-attempts.json").is_file())
+        self.assertTrue(retried["errors"],"Original failure evidence must remain")
+
+    def test_http_transport_failure_and_cancellation_retain_request(self):
+        for failure,code in ((OSError("offline"),0),(KeyboardInterrupt(),130)):
+            with self.subTest(code=code),mock.patch.object(verifier.urllib.request,"urlopen",side_effect=failure):
+                with self.assertRaises(type(failure)):
+                    self.runner.http("POST","http://127.0.0.1:12345/fixture",{"value":"fixture"})
+                receipt=self.runner.commands[-1]
+                self.assertEqual(receipt["exit_code"],code)
+                self.assertEqual(receipt["argv"][-1],"request-sha256="+verifier.sha(verifier.canonical({"value":"fixture"})))
 
     def test_actual_cli_missing_and_failing_docker_retains_nonpassing_packet(self):
         root = pathlib.Path(self.temp.name)

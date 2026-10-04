@@ -27,13 +27,13 @@
     "domain/CursorQueryHandler.cs": "e0d653bf9c6264550afce3d2458023d162c884032cd7136a28eafb8c3dc89c15",
     "domain/Domain.csproj": "34cee9dbba48dc2a860df85f4a423cd4738cd09b941430eea3dbae52c8a6b5aa",
     "domain/IncrementCounter.cs": "1e09edc3d4723aaa4d4f23755954ed5031d6c4ed0a49e552ebc996297d5370ed",
-    "domain/Program.cs": "feb0abf490de4236f56ea076cfbe7fd179c8347eadd8a30ceccbbcc9b5fcd5c2",
+    "domain/Program.cs": "5d14854a7f1c464a113e0dc8ec8cc3670b087a79eb807352fe15eb21684adef2",
     "host/Host.csproj": "bd61eefd7e15d41b67219f4766e8e31dafb0322c87169d3a3030c997b00da13a",
     "host/Program.cs": "6a5b7e24e9b431c9b32baa9eb062ca004b556b344b3af594cfbeb896be3ed5a7",
     "probe/Probe.csproj": "86a82c2f17d572ce40d7cfb166f30bb9e9944f7055239176b8a4d5128765a38f",
-    "probe/Program.cs": "759f8d8e0d8342c9f7dedf2351a4d3fa2e7657dff3e21485c0b125555d92b5bd",
-    "run_verification.py": "cf813b1a9bfb461e361ce0b902329d2fa953399d612d8f70f64d8b8bee40f264",
-    "test_run_verification.py": "947f00cd4d842b624b92da4c4d7ba133b45c840dce097ce223ceb8d62d183921"
+    "probe/Program.cs": "9b7001878232fae5e6d6042b89d30436c245c2d047e95bab58f7fc2a98b7749d",
+    "run_verification.py": "b37efa29c732cf10f5d0489c006f91fc443292bec7815aea8bbfd77c79925992",
+    "test_run_verification.py": "827156e64f926a211023c4af6f6fb44463ae08c704186a93b75395bc6dcdae05"
   },
   "limitations": [
     "Metadata floor, delegated query authority, projection watermark and recovery status fields are lost through rollback consumption; selected actor contracts and watermark helper are absent in rollback.",
@@ -41,8 +41,77 @@
     "Selected/current shared scope is measured equivalent; Reminder contracts/actors, registration and Dapr.Actors.AspNetCore dependency remain outside that scope.",
     "Fenced and trusted-effect controls exercise actual dispatch and null-argument validation, not successful effects.",
     "Post-upgrade restore passed ordinary untrimmed/snapshot fixtures; this does not erase retained-metadata or API downgrade incompatibility.",
-    "Pre-upgrade restoration contains only the earlier backup and discards later selected writes; any rollback-policy change requires a later named owner decision."
+    "Pre-upgrade restoration contains only the earlier backup and discards later selected writes; any rollback-policy change requires a later named owner decision.",
+    "The final full matrix is complete, but offline validation exits 2 because unrelated shared-container creation changed the before/after snapshot. Attempt 13 recorded unrelated removal. These captures cannot be claimed as validated preservation evidence or qualification."
   ],
+  "live_domain_loaded_identities": {
+    "3.110.0": [
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "sha256": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "sha256": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "sha256": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa",
+        "version": "3.110.0.0"
+      }
+    ],
+    "3.70.1": [
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "sha256": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "sha256": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "sha256": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d",
+        "version": "3.70.1.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022",
+        "version": "3.70.1.0"
+      }
+    ],
+    "current": [
+      {
+        "name": "Hexalith.EventStore.DomainService",
+        "sha256": "e52dc3be37c00eeb15ef15b7535c5f292ad5c74f942f6adcff2938171e1921d1",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Client",
+        "sha256": "709559945c9faafd68556b323652ab6a977744c0d9ef557b102410bee1267285",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.Contracts",
+        "sha256": "34fc97ead34ed37e9450354dba1a91185f203e1294c58b8d24fbb40d50d625b4",
+        "version": "3.110.0.0"
+      },
+      {
+        "name": "Hexalith.EventStore.ServiceDefaults",
+        "sha256": "0b736511e2457f81674337802ac72acfb67723eab4032b2f021a751a0cb0a1b7",
+        "version": "3.110.0.0"
+      }
+    ]
+  },
   "live_host_loaded_identities": {
     "3.110.0": [
       {
@@ -86,22 +155,22 @@
     "current": [
       {
         "name": "Hexalith.EventStore.Server",
-        "sha256": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
+        "sha256": "5e7d8f9307b7af6da73de02a57268a550c8d08e61d6026a9c3541556de8b4c11",
         "version": "3.110.0.0"
       },
       {
         "name": "Hexalith.EventStore.Contracts",
-        "sha256": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
+        "sha256": "34fc97ead34ed37e9450354dba1a91185f203e1294c58b8d24fbb40d50d625b4",
         "version": "3.110.0.0"
       },
       {
         "name": "Hexalith.EventStore.Client",
-        "sha256": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
+        "sha256": "709559945c9faafd68556b323652ab6a977744c0d9ef557b102410bee1267285",
         "version": "3.110.0.0"
       },
       {
         "name": "Hexalith.EventStore.DomainService",
-        "sha256": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
+        "sha256": "e52dc3be37c00eeb15ef15b7535c5f292ad5c74f942f6adcff2938171e1921d1",
         "version": "3.110.0.0"
       }
     ]
@@ -111,19 +180,19 @@
     "daprd_sha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
     "images": {
       "placement": {
-        "id": "7cde83cca12c224096e2ee557b45badbc9a4611dbbbcf93eaf3c7340c011e026",
+        "id": "b4aca181cd4be1f8827f05c85fecdf7ccd9022dc1d8f365388448af5b8689d14",
         "image_id": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
       },
       "postgresql": {
-        "id": "c03d786acd9565db57ac9536e57065615200dcde4024b8b298ef0cb9e0c80cc3",
+        "id": "3b5781ff8ab7e81724e8b0c0541d18758a05292c1b1f2fabcc6fc316cd8f4a84",
         "image_id": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
       },
       "pubsub": {
-        "id": "b68c0483133c897a265bca2ca4112efed11d3fbf0e7c3cbe8d3fbe3fd2925f2b",
+        "id": "d175bec91a02b3fc9d95cbc7105400cbc9b3f135d332cd08fad379b165dd6e4e",
         "image_id": "sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f"
       },
       "scheduler": {
-        "id": "512ef53de230fc9d8ea57ae9db147864b348fd21be64ad85de9daf5c308cf4f0",
+        "id": "cf4446eb36d89125094fc563383ae86851687fa165a04591974c478b6afde144",
         "image_id": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59"
       }
     },
@@ -214,6 +283,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.Client.dll": "2e4e148f44db53f0243d867f06a324bdc5e8143ea80725a04d40de7a9e09163a"
           },
+          "content_hash": "OSjRL4VNdN7U40CQKxVWeboQV4Go4mnXm5a6zuKsyMOz/1/qmq/g6VRbGyEN1wN9R6nDElv2RHeV754BlQvjjg==",
           "id": "Hexalith.EventStore.Client",
           "repository": {
             "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
@@ -227,6 +297,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.Contracts.dll": "f08388cf7eca84bb74426419758b4bbf1c4b152151721f97a0949e6bb2dc871b"
           },
+          "content_hash": "baYsmElIPNyTHly6B18qIldqyV3IQ10znHmYON+AKeuL3xyvacz2Jrn9xFMY8b2C/Ow874JYCkq0o6x/NbcUsQ==",
           "id": "Hexalith.EventStore.Contracts",
           "repository": {
             "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
@@ -240,6 +311,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.DomainService.dll": "598d55807f7f0bdf1092cfb8d5f5a3db1086f71325b4c200a6f54d8cea4a913b"
           },
+          "content_hash": "HWvcNBAfLqxjZ2w7aOABVaZv2WXn7W3aox1GHjq5zFQe1UjXW3en/aiPazsa8ccXCUfXE+WqrA+Q1YNABKSmHw==",
           "id": "Hexalith.EventStore.DomainService",
           "repository": {
             "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
@@ -253,6 +325,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.Server.dll": "ce5b825ad3251b3271e72675f6f58daba035b10f5a01563d2b802809acb447ca"
           },
+          "content_hash": "ag4Svmfv94X4DxxTRAiyJPQZM0IXxrH40JaOtTx5RTCfh2ASaKHf9aIwWJGSOL4pWHGqd5w3apvu4or1PYzoxg==",
           "id": "Hexalith.EventStore.Server",
           "repository": {
             "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
@@ -266,6 +339,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "fcb84dbbcf1e4e17b437972a3c520236b78d22ff1d2e2fb6109bd553b1a4a9fa"
           },
+          "content_hash": "oz8knL5wa0XjWO1FcvTASXgpew08t+pEN21lqn7dC6rvIYls9CeQ72KeRgQndEhN4DSGbupWBkGAIhLa9yd7Mg==",
           "id": "Hexalith.EventStore.ServiceDefaults",
           "repository": {
             "commit": "27279fe6431925a6ea046c3f89af61487185c7de",
@@ -345,6 +419,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.Client.dll": "8ab986541e1a5c71dd87bfecb8d78175507e36f31150b069ade429474c2a4f7c"
           },
+          "content_hash": "UjVLImHNmOZkgc0VkzeFyWFLnCrqYZ967RH4PF1caD/xgsrMsRwtLtd6+d6JQs8f5eLTJyAvYinnguRqg+zYiw==",
           "id": "Hexalith.EventStore.Client",
           "repository": {
             "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
@@ -358,6 +433,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.Contracts.dll": "bc5472a201f1a075ded0f945660f39a88e1763f8f7a7ba6fc8e944dba162a77d"
           },
+          "content_hash": "D46Ujom2BaRA9dliNQEDkddSI+aETQX56bfK6RnHSGOTJnrK5MdUvvg4txZJLc/8OvhMEuRhxwHbS96O+gKo0A==",
           "id": "Hexalith.EventStore.Contracts",
           "repository": {
             "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
@@ -371,6 +447,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.DomainService.dll": "c7979ba7cbda3852e920fa9406a5e0e4f29d85a172e68ce8ddde37f8939339e0"
           },
+          "content_hash": "M0SprdUzSyPnfvFAIMHq2BT7HfxnR7G77DT26JnPxIFhBR3ysov7hkuaCUGVi+i5TfMLieEng+++UjdoaxNIjQ==",
           "id": "Hexalith.EventStore.DomainService",
           "repository": {
             "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
@@ -384,6 +461,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.Server.dll": "8f3284d47eeae4aa8d4886f81ce581dc2445b7e486bf6ef5cecfbdc30eb6b9da"
           },
+          "content_hash": "dDmVa7LxtzWyEsDYeyqfYaHAu7r0twGmagaCjVM+n9kFFMpAC5v7rWaIOi+CEiQUEkT/6kC5sXgHP0kYIy7tFg==",
           "id": "Hexalith.EventStore.Server",
           "repository": {
             "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
@@ -397,6 +475,7 @@
           "assemblies": {
             "lib/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "3d0b3bdbcca1d210e6e501c5c3d8516c378af2f18c65b692ce921adbe4c55022"
           },
+          "content_hash": "8SwIg3ok4Tb+rQnVJziGGZV0OSDRrHEinn5TUXX8zu2KdyWFAmZkdWb9nwjQ+xTvn/G9qznYBKH+O0oMupQGVQ==",
           "id": "Hexalith.EventStore.ServiceDefaults",
           "repository": {
             "commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf",
@@ -410,24 +489,24 @@
     "current": {
       "built_assemblies": {
         "Domain": {
-          "Hexalith.EventStore.Client": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
-          "Hexalith.EventStore.Contracts": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
-          "Hexalith.EventStore.DomainService": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
-          "Hexalith.EventStore.ServiceDefaults": "7ac90a0c026fe8e92e35476bba38e08b367eb9ef31254ef6ad104df0ed02d48b"
+          "Hexalith.EventStore.Client": "709559945c9faafd68556b323652ab6a977744c0d9ef557b102410bee1267285",
+          "Hexalith.EventStore.Contracts": "34fc97ead34ed37e9450354dba1a91185f203e1294c58b8d24fbb40d50d625b4",
+          "Hexalith.EventStore.DomainService": "e52dc3be37c00eeb15ef15b7535c5f292ad5c74f942f6adcff2938171e1921d1",
+          "Hexalith.EventStore.ServiceDefaults": "0b736511e2457f81674337802ac72acfb67723eab4032b2f021a751a0cb0a1b7"
         },
         "Host": {
-          "Hexalith.EventStore.Client": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
-          "Hexalith.EventStore.Contracts": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
-          "Hexalith.EventStore.DomainService": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
-          "Hexalith.EventStore.Server": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
-          "Hexalith.EventStore.ServiceDefaults": "7ac90a0c026fe8e92e35476bba38e08b367eb9ef31254ef6ad104df0ed02d48b"
+          "Hexalith.EventStore.Client": "709559945c9faafd68556b323652ab6a977744c0d9ef557b102410bee1267285",
+          "Hexalith.EventStore.Contracts": "34fc97ead34ed37e9450354dba1a91185f203e1294c58b8d24fbb40d50d625b4",
+          "Hexalith.EventStore.DomainService": "e52dc3be37c00eeb15ef15b7535c5f292ad5c74f942f6adcff2938171e1921d1",
+          "Hexalith.EventStore.Server": "5e7d8f9307b7af6da73de02a57268a550c8d08e61d6026a9c3541556de8b4c11",
+          "Hexalith.EventStore.ServiceDefaults": "0b736511e2457f81674337802ac72acfb67723eab4032b2f021a751a0cb0a1b7"
         },
         "Probe": {
-          "Hexalith.EventStore.Client": "6478b9c5d696b9b79811b448a2a932158ecc3dcf13051f0ff9209d7a498af52f",
-          "Hexalith.EventStore.Contracts": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
-          "Hexalith.EventStore.DomainService": "e4c028a5562b6b34918c53548143819725ef7c98cc156271df2b68851eb6c879",
-          "Hexalith.EventStore.Server": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
-          "Hexalith.EventStore.ServiceDefaults": "7ac90a0c026fe8e92e35476bba38e08b367eb9ef31254ef6ad104df0ed02d48b"
+          "Hexalith.EventStore.Client": "709559945c9faafd68556b323652ab6a977744c0d9ef557b102410bee1267285",
+          "Hexalith.EventStore.Contracts": "34fc97ead34ed37e9450354dba1a91185f203e1294c58b8d24fbb40d50d625b4",
+          "Hexalith.EventStore.DomainService": "e52dc3be37c00eeb15ef15b7535c5f292ad5c74f942f6adcff2938171e1921d1",
+          "Hexalith.EventStore.Server": "5e7d8f9307b7af6da73de02a57268a550c8d08e61d6026a9c3541556de8b4c11",
+          "Hexalith.EventStore.ServiceDefaults": "0b736511e2457f81674337802ac72acfb67723eab4032b2f021a751a0cb0a1b7"
         }
       },
       "lane": "current",
@@ -449,12 +528,12 @@
         "assemblies": [
           {
             "name": "Hexalith.EventStore.Server",
-            "sha256": "ac7437bc0e1b1539a3dd9b2aaf8c04c637ea880d9ca6c087e0c793ddce013a8e",
+            "sha256": "5e7d8f9307b7af6da73de02a57268a550c8d08e61d6026a9c3541556de8b4c11",
             "version": "3.110.0.0"
           },
           {
             "name": "Hexalith.EventStore.Contracts",
-            "sha256": "ad706dcd64703349a8ea4cd1b2b71dc0f05303023519a2173f5433124ba18162",
+            "sha256": "34fc97ead34ed37e9450354dba1a91185f203e1294c58b8d24fbb40d50d625b4",
             "version": "3.110.0.0"
           }
         ],
@@ -539,7 +618,11 @@
     "attempt-06": "304b5eabe0a3ee84f5824e99840b67efd827c7a472cae188661cd29c4cb49bd5",
     "attempt-07": "e8607841a1ea0a098b840f59be9f39ed6b708036152a635e38427034a910194e",
     "attempt-08": "92968dfc0bce1fa57726eb7d73055d5a25fec64baac5e6491b42b092f237c34b",
-    "attempt-09-audit-reproduction": "c294ff7bcd2584fd1cec9220b9a594f45edbb760f1fa16fb290db040f1d79f05"
+    "attempt-09-audit-reproduction": "c294ff7bcd2584fd1cec9220b9a594f45edbb760f1fa16fb290db040f1d79f05",
+    "attempt-10": "203d3bbeebf2e510bb06c8b981542a7957e6b201fff15591e0c1360275084846",
+    "attempt-11": "05a8fc00679b5d32eeef03fb40085b4562d5e7d4e3a492d08695be60a3961679",
+    "attempt-12": "0604d8231fcede46a5b1b5fab2e127ef36c9211c9a506297bebeb54ea0fb24af",
+    "attempt-13": "7a6532f33ea026ddabd1e699bbcd8348e10c69099af1d892fa3bb47647494936"
   },
   "runtime": {
     "dapr": "1.18.2",
@@ -548,29 +631,174 @@
   },
   "schema": "hexalith.p1r.verification.report-index.v1",
   "selected_invocation": {
-    "directory": "attempt-10",
+    "directory": "attempt-14",
     "files": {
-      "README.md": "6890e3064155e8020d1d110592745b69a202f2174436b2a09e5155cc29e325b0",
-      "SHA256SUMS": "203d3bbeebf2e510bb06c8b981542a7957e6b201fff15591e0c1360275084846",
-      "cleanup.json": "143a6a10cbd2f6a89c01c13f7761c19b9d29fbdd296ffebb7b48e94af6e67393",
-      "commands.json": "2a1c64641bc9feb3b1dcb4a0f41b2d1288a87e0f8242241311c5690eb71f7ae9",
-      "manifest.json": "97966a3d10ff28618cd5e22626cea5a3002af328948fc6dfc8b9771f3f35f697",
-      "runtime-identity.json": "57bd722fc785fd6d90f32aa8c6ad017659be64b5c5e6d3efa4f2b7326ac5f162",
-      "scenario-results.json": "9830b13d3e42fa3b907419b8b9595d4f3ee80bcd9dc43b6851810067d1af6a00",
+      "README.md": "ece82820822a3216d29f765fb36f4ccba8d0fe26e610f71f97e7b76d465e1029",
+      "SHA256SUMS": "25e25084d83e702a6df78f540b849c5d5ddc373516cd564093bed431f3a21aec",
+      "artifacts/3.110.0-domain-loaded.json": "d9d120fdcae17f2167c2a296d4095dfc10dcba824b1e344c2e5c340482dbdea2",
+      "artifacts/3.110.0-host-loaded.json": "b0af85ab3d0604d507c0681ac98817bf5983cc6b34962b720d98b86a8a34aa7c",
+      "artifacts/3.110.0-identity.json": "0e0cc17a0e21b432ce3590b951e3760abe89f4a2e7821f6c7a08c12d67b62336",
+      "artifacts/3.110.0/Domain-assets.json": "9a39043ffca920c0d771cc40dce733ec946f090a734215f42ea5a892e2404744",
+      "artifacts/3.110.0/Domain-lock.json": "51b5f6ed404516af928157957994a1d12237e82aa0b4425f216ff8adaf7a49cd",
+      "artifacts/3.110.0/Host-assets.json": "94677db925df974b96b86dc9e86f3676d2d6fd3119804915bbee1cc643e40988",
+      "artifacts/3.110.0/Host-lock.json": "b3619ce10887d412a64cdc7dcb4fd67d0a34f724785a8144765013f4a7d8fc05",
+      "artifacts/3.110.0/Probe-assets.json": "8d614cd7f9b25bfae09e26cae80cbe9612aa325e1fd48957312e6a19a4f61e68",
+      "artifacts/3.110.0/Probe-lock.json": "a451867644396aeed5d6376667e2df3ef5d44e342b235575c31d7963d3930de9",
+      "artifacts/3.70.1-domain-loaded.json": "39f33b66dd400aaf526913977aae931ac91f57b65cabd3fa69af1ec1e8a1d167",
+      "artifacts/3.70.1-host-loaded.json": "1b0012cf098cbd9dfcbea5dd0c7170088decbb7f1da29303e4a535700d3d022f",
+      "artifacts/3.70.1-identity.json": "1f018a6f255f00a9b865b7fb0f37dfe4ddf80a32d757b9104a96fcb4e335ce54",
+      "artifacts/3.70.1/Domain-assets.json": "867e61a6b16e26a786df140c307c5622cff77055fb10b3b39b2c5fec0b9cfbd8",
+      "artifacts/3.70.1/Domain-lock.json": "fe9b0448bd83bcc07ba0ac3e90f9190c76a2705123b3952026bf4ec0598fe91c",
+      "artifacts/3.70.1/Host-assets.json": "77a178602a81f74ee663d651f6c4a7bb59df162070de617f7fb62f663e604b41",
+      "artifacts/3.70.1/Host-lock.json": "406dce57da909c607a979757eb39d2dce06a007bad4ba3300bd12b7312ed4b13",
+      "artifacts/3.70.1/Probe-assets.json": "1afb3c4c1766b2c06b1c197afbe35a1725b0a7f2b09a9411ee3af88bce1a6034",
+      "artifacts/3.70.1/Probe-lock.json": "689f7b18a262e0bdab7a788091bf4695f0535cf6e5647822b78b22fb2710baf1",
+      "artifacts/current-domain-loaded.json": "a7762f0fa6971fc4bb29f179f8085ae8262723c3fbdb2b88e9e157aed832b166",
+      "artifacts/current-host-loaded.json": "53d4c677aa321b67d7ec1aa18fc33706bd4b28a24734a391c3ade4ea3e9e5fc2",
+      "artifacts/current-identity.json": "aa05a698e5399f2bcdbdbc514313d68f86cbeeae50678d085cd0b7d31bbd2f77",
+      "artifacts/current/Domain-assets.json": "8d654ee6ccfac9e1155e86f92c9594c3b9c6febf9641aec95ea35c878121ecec",
+      "artifacts/current/Domain-lock.json": "98eaac990ac7efba6b4b382e484e7d3b2a5b30309723326435f0fe63ae647d44",
+      "artifacts/current/Host-assets.json": "acd59e71917367f24e622190cae63545d60c85fdc878cb78a1720995265ad898",
+      "artifacts/current/Host-lock.json": "e50b3f4dd5be2e98c63bb96fb3d4597ee9c55857540d76905e12bd0716c5c43b",
+      "artifacts/current/Probe-assets.json": "328401c375dc9f69842753833da678d1c6f0c6ac67cfa18a227c504f29b81e57",
+      "artifacts/current/Probe-lock.json": "8e92b3c87f54e29f671a3b1a825e92574716e1c5b4352f77d9c2992e76a0f23a",
+      "cleanup.json": "96cca1fd7da65fb0913086ad0d5cdb46cfc87472e8390207e0be4ce472ace31e",
+      "commands.json": "064738f51437a1174df9d1de33a532081cd4a26053d7e077373e74321283ff02",
+      "inventories/full-replay-3.110.0-to-3.70.1-default-after.json": "e3db628aec58e1be09f209b12ed55a561376a4319a7acaece401020fd117248a",
+      "inventories/full-replay-3.110.0-to-3.70.1-default-before.json": "e8b6800a3a693c14e5f45dae50ea8a3f76131a0b799a1ca03cb0c2261389238a",
+      "inventories/full-replay-3.110.0-to-current-default-after.json": "9b573d5931c2358d8b12fc086c76eeb3e1905d6f873e4f3ce40ab436c29de7d9",
+      "inventories/full-replay-3.110.0-to-current-default-before.json": "d8fc90c995d498d16849e1b39500f5cdb39a6dab5e060813519bc9f0d0bdd294",
+      "inventories/full-replay-3.70.1-to-3.110.0-default-after.json": "eb685cb5e24500404d9fe977999bfccbdb2d8fe4e93eb9d7b8d91f097c115f8c",
+      "inventories/full-replay-3.70.1-to-3.110.0-default-before.json": "09d13415e053732245e55ff12422c87abfa3d4d19bc8417b3c85fd7b71e60090",
+      "inventories/full-replay-current-to-3.110.0-default-after.json": "f1adfa4b2b641f85515c1918b2bd9fda12c0cb9e281e59e53defad0311b6b57a",
+      "inventories/full-replay-current-to-3.110.0-default-before.json": "3e5312f9c5492b2a43efdde86a4f3a0cd21f548f2c24afff753dc75685eee282",
+      "inventories/invalid-3.110.0-invalid-floor-after.json": "c5266de6be429e5b0aa2c10409fc8468e0e2c72680297adb6639b2ce919e0df5",
+      "inventories/invalid-3.110.0-invalid-floor-before.json": "95f74018f91b4b7a28391ef97b5751c20a2901d9b1a4b4c27351aa1654f5478e",
+      "inventories/invalid-3.110.0-protected-after.json": "5ace30ae0aa0fcc7b912d86dc721b4602021f2b7a9c60e06d6edb0a85d3f1b1c",
+      "inventories/invalid-3.110.0-protected-before.json": "485286a3be3274360857d0893af56d66ea0dc11bcd78ae944fbc3f8bf40a80ac",
+      "inventories/invalid-3.110.0-unknown-type-after.json": "d243addbd57ae9e4bab8c50445046244fbc3921b346cfb9e9b43b832288af424",
+      "inventories/invalid-3.110.0-unknown-type-before.json": "505ec8733fb383ff0f9942baaf7a01bce4be7d213984bf726497441c34c9b047",
+      "inventories/invalid-3.110.0-unknown-version-after.json": "250ab4d814da6744d20732cb08dd2c64979ed95ed637c6368575ecbe9408715f",
+      "inventories/invalid-3.110.0-unknown-version-before.json": "84ce5ad403a2495ccb4fd8af9e80652b8e027e4603903032e5e13ea1d9da8d7c",
+      "inventories/invalid-3.110.0-unreadable-after.json": "7d62b3826da903c767ce6131ec961971b013831b42750467b10831777e74d528",
+      "inventories/invalid-3.110.0-unreadable-before.json": "c4145b72f43509f0c951f9dfac0f71f71206007b8a93d44faae9655ea6b54ca2",
+      "inventories/invalid-3.70.1-invalid-floor-after.json": "7bce5d1f3507b29a015ff7161b489adfd5e183a3bf3e701bfd82c0aa3e69d0f7",
+      "inventories/invalid-3.70.1-invalid-floor-before.json": "c1e0c2761456b0d207e9d571b65db8dd64ab1388ed5b104fec666e772b309f2f",
+      "inventories/invalid-3.70.1-protected-after.json": "14fdf2481aa0a993a2c5a69a6c341aa6687fc384529b25c405248b2a4e8f1575",
+      "inventories/invalid-3.70.1-protected-before.json": "cfccdf31ef016ee75363846886e43a68ac0bb201a9e56ac0e5192bb0245aa313",
+      "inventories/invalid-3.70.1-unknown-type-after.json": "1958d4e3526e62a4d46d0dd4c277fc162e754d923e044fa0693b4e41c224f5ca",
+      "inventories/invalid-3.70.1-unknown-type-before.json": "ead7892d7c576b07d3c439fe22d9aa48a919844e6af2f420ee9d5d90d8eea98f",
+      "inventories/invalid-3.70.1-unknown-version-after.json": "bd5456768ae4ca02ef77310d5d4fb495c4af96ebda5db0e4ab8e938d4e68ab3e",
+      "inventories/invalid-3.70.1-unknown-version-before.json": "cc31e7c0add696a17e990dd3af7ef252ab503e08135daec759ddb0866ac01dcd",
+      "inventories/invalid-3.70.1-unreadable-after.json": "66013101656c1c8640af991170f275706991130a6cf6b405a6ce3d2860fafb1e",
+      "inventories/invalid-3.70.1-unreadable-before.json": "55d1111795bd40b83993bacddbd72d77de45cceb859adbc5bd9fa8141215a04c",
+      "inventories/invalid-current-invalid-floor-after.json": "02d129c4cf19b704205b1bc90b2f973935c8c7001eb54d2a4ef1b850372a272d",
+      "inventories/invalid-current-invalid-floor-before.json": "abb65f37e66433dd4cb0145826aceba1df2bba00ce9af777e1e4fc4c95b358db",
+      "inventories/invalid-current-protected-after.json": "4a4861a6e7a6caa5956c5139882a5b719c59d6ec624ac225501f18ddafb6e9ac",
+      "inventories/invalid-current-protected-before.json": "de55ce659c2ef3f06a4e22bf63a03377753c7ef826189e5fb1c942b9205c78ce",
+      "inventories/invalid-current-unknown-type-after.json": "794901d564af4b1f2c3fbe1ff9782da36ef653bb6a4fe3c574bf6ab50b19bb4a",
+      "inventories/invalid-current-unknown-type-before.json": "fb71645e9fbb2644f0eb1557c5e62f42fe8f12a111f71df6de45d1fdf14556a0",
+      "inventories/invalid-current-unknown-version-after.json": "7068e32cd71f3e216aa0e6246ac0705775ca4f1fc861c22db391f815cf4c6dda",
+      "inventories/invalid-current-unknown-version-before.json": "ae6a857654fdc4d8eb611c209b21d06987a1ecf4cddf77dc608031dfd41ba222",
+      "inventories/invalid-current-unreadable-after.json": "542e172d848be3e5a5b4b306a2b8a4823339ba1669600a3576367406fa5b80c7",
+      "inventories/invalid-current-unreadable-before.json": "f98b213d4c681e9fb38fafbfe1a4a3795274908156802859b66c4b44f374ad7a",
+      "inventories/metadata-write-3.110.0-to-3.70.1-default-after.json": "ef9554aefab19912a909eb99596bb08e0b62eab70bf5535865b5d68afe2e00a4",
+      "inventories/metadata-write-3.110.0-to-3.70.1-default-before.json": "cd1f0e4f1739b86d756406cae7be5a858b7fb463566d062904848977c46993c0",
+      "inventories/metadata-write-3.110.0-to-current-default-after.json": "9617358e291839abd25155eda74edf858baae742c5a7451300ba01b3a20c11e6",
+      "inventories/metadata-write-3.110.0-to-current-default-before.json": "b76d929e6e65abf0bc77fee8ce34656ea17d766cfb40e8fc7e72596966ea9152",
+      "inventories/metadata-write-current-to-3.110.0-default-after.json": "68543cd51561731bab24e2a92600138a5e0f675f81f2a40d6cc0e930e04c6610",
+      "inventories/metadata-write-current-to-3.110.0-default-before.json": "786aa4d238fe1de0cc14135e987cb34002a54ad7d4afbb0abcd589fe99ea8c9d",
+      "inventories/missing-event-3.110.0-to-3.70.1-interior-after.json": "dc1237fe5aa366b9878355ba45ec2111058a1f543b4cbd4e5a810bb89a88ebae",
+      "inventories/missing-event-3.110.0-to-3.70.1-interior-before.json": "e35f6704054dbcebdd5623093acf41be91bde9451acac651e0a6333c877500f3",
+      "inventories/missing-event-3.110.0-to-3.70.1-tail-after.json": "f234d5983ea6595003d4f689d90f4214eadf7ce3d6c499d52dd54210518f5190",
+      "inventories/missing-event-3.110.0-to-3.70.1-tail-before.json": "d15999d3a0b6e1bb8fdd06b536795cb1a8957df839af336f8dfcc05cf196a337",
+      "inventories/missing-event-3.110.0-to-current-interior-after.json": "4d617bb2faab9ced6ee83240408dded27bc2ac46daa6d7b73f54edec5a4a717b",
+      "inventories/missing-event-3.110.0-to-current-interior-before.json": "5cef9278269ae7e818a431230fdc84f3df0e7d8fd1859003a3d46d1b241ce2d4",
+      "inventories/missing-event-3.110.0-to-current-tail-after.json": "24b1f6b44e1e7eabeb4a00587c3b293a75e506d162ca5198aaab80c630ec1418",
+      "inventories/missing-event-3.110.0-to-current-tail-before.json": "7469073ab7399019c8bbd4c0bfddf0f9d21b56ec85c00b4659375402452754d6",
+      "inventories/missing-event-3.70.1-to-3.110.0-interior-after.json": "341cb2061a3e32aa0877bc18a3b153083bf5467ff8f91b155628fe7bc8ee0176",
+      "inventories/missing-event-3.70.1-to-3.110.0-interior-before.json": "815351d8579d27a54c46d9ceb779324c0b3108ffcdd6ca5cca6ecdd8090cfe3d",
+      "inventories/missing-event-3.70.1-to-3.110.0-tail-after.json": "7ef723d3ee0a04ea42a07b3dc7fa15eb02b456ff8a653e1f48144b35bdb0bb86",
+      "inventories/missing-event-3.70.1-to-3.110.0-tail-before.json": "c9629e2cebc23a5c03fa2b27606178c68bb503678d45c6b1b1ff6601f9ce0739",
+      "inventories/missing-event-current-to-3.110.0-interior-after.json": "33a233ca9182a6caa99fdcffff180f37a0d58e08fa4427b74755c0801c9c4ac3",
+      "inventories/missing-event-current-to-3.110.0-interior-before.json": "86f8a54b9596ddfd2a8c4dc5d188424da5a6cb32d32142748406d8b14b72a6fa",
+      "inventories/missing-event-current-to-3.110.0-tail-after.json": "729b889b45825d19b13ed35cf9469244ba6c07028cd483c0af13138eecf15767",
+      "inventories/missing-event-current-to-3.110.0-tail-before.json": "eb0a9b075ea29497a3330badaad6df763aa9eab032a995eb41af274d33d43efd",
+      "inventories/mixed-3.110.0-3.70.1-after.json": "604056777be882a76c08f3f1893f4db7058c42467f243da1b54fe11b02067e5a",
+      "inventories/mixed-3.110.0-3.70.1-before.json": "1e40504189b54c2c99d0a869d36bedc5281e3a43583611c034746c85eac6adc5",
+      "inventories/mixed-3.70.1-3.110.0-after.json": "abf1b40ff2d2477fb47e74bd18cfe70707929e157cb9a4fdbdc50dd9b5b863fc",
+      "inventories/mixed-3.70.1-3.110.0-before.json": "716ccaf23e52ed043321dcd7832b64f93154300444183ea7fd94856e19e2fb87",
+      "inventories/post-upgrade-restore-after.json": "135e3dc30c552f69d9f6f3f99c3c7a9b4d79ed6ceb3fe19b86ece0e318123d88",
+      "inventories/post-upgrade-restore-before.json": "01e517503757bf6c30b6a2bfafee72890c96ade4d1227dd120c76348e7ffbad1",
+      "inventories/post-upgrade-restore-restored.json": "444487d81cb8c19227942f73cfb5aef51457279b7fed16e9f2bb8c386b8bdcdd",
+      "inventories/pre-upgrade-restore-after.json": "79abd70f8487925c2427ee6ca9db570576a69ddf175eb71a80c2b95df2e7741a",
+      "inventories/pre-upgrade-restore-before.json": "482359a4cbcef08c1729d4adba5584ef570b7ed113c97c726d1af2017ab78427",
+      "inventories/pre-upgrade-restore-restored.json": "855447e65bf157073c57878b822ed2c862e31fe66a3404919052df20de1c32af",
+      "inventories/retained-covered-3.110.0-to-3.70.1-default-after.json": "90d12a7412009fed8a323e99db48cd5362b97a177eaf9a51b3fbcc2bb64b7b94",
+      "inventories/retained-covered-3.110.0-to-3.70.1-default-before.json": "c4652bc597e59c4b7dd4e238bdb6322acd31af20d505e22e2c60461a21311478",
+      "inventories/retained-covered-3.110.0-to-current-default-after.json": "7017cf81a339fb6449e83e51ec1997b58a71f5e3260f3581e794e3e7ce9f2aae",
+      "inventories/retained-covered-3.110.0-to-current-default-before.json": "16541f99b36132257408a59b9259ed61ee76928b9b2d291eaf9f7dd3b2f22c33",
+      "inventories/retained-covered-3.70.1-to-3.110.0-default-after.json": "69aa43677fd822d0880046ce546960b113077baa294ab8971967efdbb75bc677",
+      "inventories/retained-covered-3.70.1-to-3.110.0-default-before.json": "00ff9978077483d78bd6344c9725873cc6ef5051e172765214548235770c28bd",
+      "inventories/retained-covered-current-to-3.110.0-default-after.json": "4100a339cfe4a2d063bc50c873492db509c9bfefc2fe082926ada249ff117ddd",
+      "inventories/retained-covered-current-to-3.110.0-default-before.json": "ead2cf857dadffcaa517acae841129a145e4e36f98fc3b2582258c4b5d2d6798",
+      "inventories/retained-uncovered-3.110.0-to-3.70.1-absent-after.json": "bbe167a82b2522ef764cfe26ea9e88c7cd7ac234e13a2525355e90dd6e389954",
+      "inventories/retained-uncovered-3.110.0-to-3.70.1-absent-before.json": "251c9848278a6ca1d2506f0318fc6c889d1ec89d592f5eaff7103860491272c8",
+      "inventories/retained-uncovered-3.110.0-to-3.70.1-non-covering-after.json": "0676ac2b54ac53bf4efa666a540386bac3ae263d4bc7eb408cfa90a60b1d79f5",
+      "inventories/retained-uncovered-3.110.0-to-3.70.1-non-covering-before.json": "527c9c3e23a1213ef198ca0a22de40bb03733a0f14ec6d693ba8bdcc7915d3c9",
+      "inventories/retained-uncovered-3.110.0-to-current-absent-after.json": "cde9b9c6b0f3411a7e79cdfe19aa39df1c6467e0cac974ab861a19c9a2183fbd",
+      "inventories/retained-uncovered-3.110.0-to-current-absent-before.json": "e2e7c693d3e9cdde14a1f2cc278ff214d25a1f2fdab7d5b57b5f0b255951ed06",
+      "inventories/retained-uncovered-3.110.0-to-current-non-covering-after.json": "048f5d88bb6eec0ec58fcb003f354f6570136103b0275715075ffb6a447c6c81",
+      "inventories/retained-uncovered-3.110.0-to-current-non-covering-before.json": "be3309e4f23cdd0e06d339404a5accc97421ec9c5f65a1a8d40518f751120244",
+      "inventories/retained-uncovered-3.70.1-to-3.110.0-absent-after.json": "888702c17616928baf63b2b9c6117e9adb20e781b5e30843e93fc22cc70c4c4d",
+      "inventories/retained-uncovered-3.70.1-to-3.110.0-absent-before.json": "38ca066591fbb5c963ef53983a53b3880d144f8530c4bd05cf76c30434bc82ff",
+      "inventories/retained-uncovered-3.70.1-to-3.110.0-non-covering-after.json": "673178271125b70b45e260970415640b4940ef352786d7a08990dc786221916e",
+      "inventories/retained-uncovered-3.70.1-to-3.110.0-non-covering-before.json": "31756fe9cd082b579ea77c29b43aa3e18612a4c01da5ee857e38aa45da13161a",
+      "inventories/retained-uncovered-current-to-3.110.0-absent-after.json": "95cd8e83154980bc5dcf194dc144ee638f921184467fd6278f513b69879a4173",
+      "inventories/retained-uncovered-current-to-3.110.0-absent-before.json": "a27496670cee83c789122ecd33744dff6f6d278e6bb1351f41e4756918bfc16d",
+      "inventories/retained-uncovered-current-to-3.110.0-non-covering-after.json": "52136b2cd503529b8d851e63da63d40cb5c71522b695792bce1025fbc38d1ae6",
+      "inventories/retained-uncovered-current-to-3.110.0-non-covering-before.json": "d7f375986c79cf670ee7cff6e25a343005dc1e180e751deceb0f81c7a7d45d51",
+      "inventories/snapshot-tail-3.110.0-to-3.70.1-default-after.json": "e83233c98ef53a54d2e77dc57a846f7f0eb247af0d1eca8b4b237d959223c2c7",
+      "inventories/snapshot-tail-3.110.0-to-3.70.1-default-before.json": "97e713c1b79e0d64c2e34554efe8de0e6a42458d564c43c873d2ac690d289a53",
+      "inventories/snapshot-tail-3.110.0-to-current-default-after.json": "2ea88f729cdbf56f925e2bc2bf82c28fb9a13ad039c3b9b010852bb0cdf680f4",
+      "inventories/snapshot-tail-3.110.0-to-current-default-before.json": "61ed6e0cf4918f70de4c7230dbe0a2ce66304e173d6389776713026498eadb07",
+      "inventories/snapshot-tail-3.70.1-to-3.110.0-default-after.json": "424c4fa3b6eaf8c5619c1af4544786b1b06cf71fdfa7f4e1ff78d918d7d5c4ec",
+      "inventories/snapshot-tail-3.70.1-to-3.110.0-default-before.json": "f33787f8e18e1cb95b88cd427df797d427beabed20d1cf2e2806a8eb4ba282be",
+      "inventories/snapshot-tail-current-to-3.110.0-default-after.json": "ab766eafdf163e00ddc762f32ca550d6409c4dd72ba8eb35d9f76adc4e8ef450",
+      "inventories/snapshot-tail-current-to-3.110.0-default-before.json": "86624a00b9b46d12b968c2a97c9bc2077af5bfcf4e1729246b897d6aa43d8f81",
+      "manifest.json": "323de21137279987eb4da3f13afe23618cf26407e0adb2ecf5311b46c9db0c89",
+      "runtime-identity.json": "8af7b87a427cb22445638ff791b4261de65bc3cbb8b2b116d7aafd7fe532a7cf",
+      "scenario-results.json": "87ed792e5f8fd2440950eb8c9f9a8bbbda90f1bb7b525ae5cdad3dee99b97a47",
       "shared-scope-comparison.json": "a37e50193d0cd2d3ae3673dc9ffbca0e6b56c0d23b0b8a861177d55c1835c82b",
-      "source-comparison.json": "d3c4617119285a6190aea35575d35a6ba20ee5881effae53650ce4784c47d652"
+      "source-comparison.json": "d7318b87ec05743c9698892729ef3d70d538205feaecc09cea19c98fbcb9cf5b",
+      "source-input-closure.json": "c82827eff3afed64f632050cf18bcaa2472e1ed6f63f07892abe2a33f87b5c1a"
     }
   },
-  "status": "complete-investigation",
+  "status": "completed-matrix-validation-blocked",
   "usable_as_prerequisite": false,
+  "validation_blocker": {
+    "cleanup_errors": [],
+    "command": "python3 run_verification.py --validate attempt-14",
+    "created_shared_ids": [
+      "c1c8c0d4f857486f86eb7d863bcb86b8b0930b5076429ec336e0307b11260150"
+    ],
+    "exit_code": 2,
+    "owned_containers_removed": true,
+    "owned_processes_stopped": true,
+    "removed_shared_ids": [],
+    "resolution": "Repeat the unchanged final fixtures during a quiet shared Docker/Aspire interval. Do not stop unrelated resources or relax the preservation guard.",
+    "result": "INVALID: Shared resource drift",
+    "scratch_removed": true
+  },
   "verification": {
-    "assertions": 2693,
-    "command_receipts": 1626,
-    "control_tests_passed": 60,
-    "run_exit_code": 1,
+    "assertions": 2782,
+    "command_receipts": 2114,
+    "control_tests_passed": 77,
+    "run_exit_code": 2,
     "scenario_count": 17,
+    "scenario_result_exit_code": 1,
     "top_level_cases": 72,
-    "validator_exit_code": 0
+    "validator_exit_code": 2
   },
   "versions": [
     "3.110.0",
