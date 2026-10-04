@@ -192,7 +192,10 @@ public partial class EventPublisher(
                     MetadataVersion: eventEnvelope.MetadataVersion,
                     SerializationFormat: protectionResult.SerializationFormat,
                     Payload: protectionResult.PayloadBytes,
-                    Extensions: publishExtensions);
+                    Extensions: publishExtensions) {
+                    EventContractType = eventEnvelope.EventContractType,
+                    PayloadVersion = eventEnvelope.PayloadVersion,
+                };
 
                 var metadata = new Dictionary<string, string> {
                     ["cloudevent.type"] = eventEnvelope.EventTypeName,

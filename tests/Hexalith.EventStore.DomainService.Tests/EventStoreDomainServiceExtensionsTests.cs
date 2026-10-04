@@ -1028,6 +1028,51 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         GetMappedRoutes(app).Count(static route => route == "/project/v2").ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessRouter_SelectedBoundedProfileSerializesNormalAndAdmissionRejection(bool reject) {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        var producer = new BoundedV1DomainResultProducer([
+            new(typeof(WidgetCreated), "bounded-normal", "json", 2, (_, stream, token) => {
+                calls.Add("serialize-normal");
+                return stream.WriteAsync("{}"u8.ToArray(), token).AsTask();
+            }),
+            new(typeof(WidgetRejected), "bounded-rejection", "json", 2, (_, stream, token) => {
+                calls.Add("serialize-rejection");
+                return stream.WriteAsync("{}"u8.ToArray(), token).AsTask();
+            }),
+        ]);
+        using ServiceProvider provider = BuildAdmissionTestProvider(processor, services => {
+            services.AddSingleton(producer);
+            if (reject) { services.AddEventStoreDomainAdmissionStage(_ => new RecordingAdmissionStage("gate", calls, false)); }
+        });
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest());
+        result.IsRejection.ShouldBe(reject);
+        result.Events.Single().EventTypeName.ShouldBe(reject ? "bounded-rejection" : "bounded-normal");
+        calls.ShouldBe(reject ? ["gate", "serialize-rejection"] : ["processor", "serialize-normal"]);
+        processor.InvocationCount.ShouldBe(reject ? 0 : 1);
+    }
+
+    [Fact]
+    public async Task ProcessEndpoint_SelectedProfileUsesWindowRendererInsteadOfFrameworkWholeSerialization() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        builder.Services.AddSingleton(new BoundedV1DomainResultProducer([
+            new(typeof(WidgetCreated), "bounded-é", "json", 2,
+                (_, stream, token) => stream.WriteAsync("{}"u8.ToArray(), token).AsTask()),
+        ]));
+        await using WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        (int status, string body) = await InvokeEndpointAsync(app, "/process", CreateProcessRequest());
+        status.ShouldBe(StatusCodes.Status200OK);
+        // The selected renderer emits literal Unicode; the framework Web encoder escapes it.
+        body.ShouldContain("bounded-é");
+        DomainServiceWireResult result = JsonSerializer.Deserialize<DomainServiceWireResult>(body, JsonSerializerOptions.Web)!;
+        result.Events.Single().Payload.ShouldBe("{}"u8.ToArray());
+    }
+
     private static ProjectionEventDto CreateProjectionEvent()
         => new(
             EventTypeName: "WidgetCreated",

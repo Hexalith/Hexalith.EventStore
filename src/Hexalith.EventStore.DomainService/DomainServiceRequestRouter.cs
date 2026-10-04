@@ -46,14 +46,27 @@ public static class DomainServiceRequestRouter {
 
             if (admissionResult.IsRejected) {
                 var rejection = DomainResult.Rejection(admissionResult.RejectionEvents);
-                return DomainServiceWireResult.FromDomainResult(rejection);
+                return await ProduceWireResultAsync(serviceProvider, rejection, cancellationToken).ConfigureAwait(false);
             }
         }
 
         IDomainProcessor processor = serviceProvider.GetRequiredKeyedService<IDomainProcessor>(request.Command.Domain);
         DomainResult result = await processor.ProcessAsync(request.Command, request.CurrentState).ConfigureAwait(false);
 
-        return DomainServiceWireResult.FromDomainResult(result);
+        return await ProduceWireResultAsync(serviceProvider, result, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<DomainServiceWireResult> ProduceWireResultAsync(
+        IServiceProvider serviceProvider, DomainResult result, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        BoundedV1DomainResultProducer? producer = serviceProvider.GetService<BoundedV1DomainResultProducer>();
+        if (producer is not null) {
+            return await producer.ProduceAsync(result, cancellationToken).ConfigureAwait(false);
+        }
+
+        DomainServiceWireResult wireResult = DomainServiceWireResult.FromDomainResult(result);
+        cancellationToken.ThrowIfCancellationRequested();
+        return wireResult;
     }
 
     private static EventStoreDomainDiagnostics? ResolveDiagnostics(IServiceProvider serviceProvider, string domain) {

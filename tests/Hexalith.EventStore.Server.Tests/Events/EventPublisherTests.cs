@@ -88,6 +88,29 @@ public class EventPublisherTests {
         return (publisher, daprClient, logger);
     }
 
+    [Fact]
+    public async Task PublishEventsAsync_PreservesCompleteVersionTupleInActualPublishedEnvelope() {
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        EventEnvelope original = CreateTestEnvelope(eventTypeName: "order-created") with {
+            MetadataVersion = 2,
+            EventContractType = "order-created",
+            PayloadVersion = 7,
+        };
+
+        EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [original], "corr-001");
+
+        result.Success.ShouldBeTrue();
+        await daprClient.Received(1).PublishEventAsync(
+            "pubsub", "test-tenant.test-domain.events",
+            Arg.Is<EventEnvelope>(actual => actual.MetadataVersion == original.MetadataVersion
+                && actual.EventContractType == original.EventContractType
+                && actual.PayloadVersion == original.PayloadVersion
+                && actual.EventTypeName == original.EventTypeName
+                && actual.MessageId == original.MessageId
+                && actual.Payload.SequenceEqual(original.Payload)),
+            Arg.Any<Dictionary<string, string>>(), Arg.Any<CancellationToken>());
+    }
+
     // --- Task 6.1: Single event CloudEvents metadata ---
 
     [Fact]

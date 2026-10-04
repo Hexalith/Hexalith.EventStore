@@ -150,4 +150,34 @@ public class EventEnvelopeTests {
         deserialized.Extensions!["traceparent"].ShouldBe(extensions["traceparent"]);
         deserialized.Extensions["custom"].ShouldBe(extensions["custom"]);
     }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void V2MetadataTriplet_RoundTripsThroughJsonAndDataContract(bool dataContract) {
+        EventEnvelope original = CreateTestEnvelope() with {
+            EventTypeName = "order-created",
+            MetadataVersion = 2,
+            EventContractType = "order-created",
+            PayloadVersion = 7,
+        };
+        EventEnvelope copy;
+        if (dataContract) {
+            var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(EventEnvelope));
+            using var stream = new MemoryStream();
+            serializer.WriteObject(stream, original);
+            stream.Position = 0;
+            copy = (EventEnvelope)serializer.ReadObject(stream)!;
+        }
+        else {
+            var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            copy = JsonSerializer.Deserialize<EventEnvelope>(JsonSerializer.Serialize(original, options), options)!;
+        }
+
+        copy.MetadataVersion.ShouldBe(2);
+        copy.EventTypeName.ShouldBe("order-created");
+        copy.EventContractType.ShouldBe("order-created");
+        copy.PayloadVersion.ShouldBe(7);
+        copy.Payload.ShouldBe(original.Payload);
+    }
+
 }

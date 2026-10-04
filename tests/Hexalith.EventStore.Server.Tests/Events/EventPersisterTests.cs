@@ -5,6 +5,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.Extensions.Logging;
@@ -227,23 +228,21 @@ public class EventPersisterTests {
     }
 
     [Fact]
-    public async Task PersistEventsAsync_V2Metadata_PersistsCompleteTriplet() {
-        (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
-        ConfigureNoMetadata(stateManager);
+    public async Task PersistEventsAsync_UnsolicitedV2_RejectsBeforeAnyDurableOrProtectionWork() {
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var allocator = new FakeGlobalPositionAllocator();
+        var persister = new EventPersister(stateManager, Substitute.For<ILogger<EventPersister>>(), protection, allocator);
         var serialized = new SerializedVersionedEvent(
             "order-created", [1, 2, 3], "json", 2, "order-created", 3);
 
-        EventPersistResult result = await persister.PersistEventsAsync(
-            TestIdentity,
-            "order",
-            CreateTestCommand(),
-            DomainResult.Success([serialized]),
-            "v2");
+        InvalidOperationException failure = await Should.ThrowAsync<InvalidOperationException>(() => persister.PersistEventsAsync(
+            TestIdentity, "order", CreateTestCommand(), DomainResult.Success([serialized]), "v2"));
 
-        EventEnvelope persisted = result.PersistedEnvelopes.ShouldHaveSingleItem();
-        persisted.MetadataVersion.ShouldBe(2);
-        persisted.EventContractType.ShouldBe("order-created");
-        persisted.PayloadVersion.ShouldBe(3);
+        failure.Message.ShouldContain("CapabilityMismatch");
+        allocator.CallCount.ShouldBe(0);
+        stateManager.ReceivedCalls().ShouldBeEmpty();
+        protection.ReceivedCalls().ShouldBeEmpty();
     }
 
     [Theory]

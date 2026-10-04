@@ -1,13 +1,19 @@
+using System.Security.Cryptography;
+
 namespace Hexalith.EventStore.Contracts.Events;
 
 /// <summary>Contains one addressed bounded raw-event page and its provider readback proof.</summary>
-public sealed class AuthenticatedRawEventPage {
+public sealed class AuthenticatedRawEventPage : IDisposable {
     private const int MaximumEvents = 256;
     private const int MaximumReadbackProofBytes = 1024 * 1024;
     private const long MaximumRawPageBytes = 128L * 1024 * 1024;
     private const long MaximumReadablePageBytes = 64L * 1024 * 1024;
+    private const long MaximumPrivateCopyBytes = 128L * 1024 * 1024;
     private readonly byte[] _readbackProof;
     private readonly IReadOnlyList<AuthenticatedRawEvent> _events;
+    private readonly List<OwnedRawEventPayload> _owners = [];
+    private readonly object _lifetimeLock = new();
+    private bool _disposed;
 
     /// <summary>Initializes the addressed raw page, copying its proof and event collection.</summary>
     public AuthenticatedRawEventPage(
@@ -38,18 +44,26 @@ public sealed class AuthenticatedRawEventPage {
         ActorETag = RequireStrictUtf8(actorETag, nameof(actorETag));
         ProviderNamespace = RequireStrictUtf8(providerNamespace, nameof(providerNamespace));
         ArgumentNullException.ThrowIfNull(events);
-        if (events.Count > MaximumEvents) {
+        int count = events.Count;
+        if (count > MaximumEvents) {
             throw new ArgumentOutOfRangeException(nameof(events), "A raw event page is limited to 256 events.");
         }
 
-        if (events.Count == 0 && startSequence <= actorHead) {
+        if (count == 0 && startSequence <= actorHead) {
             throw new ArgumentException("An empty raw page cannot omit an event at or before the actor head.", nameof(events));
         }
 
-        var lengths = new (int Raw, int? Encoding, int? Digest, int? Origin, int? Intent, int? Receipt)[events.Count];
+        // Snapshot references before invoking arbitrary payload implementations. Never
+        // reread the caller's collection during validation or private copying.
+        var snapshot = new AuthenticatedRawEvent[count];
+        for (int i = 0; i < count; i++) {
+            snapshot[i] = events[i] ?? throw new ArgumentException("A raw page cannot contain a null event.", nameof(events));
+        }
+
+        var lengths = new (int Raw, int? Encoding, int? Digest, int? Origin, int? Intent, int? Receipt)[count];
         long sourceBytes = 0;
-        for (int i = 0; i < events.Count; i++) {
-            AuthenticatedRawEvent item = events[i] ?? throw new ArgumentException("A raw page cannot contain a null event.", nameof(events));
+        for (int i = 0; i < count; i++) {
+            AuthenticatedRawEvent item = snapshot[i];
             _ = RequireStrictUtf8(item.StorageKey, nameof(events));
             ArgumentNullException.ThrowIfNull(item.RawEnvelope);
             if (item.SequenceNumber != checked(startSequence + i) || item.SequenceNumber > actorHead) {
@@ -75,22 +89,38 @@ public sealed class AuthenticatedRawEventPage {
             throw new ArgumentOutOfRangeException(nameof(readbackProof), "A provider readback proof must be between 1 byte and 1 MiB.");
         }
 
-        var ownedEvents = new AuthenticatedRawEvent[events.Count];
-        for (int i = 0; i < events.Count; i++) {
-            AuthenticatedRawEvent item = events[i];
-            (int rawLength, int? encodingLength, int? digestLength, int? originLength, int? intentLength, int? receiptLength) = lengths[i];
-            ownedEvents[i] = item with {
-                RawEnvelope = CopyPayload(item.RawEnvelope, rawLength),
-                EncodingEvidence = CopyOptionalPayload(item.EncodingEvidence, encodingLength),
-                StoredDigestEvidence = CopyOptionalPayload(item.StoredDigestEvidence, digestLength),
-                V1OriginEvidence = CopyOptionalPayload(item.V1OriginEvidence, originLength),
-                ActorIntentCertificate = CopyOptionalPayload(item.ActorIntentCertificate, intentLength),
-                ActorCommitReceipt = CopyOptionalPayload(item.ActorCommitReceipt, receiptLength),
-            };
+        // Caller source storage has its own 128 MiB bound. This constructor also
+        // bounds its detached copies and proof, but cannot reserve a reader's
+        // shared live scratch or account for other simultaneous stage buffers.
+        if (checked(sourceBytes + readbackProof.Length) > MaximumPrivateCopyBytes) {
+            throw new ArgumentOutOfRangeException(nameof(events), "ScratchLimit: private raw-page copies and proof exceed 128 MiB.");
         }
 
-        _events = Array.AsReadOnly(ownedEvents);
-        _readbackProof = readbackProof.ToArray();
+        var ownedEvents = new AuthenticatedRawEvent[count];
+        try {
+            for (int i = 0; i < count; i++) {
+                AuthenticatedRawEvent item = snapshot[i];
+                (int rawLength, int? encodingLength, int? digestLength, int? originLength, int? intentLength, int? receiptLength) = lengths[i];
+                ownedEvents[i] = item with {
+                    RawEnvelope = CopyPayload(item.RawEnvelope, rawLength),
+                    EncodingEvidence = CopyOptionalPayload(item.EncodingEvidence, encodingLength),
+                    StoredDigestEvidence = CopyOptionalPayload(item.StoredDigestEvidence, digestLength),
+                    V1OriginEvidence = CopyOptionalPayload(item.V1OriginEvidence, originLength),
+                    ActorIntentCertificate = CopyOptionalPayload(item.ActorIntentCertificate, intentLength),
+                    ActorCommitReceipt = CopyOptionalPayload(item.ActorCommitReceipt, receiptLength),
+                };
+            }
+
+            _events = Array.AsReadOnly(ownedEvents);
+            _readbackProof = readbackProof.ToArray();
+        }
+        catch {
+            foreach (OwnedRawEventPayload owner in _owners) {
+                owner.Dispose();
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Gets the addressed tenant.</summary>
@@ -121,7 +151,30 @@ public sealed class AuthenticatedRawEventPage {
     public IReadOnlyList<AuthenticatedRawEvent> Events => _events;
 
     /// <summary>Gets a transport copy of the provider readback proof.</summary>
-    public byte[] ReadbackProof => _readbackProof.ToArray();
+    public byte[] ReadbackProof {
+        get {
+            lock (_lifetimeLock) {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                return _readbackProof.ToArray();
+            }
+        }
+    }
+
+    /// <summary>Clears all private payload and proof capacities and invalidates their read leases.</summary>
+    public void Dispose() {
+        lock (_lifetimeLock) {
+            if (_disposed) {
+                return;
+            }
+
+            _disposed = true;
+            foreach (OwnedRawEventPayload owner in _owners) {
+                owner.Dispose();
+            }
+
+            CryptographicOperations.ZeroMemory(_readbackProof);
+        }
+    }
 
     /// <summary>Rejects a measured page whose readable payload total exceeds the approved 64 MiB ceiling.</summary>
     /// <param name="readablePayloadBytes">The checked sum measured after bounded parsing and unprotection.</param>
@@ -144,17 +197,19 @@ public sealed class AuthenticatedRawEventPage {
     private static int? GetOptionalLength(IReadOnlyPayload? payload, string parameterName)
         => payload is null ? null : GetLength(payload, parameterName);
 
-    private static IReadOnlyPayload? CopyOptionalPayload(IReadOnlyPayload? payload, int? length)
+    private IReadOnlyPayload? CopyOptionalPayload(IReadOnlyPayload? payload, int? length)
         => payload is null ? null : CopyPayload(payload, length ?? throw new InvalidOperationException("Payload length was not measured."));
 
-    private static IReadOnlyPayload CopyPayload(IReadOnlyPayload source, int length) {
-        var bytes = GC.AllocateUninitializedArray<byte>(length);
-        source.CopyTo(0, bytes);
-        if (source.Length != length) {
-            throw new ArgumentException("An event evidence payload changed length while being copied.", nameof(source));
+    private IReadOnlyPayload CopyPayload(IReadOnlyPayload source, int length) {
+        var owner = new OwnedRawEventPayload(source, length);
+        try {
+            _owners.Add(owner);
+            return owner;
         }
-
-        return new OwnedPayload(bytes);
+        catch {
+            owner.Dispose();
+            throw;
+        }
     }
 
     private static string RequireStrictUtf8(string value, string parameterName) {
@@ -173,15 +228,4 @@ public sealed class AuthenticatedRawEventPage {
         return value;
     }
 
-    private sealed class OwnedPayload(byte[] bytes) : IReadOnlyPayload {
-        public int Length => bytes.Length;
-
-        public void CopyTo(int sourceOffset, Span<byte> destination) {
-            if (sourceOffset < 0 || sourceOffset > bytes.Length || destination.Length > bytes.Length - sourceOffset) {
-                throw new ArgumentOutOfRangeException(nameof(sourceOffset));
-            }
-
-            bytes.AsSpan(sourceOffset, destination.Length).CopyTo(destination);
-        }
-    }
 }

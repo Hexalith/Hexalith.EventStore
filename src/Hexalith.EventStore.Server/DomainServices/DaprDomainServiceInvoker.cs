@@ -1,5 +1,5 @@
-using System.Net.Http.Json;
 using System.Text.Json;
+using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 
 using Dapr.Client;
@@ -93,16 +93,22 @@ public partial class DaprDomainServiceInvoker(
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient(HttpClientName);
             using HttpResponseMessage httpResponse = await httpClient
-                .SendAsync(httpRequest, invocationCancellation.Token)
+                .SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, invocationCancellation.Token)
                 .ConfigureAwait(false);
             _ = httpResponse.EnsureSuccessStatusCode();
-            wireResult = await httpResponse.Content
-                .ReadFromJsonAsync<DomainServiceWireResult>(invocationCancellation.Token)
-                .ConfigureAwait(false)
-                ?? throw new DomainServiceException(
-                    command.TenantId,
-                    command.Domain,
-                    $"Null response from domain service '{registration.AppId}/{registration.MethodName}'");
+            const long maximumLegacyResultBytes = 128L * 1024 * 1024;
+            if (httpResponse.Content.Headers.ContentLength is long declaredLength && declaredLength > maximumLegacyResultBytes) {
+                throw new InvalidOperationException("ResultLimit: declared domain result exceeds the implicit V1 cap.");
+            }
+            if (httpResponse.Content.Headers.ContentEncoding.Any(encoding => !string.Equals(encoding, "identity", StringComparison.OrdinalIgnoreCase))) {
+                throw new InvalidOperationException("CapabilityMismatch: domain result compression lacks admitted independent bounds.");
+            }
+
+            Stream responseStream = await httpResponse.Content.ReadAsStreamAsync(invocationCancellation.Token).ConfigureAwait(false);
+            using var boundedResponse = new BoundedDomainServiceResponseStream(responseStream, maximumLegacyResultBytes, invocationCancellation.Token);
+            using var parser = new BoundedV1DomainResponseParser(boundedResponse, invocationCancellation.Token,
+                Math.Min(_options.MaxEventSizeBytes, 1024 * 1024), Math.Min(_options.MaxEventsPerResult, 1000));
+            wireResult = await parser.ParseAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
             bool configuredTimeoutElapsed = timeoutCancellation.IsCancellationRequested;
@@ -154,6 +160,7 @@ public partial class DaprDomainServiceInvoker(
 
         DomainServiceRegistration resolvedRegistration = registration
             ?? throw new InvalidOperationException("Domain-service invocation completed without a resolved registration.");
+        ValidateLegacyWriterResponse(wireResult, command);
         DomainResult result = ToDomainResult(wireResult);
 
         // Validate response size limits (AC #6)
@@ -179,6 +186,17 @@ public partial class DaprDomainServiceInvoker(
             causationId);
 
         return result;
+    }
+
+    private static void ValidateLegacyWriterResponse(DomainServiceWireResult wireResult, CommandEnvelope command) {
+        // This production route sends an implicit V1 request. No registry/provider
+        // qualification exists here to authorize a negotiated V2 response.
+        if (wireResult.WriterMode is not null || wireResult.RegistryFingerprint is not null
+            || wireResult.Events.Any(static item => item.MetadataVersion is not (null or 1)
+                || item.EventContractType is not null || item.PayloadVersion is not null)) {
+            throw new DomainServiceException(command.TenantId, command.Domain,
+                "CapabilityMismatch: an implicit V1 invocation cannot admit a versioned writer response.");
+        }
     }
 
     private static DomainResult ToDomainResult(DomainServiceWireResult wireResult) {
@@ -228,6 +246,10 @@ public partial class DaprDomainServiceInvoker(
                     + $"{DomainServiceOptions.MaximumInvocationTimeoutSeconds} seconds."]);
         }
 
+        if (value.MaxEventsPerResult < 0 || value.MaxEventSizeBytes < 0) {
+            throw new OptionsValidationException(Microsoft.Extensions.Options.Options.DefaultName, typeof(DomainServiceOptions),
+                ["MaxEventsPerResult and MaxEventSizeBytes must be nonnegative; zero admits only an empty boundary."]);
+        }
         return value;
     }
 

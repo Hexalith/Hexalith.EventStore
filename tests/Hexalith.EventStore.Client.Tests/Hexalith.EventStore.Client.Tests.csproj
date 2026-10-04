@@ -24,4 +24,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Events/Fixtures/EventRegistryV17.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

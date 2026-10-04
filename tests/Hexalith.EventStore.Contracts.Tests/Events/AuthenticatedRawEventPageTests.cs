@@ -82,6 +82,41 @@ public sealed class AuthenticatedRawEventPageTests {
         Should.NotThrow(() => AuthenticatedRawEventPage.ValidateReadablePayloadBytes(64L * 1024 * 1024));
     }
 
+    [Fact]
+    public void Constructor_UsesValidatedSnapshotWhenPayloadReplacesLaterCallerEvent() {
+        AuthenticatedRawEvent[] events = [CreateEvent(4), CreateEvent(5)];
+        events[0] = events[0] with {
+            RawEnvelope = new CallbackRawPageTestPayload(() => events[1] = CreateEvent(999)),
+        };
+
+        using var page = new AuthenticatedRawEventPage(
+            "tenant", "domain", "aggregate", "id", 4, 5, "etag", "namespace", events, [1]);
+
+        events[1].SequenceNumber.ShouldBe(999);
+        page.Events[1].SequenceNumber.ShouldBe(5);
+        page.Events[1].StorageKey.ShouldBe("key-5");
+    }
+
+    [Fact]
+    public void Dispose_InvalidatesRetainedPayloadAndProofAccess() {
+        var page = new AuthenticatedRawEventPage(
+            "tenant", "domain", "aggregate", "id", 4, 4, "etag", "namespace", [CreateEvent(4)], [1]);
+        IReadOnlyPayload retained = page.Events[0].RawEnvelope;
+
+        page.Dispose();
+        page.Dispose();
+
+        Should.Throw<ObjectDisposedException>(() => retained.CopyTo(0, new byte[2]));
+        Should.Throw<ObjectDisposedException>(() => { _ = page.ReadbackProof; });
+    }
+
+    [Fact]
+    public void Constructor_RefusesComposedPrivateCopyCapacityBeforeCopyingSource() {
+        Should.Throw<ArgumentOutOfRangeException>(() => new AuthenticatedRawEventPage(
+            "tenant", "domain", "aggregate", "id", 4, 4, "etag", "namespace",
+            [new AuthenticatedRawEvent("key-4", 4, new SizedPayload(128 * 1024 * 1024), null, null, null, null, null)], [1]));
+    }
+
     private static AuthenticatedRawEvent CreateEvent(long sequence)
         => new($"key-{sequence}", sequence, new TestPayload([1, 2]), null, null, null, null, null);
 

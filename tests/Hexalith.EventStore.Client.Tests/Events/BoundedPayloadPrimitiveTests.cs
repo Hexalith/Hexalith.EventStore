@@ -58,4 +58,79 @@ public sealed class BoundedPayloadPrimitiveTests {
         source.Cancel();
         Should.Throw<OperationCanceledException>(() => allocator.WithScratch(1, _ => { }, source.Token));
     }
+
+    [Fact]
+    public void ScratchAllocator_ZeroesInitialBytesAndRefusesNestedOverReservation() {
+        var allocator = new BoundedScratchAllocator(8);
+        allocator.WithScratch(5, outer => {
+            outer.ToArray().ShouldBe(new byte[5]);
+            Should.Throw<InvalidOperationException>(() => allocator.WithScratch(4, _ => { }, CancellationToken.None));
+            allocator.WithScratch(3, inner => inner.ToArray().ShouldBe(new byte[3]), CancellationToken.None);
+            outer.Fill(0xff);
+        }, CancellationToken.None);
+
+        allocator.WithScratch(8, span => span.ToArray().ShouldBe(new byte[8]), CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ScratchAllocator_RefusesConcurrentOverReservationAndReleasesAfterFailure() {
+        var allocator = new BoundedScratchAllocator(8);
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Task occupied = Task.Run(() => allocator.WithScratch(8, span => {
+            span.Fill(1);
+            entered.Set();
+            release.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        }, CancellationToken.None));
+        try {
+            entered.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+            Should.Throw<InvalidOperationException>(() => allocator.WithScratch(1, _ => { }, CancellationToken.None));
+        }
+        finally {
+            release.Set();
+            await occupied;
+        }
+
+        Should.Throw<FormatException>(() => allocator.WithScratch(8, _ => throw new FormatException(), CancellationToken.None));
+        allocator.WithScratch(8, span => span.ToArray().ShouldBe(new byte[8]), CancellationToken.None);
+    }
+
+    [Fact]
+    public void ScratchAllocator_CapturesOriginalCancellationAndInvalidatesItsInvocation() {
+        using var cancellation = new CancellationTokenSource();
+        var budget = new EventBufferBudget(8);
+        using var allocator = new BoundedScratchAllocator(8, budget, cancellation.Token);
+
+        OperationCanceledException failure = Should.Throw<OperationCanceledException>(() => allocator.WithScratch(8,
+            bytes => { bytes.Fill(1); cancellation.Cancel(); }, CancellationToken.None));
+
+        failure.CancellationToken.ShouldBe(cancellation.Token);
+        budget.LiveBytes.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ScratchAllocator_RetainedRunningCallbackPreventsInvocationAcceptance() {
+        var budget = new EventBufferBudget(8);
+        using var allocator = new BoundedScratchAllocator(8, budget);
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        Task callback = Task.Run(() => allocator.WithScratch(8, bytes => {
+            bytes.Fill(1);
+            entered.Set();
+            release.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        }, CancellationToken.None));
+        try {
+            entered.Wait(TimeSpan.FromSeconds(10)).ShouldBeTrue();
+            allocator.Dispose();
+            budget.LiveBytes.ShouldBe(8);
+            Should.Throw<InvalidOperationException>(allocator.RequireValidInvocation);
+            Should.Throw<ObjectDisposedException>(() => allocator.WithScratch(0, _ => { }, CancellationToken.None));
+        }
+        finally {
+            release.Set();
+            await callback;
+        }
+
+        budget.LiveBytes.ShouldBe(0);
+    }
 }

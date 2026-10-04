@@ -73,6 +73,10 @@ public partial class EventPersister(
                 : 1;
 
             ValidateEventVersionMetadata(eventTypeName, metadataVersion, eventContractType, payloadVersion);
+            if (metadataVersion == 2) {
+                throw new InvalidOperationException("CapabilityMismatch: V2 writes require qualified negotiated writer authority.");
+            }
+
             validatedPayloads.Add((eventPayload, eventTypeName, serializationFormat, eventContractType, payloadVersion, metadataVersion));
         }
 

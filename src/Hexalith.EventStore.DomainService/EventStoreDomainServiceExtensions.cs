@@ -13,6 +13,8 @@ using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.ServiceDefaults;
 
+using Hexalith.EventStore.Contracts.Results;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -218,8 +220,12 @@ public static class EventStoreDomainServiceExtensions {
 
         _ = app.MapPost(
             "/process",
-            async (DomainServiceRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken)
-                => Results.Ok(await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false)));
+            async (DomainServiceRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
+                DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false);
+                return serviceProvider.GetService<BoundedV1DomainResultProducer>() is not null
+                    ? (IResult)new BoundedV1WireResultResponse(result)
+                    : Results.Ok(result);
+            });
 
         _ = app.MapPost(
             "/replay-state",

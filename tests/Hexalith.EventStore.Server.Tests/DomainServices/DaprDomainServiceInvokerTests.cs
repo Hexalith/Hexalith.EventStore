@@ -103,8 +103,39 @@ public class DaprDomainServiceInvokerTests {
         _ = await _resolver.Received(1).ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData(1, 51, "PayloadLimit")]
+    [InlineData(4, 1, "ResultLimit")]
+    public async Task InvokeAsync_ConfiguredLowerBoundsRefuseBeforeAdmittedResult(int count, int size, string reason) {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(TestRegistration);
+        var wireResult = new DomainServiceWireResult(false,
+            Enumerable.Range(0, count).Select(_ => new DomainServiceWireEvent("known-alias", new byte[size])).ToArray());
+        string json = JsonSerializer.Serialize(wireResult, JsonSerializerOptions.Web);
+        using var httpClient = new HttpClient(new StaticResponseHandler(json));
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
+        var invoker = new DaprDomainServiceInvoker(daprClient, factory, _resolver,
+            Options.Create(new DomainServiceOptions { MaxEventSizeBytes = 50, MaxEventsPerResult = 3 }), TimeProvider.System, _logger);
+        DomainServiceException failure = await Should.ThrowAsync<DomainServiceException>(() => invoker.InvokeAsync(CreateTestEnvelope(), null));
+        failure.Message.ShouldContain(reason);
+    }
+
     [Fact]
-    public async Task InvokeAsync_PreservesVersionMetadataTripletFromWireEvent() {
+    public async Task InvokeAsync_LaterBodyFailureNeverReturnsEarlierDecodedEvents() {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(TestRegistration);
+        const string json = "{\"events\":[{\"eventTypeName\":\"alias\",\"payload\":\"e30=\"}],\"late\":null,\"LATE\":null}";
+        using var httpClient = new HttpClient(new StaticResponseHandler(json));
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
+        var invoker = new DaprDomainServiceInvoker(daprClient, factory, _resolver, _options, TimeProvider.System, _logger);
+        DomainServiceException failure = await Should.ThrowAsync<DomainServiceException>(() => invoker.InvokeAsync(CreateTestEnvelope(), null));
+        failure.InnerException.ShouldBeOfType<JsonException>();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_UnsolicitedV2_RejectsBeforeReturningAnAdmittedResult() {
         using DaprClient daprClient = new DaprClientBuilder().Build();
         _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(TestRegistration);
@@ -127,34 +158,10 @@ public class DaprDomainServiceInvokerTests {
             TimeProvider.System,
             _logger);
 
-        DomainResult result = await invoker.InvokeAsync(CreateTestEnvelope(), null);
+        DomainServiceException failure = await Should.ThrowAsync<DomainServiceException>(
+            () => invoker.InvokeAsync(CreateTestEnvelope(), null));
 
-        ISerializedEventPayload payload = result.Events.ShouldHaveSingleItem().ShouldBeAssignableTo<ISerializedEventPayload>();
-        payload.MetadataVersion.ShouldBe(2);
-        payload.EventContractType.ShouldBe("order-created");
-        payload.PayloadVersion.ShouldBe(7);
-
-        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
-        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        _ = stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
-            .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
-        var persister = new EventPersister(
-            stateManager,
-            NullLogger<EventPersister>.Instance,
-            new NoOpEventPayloadProtectionService(),
-            NoOpGlobalPositionAllocator.Instance);
-
-        EventPersistResult persisted = await persister.PersistEventsAsync(
-            identity,
-            "order",
-            CreateTestEnvelope(),
-            result,
-            "v2");
-
-        var persistedEvent = persisted.PersistedEnvelopes.ShouldHaveSingleItem();
-        persistedEvent.MetadataVersion.ShouldBe(2);
-        persistedEvent.EventContractType.ShouldBe("order-created");
-        persistedEvent.PayloadVersion.ShouldBe(7);
+        failure.Message.ShouldContain("CapabilityMismatch");
     }
 
     [Fact]

@@ -26,8 +26,11 @@ public sealed class VerifiedEffectiveCommandEvent {
         Sequence = sequence > 0
             ? sequence
             : throw new ArgumentOutOfRangeException(nameof(sequence), sequence, "Sequence must be positive.");
-        _storedDigest = storedDigest?.ToArray() ?? throw new ArgumentNullException(nameof(storedDigest));
-        if (_storedDigest.Length != 32) {
+        ArgumentNullException.ThrowIfNull(storedDigest);
+        ArgumentNullException.ThrowIfNull(routeSignature);
+        ArgumentNullException.ThrowIfNull(effectivePayload);
+        ArgumentNullException.ThrowIfNull(routeClaim);
+        if (storedDigest.Length != 32) {
             throw new ArgumentException("StoredDigest must contain exactly 32 bytes.", nameof(storedDigest));
         }
 
@@ -36,13 +39,25 @@ public sealed class VerifiedEffectiveCommandEvent {
         SerializationFormat = !string.IsNullOrWhiteSpace(serializationFormat)
             ? serializationFormat
             : throw new ArgumentException("SerializationFormat must not be empty.", nameof(serializationFormat));
-        _effectivePayload = effectivePayload?.ToArray() ?? throw new ArgumentNullException(nameof(effectivePayload));
-        _routeClaim = routeClaim?.ToArray() ?? throw new ArgumentNullException(nameof(routeClaim));
         RouteKeyId = EventContractIdentityValidator.ValidateKeyId(routeKeyId, nameof(routeKeyId));
-        _routeSignature = routeSignature?.ToArray() ?? throw new ArgumentNullException(nameof(routeSignature));
-        if (_routeSignature.Length != 64) {
+        if (routeSignature.Length != 64) {
             throw new ArgumentException("RouteSignature must contain exactly 64 bytes.", nameof(routeSignature));
         }
+
+        // This transport carrier cannot authenticate whether the payload is zero-hop.
+        // Admit the measured V1 ceiling here; verified readers enforce the 1 MiB hop limit.
+        if (effectivePayload.Length > 64 * 1024 * 1024) {
+            throw new ArgumentOutOfRangeException(nameof(effectivePayload), "ReadableLimit: an effective transport payload is limited to 64 MiB.");
+        }
+
+        if (routeClaim.Length > 1024 * 1024) {
+            throw new ArgumentOutOfRangeException(nameof(routeClaim), "ProofLimit: a route claim is limited to 1 MiB.");
+        }
+
+        _storedDigest = storedDigest.ToArray();
+        _effectivePayload = effectivePayload.ToArray();
+        _routeClaim = routeClaim.ToArray();
+        _routeSignature = routeSignature.ToArray();
     }
 
     /// <summary>Gets the event sequence number.</summary>
