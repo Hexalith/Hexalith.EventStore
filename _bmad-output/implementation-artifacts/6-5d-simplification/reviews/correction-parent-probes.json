@@ -1,0 +1,27 @@
+{
+  "sourceSha256": "b33f0b1d8e789f9ae6cc1ede9a0db88300f2aa9f07a586784aee9237fb9a086a",
+  "inputSha256": {
+    "known-answers.json": "1772a776d4361038598fa9098e88b036612f079b71ce3f42e4391c953b80c419",
+    "obligations.md": "4e9daf7b760a07b9e1cfa2f97de709d40a3a72322fa10e280f18a59752d5146e"
+  },
+  "observations": [
+    {
+      "case": "capture-redriving-replacement",
+      "refusal": "capture-predecessor",
+      "phase": "redriving",
+      "objectExists": false,
+      "chargeExists": true
+    },
+    {
+      "case": "legacy-restore-generation",
+      "refusal": null,
+      "state": "draining"
+    },
+    {
+      "case": "legacy-restore-fence",
+      "refusal": null,
+      "state": "draining"
+    }
+  ],
+  "attribution": "Parent in-memory reproductions on exact reviewed source; current portable owning scenarios added by the focused correction."
+}

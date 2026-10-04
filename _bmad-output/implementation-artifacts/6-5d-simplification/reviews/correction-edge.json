@@ -1,0 +1,14 @@
+[
+  {
+    "id": "CE1",
+    "location": "verify.py:944-955",
+    "trigger_condition": "Replacement capture reaches redriving before the erased predecessor's late capture returns.",
+    "potential_consequence": "Stale capture deletes the charged replacement carrier; subsequent send and recovery fail."
+  },
+  {
+    "id": "CE2",
+    "location": "verify.py:1380-1387",
+    "trigger_condition": "Execution generation or fence transfers during the external legacy restore with identical control bytes.",
+    "potential_consequence": "Stale legacy owner advances claimed to draining under the replacement holder's token."
+  }
+]

@@ -1,0 +1,60 @@
+{
+  "authority": "Executable specification and preservation evidence only; no provider or AD-13 approval",
+  "baselineCommit": "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6",
+  "checks": [
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5d-simplification/verify.py",
+      "exitCode": 0,
+      "output": "current-verification.json",
+      "outputSha256": "8f7e71b14998bde649f1d748ac7fe89f3ec41723c72a30e66320e29d9d9d4e21",
+      "scriptSha256": "0369d6eb950b64f947490cb3bab6124456ef39e3bb070de280e39bf4d929628d"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5d-simplification/acceptance.py",
+      "exitCode": 0,
+      "output": "current-acceptance.json",
+      "outputSha256": "88e1932b7fa085b2b600b6c5deabe25b14de020f8b93902ff8ee2d8d1ea94941",
+      "scriptSha256": "c59d4f2738d391807c3fe9d0534c1d69ae9bddeb8d4904da7b2f04c510576dd1"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5d-simplification/mutations.py",
+      "exitCode": 0,
+      "output": "current-mutations.json",
+      "outputSha256": "dfaa84adbe01202b10b637d63c24e412eefdb2bb8ff6e363e775b20d4b9c0551",
+      "scriptSha256": "ade8f0cda11be17555e1fe78e80a760a32c52cc440011c613cfd3a15166cf646"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5d-simplification/reviews/focused-regressions.py",
+      "exitCode": 0,
+      "output": "reviews/current-focused-regressions.json",
+      "outputSha256": "a9bb91f68c045ed03e5355f8316294a98e816a50438c522112e5af8e1d78c3e7",
+      "scriptSha256": "46dee962873cf5d7d281ed96d098606605814bb948bec95c865f5d577df2ab52"
+    },
+    {
+      "command": "python3 _bmad-output/implementation-artifacts/6-5d-simplification/preservation-cases.py",
+      "exitCode": 0,
+      "output": "current-preservation-cases.json",
+      "outputSha256": "d1710872cc6d7ccd855af8f1af26c676ffaab62192b14adb9a05c6a23ab8c172",
+      "scriptSha256": "3b6ac44150b932bb48db7b7ad9a881923e02a85d0f1654aa9bc0b9b655908fa7"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": "targeted original-reviewer closure",
+      "evidence": "reviews/correction-closure.md",
+      "evidenceSha256": "70f97f2a6b321538caddd49b06d15ae372d03466a4cd3b44f323a33d067156a2",
+      "result": "passed"
+    }
+  ],
+  "currentHead": "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6",
+  "inputSha256": {
+    "independent-answers.mjs": "8eed7093e8de65fb72ec11ce6c78377756e0f865617f57e186077620229f5018",
+    "known-answers.json": "1772a776d4361038598fa9098e88b036612f079b71ce3f42e4391c953b80c419",
+    "obligations.md": "4e9daf7b760a07b9e1cfa2f97de709d40a3a72322fa10e280f18a59752d5146e",
+    "verify.py": "0369d6eb950b64f947490cb3bab6124456ef39e3bb070de280e39bf4d929628d"
+  }
+}

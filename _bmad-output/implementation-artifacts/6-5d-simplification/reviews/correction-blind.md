@@ -1,0 +1,6 @@
+# Correction blind review
+
+Reviewed input: `correction-review-input.json`, uncompressed diff SHA-256 `2c499e81478d2a3cf85a0c79fd215cd22a0173c718327d588b25796ec045c580`.
+
+- **CB1 — stale capture deletes a valid replacement’s object after redrive starts.** `capture()` recognizes replacement ownership only for `capturing` and `captured`. Reproduced an interleaving where the external write triggers erase, recreation, successful replacement capture, and `redrive(crash='commit')`. The stale capture deletes the replacement’s object, leaving its `redriving` owner and active charge intact; `send_held()` subsequently refuses with `retained-bytes`. Authenticate retained ownership in every applicable lifecycle phase before deleting an apparent orphan.
+- **CB2 — legacy restore advances after an authenticated ownership transfer.** `legacy_transition()` performs the external live-drain write and compares only control payload bytes before advancement. Reproduced generation-only and fence-only transfers during that write: both stale calls advance to `draining`. `Store.transaction()` captures its token after the transfer. Preserve admitted generation/fence across the effect and require both during advancement, as `resume_step()` does.

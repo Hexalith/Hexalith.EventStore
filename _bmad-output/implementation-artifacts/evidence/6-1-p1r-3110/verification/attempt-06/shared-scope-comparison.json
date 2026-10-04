@@ -1,0 +1,33 @@
+{
+  "current_invalid_handling": {
+    "invalid-floor": "accepted-unsafe",
+    "protected": "accepted-unsafe",
+    "unknown-type": "rejected",
+    "unknown-version": "accepted-unsafe",
+    "unreadable": "rejected"
+  },
+  "current_source": "2c58ffda41759e895ace4b9625c9bd931a217672",
+  "invalid_evidence_remains_incompatible": true,
+  "outside_scope": "Reminder contracts/actors, conditional registration via AddEventStoreReminders and Dapr.Actors.AspNetCore dependency; no compatibility claim for these additions.",
+  "selected": "3.110.0",
+  "selected_invalid_handling": {
+    "invalid-floor": "accepted-unsafe",
+    "protected": "accepted-unsafe",
+    "unknown-type": "rejected",
+    "unknown-version": "accepted-unsafe",
+    "unreadable": "rejected"
+  },
+  "shared_case_dispositions": {
+    "full-replay": "compatible",
+    "invalid-evidence": "incompatible",
+    "legacy-metadata": "compatible",
+    "metadata-write": "compatible",
+    "missing-event": "compatible",
+    "projection-wire": "compatible",
+    "query-wire": "compatible",
+    "retained-covered": "compatible",
+    "retained-uncovered": "compatible",
+    "snapshot-tail": "compatible"
+  },
+  "shared_scope_equivalent": true
+}

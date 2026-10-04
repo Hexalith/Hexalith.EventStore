@@ -1,0 +1,9 @@
+{
+  "failed_cleanup_sha256": "18921aba08c33739239f32f856755ba6f862324043a53f6875b6a4f935cda79d",
+  "invocation": "6c8457e1642945b3846f47aa876e0e51",
+  "removed_exact_owned_ids": [
+    "6a35dcf8e5455bf4bfe327aacaaec5a3a61900be5e1485d338e6031f5acd80ff",
+    "09521e5691043b78fa4be805a3064f39193db764dc19ea9bd4a8eb271ff32f79",
+    "b2ee3917ccbfefbffc06b74d9d46fcc13f56c2288a9e60a7d95fbc2647d4f803"
+  ]
+}

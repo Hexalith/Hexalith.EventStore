@@ -1,0 +1,21 @@
+{
+  "empty-probe-assemblies": {
+    "incorrectly_accepted": true
+  },
+  "host-hash-3.110.0": {
+    "incorrectly_accepted": true
+  },
+  "host-hash-current": {
+    "incorrectly_accepted": true
+  },
+  "missing-docker-startup": {
+    "diagnostic_sha256": "81711868f2cb966f27bb57e0cf181ec8468f6d0ffbfbc49b2d24bd2faa819363",
+    "escaped_FileNotFoundError": true,
+    "exit_code": 1,
+    "retained_output_files": 0,
+    "scratch_leaked": 1
+  },
+  "omitted-ServiceDefaults": {
+    "incorrectly_accepted": true
+  }
+}

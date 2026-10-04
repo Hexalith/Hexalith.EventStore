@@ -1,0 +1,683 @@
+{
+  "exit_code": 1,
+  "qualified": false,
+  "scenarios": [
+    {
+      "assertions": 222,
+      "cases": [
+        {
+          "actor_methods": [
+            "CreateManualSnapshotAsync",
+            "EraseTrustedEffectEvidenceAsync",
+            "FenceTrustedEffectsAsync",
+            "GetCurrentSequenceAsync",
+            "GetEventsAsync",
+            "GetRetainedFloorAsync",
+            "GetStreamMetadataAsync",
+            "ProcessCommandAsync",
+            "ProcessFencedCommandAsync",
+            "ProcessTrustedEffectAsync",
+            "ReadEventsRangeAsync",
+            "ReconcileFencedCommandAsync"
+          ],
+          "assertions": 121,
+          "id": "3.110.0",
+          "packages": 5
+        },
+        {
+          "actor_methods": [
+            "CreateManualSnapshotAsync",
+            "GetCurrentSequenceAsync",
+            "GetEventsAsync",
+            "GetStreamMetadataAsync",
+            "ProcessCommandAsync",
+            "ReadEventsRangeAsync"
+          ],
+          "assertions": 101,
+          "id": "3.70.1",
+          "packages": 5
+        }
+      ],
+      "command_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "provenance",
+      "reason": null
+    },
+    {
+      "assertions": 4,
+      "cases": [
+        {
+          "assertions": 3,
+          "currentSequence": 12,
+          "floor": 1,
+          "id": "pascal-floor-None",
+          "inputSha256": "f25f14d0063765cdc9db3de266306b486381db9f8f522249bd889cac371fe429",
+          "outputSha256": "2178344d9de22d053a7cf55c58071f15698832407147e8fb764d5574efbfe323"
+        },
+        {
+          "assertions": 3,
+          "currentSequence": 12,
+          "floor": 1,
+          "id": "web-floor-None",
+          "inputSha256": "848473291db50ff6da09c3801cd80ed3ebf690fc565f786fd0d22afb573687a8",
+          "outputSha256": "6f999227d32f6b58dd6a8b755446f684f9cce2067062819f9cc18485ec4abadf"
+        }
+      ],
+      "command_ids": [
+        29,
+        30
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "legacy-metadata",
+      "reason": null
+    },
+    {
+      "assertions": 8,
+      "cases": [
+        {
+          "assertions": 3,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "pascal-floor-1",
+          "inputSha256": "9e0dcbd998d1f7ec834c6297ebfc215e4e4210b7b1eabf580867c8eacede2b7d",
+          "outputSha256": "ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c"
+        },
+        {
+          "assertions": 3,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "pascal-floor-5",
+          "inputSha256": "5d26d5bc9014670583b1c457e2d8dc2b091a6ff17a749e7b5b16e90252feac95",
+          "outputSha256": "ce71cfc97307fe28664dcb1f48df2647ff5bb0df0a53dee6b4c7c62de4a1144c"
+        },
+        {
+          "assertions": 3,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "web-floor-1",
+          "inputSha256": "7f6b019dabcd77f15fb40a2f5eacafa4958ff231e3ff9756e255bb707470258f",
+          "outputSha256": "0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a"
+        },
+        {
+          "assertions": 3,
+          "currentSequence": 12,
+          "floor": null,
+          "id": "web-floor-5",
+          "inputSha256": "acea7fc927340ccde6d93d07a4a30990d5299d3de3b4e7d0b66b041d6f988896",
+          "outputSha256": "0feb756a775d9b889ca74a48af38b2a1835b1d15af112c7a36e51b3812b6740a"
+        }
+      ],
+      "command_ids": [
+        31,
+        32,
+        33,
+        34
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "metadata-read",
+      "reason": null
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 113 exited -6"
+        }
+      ],
+      "command_ids": [
+        111,
+        112,
+        113
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "metadata-write",
+      "reason": "ValueError: Command 113 exited -6"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 78 exited -6"
+        }
+      ],
+      "command_ids": [
+        76,
+        77,
+        78
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "full-replay",
+      "reason": "ValueError: Command 78 exited -6"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 85 exited -6"
+        }
+      ],
+      "command_ids": [
+        83,
+        84,
+        85
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "snapshot-tail",
+      "reason": "ValueError: Command 85 exited -6"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 92 exited -6"
+        }
+      ],
+      "command_ids": [
+        90,
+        91,
+        92
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "retained-covered",
+      "reason": "ValueError: Command 92 exited -6"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 99 exited -6"
+        }
+      ],
+      "command_ids": [
+        97,
+        98,
+        99
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "retained-uncovered",
+      "reason": "ValueError: Command 99 exited -6"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 106 exited -6"
+        }
+      ],
+      "command_ids": [
+        104,
+        105,
+        106
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "missing-event",
+      "reason": "ValueError: Command 106 exited -6"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 123 exited -6"
+        }
+      ],
+      "command_ids": [
+        121,
+        122,
+        123
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "invalid-evidence",
+      "reason": "ValueError: Command 123 exited -6"
+    },
+    {
+      "assertions": 16,
+      "cases": [
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.110.0-3.70.1-json-legacy",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.110.0-3.70.1-json-dual",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "691e51fa99b45dff31566d5fcb958dde61197e3d4b1d199080367a6260398360",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.110.0-3.70.1-xml-legacy",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.110.0-3.70.1-xml-dual",
+          "middle_fields": {
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "12bbba2c8f877eae43a2e7c43c040d2426ab57dcc90daba20bf809aa095a4199",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.70.1-3.110.0-json-legacy",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.70.1-3.110.0-json-dual",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69",
+            "f19aba1c7d3ec201df9cb50f1a6f3ed451d611d9c76b064149f3e5287e5fc9f9",
+            "a8b53bfe131e109e88603ccbc56aaaa8791f10b7a4fc48240fb7836033882a69"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.70.1-3.110.0-xml-legacy",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": true,
+          "wire_hashes": [
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "UserId": "fixture-user"
+          },
+          "format": "xml",
+          "id": "3.70.1-3.110.0-xml-dual",
+          "middle_fields": {
+            "AuthenticatedWorkloadId": null,
+            "DelegationId": null,
+            "IsDelegated": false,
+            "OriginalActorId": null,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f",
+            "cf41f832dabc1cb861d6dd8e3d160e7804b5ef6767d143a220c51383251477dc",
+            "ff564b2bada14eefec40116dff28c5318ce4fa0c951c99fff960af1fd0a1a16f"
+          ]
+        }
+      ],
+      "command_ids": [
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "query-wire",
+      "reason": null
+    },
+    {
+      "assertions": 4,
+      "cases": [
+        {
+          "assertions": 2,
+          "direction": [
+            "3.110.0",
+            "3.70.1"
+          ],
+          "final_fields": {
+            "GlobalPosition": 0,
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.110.0-3.70.1-json-positive",
+          "middle_fields": {
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "504af624797e23a8df86d1ea9378f5fdad1596e6f7d17b811aadc9d2c6a09260",
+            "1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361",
+            "ed398c9eff00d16d9e14f329945d025d773ed381a68d8f0e437e9a96abf20ea4"
+          ]
+        },
+        {
+          "assertions": 2,
+          "direction": [
+            "3.70.1",
+            "3.110.0"
+          ],
+          "final_fields": {
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "format": "json",
+          "id": "3.70.1-3.110.0-json-positive",
+          "middle_fields": {
+            "GlobalPosition": 0,
+            "SequenceNumber": 3,
+            "UserId": "fixture-user"
+          },
+          "preserved": false,
+          "wire_hashes": [
+            "1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361",
+            "ed398c9eff00d16d9e14f329945d025d773ed381a68d8f0e437e9a96abf20ea4",
+            "1540ca7a3ee5d0f41ee2330e2f10d1a84a7dbede2696abaf4414f65286eae361"
+          ]
+        }
+      ],
+      "command_ids": [
+        59,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "id": "projection-wire",
+      "reason": null
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 130 exited -6"
+        }
+      ],
+      "command_ids": [
+        128,
+        129,
+        130
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "mixed-api",
+      "reason": "ValueError: Command 130 exited -6"
+    },
+    {
+      "assertions": 2,
+      "cases": [
+        {
+          "assertions": 2,
+          "id": "incomplete",
+          "reason": "TimeoutError: Owned command cancelled or timed out"
+        }
+      ],
+      "command_ids": [
+        118,
+        119,
+        120
+      ],
+      "compatibility": "unverified",
+      "execution": "unavailable",
+      "id": "checkout",
+      "reason": "TimeoutError: Owned command cancelled or timed out"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 133 exited -6"
+        }
+      ],
+      "command_ids": [
+        131,
+        132,
+        133
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "post-upgrade-restore",
+      "reason": "ValueError: Command 133 exited -6"
+    },
+    {
+      "assertions": 1,
+      "cases": [
+        {
+          "assertions": 1,
+          "id": "incomplete",
+          "reason": "ValueError: Command 144 exited -6"
+        }
+      ],
+      "command_ids": [
+        142,
+        143,
+        144
+      ],
+      "compatibility": "unverified",
+      "execution": "failed",
+      "id": "pre-upgrade-restore",
+      "reason": "ValueError: Command 144 exited -6"
+    },
+    {
+      "assertions": 4,
+      "cases": [
+        {
+          "assertions": 2,
+          "id": "startup-failure"
+        },
+        {
+          "assertions": 2,
+          "id": "timeout"
+        }
+      ],
+      "command_ids": [
+        149,
+        150
+      ],
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "failure-cleanup",
+      "reason": null
+    }
+  ]
+}
