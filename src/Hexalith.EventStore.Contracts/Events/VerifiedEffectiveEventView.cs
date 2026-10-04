@@ -3,18 +3,19 @@ using System.Text.Json.Serialization;
 namespace Hexalith.EventStore.Contracts.Events;
 
 /// <summary>
-/// Carries one event's verified effective representation with its stored digest and signed route proof.
+/// Carries a current event payload and its route proof across a transport boundary.
+/// Construction and JSON binding do not verify the proof; receivers must authenticate it before use.
 /// </summary>
-public sealed class VerifiedEffectiveCommandEvent {
+public sealed class VerifiedEffectiveEventView {
     private readonly byte[] _storedDigest;
     private readonly byte[] _effectivePayload;
     private readonly byte[] _routeClaim;
     private readonly byte[] _routeSignature;
 
-    /// <summary>Initializes a command event with copied proof and payload bytes.</summary>
+    /// <summary>Initializes the transport view while taking private copies of all byte arrays.</summary>
     [JsonConstructor]
-    public VerifiedEffectiveCommandEvent(
-        long sequence,
+    public VerifiedEffectiveEventView(
+        long sequenceNumber,
         byte[] storedDigest,
         string eventContractType,
         int payloadVersion,
@@ -23,9 +24,9 @@ public sealed class VerifiedEffectiveCommandEvent {
         byte[] routeClaim,
         string routeKeyId,
         byte[] routeSignature) {
-        Sequence = sequence > 0
-            ? sequence
-            : throw new ArgumentOutOfRangeException(nameof(sequence), sequence, "Sequence must be positive.");
+        SequenceNumber = sequenceNumber > 0
+            ? sequenceNumber
+            : throw new ArgumentOutOfRangeException(nameof(sequenceNumber), sequenceNumber, "SequenceNumber must be positive.");
         _storedDigest = storedDigest?.ToArray() ?? throw new ArgumentNullException(nameof(storedDigest));
         if (_storedDigest.Length != 32) {
             throw new ArgumentException("StoredDigest must contain exactly 32 bytes.", nameof(storedDigest));
@@ -46,8 +47,8 @@ public sealed class VerifiedEffectiveCommandEvent {
     }
 
     /// <summary>Gets the event sequence number.</summary>
-    [JsonPropertyName("sequence")]
-    public long Sequence { get; }
+    [JsonPropertyName("sequenceNumber")]
+    public long SequenceNumber { get; }
 
     /// <summary>Gets a transport copy of the 32-byte stored digest.</summary>
     [JsonPropertyName("storedDigest")]

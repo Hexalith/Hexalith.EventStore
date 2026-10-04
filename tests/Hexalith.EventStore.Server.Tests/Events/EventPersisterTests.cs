@@ -24,6 +24,14 @@ public class EventPersisterTests {
 
     private sealed record TestRejectionEvent(string Reason = "rejected") : IRejectionEvent;
 
+    private sealed record SerializedVersionedEvent(
+        string EventTypeName,
+        byte[] PayloadBytes,
+        string SerializationFormat,
+        int? MetadataVersion,
+        string? EventContractType,
+        int? PayloadVersion) : ISerializedEventPayload;
+
     private sealed class FakeGlobalPositionAllocator(long nextPosition = 1) : IGlobalPositionAllocator {
         private long _nextPosition = nextPosition;
 
@@ -216,6 +224,57 @@ public class EventPersisterTests {
         envelope.MetadataVersion.ShouldBe(1);                    // 14. MetadataVersion
         envelope.SerializationFormat.ShouldBe("json");           // 15. SerializationFormat
         envelope.Payload.Length.ShouldBeGreaterThan(0);          // Payload populated
+    }
+
+    [Fact]
+    public async Task PersistEventsAsync_V2Metadata_PersistsCompleteTriplet() {
+        (EventPersister persister, IActorStateManager stateManager) = CreatePersister();
+        ConfigureNoMetadata(stateManager);
+        var serialized = new SerializedVersionedEvent(
+            "order-created", [1, 2, 3], "json", 2, "order-created", 3);
+
+        EventPersistResult result = await persister.PersistEventsAsync(
+            TestIdentity,
+            "order",
+            CreateTestCommand(),
+            DomainResult.Success([serialized]),
+            "v2");
+
+        EventEnvelope persisted = result.PersistedEnvelopes.ShouldHaveSingleItem();
+        persisted.MetadataVersion.ShouldBe(2);
+        persisted.EventContractType.ShouldBe("order-created");
+        persisted.PayloadVersion.ShouldBe(3);
+    }
+
+    [Theory]
+    [InlineData(0, null, null)]
+    [InlineData(3, null, null)]
+    [InlineData(1, "order-created", null)]
+    [InlineData(1, "order-created", 3)]
+    [InlineData(2, null, 3)]
+    [InlineData(2, "order-created", null)]
+    [InlineData(2, "Order-Created", 3)]
+    [InlineData(2, "different-type", 3)]
+    [InlineData(2, "order-created", 0)]
+    [InlineData(2, "order-created", 1025)]
+    public async Task PersistEventsAsync_InvalidVersionMetadata_RejectsBeforeReservationOrWrite(
+        int metadataVersion,
+        string? eventContractType,
+        int? payloadVersion) {
+        (EventPersister persister, IActorStateManager stateManager, FakeGlobalPositionAllocator allocator) = CreatePersisterWithAllocator();
+        ConfigureNoMetadata(stateManager);
+        var serialized = new SerializedVersionedEvent(
+            "order-created", [1], "json", metadataVersion, eventContractType, payloadVersion);
+
+        _ = await Should.ThrowAsync<ArgumentException>(() => persister.PersistEventsAsync(
+            TestIdentity,
+            "order",
+            CreateTestCommand(),
+            DomainResult.Success([serialized]),
+            "v2"));
+
+        allocator.CallCount.ShouldBe(0);
+        _ = stateManager.DidNotReceive().SetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<EventEnvelope>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

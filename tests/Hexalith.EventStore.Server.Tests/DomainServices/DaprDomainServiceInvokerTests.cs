@@ -1,9 +1,17 @@
 using Dapr.Client;
 
+using System.Net;
+using System.Text;
+using System.Text.Json;
+
+using Dapr.Actors.Runtime;
+
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
@@ -93,6 +101,60 @@ public class DaprDomainServiceInvokerTests {
         // Act & Assert -- expect exception since null registration, but verify resolver was called
         _ = await Should.ThrowAsync<DomainServiceNotFoundException>(() => invoker.InvokeAsync(envelope, null));
         _ = await _resolver.Received(1).ResolveAsync("my-tenant", "my-domain", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_PreservesVersionMetadataTripletFromWireEvent() {
+        using DaprClient daprClient = new DaprClientBuilder().Build();
+        _ = _resolver.ResolveAsync("test-tenant", "test-domain", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(TestRegistration);
+        var wireResult = new DomainServiceWireResult(
+            false,
+            [new DomainServiceWireEvent("order-created", [1, 2, 3]) {
+                MetadataVersion = 2,
+                EventContractType = "order-created",
+                PayloadVersion = 7,
+            }]);
+        string json = JsonSerializer.Serialize(wireResult, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        using var httpClient = new HttpClient(new StaticResponseHandler(json));
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _ = httpClientFactory.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(httpClient);
+        var invoker = new DaprDomainServiceInvoker(
+            daprClient,
+            httpClientFactory,
+            _resolver,
+            _options,
+            TimeProvider.System,
+            _logger);
+
+        DomainResult result = await invoker.InvokeAsync(CreateTestEnvelope(), null);
+
+        ISerializedEventPayload payload = result.Events.ShouldHaveSingleItem().ShouldBeAssignableTo<ISerializedEventPayload>();
+        payload.MetadataVersion.ShouldBe(2);
+        payload.EventContractType.ShouldBe("order-created");
+        payload.PayloadVersion.ShouldBe(7);
+
+        var identity = new AggregateIdentity("test-tenant", "test-domain", "agg-001");
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
+        var persister = new EventPersister(
+            stateManager,
+            NullLogger<EventPersister>.Instance,
+            new NoOpEventPayloadProtectionService(),
+            NoOpGlobalPositionAllocator.Instance);
+
+        EventPersistResult persisted = await persister.PersistEventsAsync(
+            identity,
+            "order",
+            CreateTestEnvelope(),
+            result,
+            "v2");
+
+        var persistedEvent = persisted.PersistedEnvelopes.ShouldHaveSingleItem();
+        persistedEvent.MetadataVersion.ShouldBe(2);
+        persistedEvent.EventContractType.ShouldBe("order-created");
+        persistedEvent.PayloadVersion.ShouldBe(7);
     }
 
     [Fact]
@@ -688,6 +750,17 @@ public class DaprDomainServiceInvokerTests {
             using var cancellation = new CancellationTokenSource();
             cancellation.Cancel();
             return Task.FromCanceled<HttpResponseMessage>(cancellation.Token);
+        }
+    }
+
+    private sealed class StaticResponseHandler(string responseBody) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
+                Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
+            });
         }
     }
 }

@@ -68,6 +68,38 @@ public class AggregateActorDomainResultTests {
     }
 
     [Fact]
+    public async Task ProcessCommandAsync_RehydratedState_PreservesVersionMetadataInContractEvents() {
+        ActorTestContext ctx = CreateActor();
+        ConfigureNoDuplicate(ctx.StateManager);
+        _ = ctx.StateManager.TryGetStateAsync<AggregateMetadata>(
+                "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(1, DateTimeOffset.UtcNow, null)));
+        var stored = new EventEnvelope(
+            "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "order-created", 2, "json", [1, 2, 3], null) {
+            EventContractType = "order-created",
+            PayloadVersion = 7,
+        };
+        _ = ctx.StateManager.TryGetStateAsync<EventEnvelope>(
+                "test-tenant:test-domain:agg-001:events:1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored));
+
+        Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState? observedState = null;
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
+            .Returns(call => {
+                observedState = call.ArgAt<object?>(1) as Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState;
+                return DomainResult.NoOp();
+            });
+
+        _ = await ctx.Actor.ProcessCommandAsync(CreateTestEnvelope());
+
+        var passedEvent = observedState!.Events.ShouldHaveSingleItem();
+        passedEvent.Metadata.MetadataVersion.ShouldBe(2);
+        passedEvent.Metadata.EventContractType.ShouldBe("order-created");
+        passedEvent.Metadata.PayloadVersion.ShouldBe(7);
+    }
+
+    [Fact]
     public async Task ProcessCommandAsync_StateRehydrated_ProceedsToStep4() {
         // Arrange
         ActorTestContext ctx = CreateActor();

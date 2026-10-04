@@ -44,9 +44,15 @@ public class EventMetadataTests {
     }
 
     [Fact]
-    public void EventMetadata_HasExactly15Fields() {
+    public void EventMetadata_Has15PositionalFieldsAnd2AdditiveVersionProperties() {
         PropertyInfo[] properties = typeof(EventMetadata).GetProperties();
-        properties.Length.ShouldBe(15);
+        // Preserve the original 15 positional properties and allow the two approved init-only additions.
+        properties.Length.ShouldBe(17);
+        typeof(EventMetadata).GetConstructors()
+            .Single(constructor => constructor.GetParameters().Length == 15)
+            .GetParameters()
+            .Length
+            .ShouldBe(15);
     }
 
     [Theory]

@@ -4659,7 +4659,10 @@ public partial class AggregateActor(
                 envelope.DomainServiceVersion,
                 envelope.EventTypeName,
                 envelope.MetadataVersion,
-                envelope.SerializationFormat),
+                envelope.SerializationFormat) {
+                EventContractType = envelope.EventContractType,
+                PayloadVersion = envelope.PayloadVersion,
+            },
             envelope.Payload,
             envelope.Extensions is null ? null : new Dictionary<string, string>(envelope.Extensions));
 

@@ -48,6 +48,34 @@ public partial class EventPersister(
             return new EventPersistResult(0, []);
         }
 
+        var validatedPayloads = new List<(
+            IEventPayload Payload,
+            string EventTypeName,
+            string SerializationFormat,
+            string? EventContractType,
+            int? PayloadVersion,
+            int MetadataVersion)>(domainResult.Events.Count);
+        foreach (IEventPayload eventPayload in domainResult.Events) {
+            string eventTypeName = eventPayload is ISerializedEventPayload serializedPayload
+                ? serializedPayload.EventTypeName
+                : eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
+            string serializationFormat = eventPayload is ISerializedEventPayload serializedEvent
+                ? serializedEvent.SerializationFormat
+                : "json";
+            string? eventContractType = eventPayload is ISerializedEventPayload versionedEvent
+                ? versionedEvent.EventContractType
+                : null;
+            int? payloadVersion = eventPayload is ISerializedEventPayload versionedPayload
+                ? versionedPayload.PayloadVersion
+                : null;
+            int metadataVersion = eventPayload is ISerializedEventPayload versionedMetadata
+                ? versionedMetadata.MetadataVersion ?? 1
+                : 1;
+
+            ValidateEventVersionMetadata(eventTypeName, metadataVersion, eventContractType, payloadVersion);
+            validatedPayloads.Add((eventPayload, eventTypeName, serializationFormat, eventContractType, payloadVersion, metadataVersion));
+        }
+
         // Load current metadata to get sequence number
         ConditionalValue<AggregateMetadata> metadataResult = await stateManager
             .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
@@ -67,26 +95,10 @@ public partial class EventPersister(
             int MetadataVersion)>(domainResult.Events.Count);
         var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
 
-        for (int i = 0; i < domainResult.Events.Count; i++) {
-            IEventPayload eventPayload = domainResult.Events[i];
-            string eventTypeName = eventPayload is ISerializedEventPayload serializedPayload
-                ? serializedPayload.EventTypeName
-                : eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
+        foreach ((IEventPayload eventPayload, string eventTypeName, string serializationFormat, string? eventContractType, int? payloadVersion, int metadataVersion) in validatedPayloads) {
             byte[] payloadBytes = eventPayload is ISerializedEventPayload serialized
                 ? serialized.PayloadBytes
                 : JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
-            string serializationFormat = eventPayload is ISerializedEventPayload serializedEvent
-                ? serializedEvent.SerializationFormat
-                : "json";
-            string? eventContractType = eventPayload is ISerializedEventPayload versionedEvent
-                ? versionedEvent.EventContractType
-                : null;
-            int? payloadVersion = eventPayload is ISerializedEventPayload versionedPayload
-                ? versionedPayload.PayloadVersion
-                : null;
-            int metadataVersion = eventPayload is ISerializedEventPayload versionedMetadata
-                ? versionedMetadata.MetadataVersion ?? 1
-                : 1;
 
             PayloadProtectionResult protectionResult = await payloadProtectionService
                 .ProtectEventPayloadAsync(
@@ -165,6 +177,51 @@ public partial class EventPersister(
         Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);
 
         return new EventPersistResult(newSequence, envelopes);
+    }
+
+    private static void ValidateEventVersionMetadata(
+        string eventTypeName,
+        int metadataVersion,
+        string? eventContractType,
+        int? payloadVersion) {
+        if (metadataVersion == 1) {
+            if (eventContractType is not null || payloadVersion is not null) {
+                throw new ArgumentException("V1 event metadata cannot include EventContractType or PayloadVersion.", nameof(eventContractType));
+            }
+
+            return;
+        }
+
+        if (metadataVersion != 2) {
+            throw new ArgumentOutOfRangeException(nameof(metadataVersion), metadataVersion, "Only event metadata versions 1 and 2 are supported.");
+        }
+
+        if (eventContractType is null || payloadVersion is null) {
+            throw new ArgumentException("V2 event metadata requires both EventContractType and PayloadVersion.", nameof(eventContractType));
+        }
+
+        ValidateCanonicalEventContractType(eventContractType);
+        if (payloadVersion is < 1 or > 1024) {
+            throw new ArgumentOutOfRangeException(nameof(payloadVersion), payloadVersion, "Payload version must be between 1 and 1024.");
+        }
+
+        if (!string.Equals(eventTypeName, eventContractType, StringComparison.Ordinal)) {
+            throw new ArgumentException("V2 EventTypeName must exactly match EventContractType.", nameof(eventTypeName));
+        }
+    }
+
+    private static void ValidateCanonicalEventContractType(string value) {
+        if (value.Length is < 1 or > 64) {
+            throw new ArgumentOutOfRangeException(nameof(value), value.Length, "Event contract type must contain 1 to 64 ASCII characters.");
+        }
+
+        for (int i = 0; i < value.Length; i++) {
+            char character = value[i];
+            bool alphaNumeric = character is >= 'a' and <= 'z' or >= '0' and <= '9';
+            if (!alphaNumeric && (character != '-' || i == 0 || i == value.Length - 1)) {
+                throw new ArgumentException("Event contract type must use canonical lower-case kebab-case.", nameof(value));
+            }
+        }
     }
 
     private static partial class Log {

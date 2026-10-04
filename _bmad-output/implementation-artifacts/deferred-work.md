@@ -5313,3 +5313,11 @@ status: open
   summary: The Admin actor-state inspector returns raw aggregate event keys (`{actorId}:events:{N}`) to Admin, so raw event payloads reach a support surface.
   evidence: `src/Hexalith.EventStore.Admin.Server/Services/KnownActorTypes.cs:31` lists the key; `DaprInfrastructureQueryService.ReadActorStateKeyAsync` returns the stored JSON value and its byte size. Owner decision D5 (2026-10-04) limits Story 6.2 to redacting the snapshot key. Deferred because event-key redaction is Epic 7 Admin hygiene, outside folded-snapshot scope.
   status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md`
+  summary: Story 6.6's M1 allow-listed registry, sealed dependency closure, fingerprints, and executable upcast/downserialize chain are not implemented.
+  evidence: The current diff adds bounded upcaster/downserializer interfaces and payload primitives but no registry, codec resolver, or execution path; the approved M1 task requires all of them. Story 6.6 remains in review and incomplete.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-6-event-versioning-and-upcasting-implementation.md`
+  summary: Story 6.6's M2 version negotiation, bounded writer, authenticated raw actor readback, and shared reader are not wired into production paths.
+  evidence: `DomainServiceRequestRouter` still has no mode/fingerprint negotiation, and the new `IAuthenticatedRawEventSource` has no provider implementation or actor same-save/readback integration. Typed reads are not an approved fallback; Story 6.6 remains incomplete.
+  status: open
