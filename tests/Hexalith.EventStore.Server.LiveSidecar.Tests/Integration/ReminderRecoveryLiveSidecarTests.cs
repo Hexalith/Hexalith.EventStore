@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Reminders;
@@ -12,6 +14,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -46,7 +49,9 @@ public sealed class ReminderRecoveryLiveSidecarTests(DaprTestContainerFixture fi
         fixture.ReminderIntents.Set(target, intent);
 
         // 1. Registration persists the witness and the index, then arms the Scheduler reminder.
+        DateTimeOffset registrationStarted = DateTimeOffset.UtcNow;
         ReminderConvergenceResult registered = await ConvergeAsync(target, cancellationToken);
+        DateTimeOffset registrationCompleted = DateTimeOffset.UtcNow;
 
         registered.Armed.ShouldBe(1);
         registered.Unresolved.ShouldBe(0);
@@ -57,7 +62,7 @@ public sealed class ReminderRecoveryLiveSidecarTests(DaprTestContainerFixture fi
         (await fixture.GetGenericStateJsonAsync(ItemKey(actorId))).ShouldContain(name);
         (await ReadAsync<ReminderTenantCandidates>(CandidatesKey(), cancellationToken)).ShouldNotBeNull()
             .Candidates.ShouldContain(candidate => candidate.ActorId == actorId);
-        (await SchedulerHoldsAsync(actorId, name, cancellationToken)).ShouldBeTrue();
+        await AssertSchedulerTimingAsync(actorId, name, intent.DueUtc, registrationStarted, registrationCompleted, cancellationToken);
 
         // 2. A callback without the app-channel token, or with a forged one, is refused and mutates nothing.
         (await InvokeCallbackAsync(actorId, name, token: null, cancellationToken)).ShouldBe(HttpStatusCode.Unauthorized);
@@ -120,12 +125,15 @@ public sealed class ReminderRecoveryLiveSidecarTests(DaprTestContainerFixture fi
         await DeleteSchedulerReminderAsync(actorId, rescheduledName, cancellationToken);
         (await SchedulerHoldsAsync(actorId, rescheduledName, cancellationToken)).ShouldBeFalse();
 
+        DateTimeOffset reconciliationStarted = DateTimeOffset.UtcNow;
         ReminderReconciliationPass pass = await fixture.Services.GetRequiredService<ReminderReconciler>()
             .RunPassAsync(cancellationToken);
+        DateTimeOffset reconciliationCompleted = DateTimeOffset.UtcNow;
 
         pass.Incomplete.ShouldBe(0);
         pass.Armed.ShouldBeGreaterThanOrEqualTo(1);
-        (await SchedulerHoldsAsync(actorId, rescheduledName, cancellationToken)).ShouldBeTrue();
+        await AssertSchedulerTimingAsync(
+            actorId, rescheduledName, rescheduled.DueUtc, reconciliationStarted, reconciliationCompleted, cancellationToken);
         (await ReadAsync<ReminderItemState>(ItemKey(actorId), cancellationToken)).ShouldNotBeNull()
             .Entries.ShouldHaveSingleItem().Status.ShouldBe(ReminderEntryStatus.Armed);
 
@@ -211,6 +219,60 @@ public sealed class ReminderRecoveryLiveSidecarTests(DaprTestContainerFixture fi
             cancellationToken);
         string body = await response.Content.ReadAsStringAsync(cancellationToken);
         return response.StatusCode == HttpStatusCode.OK && body.Contains("dueTime", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task AssertSchedulerTimingAsync(
+        string actorId,
+        string reminderName,
+        DateTimeOffset dueUtc,
+        DateTimeOffset schedulingStarted,
+        DateTimeOffset schedulingCompleted,
+        CancellationToken cancellationToken)
+    {
+        using var client = new HttpClient { BaseAddress = new Uri(fixture.DaprHttpEndpoint), Timeout = TimeSpan.FromSeconds(30) };
+        using HttpResponseMessage response = await client.GetAsync(
+            $"/v1.0/actors/{fixture.ReminderActorTypeName}/{actorId}/reminders/{reminderName}",
+            cancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using JsonDocument reminder = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+        TimeSpan actualDelay = ParseSchedulerDuration(reminder.RootElement.GetProperty("dueTime").GetString().ShouldNotBeNull());
+        TimeSpan actualPeriod = ParseSchedulerDuration(reminder.RootElement.GetProperty("period").GetString().ShouldNotBeNull());
+        TimeSpan period = fixture.Services.GetRequiredService<IOptions<EventStoreReminderOptions>>().Value.RetryMaxDelay;
+
+        // The coordinator reads its clock inside the operation. Bound that interval and allow only two
+        // seconds for duration serialization and the host/sidecar clock difference.
+        (schedulingCompleted - schedulingStarted).ShouldBeInRange(TimeSpan.Zero, PlacementBudget + TimeSpan.FromSeconds(30));
+        TimeSpan tolerance = TimeSpan.FromSeconds(2);
+        actualDelay.ShouldBeInRange(dueUtc - schedulingCompleted - tolerance, dueUtc - schedulingStarted + tolerance);
+        actualPeriod.ShouldBe(period);
+    }
+
+    private static TimeSpan ParseSchedulerDuration(string duration)
+    {
+        // Scheduler stores repeating intervals as "@every <Go duration>" and may normalize
+        // zero-valued components. Parse each component and reject any unparsed text.
+        if (duration.StartsWith("@every ", StringComparison.Ordinal))
+        {
+            duration = duration["@every ".Length..];
+        }
+
+        MatchCollection components = Regex.Matches(duration, @"(\d+(?:\.\d+)?)(ms|h|m|s)", RegexOptions.CultureInvariant);
+        string.Concat(components.Select(static component => component.Value)).ShouldBe(duration);
+        components.Count.ShouldBeGreaterThan(0);
+        double milliseconds = 0;
+        foreach (Match component in components)
+        {
+            double value = double.Parse(component.Groups[1].Value, CultureInfo.InvariantCulture);
+            milliseconds += value * (component.Groups[2].Value switch
+            {
+                "h" => 3_600_000,
+                "m" => 60_000,
+                "s" => 1_000,
+                _ => 1,
+            });
+        }
+
+        return TimeSpan.FromMilliseconds(milliseconds);
     }
 
     private async Task DeleteSchedulerReminderAsync(string actorId, string reminderName, CancellationToken cancellationToken)

@@ -929,6 +929,83 @@ public sealed class ReminderCoordinatorTests
         harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
     }
 
+    /// <summary>Name collisions retain both witnesses and cannot hide either source's overlap with a third effect.</summary>
+    /// <param name="shareSecondSource">Whether the third witness shares the second same-name intent's source.</param>
+    /// <param name="inputOrder">The permutation of the three current intents.</param>
+    /// <param name="future">Whether the colliding intents are future work rather than due work.</param>
+    [Theory]
+    [InlineData(false, 0, false)]
+    [InlineData(false, 1, false)]
+    [InlineData(false, 2, false)]
+    [InlineData(false, 3, false)]
+    [InlineData(false, 4, false)]
+    [InlineData(false, 5, false)]
+    [InlineData(true, 0, false)]
+    [InlineData(true, 1, false)]
+    [InlineData(true, 2, false)]
+    [InlineData(true, 3, false)]
+    [InlineData(true, 4, false)]
+    [InlineData(true, 5, false)]
+    [InlineData(false, 0, true)]
+    [InlineData(false, 1, true)]
+    [InlineData(false, 2, true)]
+    [InlineData(false, 3, true)]
+    [InlineData(false, 4, true)]
+    [InlineData(false, 5, true)]
+    [InlineData(true, 0, true)]
+    [InlineData(true, 1, true)]
+    [InlineData(true, 2, true)]
+    [InlineData(true, 3, true)]
+    [InlineData(true, 4, true)]
+    [InlineData(true, 5, true)]
+    public async Task OverlappingWitnessAndEffectCollisionsQuarantineEveryIntent(bool shareSecondSource, int inputOrder, bool future)
+    {
+        var harness = new ReminderTestHarness();
+        string actorId = ReminderTestHarness.ActorId(Item);
+        DateTimeOffset due = future ? harness.Time.Now.AddHours(1) : harness.Time.Now.AddMinutes(-2);
+        ReminderIntent first = ReminderTestHarness.Intent(Item, due, sequence: 3);
+        ReminderIntent second = first with { SourceSequence = 4 };
+        ReminderIntent third = ReminderTestHarness.Intent(Item, due.AddMinutes(1), revision: 2, sequence: shareSecondSource ? 4 : 3);
+        string collidedName = ReminderTestHarness.Name(first);
+        string thirdName = ReminderTestHarness.Name(third);
+        ReminderTestHarness.Name(second).ShouldBe(collidedName);
+        thirdName.ShouldNotBe(collidedName);
+        ReminderIntent[] intents = inputOrder switch
+        {
+            0 => [first, second, third],
+            1 => [first, third, second],
+            2 => [second, first, third],
+            3 => [second, third, first],
+            4 => [third, first, second],
+            _ => [third, second, first],
+        };
+        harness.Source.Set(Item, intents);
+
+        ReminderConvergenceResult result = await harness.CreateRegistrar().ConvergeAsync(Item);
+
+        result.Submitted.ShouldBe(0);
+        result.Armed.ShouldBe(0);
+        harness.Submitter.Calls.ShouldBeEmpty();
+        harness.Submitter.Receipts.ShouldBeEmpty();
+        harness.SchedulerFor(actorId).Armed.ShouldBeEmpty();
+        harness.SchedulerFor(actorId).ArmCalls.ShouldBe(0);
+        ReminderItemState state = harness.ItemState(actorId).ShouldNotBeNull();
+        state.Entries.ShouldBeEmpty();
+        state.Quarantine.Count.ShouldBe(3);
+        state.Quarantine.Select(record => record.EvidenceDigest).Distinct().Count().ShouldBe(3);
+        state.Quarantine.Count(record => record.ReminderName == collidedName && record.ReasonCode == "witness-collision").ShouldBe(2);
+        state.Quarantine.Where(record => record.ReminderName == thirdName).ShouldHaveSingleItem().ReasonCode.ShouldBe("effect-collision");
+        foreach (ReminderQuarantineRecord record in state.Quarantine)
+        {
+            ReminderDispositionRecord audit = harness.Disposition(actorId, record.EvidenceDigest).ShouldNotBeNull();
+            audit.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+            audit.ReasonCode.ShouldBe(record.ReasonCode);
+        }
+
+        harness.Candidates().ShouldHaveSingleItem().ActorId.ShouldBe(actorId);
+        harness.Status.Snapshot().Quarantined.ShouldBe(3);
+    }
+
     /// <summary>Equal sequence, kind, and target coordinates remain distinct effects when their source domains and aggregates differ.</summary>
     [Fact]
     public async Task DistinctSourceAggregatesProduceDistinctReminderReceipts()

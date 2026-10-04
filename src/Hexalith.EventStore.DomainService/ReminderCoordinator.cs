@@ -562,6 +562,7 @@ internal sealed class ReminderCoordinator
     {
         ReminderItemState state = stored ?? new ReminderItemState(target.Tenant, target.Domain, target.Aggregate, 0, [], []);
         var quarantine = new List<ReminderQuarantineRecord>(state.Quarantine);
+        var valid = new List<(ReminderIntent Intent, ReminderEntry Witness)>();
         var desired = new Dictionary<string, (ReminderIntent Intent, ReminderEntry Witness)>(StringComparer.Ordinal);
         var collided = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -577,7 +578,24 @@ internal sealed class ReminderCoordinator
                 continue;
             }
 
-            ReminderEntry witness = CreateWitness(intent!, now);
+            valid.Add((intent!, CreateWitness(intent!, now)));
+        }
+
+        // Classify effect overlap before collapsing names: either same-name witness may share its effect
+        // with a third name, and discarding either source would let that third witness execute.
+        foreach (IGrouping<string, string> shared in valid
+            .GroupBy(pair => EffectIdentityCodec.ComputeEffectId(
+                CreateEffectIdentity(target.Tenant, target.Domain, target.Aggregate, pair.Intent)), pair => pair.Witness.ReminderName)
+            .Where(static group => group.Distinct(StringComparer.Ordinal).Skip(1).Any()))
+        {
+            foreach (string name in shared)
+            {
+                collided[name] = "effect-collision";
+            }
+        }
+
+        foreach ((ReminderIntent intent, ReminderEntry witness) in valid)
+        {
             if (desired.TryGetValue(witness.ReminderName, out (ReminderIntent Intent, ReminderEntry Witness) known))
             {
                 if (!SameWitness(known.Witness, witness))
@@ -590,21 +608,7 @@ internal sealed class ReminderCoordinator
                 continue;
             }
 
-            desired[witness.ReminderName] = (intent!, witness);
-        }
-
-        // Two witnesses with different names but one effect identity would make the target reject the second
-        // on a semantic-digest conflict, or silently replay the first receipt: neither may be submitted.
-        foreach (IGrouping<string, string> shared in desired
-            .Where(pair => !collided.ContainsKey(pair.Key))
-            .GroupBy(pair => EffectIdentityCodec.ComputeEffectId(
-                CreateEffectIdentity(target.Tenant, target.Domain, target.Aggregate, pair.Value.Intent)), pair => pair.Key)
-            .Where(static group => group.Count() > 1))
-        {
-            foreach (string name in shared)
-            {
-                collided[name] = "effect-collision";
-            }
+            desired[witness.ReminderName] = (intent, witness);
         }
 
         foreach ((string name, string reasonCode) in collided)
